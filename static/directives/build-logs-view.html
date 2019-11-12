@@ -1,0 +1,74 @@
+<div class="build-logs-view-element" ng-class="useTimestamps ? 'with-timestamps' : ''">
+  <span ng-show="logEntries">
+    <button id="copyButton" class="btn btn-primary copy-button"
+            clipboard-copy="#{{ ::buildLogsText }}">
+      <i class="fa fa-clipboard"></i>Copy Logs
+    </button>
+  </span>
+
+  <a id="downloadButton" class="btn btn-primary download-button"
+     ng-href="/buildlogs/{{ currentBuild.id }}"
+     ng-safenewtab
+     ng-if="logEntries">
+    <i class="fa fa-download"></i>Download Logs
+  </a>
+
+  <span class="cor-loader" ng-if="!logEntries && !loadError"></span>
+
+  <div class="co-alert co-alert-warning" ng-if="loadError == 'blocked'">
+    Loading of build logs failed, most likely due to an ad blocker. Please
+    disable filtering and refresh this page.
+  </div>
+
+  <div class="co-alert co-alert-danger" ng-if="loadError == 'request-failed'">
+    Failed to load builds logs. Please reload and try again. If this problem persists,
+    please check for JavaScript or networking issues and contact support.
+  </div>
+
+  <div class="co-alert co-alert-danger" ng-if="loadError == 'unauthorized'">
+    You are not authorized to view builds logs. Please have the owner of the repository grant you
+    admin access to this repository.
+  </div>
+
+  <div ng-show="!loadError && pollChannel.skipping">
+    Refreshing Build Status...
+    <span class="cor-loader"></span>
+  </div>
+
+  <div ng-show="!loadError && !pollChannel.skipping && currentBuild.phase != 'expired'">
+    <span class="no-logs" ng-if="!logEntries.length && currentBuild.phase == 'waiting'">
+      (Waiting for build to start)
+    </span>
+
+    <div class="log-container" ng-class="container.type" ng-repeat="container in logEntries">
+      <div class="container-header" ng-class="container.type == 'phase' ? container.message : ''"
+           ng-switch on="container.type" ng-click="container.logs.toggle()">
+        <i class="fa chevron"
+           ng-class="container.logs.isVisible ? 'fa-chevron-down' : 'fa-chevron-right'"
+           ng-show="hasLogs(container)"></i>
+        <div ng-switch-when="phase">
+          <span class="container-content build-log-phase" phase="container"></span>
+        </div>
+        <div ng-switch-when="error">
+          <span class="container-content build-log-error" error="container" is-superuser="isSuperuser" entries="logEntries"></span>
+        </div>
+        <div ng-switch-when="command">
+          <span class="container-content build-log-command" command="container"></span>
+        </div>
+      </div>
+
+      <!-- Display the entries for the container -->
+      <div class="container-logs" ng-show="container.logs.isVisible">
+        <div class="log-entry" bindonce ng-repeat="entry in container.logs.visibleEntries">
+          <span class="id" bo-text="$index + container.index + 1" ng-if="!useTimestamps"></span>
+          <span class="id" bo-text="formatDatetime(entry.data.datetime)" ng-if="useTimestamps"></span>
+          <span class="message" bo-html="processANSI(entry.message, container)"></span>
+          <span class="timestamp" bo-text="formatDatetime(entry.data.datetime)" ng-if="!useTimestamps"></span>
+        </div>
+        <div ng-if="container.logs.hasHiddenEntries">
+          <div class="cor-loader-inline"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

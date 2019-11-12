@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "outDir": "./build/",
+    "target": "es5",
+    "lib": ["dom", "es2015", "es2016.array.include", "es2017.string"],
+    "jsx": "react",
+    "allowJs": true,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "sourceMap": true,
+    "noUnusedLocals": true
+  },
+  "exclude": [
+    ".yarn",
+    "**/node_modules"
+  ],
+  "include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx"
+  ]
+}

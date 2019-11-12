@@ -1,0 +1,5 @@
+<div class="image-command-element">
+  <div class="nondocker-command" ng-if="!$ctrl.getDockerfileCommand($ctrl.command)">{{ ::$ctrl.command.join(' ') }}</div>
+  <dockerfile-command command="::$ctrl.getDockerfileCommand($ctrl.command)"
+                      ng-if="$ctrl.getDockerfileCommand($ctrl.command)"></dockerfile-command>
+</div>

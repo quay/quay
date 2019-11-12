@@ -1,0 +1,15 @@
+.filter-control {
+  padding: 4px;
+}
+
+.filter-control a {
+  text-decoration: none !important;
+}
+
+.filter-control .not-selected a {
+  color: #aaa;
+}
+
+.filter-control .selected {
+  font-weight: bold;
+}

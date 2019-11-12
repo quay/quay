@@ -1,0 +1,18 @@
+<div class="build-info-bar-element" ng-class="build.phase">
+  <!-- Phase icon/color -->
+  <span class="phase-icon" ng-class="build.phase"></span>
+
+  <!-- Side information -->
+  <div class="build-side-info">
+    <!-- Build ID -->
+    <div class="build-side-id" ng-if="!hideId">{{ build.id }}</div>
+
+    <!-- Timing -->
+    <div class="timing" ng-if="showTime">
+      <i class="fa fa-clock-o"></i><time-ago datetime="build.started"></time-ago>
+    </div>
+  </div>
+
+  <div class="triggered-build-description" build="build" ng-if="build.trigger || build.trigger_metadata"></div>
+  <div ng-if="!build.trigger && !build.trigger_metadata">Manually Started Build</div>
+</div>

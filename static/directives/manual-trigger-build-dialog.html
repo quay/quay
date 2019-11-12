@@ -1,0 +1,66 @@
+<!-- Modal message dialog -->
+<div class="modal fade startTriggerDialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Manually Start Build Trigger</h4>
+      </div>
+      <div class="modal-body">
+        <trigger-description trigger="trigger"></trigger-description>
+
+        <form name="runForm" id="runForm">
+          <table width="100%">
+            <tr ng-repeat="field in runParameters">
+                <td class="field-title" valign="middle">{{ field.title }}:</td>
+                <td>
+                  <div ng-switch on="field.type">
+                    <!-- Autocomplete -->
+                    <div ng-switch-when="autocomplete">
+                      <span class="cor-loader-inline" ng-show="!fieldOptions[field.name]"></span>
+                      <div class="dropdown-select-direct"
+                           placeholder="'Enter or select ' + field.title"
+                           selected-item="parameters[field.name]"
+                           value-key="name"
+                           title-key="name"
+                           icon-key="kind"
+                           icon-map="field.iconMap"
+                           items="fieldOptions[field.name]"
+                           ng-show="fieldOptions[field.name]"
+                           clear-value="counter"></div>
+                    </div>
+
+                    <!-- Option -->
+                    <div ng-switch-when="option">
+                      <span class="cor-loader-inline" ng-show="!fieldOptions[field.name]"></span>
+                      <select ng-model="parameters[field.name]" ng-show="fieldOptions[field.name]"
+                              ng-options="value for value in fieldOptions[field.name]"
+                              required>
+                      </select>
+                    </div>
+
+                    <!-- String -->
+                    <input type="text" class="form-control" ng-model="parameters[field.name]"  ng-switch-when="string" required>
+
+                    <!-- Regex -->
+                    <div ng-switch-when="regex">
+                      <input type="text" class="form-control" ng-model="parameters[field.name]"
+                             ng-pattern="field.regex"
+                             placeholder="{{ field.placeholder }}"
+                             ng-name="field.name"
+                             id="{{ field.name }}"
+                             required>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+          </table>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary"  ng-disabled="runForm.$invalid" ng-click="startTrigger()">Start Build</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 style="font-weight: 400">Organization recovery: <strong>{{ organization }}</strong></h3>
+<hr style="border:none; border-top: 1px solid #D9D9D9; margin: 25px 0">
+
+<table>
+	<tr>
+		<td style="font-size: 13px;">A user at <a href="{{ app_link() }}">{{ app_link() }}</a> has attempted to recover access to organization <strong>{{ organization }}</strong> via this email address.</td>
+	</tr>
+</table>
+
+<table style="margin-top: 25px;">
+	<tr>
+		<td style="font-size: 13px;">Please login with one of the following user accounts to access this organization:</td>
+	</tr>
+</table>
+<table>
+	<tr>
+		<ul>
+			{% for admin_user in admin_usernames %}
+			<li style="font-weight: 500; font-size: 13px; margin-top: 15px;">{{ admin_user | user_reference }}</li>
+			{% endfor %}
+		</ul>
+	</tr>
+</table>
+
+<table style="">
+	<tr>
+		<td style="background: #40B4E5; padding: 10px; border-radius: 3px; color: #fff; font-size: 20px; font-weight: 500"><a style="text-decoration: none; color: #ffffff;" href="https://quay.io/signin/">Login to Recover</a></td>
+	</tr>
+</table>
+
+<table style="margin: 25px 0 35px">
+	<tr>
+		<td style="font-size: 13px;">If you did not make this request, your organization has not been compromised and the user was not given access. You can safely ignore this message.</td>
+	</tr>
+</table>
+
+
+<span style="font-size: 13px;">Best Wishes,</span><br>
+<span style="font-size: 13px;">The {{ app_title }} Team</span><br>
+
+{% endblock %}

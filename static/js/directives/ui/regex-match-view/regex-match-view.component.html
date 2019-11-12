@@ -1,0 +1,29 @@
+<div class="regex-match-view-element">
+  <div ng-if="$ctrl.filterMatches($ctrl.regex, $ctrl.items, false) == null">
+    <i class="fa fa-exclamation-triangle"></i>Invalid Regular Expression!
+  </div>
+  <div ng-if="$ctrl.filterMatches($ctrl.regex, $ctrl.items, false) != null">
+    <table class="match-table">
+      <tr>
+        <td>Matching:</td>
+        <td>
+          <ul class="matching match-list">
+            <li ng-repeat="item in $ctrl.filterMatches($ctrl.regex, $ctrl.items, true)">
+              <i class="fa {{ item.icon }}"></i>{{ item.title }}
+            </li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td>Not Matching:</td>
+        <td>
+          <ul class="not-matching match-list">
+            <li ng-repeat="item in $ctrl.filterMatches($ctrl.regex, $ctrl.items, false)">
+              <i class="fa {{ item.icon }}"></i>{{ item.title }}
+            </li>
+          </ul>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

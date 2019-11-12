@@ -1,0 +1,104 @@
+<!-- Messages tab -->
+<div class="global-message-tab-element">
+  <div class="cor-loader" ng-show="!messages"></div>
+  <div ng-show="messages">
+    <div class="manager-header" header-title="Messages">
+      <button class="create-button btn btn-primary" ng-click="showCreateMessage()"
+              ng-show="!inReadOnlyMode">
+        <i class="fa fa-plus" style="margin-right: 6px;"></i>Create Message
+      </button>
+    </div>
+
+    <table class="cor-table">
+      <thead>
+      <td>Message</td>
+      <td>Severity</td>
+      <td class="options-cols"></td>
+      </thead>
+
+      <tr ng-repeat="message in messages" class="user-row">
+        <td class="message-content">
+          <span ng-switch on="message.media_type">
+            <span ng-switch-when="text/markdown">
+              <markdown-view content="message.content"></markdown-view>
+            </span>
+            <span ng-switch-default>{{ message.content }}</span>
+          </span>
+        </td>
+        <td class="message-severity" ng-class="message.severity">
+          <span ng-switch on="message.severity">
+            <i class="fa fa-exclamation-triangle" ng-switch-when="warning"></i>
+            <i class="fa ci-stop" ng-switch-when="error"></i>
+            <i class="fa fa-info-circle" ng-switch-default></i>
+          </span>
+          {{ message.severity }}
+        </td>
+        <td class="options-col">
+          <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+            <span class="cor-option" option-click="showDeleteMessage(message.uuid)">
+              <i class="fa fa-times"></i> Delete Message
+            </span>
+          </span>
+        </td>
+      </tr>
+    </table>
+  </div><!-- Messages tab -->
+
+  <!-- Modal delete message dialog -->
+  <div class="co-dialog modal fade" id="confirmDeleteMessageModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Delete Message?</h4>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" ng-click="deleteMessage(messageToDelete)">Delete Message</button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Modal create message dialog -->
+  <div class="co-dialog modal fade" id="createMessageModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Create new message</h4>
+        </div>
+        <form name="createMessageForm" ng-submit="createNewMessage()">
+          <div class="modal-body" ng-show="creatingMessage">
+            <div class="cor-loader"></div>
+          </div>
+          <div class="modal-body" ng-show="!creatingMessage && !createdMessage">
+            <div class="form-group">
+              <label>Severity</label>
+              <select class="form-control" ng-model="newMessage.severity">
+                <option value="info">Normal (Info)</option>
+                <option value="warning">Warning</option>
+                <option value="error">Error</option>
+              </select>
+
+              <label>Message</label>
+              <markdown-input content="newMessage.content" 
+                              can-write="true" 
+                              (content-changed)="updateMessage($event.content)" 
+                              field-title="message"></markdown-input>
+            </div>
+          </div>
+          <div class="modal-footer" ng-show="createdMessage">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+          <div class="modal-footer" ng-show="!creatingMessage && !createdMessage">
+            <button class="btn btn-primary" type="submit" ng-disabled="!createMessageForm.$valid">
+              Create Message
+            </button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+</div>

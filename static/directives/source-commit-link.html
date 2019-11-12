@@ -1,0 +1,9 @@
+<span class="source-commit-link-element">
+  <soan class="commit-circle-container" data-title="Commit" data-container="body" bs-tooltip>
+      <span class="commit-circle"></span>
+  </span>
+  <span class="anchor" href="{{ getUrl(commitSha, urlTemplate) }}" ng-safenewtab
+        is-only-text="!urlTemplate || !getUrl(commitSha, urlTemplate)">
+     {{ commitSha.substring(0, 7) }}
+  </span>
+</span>

@@ -1,0 +1,58 @@
+<div class="resource-view trigger-setup-element"
+     resources="[repositoryResource, triggerResource]"
+     error-message="'Build trigger not found'">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link">
+        <a class="back-link" href="/repository/{{ repository.namespace }}/{{ repository.name }}?tab=builds">
+          <i class="fa fa-hdd-o" style="margin-right: 4px"></i>
+          {{ repository.namespace }}/{{ repository.name }}
+        </a>
+      </span>
+      <span class="cor-title-content">
+        <i class="fa" ng-class="getTriggerIcon()"></i>
+        Setup Build Trigger: {{ getTriggerId() }}
+      </span>
+    </div>
+
+    <div class="co-main-content-panel" ng-show="state != 'activated' && trigger.is_active">
+      <div class="co-alert co-alert-info">
+        Trigger has already been activated.
+      </div>
+    </div>
+
+    <div class="co-main-content-panel" ng-show="state == 'activated' || !trigger.is_active">
+      <!-- state = activated -->
+      <div class="activated" ng-if="state == 'activated'">
+        <div class="row">
+          <div class="col-md-offset-3 col-md-6 col-sm-12 col-lg-6 content">
+            <h3>Trigger has been successfully activated</h3>
+            <div class="co-alert co-alert-warning">
+              <strong>Please note:</strong> If the trigger continuously fails to build, it will be automatically
+              disabled. It can be re-enabled from the build trigger list.
+            </div>
+            <div class="credentials" trigger="trigger"></div>
+            <div class="button-bar">
+              <a href="/repository/{{ repository.namespace }}/{{ repository.name }}?tab=builds">
+                Return to {{ repository.namespace }}/{{ repository.name }}
+              </a>
+            </div>
+          </div>
+        </div>
+      </div> <!-- /state = activated -->
+
+      <!-- state = managing or activating -->
+      <div ng-if="(state == 'managing' || state == 'activating') && trigger"
+           ng-class="{'activating': state == 'activating'}">
+        <manage-trigger githost="trigger.service"
+                        trigger="trigger"
+                        repository="repository"
+                        (activate-trigger)="activateTrigger($event)"></manage-trigger>
+        <div class="activating-message" ng-show="state == 'activating'">
+          <div class="cor-loader-inline"></div><b>Completing setup of the build trigger</b>
+        </div>
+      </div> <!-- /state = managing -->
+
+    </div> <!-- /co-main-content-panel -->
+  </div>
+</div>

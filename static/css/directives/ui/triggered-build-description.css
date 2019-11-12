@@ -1,0 +1,71 @@
+.triggered-build-description-element .commit-message {
+  font-size: 16px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.triggered-build-description-element .commit-message a {
+  color: black;
+}
+
+.triggered-build-description-element .commit-who img {
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  margin-right: 2px;
+}
+
+.triggered-build-description-element .fa-github {
+  display: inline-block;
+  margin-left: 6px;
+  margin-right: 4px;
+}
+
+.triggered-build-description-element .commit-information {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #999;
+}
+
+.triggered-build-description-element .source-commit-link a {
+  color: #999;
+}
+
+.triggered-build-description-element .source-ref-link a {
+  color: #999;
+}
+
+.triggered-build-description-element .commit-information > span {
+  margin-right: 20px;
+}
+
+.triggered-build-description-element .commit-who:before {
+  content: "by ";
+}
+
+.triggered-build-description-element .manual {
+  color: #ccc;
+}
+
+.triggered-build-description-element .fa-user {
+  margin-right: 4px;
+}
+
+.triggered-build-description-element .long-commit-description {
+  margin-top: 10px;
+  font-size: 13px;
+  white-space: pre;
+  font-family: Consolas, "Lucida Console", Monaco, monospace;
+  border-left: 1px solid #eee;
+  padding-left: 10px;
+}
+
+.triggered-build-description-element .long-description-toggle {
+  padding: 2px;
+  display: inline-block;
+}
+
+.triggered-build-description-element .long-description-toggle:hover {
+  cursor: pointer;
+}

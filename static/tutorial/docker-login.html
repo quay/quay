@@ -1,0 +1,24 @@
+<div>
+  <div class="user-enter-box">
+    <div class="checkbox" style="margin: 0px;">
+      <input name="showSudo" type="checkbox" ng-model="tour.tourScope.showSudo" style="display: inline-block; margin-left: 10px; margin-right: 10px;">
+      <label for="showSudo" style="padding-left: 30px;">
+        My OS requires me to run all <code>docker</code> commands with <code>sudo</code>
+      </label>
+    </div>
+  </div>
+
+  <p>The first step when using <span class="registry-name"></span> is to login via the <code>docker login</code> command.</p>
+
+  <p>Enter your <span class="registry-name"></span> username and your <strong quay-show="Features.REQUIRE_ENCRYPTED_BASIC_AUTH">encrypted</strong> password when prompted.</p>
+
+  <div quay-show="Features.REQUIRE_ENCRYPTED_BASIC_AUTH" class="co-alert co-alert-warning">
+    This installation requires encrypted passwords to be used on the Docker command line. To generate an encrypted
+    password, visit the <a href="/user/{{ tour.tourScope.username }}?tab=settings">settings tab under your user page.</a>
+  </div>
+
+  <pre class="command"><code ng-show="tour.tourScope.showSudo">sudo </code>docker login {{ tour.tourScope.domainName }}
+Username: {{ tour.tourScope.username }}
+Password: (<strong quay-show="Features.REQUIRE_ENCRYPTED_BASIC_AUTH">encrypted</strong> password here)
+Email: {{ tour.tourScope.email }}</pre>
+</div>

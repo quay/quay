@@ -1,0 +1,112 @@
+.manage-trigger-control .help-col {
+    padding: 30px;
+    padding-top: 100px;
+}
+
+.manage-trigger-control .main-col {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 10px;
+}
+
+.manage-trigger-control strong {
+  margin-bottom: 10px;
+  display: block;
+}
+
+.manage-trigger-control .namespace-avatar {
+    margin-right: 4px;
+    width: 24px;
+    vertical-align: middle;
+}
+
+.manage-trigger-control .importance-col {
+    text-align: center;
+    width: 120px;
+}
+
+.manage-trigger-control .co-top-bar {
+    margin-top: 20px;
+    height: 28px;
+}
+
+@media (max-width: 768px) {
+    .manage-trigger-control .co-top-bar {
+        margin-bottom: 80px;
+    }
+}
+
+.manage-trigger-control .namespace-avatar {
+    margin-left: 2px;
+    margin-right: 2px;
+    display: inline-block;
+}
+
+.manage-trigger-control .service-icon {
+    font-size: 24px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.manage-trigger-control .fa-exclamation-triangle {
+    color: #FCA657;
+}
+
+.manage-trigger-control .empty-description {
+    color: #ccc;
+}
+
+.manage-trigger-control .radio {
+  margin-bottom: 20px;
+}
+
+.manage-trigger-control .radio input[type="radio"] {
+    padding: 4px;
+}
+
+.manage-trigger-control .radio label .title {
+    font-size: 16px;
+}
+
+.manage-trigger-control .radio label .weak {
+    font-weight: 300;
+}
+
+.manage-trigger-control .radio label .description {
+    margin-top: 6px;
+    color: #aaa;
+}
+
+.manage-trigger-control .radio label .extended {
+    margin-top: 20px;
+}
+
+.manage-trigger-control .radio label td:first-child {
+    vertical-align: top;
+    padding: 4px;
+    padding-right: 10px;
+}
+
+.manage-trigger-control .regex-match-view {
+    margin-top: 20px;
+}
+
+.manage-trigger-control h3 .fa {
+  margin-right: 4px;
+}
+
+.manage-trigger-control h3.warning {
+    color: #FCA657;
+}
+
+.manage-trigger-control h3.error {
+    color: #D64456;
+}
+
+.manage-trigger-control .success {
+    color: #2FC98E !important;
+}
+
+.manage-trigger-control .nowrap-col {
+    white-space: nowrap;
+}

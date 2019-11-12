@@ -1,0 +1,20 @@
+<div class="repo-count-checker-element">
+  <div class="required-plan" ng-show="isEnabled && planRequired && planRequired.title">
+    <div class="co-alert co-alert-warning thin">
+      In order to make this repository private under
+      <strong ng-if="isUserNamespace">your personal namespace</strong>
+      <strong ng-if="!isUserNamespace">{{ namespace }}</strong>, you will need to upgrade the namespace's plan to at least a
+      <b style="border-bottom: 1px dotted black; cursor: default" data-html="true"
+         data-title="{{ '<b>' + planRequired.title + '</b><br>' + planRequired.privateRepos + ' private repositories' }}" bs-tooltip>{{ planRequired.title  }}</b> plan.
+      </div>
+      <a class="btn btn-primary" ng-click="upgradePlan()" ng-show="!planChanging">Upgrade {{ namespace }} to {{ planRequired.title }}</a>
+      <div class="cor-loader-inline" ng-show="planChanging"></div>
+    </div>
+    <div class="cor-loader-inline" ng-show="isEnabled && checkingPlan"></div>
+    <div class="required-plan" ng-show="isEnabled && planRequired && !isUserNamespace && !planRequired.title">
+      <div class="co-alert co-alert-warning">
+        This organization has reached its private repository limit. Please contact your administrator.
+      </div>
+    </div>
+  </div>
+</div>

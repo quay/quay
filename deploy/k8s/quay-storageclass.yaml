@@ -1,0 +1,13 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: quay-storageclass
+parameters:
+  type: gp2
+  # Uncomment out following lines to encrypt the volume (AWS EBS example with xfs shown)
+  #encrypted: "true"
+  #fsType: xfs
+  #kmsKeyId: <Amazon Resource Name>
+provisioner: kubernetes.io/aws-ebs
+reclaimPolicy: Delete

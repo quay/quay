@@ -1,0 +1,23 @@
+.heatmap-element {
+    display: inline-block;
+}
+
+.heatmap-element svg {
+    overflow: visible;
+}
+
+.heatmap-element .cal-heatmap-container {
+    display: inline-block !important;
+}
+
+.heatmap-element .graph-label {
+    font-family: 'Source Sans Pro', sans-serif;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.heatmap-element .cal-heatmap-container svg .highlight {
+    fill: white;
+    stroke: #eee;
+    stroke-dasharray: 2;
+}

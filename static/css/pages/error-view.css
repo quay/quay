@@ -1,0 +1,34 @@
+.error-view-element {
+    text-align: center;
+}
+
+.error-view-element h2 {
+    font-size: 42px;
+    margin-bottom: 10px;
+}
+
+.error-view-element h2 .repo-circle {
+    margin-right: 16px;
+}
+
+.error-view-element h3 {
+    font-size: 24px;
+}
+
+.error-view-element img {
+    margin-top: 20px;
+    width: 255px;
+    height: 235px;
+    margin-bottom: 40px;
+}
+
+.error-view-element .err403 img {
+    margin-top: 30px;
+    width: 225px;
+    height: 205px;
+}
+
+.error-view-element h2 .fa-exclamation-triangle {
+  margin-right: 16px;
+  color: #D64456;
+}

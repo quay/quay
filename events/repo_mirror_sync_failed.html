@@ -1,0 +1,7 @@
+{% if notification_data.performer_data.entity_name %}
+{{ notification_data.performer_data.entity_name | user_reference }}
+{% endif %}
+
+{% if event_data.message %}
+ {{ event_data.message }}
+{% endif %}

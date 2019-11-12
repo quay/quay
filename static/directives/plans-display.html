@@ -1,0 +1,494 @@
+<div class="plans-display-element">
+  <!-- Header -->
+  <div class="plans-header">Use Quay in the cloud or hosted on your servers:</div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs plan-tabs" role="tablist">
+    <li role="presentation" class="active">
+      <a role="tab" data-toggle="tab" data-target="#hosted">
+        <div class="tab-logo">
+          <img src="/static/img/RH_QuayIO.svg">
+        </div>
+        <div class="tab-title">Hosted in the cloud and scales with you.</div>
+        <div class="tab-title">Priced by the number of private repositories.</div>
+      </a>
+    </li>
+    <li role="presentation">
+      <a role="tab" href="https://www.openshift.com/products/quay">
+        <div class="tab-logo">
+          <img src="/static/img/RH_Logo_Quay_Black_UX-horizontal.svg">
+        </div>
+        <div class="tab-title">Runs privately anywhere you can run a container.</div>
+        <div class="tab-title">Fixed price for unlimited users and repositories</div>
+      </a>
+    </li>
+  </ul>
+
+<div class="tab-content">
+  <!-- Hosted -->
+  <div class="tab-pane active" id="hosted">
+    <!-- Plan columns -->
+    <div class="row-container">
+      <div class="row">
+        <!-- Developer Plan -->
+        <div class="col-md-3 col-sm-6 plan-col">
+          <div class="plan-box">
+            <div class="plan-header">
+              <span class="plan-box-price">$15/mo</span>
+              <b>Developer</b>
+            </div>
+            <ul>
+              <li>5 private repositories</li>
+              <li>Unlimited public repos</li>
+            </ul>
+            <div class="plan-description">Great for individuals</div>
+            <a class="btn btn-primary trial-button" ng-click="buyNow('personal-2018')">
+              Start Free Trial
+              <i class="fa fa-angle-double-right"></i>
+            </a>
+          </div>
+
+          <ul class="plan-features single-feature">
+            <li><i class="fa fa-clock-o"></i>30-day free trial</li>
+          </ul>
+        </div>
+
+        <!-- Micro Plan -->
+        <div class="col-md-3 col-sm-6 plan-col">
+          <div class="plan-box">
+            <div class="plan-header">
+              <span class="plan-box-price">$30/mo</span>
+              <b>Micro</b>
+            </div>
+            <ul>
+              <li>10 private repositories</li>
+              <li>Unlimited public repos</li>
+              <li>Team-based permissions</li>
+            </ul>
+            <div class="plan-description">Great for startups</div>
+            <a class="btn btn-primary trial-button" ng-click="buyNow('bus-micro-2018')">
+              Start Free Trial
+              <i class="fa fa-angle-double-right"></i>
+            </a>
+          </div>
+
+          <ul class="plan-features single-feature">
+            <li><i class="fa fa-clock-o"></i>30-day free trial</li>
+          </ul>
+        </div>
+
+        <!-- Small Plan -->
+        <div class="col-md-3 col-sm-6 plan-col popular">
+          <div class="plan-box">
+            <div class="plan-header">
+              <span class="plan-box-price">$60/mo</span>
+              <b>Small</b>
+            </div>
+            <ul>
+              <li>20 private repositories</li>
+              <li>Unlimited public repos</li>
+              <li>Team-based permissions</li>
+            </ul>
+            <div class="plan-description">Great for small businesses</div>
+            <a class="btn btn-primary trial-button" ng-click="buyNow('bus-small-2018')">
+              Start Free Trial
+              <i class="fa fa-angle-double-right"></i>
+            </a>
+          </div>
+
+          <ul class="plan-features single-feature">
+            <li><i class="fa fa-clock-o"></i>30-day free trial</li>
+          </ul>
+        </div>
+
+        <!-- Larger Plans -->
+        <div class="col-md-3 col-sm-6 plan-col">
+          <div class="plan-box">
+            <div class="plan-header">
+              <b>Larger Plans</b>
+            </div>
+
+            <select ng-model="dropdownPlan" class="form-control">
+              <option ng-repeat="plan in plans" ng-if="plan.privateRepos > 20 && !plan.plans_page_hidden"
+                      value="{{ plan.stripeId }}">
+                {{ plan.privateRepos }} private repositories - ${{ plan.price / 100 }}/mo
+              </option>
+            </select>
+
+            <ul>
+              <li>Unlimited public repos</li>
+              <li>Team-based permissions</li>
+            </ul>
+            <div class="plan-description">Great for enterprises</div>
+            <a class="btn btn-primary trial-button" ng-click="buyNow(dropdownPlan)">
+              Start Free Trial
+              <i class="fa fa-angle-double-right"></i>
+            </a>
+          </div>
+
+          <ul class="plan-features single-feature">
+            <li><i class="fa fa-clock-o"></i>30-day free trial</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ and features -->
+    <div class="faq-features">
+      <div class="row-container-no-margin">
+        <div class="row">
+          <!-- Features -->
+          <div class="col-md-5 col-md-push-7 features-col">
+            <div class="features-title">All plans include:</div>
+            <div class="row">
+              <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
+                    <ul class="features-list">
+                      <li><i class="fa fa-refresh"></i>
+                          <b>Continuous Integration</b>
+                          <p>Build your containers in response to git pushes: GitHub, BitBucket, Gitlab and others.</p>
+                      </li>
+
+                      <li><i class="fa fa-clock-o"></i>
+                          <b>30-Day Free Trial</b>
+                          <p>Your first 30 days are free on Quay. Test it out and start building containers!</p>
+                      </li>
+
+                      <li><i class="fa fa-hdd-o"></i>
+                        <b>Public Repositories</b>
+                        <p>Provide a public download page for your container. The best part, they're free!</p>
+                      </li>
+
+                      <li><i class="fa ci-robot"></i>
+                        <b>Robot Accounts</b>
+                        <p>Create credentials designed for deploying software automatically.</p>
+                      </li>
+                    </ul>
+              </div>
+
+              <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
+                    <ul class="features-list">
+                      <li><i class="fa fa-group"></i>
+                        <b>Teams</b>
+                        <p>Teams can collectively have access to manage specific repositories on your account.</p>
+                      </li>
+
+                      <li><i class="fa fa-lock"></i>
+                        <b>SSL Encryption</b>
+                        <p>Transit between Quay and your servers is secured automatically.</p>
+                      </li>
+
+                      <li><i class="fa fa-bar-chart"></i>
+                        <b>Logging &amp; Auditing</b>
+                        <p>Auditing is essential for everything in your CI pipeline. Actions via API and UI are tracked.</p>
+                      </li>
+
+                      <li><i class="fa fa-calendar"></i>
+                        <b>Invoice History</b>
+                        <p>Download past invoices for your billing team or purchasing department.</p>
+                      </li>
+                    </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="col-md-7 col-md-pull-5 faq-col">
+            <h4>How do I use Quay with my servers and code?</h4>
+
+            <p>Using Quay with your infrastructure is separated into two main actions: <b>building containers</b> and <b>distributing them to your servers</b>.</p>
+
+            <p>You can configure Quay to automatically build containers of your code on each commit. Integrations with GitHub, Bitbucket, GitLab and self-hosted Git repositories are supported. Each built container is stored on Quay and is available to be pulled down onto your servers.</p>
+
+            <p>To distribute your private containers onto your servers, Docker or rkt must be configured with the correct credentials. Quay has sophisticated access controls &mdash; organizations, teams, robot accounts, and more &mdash; to give you full control over which servers can pull down your containers. An API can be used to automate the creation and management of these credentials.</p>
+
+            <h4>How is Quay optimized for a team environment?</h4>
+
+            <p>Quay's permission model is designed for teams. Each new user can be assigned to one or more teams, with specific permissions. Robot accounts, used for automated deployments, can be managed per team as well. This system allows for each development team to manage their own credentials.</p>
+
+            <p>Full logging and auditing is integrated into every part of the application and API. Quay helps you dig into every action for more details.</p>
+
+            <h4>Additional FAQs</h4>
+
+            <b>Can I change my plan?</b>
+
+            <p>Yes, you can change your plan at any time and your account will be pro-rated for the difference. For large organizations, Red Hat Quay offers unlimited users and repos.</p>
+
+            <b>Do you offer special plans for business or academic institutions?</b>
+
+            <p>Please contact us at our support email address to discuss the details of your organization and intended usage.</p>
+
+            <b>Can I use Quay for free?</b>
+
+            <p>Yes! We offer unlimited storage and serving of public repositories. We strongly believe in the open source community and will do what we can to help!</p>
+
+            <b>What types of payment do you accept?</b>
+
+            <p>Quay uses Stripe as our payment processor, so we can accept any of the payment options they offer, which are currently: Visa, MasterCard, American Express, JCB, Discover and Diners Club.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enterprise -->
+  <div class="tab-pane" id="enterprise">
+      <h2 class="co-p-quay-enterprise-tagline">One container registry for your entire enterprise
+        <button class="btn btn-primary btn-lg trial-button hidden-xs hidden-sm" ng-click="qeStartTrial()">
+          Start a free trial
+        </button>
+      </h2>
+
+      <div class="flex-wrap top-section">
+        <div class="container">
+          <div class="co-p-quay-enterprise-values">
+            <div class="co-p-quay-enterprise-value">
+              <div class="co-p-quay-enterprise-value-text co-m-text-light">Highly Available</div>
+              <p class="co-p-quay-enterprise-value-desc">Run multiple instances of Quay for redundancy</p>
+            </div>
+            <div class="co-p-quay-enterprise-value">
+              <div class="co-p-quay-enterprise-value-text co-m-text-light">Geo-replication</div>
+              <p class="co-p-quay-enterprise-value-desc">Sync your container images between your datacenters</p>
+            </div>
+            <div class="co-p-quay-enterprise-value">
+              <div class="co-p-quay-enterprise-value-text co-m-text-light">Continuous Integration</div>
+              <p class="co-p-quay-enterprise-value-desc">Automatically build and push images when developers commit code</p>
+            </div>
+            <div class="co-p-quay-enterprise-value">
+              <div class="co-p-quay-enterprise-value-text co-m-text-light">Security Scanning</div>
+              <p class="co-p-quay-enterprise-value-desc">Automatically scan your container images for known security vulnerabilities</p>
+            </div>
+            <div class="co-p-quay-enterprise-value">
+              <div class="co-p-quay-enterprise-value-text co-m-text-light">24/7 Support</div>
+              <p class="co-p-quay-enterprise-value-desc">Enterprise-level support is available around the clock</p>
+            </div>
+          </div>
+        </div>
+        <div class="co-p-quay-diagram">
+          <img src="/static/img/QE-complex.svg" alt="Red Hat Quay System" class="vertical" />
+          <img src="/static/img/QE-complex-h.svg" alt="Red Hat Quay System" class="horizontal" />
+          <div class="co-p-quay-diagram-caption co-m-text-light">Highly available installation with geo-replication</div>
+        </div>
+      </div>
+      <div class="flex-wrap">
+        <div class="co-p-quay-enterprise-top-cta">
+          <div class="co-p-quay-enterprise-top-cta-text">Ready to try Red Hat Quay?</div>
+          <div class="co-p-quay-enterprise-top-cta-buttons">
+            <div class="co-p-quay-enterprise-top-cta-button-wrap">
+              <button class="btn btn-primary btn-lg trial-button" ng-click="qeStartTrial()">
+                Start a free trial
+              </button>
+              <div class="button-subtext co-m-text-light">No credit card required, 30-day trial</div>
+            </div>
+          </div>
+          <div class="co-p-quay-enterprise-top-cta-questions">
+           <p><strong>Questions?</strong> Give us a call at any time (800) 774-3507 or <a href="mailto:sales@coreos.com">contact sales</a></p>
+          </div>
+        </div>
+      </div>
+      <div class="co-p-quay-enterprise-faq">
+        <!-- FAQ and features -->
+        <div class="faq-features">
+          <div class="row-container-no-margin">
+            <div class="row">
+              <!-- Features -->
+              <div class="col-md-5 col-md-push-7 features-col">
+                <div class="row">
+                  <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
+                    <ul class="features-list">
+                      <li><i class="fa fa-sign-in"></i>
+                          <b>Enterprise Authentication</b>
+                          <p>Integrate to your existing identity infrastructure: LDAP, Keystone, and more</p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
+                    <ul class="features-list">
+                      <li><i class="fa fa-database"></i>
+                      <b>Flexible Storage Backends</b>
+                      <p>Store your containers on Amazon S3, OpenStack Swift, Google Cloud Storage, or directly to disk.</p>
+                      </li>
+
+                      <li><i class="fa fa-refresh"></i>
+                          <b>Continuous Integration</b>
+                          <p>Build your containers in response to git pushes: GitHub, BitBucket, Gitlab and others</p>
+                      </li>
+
+                      <li><i class="fa ci-robot"></i>
+                        <b>Robot Accounts</b>
+                        <p>Create credentials designed for deploying software automatically.</p>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="col-lg-12 col-md-12 col-sm-6 col-xs-12">
+                    <ul class="features-list">
+                      <li><i class="fa fa-group"></i>
+                        <b>Teams</b>
+                        <p>Teams can collectively have access to manage specific repositories on your account.</p>
+                      </li>
+
+                      <li><i class="fa fa-lock"></i>
+                        <b>Supports SSL Encryption</b>
+                        <p>Transit between Quay.io and your servers is secured automatically.</p>
+                      </li>
+
+                      <li><i class="fa fa-bar-chart"></i>
+                        <b>Logging &amp; Auditing</b>
+                        <p>Auditing is essential for everything in your CI pipeline. Actions via API and UI are tracked.</p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAQ -->
+              <div class="col-md-7 col-md-pull-5 faq-col">
+                <h4>How can I run Red Hat Quay?</h4>
+                <p>
+                  Red Hat Quay is delivered as a set of containers that can run on any infrastructure.
+                  It is recommended to run Red Hat Quay in highly-available fashion, on multiple machines.
+                </p>
+
+                <h4>How is Red Hat Quay different than Quay.io?</h4>
+
+                <p>
+                  Red Hat Quay is closely related to Quay.io, but runs on your own hardware or in your cloud environment.
+                  Running the application yourself is more secure and is more performant when running on the same cluster as your containerized applications.
+                </p>
+
+                <p>
+                  When running behind your firewall, Red Hat Quay can connect to private Git repositories, LDAP infrastructure, and more.
+                </p>
+
+                <h4>Additional FAQs</h4>
+
+                <b>Is there a free trial for Red Hat Quay?</b>
+
+                <p>
+                  Yes, the first 30 days of usage are free, and then your license will be automatically converted to the standard rate.
+                  We’ll send you an email before that happens as a reminder.
+                </p>
+
+                <b>What types of payment do you accept?</b>
+
+                <p>Red Hat Quay is billed annually with a purchase order.</p>
+
+                <b>Can I ugrade from Quay.io (hosted)?</b>
+
+                <p>Yes, you can upgrade from Quay.io to Red Hat Quay easily.</p>
+
+                <b>Data transfer limits?</b>
+
+                <p>These limits are selectively enforced in order to ensure that Quay.io can continue to provide a high quality service.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal message dialog -->
+  <div class="modal fade" id="signinModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <div class="user-setup" signed-in="signedIn()" redirect-url="'/plans/'"></div>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+
+  <!-- Modal message dialog -->
+  <div class="co-dialog wider modal fade" id="redhatManagerDialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body">
+          <h1>
+          Thank you for your interest in trying Red Hat&reg; Quay!
+          </h1>
+
+          <p class="text-left">
+          To get started, download the Red Hat&reg; Red Hat Quay container image. Red Hat&reg; Quay is distributed via container images only.
+          In previous versions of Quay a license file has been required to run Quay. This license file got deprecated with Quay v2.9.0
+          and is no longer required. To pull the Quay images from Quay.io a secret is provided inside the Red Hat&reg; Customer Portal.
+          </p>
+
+          <div class="row-container">
+            <div class="row">
+              <!-- create a free account -->
+              <div class="col-md-6 plan-col">
+                <div class="plan-box same-height text-left">
+                  <div class="plan-header text-center">
+                    <h3>Create a free Red Hat&reg; account</h3>
+                    <h5>Sign up for Red Hat&reg; Developer Program</h5>
+                  </div>
+                  <div class="step-text">Step 1: Sign up</div>
+                  <p>
+                    <a href="https://developers.redhat.com/register/" target="_blank">
+                      Sign up
+                    </a> for a free Red Hat&reg; Developer Program account and accept the terms and conditions. With this account, developers can
+                    also access various Red Hat&reg; products and their documentation. For more information about the Red Hat&reg; Developer Program,
+                    check out the <a href="https://developers.redhat.com/articles/red-hat-developer-program-benefits/" target="_blank">benefits page</a>.
+                  </p>
+                  <div class="step-text">Step 2: Verify your email</div>
+                  <p>
+                    Verify the email that you used to register the account by clicking on the link in the confirmation email that will be
+                    sent shortly after you create the developer account.
+                  </p>
+                  <div class="step-text">Step 3: Log in to the customer portal</div>
+                  <p>
+                    Go to the <a href="https://access.redhat.com/login" target="_blank">Red Hat&reg; customer portal</a> and log in using your
+                    Red Hat Developer account credentials.
+                  </p>
+                  <div class="step-text">Step 4: Update your account</div>
+                  <p>
+                    Update your account information and accept the terms and conditions for the customer portal.
+                  </p>
+                  <div class="step-text">Step 5: Get the Red Hat&reg; Quay container image</div>
+                  <p>
+                    Visit the <a href="https://access.redhat.com/solutions/3533201" target="_blank">"Accessing Red Hat Quay without a
+                    CoreOS login"</a> page in the customer portal. Follow the directions listed on that page for pulling the Red Hat&reg;
+                    Quay container image.
+                  </p>
+                  <div class="step-text">Step 6: Install and configure quay</div>
+                  <p>
+                    Follow the <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/2.9/html/getting_started_with_red_hat_quay/" target="_blank">
+                    Red Hat&reg; Quay install documentation</a> to install and configure Quay.
+                  </p>
+                </div>
+              </div>
+
+              <!-- already have an account -->
+              <div class="col-md-6 plan-col">
+                <div class="plan-box same-height text-left">
+                  <div class="plan-header text-center">
+                    <h3>Already have a Red Hat&reg; account?</h3>
+                    <h5>Access Quay in Red Hat&reg; Customer Portal</h5>
+                  </div>
+                  <div class="step-text">Step 1: <a href="https://access.redhat.com/login" target="_blank">Log in</a> to the customer portal</div>
+                  <div class="step-text">Step 2: Get the Red Hat&reg; Quay container image</div>
+                  <p>
+                    Visit the <a href="https://access.redhat.com/solutions/3533201" target="_blank">"Accessing Red Hat Quay without a
+                    CoreOS login"</a> page in the customer portal. Follow the directions listed on that page for pulling the Red Hat&reg;
+                    Quay container image.
+                  </p>
+                  <div class="step-text">Step 3: Install and configure quay</div>
+                  <p>
+                    Follow the <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/2.9/html/getting_started_with_red_hat_quay/" target="_blank">
+                    Red Hat&reg; Quay install documentation</a> to install and configure Quay.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div><!-- /.row-container -->
+        </div><!-- /.modal-body -->
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+</div>

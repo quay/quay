@@ -1,0 +1,20 @@
+<div class="page-controls-element">
+  <span class="current-items dropdown">
+    <span class="page-view" data-toggle="dropdown">
+      {{ getPageStart(currentPage, pageSize, totalCount) }} - {{ getPageEnd(currentPage, pageSize, totalCount) }}
+      of {{ totalCount }}
+    </span>
+    <ul class="dropdown-menu">
+      <li><a ng-click="setPage(0)"><i class="fa fa-caret-square-o-left"></i>First Page</a></li>
+      <li><a ng-click="setPage(getPageCount(pageSize, totalCount) - 1)"><i class="fa fa-caret-square-o-right"></i>Last Page</a></li>
+    </ul>
+  </span>
+  <span class="page-buttons btn-group">
+    <button class="btn btn-default"
+            ng-disabled="currentPage == 0"
+            ng-click="changePage(-1)">&#10094;</button>
+    <button class="btn btn-default"
+            ng-disabled="currentPage >= getPageCount(pageSize, totalCount) - 1"
+            ng-click="changePage(1)">&#10095;</button>
+  </span>
+</div>

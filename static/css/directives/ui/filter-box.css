@@ -1,0 +1,49 @@
+.filter-box {
+  display: block;
+  text-align: right;
+  margin-top: 20px;
+  margin-bottom: 26px;
+}
+
+.filter-box .form-control {
+  max-width: 300px;
+  display: inline-block;
+}
+
+.filter-box .filter-message {
+  display: inline-block;
+  margin-right: 10px;
+  margin-bottom: 10px;
+  color: #ccc;
+}
+
+.filter-box.floating {
+  float: right;
+  min-width: 300px;
+  margin-top: 15px;
+  position: relative;
+}
+
+.filter-box.floating .filter-message {
+  position: absolute;
+  left: -200px;
+  top: 7px;
+}
+
+
+@media (max-width: 767px) {
+  .filter-box.floating {
+    float: none;
+    width: 100%;
+    display: block;
+    margin-top: 10px;
+  }
+
+  .filter-box.floating .form-control {
+    max-width: 100%;
+  }
+
+  .filter-box.floating .filter-message {
+    display: none;
+  }
+}

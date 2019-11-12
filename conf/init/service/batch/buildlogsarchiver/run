@@ -1,0 +1,9 @@
+#! /bin/bash
+
+echo 'Starting build logs archiver worker'
+
+QUAYPATH=${QUAYPATH:-"."}
+cd ${QUAYDIR:-"/"}
+PYTHONPATH=$QUAYPATH venv/bin/python -m workers.buildlogsarchiver.buildlogsarchiver 2>&1
+
+echo 'Diffs worker exited'

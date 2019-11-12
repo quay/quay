@@ -1,0 +1,19 @@
+<div style="display: flex; align-items: center;">
+  <div style="display: flex; flex-wrap: wrap; width: 70%;">
+    <!-- TODO: Move repeat logic to separate component -->
+    <span ng-if="item.channels.length > 0"
+          ng-repeat="channel_name in item.channels | limitTo : ($ctrl.rows[rowIndex].expanded ? item.channels.length : col.itemLimit)"
+          ng-style="{
+            'width': (100 / col.itemLimit) + '%',
+            'margin-bottom': $ctrl.rows[rowIndex].expanded && $index < (item.channels.length - col.itemLimit) ? '5px' : ''
+          }">
+      <channel-icon name="channel_name"></channel-icon>
+    </span>
+  </div>
+
+  <a ng-if="item.channels.length > col.itemLimit"
+     ng-click="$ctrl.rows[rowIndex].expanded = !$ctrl.rows[rowIndex].expanded">
+    {{ $ctrl.rows[rowIndex].expanded ? 'show less...' : item.channels.length - col.itemLimit + ' more...' }}
+  </a>
+  <span ng-if="!item.channels.length" class="empty">(None)</span>
+</div>

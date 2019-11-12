@@ -1,0 +1,66 @@
+.repo-list .repo-list-panel {
+  padding: 20px;
+  padding-top: 20px;
+}
+
+.repo-list .repo-list-panel .btn-group {
+  float: right;
+  margin-bottom: 10px;
+}
+
+.repo-list .repo-list-namespaces h4 {
+  margin: 6px;
+  margin-bottom: 20px;
+}
+
+.repo-list .namespaces-list {
+  margin: 4px;
+  padding: 0px;
+  margin-bottom: 0px;
+}
+
+.repo-list .namespaces-list li {
+  list-style: none;
+  margin: 4px;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.repo-list .namespaces-list li .avatar {
+  margin-right: 10px;
+}
+
+.repo-list .new-org {
+  margin-top: 10px !important;
+  padding-top: 14px;
+  border-top: 1px solid #eee;
+}
+
+.repo-list .new-org i.fa {
+  width: 30px;
+  margin-right: 10px;
+  text-align: center;
+}
+
+.repo-list .qe-shoutout {
+  padding: 10px;
+}
+
+.repo-list .qe-shoutout b {
+  margin-left: 6px;
+}
+
+.repo-list .qe-shoutout div {
+  margin-right: 94px;
+}
+
+.repo-list .qe-shoutout img {
+  max-height: 24px;
+  max-width: 100%;
+}
+
+.repo-list .qe-shoutout span {
+  float: right;
+  line-height: 24px;
+  margin-right: 4px;
+}

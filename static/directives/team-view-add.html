@@ -1,0 +1,26 @@
+<div class="team-view-add-element" focusable-popover-content>
+  <div class="entity-search"
+       namespace="orgname"
+       placeholder="getAddPlaceholder(allowEmail, syncInfo)"
+       entity-selected="addNewMember(entity)"
+       email-selected="inviteEmail(email)"
+       current-entity="selectedMember"
+       auto-clear="true"
+       allowed-entities="allowedEntities"
+       pull-right="true"
+       allow-emails="allowEmail && !syncInfo"
+       email-message="Press enter to invite the entered e-mail address to this team"
+       ng-show="!addingMember"></div>
+  <div ng-show="addingMember">
+    <div class="cor-loader-inline"></div> Inviting team member
+  </div>
+  <div class="help-text" ng-show="!addingMember">
+  <span ng-if="!syncInfo">
+    <span ng-if="allowEmail">Search by registry username, robot account name or enter an email address to invite</span>
+    <span ng-if="!allowEmail">Search by registry username or robot account name</span>
+  </span>
+  <span ng-if="syncInfo">
+    Search by robot account name. Users must be added in {{ syncInfo.service }}.
+  </span>
+  </div>
+</div>

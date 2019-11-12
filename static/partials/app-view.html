@@ -1,0 +1,19 @@
+<div class="resource-view repository-view"
+     resource="repositoryResource"
+     error-message="'Application not found'">
+    <!-- Image repository error -->
+    <div class="co-main-content-panel" ng-if="viewScope.repository.kind == 'image'">
+      <div class="error-view-element">
+        <h2><span class="repo-circle no-background" repo="viewScope.repository"></span>{{ viewScope.repository.namespace }}/{{ viewScope.repository.name }}</h2>
+        <h3>This name refers to a <strong>container image</strong> repository</h3>
+        <div style="margin-bottom: 20px;">
+          View the <a href="/repository/{{ viewScope.repository.namespace }}/{{ viewScope.repository.name }}/">{{ viewScope.repository.namespace }}/{{ viewScope.repository.name }} image repository</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Application repository view -->
+    <div ng-if="viewScope.repository.kind == 'application'">
+      <app-public-view repository="viewScope.repository"></app-public-view>
+    </div>
+</div>

@@ -1,0 +1,40 @@
+<div class="user-setup-element">
+  <div class="user-setup-element-view">
+    <div class="setup-logo-container" ng-show="hideLogo != 'true'">
+      <img ng-src="{{ Config.getEnterpriseLogo() }}">
+    </div>
+
+    <div class="user-setup-content">
+      <div class="pane-container-container">
+        <div class="pane-container" ng-class="currentView">
+          <!-- Create Account -->
+          <div class="content-pane">
+            <div class="signup-form" user-registered="handleUserRegistered(username)" invite-code="inviteCode"></div>
+          </div>
+
+          <!-- Sign in -->
+          <div class="content-pane">
+            <div class="signin-form" signed-in="signedIn()" sign-in-started="signInStarted()" redirect-url="redirectUrl" invite-code="inviteCode"></div>
+          </div>
+
+          <!-- Recover Account -->
+          <div class="content-pane">
+            <div class="recovery-form"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="user-footer-links">
+      <a ng-click="setView('createAccount')"
+         quay-show="!inReadOnlyMode && Features.USER_CREATION && Config.AUTHENTICATION_TYPE == 'Database' && Features.DIRECT_LOGIN && !Features.INVITE_ONLY_USER_CREATION"
+         ng-if="currentView != 'createAccount'">Create Account</a>
+      <span quay-show="Features.USER_CREATION && Config.AUTHENTICATION_TYPE == 'Database' && Features.DIRECT_LOGIN && Features.INVITE_ONLY_USER_CREATION"
+         ng-if="currentView != 'createAccount'">Invitation required to sign up</span>
+      <a ng-click="setView('signin')" ng-if="currentView != 'signin'">Sign In</a>
+      <a ng-click="setView('forgotPassword')"
+         quay-show="Features.MAILING && Config.AUTHENTICATION_TYPE == 'Database' && Features.DIRECT_LOGIN"
+         ng-if="currentView != 'forgotPassword'">Forgot Password?</a>
+    </div>
+  </div>
+</div>

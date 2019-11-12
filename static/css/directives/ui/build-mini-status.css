@@ -1,0 +1,48 @@
+.build-mini-status {
+  display: block;
+  padding: 4px;
+  position: relative;
+  border: 1px solid #eee;
+}
+
+.build-mini-status-element {
+  color: black;
+  text-decoration: none !important;
+}
+
+.build-mini-status a {
+  text-decoration: none !important;
+  color: black;
+}
+
+.build-mini-status .timing {
+  display: inline-block;
+  margin-left: 30px;
+  margin-right: 20px;
+}
+
+.build-mini-status .timing .fa {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.build-mini-status .build-description {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: 250px;
+  bottom: 4px;
+  line-height: 33px;
+  overflow: hidden;
+}
+
+.build-mini-status .build-description .tbd-content {
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

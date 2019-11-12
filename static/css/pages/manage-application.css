@@ -1,0 +1,10 @@
+.manage-application .scope-description {
+  padding-left: 22px;
+  margin-bottom: 20px;
+}
+
+.manage-application .user-name {
+  vertical-align: middle;
+  display: inline-block;
+  font-weight: bold;
+}

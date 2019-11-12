@@ -1,0 +1,88 @@
+.trigger-setup-githost-element .ref-reference {
+  color: #ccc;
+}
+
+.trigger-setup-githost-element .ref-reference span {
+  cursor: pointer;
+  text-decoration: line-through;
+}
+
+.trigger-setup-githost-element .ref-reference:hover {
+  color: #3276b1;
+}
+
+.trigger-setup-githost-element .ref-reference:hover span {
+  text-decoration: none;
+}
+
+.trigger-setup-githost-element .ref-reference.match {
+  color: black;
+}
+
+.trigger-setup-githost-element .ref-reference.match span {
+  text-decoration: none;
+  cursor: default;
+}
+
+.trigger-setup-githost-element .ref-filter {
+  white-space: nowrap;
+}
+
+.trigger-setup-githost-element .ref-filter span {
+  display: inline-block;
+}
+
+.trigger-setup-githost-element .selected-info {
+  margin-bottom: 20px;
+}
+
+.trigger-setup-githost-element .org-icon {
+  width: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.trigger-setup-githost-element li.host-repo-listing i {
+  margin-right: 10px;
+  margin-left: 6px;
+}
+
+.trigger-setup-githost-element li.org-header {
+  padding-left: 6px;
+}
+
+.trigger-setup-githost-element .matching-refs {
+  margin: 0px;
+  padding: 0px;
+  margin-left: 10px;
+  display: inline-block;
+}
+
+.trigger-setup-githost-element .ref-matches {
+  padding-left: 70px;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.trigger-setup-githost-element .ref-matches .kind {
+  font-weight: bold;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.trigger-setup-githost-element .matching-refs.tags li:before {
+  content: "\f02b";
+  font-family: FontAwesome;
+}
+
+.trigger-setup-githost-element .matching-refs.branches li:before {
+  content: "\f126";
+  font-family: FontAwesome;
+}
+
+.trigger-setup-githost-element .matching-refs li {
+  list-style: none;
+  display: inline-block;
+  margin-left: 10px;
+}

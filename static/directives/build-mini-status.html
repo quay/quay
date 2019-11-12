@@ -1,0 +1,14 @@
+<span class="build-mini-status-element">
+  <span class="anchor"
+        href="/repository/{{ build.repository.namespace }}/{{ build.repository.name }}/build/{{ build.id }}"
+        is-only-text="!canView">
+    <div>
+     <span class="build-state-icon" build="build"></span>
+     <span class="timing">
+       <i class="fa fa-clock-o"></i><time-ago datetime="build.started"></time-ago>
+     </span>
+
+     <div class="build-description triggered-build-description" build="build"></div>
+    </div>
+  </span>
+</span>

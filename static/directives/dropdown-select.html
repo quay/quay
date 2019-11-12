@@ -1,0 +1,14 @@
+<div class="dropdown-select-element" ng-class="selectedItem ? 'has-item' : ''">
+  <div class="current-item">
+    <div class="dropdown-select-icon-transclude"></div>
+    <input type="text" class="lookahead-input form-control" placeholder="{{ placeholder }}"
+           ng-readonly="!allowCustomInput"></input>
+  </div>
+  <div class="dropdown" ng-show="!hideDropdown">
+    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+      <span class="caret"></span>
+    </button>
+    <div class="dropdown-select-menu-transclude"></div>
+  </div>
+  <div class="transcluded" ng-transclude>
+</div>

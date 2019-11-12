@@ -1,0 +1,10 @@
+#! /bin/bash
+
+echo 'Starting notification worker'
+
+QUAYPATH=${QUAYPATH:-"."}
+cd ${QUAYDIR:-"/"}
+
+PYTHONPATH=$QUAYPATH venv/bin/python -m workers.notificationworker.notificationworker
+
+echo 'Notification worker exited'

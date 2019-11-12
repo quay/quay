@@ -1,0 +1,9 @@
+<div class="create-team-dialog-element">
+  <div ng-if="info">
+    <div class="create-entity-dialog" info="info" entity-title="team"
+         entity-kind="team"
+         entity-icon="fa-group" entity-name-regex="{{ TEAM_PATTERN }}"
+         entity-create-requested="createTeam(name, callback)"
+         entity-create-completed="teamFinished(entity)"></div>
+  </div>
+</div>

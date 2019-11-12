@@ -1,0 +1,83 @@
+<div class="manifest-security-view-element">
+    <span class="cor-loader-inline" ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).loading"></span>
+    <span class="vuln-load-error" ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).hasError"
+            data-title="The vulnerabilities for this tag could not be retrieved at the present time, try again later"
+            bs-tooltip>
+        <i class="fa fa-times-circle"></i>
+        Could not load security information
+    </span>
+
+    <span ng-if="!$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).loading">
+        <!-- Queued -->
+        <span class="scanning" ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'queued'"
+            data-title="The manifest for this tag is queued to be scanned for vulnerabilities"
+            bs-tooltip>
+        <i class="fa fa-ellipsis-h"></i>
+        Queued
+        </span>
+
+        <!-- Scan Failed -->
+        <span class="failed-scan" ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'failed'"
+            data-title="The manifest for this tag could not be scanned for vulnerabilities"
+            bs-tooltip>
+        <span class="donut-chart" width="22" data="[{'index': 0, 'value': 1, 'color': '#eee'}]"></span>
+        Unable to scan
+        </span>
+
+        <!-- Unsupported -->
+        <span class="failed-scan"
+            ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'unsupported'"
+            data-title="The manifest for this tag has an operating system or package manager unsupported by Quay Security Scanner"
+            bs-tooltip
+            bindonce>
+        <span class="donut-chart" width="22" data="[{'index': 0, 'value': 1, 'color': '#eee'}]"></span>
+        Unsupported
+        </span>
+
+        <!-- No Features -->
+        <span class="failed-scan"
+            ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'scanned' && !$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).hasFeatures"
+            data-title="The manifest for this tag has an operating system or package manager unsupported by Quay Security Scanner"
+            bs-tooltip
+            bindonce>
+        <span class="donut-chart" width="22" data="[{'index': 0, 'value': 1, 'color': '#eee'}]"></span>
+        Unsupported
+        </span>
+
+        <!-- Features and No Vulns -->
+        <span class="no-vulns"
+            ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'scanned' && $ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).hasFeatures && !$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).hasVulnerabilities"
+            data-title="The manifest for this tag has no vulnerabilities as found in our database"
+            bs-tooltip
+            bindonce>
+        <a bo-href-i="/repository/{{ $ctrl.repository.namespace }}/{{ $ctrl.repository.name }}/manifest/{{ $ctrl.manifestDigest }}?tab=vulnerabilities">
+            <span class="donut-chart" width="22" data="[{'index': 0, 'value': 1, 'color': '#2FC98E'}]"></span>
+            Passed
+        </a>
+        </span>
+
+        <!-- Vulns -->
+        <span ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'scanned' && $ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).hasFeatures && $ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).hasVulnerabilities"
+            ng-class="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).highestVulnerability.Priority"
+            class="has-vulns" bindonce>
+
+            <a class="vuln-link" bo-href-i="/repository/{{ $ctrl.repository.namespace }}/{{ $ctrl.repository.name }}/manifest/{{ $ctrl.manifestDigest }}?tab=vulnerabilities"
+            data-title="This tag has {{ $ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).vulnerabilities.length }} vulnerabilities across {{ $ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).featuresInfo.brokenFeaturesCount }} packages"
+            bs-tooltip>
+            <!-- Donut -->
+            <span class="donut-chart" min-percent="10" width="22" data="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).vulnerabilitiesInfo.severityBreakdown"></span>
+
+            <!-- Messaging -->
+            <span class="highest-vuln">
+                <span class="vulnerability-priority-view" hide-icon="true" priority="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).highestVulnerability.Priority">
+                {{ $ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).highestVulnerability.Count }}
+                </span>
+            </span>
+            </a>
+            <span class="dot" ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).vulnerabilitiesInfo.fixable.length">&middot;</span>
+            <a class="vuln-link" bo-href-i="/repository/{{ $ctrl.repository.namespace }}/{{ $ctrl.repository.name }}/manifest/{{ $ctrl.manifestDigest }}?tab=vulnerabilities&fixable=true" ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).vulnerabilitiesInfo.fixable.length">
+            {{ $ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).vulnerabilitiesInfo.fixable.length }} fixable
+            </a>
+        </span>
+    </span>
+</div>

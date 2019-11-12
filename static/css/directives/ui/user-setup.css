@@ -1,0 +1,110 @@
+.user-setup-element {
+    text-align: center;
+}
+
+.user-setup-element .user-setup-element-view {
+    max-width: 420px;
+    width: 100%;
+    text-align: left;
+    display: inline-block;
+}
+
+.user-setup-element .setup-logo-container {
+    background-color: white;
+    display: block;
+    padding: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.user-setup-element .user-setup-content {
+    background-color: rgba(247, 247, 247, 0.27);
+    padding: 34px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border: 1px solid #eee;
+}
+
+.modal-body .user-setup-element .setup-logo-container {
+    margin-top: 20px;
+    margin-bottom: 0px;
+}
+
+.modal-body .user-setup-element .user-setup-content {
+    background: transparent;
+    border: 0px;
+    padding: 0px;
+}
+
+.user-setup-element .user-setup-content .pane-container-container {
+    overflow: hidden;
+}
+
+.user-setup-element .user-setup-content .pane-container {
+    white-space: nowrap;
+    width: 100%;
+    position: relative;
+    left: -100%;
+
+    transition: left 350ms ease-in-out;
+}
+
+.user-setup-element .user-setup-content .pane-container.signin {
+    left: -100%;
+}
+
+.user-setup-element .user-setup-content .pane-container.createAccount {
+    left: 0%;
+}
+
+.user-setup-element .user-setup-content .pane-container.forgotPassword {
+    left: -200%;
+}
+
+.user-setup-element .user-setup-content .pane-container .content-pane {
+    white-space: normal;
+    display: inline-block;
+    width: 100%;
+    vertical-align: middle;
+    padding: 8px;
+}
+
+.user-setup-element .setup-logo-container img {
+    max-height: 50px;
+    max-width: 100%;
+}
+
+.user-setup-element .user-footer-links {
+    margin-top: 18px;
+    margin-bottom: 10px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.user-setup-element .user-footer-links a {
+    display: inline-block;
+    text-decoration: none !important;
+}
+
+.user-setup-element .user-footer-links a:after {
+    content: "\2022";
+    color: #ccc;
+    padding: 0 5px 0 9px;
+    text-decoration: none !important;
+}
+
+.user-setup-element .user-footer-links a:last-child:after {
+    content: "";
+}
+
+.user-setup-element .expandable {
+    height: 0px;
+    transition: height ease-in-out 250ms;
+    margin-top: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.user-setup-element .expandable.expanded {
+    height: 60px;
+}

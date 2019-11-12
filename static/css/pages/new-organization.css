@@ -1,0 +1,16 @@
+.new-organization .co-main-content-panel {
+  padding: 30px;
+  position: relative;
+}
+
+.new-organization .field-container {
+   display: inline-block;
+   width: 400px;
+   margin-right: 10px;
+}
+
+.new-organization .field-row .co-alert {
+  display: inline-block;
+  margin-left: 10px;
+  margin-top: 10px;
+}

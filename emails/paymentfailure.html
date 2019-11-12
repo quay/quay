@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 style="font-weight: 400">Subscription payment failure: <strong>{{ username }}</strong></h3>
+<hr style="border:none; border-top: 1px solid #D9D9D9; margin: 25px 0">
+
+<table>
+	<tr>
+		<td style="font-size: 13px;">A recent payment for account <strong>{{ username }}</strong> failed.</td>
+	</tr>
+</table>
+
+<table style="margin: 25px 0 35px;">
+	<tr>
+		<td style="font-size: 13px;">If you would like to continue to use the account <strong>{{ username }}</strong> without interruption, update your payment information.</td>
+	</tr>
+</table>
+
+
+<table style="margin: 25px 0 35px">
+	<tr>
+		<td style="background: #40B4E5; padding: 8px 25px; border-radius: 3px; color: #fff; font-size: 20px; font-weight: 500"><a style="text-decoration: none; color: #ffffff;" href="https://quay.io/signin/">Log in to update payment info</a>.</td>
+	</tr>
+</table>
+
+<span style="font-size: 13px;">Thank you,</span><br>
+<span style="font-size: 13px;">The {{ app_title }} Team</span><br>
+
+{% endblock %}

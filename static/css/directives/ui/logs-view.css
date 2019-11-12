@@ -1,0 +1,204 @@
+.logs-view-element .header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 767px) {
+  .logs-view-element {
+    min-width: 300px;
+  }
+
+  .logs-view-element #bar-chart {
+    display: none;
+  }
+
+  .logs-view-element .date-line {
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .logs-view-element .date-line-caption {
+    display: inline-block;
+    width: 50px;
+    text-transform: capitalize;
+  }
+
+  .logs-view-element .manager-header {
+    padding-bottom: 82px;
+  }
+}
+
+.logs-view-element .table-container {
+  min-height: 200px;
+}
+
+.logs-view-element .manager-header .header-text {
+  font-size: 24px;
+  vertical-align: middle;
+}
+
+.logs-view-element .manager-header .header-text .mini {
+  font-size: 18px;
+  color: #999;
+  margin-left: 10px;
+}
+
+.logs-view-element .logs-date-picker {
+  width: 122px;
+}
+
+.logs-view-element .datepicker {
+  padding: 12px;
+}
+
+.logs-view-element .datepicker button {
+  border: 0px;
+}
+
+.logs-view-element .manager-header input {
+  font-size: 14px;
+  text-align: center;
+  border: 1px solid #eee;
+  padding: 4px;
+  border-radius: 4px;
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+.logs-view-element .manager-header .right {
+  float: right;
+  margin-left: 10px;
+}
+
+.logs-view-element .log i.fa {
+  margin-right: 6px;
+}
+
+.logs-view-element .log .circle {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  margin-top: 5px;
+  vertical-align: middle;
+  float: left;
+}
+
+.logs-view-element .log .arrow {
+  display: inline-block;
+  margin-right: 6px;
+  margin-top: 5px;
+  vertical-align: middle;
+  float: left;
+  color: #c1c1c1;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.logs-view-element .log .arrow:hover {
+  color: black;
+}
+
+.logs-view-element .log .log-description {
+  margin-left: 32px;
+  display: block;
+  line-height: 22px;
+}
+
+.logs-view-element .log-datetime {
+  font-size: 85%;
+}
+
+.logs-view-element .log .log-description code {
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.logs-view-element .log .log-description code.tag-manifest_digest {
+  max-width: 135px;
+}
+
+.tag-stdout:before {
+  display: block;
+  content:"\aSTDOUT:";
+  white-space: pre;
+}
+
+.tag-stderr:before {
+  display: block;
+  content:"\aSTDERR:";
+  white-space: pre;
+}
+
+.log .log-description code.tag-stdout {
+  display: block;
+  font-family: monospace;
+  white-space: pre;
+  color: #333;
+  background-color: #fff;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.log .log-description code.tag-stderr {
+  display: block;
+  font-family: monospace;
+  white-space: pre;
+  color: #333;
+  background-color: #fff;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.log .log-description code.tag-tags {
+  display: block;
+  white-space: pre;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.logs-view-element .log-performer {
+  white-space: nowrap;
+}
+
+.logs-view-element .side-controls .filter-input {
+  vertical-align: middle;
+}
+
+.logs-view-element .side-controls {
+  float: none !important;
+  text-align: right;
+  margin-bottom: 20px;
+}
+
+.logs-view-element .toggle-icon {
+  vertical-align: middle;
+}
+
+.logs-view-element .download-btn {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.logs-view-element .download-btn i.fa {
+  margin-right: 4px;
+}
+
+.logs-view-element .help-text {
+  font-size: 12px;
+  color: #888;
+  padding-top: 0px;
+  padding: 10px;
+}
+
+.logs-view-element code.date {
+  font-size: 70%;
+  color: #2581c7;
+}

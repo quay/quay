@@ -1,0 +1,32 @@
+<div class="recovery-form-element">
+  <h4 ng-show="!sendingRecovery && !sent">Please enter the e-mail address for your account to recover it</h4>
+  <div style="text-align: center" ng-show="sendingRecovery">
+    <div class="cor-loader-inline"></div>
+  </div>
+  <div ng-show="!sendingRecovery">
+    <div class="co-alert co-alert-success" ng-show="sent.status == 'sent'">
+      Instructions on how to reset your password have been sent to {{ recovery.email }}. If you do not receive the email, please try again shortly.
+    </div>
+    <div class="co-alert co-alert-danger" ng-show="invalidRecovery">{{ errorMessage }}</div>
+    <div class="co-alert co-alert-info" ng-show="sent.status == 'org'">
+      The e-mail address <code>{{ sent.orgemail }}</code> is assigned to organization <code>{{ sent.orgname }}</code>.
+      To access that organization, an admin user must be used.
+      <br><br>
+      An e-mail has been sent to
+      <code>{{ sent.orgemail }}</code> with the full list of admin users.
+    </div>
+
+    <form class="form-signin" ng-submit="sendRecovery()" ng-show="!sent">
+      <input type="text" class="form-control" placeholder="Email" ng-model="recovery.email">
+
+      <div quay-require="['RECAPTCHA']">
+        <div class="captcha"
+             ng-class="{'expanded': recovery.email}">
+          <div vc-recaptcha ng-model="recovery.recaptcha_response" key="Config.RECAPTCHA_SITE_KEY"></div>
+        </div>
+      </div>
+    
+      <button class="btn btn-primary btn-block" type="submit">Send Recovery Email</button>
+    </form>
+  </div>
+</div>

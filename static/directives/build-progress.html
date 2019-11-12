@@ -1,0 +1,6 @@
+<div class="build-progress-element">
+  <div class="progress" ng-class="getPercentage(build) < 100 ? 'active progress-striped' : ''">
+    <div class="progress-bar"  role="progressbar" aria-valuenow="{{ getPercentage(build) }}" aria-valuemin="0" aria-valuemax="100" style="{{ 'width: ' + getPercentage(build) + '%' }}">
+    </div>
+  </div>
+</div>

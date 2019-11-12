@@ -1,0 +1,92 @@
+<html class="{% if onprem %}onprem{% else %}hosted{% endif %}">
+  <head>
+    {% block title %}
+
+    {% endblock %}
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.no-icons.min.css">
+    <link href='//fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'>
+    <style type="text/css">
+      .ship-header {
+        width: 100%;
+        height: 400px;
+        position: relative;
+      }
+
+      .ship-header div.layer {
+        position: absolute;
+        top: 0px;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+      }
+
+      .ship-header .background {
+        background-size: cover;
+        background-image: url(/static/img/500/background.svg);
+      }
+
+      .ship-header .ship {
+        background-size: cover;
+        background-image: url(/static/img/500/ship.svg);
+        position: absolute;
+        top: 0px;
+        bottom: 0px;
+        right: 0px;
+        width: 19%;
+      }
+
+      .ship-header .water {
+        background-size: cover;
+        background-image: url(/static/img/500/water.svg);
+      }
+
+      @-webkit-keyframes steaming {
+        0% {
+          -webkit-transform: translateX(0px) scaleX(1);
+        }
+        50% {
+          -webkit-transform: translateX(-180%) scaleX(1);
+        }
+        51% {
+          -webkit-transform: translateX(-180%) scaleX(-1);
+        }
+        99% {
+          -webkit-transform: translateX(0px) scaleX(-1);
+        }
+        100% {
+          -webkit-transform: translateX(0px) scaleX(1);
+        }
+      }
+
+      .ship-header .ship {
+        -webkit-animation-name: steaming;
+        -webkit-animation-duration: 30s;
+        -webkit-animation-iteration-count: infinite;
+        -webkit-animation-timing-function: linear;
+      }
+
+      .information {
+         padding: 30px;
+         text-align: center;
+      }
+
+      .information h3 {
+         margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header" class="ship-header">
+      <div class="background layer"></div>
+      <div id="ship" class="ship"></div>
+      <div class="water layer"></div>
+    </div>
+    <div class="information">
+      <img src="{{ config_set['BRANDING']['logo'] or '/static/img/Quay_horizontal_color.svg' }}" style="max-height: 50px;">
+      {% block content %}
+
+      {% endblock %}
+    </div>
+  </body>
+</html>

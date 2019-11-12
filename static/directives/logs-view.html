@@ -1,0 +1,145 @@
+<div class="logs-view-element">
+  <div class="co-alert co-alert-info" quay-show="Features.DISABLE_PULL_LOGS_FOR_FREE_NAMESPACES && (repository.is_free_account || user.is_free_account || organization.is_free_account)">
+    To facilitate coming changes in the Quay.io service, pull statistics will not currently be
+    collected or rendered on accounts on an open source plan.
+  </div>
+
+  <div class="manager-header" header-title="Usage Logs">
+    <span id="logs-range" class="mini">
+      <span class="date-line">
+        <span class="date-line-caption">From</span>
+        <input type="text" class="logs-date-picker input-sm" name="start"
+               ng-model="options.logStartDate" data-min-date="{{ options.monthAgo }}"
+               ng-readonly="loading"
+               data-max-date="{{ options.logEndDate }}"
+               bs-datepicker>
+      </span>
+
+      <span class="date-line">
+        <span class="date-line-caption add-on">to</span>
+        <input type="text" class="logs-date-picker input-sm" name="end"
+               ng-model="options.logEndDate" data-min-date="{{ options.logStartDate }}"
+               ng-readonly="loading"
+               data-max-date="{{ options.now }}"
+               data-placement="bottom-right"
+               bs-datepicker>
+      </span>
+    </span>
+    <span class="hidden-xs right">
+      <i class="fa fa-bar-chart-o toggle-icon" ng-class="chartVisible ? 'active' : ''"
+         ng-click="toggleChart()" data-title="Toggle Chart" bs-tooltip="tooltip.title"
+         quay-show="Features.AGGREGATED_LOG_COUNT_RETRIEVAL"></i>
+      <button class="btn btn-default download-btn" ng-click="showExportLogs()"
+              ng-if="(user || organization || repository) && Features.LOG_EXPORT && !inReadOnlyMode"><i class="fa fa-download"></i>Export Logs</button>
+    </span>
+  </div>
+
+  <div>
+    <div id="bar-chart" style="width: 800px; height: 500px;"
+         quay-show="chartVisible && Features.AGGREGATED_LOG_COUNT_RETRIEVAL">
+      <svg style="width: 800px; height: 500px;"></svg>
+      <div class="cor-loader" ng-if="chartLoading"></div>
+    </div>
+
+    <div class="hidden-xs side-controls">
+      <div class="result-count">
+        Showing {{(logs | visibleLogFilter:kindsAllowed | filter:search).length}} matching logs
+      </div>
+      <div class="filter-input">
+        <input id="log-filter" class="form-control" placeholder="Filter Logs" type="text" ng-model="search.$">
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="cor-table">
+        <thead>
+          <td>Description</td>
+          <td ng-if="allLogs == 'true'">Namespace</td>
+          <td ng-if="!repository">Repository</td>
+          <td style="min-width: 226px">Date/Time</td>
+          <td>Performing User/Token/App</td>
+          <td>IP Address</td>
+        </thead>
+
+        <tr class="log" ng-repeat="log in (logs | visibleLogFilter:kindsAllowed | filter:search)"
+            bindonce>
+          <td style="width: 100%;">
+              <i class="arrow fa"
+                 ng-class="{'fa-chevron-right': !log._expanded, 'fa-chevron-down': log._expanded}"
+                 ng-click="toggleExpanded(log)"></i>
+              <span class="circle" style="{{ 'background: ' + getColor(log.kind, chart) }}"></span>
+            <span class="log-description" ng-bind-html="getDescription(log, log._expanded)"></span>
+          </td>
+          <td ng-if="allLogs == 'true'">
+            <span ng-if="log.namespace">
+              <span class="entity-reference" entity="log.namespace" namespace="log.namespace.name"></span>
+            </span>
+          </td>
+          <td ng-if="!repository">
+            <span ng-if="log.metadata.namespace && log.metadata.repo">
+              <a href="/repository/{{ log.metadata.namespace }}/{{ log.metadata.repo }}">{{ log.metadata.repo }}</a>
+            </span>
+          </td>  
+          <td class="log-datetime"><time-display datetime="log.datetime"></time-display></td>
+          <td>
+            <span class="log-performer" bo-if="log.metadata.oauth_token_application">
+              <div>
+                <span class="application-reference"
+                      data-title="log.metadata.oauth_token_application"
+                      client-id="log.metadata.oauth_token_application_id"></span>
+              </div>
+              <div style="text-align: center; font-size: 12px; color: #aaa; padding: 4px;">on behalf of</div>
+              <div>
+                <span class="entity-reference" entity="log.performer" namespace="organization.name"></span>
+              </div>
+            </span>
+            <span class="log-performer" bo-if="!log.metadata.oauth_token_application && log.performer">
+              <span class="entity-reference" entity="log.performer" namespace="organization.name"></span>
+            </span>
+            <span class="log-performer" bo-if="!log.performer && log.metadata.token">
+              <i class="fa fa-key"></i>
+              <span bo-text="log.metadata.token"></span>
+            </span>
+            <span bo-if="!log.performer && !log.metadata.token">
+              (anonymous)
+            </span>
+          </td>
+          <td>
+            <span bo-if="log.ip || log.metadata._ip"><span bo-text="log.ip || log.metadata._ip"></span></span>
+            <span class="empty" bo-if="!log.ip && !log.metadata._ip">(No data)</span>
+          </td>
+        </tr>
+      </table>
+      <div style="text-align: right; margin-top: 10px; position: relative;">
+        <button class="btn btn-default" ng-click="nextPage()" ng-show="!loading && hasAdditional">Load More Logs</button>
+        <div style="position: relative;" ng-show="loading">
+          Checking for additional logs...
+          <div class="cor-loader"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog -->
+  <div class="cor-confirm-dialog"
+       dialog-context="exportLogsInfo"
+       dialog-action="exportLogs(exportLogsInfo, callback)"
+       dialog-title="Export Usage Logs"
+       dialog-action-title="Start Logs Export"
+       dialog-form="context.exportform">
+      <form name="context.exportform">
+        <div style="margin-bottom: 14px;">
+          Enter an e-mail address or callback URL (must start with <code>http://</code> or <code>https://</code>)
+          at which to receive the exported logs once they have been fully processed:
+        </div>
+        <input class="form-control" type="text" ng-model="exportLogsInfo.urlOrEmail"
+               placeholder="E-mail address or callback URL"
+              ng-pattern="'(http(s)?:.+)|.+@.+'">
+        <div class="help-text">
+          Note: The export process can take <strong>up to an hour</strong> to process if there are many logs. As well,
+          only a <strong>single</strong> export process can run at a time for each namespace. Additional export requests will be
+          queued.
+        </div>
+      </form>
+  </div>
+</div>

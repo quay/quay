@@ -1,0 +1,12 @@
+.markdown-view-content {
+  word-wrap: break-word;
+  overflow: hidden;
+}
+
+.markdown-view-content p {
+  margin: 0;
+}
+
+code * {
+  font-family: "Lucida Console", Monaco, monospace;
+}

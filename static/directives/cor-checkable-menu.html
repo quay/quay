@@ -1,0 +1,12 @@
+<span class="co-checkable-menu">
+  <span class="dropdown" style="text-align: left;">
+    <span class="btn btn-default"  data-toggle="dropdown">
+        <span class="co-checkable-menu-state"
+              ng-class="getClass(controller.items, controller.checked)"
+              ng-click="toggleItems($event)">
+        </span>
+        <span class="caret"></span>
+    </span>
+    <ul class="dropdown-menu" ng-transclude></ul>
+  </span>
+</span>

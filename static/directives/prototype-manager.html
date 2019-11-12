@@ -1,0 +1,143 @@
+<div class="prototype-manager-element">
+  <div class="feedback-bar" feedback="feedback"></div>
+  <div class="cor-loader" ng-show="loading"></div>
+  <div ng-show="!loading">
+    <div class="manager-header" header-title="Default Permissions">
+      <button class="btn btn-primary" ng-click="showAddDialog()" ng-show="!inReadOnlyMode">
+        <i class="fa fa-plus"></i>
+        Create Default Permission
+      </button>
+    </div>
+
+    <div class="section-description-header">
+      The Default permissions panel defines permissions that should be granted automatically to a repository when it is created, in addition to the default of the repository's
+      creator. Permissions are assigned based on the user who created the repository.
+      <br><br>
+      <strong>Note:</strong> Permissions added here do <strong>not</strong> automatically get added to
+      existing repositories.
+    </div>
+
+    <div class="empty" ng-if="!prototypes.length">
+      <div class="empty-primary-msg">No default permissions defined.</div>
+      <div class="empty-secondary-msg" ng-show="!inReadOnlyMode">
+        Click the "Create Default Permission" button above to create a new default permission.
+      </div>
+    </div>
+
+    <table class="cor-table" ng-show="prototypes.length">
+      <thead>
+        <td>
+          <span class="context-tooltip"
+                data-title="The user or robot that is creating a repository. If '(Organization Default)', then any repository created in this organization will be granted the permission."
+                data-container="body" bs-tooltip>
+            Repository Created By
+          </span>
+        </td>
+        <td>
+          <span class="context-tooltip"
+                data-title="The user, robot or team that is being granted the permission"
+                data-container="body" bs-tooltip>
+            Permission Applied To
+          </span>
+        </td>
+        <td>Permission</td>
+        <td class="options-col"></td>
+      </thead>
+
+      <tr ng-repeat="prototype in prototypes | orderBy:comparePrototypes">
+        <td>
+          <span class="entity-reference block-reference" entity="prototype.activating_user"
+                namespace="organization.name" ng-if="prototype.activating_user"
+                avatar-size="24"></span>
+
+          <span ng-show="!prototype.activating_user"
+                style="font-variant: small-caps; font-weight: bold; font-size: 16px;">
+            (Organization Default)
+          </span>
+        </td>
+        <td>
+          <span class="entity-reference block-reference" entity="prototype.delegate" namespace="organization.name" avatar-size="24"></span>
+        </td>
+        <td>
+          <span class="role-group" current-role="prototype.role"
+                role-changed="setRole(role, prototype)"
+                roles="repoRoles"
+                read-only="inReadOnlyMode"></span>
+        </td>
+        <td class="options-col">
+          <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+            <span class="cor-option" option-click="deletePrototype(prototype)">
+              <i class="fa fa-times"></i> Delete Permission
+            </span>
+          </span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Modal message dialog -->
+  <div class="modal fade" id="addPermissionDialogModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Create Default Permission</h4>
+        </div>
+        <div class="modal-body">
+          <div class="super-option">
+            <table style="width: 100%;">
+              <tr>
+                <td>Applies when a repository is created by:</td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-default"
+                            ng-class="newForWholeOrg ? 'active btn-info' : ''" ng-click="setNewForWholeOrg(true)">Anyone</button>
+                    <button type="button" class="btn btn-default"
+                            ng-class="newForWholeOrg ? '' : 'active btn-info'" ng-click="setNewForWholeOrg(false)">A specific user</button>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <table>
+            <tr ng-show="!newForWholeOrg">
+              <td>Repository Creator:</td>
+              <td>
+                <span class="entity-search" namespace="organization.name"
+                      placeholder="'User/Robot'"
+                      allowed-entities="['user', 'robot']"
+                      current-entity="activatingForNew"
+                      clear-value="clearCounter">
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>Permission:</td>
+              <td>
+                <span class="role-group" current-role="newRole" role-changed="setRoleForNew(role)"
+                      roles="repoRoles"></span>
+              </td>
+            </tr>
+            <tr>
+              <td>Applied To:</td>
+              <td>
+                <span class="entity-search" namespace="organization.name" placeholder="'User/Robot/Team'"
+                      current-entity="delegateForNew"
+                      clear-value="clearCounter">
+                </span>
+              </td>
+            </tr>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button ype="button" class="btn btn-primary" ng-disabled="!(newForWholeOrg || activatingForNew) || !delegateForNew" ng-click="createPrototype()">
+            Create Permission
+          </button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+</div>

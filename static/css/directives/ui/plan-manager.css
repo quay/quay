@@ -1,0 +1,42 @@
+.plan-manager-element .plans-list-table thead td {
+  color: #aaa;
+  font-weight: bold;
+}
+
+.plan-manager-element .plans-list-table td {
+  padding: 10px;
+  font-size: 16px;
+  vertical-align: middle;
+}
+
+.plan-manager-element .plans-list-table td.controls {
+  text-align: right;
+}
+
+.plan-manager-element .plans-list-table .plan-price {
+  font-size: 16px;
+  margin-bottom: 0px;
+}
+
+.plan-manager-element .plans-list-table .deprecated-plan {
+  color: #aaa;
+}
+
+.plan-manager-element .plans-list-table .deprecated-plan-label {
+  font-size: 0.7em;
+}
+
+.plan-manager-element .qe-shoutout {
+  float: right;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 20px;
+  max-width: 500px;
+}
+
+.plan-manager-element .qe-shoutout img {
+  max-width: 100%;
+  max-height: 28px;
+  margin-bottom: 10px;
+}

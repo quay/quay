@@ -1,0 +1,237 @@
+<div class="create-external-notification-element">
+  <form id="createForm" name="createForm" ng-submit="createNotification()">
+    <!-- Creating spinner -->
+    <div class="cor-loader" ng-show="status == 'creating'"></div>
+
+    <!-- Event -->
+    <table class="help-table">
+      <tr>
+        <td>
+          <table class="options-table">
+            <tr><td class="section-header" colspan="2">When this event occurs</td></tr>
+            <tr>
+              <td class="span-col" colspan="2">
+                <div class="dropdown-select" placeholder="'Please select the event'" selected-item="currentEvent.title"
+                     handle-item-selected="handleEventSelected(datum)" clear-value="clearCounter">
+                  <!-- Icons -->
+                  <i class="dropdown-select-icon fa fa-lg" ng-class="currentEvent.icon"></i>
+
+                  <!-- Dropdown menu -->
+                  <ul class="dropdown-select-menu pull-right" role="menu">
+                    <li ng-repeat="event in events">
+                      <a ng-click="setEvent(event)">
+                        <i class="fa fa-lg" ng-class="event.icon"></i> {{ event.title }}
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </td>
+            </tr>
+
+            <tr ng-repeat="field in currentEvent.fields">
+              <td class="name" valign="top">With {{ field.title }} <span ng-if="field.optional">(optional)</span>:</td>
+              <td class="value">
+                <div ng-switch on="field.type">
+                  <!-- Enum -->
+                  <select class="form-control" ng-if="field.type == 'enum'"
+                          ng-model="currentEventConfig[field.name]" required>
+                    <option ng-repeat="(key, info) in field.values | orderObjectBy: 'index'" value="{{key}}">{{ info.title }}</option>
+                  </select>
+
+                  <!-- Regular expression -->
+                  <div ng-switch-when="regex">
+                    <div class="regex-editor" placeholder="{{field.placeholder || '' }}"
+                         binding="currentEventConfig[field.name]" optional="field.optional"></div>
+                  </div>
+
+                  <!-- Value description -->
+                  <div class="co-alert co-alert-info"
+                       style="margin-top: 6px; margin-bottom: 10px;"
+                       ng-if="field.values[currentEventConfig[field.name]].description">
+                    {{ field.values[currentEventConfig[field.name]].description }}
+                  </div>
+
+                  <!-- Help text -->
+                  <div class="help-text" ng-if="field.help_text">
+                    {{ field.help_text }}
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td class="help-col hidden-sm hidden-xs">
+           <span class="registry-name"></span> supports a number of events around repositories (such as push completed), building (build queued, build completed, etc) and security (vulnerability detected). Some events also allow for filtering, for further granular control of when notifications fire.
+        </td>
+      </tr>
+    </table>
+
+    <div class="config-section" ng-show="currentEvent">
+      <!-- Notification -->
+      <table class="help-table">
+        <tr>
+          <td>
+            <table class="options-table">
+              <tr><td class="section-header" colspan="2">Then issue a notification</td></tr>
+              <tr>
+                <td class="span-col" colspan="2">
+                  <div class="dropdown-select" placeholder="'Please select a notification method'" selected-item="currentMethod.title"
+                       handle-item-selected="handleMethodSelected(datum)" clear-value="clearCounter">
+                    <!-- Icons -->
+                    <i class="dropdown-select-icon fa fa-lg" ng-class="currentMethod.icon"></i>
+
+                    <!-- Dropdown menu -->
+                    <ul class="dropdown-select-menu pull-right" role="menu">
+                      <li ng-repeat="method in methods">
+                        <a ng-click="setMethod(method)">
+                          <i class="fa fa-lg" ng-class="method.icon"></i> {{ method.title }}
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+
+              <tr ng-repeat="field in currentMethod.fields">
+                <td valign="top" class="name">{{ field.title }}:</td>
+                <td class="value">
+                  <div ng-switch on="field.type">
+                    <!-- Email -->
+                    <span ng-switch-when="email">
+                      <input type="email" class="form-control" ng-model="currentConfig[field.name]" ng-required="!field.optional">
+                    </span>
+
+                    <!-- URL -->
+                    <input type="url" class="form-control" ng-model="currentConfig[field.name]"  ng-switch-when="url" ng-required="!field.optional">
+
+                    <!-- String -->
+                    <input type="text" class="form-control" ng-model="currentConfig[field.name]"  ng-switch-when="string" ng-required="!field.optional">
+
+                    <!-- Pattern (regex match) -->
+                    <div ng-switch-when="pattern">
+                      <input type="text" class="form-control" ng-model="currentConfig[field.name]"
+                             ng-pattern="getPattern(field)"
+                             placeholder="{{ field.placeholder }}"
+                             ng-name="field.name"
+                             id="{{ field.name }}"
+                             ng-required="!field.optional">
+
+                      <div class="alert alert-warning" style="margin-top: 10px; margin-bottom: 10px"
+                            ng-if="field.pattern_fail_message && hasRegexMismatch(createForm.$error, field.name)">
+                        <span ng-bind-html="field.pattern_fail_message"></span>
+                      </div>
+                    </div>
+
+                    <!-- Entity -->
+                    <div class="entity-search" namespace="repository.namespace"
+                         placeholder="''"
+                         current-entity="currentConfig[field.name]"
+                         ng-model="currentConfig[field.name]"
+                         allowed-entities="['user', 'team', 'org']"
+                         ng-switch-when="entity"></div>
+
+                    <div ng-if="getHelpUrl(field, currentConfig)"
+                         style="margin-top: 10px;  margin-bottom: 10px">
+                      See: <a href="{{ getHelpUrl(field, currentConfig) }}" ng-safenewtab>{{ getHelpUrl(field, currentConfig) }}</a>
+                    </div>
+
+                    <div class="help-text" ng-if="currentMethod.id == 'webhook'"
+                         style="margin-top: 6px; margin-bottom: 0px">
+                      JSON metadata representing the event will be <b>POST</b>ed to the URL. All requests made to TLS-enabled URLs will be signed with the <span class="registry-name"></span> key.
+                      <br><br>
+                      The contents for each event can be found in the user guide:
+                      <a href="http://docs.quay.io/guides/notifications.html#webhook{{ currentEvent.id ? '_' + currentEvent.id : '' }}"
+                         ng-safenewtab>
+                        http://docs.quay.io/guides/notifications.html
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Help text -->
+                  <div class="help-text" ng-if="field.help_text">
+                    {{ field.help_text }}
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td class="help-col hidden-sm hidden-xs">
+            Once an event has fired, <span class="registry-name"></span> supports a number of notification methods, including various chat systems (Slack, HipChat, etc), notification via e-mail or programatic handling via the firing of a webhook.
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="config-section" ng-show="currentMethod">
+      <table class="help-table">
+        <tr>
+          <td>
+            <table class="options-table">
+              <tr><td class="section-header" colspan="2">With extra configuration</td></tr>
+              <tr>
+                <td class="name">Notification title:</td>
+                <td class="value">
+                  <input class="form-control" type="text" placeholder="Enter an optional title" ng-model="currentTitle">
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td class="help-col hidden-sm hidden-xs">
+            The title for a notification is an optional field for a human-readable title for the notification.
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Buttons -->
+    <div class="button-bar">
+      <button type="submit" class="btn btn-primary"
+              ng-disabled="createForm.$invalid || !currentMethod.id || !currentEvent.id || creating">
+        Create Notification
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Authorize email dialog -->
+<div class="modal" tabindex="-1" role="dialog" id="authorizeEmailModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" ng-click="cancelEmailAuth()">
+          &times;
+        </button>
+        <h4 class="modal-title">E-mail authorization</h4>
+      </div>
+
+      <div class="modal-body" style="padding: 4px; padding-left: 20px;">
+        <!-- Authorize e-mail view -->
+        <div ng-if="status == 'authorizing-email-sent'">
+          An e-mail has been sent to <code>{{ ::currentConfig.email }}</code>. Please click the link contained
+          in the e-mail.
+        </div>
+
+        <!-- Authorize e-mail view -->
+        <div ng-if="status == 'unauthorized-email'">
+          The e-mail address <code>{{ ::currentConfig.email }}</code> has not been authorized to receive
+          notifications from this repository. Please click "Send Authorization E-mail" below to start
+          the authorization process.
+        </div>
+      </div>
+
+      <!-- Auth e-mail button bar -->
+      <div class="modal-footer" ng-if="status == 'unauthorized-email'">
+        <button type="button" class="btn btn-success" ng-click="sendAuthEmail()">
+          Send Authorization E-mail
+        </button>
+        <button type="button" class="btn btn-default" ng-click="cancelEmailAuth()" ng-disabled="creating">Cancel</button>
+      </div>
+
+      <!-- Loading -->
+      <div ng-if="status != 'unauthorized-email'"
+           class="loading-container">
+        <span class="cor-loader-inline"></span>
+      </div>
+    </div>
+  </div>
+</div>

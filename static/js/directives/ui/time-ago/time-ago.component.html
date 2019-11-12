@@ -1,0 +1,6 @@
+<span>
+  <span ng-if="$ctrl.datetime" data-title="{{ $ctrl.datetime | amDateFormat:'llll' }}" bs-tooltip>
+    <span am-time-ago="$ctrl.datetime"></span>
+  </span>
+  <span ng-if="!$ctrl.datetime">Never</span>
+</span>

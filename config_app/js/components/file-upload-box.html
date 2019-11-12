@@ -1,0 +1,46 @@
+<div class="file-upload-box-element">
+  <div class="file-input-container">
+    <div ng-show="state != 'uploading'">
+      <form id="file-drop-form-{{ boxId }}">
+        <input id="file-drop-{{ boxId }}" name="file-drop-{{ boxId }}" class="file-drop"
+               type="file" files-changed="handleFilesChanged(files)"
+               accept="{{ getAccepts(extensions) }}">
+        <label for="file-drop-{{ boxId }}" ng-class="state">
+          <span class="chosen-file">
+            <span ng-if="selectedFiles.length">
+              {{ selectedFiles[0].name }}
+              <span ng-if="selectedFiles.length > 1">
+                and {{ selectedFiles.length - 1 }} others...
+              </span>
+            </span>
+          </span><span class="choose-button">
+            <span>Select file</span>
+          </span>
+        </label>
+      </form>
+    </div>
+
+    <div class="cor-loader-line" ng-if="state == 'checking'"></div>
+
+    <div class="status-message" ng-if="state == 'uploading'">
+      <div class="progress progress-striped active">
+        <div class="progress-bar"  role="progressbar"
+             aria-valuenow="{{ uploadProgress }}" aria-valuemin="0" aria-valuemax="100"
+             style="{{ 'width: ' + uploadProgress + '%' }}">
+        </div>
+      </div>
+
+      Uploading file {{ currentlyUploadingFile.name }}...
+    </div>
+
+    <div class="select-message" ng-if="state == 'clear'">{{ selectMessage }}</div>
+    <div class="status-message error-message" ng-if="state == 'error'">
+      <i class="fa fa-times-circle"></i>
+      {{ message }}
+    </div>
+    <div class="status-message okay-message" ng-if="state == 'okay'">
+      <i class="fa fa-check-circle"></i>
+      {{ message }}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,33 @@
+<div class="cor-container org-list conntent-container">
+  <div class="loading" ng-show="!user">
+    <div class="quay-spinner"></div>
+  </div>
+
+  <div class="button-bar-right">
+    <a href="/organizations/new/" data-title="Starts the process to create a new organization" bs-tooltip="tooltip.title">
+      <button class="btn btn-success">
+        <i class="fa fa-plus"></i>
+        Create New Organization
+      </button>
+    </a>
+    <a href="/user/?tab=migrate" data-title="Starts the process to convert this account into an organization" bs-tooltip="tooltip.title" quay-show="Config.AUTHENTICATION_TYPE == 'Database' && !user.anonymous">
+      <button class="btn btn-primary">
+        <i class="fa fa-caret-square-o-right"></i>
+        Convert account
+      </button>
+    </a>
+  </div>
+
+  <!-- Organizations -->
+  <div ng-if="user.organizations.length > 0">
+    <h2>Organizations</h2>
+
+    <div class="organization-listing" ng-repeat="organization in user.organizations">
+      <span class="avatar" size="32" data="organization.avatar"></span>
+      <a class="org-title" href="/organization/{{ organization.name }}">{{ organization.name }}</a>
+    </div>
+  </div>
+
+  <!-- Organization Help/Tour -->
+  <div class="tour-content" ng-if="!user.organizations || user.organizations.length == 0" kind="'organizations'"></div>
+</div>

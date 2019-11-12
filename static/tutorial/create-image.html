@@ -1,0 +1,22 @@
+<div class="user-enter-box">
+   <div class="control-group">
+    <label class="control-label" for="containerId">Enter a repository name:</label>
+    <div class="form-inline">
+      <form name="repoNameForm">
+        <input type="text" id="repoName" name="repoName" class="form-control"
+               ng-model="tour.tourScope.repoName" ng-pattern="/^[a-z0-9_-]+$/">
+      </form>
+    </div>
+    <span ng-show="!repoNameForm.repoName.$valid" style="margin-left: 10px; margin-top: 7px;">
+      Repository names must match [a-z0-9_-]+
+    </span>
+  </div>
+</div>
+
+<p>Once a container has terminated in Docker, the next step is to <i>commit</i> the container to an image, and then <i>tag</i> that image with a relevant name so it can be saved to a repository.</p>
+
+<p>Docker lets us do this in one step with the <i>commit</i> command. To do so, we run the <code>docker commit</code> with the container ID from the previous step and tag it to be a repository under <code>{{ tour.tourScope.domainName }}</code>.
+
+<pre class="command">
+<code ng-show="tour.tourScope.showSudo">sudo </code>docker commit <var class="var1">{{ tour.tourScope.containerId || 'containerId' }}</var> {{ tour.tourScope.domainName }}/{{ tour.tourScope.username }}/<var class="var2">{{ tour.tourScope.repoName || 'myfirstrepo' }}</var>
+</pre>

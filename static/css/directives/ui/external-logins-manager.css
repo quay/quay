@@ -1,0 +1,14 @@
+.external-logins-manager .empty {
+  color: #ccc;
+}
+
+.external-logins-manager .external-auth-provider td:first-child {
+  font-size: 18px;
+}
+
+.external-logins-manager .external-auth-provider-title i.fa,
+.external-logins-manager .external-auth-provider-title img {
+  margin-right: 6px;
+  width: 24px;
+  text-align: center;
+}

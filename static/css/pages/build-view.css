@@ -1,0 +1,63 @@
+.build-view .build-header .repo-breadcrumb {
+  font-size: 18px;
+  margin-left: 12px;
+}
+
+.build-view .build-status-header {
+  padding: 4px;
+}
+
+.build-view .build-status-header .cor-loader-inline {
+  margin-right: 10px;
+}
+
+.build-view .build-logs-view {
+    margin-top: 10px;
+}
+
+.build-view .build-status-header {
+  font-size: 17px;
+  margin-top: 10px;
+}
+
+.build-view .build-status-header .fa {
+  margin-right: 6px;
+}
+
+.build-view .build-icon-message.error {
+  color: red;
+}
+
+.build-view .build-icon-message.internalerror {
+  color: rgb(151, 168, 0);
+}
+
+.build-view .build-icon-message.complete {
+  color: #2fcc66;
+}
+
+.build-view .build-status-header .cor-options-menu {
+  float: right;
+  margin-left: 20px;
+}
+
+.build-view .build-status-header .timing {
+  float: right;
+}
+
+.build-view .build-status-header .timing .fa {
+    margin-left: 10px;
+    margin-right: 4px;
+}
+
+@media (max-width: 767px) {
+  .build-view .build-status-header .timing {
+    margin-top: 10px;
+    float: none;
+  }
+
+  .build-view .build-status-header .cor-options-menu {
+    float: right;
+    margin-top: 10px;
+  }
+}

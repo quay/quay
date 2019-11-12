@@ -1,0 +1,44 @@
+.billing-invoices-element .fields-menu {
+  float: right;
+}
+
+.billing-invoices-element .invoice-title {
+  padding: 6px;
+  cursor: pointer;
+}
+
+.billing-invoices-element .invoice-status .success {
+  color: green;
+}
+
+.billing-invoices-element .invoice-status .pending {
+  color: steelblue;
+}
+
+.billing-invoices-element .invoice-status .danger {
+  color: red;
+}
+
+.billing-invoices-element .invoice-amount:before {
+  content: '$';
+}
+
+.billing-invoices-element .fa-download {
+  color: #aaa;
+}
+
+.billing-invoices-element .fa-trash-o {
+  float: right;
+  margin-top: -3px;
+  margin-right: -14px !important;
+  font-size: 14px;
+  padding: 2px;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-radius: 4px;
+}
+
+.billing-invoices-element .invoice-field {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}

@@ -1,0 +1,64 @@
+.new-role-group .btn {
+  width: 90px;
+  position: relative;
+  text-align: left;
+
+  padding: 4px;
+  padding-left: 10px;
+}
+
+.role-group.small .btn {
+  padding: 2px;
+  padding-left: 10px;
+}
+
+.new-role-group .btn .caret {
+  position: absolute;
+  top: 13px;
+  right: 7px;
+}
+
+.role-group.small .btn .caret {
+  top: 11px;
+}
+
+.new-role-group .role-help-text {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
+.new-role-group .btn {
+  border-left: 4px solid #ccc;
+}
+
+.new-role-group .btn.success {
+  border-left-color: #5cb85c;
+}
+
+.new-role-group .btn.primary {
+  border-left-color: #337ab7;
+}
+
+.new-role-group li a {
+  vertical-align: middle;
+}
+
+.new-role-group li a:before {
+  content: "";
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  background: #ccc;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.new-role-group li.success a:before {
+  background-color: #5cb85c;
+}
+
+.new-role-group li.primary a:before {
+  background-color: #337ab7;
+}

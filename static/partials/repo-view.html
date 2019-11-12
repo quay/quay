@@ -1,0 +1,137 @@
+<div class="resource-view repository-view"
+     resource="repositoryResource"
+     error-message="'Repository not found'">
+  <div class="page-content">
+    <!-- Application repository error -->
+    <div class="co-main-content-panel" ng-if="viewScope.repository.kind == 'application'">
+      <div class="error-view-element">
+        <h2><span class="repo-circle no-background" repo="viewScope.repository"></span>{{ viewScope.repository.namespace }}/{{ viewScope.repository.name }}</h2>
+        <h3>This name refers to an <strong>application</strong> repository</h3>
+        <div style="margin-bottom: 20px;">
+          View the <a href="/application/{{ viewScope.repository.namespace }}/{{ viewScope.repository.name }}/">{{ viewScope.repository.namespace }}/{{ viewScope.repository.name }} application</a>
+        </div>
+      </div>
+    </div>
+    <!-- Image repository view -->
+    <div ng-if="viewScope.repository.kind == 'image'">
+      <div class="cor-title">
+        <span class="cor-title-link">
+          <a class="back-link" href="/repository">
+            Repositories
+          </a>
+        </span>
+        <span class="cor-title-content">
+          <span class="repo-circle no-background hidden-xs" repo="viewScope.repository"></span>
+          {{ namespace }} / {{ name }}
+          <span class="repo-star hidden-xs" repository="viewScope.repository" ng-if="!user.anonymous"></span>
+        </span>
+      </div>
+
+      <cor-tab-panel orientation="vertical" cor-nav-tabs>
+        <cor-tabs>
+          <cor-tab tab-title="Information" tab-id="info"
+                   tab-init="showInfo()">
+            <i class="fa fa-info-circle"></i>
+          </cor-tab>
+
+          <cor-tab tab-title="Tags" tab-id="tags" id="tagsTab"
+                   tab-init="showTags()">
+            <i class="fa fa-tags"></i>
+          </cor-tab>
+
+          <cor-tab tab-title="Tag History" tab-id="history" id="tagHistoryTab"
+                   tab-init="showHistory()">
+            <i class="fa fa-history"></i>
+          </cor-tab>
+
+          <cor-tab tab-title="Builds" tab-id="builds" id="buildsTab"
+                   tab-init="showBuilds()"
+                   quay-show="viewScope.repository.can_write && Features.BUILD_SUPPORT">
+            <i class="fa fa-tasks"></i>
+          </cor-tab>
+
+          <!-- Admin Only Tabs -->
+          <cor-tab tab-title="Usage Logs" tab-id="logs" tab-init="showLogs()"
+                   ng-show="viewScope.repository.can_admin">
+            <i class="fa fa-bar-chart"></i>
+          </cor-tab>
+
+          <cor-tab tab-title="Mirroring"
+                   tab-id="repository-mirror"
+                   tab-init="showMirroring()"
+                   quay-show="viewScope.repository.can_admin && Features.REPO_MIRROR">
+            <i class="fa fa-refresh"></i>  <!-- In FontAwesome > 4.x, this will be `fa-sync` -->
+          </cor-tab>
+
+          <cor-tab tab-title="Settings" tab-id="settings" id="settingsTab"
+                   tab-init="showSettings()"
+                   ng-show="viewScope.repository.can_admin">
+            <i class="fa fa-gear"></i>
+          </cor-tab>
+        </cor-tabs>
+
+        <cor-tab-content>
+          <!-- Information -->
+          <cor-tab-pane id="info">
+            <div class="repo-panel-info"
+                 repository="viewScope.repository"
+                 builds="viewScope.builds"
+                 is-enabled="infoShown"></div>
+          </cor-tab-pane>
+
+          <!-- Tags -->
+          <cor-tab-pane id="tags">
+            <div class="repo-panel-tags"
+                 repository="viewScope.repository"
+                 repository-tags="viewScope.repositoryTags"
+                 tags-loading="viewScope.tagsLoading"
+                 image-loader="viewScope.imageLoader"
+                 selected-tags="viewScope.selectedTags"
+                 history-filter="viewScope.historyFilter"
+                 is-enabled="tagsShown"></div>
+          </cor-tab-pane>
+
+          <!-- Tag History -->
+          <cor-tab-pane id="history">
+            <h3 class="tab-header">Tag History</h3>
+            <div class="repo-tag-history"
+                 repository="viewScope.repository"
+                 repository-tags="viewScope.repositoryTags"
+                 filter="viewScope.historyFilter"
+                 image-loader="viewScope.imageLoader"
+                 is-enabled="historyShown"></div>
+          </cor-tab-pane>
+
+          <!-- Builds -->
+          <cor-tab-pane id="builds">
+            <div class="repo-panel-builds"
+                 repository="viewScope.repository"
+                 builds="viewScope.builds"
+                 is-enabled="buildsShown"></div>
+          </cor-tab-pane>
+
+          <!-- Usage Logs -->
+          <cor-tab-pane id="logs" ng-if="viewScope.repository.can_admin">
+            <div class="logs-view" repository="viewScope.repository" makevisible="logsShown"></div>
+          </cor-tab-pane>
+
+          <!-- Repository Mirroring -->
+          <cor-tab-pane id="repository-mirror"
+                        ng-if="viewScope.repository.can_admin"
+                        quay-show="Features.REPO_MIRROR">
+            <div class="repo-panel-mirror"
+                 repository="viewScope.repository"
+                 is-enabled="mirrorShown"></div>
+          </cor-tab-pane>
+
+          <!-- Settings -->
+          <cor-tab-pane id="settings" ng-if="viewScope.repository.can_admin">
+            <div class="repo-panel-settings" repository="viewScope.repository"
+                 is-enabled="settingsShown"></div>
+          </cor-tab-pane>
+        </cor-tab-content>
+      </cor-tab-panel>
+    </div>
+  </div>
+  
+</div>

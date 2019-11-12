@@ -1,0 +1,39 @@
+<span class="trigger-description-element"
+      ng-switch on="::$ctrl.trigger.service">
+  <!-- GitHub -->
+  <span ng-switch-when="github">
+    <i class="fa fa-github fa-lg" style="margin-right: 6px"
+       data-title="GitHub" bs-tooltip></i>
+    Push to GitHub <span ng-if="::$ctrl.keyService.isEnterprise('github-trigger')">Enterprise</span> repository
+    <a href="{{ ::$ctrl.trigger.repository_url }}" target="_new">
+      {{ ::$ctrl.trigger.config.build_source }}
+    </a>
+  </span>
+
+  <!-- BitBucket -->
+  <span ng-switch-when="bitbucket">
+    <i class="fa fa-bitbucket fa-lg" style="margin-right: 6px"
+       data-title="BitBucket" bs-tooltip></i>
+    Push to BitBucket repository
+    <a href="{{ ::$ctrl.trigger.repository_url }}" target="_new">
+      {{ ::$ctrl.trigger.config.build_source }}
+    </a>
+  </span>
+
+  <!-- GitLab -->
+  <span ng-switch-when="gitlab">
+    <i class="fa fa-gitlab fa-lg" style="margin-right: 6px"
+       data-title="GitLab" bs-tooltip></i>
+    Push to GitLab repository
+    <a ng-href="{{ ::$ctrl.trigger.repository_url }}" target="_new">
+      {{ ::$ctrl.trigger.config.build_source }}
+    </a>
+  </span>
+
+  <!-- Custom Git -->
+  <span ng-switch-when="custom-git">
+    <i class="fa fa-git-square fa-lg" style="margin-right: 6px;"
+       data-title="git" bs-tooltip></i>
+    Push to repository {{ ::$ctrl.trigger.config.build_source }}
+  </span>
+</span>

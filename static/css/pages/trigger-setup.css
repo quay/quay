@@ -1,0 +1,35 @@
+
+.trigger-setup-element .activated .content {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.trigger-setup-element .activated h3 {
+    text-align: center;
+    margin-bottom: 30px;
+    display: block;
+}
+
+.trigger-setup-element .button-bar {
+    text-align: right;
+    margin-top: 16px;
+}
+
+.trigger-setup-element .activating .cor-loader-inline {
+  margin-right: 6px;
+}
+
+.trigger-setup-element .activating .btn-success {
+    display: none;
+}
+
+.trigger-setup-element .activating-message {
+    padding: 10px;
+    padding-left: 30px;
+}
+
+.trigger-setup-element .activating-message b {
+    vertical-align: middle;
+    font-size: 18px;
+    font-weight: normal;
+}

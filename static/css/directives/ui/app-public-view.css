@@ -1,0 +1,81 @@
+.app-public-view-element {
+    height: 100%;
+}
+
+.app-public-view-element .app-header {
+    padding: 10px;
+    padding-left: 24px;
+}
+
+.app-public-view-element .app-header i.fa {
+    margin-right: 8px;
+}
+
+.app-public-view-element .main-content {
+    min-height: 300px;
+    padding: 0px;
+}
+
+.app-public-view-element .side-bar {
+    padding: 20px;
+    border-left: 1px solid #dddddd;
+    background-color: #fdfdfd;
+}
+
+.app-public-view-element .side-bar .sidebar-table {
+    margin-top: 40px;
+}
+
+.app-public-view-element .side-bar .sidebar-table h4 {
+    margin-bottom: 25px;
+}
+
+.app-public-view-element .app-row {
+    display: table;
+    width: 100%;
+}
+
+.app-public-view-element .main-content,
+.app-public-view-element .side-bar {
+    float: none;
+    display: table-cell;
+    vertical-align: top;
+}
+
+.app-public-view-element .side-bar .visibility-indicator-component-element {
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.app-public-view-element .tab-content {
+    padding: 30px;
+}
+
+.app-public-view-element .tab-content .tab-header {
+    display: none;
+}
+
+.app-public-view-element .co-main-content-panel {
+    padding: 0px;
+}
+
+.app-public-view-element .co-top-tab-bar li {
+    font-size: 18px;
+}
+
+.app-public-view-element .co-panel .co-panel-heading {
+    font-size: 16px;
+    margin-left: -30px;
+    margin-right: -30px;
+    padding-left: 22px;
+}
+
+.app-public-view-element .co-panel .co-panel-heading i.fa {
+    display: none;
+}
+
+.app-public-view-element .co-tab-panel {
+    margin: 0px;
+    box-shadow: none;
+    border: none;
+}

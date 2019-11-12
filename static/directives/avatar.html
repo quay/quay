@@ -1,0 +1,14 @@
+<span class="avatar-element"
+      ng-style="{'width': size, 'height': size, 'backgroundColor': (showGravatar || isLoading) ? 'transparent' : data.color, 'fontSize': fontSize, 'lineHeight': lineHeight}"
+      ng-class="data.kind">
+  <img ng-src="//www.gravatar.com/avatar/{{ data.hash }}?d=blank&size=512"
+       ng-if="loadGravatar"
+       ng-visible="showGravatar"
+       ng-image-watch="imageCallback(result)"
+       ng-style="{'width': imageSize + 'px', 'height': imageSize + 'px'}"
+       crossorigin="anonymous">
+  <span class="default-avatar" ng-if="!isLoading && !showGravatar">
+    <span class="letter" ng-if="data.kind != 'team' || data.name != 'owners'">{{ data.name.charAt(0).toUpperCase() }}</span>
+    <span class="letter" ng-if="data.kind == 'team' && data.name == 'owners'">&Omega;</span>
+  </span>
+</span>

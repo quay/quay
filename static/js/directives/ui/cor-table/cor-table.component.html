@@ -1,0 +1,67 @@
+<div class="cor-table-element">
+  <span ng-transclude></span>
+
+  <!-- Filter -->
+  <div class="co-top-bar" ng-if="!$ctrl.compact">
+    <span class="co-filter-box with-options" ng-if="$ctrl.tableData.length && $ctrl.filterFields.length">
+      <span class="page-controls"
+            total-count="$ctrl.orderedData.entries.length"
+            current-page="$ctrl.options.page"
+            page-size="$ctrl.maxDisplayCount"></span>
+      <span class="filter-message" ng-if="$ctrl.options.filter">
+        Showing {{ $ctrl.orderedData.entries.length }} of {{ $ctrl.tableData.length }} {{ ::$ctrl.tableItemTitle }}
+      </span>
+      <input class="form-control" type="text"
+             placeholder="Filter {{ ::$ctrl.tableItemTitle }}..."
+             ng-model="$ctrl.options.filter"
+             ng-change="$ctrl.refreshOrder()">
+    </span>
+
+    <!-- Compact/expand rows toggle -->
+    <div ng-if="!$ctrl.compact && $ctrl.canExpand" class="tab-header-controls">
+      <div class="btn-group btn-group-sm">
+        <button class="btn" ng-class="!$ctrl.expandRows ? 'btn-primary active' : 'btn-default'"
+                ng-click="$ctrl.setExpanded(false)">
+          Compact
+        </button>
+        <button class="btn" ng-class="$ctrl.expandRows ? 'btn-info active' : 'btn-default'"
+                ng-click="$ctrl.setExpanded(true)">
+          Expanded
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty -->
+  <div class="empty" ng-if="!$ctrl.tableData.length && $ctrl.compact != 'true'">
+    <div class="empty-primary-msg">No {{ ::$ctrl.tableItemTitle }} found.</div>
+  </div>
+
+  <!-- Table -->
+  <table class="co-table co-fixed-table" ng-show="$ctrl.tableData.length">
+    <thead>
+      <td ng-repeat="col in $ctrl.columns"
+          ng-class="$ctrl.tablePredicateClass(col)" style="{{ ::col.style }}"
+          class="{{ ::col.class }}">
+        <a ng-click="$ctrl.setOrder(col)">{{ ::col.title }}</a>
+      </td>
+    </thead>
+    <tbody ng-repeat="item in $ctrl.orderedData.visibleEntries" ng-init="rowIndex = $index"
+           ng-if="($index >= $ctrl.options.page * $ctrl.maxDisplayCount &&
+                   $index < ($ctrl.options.page + 1) * $ctrl.maxDisplayCount)">
+      <tr>
+        <td ng-repeat="col in $ctrl.columns"
+            style="{{ ::col.style }}" class="{{ ::col.class }}">
+          <div ng-if="col.templateurl" ng-include="col.templateurl"></div>
+          <div ng-if="!col.templateurl">{{ item[col.datafield] }}</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="empty" ng-if="!$ctrl.orderedData.entries.length && $ctrl.tableData.length"
+       style="margin-top: 20px;">
+    <div class="empty-primary-msg">No matching {{ ::$ctrl.tableItemTitle }} found.</div>
+    <div class="empty-secondary-msg">Try adjusting your filter above.</div>
+  </div>
+</div>

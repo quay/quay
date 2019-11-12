@@ -1,0 +1,338 @@
+.vertical cor-tabs {
+  vertical-align: top;
+  background-color: #e8f1f6;
+  border-right: 1px solid #DDE7ED;
+}
+
+@media (min-width: 768px) {
+  .co-tab-container.vertical {
+    flex-direction: row;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .vertical .co-tab-content {
+    width: 91.66666667%;
+  }
+
+  .horizontal-label {
+    color: #666;
+  }
+
+  .vertical .horizontal-label {
+    display: none;
+  }
+
+  .horizontal .horizontal-label {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .horizontal .horizontal-label {
+    margin-left: 10px;
+    display: inline-block;
+  }
+
+  .horizontal .cor-tab-itself {
+    font-size: 18px;
+    padding: 6px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .horizontal .cor-tab-itself i.fa {
+    display: none;
+  }
+}
+
+.co-tab-container {
+  padding: 0px;
+}
+
+.co-tabs {
+  margin: 0px;
+  padding: 0px;
+  width: 82px;
+  display: table-cell;
+  vertical-align: top;
+}
+
+.horizontal .co-tab-content {
+  width: 100%;
+  display: block;
+  float: none;
+  padding: 30px;
+}
+
+.vertical .co-tab-content {
+  float: none;
+  padding: 30px;
+  flex-grow: 1;
+}
+
+@media (max-width: 767px) {
+  .co-tab-content {
+    padding: 20px;
+    width: 100%;
+    display: block;
+  }
+}
+
+.co-tabs li {
+  list-style: none;
+  display: block;
+  border-bottom: 1px solid #DDE7ED;
+}
+
+.co-tabs li.active {
+  background-color: white;
+  border-right: 1px solid white;
+  margin-right: -1px;
+}
+
+.co-tabs li a {
+  display: block;
+  width: 82px;
+  height: 82px;
+  line-height: 82px;
+  text-align: center;
+  font-size: 36px;
+}
+
+.co-tabs li a i {
+  font-size: 36px;
+  color: gray;
+}
+
+.co-tabs li.active a {
+  color: black;
+}
+
+.co-tabs .xs-toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .vertical cor-tabs {
+    display: block;
+  }
+
+  .co-tabs {
+    display: block;
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid #DDE7ED;
+  }
+
+  cor-tabs {
+    position: relative;
+    display: block;
+    float: none;
+    vertical-align: top;
+    background-color: #e8f1f6;
+    border-right: 1px solid #DDE7ED;
+  }
+
+  .co-tab-element li.active {
+    background-color: white;
+    border-right: 1px solid white;
+    margin-right: -1px;
+  }
+
+  .co-tab-element .xs-toggle {
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    font-size: 18px;
+    text-align: center;
+    line-height: 40px;
+    border: 2px solid #DDE7ED;
+    background: white;
+  }
+
+  .co-tab-element.closed .xs-toggle:before {
+    content: "\f0d7";
+    font-family: FontAwesome;
+  }
+
+  .co-tab-element.open .xs-toggle:before {
+    content: "\f0d8";
+    font-family: FontAwesome;
+  }
+
+  .co-tab-element .horizontal-label {
+    font-size: 16px;
+    margin-left: 16px;
+    display: inline-block !important;
+    color: gray;
+    vertical-align: middle;
+  }
+
+  .cor-tab-itself {
+    width: 100%;
+  }
+
+  .cor-tab-icon {
+    vertical-align: middle;
+  }
+
+  .co-top-tab-bar {
+    padding: 0px;
+  }
+
+  .co-top-tab-bar li {
+    padding: 0px;
+  }
+
+  .co-tabs li a, .co-top-tab-bar li a {
+    display: inline-block;
+    height: 60px;
+    line-height: 54px;
+    white-space: nowrap;
+    width: 100%;
+    text-align: left;
+    padding-left: 20px;
+    text-decoration: none !important;
+    font-size: 28px;
+    color: #666;
+  }
+
+  .co-top-tab {
+    display: block !important;
+    border-bottom: 0px !important;
+  }
+
+  .co-tabs li a i {
+    vertical-align: middle;
+    font-size: 28px;
+  }
+
+  .co-tabs li.active a .horizontal-label {
+    color: black;
+  }
+
+  .co-tabs li.active a i {
+    color: black;
+  }
+
+  .co-tab-element.open li {
+    height: 60px;
+  }
+
+  .co-tab-element.closed li {
+    height: 0px;
+    padding: 0px;
+    overflow: hidden;
+  }
+
+  .co-tab-element.closed li.active {
+    height: 60px;
+  }
+}
+
+.co-tab-panel {
+  padding: 0px;
+}
+
+.co-dialog .co-tabs {
+  width: auto;
+  min-height: 400px;
+  padding-top: 58px;
+}
+
+.co-dialog .co-main-content-panel {
+  margin-bottom: 0px;
+}
+
+.co-dialog .co-tabs li a {
+  width: auto;
+  height: 42px;
+  line-height: 42px;
+  text-align: left;
+  font-size: 120%;
+  white-space: nowrap;
+  padding: 0px;
+  padding-left: 16px;
+  padding-right: 30px;
+  color: #5A5A5A;
+}
+
+.co-dialog .co-tabs li.active a, .co-dialog .co-tabs li.active a .fa {
+  color: black;
+
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
+.co-dialog .co-tabs li a .fa {
+  vertical-align: middle;
+  margin-right: 10px;
+  font-size: 20px;
+  line-height: 20px;
+  width: 20px;
+  text-align: center;
+  margin-top: -2px;
+}
+
+.co-dialog .co-tabs li a .fa.icon {
+  width: 20px;
+  height: 20px;
+  background-size: 20px;
+  filter: grayscale(100%);
+  -webkit-filter: grayscale(100%);
+}
+
+.co-dialog .co-tab-content {
+  padding: 16px;
+  padding-bottom: 30px;
+}
+
+.co-dialog .co-tab-content h3 {
+  margin-top: 0px;
+  margin-bottom: 0px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.co-dialog .co-tab-content label {
+  margin-top: 24px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.co-dialog .co-tab-content .help-text {
+  margin-top: 7px;
+  margin-left: 6px;
+  color: #aaa;
+}
+
+.co-dialog .co-tab-content .co-list-table {
+  width: 100%;
+}
+
+.co-dialog .co-tab-content .co-list-table td:first-child {
+  white-space: nowrap;
+  vertical-align: middle;
+  font-weight: normal;
+}
+
+.co-dialog .co-tabs li:first-child {
+  border-top: 1px solid #DDE7ED;
+}
+
+@media screen and (max-width: 767px) {
+  .co-dialog .co-tabs {
+    min-height: 0px;
+    padding-top: 0px;
+  }
+
+  .co-dialog .co-tabs li a {
+    line-height: 60px;
+    height: auto;
+  }
+}

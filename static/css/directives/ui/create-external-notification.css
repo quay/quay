@@ -1,0 +1,75 @@
+.create-external-notification-element {
+    padding: 10px;
+}
+
+.create-external-notification-element .dropdown-select {
+    margin: 0px;
+}
+
+.create-external-notification-element .button-bar {
+    margin-top: 20px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+    padding-bottom: 8px;
+    padding-left: 6px;
+}
+
+.create-external-notification-element .options-table .section-header {
+    font-size: 18px;
+    padding: 6px;
+    padding-bottom: 2px;
+}
+
+.create-external-notification-element .options-table {
+    width: 100%;
+}
+
+.create-external-notification-element .options-table td {
+    padding: 10px;
+}
+
+.create-external-notification-element .options-table td.name {
+    padding-left: 20px;
+    width: 1px;
+    white-space: nowrap;
+    vertical-align: top;
+    padding-top: 16px;
+}
+
+.create-external-notification-element .options-table td.value {
+    padding-left: 20px;
+}
+
+.create-external-notification-element .help-table {
+    width: 100%;
+}
+
+.create-external-notification-element .help-table > tbody > tr > td {
+    vertical-align: top;
+    max-width: 600px;
+}
+
+.create-external-notification-element .help-table td.help-col {
+    vertical-align: top;
+    padding: 20px;
+    padding-top: 40px;
+    width: 500px;
+    font-size: 15px;
+    color: #aaa;
+}
+
+.create-external-notification-element .config-section {
+    margin-top: 20px;
+}
+
+
+.create-external-notification-element .help-text {
+    margin-top: 10px;
+    color: #aaa;
+}
+
+#authorizeEmailModal .loading-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px;
+}

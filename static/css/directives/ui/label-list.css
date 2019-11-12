@@ -1,0 +1,9 @@
+.label-list-element .label-view {
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.label-list-element .empty-list {
+  font-size: 12px;
+  color: #ccc;
+}

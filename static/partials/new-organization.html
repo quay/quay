@@ -1,0 +1,99 @@
+<div class="new-organization">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link">
+        <a class="back-link" href="/repository">
+          Repositories
+        </a>
+      </span>
+      <span class="cor-title-content">
+        Create New Organization
+      </span>
+    </div>
+
+    <div class="co-main-content-panel">
+      <div class="cor-loader" ng-show="creating"></div>
+
+      <div class="create-org" ng-show="!creating">
+        <!-- Step 1 -->
+        <div ng-show="!user || user.anonymous">
+          <div class="page-description">
+            In order to create a new organization, <b>you must first be signed in</b> as the
+            user that <b>will become an admin</b> for the organization.
+          </div>
+          <div class="step-container row">
+            <div class="col-sm-offset-3 col-sm-6">
+            <div class="user-setup" redirect-url="'/organizations/new'"
+                 sign-in-started="signinStarted()"
+                 signed-in="signedIn()"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div ng-show="user && !user.anonymous && !created">
+          <div class="step-container">
+            <div class="co-alert co-alert-danger" ng-if="createError">
+            {{ createError }}
+            </div>
+
+            <form method="post" name="newOrgForm" id="newOrgForm" ng-submit="createNewOrg()">
+              <div class="form-group nested">
+                <label for="orgName">Organization Name</label>
+                <div class="field-row">
+                  <span class="field-container">
+                    <span class="namespace-input" binding="org.name" back-incompat-message="backIncompatMessage" namespace-title="Organization name"></span>
+                  </span>
+                  <span class="co-alert co-alert-warning thin" ng-show="backIncompatMessage">{{ backIncompatMessage }}</span>
+                  <span class="co-alert co-alert-danger thin" ng-show="!newOrgForm.namespaceField.$error.required && newOrgForm.namespaceField.$invalid">
+                    Organization names must be alphanumeric, be at least 2 characters in length and max 255 characters in length
+                  </span>
+                </div>
+                <span class="description">This will also be the namespace for your repositories. Must be alphanumeric, all lowercase, at least 2 characters long and at most 255 characters long.</span>
+              </div>
+
+              <div class="form-group nested" quay-require="['MAILING']">
+                <label for="orgName">Organization Email</label>
+                <div class="field-row">
+                  <span class="field-container">
+                    <input id="orgEmail" name="orgEmail" type="email" class="form-control" placeholder="Organization Email"
+                           ng-model="org.email" required>
+                    <span class="description">This address must be different from your account's email.</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Plans Table -->
+              <div class="form-group nested plan-group" quay-require="['BILLING']">
+               <strong>Choose your organization's plan</strong>
+               <div class="plans-table" plans="plans" current-plan="holder.currentPlan"></div>
+              </div>
+
+              <div quay-require="['RECAPTCHA']" style="margin-bottom: 10px;">
+                <div class="captcha">
+                  <div vc-recaptcha ng-model="org.recaptcha_response" key="Config.RECAPTCHA_SITE_KEY"></div>
+                </div>
+              </div>
+
+              <div class="button-bar">
+                <button class="btn btn-large btn-primary" type="submit"
+                        ng-disabled="newOrgForm.$invalid || (Features.BILLING && !holder.currentPlan) || (Features.RECAPTCHA && !org.recaptcha_response)"
+                        analytics-on analytics-event="create_organization">
+                  Create Organization
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div ng-show="user && !user.anonymous && created">
+          <div class="step-container">
+            <h3>Organization Created</h3>
+            <h4><a href="/organization/{{ org.name }}">Manage Teams Now</a></h4>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

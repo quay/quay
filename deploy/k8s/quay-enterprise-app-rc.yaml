@@ -1,0 +1,36 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  namespace: quay-enterprise
+  name: quay-enterprise-app
+  labels:
+    quay-enterprise-component: app
+spec:
+  # Only one instance of the quay container is defined here. Adjust replicas based on demand.
+  replicas: 1
+  selector:
+    matchLabels:
+      quay-enterprise-component: app
+  template:
+    metadata:
+      namespace: quay-enterprise
+      labels:
+        quay-enterprise-component: app
+    spec:
+      volumes:
+        - name: configvolume
+          secret:
+            secretName: quay-enterprise-secret
+      containers:
+      - name: quay-enterprise-app
+        # Pick the Quay version you wish to run 
+        image: quay.io/redhat/quay:v3.1.0
+        ports:
+        - containerPort: 8443
+        volumeMounts:
+        - name: configvolume
+          readOnly: false
+          mountPath: /conf/stack
+      imagePullSecrets:
+        - name: redhat-quay-pull-secret

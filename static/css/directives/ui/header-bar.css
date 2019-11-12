@@ -1,0 +1,135 @@
+nav.navbar {
+  border: 0px;
+  border-radius: 0px;
+}
+
+nav.navbar .navbar-toggle {
+  padding: 0px;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 22px;
+}
+
+nav.navbar-default .navbar-nav>li>a {
+  letter-spacing: 0.5px;
+  color: #428bca;
+  font-size: 16px;
+}
+
+nav.navbar-default .navbar-nav>li>a.active {
+  color: #f04c5c;
+}
+
+.navbar-default .navbar-nav>li>a:hover, .navbar-default .navbar-nav>li>a:focus {
+    background: #eee;
+}
+
+.navbar-default .navbar-nav>.open>a, .navbar-default .navbar-nav>.open>a:hover, .navbar-default .navbar-nav>.open>a:focus {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+
+#quay-logo {
+  height: 30px;
+
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  display: inline-block;
+
+  width: 205px;
+  margin-left: 0px;
+  margin-top: 4px;
+}
+
+.header-bar-element .search-box-element {
+      margin-top: 10px;
+      margin-right: 16px;
+}
+
+.header-bar-element .header-bar-content {
+  z-index: 5;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  background: white;
+}
+
+.header-bar-element .avatar {
+  margin-right: 6px;
+}
+
+.user-tools {
+  position: relative;
+  display: inline-block;
+}
+
+.user-tools .user-tool {
+  font-size: 24px;
+  margin-top: 14px;
+  color: #428bca;
+  margin-right: 20px;
+}
+
+.user-tools.with-menu {
+  margin-right: 6px;
+}
+
+.user-tools .caret {
+  position: absolute;
+  top: 3px;
+  left: 23px
+}
+
+.user-tools .notifications-bubble {
+  position: absolute;
+  top: 2px;
+  left: 13px;
+}
+
+.user-tools i.user-tool:hover {
+  cursor: pointer;
+  color: #333;
+}
+
+.user-tools .new-menu {
+  background: transparent !important;
+}
+
+.header-bar-element .context-dropdown i.fa {
+  width: 16px;
+  text-align: center;
+  display: inline-block;
+}
+
+.header-bar-element .block-search {
+  padding: 6px;
+  padding-top: 0px;
+  margin-top: 0px;
+  text-align: right
+}
+
+.header-bar-element .block-search search-box {
+  margin-top: -6px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 960px) {
+  .header-bar-element .navbar-anon .search-box-element input {
+    width: 200px;
+  }
+}
+
+@media (max-width: 860px) {
+  .header-bar-element .navbar-anon .search-box-element input {
+    width: 150px;
+  }
+}
+
+@media (max-width: 1150px) {
+  .header-bar-element .navbar-signedin search-box {
+    display: none;
+  }
+}

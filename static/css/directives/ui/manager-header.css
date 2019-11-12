@@ -1,0 +1,55 @@
+.manager-header {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.manager-header h3 {
+  margin-bottom: 10px;
+}
+
+.manager-header .manager-header-side-controls {
+  float: right;
+}
+
+.manager-filter-box {
+  margin-bottom: 20px;
+  height: 30px;
+}
+
+.manager-filter-box input {
+  float: right;
+  min-width: 175px;
+  max-width: 300px;
+}
+
+@media (max-width: 767px) {
+  .manager-header {
+    position: relative;
+    padding-bottom: 36px;
+  }
+
+  .manager-header .manager-header-side-controls {
+    float: none;
+    display: block;
+    border-top: 1px solid #eee;
+    padding-top: 6px;
+    position: absolute;
+    top: 34px;
+    left: 0px;
+    right: 0px;
+  }
+
+  .manager-header .manager-header-side-controls .btn, .manager-header .manager-header-side-controls .popup-input-button {
+    display: block;
+    width: 100%;
+  }
+
+  .manager-filter-box {
+    margin-bottom: 30px;
+  }
+
+  .manager-filter-box input {
+    max-width: none;
+  }
+}

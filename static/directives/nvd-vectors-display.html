@@ -1,0 +1,8 @@
+<div class="nvd-vectors-display-element">
+  <dl ng-repeat="vector in parsedVectors" bindonce>
+    <dt bo-text="getVectorTitle(vector)" data-title="{{ getVectorDescription(vector) }}" data-container="body" bs-tooltip></dt>
+    <dd bo-class="getVectorClasses(option, vector)" ng-repeat="option in getVectorOptions(vector)" data-container="body" data-title="{{ option.description }}" bs-tooltip>
+       {{ option.title }}
+    </dd>
+  </dl>
+</div>

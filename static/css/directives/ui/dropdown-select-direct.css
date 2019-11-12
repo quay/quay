@@ -1,0 +1,58 @@
+.dropdown-select-direct {
+  margin: 10px;
+  position: relative;
+}
+
+.dropdown-select-direct .dropdown-select-direct-icon {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+}
+
+.dropdown-select-direct .dropdown-select-direct-icon.fa {
+  top: 10px;
+  left: 8px;
+  font-size: 20px;
+}
+
+.dropdown-select-direct .dropdown-select-direct-icon.none-icon {
+  color: #ccc;
+  display: inline;
+}
+
+.dropdown-select-direct.has-item .dropdown-direct-icon-icon {
+  display: inline;
+}
+
+.dropdown-select-direct.has-item .dropdown-direct-icon-icon.none-icon {
+  display: none;
+}
+
+.dropdown-select-direct input.form-control[readonly] {
+    cursor: pointer;
+    background-color: #fff;
+}
+
+.dropdown-select-direct .lookahead-input {
+  padding-left: 32px;
+}
+
+.dropdown-select-direct .twitter-typeahead {
+  display: block !important;
+}
+
+.dropdown-select-direct .twitter-typeahead .tt-hint {
+  padding-left: 32px;
+}
+
+.dropdown-select-direct .dropdown {
+  position: absolute;
+  right: 0px;
+  top: 0px;
+}
+
+.dropdown-select-direct .dropdown button.dropdown-toggle {
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+}

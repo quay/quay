@@ -1,0 +1,4 @@
+<span class="visibility-indicator-component-element" ng-class="{'public': $ctrl.repository.is_public, 'private': !$ctrl.repository.is_public}">
+  <span class="public" ng-if="$ctrl.repository.is_public">Public</span>
+  <span class="private" ng-if="!$ctrl.repository.is_public">Private</span>
+</span>

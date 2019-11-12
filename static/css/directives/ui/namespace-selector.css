@@ -1,0 +1,35 @@
+.namespace-selector-dropdown .namespace {
+  padding: 6px;
+  padding-left: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: black;
+}
+
+.namespace-selector-dropdown .namespace-item {
+  position: relative;
+}
+
+.namespace-selector-dropdown .namespace-item .fa {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  color: #aaa;
+}
+
+.namespace-selector-dropdown .avatar {
+  margin-right: 4px;
+}
+
+.namespace-selector-dropdown a.namespace {
+  color: black !important;
+}
+
+.namespace-selector-dropdown .namespace-item.disabled .avatar {
+  -webkit-filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.namespace-selector-dropdown .namespace-item .tooltip-inner {
+  min-width: 200px;
+}

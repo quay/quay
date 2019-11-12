@@ -1,0 +1,62 @@
+<div class="cor-container about-us">
+  <h2>
+    About Us
+  </h2>
+
+  <div class="row">
+    <div class="col-sm-12 about-basic-info">
+      <h3>The Basics</h3>
+    </div>
+    <div class="col-sm-3">
+      <div class="about-basic-icon"><i class="fa fa-3x fa-calendar"></i></div>
+      <div class="about-basic-text">
+        <b> Founded</b><br>
+        2012
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="about-basic-icon"><i class="fa fa-3x fa-globe"></i></div>
+      <div class="about-basic-text">
+        <b> Location</b><br>
+        New York City, NY
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="about-basic-icon"><img src="/static/img/coreos-globe-color-lg.png" style="height: 42px; vertical-align: bottom;"></div>
+      <div class="about-basic-text">
+        <b> CoreOS</b><br>
+        August, 2014
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="about-basic-text">
+        <img src="/static/img/RedHat.svg" style="height: 42px; vertical-align: bottom;"><br>
+        January, 2018
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-sm-12">
+      <h3>Packages and Projects used</h3>
+      <table class="co-table co-fixed-table" style="margin-top: 20px;">
+        <thead>
+          <tr>
+            <td>Project Name</td>
+            <td>Project License</td>
+            <td>Type</td>
+          </tr>
+        </thead>
+      </table>
+      <div style="height: 300px; overflow-y: auto;">
+        <table class="co-table co-fixed-table">
+          <tr ng-repeat="project in billOfMaterials">
+            <td>{{project.project}}</td>
+            <td>{{project.license}}</td>
+            <td>{{project.format}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

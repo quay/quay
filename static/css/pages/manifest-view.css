@@ -1,0 +1,70 @@
+.manifest-view .manifest-view-header {
+  padding: 10px;
+  background: #e8f1f6;
+  margin: -10px;
+  margin-bottom: 20px;
+}
+
+.manifest-view .manifest-view-header .section-icon {
+  margin-right: 6px;
+}
+
+.manifest-view .manifest-view-header .section {
+  padding: 4px;
+  display: inline-block;
+  margin-right: 20px;
+}
+
+.manifest-view .co-tab-content {
+  padding: 20px;
+  padding-top: 10px;
+}
+
+.manifest-view .co-tab-content h3 {
+  margin-bottom: 30px;
+}
+
+.manifest-view .fa-bug {
+  margin-right: 4px;
+}
+
+.manifest-view .co-filter-box {
+  float: right;
+  min-width: 300px;
+  margin-bottom: 10px;
+}
+
+.manifest-view .co-filter-box .current-filtered {
+  display: inline-block;
+  margin-right: 10px;
+  color: #999;
+}
+
+.manifest-view .co-filter-box input {
+  display: inline-block;
+}
+
+.manifest-view .level-col h4 {
+  margin-top: 0px;
+  margin-bottom: 20px;
+}
+
+.manifest-view .levels {
+  list-style: none;
+  padding: 0px;
+  margin: 0px;
+}
+
+.manifest-view .levels li {
+  margin-bottom: 20px;
+}
+
+.manifest-view .levels li .description {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #999;
+}
+
+.manifest-view .level-col {
+  padding: 20px;
+}

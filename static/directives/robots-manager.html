@@ -1,0 +1,126 @@
+<div class="robots-manager-element">
+  <div class="feedback-bar" feedback="feedback"></div>
+  <div class="cor-loader" ng-show="loading"></div>
+
+  <div ng-show="!loading">
+    <div class="manager-header" header-title="Robot Accounts">
+      <button class="btn btn-primary" ng-click="askCreateRobot()" ng-show="isEnabled && !inReadOnlyMode">
+        <i class="fa fa-plus" style="margin-right: 4px;"></i> Create Robot Account
+      </button>
+    </div>
+
+    <div class="section-description-header">
+      Robot Accounts are named tokens that can be granted permissions on multiple repositories
+      under this <span ng-if="organization">organization</span><span ng-if="!organization">user namespace</span>. They are typically used in environments where credentials will
+      be shared, such as deployment systems.
+    </div>
+
+    <div class="filter-box" collection="robots" filter-model="options.filter" filter-name="Robot Accounts"></div>
+
+    <div class="empty" ng-if="!robots.length">
+      <div class="empty-primary-msg">No robot accounts defined.</div>
+      <div class="empty-secondary-msg" ng-show="!inReadOnlyMode">
+        Click the "Create Robot Account" button above to create a robot account.
+      </div>
+    </div>
+
+    <div class="empty" ng-if="robots.length && !orderedRobots.entries.length">
+      <div class="empty-primary-msg">No robot accounts found matching filter.</div>
+      <div class="empty-secondary-msg">
+        Please change your filter to display robot accounts.
+      </div>
+    </div>
+
+    <table class="cor-table" ng-if="orderedRobots.entries.length">
+      <thead>
+        <td ng-class="TableService.tablePredicateClass('name', options.predicate, options.reverse)">
+          <a ng-click="TableService.orderBy('name', options)">Robot Account Name</a>
+        </td>
+        <td>Description</td>
+        <td ng-if="organization" ng-class="TableService.tablePredicateClass('teams_string', options.predicate, options.reverse)">
+          <a ng-click="TableService.orderBy('teams_string', options)">Teams</a>
+        </td>
+        <td>Repositories</td>
+        <td ng-class="TableService.tablePredicateClass('created_datetime', options.predicate, options.reverse)">
+          <a ng-click="TableService.orderBy('created_datetime', options)">Created</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('last_accessed_datetime', options.predicate, options.reverse)"
+            quay-show="Features.USER_LAST_ACCESSED">
+          <a ng-click="TableService.orderBy('last_accessed_datetime', options)">Last Accessed</a>
+        </td>
+        <td class="options-col"></td>
+      </thead>
+
+      <tr ng-repeat="robotInfo in orderedRobots.visibleEntries" bindonce>
+        <td class="robot">
+          <i class="fa ci-robot hidden-xs"></i>
+          <a class="robot-account-name" ng-click="showRobot(robotInfo)">
+            <span class="prefix" bo-text="getPrefix(robotInfo.name) + '+'"></span><span bo-text="getShortenedName(robotInfo.name)"></span>
+          </a>
+        </td>
+        <td>
+          <span class="empty" bo-if="!robotInfo.description">(None)</span>
+          <span class="robots-description" bo-if="robotInfo.description">{{ ::robotInfo.description }}</span>
+        </td>
+        <td bo-if="organization">
+          <span class="empty" bo-if="robotInfo.teams.length == 0">
+            No teams
+          </span>
+          <span class="empty" bo-if="robotInfo.teams.length > 0">
+             <span ng-repeat="team in robotInfo.teams"
+                   data-title="Team {{ team.name }}" bs-tooltip>
+               <span class="anchor" is-only-text="!organization.is_admin" href="/organization/{{ organization.name }}/teams/{{ team.name }}">
+                 <span class="avatar" size="24" data="team.avatar"></span>
+               </span>
+             </span>
+          </span>
+        </td>
+        <td>
+          <span class="empty" ng-if="robotInfo.repositories.length == 0">
+            <a href="javascript:void(0)" is-only-text="!(organization.is_admin || user) || inReadOnlyMode" ng-click="setPermissions(robotInfo)">
+              No repositories
+            </a>
+          </span>
+
+          <span class="member-perm-summary" ng-if="robotInfo.repositories.length > 0">
+            <a href="javascript:void(0)" is-only-text="!(organization.is_admin || user) || inReadOnlyMode" ng-click="setPermissions(robotInfo)">
+              {{ robotInfo.repositories.length }}
+              <span ng-if="robotInfo.repositories.length == 1">repository</span>
+              <span ng-if="robotInfo.repositories.length > 1">repositories</span>
+            </a>
+          </span>
+        </td>
+        <td>
+          <time-ago datetime="robotInfo.created"></time-ago>          
+        </td>
+        <td quay-show="Features.USER_LAST_ACCESSED">
+          <time-ago datetime="robotInfo.last_accessed"></time-ago>          
+        </td>
+        <td class="options-col">
+          <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+            <span class="cor-option" option-click="showRobot(robotInfo)">
+              <i class="fa fa-key"></i> View Credentials
+            </span>
+            <span class="cor-option" option-click="setPermissions(robotInfo)">
+              <i class="fa fa-hdd-o"></i> Set Repository Permissions
+            </span>
+            <span class="cor-option" option-click="askDeleteRobot(robotInfo)">
+              <i class="fa fa-times"></i> Delete Robot {{ robotInfo.name }}
+            </span>
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <div ng-if="orderedRobots.hasHiddenEntries">
+      <div class="cor-loader-inline"></div>
+    </div>
+  </div>
+
+  <!-- Set repo permissions dialog -->
+  <div class="set-repo-permissions-dialog" info="setRepoPermissionsInfo"
+       permissions-set="handlePermissionsSet(info, repositories)"></div>
+
+  <div class="create-robot-dialog" info="createRobotInfo" robot-created="robotCreated()"></div>
+  <div class="robot-credentials-dialog" info="robotDisplayInfo"></div>
+</div>

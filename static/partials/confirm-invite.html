@@ -1,0 +1,18 @@
+<div class="confirm-invite">
+  <div class="cor-container signin-container">
+    <div class="row">
+      <div class="col-sm-6 col-sm-offset-3">
+        <div class="user-setup" ng-show="user.anonymous" redirect-url="redirectUrl"
+             invite-code="inviteCode">
+        </div>
+        <div class="cor-loader-inline" ng-show="!user.anonymous && loading"></div>
+
+        <div class="error-view-element" ng-show="!user.anonymous && invalid">
+          <h2><i class="fa fa-exclamation-triangle"></i> Confirmation Error</h2>
+          <h3>Confirmation code does not match this account</h3>
+          <div>{{ invalid }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

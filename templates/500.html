@@ -1,0 +1,28 @@
+{% extends "error.html" %}
+
+{% block title %}
+  <title>Internal Error · Quay</title>
+{% endblock %}
+
+{% block content %}
+  <h3>Something went wrong on our end!</h3>
+  <h4>
+    <p><a href="javascript:history.back()">Head on back</a> and retry whatever it was you were doing.</p>
+    <p>If the issue persists and is blocking you from getting stuff done, <a href="/contact">contact us</a>.</p>
+  </h4>
+
+  {% if has_billing %}
+  <div style="margin-top: 20px">
+    Current Service Status:
+    <span id="status-elem">(Loading)</span>
+  </div>
+
+  <script type="text/javascript" src="//statuspage-production.s3.amazonaws.com/se.js"></script>
+  <script type="text/javascript">
+    window.fetchStatusPage({
+      pageId: '8szqd6w4s277',
+      renderTo: '#status-elem'
+    });
+  </script>
+  {% endif %}
+{% endblock %}

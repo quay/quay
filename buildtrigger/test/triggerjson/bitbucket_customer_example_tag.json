@@ -1,0 +1,108 @@
+{
+  "push": {
+    "changes": [
+      {
+        "links": {
+          "commits": {
+            "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commits?include=a0ec139843b2bb281ab21a433266ddc498e605dc"
+          }
+        },
+        "closed": false,
+        "new": {
+          "target": {
+            "date": "2015-09-25T00:55:08+00:00",
+            "links": {
+              "html": {
+                "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/a0ec139843b2bb281ab21a433266ddc498e605dc"
+              },
+              "self": {
+                "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/a0ec139843b2bb281ab21a433266ddc498e605dc"
+              }
+            },
+            "message": "Update version.py to 0.1.2 [skip ci]\n\n(by utilitybelt/scripts/autotag_version.py)\n",
+            "type": "commit",
+            "parents": [
+              {
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/263736ecc250113fad56a93f83b712093554ad42"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/263736ecc250113fad56a93f83b712093554ad42"
+                  }
+                },
+                "hash": "263736ecc250113fad56a93f83b712093554ad42",
+                "type": "commit"
+              }
+            ],
+            "hash": "a0ec139843b2bb281ab21a433266ddc498e605dc",
+            "author": {
+              "raw": "scripts/autotag_version.py <utilitybelt@somecoollabs.com>"
+            }
+          },
+          "name": "0.1.2",
+          "links": {
+            "html": {
+              "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/tag/0.1.2"
+            },
+            "self": {
+              "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/refs/tags/0.1.2"
+            },
+            "commits": {
+              "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commits/0.1.2"
+            }
+          },
+          "type": "tag"
+        },
+        "truncated": false,
+        "created": true,
+        "old": null,
+        "forced": false
+      }
+    ]
+  },
+  "repository": {
+    "name": "svc-identity",
+    "links": {
+      "html": {
+        "href": "https://bitbucket.org/somecoollabs/svc-identity"
+      },
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity"
+      },
+      "avatar": {
+        "href": "https://bitbucket.org/somecoollabs/svc-identity/avatar/16/"
+      }
+    },
+    "is_private": true,
+    "type": "repository",
+    "scm": "git",
+    "owner": {
+      "account_id": "somecoollabs",
+      "links": {
+        "self": {
+          "href": "https://api.bitbucket.org/2.0/teams/somecoollabs"
+        },
+        "avatar": {
+          "href": "https://bitbucket.org/account/somecoollabs/avatar/32/"
+        }
+      },
+      "display_name": "Some Cool Labs",
+      "type": "team"
+    },
+    "full_name": "somecoollabs/svc-identity"
+  },
+  "actor": {
+    "account_id": "SomeCoolLabs_CodeShip",
+    "links": {
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/users/SomeCoolLabs_CodeShip"
+      },
+      "avatar": {
+        "href": "https://bitbucket.org/account/SomeCoolLabs_CodeShip/avatar/32/"
+      }
+    },
+    "display_name": "CodeShip Tagging",
+    "type": "user"
+  }
+}

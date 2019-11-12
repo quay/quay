@@ -1,0 +1,57 @@
+.entity-reference .new-entity-reference .entity-name {
+  margin-left: 6px;
+}
+
+.entity-reference .new-entity-reference .ci-robot {
+  width: 16px;
+}
+
+.entity-reference .prefix {
+  color: #aaa;
+}
+
+.entity-reference.block-reference {
+  position: relative;
+  display: block;
+}
+
+.entity-reference.block-reference .entity-reference-element {
+  display: block;
+}
+
+.entity-reference.block-reference i.fa-exclamation-triangle {
+  position: absolute;
+  right: 10px;
+  top: 4px;
+}
+
+.entity-reference-element {
+  white-space: nowrap;
+}
+
+.entity-reference-element i.fa-exclamation-triangle {
+  color: #c09853;
+  margin-left: 10px;
+}
+
+.entity-reference-element i.fa-user {
+  margin-left: 2px;
+  margin-right: 7px;
+}
+
+.entity-reference-element i.ci-robot {
+  margin-left: 1px;
+  margin-right: 5px;
+}
+
+.entity-reference-element i.fa-group {
+  margin-right: 4px;
+}
+
+.entity-reference-element .robot-shortname {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: text-bottom;
+}

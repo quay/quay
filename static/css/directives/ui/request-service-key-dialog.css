@@ -1,0 +1,11 @@
+.request-service-key-dialog-element .co-option-table {
+    margin-top: 20px;
+}
+
+.request-service-key-dialog-element .key-display {
+    margin-top: 10px;
+    font-size: 12px;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+    background: white;
+    min-height: 500px;
+}

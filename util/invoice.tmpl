@@ -1,0 +1,69 @@
+<html>
+  <body>
+   <table width="100%" style="max-width: 640px">
+     <tr>
+       <td valign="center" style="padding: 10px;">
+         <img src="{{ logo }}" alt="Quay" style="width: 100px;">
+       </td>
+       <td valign="center">
+         <h3>Quay</h3>
+         <p style="font-size: 12px; -webkit-text-adjust: none">
+           Red Hat, Inc<br>
+           https://redhat.com<br>
+           100 East Davie Street<br>
+           Raleigh, North Carolina 27601
+         </p>
+       </td>
+       <td align="right" width="100%">
+         <h1 style="color: #ddd;">RECEIPT</h1>
+         <table>
+           <tr><td>Date:</td><td>{{ invoice_date }}</td></tr>
+           <tr><td>Invoice #:</td><td style="font-size: 10px">{{ invoice.id }}</td></tr>
+           {% for custom_field in custom_fields %}
+           <tr>
+             <td>*{{ custom_field['title'] }}:</td>
+             <td style="font-size: 10px">{{ custom_field['value'] }}</td>
+           </tr>
+           {% endfor %}
+         </table>
+       </td>
+     </tr>
+   </table>
+
+   <hr>
+
+   <table width="100%" style="max-width: 640px">
+     <thead>
+       <th style="padding: 4px; background: #eee; text-align: center; font-weight: bold">Description</th>
+       <th style="padding: 4px; background: #eee; text-align: center; font-weight: bold">Line Total</th>
+     </thead>
+     <tbody>
+{%- for line in invoice.lines.data -%}
+       <tr>
+         <td width="100%" style="padding: 4px;">{{ line.description or ('Plan Subscription' + getRange(line)) }}</td>
+         <td style="padding: 4px; min-width: 150px;">{{ getPrice(line.amount) }}</td>
+       </tr>
+{%- endfor -%}
+
+
+       <tr>
+         <td></td>
+         <td valign="right">
+           <table>
+             <tr><td><b>Subtotal: </b></td><td>{{ getPrice(invoice.subtotal) }}</td></tr>
+             <tr><td><b>Total: </b></td><td>{{ getPrice(invoice.total) }}</td></tr>
+             <tr><td><b>Paid: </b></td><td>{{ getPrice(invoice.total) if invoice.paid else 0 }}</td></tr>
+             <tr><td><b>Total Due:</b></td>
+               <td>{{ getPrice(invoice.ending_balance) }}</td></tr>
+           </table>
+         </td>
+       </tr>
+     </tbody>
+   </table>
+
+   <div style="margin: 6px; padding: 6px; width: 100%; max-width: 640px; border-top: 2px solid #eee; text-align: center; font-size: 14px; -webkit-text-adjust: none; font-weight: bold;">
+     We thank you for your continued business!
+   </div>
+
+  </body>
+</html>

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 style="font-weight: 400">Usage Logs Export has completed</h3>
+<h4>Export ID: {{ export_id }}</h4>
+<hr style="border:none; border-top: 1px solid #D9D9D9; margin: 25px 0">
+
+{% if status == 'success' %}
+<table>
+	<tr>
+		<td style="font-size: 13px;">The exported logs information can be found at <a href="{{ exported_data_url }}">{{ exported_data_url }}</a> and will remain accessible for <b>{{ exported_data_expiration }} seconds</b> before being deleted.</td>
+	</tr>
+</table>
+{% elif status == 'failed' %}
+<table>
+	<tr>
+		<td style="font-size: 13px;">The attempt to export the logs in the specified range has failed. This operation will be retried up to 3 times. Please contact support if this problem persists.</td>
+	</tr>
+</table>
+{% elif status == 'timedout' %}
+<table>
+	<tr>
+		<td style="font-size: 13px;">The attempt to export the logs in the specified range has timed out. Please contact support if this problem persists.</td>
+	</tr>
+</table>
+{% elif status == 'invalidrequest' %}
+<table>
+	<tr>
+		<td style="font-size: 13px;">The attempt to export the logs failed due to an invalid request. Please contact support if this problem persists.</td>
+	</tr>
+</table>
+{% endif %}
+
+<table style="margin: 25px 0 35px">
+	<tr>
+		<td style="font-size: 13px;">If you did not initiate this operation, please delete this e-mail.</td>
+	</tr>
+</table>
+
+<span style="font-size: 13px;">Best Wishes,</span><br>
+<span style="font-size: 13px;">The {{ app_title }} Team</span><br>
+
+{% endblock %}

@@ -1,0 +1,62 @@
+<div class="repo-list page-content">
+  <div class="cor-title">
+    <span class="cor-title-link"></span>
+    <span class="cor-title-content">Repositories</span>
+    <span class="cor-title-action" ng-if="!user.anonymous && !inReadOnlyMode">
+      <a href="/new/">
+          <i class="fa fa-plus" data-title="Create new repository"></i>
+          Create New Repository
+      </a>
+    </span>
+  </div>
+
+  <!-- Loading -->
+  <div class="cor-loader" ng-if="loading || user.beforeload"></div>
+
+  <!-- Not signed in -->
+  <div class="co-main-content-panel" ng-if="!loading && user.anonymous && !user.beforeload">
+    <!-- The user is not logged in -->
+    <div class="cor-container signin-container row">
+      <!-- Sign In -->
+      <div class="user-setup" redirect-url="redirectUrl"></div>
+    </div>
+  </div>
+
+  <!-- Signed in -->
+  <div class="row"  ng-if="!loading && !user.anonymous">
+    <div class="col-lg-3 col-lg-push-9 col-md-3 col-md-push-9 col-sm-12">
+      <div class="co-main-content-panel repo-list-namespaces">
+        <h4>Users and Organizations</h4>
+        <ul class="namespaces-list">
+          <li ng-repeat="namespace in namespaces">
+            <a href="/user/{{ namespace.name }}" ng-if="!isOrganization(namespace.name)">
+              <span class="avatar" size="30" data="namespace.avatar"></span>
+              {{ namespace.name }}
+            </a>
+            <a href="/organization/{{ namespace.name }}" ng-if="isOrganization(namespace.name)">
+              <span class="avatar" size="30" data="namespace.avatar"></span>
+              {{ namespace.name }}
+            </a>
+          </li>
+          <li class="new-org" ng-if="!user.anonymous && !inReadOnlyMode">
+            <span class="avatar" size="30" data="{'color': '#ccc', name: '+new'}"></span>
+            <a href="/organizations/new">Create New Organization</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-lg-9 col-lg-pull-3 col-md-9 col-md-pull-3 col-sm-12">
+      <div class="repo-list-panel co-main-content-panel">
+        <div class="repo-list-view" namespaces="namespaces"
+             star-toggled="starToggled(repository)"
+             starred-repositories="starred_repositories"
+             repo-kind="image"
+             in-read-only-mode="inReadOnlyMode">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+

@@ -1,0 +1,11 @@
+<div class="manifest-label-list-element">
+    <div class="cor-loader-inline" ng-if="repository && manifestDigest && !labels && !loadError"></div>
+    <div class="none" ng-if="repository && !manifestDigest && !loadError">
+        This tag does not have an associated manifest
+    </div>
+    <div class="none" ng-if="repository && manifestDigest && loadError">
+        Could not load labels for this manifest
+    </div>
+    <div class="label-list" labels="labels"
+         ng-if="repository && manifestDigest && labels && !loadError"></div>
+</div>

@@ -1,0 +1,28 @@
+.recovery-form-element h4 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.recovery-form-element input {
+    margin-bottom: 10px;
+}
+
+.recovery-form-element .captcha {
+    display: block;
+    text-align: center;
+}
+
+.recovery-form-element .captcha div {
+    display: inline-block;
+    margin: 2px;
+}
+
+.recovery-form-element .captcha {
+    height: 0px;
+    transition: height ease-in-out 250ms;
+    overflow: hidden;
+}
+
+.recovery-form-element .captcha.expanded {
+    height: 94px;
+}

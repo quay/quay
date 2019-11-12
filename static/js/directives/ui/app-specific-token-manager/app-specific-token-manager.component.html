@@ -1,0 +1,33 @@
+<div class="resource-view" resource="$ctrl.appTokensResource">
+    <div style="float: right; margin-left: 10px;" ng-show="!$ctrl.inReadOnlyMode">
+        <button class="btn btn-primary" ng-click="$ctrl.askCreateToken()">Create Application Token</button>
+    </div>
+    <cor-table table-data="$ctrl.appTokens" table-item-title="tokens" filter-fields="['title']">
+        <cor-table-col datafield="title" sortfield="title" title="Title" selected="true"
+                       bind-model="$ctrl"
+                       templateurl="/static/js/directives/ui/app-specific-token-manager/token-title.html"></cor-table-col>
+        <cor-table-col datafield="last_accessed" sortfield="last_accessed" title="Last Accessed"
+                       kindof="datetime" templateurl="/static/js/directives/ui/app-specific-token-manager/last-accessed.html"></cor-table-col>
+        <cor-table-col datafield="expiration" sortfield="expiration" title="Expiration"
+                       kindof="datetime" templateurl="/static/js/directives/ui/app-specific-token-manager/expiration.html"></cor-table-col>
+        <cor-table-col datafield="created" sortfield="created" title="Created"
+                       kindof="datetime" templateurl="/static/js/directives/ui/app-specific-token-manager/created.html"></cor-table-col>
+        <cor-table-col templateurl="/static/js/directives/ui/app-specific-token-manager/cog.html"
+                       bind-model="$ctrl" class="options-col" ng-if="!$ctrl.inReadOnlyMode"></cor-table-col>
+    </cor-table>
+    
+    <div class="credentials-dialog" credentials="$ctrl.tokenCredentials" secret-title="Application Token" entity-title="application token" entity-icon="fa-key"></div>
+
+  <!-- Revoke token confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="$ctrl.revokeTokenInfo"
+       dialog-action="$ctrl.revokeToken(info.token, callback)"
+       dialog-title="Revoke Application Token"
+       dialog-action-title="Revoke Token">
+    <div class="co-alert co-alert-warning" style="margin-bottom: 10px;">
+        Application token "{{ $ctrl.revokeTokenInfo.token.title }}" will be revoked and <strong>all</strong> applications and CLIs making use of the token will no longer operate.
+    </div>
+
+    Proceed with revocation of this token?
+  </div>
+</div>

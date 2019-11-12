@@ -1,0 +1,46 @@
+<span class="entity-reference-element">
+  <span class="new-entity-reference" data-title="{{ getTitle(entity) }} {{ entity.name }}" bs-tooltip>
+    <span ng-switch on="entity.kind">
+      <!-- Team -->
+      <span ng-switch-when="team">
+        <span class="avatar" data="entity.avatar" size="avatarSize || 16"></span>
+        <span class="entity-name anchor"
+              href="/organization/{{ namespace }}/teams/{{ entity.name }}"
+              is-only-text="!getIsAdmin(namespace)">
+              {{ entity.name }}
+        </span>
+      </span>
+
+      <!-- Organization -->
+      <span ng-switch-when="org">
+        <span class="avatar" size="avatarSize || 16" data="entity.avatar"></span>
+        <span class="entity-name anchor" href="/organization/{{ entity.name }}"
+              is-only-text="!getIsAdmin(entity.name)">
+              {{ entity.name }}
+        </span>
+      </span>
+
+      <!-- User or Robot -->
+      <span ng-switch-when="user">
+        <!-- User -->
+        <span ng-if="!entity.is_robot">
+          <span class="avatar" size="avatarSize || 16" data="entity.avatar"></span>
+          <a class="entity-name" href="/user/{{ entity.name }}">{{ entity.name }}</a>
+        </span>
+
+        <!-- Robot -->
+        <span ng-if="entity.is_robot">
+          <i class="fa ci-robot fa-lg"></i>
+          <a class="entity-name" ng-if="getIsAdmin(getPrefix(entity.name))" ng-click="showRobotCredentials()">
+            <span class="prefix">{{ getPrefix(entity.name) }}+</span><span class="robot-shortname">{{ getShortenedName(entity.name) }}</span>
+          </a>
+          <span class="entity-name" ng-if="!getIsAdmin(getPrefix(entity.name))">
+            <span class="prefix">{{ getPrefix(entity.name) }}+</span><span class="robot-shortname">{{ getShortenedName(entity.name) }}</span>
+          </span>
+        </span>
+      </span>
+    </span>
+  </span>
+
+  <div class="robot-credentials-dialog" info="robotToShow" ng-if="robotToShow"></div>
+</span>

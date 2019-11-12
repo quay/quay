@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "no-default-export": true,
+    "member-access": true,
+    "member-ordering": [true, {"order": "fields-first"}],
+    "no-empty-interface": true,
+    "no-namespace": true,
+    "no-reference": true,
+    "curly": true,
+    "no-conditional-assignment": true,
+    "no-duplicate-super": true,
+    "no-empty": true,
+    "no-invalid-template-strings": true,
+    "no-misused-new": true,
+    "no-shadowed-variable": true,
+    "no-unbound-method": true,
+    "restrict-plus-operands": true,
+    "eofline": true,
+    "indent": [true, "spaces", 2],
+    "max-line-length": [true, 120],
+    "class-name": true,
+    "import-spacing": true,
+    "align": true,
+    "new-parens": true,
+    "semicolon": true,
+    "space-before-function-paren": [true, "never"],
+    "whitespace": [true, "check-decl", "check-operator", "check-module", "check-separator", "check-type", "check-preblock"]
+  }
+}

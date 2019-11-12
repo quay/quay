@@ -1,0 +1,154 @@
+<div class="resource-view org-view"
+     resource="orgResource"
+     error-message="'Organization not found'">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link"></span>
+      <span class="cor-title-content">
+        <span class="avatar" size="32" data="organization.avatar"></span>
+        <span class="organization-name">{{ organization.name }}</span>
+      </span>
+      <span class="cor-title-action" ng-if="isMember && !inReadOnlyMode">
+        <a href="/new/?namespace={{ organization.name }}">
+            <i class="fa fa-plus" data-title="Create new repository"></i>
+            Create New Repository
+        </a>
+      </span>
+    </div>
+
+    <div class="co-main-content-panel" ng-if="user.anonymous || !isMember">
+      <div class="repo-list-view padded" namespaces="[organization]"
+           in-read-only-mode="inReadOnlyMode">&nbsp;</div>
+    </div>
+
+    <cor-tab-panel ng-if="!user.anonymous && isMember"
+                   orientation="vertical"
+                   cor-nav-tabs>
+      <cor-tabs quay-show="isMember">
+        <cor-tab tab-active="true" tab-title="Repositories" tab-id="repos">
+          <i class="fa fa-hdd-o"></i>
+        </cor-tab>
+        <cor-tab tab-title="Teams and Membership" tab-id="teams" tab-init="showTeams()">
+          <i class="fa fa-users"></i>
+        </cor-tab>
+        <cor-tab tab-title="Robot Accounts" tab-id="robots" tab-init="showRobots()"
+                 ng-show="isAdmin">
+          <i class="fa ci-robot"></i>
+        </cor-tab>
+        <cor-tab tab-title="Default Permissions" tab-id="default" ng-show="isAdmin">
+          <i class="fa ci-stamp"></i>
+        </cor-tab>
+        <cor-tab tab-title="Usage Logs" tab-id="logs"
+                 tab-init="showLogs()" ng-show="isAdmin">
+          <i class="fa fa-bar-chart"></i>
+        </cor-tab>
+        <cor-tab tab-title="Applications" tab-id="applications"
+                 tab-init="showApplications()" ng-show="isAdmin && !inReadOnlyMode">
+          <i class="fa ci-application"></i>
+        </cor-tab>
+        <cor-tab tab-title="Organization Settings" tab-id="settings"
+                 ng-show="isAdmin && !inReadOnlyMode" tab-init="showBilling()">
+          <i class="fa fa-gears"></i>
+        </cor-tab>
+      </cor-tabs> <!-- /cor-tabs -->
+
+      <cor-tab-content>
+        <!-- Repositories -->
+        <cor-tab-pane id="repos">
+          <div class="repo-list-view" namespaces="[organization]"
+               in-read-only-mode="inReadOnlyMode"><h3>Repositories</h3></div>
+        </cor-tab-pane>
+
+        <!-- Teams -->
+        <cor-tab-pane id="teams">
+          <div ng-if="!user.anonymous">
+            <div class="teams-manager" organization="organization" is-enabled="showTeamsCounter"></div>
+          </div>
+        </cor-tab-pane>
+
+        <!-- Robot Accounts -->
+        <cor-tab-pane id="robots">
+          <div ng-if="isAdmin">
+            <div class="robots-manager" organization="organization" is-enabled="showRobotsCounter"></div>
+          </div>
+        </cor-tab-pane>
+
+        <!-- Default Permissions -->
+        <cor-tab-pane id="default">
+          <div ng-if="isAdmin">
+            <div class="prototype-manager" organization="organization"></div>
+          </div>
+        </cor-tab-pane>
+
+        <!-- Usage Logs -->
+        <cor-tab-pane id="logs">
+          <div class="logs-view" organization="organization" makevisible="showLogsCounter"></div>
+        </cor-tab-pane>
+
+        <!-- Applications -->
+        <cor-tab-pane id="applications">
+          <div class="application-manager" organization="organization"
+               makevisible="showApplicationsCounter"></div>
+        </cor-tab-pane>
+
+        <!-- Settings -->
+        <cor-tab-pane id="settings">
+          <div ng-if="isAdmin">
+            <!-- Org Settings -->
+            <div class="settings-section">
+              <h3>Organization Settings</h3>
+              <table class="co-list-table">
+                <tr>
+                  <td>Namespace:</td>
+                  <td>
+                    {{ organization.name }}
+                    <div class="help-text">Organization names cannot currently be changed. Please <a href="/contact">contact support</a> to migrate accounts.</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Avatar:</td>
+                  <td>
+                    <span class="avatar" size="48" data="organization.avatar"></span>
+                    <div class="help-text" ng-if="Config.AVATAR_KIND == 'local'">Avatar is generated based off the organization's name.</div>
+                    <div class="help-text" ng-if="Config.AVATAR_KIND == 'gravatar' && Features.MAILING">Avatar is served by <a href="http://gravatar.com" rel="nofollow" target="_blank">Gravatar</a> based on the {{ organization.email }} e-mail address.</div>
+                    <div class="help-text" ng-if="Config.AVATAR_KIND == 'gravatar' && !Features.MAILING">Avatar is served by <a href="http://gravatar.com" rel="nofollow" target="_blank">Gravatar</a> based on the unique ID: {{ organization.email }}.</div>
+                  </td>
+                </tr>
+                <tr quay-show="Features.MAILING">
+                  <td>Email Address:</td>
+                  <td>
+                    <a class="co-modify-link" ng-click="showChangeEmail()">{{ organization.email }}</a>
+                  </td>
+                </tr>
+              </table>
+
+              <div class="delete-namespace-view" subscription-status="subscriptionStatus" organization="organization" namespace-title="organization"></div>
+
+              <time-machine-settings organization="organization"></time-machine-settings>
+            </div>
+
+            <!-- Billing Information -->
+            <div class="settings-section" quay-show="Features.BILLING">
+              <h3>Billing Information</h3>
+              <div class="billing-management-panel" organization="organization" is-enabled="showBillingCounter" subscription-status="subscriptionStatus"></div>
+            </div>
+          </div>
+        </cor-tab-pane>
+      </cor-tab-content>
+    </cor-tab-panel>
+  </div>
+
+  <!-- Change email dialog -->
+  <div class="cor-confirm-dialog"
+     dialog-context="changeEmailInfo"
+     dialog-action="changeEmail(info, callback)"
+     dialog-title="Change E-mail Address"
+     dialog-action-title="Change Email"
+     dialog-form="context.emailform">
+     <form name="context.emailform" class="co-single-field-dialog">
+       Please enter a new email address.
+       <input type="email" class="form-control" placeholder="Your new e-mail address"
+              ng-model="changeEmailInfo.email" required>
+     </form>
+  </div>
+</div>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Email Template Viewer</title>
+</head>
+<body>
+	<h1>Email Template Viewer</h1>
+	Here is a list of the templates available:
+	<ul>
+	{% for template in templates %}
+		{% if template != 'email-template-viewer' %}
+			<li><a href="{{template}}">{{template}}</a></li>
+		{% endif %}
+	{% endfor %}
+	</ul>
+</body>
+</html>

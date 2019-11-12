@@ -1,0 +1,10 @@
+<div class="label-list-element">
+  <div class="label-view"
+       ng-repeat="label in labels"
+       expand="{{expand}}"
+       label="label">
+  </div>
+  <div class="empty-list" ng-if="!labels.length">
+    No labels found
+  </div>
+</div>

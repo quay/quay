@@ -1,0 +1,147 @@
+.angular-tour-ui-element.overlay {
+  display: block;
+  position: fixed;
+  bottom: 50px;
+  right: 20px;
+  z-index: 9999999;
+
+  background: white;
+  -webkit-box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+
+  opacity: 0;
+
+  transition: opacity 750ms ease-in-out;
+  -webkit-transition: opacity 750ms ease-in-out;
+
+  min-width: 400px;
+}
+
+.angular-tour-ui-element.overlay.touring {
+  opacity: 1;
+}
+
+.angular-tour-ui-element.overlay.nottouring {
+  pointer-events: none;
+  position: absolute;
+  left: -10000px;
+  width: 0px;
+  height: 0px;
+}
+
+.angular-tour-ui-element.overlay .tour-title {
+  background-color: #3276b1;
+  color: white;
+  padding: 4px;
+  padding-left: 6px;
+  padding-right: 6px;
+  border-radius: 4px;
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+.angular-tour-ui-element.overlay .tour-title h4 {
+  display: inline-block;
+  font-size: 16px;
+  margin: 0px;
+  padding: 2px;
+}
+
+.angular-tour-ui-element.overlay .step-title {
+  font-size: 20px;
+}
+
+.angular-tour-ui-element.overlay .step-content {
+  padding: 10px;
+  padding-left: 0px;
+  font-size: 16px;
+}
+
+.angular-tour-ui-element.overlay .tour-contents {
+  padding: 10px;
+}
+
+.angular-tour-ui-element.overlay .controls {
+  text-align: right;
+}
+
+.angular-tour-ui-element.overlay .controls .btn {
+  font-size: 16px;
+}
+
+.angular-tour-ui-element.overlay .fa {
+  display: none;
+}
+
+.angular-tour-ui-element.inline .fa-dot-circle-o {
+  font-size: 34px;
+  background: #ddd;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  text-align: center;
+  padding-top: 4px;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+.angular-tour-ui-element.inline .tour-title h4 {
+  font-size: 28px;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.angular-tour-ui-element.inline .tour-title .close {
+  display: none;
+}
+
+
+.angular-tour-ui-element.inline .step-title {
+  font-size: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.angular-tour-ui-element.inline .step-content {
+  margin-bottom: 10px;
+}
+
+.angular-tour-ui-element.inline .controls {
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+}
+
+.angular-tour-ui-element p {
+  margin-bottom: 20px;
+}
+
+.angular-tour-ui-element .wait-message {
+  font-size: 16px;
+  color: #999;
+}
+
+.angular-tour-ui-element .wait-message .quay-spinner {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.angular-tour-ui-element .wait-message .quay-spinner .small-spinner {
+  border-top-color: #999;
+  border-left-color: #999;
+}
+
+.angular-tour-ui-element .note {
+  margin: 10px;
+  padding: 6px;
+  background: #eee;
+  border: 1px solid #ddd;
+}
+
+.angular-tour-ui-element .skip-message {
+  display: inline-block;
+  margin-left: 20px;
+}

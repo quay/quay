@@ -1,0 +1,13 @@
+<span class="external-login-button-element">
+  <a ng-class="isLink ? '' : 'btn btn-primary btn-block'"
+     ng-click="startSignin()" style="margin-bottom: 10px"
+     ng-disabled="signingIn">
+    <span class="icon-image-view" value="{{ provider.icon }}"></span>
+    <span class="login-text" ng-if="action != 'attach'" style="vertical-align: middle">
+        <span class="prefix">Sign in with&nbsp;</span><span class="suffix">{{ provider.title }}</span>
+    </span>
+    <span class="login-text" ng-if="action == 'attach'" style="vertical-align: middle">
+      Attach to {{ provider.title }}
+    </span>
+  </a>
+</span>

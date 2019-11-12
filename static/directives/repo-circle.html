@@ -1,0 +1,3 @@
+<i class="fa fa-lock fa-lg" style="{{ repo.is_public ? 'visibility: hidden' : 'visibility: inherit' }}" data-title="Private Repository"></i>
+<i class="fa fa-hdd-o" ng-if="repo.kind == 'image'"></i>
+<i class="fa ci-appcube" ng-if="repo.kind == 'application'"></i>

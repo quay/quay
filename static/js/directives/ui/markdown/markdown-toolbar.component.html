@@ -1,0 +1,61 @@
+<div class="markdown-toolbar-element">
+  <div class="btn-toolbar" role="toolbar">
+    <div class="btn-group" role="group">
+      <div class="btn-group">
+        <button type="button" class="btn btn-default btn-sm dropdown-toggle"
+                data-toggle="dropdown"
+                data-title="Add header" data-container="body" bs-tooltip>
+          <span class="glyphicon glyphicon-text-size"></span>
+          <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li ng-click="$ctrl.insertSymbol.emit({symbol: 'heading1'})"><h2>Heading</h2></li>
+          <li ng-click="$ctrl.insertSymbol.emit({symbol: 'heading2'})"><h3>Heading</h3></li>
+          <li ng-click="$ctrl.insertSymbol.emit({symbol: 'heading3'})"><h4>Heading</h4></li>
+        </ul>
+      </div>
+      <button type="button" class="btn btn-default btn-sm"
+              data-title="Bold" data-container="body" bs-tooltip
+              ng-click="$ctrl.insertSymbol.emit({symbol: 'bold'})">
+        <span class="glyphicon glyphicon-bold"></span>
+      </button>
+      <button type="button" class="btn btn-default btn-sm"
+              data-title="Italics" data-container="body" bs-tooltip
+              ng-click="$ctrl.insertSymbol.emit({symbol: 'italics'})">
+        <span class="glyphicon glyphicon-italic"></span>
+      </button>
+    </div>
+
+    <div class="btn-group" role="group">
+      <button type="button" class="btn btn-default btn-sm"
+              data-title="Block quote" data-container="body" bs-tooltip
+              ng-click="$ctrl.insertSymbol.emit({symbol: 'quote'})">
+        <i class="fa fa-quote-left" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="btn btn-default btn-sm"
+              data-title="Code snippet" data-container="body" bs-tooltip
+              ng-click="$ctrl.insertSymbol.emit({symbol: 'code'})">
+        <span class="glyphicon glyphicon-menu-left" style="margin-right: -6px;"></span>
+        <span class="glyphicon glyphicon-menu-right"></span>
+      </button>
+      <button type="button" class="btn btn-default btn-sm"
+              data-title="URL" data-container="body" bs-tooltip
+              ng-click="$ctrl.insertSymbol.emit({symbol: 'link'})">
+        <span class="glyphicon glyphicon-link"></span>
+      </button>
+    </div>
+
+    <div class="btn-group" role="group">
+      <button type="button" class="btn btn-default btn-sm"
+              data-title="Bulleted list" data-container="body" bs-tooltip
+              ng-click="$ctrl.insertSymbol.emit({symbol: 'bulleted-list'})">
+        <span class="glyphicon glyphicon-list"></span>
+      </button>
+      <button type="button" class="btn btn-default btn-sm"
+              data-title="Numbered list" data-container="body" data-container="body" bs-tooltip
+              ng-click="$ctrl.insertSymbol.emit({symbol: 'numbered-list'})">
+        <i class="fa fa-list-ol" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+</div>

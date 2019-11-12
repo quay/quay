@@ -1,0 +1,25 @@
+<div class="announcement inline quay-message-bar-element" ng-show="messages.length || inReadOnlyMode">
+  <div class="quay-service-status-description info" ng-if="inReadOnlyMode">
+    <div style="display: inline-block">
+      <span class="registry-name"></span>&nbsp;is currently in read-only mode. Pulls and other read-only operations
+      will succeed but all other operations are currently suspended.
+    </div>
+  </div>
+  <div ng-repeat="token in NotificationService.expiringAppTokens">
+    <div class="quay-service-status-description warning">
+       Your external application token <strong style="display: inline-block; padding: 4px;">{{ token.title }}</strong>
+       will be expiring in <strong style="display: inline-block; padding: 4px;"><time-ago datetime="token.expiration"></time-ago></strong>.
+       Please create a new token and revoke this token in user settings.
+    </div>
+  </div>
+  <div ng-repeat="message in messages">
+      <div class="quay-service-status-description" ng-class="message.severity">
+          <span ng-switch on="message.media_type">
+            <span ng-switch-when="text/markdown">
+                <markdown-view content="message.content"></markdown-view>
+            </span>
+            <span ng-switch-default>{{ message.content }}</span>
+          </span>
+      </div>
+  </div>
+</div>

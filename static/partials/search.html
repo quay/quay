@@ -1,0 +1,50 @@
+<div class="cor-container search">
+  <div class="search-top-bar">
+    <search-box query="currentQuery" clear-on-search="false"></search-box>
+  </div>
+
+  <div class="search-results-section">
+    <h5>Applications and Repositories</h5>
+    <div class="resource-view" resource="resultsResource" error-message="'Could not search results'">
+        <div class="empty" ng-if="!results.length">
+          <div class="empty-primary-msg">No matching applications or repositories found</div>
+          <div class="empty-secondary-msg">
+            Please try changing your query.
+          </div>
+        </div>
+        <ol class="search-results" start="{{ startIndex + 1 }}">
+            <li ng-repeat="result in results">
+              <div class="search-result-box">
+                <span class="star-count">
+                  <span class="star-count-number">{{ result.stars }}</span>
+                  <i class="star-icon starred fa fa-star"></i>
+                </span>
+                <h4>
+                    <i class="fa fa-hdd-o" ng-if="result.kind == 'repository'"></i>
+                    <i class="fa ci-appcube" ng-if="result.kind == 'application'"></i>
+                    <a href="{{ result.href }}">{{ result.namespace.name }}/{{ result.name }}</a>
+                </h4>
+                <p class="description">
+                  <markdown-view content="result.description"
+                                 first-line-only="true"></markdown-view>
+                </p>
+                <p class="result-info-bar">
+                  <span class="info-span">Last Modified: <time-ago datetime="result.last_modified * 1000"></time-ago></span>
+                  <span class="info-span activity">
+                    activity
+                    <span class="strength-indicator" value="::result.popularity"
+                          maximum="::maxPopularity"
+                          log-base="10"></span>
+                  </span>
+                </p>
+              </div>
+            </li>
+        </ol>
+        <div class="page-navigation-wrapper">
+            <a class="btn btn-default" ng-click="previousPage()" ng-if="currentPage > 1">Previous Page</a>
+            <a class="btn btn-default" ng-click="nextPage()" ng-if="showNextButton">Next Page</a>
+            <span class="search-max-results-info" ng-if="showMaxResultsHelpText">You've reached the maximum number of viewable results. Please refine your search.</span>
+        </div>
+    </div>
+  </div>
+</div>

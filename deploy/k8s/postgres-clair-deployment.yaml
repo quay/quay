@@ -1,0 +1,44 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: postgres-clair
+  name: postgres-clair
+  namespace: quay-enterprise
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-clair
+  template:
+    metadata:
+      labels:
+        app: postgres-clair
+    spec:
+      containers:
+      - env:
+        - name: POSTGRESQL_USER
+          # Set the username for the Clair postgres database (clair by default)
+          value: clair
+        - name: POSTGRESQL_DATABASE
+          # Set the name of the Clair postgres database
+          value: clair
+        - name: POSTGRESQL_PASSWORD
+          # Set the password for the Clair postgress user
+          value: test123
+        image: registry.access.redhat.com/rhscl/postgresql-10-rhel7:1-35
+        imagePullPolicy: IfNotPresent
+        name: postgres-clair
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/lib/pgsql/data
+          name: postgredb
+        serviceAccount: postgres
+        serviceAccountName: postgres
+      volumes:
+      - name: postgredb
+        persistentVolumeClaim:
+          claimName: postgres-clair-storage

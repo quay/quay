@@ -1,0 +1,7 @@
+#! /bin/bash
+
+echo 'Starting prometheus aggregator'
+
+/usr/local/bin/prometheus-aggregator
+
+echo 'Prometheus aggregator exited'

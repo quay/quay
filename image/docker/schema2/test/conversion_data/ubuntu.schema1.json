@@ -1,0 +1,56 @@
+{
+    "schemaVersion": 1,
+    "name": "devtable/ubuntu",
+    "tag": "latest",
+    "architecture": "amd64",
+    "fsLayers": [
+       {
+          "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+       },
+       {
+          "blobSum": "sha256:f85999a86bef2603a9e9a4fa488a7c1f82e471cbb76c3b5068e54e1a9320964a"
+       },
+       {
+          "blobSum": "sha256:fa83472a3562898caaf8d77542181a473a84039376f2ba56254619d9317ba00d"
+       },
+       {
+          "blobSum": "sha256:da1315cffa03c17988ae5c66f56d5f50517652a622afc1611a8bdd6c00b1fde3"
+       },
+       {
+          "blobSum": "sha256:32802c0cfa4defde2981bec336096350d0bb490469c494e21f678b1dcf6d831f"
+       }
+    ],
+    "history": [
+       {
+          "v1Compatibility": "{\"architecture\":\"amd64\",\"config\":{\"Hostname\":\"\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"/bin/bash\"],\"ArgsEscaped\":true,\"Image\":\"sha256:a141f6fbdbbcfc331f12db000daa2e636820152fa35dff4ca56cf02382aece7a\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":null},\"container\":\"1501390588c62f6c7c0e4fec25d6587c75c2f330536b9d08c610a56ed013f64b\",\"container_config\":{\"Hostname\":\"1501390588c6\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop) \",\"CMD [\\\"/bin/bash\\\"]\"],\"ArgsEscaped\":true,\"Image\":\"sha256:a141f6fbdbbcfc331f12db000daa2e636820152fa35dff4ca56cf02382aece7a\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":{}},\"created\":\"2018-11-19T21:20:42.235528208Z\",\"docker_version\":\"17.06.2-ce\",\"id\":\"d71fc6939e162a01d90cefeeb3d7f6d6b2583fac2ef98833ec69a95d12ffeeaa\",\"os\":\"linux\",\"parent\":\"ba7177adc95198e86c00039d17d22f35ed1eed39f4e2c3ffc7b2c29a3e81271a\",\"throwaway\":true}"
+       },
+       {
+          "v1Compatibility": "{\"id\":\"ba7177adc95198e86c00039d17d22f35ed1eed39f4e2c3ffc7b2c29a3e81271a\",\"parent\":\"69d0081dfb37f77fa9c971f367c6b86a3eb4090e7ab56741da954523ec3a786f\",\"created\":\"2018-11-19T21:20:42.002883522Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c mkdir -p /run/systemd \\u0026\\u0026 echo 'docker' \\u003e /run/systemd/container\"]}}"
+       },
+       {
+          "v1Compatibility": "{\"id\":\"69d0081dfb37f77fa9c971f367c6b86a3eb4090e7ab56741da954523ec3a786f\",\"parent\":\"1bd3843430506ff885fc1a3c1d050c19e2dcf70f8ef6cea1536692fd396c87bc\",\"created\":\"2018-11-19T21:20:41.293060457Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c rm -rf /var/lib/apt/lists/*\"]}}"
+       },
+       {
+          "v1Compatibility": "{\"id\":\"1bd3843430506ff885fc1a3c1d050c19e2dcf70f8ef6cea1536692fd396c87bc\",\"parent\":\"248632e87271aa5118ebc0ebf46758791e032c481f9702a2a36e7c85e83d33d2\",\"created\":\"2018-11-19T21:20:40.571619714Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c set -xe \\t\\t\\u0026\\u0026 echo '#!/bin/sh' \\u003e /usr/sbin/policy-rc.d \\t\\u0026\\u0026 echo 'exit 101' \\u003e\\u003e /usr/sbin/policy-rc.d \\t\\u0026\\u0026 chmod +x /usr/sbin/policy-rc.d \\t\\t\\u0026\\u0026 dpkg-divert --local --rename --add /sbin/initctl \\t\\u0026\\u0026 cp -a /usr/sbin/policy-rc.d /sbin/initctl \\t\\u0026\\u0026 sed -i 's/^exit.*/exit 0/' /sbin/initctl \\t\\t\\u0026\\u0026 echo 'force-unsafe-io' \\u003e /etc/dpkg/dpkg.cfg.d/docker-apt-speedup \\t\\t\\u0026\\u0026 echo 'DPkg::Post-Invoke { \\\"rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true\\\"; };' \\u003e /etc/apt/apt.conf.d/docker-clean \\t\\u0026\\u0026 echo 'APT::Update::Post-Invoke { \\\"rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true\\\"; };' \\u003e\\u003e /etc/apt/apt.conf.d/docker-clean \\t\\u0026\\u0026 echo 'Dir::Cache::pkgcache \\\"\\\"; Dir::Cache::srcpkgcache \\\"\\\";' \\u003e\\u003e /etc/apt/apt.conf.d/docker-clean \\t\\t\\u0026\\u0026 echo 'Acquire::Languages \\\"none\\\";' \\u003e /etc/apt/apt.conf.d/docker-no-languages \\t\\t\\u0026\\u0026 echo 'Acquire::GzipIndexes \\\"true\\\"; Acquire::CompressionTypes::Order:: \\\"gz\\\";' \\u003e /etc/apt/apt.conf.d/docker-gzip-indexes \\t\\t\\u0026\\u0026 echo 'Apt::AutoRemove::SuggestsImportant \\\"false\\\";' \\u003e /etc/apt/apt.conf.d/docker-autoremove-suggests\"]}}"
+       },
+       {
+          "v1Compatibility": "{\"id\":\"248632e87271aa5118ebc0ebf46758791e032c481f9702a2a36e7c85e83d33d2\",\"created\":\"2018-11-19T21:20:39.739838469Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) ADD file:39e5bc157a8be63bbb36a142e18b644b0cfff07a8a02b42f7d0c4ee4ba75a5bc in / \"]}}"
+       }
+    ],
+    "signatures": [
+       {
+          "header": {
+             "jwk": {
+                "crv": "P-256",
+                "kid": "AARA:PFUD:3V54:7F2S:2P7E:WMCU:WRE7:KUYD:CFKH:UHZ7:AZ4I:UQEX",
+                "kty": "EC",
+                "x": "34N4h_uM7FedPw4k3_VabKlt7qoBWpHgpko7zE0RkeY",
+                "y": "LhxxtCYh_b1EwUbl3-tQFTbg1mTu34vMxj4UaKjWZk8"
+             },
+             "alg": "ES256"
+          },
+          "signature": "0wBIubWqf-71Im54gbPlOjFBH7lr6MFLW75bdb-McFvDnfgSdOIMuJ9NHtKEYNF8qFe9hMoO6_GrSDVTJ-pryQ",
+          "protected": "eyJmb3JtYXRMZW5ndGgiOjQ5MjMsImZvcm1hdFRhaWwiOiJDbjAiLCJ0aW1lIjoiMjAxOC0xMS0yNlQxMDo0MjozMloifQ"
+       }
+    ]
+ }

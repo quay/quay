@@ -1,0 +1,14 @@
+<html class="{% if onprem %}onprem{% else %}hosted{% endif %}">
+  <title>Quay</title>
+  <head>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.no-icons.min.css">
+    <link href='//fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'>
+  </head>
+  <body>
+    <div class="container" style="margin-top: 20px">
+      <img src="{{ config_set['BRANDING']['logo'] }}">
+      <h5>{{ message | safe }}</h5>
+    </div>
+  </body>
+</html>

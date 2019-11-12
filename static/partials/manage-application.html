@@ -1,0 +1,186 @@
+<div class="resource-view manage-application"
+     resource="appResource"
+     error-message="'Application not found'">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link">
+        <a class="back-link" href="/organization/{{ organization.name }}?tab=applications">
+          <span class="avatar" size="24" data="organization.avatar"></span>
+          {{ organization.name }}
+        </a>
+      </span>
+      <span class="cor-title-content">
+        {{ application.name }}
+      </span>
+    </div>
+
+    <div class="row" style="padding: 14px; padding-top: 0px; padding-bottom: 0px;" ng-if="!application.redirect_uri">
+      <div class="co-alert co-alert-warning">
+        Warning: There is no OAuth Redirect setup for this application. Please enter it in the <strong>Settings</strong> tab.
+      </div>
+    </div>
+
+    <cor-tab-panel orientation="vertical" cor-nav-tabs>
+      <cor-tabs>
+        <cor-tab tab-title="Settings" tab-id="settings">
+          <i class="fa fa-gear"></i>
+        </cor-tab>
+
+        <cor-tab tab-title="OAuth Information" tab-id="oauth">
+          <i class="fa fa-key"></i>
+        </cor-tab>
+
+        <cor-tab tab-title="Delete Application" tab-id="delete">
+          <i class="fa fa-times"></i>
+        </cor-tab>
+
+        <cor-tab tab-title="Generate Token" tab-id="gen-token">
+          <i class="fa fa-ticket"></i>
+        </cor-tab>
+      </cor-tabs>
+
+      <cor-tab-content>
+        <!-- Settings tab -->
+        <cor-tab-pane id="settings">
+          <form method="put" name="applicationForm" id="applicationForm" ng-submit="updateApplication()">
+            <div class="form-group nested">
+              <label for="fieldAppName">Application Name</label>
+              <input type="text" class="form-control" id="fieldAppName" placeholder="Application Name" required ng-model="application.name">
+              <div class="description">The name of the application that is displayed to users</div>
+            </div>
+
+            <div class="form-group nested">
+              <label for="fieldAppURI">Homepage URL</label>
+              <input type="url" class="form-control" id="fieldAppURI" placeholder="Homepage URL" required ng-model="application.application_uri">
+              <div class="description">The URL to which the application will link in the authorization view</div>
+            </div>
+
+            <div class="form-group nested">
+              <label for="fieldAppDescription">Description (optional)</label>
+              <input type="text" class="form-control" id="fieldAppURI" placeholder="Description" ng-model="application.description">
+              <div class="description">The user friendly description of the application</div>
+            </div>
+
+            <div class="form-group nested">
+              <label for="fieldAppAvatar">Avatar E-mail (optional)</label>
+              <input type="email" class="form-control" id="fieldAppAvatar" placeholder="Avatar E-mail" ng-model="application.avatar_email">
+              <div class="description">An e-mail address representing the  <a href="http://docs.quay.io/glossary/avatar" ng-safenewtab>Avatar</a> for the application. See above for the icon.</div>
+            </div>
+
+            <div class="form-group nested" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+              <label for="fieldAppRedirect">Redirect/Callback URL Prefix</label>
+              <input type="url" class="form-control" id="fieldAppRedirect" placeholder="OAuth Redirect URL" ng-model="application.redirect_uri" required>
+              <div class="description">Allowed prefix for the application's OAuth redirection/callback URLs</div>
+            </div>
+
+            <div class="button-bar">
+              <button class="btn btn-success btn-large" type="submit" ng-disabled="applicationForm.$invalid || updating">
+                Update Application
+              </button>
+              <span class="quay-spinner" ng-show="updating"></span>
+            </div>
+          </form>
+        </cor-tab-pane>
+
+        <!-- Delete tab -->
+        <cor-tab-pane id="delete">
+          <div class="panel panel-default">
+            <div class="panel-body">
+              <div style="text-align: center">
+                <div class="co-alert co-alert-danger">Deleting an application <b>cannot be undone</b>. Any existing users of your application will <strong>break!</strong>. Here be dragons!</div>
+                <button class="btn btn-danger" ng-click="askDelete()">Delete Application</button>
+              </div>
+            </div>
+          </div>
+        </cor-tab-pane>
+
+        <!-- Generate Token tab -->
+        <cor-tab-pane id="gen-token">
+          <div class="co-alert co-alert-info">
+            <div style="margin-bottom: 10px">
+                Click the button below to generate a new <a href="http://tools.ietf.org/html/rfc6749#section-1.4" target="_new">OAuth 2 Access Token</a>.
+            </div>
+
+            <div>
+              The generated token will act on behalf of user
+              <span class="avatar" data="user.avatar" size="16" style="margin-left: 6px; margin-right: 4px;"></span>
+              <span class="user-name">{{ user.username }}</span>
+            </div>
+          </div>
+
+          <table>
+            <tr ng-repeat="(scopeName, scopeInfo) in OAuthService.SCOPES">
+              <td>
+                  <label onclick="event.stopPropagation()">
+                    <input type="checkbox" value="scopeInfo.scope" ng-model="genScopes[scopeName]">{{ scopeInfo.title }}
+                  </label>
+                  <div class="scope-description">{{ scopeInfo.description }}</div>
+              </td>
+            </tr>
+          </table>
+
+          <a class="btn btn-success"
+             href="{{ Config.getUrl('/oauth/authorize?response_type=token&client_id=' + application.client_id + '&scope=' +  getScopes(genScopes).join(' ') + '&redirect_uri=' + Config.getUrl(Config['LOCAL_OAUTH_HANDLER'])) }}"
+             ng-disabled="!getScopes(genScopes).length" ng-safenewtab>
+             Generate Access Token
+          </a>
+        </cor-tab-pane>
+
+        <!-- OAuth tab -->
+        <cor-tab-pane id="oauth">
+          <dl class="dl-horizontal">
+            <dt>Client ID:</dt>
+            <dd><div class="copy-box" value="application.client_id"></div></dd>
+          </dl>
+          <dl class="dl-horizontal" style="margin-top: 20px;">
+            <dt>Client Secret:</dt>
+            <dd>{{ application.client_secret }}</dd>
+          </dl>
+
+          <button class="btn btn-primary" ng-click="askResetClientSecret()">Reset Client Secret</button>
+        </cor-tab-pane>
+      </cor-tab-content>
+    </cor-tab-panel>
+  </div>
+</div>
+
+<!-- Modal message dialog -->
+<div class="modal fade" id="resetSecretModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Reset Client Secret?</h4>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          Note that resetting the Client Secret for this application will <strong>not</strong> invalidate any user tokens.
+        </div>
+        <div>Are you sure you want to reset your Client Secret? Any existing users of this Secret <strong>will break!</strong></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" ng-click="resetClientSecret()">Yes, I'm sure</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<!-- Modal message dialog -->
+<div class="modal fade" id="deleteAppModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Delete Application?</h4>
+      </div>
+      <div class="modal-body">
+        Are you <b>absolutely, positively</b> sure you would like to delete this application? This <b>cannot be undone</b>.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" ng-click="deleteApplication()">Delete Application</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->

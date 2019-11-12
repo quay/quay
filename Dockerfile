@@ -1,0 +1,128 @@
+FROM centos:7
+LABEL maintainer "thomasmckay@redhat.com"
+
+ENV PYTHON_VERSION=2.7 \
+    PATH=$HOME/.local/bin/:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    PIP_NO_CACHE_DIR=off
+
+ENV QUAYDIR /quay-registry
+ENV QUAYCONF /quay-registry/conf
+ENV QUAYPATH "."
+
+RUN mkdir $QUAYDIR
+WORKDIR $QUAYDIR
+
+RUN INSTALL_PKGS="\
+        python27 \
+        python27-python-pip \
+        rh-nginx112 rh-nginx112-nginx \
+        openldap \
+        scl-utils \
+        gcc-c++ git \
+        openldap-devel \
+        gpgme-devel \
+        dnsmasq \
+        memcached \
+        openssl \
+        skopeo \
+        " && \
+    yum install -y yum-utils && \
+    yum install -y epel-release centos-release-scl && \
+    yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
+    yum -y update && \
+    yum -y clean all
+
+COPY . .
+
+RUN scl enable python27 "\
+    pip install --upgrade setuptools pip && \
+    pip install -r requirements.txt --no-cache && \
+    pip install -r requirements-tests.txt --no-cache && \
+    pip freeze && \
+    mkdir -p $QUAYDIR/static/webfonts && \
+    mkdir -p $QUAYDIR/static/fonts && \
+    mkdir -p $QUAYDIR/static/ldn && \
+    PYTHONPATH=$QUAYPATH python -m external_libraries \
+    "
+
+RUN cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
+    cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
+    cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
+
+# Check python dependencies for GPL
+# Due to the following bug, pip results must be piped to a file before grepping:
+# https://github.com/pypa/pip/pull/3304
+# 'docutils' is a setup dependency of botocore required by s3transfer. It's under
+# GPLv3, and so is manually removed.
+RUN rm -Rf /opt/rh/python27/root/usr/lib/python2.7/site-packages/docutils && \
+    scl enable python27 "pip freeze" | grep -v '^-e' | awk -F == '{print $1}' | grep -v docutils > piplist.txt && \
+    scl enable python27 "xargs -a piplist.txt pip --disable-pip-version-check show" > pipinfo.txt && \
+    test -z "$(cat pipinfo.txt | grep GPL | grep -v LGPL)" && \
+    rm -f piplist.txt pipinfo.txt
+
+# # Front-end
+RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
+    yum install -y nodejs && \
+    curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
+    rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
+    yum install -y yarn && \
+    yarn install --ignore-engines && \
+    yarn build && \
+    yarn build-config-app
+
+# TODO: Build jwtproxy in dist-git
+#       https://jira.coreos.com/browse/QUAY-1315
+RUN curl -fsSL -o /usr/local/bin/jwtproxy https://github.com/coreos/jwtproxy/releases/download/v0.0.3/jwtproxy-linux-x64 && \
+    chmod +x /usr/local/bin/jwtproxy
+
+# TODO: Build prometheus-aggregator in dist-git
+#       https://jira.coreos.com/browse/QUAY-1324
+RUN curl -fsSL -o /usr/local/bin/prometheus-aggregator https://github.com/coreos/prometheus-aggregator/releases/download/v0.0.1-alpha/prometheus-aggregator &&\
+    chmod +x /usr/local/bin/prometheus-aggregator
+
+# Update local copy of AWS IP Ranges.
+RUN curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json
+
+RUN ln -s $QUAYCONF /conf && \
+    mkdir /var/log/nginx && \
+    ln -sf /dev/stdout /var/log/nginx/access.log && \
+    ln -sf /dev/stdout /var/log/nginx/error.log && \
+    chmod -R a+rwx /var/log/nginx
+
+# Cleanup
+RUN UNINSTALL_PKGS="\
+        gcc-c++ \
+        openldap-devel \
+        gpgme-devel \
+        optipng \
+        kernel-headers \
+        " && \
+    yum remove -y $UNINSTALL_PKGS && \
+    yum clean all && \
+    rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache
+
+EXPOSE 8080 8443 7443
+
+RUN chgrp -R 0 $QUAYDIR && \
+    chmod -R g=u $QUAYDIR
+
+RUN mkdir /datastorage && chgrp 0 /datastorage && chmod g=u /datastorage && \
+    mkdir -p /var/log/nginx && chgrp 0 /var/log/nginx && chmod g=u /var/log/nginx && \
+    mkdir -p /conf/stack && chgrp 0 /conf/stack && chmod g=u /conf/stack && \
+    mkdir -p /tmp && chgrp 0 /tmp && chmod g=u /tmp && \
+    chmod g=u /etc/passwd
+
+RUN chgrp 0 /var/opt/rh/rh-nginx112/log/nginx && chmod g=u /var/opt/rh/rh-nginx112/log/nginx
+
+VOLUME ["/var/log", "/datastorage", "/tmp", "/conf/stack"]
+
+ENTRYPOINT ["/quay-registry/quay-entrypoint.sh"]
+CMD ["registry"]
+
+# root required to create and install certs
+# https://jira.coreos.com/browse/QUAY-1468
+# USER 1001

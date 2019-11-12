@@ -1,0 +1,62 @@
+<div class="create-entity-dialog-element">
+  <div class="modal fade co-dialog wider">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" ng-click="hide()" aria-hidden="true">&times;</button>
+          <h4 class="modal-title" ng-show="view == 'enterName' || view == 'creating'">
+            <i class="fa {{ entityIcon }}"></i>
+            Create {{ entityTitle }}
+          </h4>
+          <h4 class="modal-title" ng-show="view == 'setperms' || view == 'settingperms'">
+            Add permissions for <i class="fa {{ entityIcon }}"></i> {{ entity.name }}
+          </h4>
+        </div> <!-- /.model-header -->
+        <div class="modal-body" ng-show="view == 'creating' || view == 'settingperms'">
+          <div class="cor-loader"></div>
+        </div>
+        <div class="modal-body co-modal-body-scrollable" ng-show="view == 'setperms'">
+          <div class="set-repo-permissions"
+               namespace="info.namespace"
+               entity-name="entity.name"
+               entity-kind="entityKind"
+               has-changed-repositories="context.hasChangedRepositories"
+               has-checked-repositories="context.hasCheckedRepositories"
+               repositories-loaded="repositoriesLoaded(repositories)"
+               setting-permissions="settingPermissions()"
+               permissions-set="permissionsSet(repositories)"
+               set-permissions="context.setPermissionsCounter"
+               ng-if="entity"></div>
+        </div>
+        <div class="modal-body" ng-show="view == 'enterName'">
+          <form name="enterNameForm" ng-submit="enterNameForm.$valid && createEntity()">
+            <label>Provide a name for your new {{ entityTitle }}:</label>
+            <input type="text" class="form-control" ng-model="entityName" ng-pattern="entityNameRegexObj" required>
+            <div class="help-text">
+              Choose a name to inform your teammates
+              about this {{ entityTitle }}. Must match {{ entityNameRegex }}.
+            </div>
+
+            <div ng-show="allowEntityDescription" style="margin-top: 20px;">
+              <label>Provide an optional description for your new {{ entityTitle }}:</label>
+              <input type="text" class="form-control" ng-model="entityDescription" max-length="255">
+              <div class="help-text">
+                Enter a description to provide extra information to your teammates about this {{ entityTitle }}.
+              </div>
+            </div>
+          </form>
+        </div> <!-- /.modal-body -->
+        <div class="modal-footer" ng-show="view == 'setperms'">
+          <button type="button" class="btn btn-primary" ng-click="setPermissions()"
+                  ng-show="context.hasCheckedRepositories">Add permissions</button>
+          <button type="button" class="btn btn-default" ng-click="hide()">Close</button>
+        </div> <!-- /.footer-body -->
+        <div class="modal-footer" ng-show="view == 'enterName'">
+          <button type="button" class="btn btn-primary" ng-click="createEntity()"
+                  ng-disabled="enterNameForm.$invalid">Create {{ entityTitle }}</button>
+          <button type="button" class="btn btn-default" ng-click="hide()">Cancel</button>
+        </div> <!-- /.footer-body -->
+      </div>
+    </div>
+  </div>
+</div>

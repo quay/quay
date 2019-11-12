@@ -1,0 +1,97 @@
+<span class="tag-signing-display-element" ng-class="{'extended': !$ctrl.compact}">
+ <span class="indicator" ng-switch on="$ctrl.signingStatus($ctrl.tag, $ctrl.delegations)">
+  <!-- Loading -->
+  <span ng-switch-when="loading">
+    <span class="cor-loader-inline"></span>
+  </span>
+
+  <!-- Error -->
+  <span class="signing-load-error" ng-switch-when="error"
+        data-title="Could not load signing information" bs-tooltip>
+    <i class="fa fa-question-circle"></i>
+  </span>
+
+  <!-- Not Signed -->
+  <span class="signing-not-signed" ng-switch-when="not-signed"
+        data-title="This tag has not been signed" bs-tooltip>
+    <i class="fa shield-icon ci-shield-none"></i>
+  </span>
+
+  <!-- Releases + all other targets signed -->
+  <span class="signing-valid okay-release" ng-switch-when="all-signed"
+        data-title="The tag has valid and matching signatures" bs-tooltip>
+    <i class="fa shield-icon ci-shield-check-full"></i>
+
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasExpiringSoon" class="expiring-soon"></span>
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasExpired" class="expired"></span>
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasInvalid" class="invalid"></span>
+  </span>
+
+  <!-- Releases target signed -->
+  <span class="signing-valid okay-release" ng-switch-when="release-signed"
+        data-title="The tag has a valid and matching default signature" bs-tooltip>
+    <i class="fa shield-icon ci-shield-check-outline"></i>
+
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasExpiringSoon" class="expiring-soon"></span>
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasExpired" class="expired"></span>
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasInvalid" class="invalid"></span>
+  </span>
+
+  <!-- Non-releases target signed -->
+  <span class="signing-valid okay" ng-switch-when="non-release-signed"
+        data-title="The tag has valid and matching non-default signatures" bs-tooltip>
+    <i class="fa shield-icon ci-shield-check-outline"></i>
+
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasExpiringSoon" class="expiring-soon"></span>
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasExpired" class="expired"></span>
+    <span ng-if="$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).hasInvalid" class="invalid"></span>
+  </span>
+
+  <!-- Non-releases target signed -->
+  <span class="signing-valid partial-okay" ng-switch-when="one-valid-signed"
+        data-title="The tag has at least one valid and matching non-default signature, but some are invalid or have expired" bs-tooltip>
+    <i class="fa shield-icon ci-shield-check-outline"></i>
+  </span>
+
+  <!-- All signatures are invalid -->
+  <span class="signing-invalid" ng-switch-when="invalid-signed"
+        data-title="There are no valid or non-expired signatures for this tag" bs-tooltip>
+    <i class="fa shield-icon ci-shield-invalid-outline"></i>
+  </span>
+ </span>
+
+ <!-- Delegations -->
+ <div class="delegations" ng-if="!$ctrl.compact && !$ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).delegations.length">
+   This tag has not been signed
+ </div>
+ <table class="delegations" ng-if="!$ctrl.compact && $ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).delegations.length">
+   <tr ng-repeat="delegation in $ctrl.getSigningInfo($ctrl.tag, $ctrl.delegations).delegations">
+    <td>
+      <span class="delegation" ng-class="{'default': $ctrl.isDefaultDelegation(delegation.delegationName), 'okay': delegation.hasMatchingHash && !delegation.isExpired && !delegation.isExpiringSoon, 'warning': delegation.hasMatchingHash && delegation.isExpiringSoon, 'error': !delegation.hasMatchingHash || delegation.isExpired}">
+         <span class="delegation-name" ng-if="delegation.delegationName == 'targets'">(Default)</span>
+         <span class="delegation-name" ng-if="delegation.delegationName != 'targets'">{{ delegation.delegationName.substr('targets/'.length) }}</span>
+      </span>
+      <div class="delegation-info visible-xs" ng-if="!delegation.hasMatchingHash || delegation.isExpiringSoon || delegation.isExpired">
+       <span class="failure-reason" ng-if="delegation.hasMatchingHash && delegation.isExpiringSoon">
+        Expiring soon: {{ delegation.expiration.format("YYYY-MM-DD HH:mm:ss") }}
+       </span>
+       <span class="failure-reason" ng-if="delegation.hasMatchingHash && delegation.isExpired">Signature expired</span>
+       <span class="failure-reason" ng-if="!delegation.hasMatchingHash">
+         Signature has different hash: {{ delegation.delegationHash.substr(0, 12) }}
+       </span>
+      </div>
+    </td>
+    <td class="hidden-xs">
+     <span class="delegation-info" ng-if="!delegation.hasMatchingHash || delegation.isExpiringSoon || delegation.isExpired">
+       <span class="failure-reason" ng-if="delegation.hasMatchingHash && delegation.isExpiringSoon">
+        Expiring soon: {{ delegation.expiration.format("YYYY-MM-DD HH:mm:ss") }}
+       </span>
+       <span class="failure-reason" ng-if="delegation.hasMatchingHash && delegation.isExpired">Signature expired</span>
+       <span class="failure-reason" ng-if="!delegation.hasMatchingHash">
+         Signature has different hash: {{ delegation.delegationHash.substr(0, 12) }}
+       </span>
+     </span>
+    </td>
+   </tr>
+ </table>
+</span>

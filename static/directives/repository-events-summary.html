@@ -1,0 +1,22 @@
+<div class="repository-events-summary-element">
+  <div class="resource-view" resource="notificationsResource"
+       error-message="'Could not load repository events'">
+       <ul class="summary-list">
+         <li ng-repeat="notification in notifications">
+            <i class="fa fa-lg" ng-class="getMethodInfo(notification).icon"></i>
+            {{ getMethodInfo(notification).title }} for
+
+            <ul class="notification-event-fields" ng-if="getEventInfo(notification).fields.length">
+              <li ng-repeat="field in getEventInfo(notification).fields">
+                {{ field.title }} of
+                <span ng-switch on="field.type">
+                  <span ng-switch-when="enum">
+                   {{ findEnumValue(field.values, notification.event_config[field.name]).title }}
+                  </span>
+                </span>
+              </li>
+            </ul>
+         </li>
+       </ul>
+    </div>
+</div>

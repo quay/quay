@@ -1,0 +1,124 @@
+.search {
+    padding: 40px;
+}
+
+.search .empty {
+  margin-top: 40px;
+}
+
+.search .search-top-bar {
+    text-align: center;
+    padding: 10px;
+}
+
+.search .search-results-section {
+    border-top: 1px solid #ccc;
+    padding-top: 16px;
+    margin-top: 30px;
+}
+
+.search .search-results-section h5 {
+  display: block;
+  text-align: center;
+  color: #aaa;
+  text-transform: uppercase;
+}
+
+.search .search-results li {
+    padding-bottom: 10px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #eee;
+}
+
+.search .search-results li .result-info-bar {
+    color: #888;
+}
+
+.search .search-results li .result-info-bar .activity {
+    float: right;
+}
+
+.search .search-results li .result-info-bar .activity .strength-indicator {
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.search .search-results li .description .markdown-view-content p {
+    display: none;
+}
+
+.search .search-results li .description .markdown-view-content p:first-child {
+    display: block;
+    overflow: hidden;
+    max-height: 4em;
+}
+
+.search .search-results li h4 {
+    vertical-align: middle;
+}
+
+.search .search-results li h4 .fa {
+    margin-right: 6px;
+    display: inline-block;
+}
+
+.search .search-results li .star-count {
+    float: right;
+    color: #888;
+    line-height: 26px;
+}
+
+.search .search-results li .star-count .star-count-number {
+   display: inline-block;
+   position: relative;
+   top: 2px;
+}
+
+.search .search-results li .star-icon {
+  color: #ffba6d;
+  font-size: 26px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.search .search-results li .search-result-box {
+   padding: 6px;
+}
+
+
+.search .search-max-results-info {
+    padding-left: 5px;
+}
+
+.search .page-navigation-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.search .page-navigation-wrapper :first-child {
+    margin-right: 5px;
+}
+
+@media screen and (max-width: 767px) {
+  .search {
+    padding: 0px;
+  }
+
+  .search .search-results {
+    padding-left: 12px;
+  }
+
+  .search .result-info-bar .info-span {
+    display: block;
+    float: none !important;
+    text-align: left;
+    margin-bottom: 10px;
+  }
+
+  .search .search-results li .star-icon {
+    color: #ffba6d;
+    font-size: 16px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+}

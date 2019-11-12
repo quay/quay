@@ -1,0 +1,54 @@
+{
+  "object_kind": "push",
+  "before": "11fcaca195e8b17ca7e3dc47d9608d5b6b892f45",
+  "after": "fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+  "ref": "refs/heads/master",
+  "checkout_sha": "fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+  "message": null,
+  "user_id": 98765,
+  "user_name": "John Smith",
+  "user_email": "j@smith.com",
+  "project_id": 12344567,
+  "repository": {
+    "name": "somerepo",
+    "url": "git@gitlab.com:jsmith/somerepo.git",
+    "description": "",
+    "homepage": "https://gitlab.com/jsmith/somerepo",
+    "git_http_url": "https://gitlab.com/jsmith/somerepo.git",
+    "git_ssh_url": "git@gitlab.com:jsmith/somerepo.git",
+    "visibility_level": 20
+  },
+  "commits": [
+    {
+      "id": "fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+      "message": "Fix link\n",
+      "timestamp": "2015-08-13T19:33:18+00:00",
+      "url": "https://gitlab.com/jsmith/somerepo/commit/fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+      "author": {
+        "name": "Jane Smith",
+        "email": "jane@smith.com"
+      }
+    },
+    {
+      "id": "4ca166bc0b511f21fa331873f260f1a7cb38d723",
+      "message": "Do Some Cool Thing",
+      "timestamp": "2015-08-13T15:52:15+00:00",
+      "url": "https://gitlab.com/jsmith/somerepo/commit/4ca166bc0b511f21fa331873f260f1a7cb38d723",
+      "author": {
+        "name": "Jane Smith",
+        "email": "jane@smith.com"
+      }
+    },
+    {
+      "id": "11fcaca195e8b17ca7e3dc47d9608d5b6b892f45",
+      "message": "Merge another cool thing",
+      "timestamp": "2015-08-13T09:31:47+00:00",
+      "url": "https://gitlab.com/jsmith/somerepo/commit/11fcaca195e8b17ca7e3dc47d9608d5b6b892f45",
+      "author": {
+        "name": "Kate Smith",
+        "email": "kate@smith.com"
+      }
+    }
+  ],
+  "total_commits_count": 3
+}

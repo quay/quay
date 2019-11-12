@@ -1,0 +1,35 @@
+.page-controls-element {
+  display: inline-block
+}
+
+.page-controls {
+  display: inline-block;
+}
+
+.page-controls-element .current-items {
+  display: inline-block;
+  font-weight: bold;
+  margin-right: 10px;
+  padding: 4px;
+  border: 1px solid transparent;
+  vertical-align: middle;
+  margin-top: 2px;
+}
+
+.page-controls-element .current-items:hover {
+  border: 1px solid #ddd;
+}
+
+.page-controls-element .btn {
+  font-size: 18px;
+  line-height: 14px;
+  height: 34px;
+}
+
+.page-controls-element .btn:disabled {
+  color: #ccc;
+}
+
+.page-controls-element .page-view {
+  cursor: pointer;
+}

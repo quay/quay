@@ -1,0 +1,225 @@
+<div class="resource-view team-view" resources="[orgResource, membersResource]"
+     error-message="'No matching organization or team found'">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link">
+        <a class="back-link" href="/organization/{{ organization.name }}?tab=teams">
+          <span class="avatar" size="24" data="organization.avatar" style="margin-right: 4px"></span>
+          {{ organization.name }}
+        </a>
+      </span>
+      <span class="cor-title-content">
+        <span class="team-title">Team</span>
+        <span class="avatar" data="team.avatar" size="32"></span>
+        <span class="team-name">{{ teamname }}</span>
+      </span>
+    </div>
+
+    <div class="co-main-content-panel">
+      <div class="feedback-bar" feedback="feedback"></div>
+
+      <div class="team-sync-header" ng-if="canSync && !syncInfo && !inReadOnlyMode">
+        <div class="section-header">Directory Synchronization</div>
+        <p>Directory synchronization allows this team's user membership to be backed by a group in {{ getServiceName(canSync.service) }}.</p>
+        <button class="btn btn-primary" ng-click="showEnableSyncing()">Enable Directory Synchronization</button>
+      </div>
+
+      <!-- Sync Header -->
+      <div ng-if="syncInfo">
+        <div class="co-alert co-alert-info">
+        This team is synchronized with a group in <strong>{{ getServiceName(syncInfo.service) }}</strong> and its user membership is therefore <strong>read-only</strong>.
+        </div>
+
+        <div class="team-sync-header" ng-if="syncInfo.config">
+          <div class="section-header">Directory Synchronization</div>
+          <table class="team-sync-table">
+          <tr>
+            <td>Bound to group:</td>
+            <td>
+              <div ng-if="syncInfo.service == 'ldap'">
+                <code>{{ syncInfo.config.group_dn }}</code>
+              </div>
+              <div ng-if="syncInfo.service == 'keystone'">
+                <code>{{ syncInfo.config.group_id }}</code>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Last Updated:</td>
+            <td ng-if="syncInfo.last_updated"><time-ago datetime="syncInfo.last_updated"></time-ago></td>
+            <td ng-if="!syncInfo.last_updated" style="color: #aaa;">Never</td>
+          </tr>
+          </table>
+
+          <button class="btn btn-default" ng-click="showDisableSyncing()" ng-if="canSync && !inReadOnlyMode">Remove Synchronization</button>
+          <div ng-if="!canSync" class="co-alert co-alert-warning co-alert-inline">You must be an admin of this organization to disable team synchronization</div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="section-header">Team Description</div>
+      <div class="team-view-header">
+        <div class="description">
+          <markdown-input content="team.description"
+                          can-write="organization.is_admin && !inReadOnlyMode"
+                          (content-changed)="updateForDescription($event.content)"
+                          field-title="team description"></markdown-input>
+        </div>
+      </div>
+
+      <!-- Members -->
+      <div ng-show="canEditMembers && !inReadOnlyMode" style="float:right; margin-top: 10px;">
+        <div class="hidden-xs">
+          <div ng-include="'/static/directives/team-view-add.html'" style="max-width: 500px;"></div>
+        </div>
+      </div>
+      <div class="section-header" style="margin-bottom: 55px;">Team Members</div>
+
+      <div class="empty" ng-if="!members.length">
+        <div class="empty-primary-msg">This team has no members.</div>
+        <div class="empty-secondary-msg" ng-if="!syncInfo">
+          Enter a user or robot above to add or invite to the team.
+        </div>
+        <div class="empty-secondary-msg" ng-if="syncInfo">
+          This team is synchronized with an external group defined in {{ getServiceName(syncInfo.service) }}. To add a user to this team, add them in the backing group. To add a robot account to this team, enter them above.
+        </div>
+      </div>
+
+      <table class="co-table no-lines" ng-if="members.length">
+        <!-- Team Members -->
+        <tr class="co-table-header-row"
+            ng-if="(members | filter: filterFunction(false, false)).length">
+          <td colspan="3"><i class="fa fa-user"></i> Team Members <span ng-if="syncInfo">(defined in {{ getServiceName(syncInfo.service) }})</span></td>
+        </tr>
+
+        <tr class="indented-row"
+            ng-repeat="member in members | filter: filterFunction(false, false) | orderBy: 'name'">
+          <td class="user entity">
+            <span class="entity-reference" entity="member" namespace="organization.name"
+                  show-avatar="true" avatar-size="24"></span>
+          </td>
+          <td class="options-col">
+            <span class="cor-options-menu" ng-if="canEditMembers && !syncInfo && !inReadOnlyMode">
+              <span class="cor-option" option-click="removeMember(member.name)">
+                <i class="fa fa-times"></i> Remove {{ member.name }}
+              </span>
+            </span>
+          </td>
+        </tr>
+
+        <!-- Robot Accounts -->
+        <tr class="co-table-header-row"
+            ng-if="(members | filter: filterFunction(false, true)).length">
+          <td colspan="3"><i class="fa ci-robot"></i> Robot Accounts</td>
+        </tr>
+
+        <tr class="indented-row"
+            ng-repeat="member in members | filter: filterFunction(false, true) | orderBy: 'name'">
+          <td class="user entity">
+            <span class="entity-reference" entity="member" namespace="organization.name"></span>
+          </td>
+          <td class="options-col">
+            <span class="cor-options-menu" ng-if="canEditMembers && !inReadOnlyMode">
+              <span class="cor-option" option-click="removeMember(member.name)">
+                <i class="fa fa-times"></i> Remove {{ member.name }}
+              </span>
+            </span>
+          </td>
+        </tr>
+
+        <!-- Invitations -->
+        <tr class="co-table-header-row"
+            ng-if="(members | filter: filterFunction(true, false)).length">
+          <td colspan="3"><i class="fa ci-invite"></i> Invited to Join</td>
+        </tr>
+
+        <tr class="indented-row"
+            ng-repeat="member in members | filter: filterFunction(true, false) | orderBy: 'name'">
+          <td class="user entity">
+            <span ng-if="member.kind != 'invite'">
+              <span class="entity-reference" entity="member" namespace="organization.name" show-avatar="true" avatar-size="24"></span>
+            </span>
+            <span class="invite-listing" ng-if="member.kind == 'invite'">
+              <span class="avatar" size="24" data="member.avatar" style="margin-right: 6px;"></span>
+              {{ member.email }}
+            </span>
+          </td>
+          <td class="options-col">
+            <span class="cor-options-menu" ng-if="canEditMembers && !inReadOnlyMode">
+              <span class="cor-option" option-click="revokeInvite(member)">
+                <i class="fa fa-times"></i> Revoke invite
+              </span>
+            </span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Add team member (mobile) -->
+      <div ng-show="canEditMembers && !inReadOnlyMode">
+        <div class="visible-xs" style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee;">
+          <div class="section-header">Add team member</div>
+          <div ng-include="'/static/directives/team-view-add.html'" style="max-width: 500px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Directory binding dialog -->
+<div class="cor-confirm-dialog"
+   dialog-context="enableSyncingInfo"
+   dialog-action="enableSyncing(info.config, callback)"
+   dialog-title="Enable Directory Syncing"
+   dialog-action-title="Enable Group Sync"
+   dialog-form="context.syncform">
+   <div class="co-alert co-alert-warning">Please note that once team syncing is enabled, the team's user membership from within <span class="registry-name"></span> will be read-only.</div>
+   <form name="context.syncform" class="co-single-field-dialog">
+     <div ng-switch on="enableSyncingInfo.service_info.service">
+      <div ng-switch-when="ldap">
+        Enter the distinguished name of the group, relative to <code>{{ enableSyncingInfo.service_info.base_dn }}</code>:
+        <input type="text" class="form-control" placeholder="Group DN" ng-model="enableSyncingInfo.config.group_dn" required>
+      </div>
+      <div ng-switch-when="keystone">
+        Enter the Keystone group ID:
+        <input type="text" class="form-control" placeholder="Group ID" ng-model="enableSyncingInfo.config.group_id" required>
+      </div>
+     </div>
+   </form>
+</div>
+
+
+<!-- Modal message dialog -->
+<div class="modal fade" id="cannotChangeTeamModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Cannot change team</h4>
+      </div>
+      <div class="modal-body">
+        You do not have permission to change properties of this team.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<!-- Modal message dialog -->
+<div class="modal fade" id="cannotChangeMembersModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Cannot change members</h4>
+      </div>
+      <div class="modal-body">
+        You do not have permission to change the members of this team.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->

@@ -1,0 +1,24 @@
+.markdown-editor-element textarea {
+  height: 300px;
+  resize: vertical;
+  width: 100%;
+}
+
+.markdown-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.markdown-editor-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.markdown-editor-buttons button {
+  margin: 0 10px;
+}
+
+.markdown-editor-buttons button:last-child {
+  margin: 0;
+}

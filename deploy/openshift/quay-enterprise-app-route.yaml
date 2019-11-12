@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: Route
+metadata:
+  name: quay-enterprise
+  namespace: quay-enterprise
+spec:
+  to:
+    kind: Service
+    name: quay-enterprise-clusterip
+  tls:
+    termination: passthrough

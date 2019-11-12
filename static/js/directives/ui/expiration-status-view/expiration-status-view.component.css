@@ -1,0 +1,23 @@
+.expiration-status-view-element .expired, .expiration-status-view-element .expired a {
+    color: #D64456;
+}
+
+.expiration-status-view-element .critical, .expiration-status-view-element .critical a {
+    color: #F77454;
+}
+
+.expiration-status-view-element .warning, .expiration-status-view-element .warning a {
+    color: #FCA657;
+}
+
+.expiration-status-view-element .info, .expiration-status-view-element .info a {
+    color: #2FC98E;
+}
+
+.expiration-status-view-element .no-expiration, .expiration-status-view-element .no-expiration a {
+    color: #aaa;
+}
+
+.expiration-status-view-element .fa {
+    margin-right: 6px;
+}

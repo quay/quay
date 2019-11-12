@@ -1,0 +1,29 @@
+.global-message-tab-element .message-content p {
+    display: inline-block;
+    margin: 0px;
+}
+
+.global-message-tab-element .fa {
+    margin-right: 4px;
+}
+
+.global-message-tab-element .ci-stop {
+    color: red;
+}
+
+.global-message-tab-element .fa-exclamation-triangle {
+  color: #E4C212;
+}
+
+.global-message-tab-element .fa-info-circle {
+  color: #124fd8;
+}
+
+.global-message-tab-element label {
+    margin-top: 20px;
+    font-size: 16px;
+}
+
+.global-message-tab-element label:first-child {
+    margin-top: 4px;
+}

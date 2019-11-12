@@ -1,0 +1,16 @@
+.build-log-command-element.multistep-seperator {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #666;
+}
+
+.build-log-command-element .from-name {
+    position: absolute;
+    top: 3px;
+    left: 22px;
+    background-color: #263945;
+    display: inline-block;
+    color: #aaa;
+    font-size: 12px;
+    padding-right: 10px;
+}

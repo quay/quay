@@ -1,0 +1,138 @@
+<div class="app-public-view-element">
+  <div class="co-main-content-panel">
+    <div class="app-row">
+      <!-- Main panel -->
+      <div class="col-md-9 col-sm-12 main-content">
+        <!-- App Header -->
+        <div class="app-header">
+          <a href="https://coreos.com/blog/quay-application-registry-for-kubernetes.html" class="hidden-xs hidden-sm" style="float: right; padding: 6px;" ng-safenewtab><i class="fa fa-info-circle" style="margin-right: 6px;"></i>Learn more about applications</a>
+          <h3><i class="fa ci-appcube"></i>{{ $ctrl.repository.namespace }}/{{ $ctrl.repository.name }}</h3>
+        </div>
+
+        <!-- Tabs -->
+        <cor-tab-panel cor-nav-tabs>
+          <cor-tabs>
+            <cor-tab tab-title="Description" tab-id="description">
+              <i class="fa fa-info-circle"></i>
+            </cor-tab>
+            <cor-tab tab-title="Channels" tab-id="channels">
+              <i class="fa fa-tags"></i>
+            </cor-tab>
+            <cor-tab tab-title="Releases" tab-id="releases">
+              <i class="fa ci-package"></i>
+            </cor-tab>
+            <cor-tab tab-title="Usage Logs" tab-id="logs" tab-init="$ctrl.showLogs()" ng-if="$ctrl.repository.can_admin">
+              <i class="fa fa-bar-chart"></i>
+            </cor-tab>
+            <cor-tab tab-title="Settings" tab-id="settings" tab-init="$ctrl.showSettings()" ng-if="$ctrl.repository.can_admin">
+              <i class="fa fa-gear"></i>
+            </cor-tab>
+          </cor-tabs>
+
+          <cor-tab-content>
+            <!-- Description -->
+            <cor-tab-pane id="description">
+              <div class="description">
+                <markdown-input content="$ctrl.repository.description"
+                                can-write="$ctrl.repository.can_write"
+                                (content-changed)="$ctrl.updateDescription($event.content)"
+                                field-title="repository description"></markdown-input>
+              </div>
+            </cor-tab-pane>
+
+            <!-- Channels -->
+            <cor-tab-pane id="channels">
+              <div ng-show="!$ctrl.repository.channels.length && $ctrl.repository.can_write">
+                <h3>No channels found for this application</h3>
+                <br>
+                <p class="hidden-xs">
+                  To push a new channel (from within the Helm package directory and with the <a href="https://github.com/app-registry/appr-helm-plugin" ng-safenewtab>Helm registry plugin</a> installed):
+  <pre class="command hidden-xs">helm registry push --namespace {{ $ctrl.repository.namespace }} --channel {channelName} {{ $ctrl.Config.SERVER_HOSTNAME }}</pre>
+                </p>
+              </div>
+
+              <div ng-show="$ctrl.repository.channels.length || !$ctrl.repository.can_write">
+                <cor-table table-data="$ctrl.repository.channels" table-item-title="channels" filter-fields="['name']">
+                  <cor-table-col datafield="name" sortfield="name" title="Name"
+                                 templateurl="/static/js/directives/ui/app-public-view/channel-name.html"></cor-table-col>
+                  <cor-table-col datafield="release" sortfield="release" title="Current Release"></cor-table-col>
+                  <cor-table-col datafield="last_modified" sortfield="last_modified" title="Last Modified"
+                                 selected="true" kindof="datetime"
+                                 templateurl="/static/js/directives/ui/app-public-view/last-modified.html"></cor-table-col>
+                </cor-table>
+              </div>
+            </cor-tab-pane>
+
+            <!-- Releases -->
+            <cor-tab-pane id="releases">
+              <div ng-show="!$ctrl.repository.releases.length && $ctrl.repository.can_write">
+                <h3>No releases found for this application</h3>
+                <br>
+                <p class="hidden-xs">
+                  To push a new release (from within the Helm package directory and with the <a href="https://coreos.com/apps" ng-safenewtab>Helm registry plugin</a> installed):
+  <pre class="command hidden-xs">helm registry push --namespace {{ $ctrl.repository.namespace }} {{ $ctrl.Config.SERVER_HOSTNAME }}</pre>
+                </p>
+              </div>
+
+              <div ng-show="$ctrl.repository.releases.length || !$ctrl.repository.can_write">
+                <cor-table table-data="$ctrl.repository.releases"
+                           table-item-title="releases"
+                           filter-fields="['name']"
+                           can-expand="true">
+                  <cor-table-col datafield="name" sortfield="name" title="Name"></cor-table-col>
+                  <cor-table-col datafield="last_modified" sortfield="last_modified"
+                                 title="Created"
+                                 selected="true" kindof="datetime"
+                                 templateurl="/static/js/directives/ui/app-public-view/last-modified.html"></cor-table-col>
+                  <cor-table-col datafield="channels" title="Channels" item-limit="6"
+                                 templateurl="/static/js/directives/ui/app-public-view/channels-list.html"></cor-table-col>
+                </cor-table>
+              </div>
+            </cor-tab-pane>
+
+            <!-- Usage Logs-->
+            <cor-tab-pane id="logs" ng-if="$ctrl.repository.can_admin">
+              <div class="logs-view" repository="$ctrl.repository" makevisible="$ctrl.logsShown"></div>
+            </cor-tab-pane>
+
+            <!-- Settings -->
+            <cor-tab-pane id="settings" ng-if="$ctrl.repository.can_admin">
+              <div class="repo-panel-settings" repository="$ctrl.repository" is-enabled="$ctrl.settingsShown"></div>
+            </cor-tab-pane>
+          </cor-tab-content>
+        </cor-tab-panel>
+      </div>
+
+      <!-- Side bar -->
+      <div class="col-md-3 hidden-xs hidden-sm side-bar">
+        <div>
+          <visibility-indicator repository="$ctrl.repository"></visibility-indicator>
+        </div>
+        <div ng-if="$ctrl.repository.is_public">{{ $ctrl.repository.namespace }} is sharing this application publicly</div>
+        <div ng-if="!$ctrl.repository.is_public">This application is private and only visible to those with permission</div>
+
+        <div class="sidebar-table" ng-if="$ctrl.repository.channels.length">
+          <h4>Latest Channels</h4>
+          <cor-table table-data="$ctrl.repository.channels" table-item-title="channels" filter-fields="['name']" compact="true" max-display-count="3">
+            <cor-table-col datafield="name" sortfield="name" title="Name"
+                           templateurl="/static/js/directives/ui/app-public-view/channel-name.html"></cor-table-col>
+            <cor-table-col style="word-wrap: break-word;"
+                           datafield="release" sortfield="release" title="Current Release"></cor-table-col>
+          </cor-table>
+        </div>
+
+        <div class="sidebar-table" ng-if="$ctrl.repository.releases.length">
+          <h4>Latest Releases</h4>
+          <cor-table table-data="$ctrl.repository.releases" table-item-title="releases" filter-fields="['name']" compact="true" max-display-count="3">
+            <cor-table-col style="word-wrap: break-word;"
+                           datafield="name" sortfield="name" title="Name"></cor-table-col>
+            <cor-table-col datafield="last_modified" sortfield="last_modified"
+                           title="Created"
+                           selected="true" kindof="datetime"
+                           templateurl="/static/js/directives/ui/app-public-view/last-modified.html"></cor-table-col>
+          </cor-table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

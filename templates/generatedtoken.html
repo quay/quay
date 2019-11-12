@@ -1,0 +1,27 @@
+<html>
+  <title>OAuth Access Token · Quay</title>
+  <head>
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.no-icons.min.css">
+    <link href='//fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'>
+    <script type="text/javascript">
+      function setToken() {
+        var hash = document.location.hash.substr(1);
+        var pairs = hash.split('&');
+        for (var i = 0; i < pairs.length; ++i) {
+          var pair = pairs[i];
+          var kv = pair.split('=');
+          if (kv[0] == 'access_token') {
+            document.getElementById('accesstoken').appendChild(document.createTextNode(kv[1]));
+          }
+        }
+      }
+    </script>
+  </head>
+  <body onload="setToken()">
+    <div class="container" style="margin-top: 20px">
+      <img src="{{ config_set['BRANDING']['logo'] }}">
+      <h5>Access Token: <span id="accesstoken"></span></h5>
+    </div>
+  </body>
+</html>

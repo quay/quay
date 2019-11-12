@@ -1,0 +1,12 @@
+<!-- NOTE: DEPRECATED -->
+<div id="build-status-container" class="build-status-container">
+  <div>
+    <span class="phase-icon" ng-class="build.phase"></span>
+    <span class="build-message" phase="build.phase"></span>
+  </div>
+  <div class="timing">
+    <i class="fa fa-clock-o"></i>
+    Started: <time-ago datetime="build.started"></time-ago>
+  </div>
+  <div class="build-progress" build="build"></div>
+</div>

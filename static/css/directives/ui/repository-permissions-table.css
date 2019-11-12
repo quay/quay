@@ -1,0 +1,36 @@
+.repository-permissions-table #add-entity-permission {
+   padding-left: 0px;
+}
+
+.repository-permissions-table .user-permission-entity {
+  position: relative;
+}
+
+.repository-permissions-table .outside-org {
+  position: absolute;
+  top: 15px;
+  left: -2px;
+  font-size: 16px;
+  color: #E8BB03;
+}
+
+.repository-permissions-table .mobile-add-row {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 2px solid #eee;
+}
+
+.repository-permissions-table .mobile-add-row .add-button,
+.repository-permissions-table .mobile-add-row .role-group {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.repository-permissions-table .mobile-add-row .role-group .btn-group {
+  display: block;
+}
+
+.repository-permissions-table .mobile-add-row .role-group .btn-group .btn {
+  width: 100%;
+}

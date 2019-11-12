@@ -1,0 +1,74 @@
+<div class="resource-view manifest-view"
+     resources="[repositoryResource, manifestResource]"
+     error-message="'Manifest not found'">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link">
+        <a class="back-link" href="/repository/{{ repository.namespace }}/{{ repository.name }}?tab=tags">
+          <i class="fa fa-hdd-o" style="margin-right: 4px"></i>
+          {{ repository.namespace }}/{{ repository.name }}
+        </a>
+      </span>
+      <span class="cor-title-content">
+        <i class="fa fa-lg" ng-class="{'fa-file': !manifest.is_manifest_list, 'fa-file-text-o': manifest.is_manifest_list}" style="margin-right: 10px"></i>
+        {{ manifest.digest.substr(7, 12) }}
+      </span>
+    </div>
+
+    <!-- Manifest list -->
+    <div ng-if="manifest.is_manifest_list">
+      <div class="co-main-content-panel">
+        <cor-table table-data="manifestsOf(manifest)" table-item-title="manifests" filter-fields="['digest', 'os', 'architecture']">
+          <cor-table-col datafield="digest" sortfield="digest" title="Manifest"
+                         templateurl="/static/directives/manifest-view-manifest-link.html"></cor-table-col>
+          <cor-table-col datafield="os" sortfield="os" title="Operating System"></cor-table-col>
+          <cor-table-col datafield="architecture" sortfield="architecture" title="Architecture"></cor-table-col>
+        </cor-table>
+      </div>
+    </div>
+
+    <!-- Manifest -->
+    <div ng-if="!manifest.is_manifest_list">
+      <cor-tab-panel orientation="vertical" cor-nav-tabs>
+        <cor-tabs>
+          <cor-tab tab-title="Layers" tab-id="layers">
+            <i class="fa ci-layers"></i>
+          </cor-tab>
+          <cor-tab tab-title="Security Scan" tab-id="vulnerabilities"
+                  tab-init="loadManifestSecurity()"
+                  quay-show="Features.SECURITY_SCANNER">
+            <i class="fa fa-bug"></i>
+          </cor-tab>
+          <cor-tab tab-title="Packages" tab-id="packages"
+                  tab-init="loadManifestPackages()"
+                  quay-show="Features.SECURITY_SCANNER">
+            <i class="fa ci-package"></i>
+          </cor-tab>
+        </cor-tabs>
+
+        <cor-tab-content>
+          <!-- Layers -->
+          <cor-tab-pane id="layers">
+            <h3>Manifest Layers</h3>
+            <div class="manifest-view-layer" repository="repository" layer="layer"
+                 manifest="manifest" ng-repeat="layer in reversedLayers"></div>
+          </cor-tab-pane>
+
+          <!-- Vulnerabilities -->
+          <cor-tab-pane id="vulnerabilities" quay-show="Features.SECURITY_SCANNER">
+            <div quay-require="['SECURITY_SCANNER']">
+              <div class="manifest-vulnerability-view" repository="repository" manifest="manifest" is-enabled="manifestSecurityCounter"></div>
+            </div>
+          </cor-tab-pane>
+
+          <!-- Features -->
+          <cor-tab-pane id="packages" quay-show="Features.SECURITY_SCANNER">
+            <div quay-require="['SECURITY_SCANNER']">
+              <div class="manifest-feature-view" repository="repository" manifest="manifest" is-enabled="manifestPackageCounter"></div>
+            </div>
+          </cor-tab-pane>
+        </cor-tab-content>
+      </cor-tab-panel>
+    </div>
+  </div>
+</div>

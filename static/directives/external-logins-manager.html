@@ -1,0 +1,41 @@
+<div class="external-logins-manager-element">
+  <div class="manager-header" header-title="External Logins"></div>
+
+  <div class="section-description-header">
+    The external logins panel lists all supported external login providers, which can be used for one-click OAuth-based login to <span class="registry-name"></span>. Accounts can be attached or detached by clicking the associated button below.
+  </div>
+
+  <table class="co-table">
+    <thead>
+      <td>Provider</td>
+      <td>Account Status</td>
+      <td quay-show="Features.DIRECT_LOGIN">Attach/Detach</td>
+    </thead>
+
+    <tr class="external-auth-provider" ng-repeat="provider in EXTERNAL_LOGINS">
+      <td class="external-auth-provider-title">
+        <span class="icon-image-view" value="{{ provider.icon }}"></span>
+        {{ provider.title }}
+      </td>
+      <td>
+        <span ng-if="externalLoginInfo[provider.id]">
+          Attached to {{ provider.title }} account
+          <b ng-if="externalLoginInfo[provider.id].metadata.service_username">
+            {{ externalLoginInfo[provider.id].metadata.service_username }}
+          </b>
+        </span>
+
+        <span class="empty" ng-if="!externalLoginInfo[provider.id]">
+          Not attached to {{ provider.title }}
+        </span>
+      </td>
+
+      <td>
+        <span class="external-login-button" provider="provider" action="attach" is-link="true"
+              ng-if="!externalLoginInfo[provider.id]"></span>
+        <a ng-if="externalLoginInfo[provider.id] && Features.DIRECT_LOGIN"
+           ng-click="detachExternalLogin(provider.id)">Detach Account</a>
+      </td>
+    </tr>
+  </table>
+</div>

@@ -1,0 +1,8 @@
+.source-ref-link-element .fa {
+  margin-right: 4px;
+  display: inline-block;
+}
+
+.source-ref-link-element {
+  white-space: nowrap;
+}

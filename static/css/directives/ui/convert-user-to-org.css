@@ -1,0 +1,77 @@
+.convert-user-to-org-element {
+  padding: 10px;
+}
+
+.convert-user-to-org .convert-form {
+  padding: 20px;
+}
+
+.convert-user-to-org .convert-form h3 {
+  margin-bottom: 20px;
+}
+
+.convert-user-to-org #convertForm {
+  max-width: 700px;
+  margin-top: 20px;
+}
+
+.convert-user-to-org #convertForm .form-group {
+  margin-bottom: 20px;
+}
+
+.convert-user-to-org #convertForm input {
+  margin-bottom: 10px;
+}
+
+.convert-user-to-org #convertForm .existing-data {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.convert-user-to-org #convertForm .existing-data .avatar {
+  margin-right: 4px;
+}
+
+.convert-user-to-org #convertForm .existing-data .username {
+  vertical-align: middle;
+}
+
+
+.convert-user-to-org #convertForm .description {
+  margin-top: 10px;
+  display: block;
+  color: #888;
+  font-size: 12px;
+}
+
+.convert-user-to-org .org-list {
+  list-style: none;
+}
+
+.convert-user-to-org .org-list li {
+  margin-top: 4px;
+}
+
+.convert-user-to-org .org-list li a {
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.convert-user-to-org .fa-arrow-circle-right {
+  margin-left:  6px;
+}
+
+.convert-user-to-org .form-group-content {
+  padding-left: 10px;
+  padding-top: 10px;
+}
+
+
+.convert-user-to-org .form-group-content .co-table {
+  margin: 0px;
+}
+
+.convert-user-to-org .co-option-table {
+  margin-top: 12px;
+}

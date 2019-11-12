@@ -1,0 +1,71 @@
+.strength-indicator {
+  display: inline-block;
+}
+
+.strength-indicator .indicator-sliver {
+  display: inline-block;
+  margin: 0px;
+  margin-right: 2px;
+  width: 4px;
+  border: 1px solid #D5D5D5;
+  transition: 0.5s ease;
+}
+
+.strength-indicator .strength-indicator-element .indicator-sliver:nth-child(1) {
+  height: 10px;
+}
+
+.strength-indicator .strength-indicator-element .indicator-sliver:nth-child(2) {
+  height: 14px;
+}
+
+.strength-indicator .strength-indicator-element .indicator-sliver:nth-child(3) {
+  height: 18px;
+}
+
+.strength-indicator .strength-indicator-element .indicator-sliver:nth-child(4) {
+  height: 22px;
+}
+
+/** Good */
+
+.strength-indicator .strength-indicator-element.good .indicator-sliver {
+  background: #83D29C;
+  border-color: #83D29C;
+}
+
+/** Fair */
+
+.strength-indicator .strength-indicator-element.fair .indicator-sliver {
+  background: #E4C212;
+  border-color: #E4C212;
+}
+
+.strength-indicator .strength-indicator-element.fair .indicator-sliver:last-child {
+  background: transparent;
+  border-color: #D5D5D5;
+}
+
+/** Bairly */
+
+.strength-indicator .strength-indicator-element.barely .indicator-sliver {
+  background: rgb(255, 155, 0);
+  border-color: rgb(255, 155, 0);
+}
+
+.strength-indicator .strength-indicator-element.barely .indicator-sliver:last-child {
+  background: transparent;
+  border-color: #D5D5D5;
+}
+
+.strength-indicator .strength-indicator-element.barely .indicator-sliver:nth-child(3) {
+  background: transparent;
+  border-color: #D5D5D5;
+}
+
+/** Poor */
+
+.strength-indicator .strength-indicator-element.poor .indicator-sliver:first-child {
+  background: red;
+  border-color: red;
+}

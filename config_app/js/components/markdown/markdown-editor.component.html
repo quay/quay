@@ -1,0 +1,43 @@
+<div class="markdown-editor-element">
+  <!-- Write/preview tabs -->
+  <ul class="nav nav-tabs" style="width: 100%;">
+    <li role="presentation" ng-class="$ctrl.editMode == 'write' ? 'active': ''"
+        ng-click="$ctrl.changeEditMode('write')">
+      <a href="#">Write</a>
+    </li>
+    <li role="presentation" ng-class="$ctrl.editMode == 'preview' ? 'active': ''"
+        ng-click="$ctrl.changeEditMode('preview')">
+      <a href="#">Preview</a>
+    </li>
+    <!-- Editing toolbar -->
+    <li style="float: right;">
+      <markdown-toolbar ng-if="$ctrl.editMode == 'write'"
+                        (insert-symbol)="$ctrl.insertSymbol($event)"></markdown-toolbar>
+    </li>
+  </ul>
+
+  <div class="tab-content" style="padding: 10px 0 0 0;">
+    <div ng-show="$ctrl.editMode == 'write'">
+      <textarea id="markdown-textarea"
+                placeholder="Enter {{ ::$ctrl.fieldTitle }}"
+                ng-model="$ctrl.content"></textarea>
+    </div>
+    <div class="markdown-editor-preview"
+         ng-if="$ctrl.editMode == 'preview'">
+      <markdown-view content="$ctrl.content"></markdown-view>
+    </div>
+  </div>
+
+  <div class="markdown-editor-actions">
+    <div class="markdown-editor-buttons">
+      <button type="button" class="btn btn-default"
+              ng-click="$ctrl.discardChanges()">
+        Close
+      </button>
+      <button type="button" class="btn btn-primary"
+              ng-click="$ctrl.saveChanges()">
+        Save changes
+      </button>
+    </div>
+  </div>
+</div>

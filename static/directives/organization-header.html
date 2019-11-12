@@ -1,0 +1,18 @@
+<div class="organization-header-element">
+  <span class="avatar" size="24" data="organization.avatar"></span>
+  <span class="organization-name" ng-show="teamName || clickable">
+    <a href="/organization/{{ organization.name }}">{{ organization.name }}</a>
+  </span>
+  <span class="organization-name" ng-show="!teamName && !clickable">
+    {{ organization.name }}
+  </span>
+
+  <span ng-show="teamName">
+    <span class="divider">/</span>
+    <i class="fa fa-group"></i>
+    <span class="team-name">
+      {{ teamName }}
+    </span>
+  </span>
+  <span ng-transclude></span>
+</div>

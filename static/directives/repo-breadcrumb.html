@@ -1,0 +1,25 @@
+<span class="repo-breadcrumb-element">
+  <span ng-show="!image && !subsection">
+    <span class="crumb">
+      <a href="{{ '/repository/?namespace=' + repo.namespace }}">{{repo.namespace}}</a>
+    </span>
+    <span class="current">{{repo.name}}</span>
+  </span>
+  <span ng-show="image && !subsection">
+    <span class="crumb">
+      <a href="{{ '/repository/?namespace=' + repo.namespace }}">{{repo.namespace}}</a>
+    </span>
+    <span class="crumb"><a href="{{ '/repository/' + repo.namespace + '/' + repo.name }}">{{repo.name}}</a></span>
+    <span class="current">
+      <i class="fa fa-archive" style="margin-left: 2px; margin-right: 2px;"></i>
+      {{image.id.substr(0, 12)}}
+    </span>
+  </span>
+  <span ng-show="!image && subsection">
+    <span class="crumb">
+      <a href="{{ '/repository/?namespace=' + repo.namespace }}">{{repo.namespace}}</a>
+    </span>
+    <span class="crumb"><a href="{{ '/repository/' + repo.namespace + '/' + repo.name }}">{{repo.name}}</a></span>
+    <span class="current"><i class="fa" ng-class="subsectionIcon" style="margin-left: 4px; margin-right: 8px;"></i>{{subsection}}</span>
+  </span>
+</span>

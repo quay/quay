@@ -1,0 +1,118 @@
+ <div class="repo-tag-history-element">
+   <div class="cor-loader" ng-if="!historyEntries"></div>
+
+   <span class="co-filter-box">
+    <input class="form-control" type="text" ng-model="filter" placeholder="Filter History...">
+   </span>
+
+   <div class="history-list">
+     <div class="empty" ng-if="historyEntries && !historyEntries.length">
+      <div class="empty-primary-msg">No recent tag activity.</div>
+      <div class="empty-secondary-msg">There has not been any recent tag activity on this repository.</div>
+     </div>
+
+     <table class="co-table" ng-if="historyEntries.length">
+        <thead class="hidden-xs">
+          <td class="icon-col"></td>
+          <td class="history-col">Tag Change</td>
+          <td class="datetime-col hidden-sm hidden-xs">Date/Time</td>
+          <td class="revert-col hidden-sm hidden-xs"><span ng-if="repository.can_write && !inReadOnlyMode">Revert</span></td>
+        </thead>
+        <tbody>
+          <tr style="height: 20px;"><td colspan="4"></td></tr>
+          <tr ng-repeat="entry in historyEntries" class="history-entry" ng-class="getEntryClasses(entry, filter)">
+            <td ng-if="entry.date_break" class="icon-col">
+              <i class="fa fa-calendar datetime-icon"></i>
+            </td>
+
+            <td class="history-row" ng-if="entry.date_break" colspan="2">
+              <time-display datetime="entry.date" date-only="true"></time-display>
+            </td>
+
+            <td ng-if="!entry.date_break" class="icon-col">
+              <div class="history-icon" data-title="{{ isCurrent(entry) ? 'Current view of this tag' : 'The value of this tag has changed since this action' }}" data-container="body" bs-tooltip></div>
+            </td>
+            <td ng-if="!entry.date_break" class="history-col">
+              <div class="history-description">
+                <span class="tag-span" data-title="{{ entry.tag_name }}" bs-tooltip><span>{{ entry.tag_name }}</span></span>
+                <span ng-switch on="entry.action">
+                  <span ng-switch-when="recreate">
+                    was recreated pointing to
+                    <manifest-link repository="repository"
+                          image-id="entry.docker_image_id"
+                          manifest-digest="entry.manifest_digest"></manifest-link>
+                  </span>
+                  <span ng-switch-when="create">
+                    was created pointing to
+                    <manifest-link repository="repository"
+                          image-id="entry.docker_image_id"
+                          manifest-digest="entry.manifest_digest"></manifest-link>
+                  </span>
+                  <span ng-switch-when="delete">
+                    was deleted
+                  </span>
+                  <span ng-switch-when="move">
+                    was moved to
+                    <manifest-link repository="repository"
+                          image-id="entry.docker_image_id"
+                          manifest-digest="entry.manifest_digest"></manifest-link>
+                    from
+                    <manifest-link repository="repository"
+                          image-id="entry.old_docker_image_id"
+                          manifest-digest="entry.old_manifest_digest"></manifest-link>
+                  </span>
+                  <span ng-switch-when="revert">
+                    was reverted to
+                    <manifest-link repository="repository"
+                          image-id="entry.docker_image_id"
+                          manifest-digest="entry.manifest_digest"></manifest-link>
+                    from
+                    <manifest-link repository="repository"
+                          image-id="entry.old_docker_image_id"
+                          manifest-digest="entry.old_manifest_digest"></manifest-link>
+                  </span>
+                </span>
+              </div>
+              <div class="history-datetime-small">
+                <time-display datetime="entry.time"></time-display>
+              </div>
+            </td>
+            <td ng-if="!entry.date_break" class="datetime-col hidden-sm hidden-xs">
+              <div class="history-datetime">
+                <time-display datetime="entry.time"></time-display>
+              </div>
+            </td>
+            <td class="revert-col hidden-xs hidden-sm">
+              <div ng-if="!entry.date_break && repository.can_write && !inReadOnlyMode" class="history-revert">
+                <span ng-switch on="entry.action">
+                  <a ng-switch-when="delete" ng-click="askRestoreTag(entry, true)">
+                    Restore to
+                    <manifest-link repository="repository"
+                          image-id="entry.docker_image_id"
+                          manifest-digest="entry.manifest_digest"></manifest-link>
+                  </a>
+                  <a ng-switch-when="move" ng-click="askRestoreTag(entry, false)">
+                    Revert to
+                    <manifest-link repository="repository"
+                          image-id="entry.old_docker_image_id"
+                          manifest-digest="entry.old_manifest_digest"></manifest-link>
+                  </a>
+                  <a ng-switch-when="revert" ng-click="askRestoreTag(entry, false)">
+                    Restore to
+                    <manifest-link repository="repository"
+                          image-id="entry.old_docker_image_id"
+                          manifest-digest="entry.old_manifest_digest"></manifest-link>
+                  </a>
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+     </table>
+   </div>
+
+  <div class="tag-operations-dialog" repository="repository" repository-tags="repositoryTags"
+     image-loader="imageLoader"
+     action-handler="tagActionHandler"></div>
+
+ </div>

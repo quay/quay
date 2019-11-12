@@ -1,0 +1,17 @@
+<div class="new-role-group btn-group btn-group-sm">
+  <div class="dropdown" style="text-align: left;">
+  <button class="btn btn-default" ng-class="getRoleInfo(currentRole).kind" data-toggle="dropdown"
+          ng-disabled="readOnly">
+    <span ng-if="currentRole" class="role-title">{{ getRoleInfo(currentRole).title }}</span>
+    <span ng-if="!currentRole">(Select)</span>
+    <span class="caret" ng-if="!readOnly"></span>
+  </button>
+  <ul class="dropdown-menu" ng-class="pullLeft == 'true' ? '' : 'pull-right'" ng-if="!readOnly">
+    <li ng-repeat="roleInfo in fullRoles" ng-class="roleInfo.kind">
+      <a ng-click="setRole(roleInfo.id)">{{ roleInfo.title }}
+        <div class="role-help-text">{{ roleInfo.description }}</div>
+      </a>
+    </li>
+  </ul>
+  </div>
+</div>

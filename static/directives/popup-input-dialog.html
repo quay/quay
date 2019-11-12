@@ -1,0 +1,4 @@
+<form name="popupinput" ng-submit="inputSubmit(); $hide()" novalidate>
+  <input id="input-box" type="text form-control" placeholder="{{ placeholder }}" ng-blur="$hide()"
+         ng-pattern="getRegexp(pattern)" ng-model="inputValue" ng-trim="false" ng-minlength="2" required>
+</form>

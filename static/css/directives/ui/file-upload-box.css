@@ -1,0 +1,117 @@
+/* Based off of http://tympanus.net/Tutorials/CustomFileInputs/ */
+
+.file-upload-box-element .file-drop {
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  z-index: -1;
+}
+
+.file-upload-box-element .file-input-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.file-upload-box-element .fa-times-circle {
+    margin-right: 4px;
+    color: #D64456;
+}
+
+.file-upload-box-element .fa-check-circle {
+    margin-right: 4px;
+    color: #2FC98E;
+}
+
+.file-upload-box-element .select-message {
+    color: #888;
+}
+
+.file-upload-box-element .file-drop + label {
+    margin-top: 14px;
+    margin-bottom: 20px;
+    cursor: pointer;
+}
+
+.file-upload-box-element .file-drop + label .chosen-file {
+    background: white;
+    display: inline-block;
+    height: 34px;
+    line-height: 34px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-weight: normal;
+    width: 250px;
+
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+
+.file-upload-box-element .file-drop + label .choose-button {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    display: inline-block;
+    overflow: hidden;
+    padding: 8px;
+    background-color: #51a3d9;
+    color: white;
+    font-weight: normal;
+    font-size: 16px;
+    height: 34px;
+    vertical-align: top;
+    padding-left: 16px;
+    padding-right: 16px;
+    line-height: 18px;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.file-upload-box-element .file-drop + label:hover .choose-button {
+    background-color: #3d769c;
+}
+
+.file-upload-box-element .file-drop + label:hover .chosen-file {
+    border-color: #3d769c;
+}
+
+.file-upload-box-element .file-drop + label.okay .choose-button {
+    background-color: #2FC98E;
+}
+
+.file-upload-box-element .file-drop + label.okay .chosen-file {
+    border-color: #2FC98E;
+}
+
+.file-upload-box-element .file-drop + label.error .choose-button {
+    background-color: #D64456;
+}
+
+.file-upload-box-element .file-drop + label.error .chosen-file {
+    border-color: #D64456;
+}
+
+.file-upload-box-element .file-drop + label.uploading .choose-button {
+    background-color: #666;
+}
+
+.file-upload-box-element .file-drop + label.uploading .chosen-file {
+    border-color: #666;
+}
+
+
+.file-upload-box-element .file-drop + label .fa {
+    color: white;
+    margin-right: 6px;
+}
+
+.file-upload-box-element .file-drop + label * {
+    pointer-events: none;
+}
+
+.file-upload-box-element .status-message {
+    font-size: 16px;
+}

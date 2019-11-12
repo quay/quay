@@ -1,0 +1,14 @@
+.org-view .organization-name {
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.org-view h3 {
+  margin-bottom: 20px;
+  margin-top: 0px;
+}
+
+.org-view .settings-section {
+  margin-bottom: 50px;
+}
+

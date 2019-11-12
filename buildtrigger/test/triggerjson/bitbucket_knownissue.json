@@ -1,0 +1,68 @@
+{
+  "push": {
+    "changes": [
+
+    ]
+  },
+  "actor": {
+    "account_id": "jsmith",
+    "display_name": "John Smith",
+    "type": "user",
+    "links": {
+      "self": {
+        "href": "https:\/\/api.bitbucket.org\/2.0\/users\/jsmith"
+      },
+      "avatar": {
+        "href": "https:\/\/bitbucket.org\/account\/jsmith\/avatar\/32\/"
+      }
+    }
+  },
+  "repository": {
+    "website": "",
+    "scm": "git",
+    "name": "slip-api",
+    "links": {
+      "self": {
+        "href": "https:\/\/api.bitbucket.org\/2.0\/repositories\/goldcuff\/slip-api"
+      },
+      "html": {
+        "href": "https:\/\/bitbucket.org\/goldcuff\/slip-api"
+      },
+      "avatar": {
+        "href": "https:\/\/bitbucket.org\/goldcuff\/slip-api\/avatar\/32\/"
+      }
+    },
+    "project": {
+      "links": {
+        "self": {
+          "href": "https:\/\/api.bitbucket.org\/2.0\/teams\/goldcuff\/projects\/SLIP"
+        },
+        "html": {
+          "href": "https:\/\/bitbucket.org\/account\/user\/goldcuff\/projects\/SLIP"
+        },
+        "avatar": {
+          "href": "https:\/\/bitbucket.org\/account\/user\/goldcuff\/projects\/SLIP\/avatar\/32"
+        }
+      },
+      "type": "project",
+      "name": "SLIP",
+      "key": "SLIP"
+    },
+    "full_name": "goldcuff\/slip-api",
+    "owner": {
+      "account_id": "goldcuff",
+      "display_name": "Goldcuff",
+      "type": "team",
+      "links": {
+        "self": {
+          "href": "https:\/\/api.bitbucket.org\/2.0\/teams\/goldcuff"
+        },
+        "avatar": {
+          "href": "https:\/\/bitbucket.org\/account\/goldcuff\/avatar\/32\/"
+        }
+      }
+    },
+    "type": "repository",
+    "is_private": true
+  }
+}

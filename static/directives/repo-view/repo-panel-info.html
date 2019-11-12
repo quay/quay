@@ -1,0 +1,83 @@
+<div class="repo-panel-info-element">
+  <!-- Repository stats and builds summary -->
+  <div class="repository-stats row">
+    <!-- Stats -->
+    <div class="col-sm-5 stat-col">
+      <div class="stat-title">Repository Activity</div>
+
+      <div class="stat-row">
+        <div class="heatmap hidden-xs hidden-sm" data="repository.stats"
+             item-name="action" domain="month" range="3"
+             start-count="-2" start-domain="months"></div>
+
+        <div class="stat visible-xs visible-sm">
+          <div class="stat-value">{{ getAggregatedUsage(repository.stats, 1) | abbreviated }}</div>
+          <div class="stat-subtitle">Yesterday</div>
+        </div>
+
+        <div class="stat visible-xs visible-sm">
+          <div class="stat-value">{{ getAggregatedUsage(repository.stats, 30) | abbreviated }}</div>
+          <div class="stat-subtitle">Last 30 days</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Builds -->
+    <div class="col-sm-7 builds-list" ng-if="!Features.BUILD_SUPPORT">
+      <div class="right-pull-controls" style="width: 100%">
+        <div>Pull this container with the following Docker command:</div>
+        <div class="copy-box" value="pullCommand"></div>
+      </div>
+    </div>
+
+    <div class="col-sm-7 builds-list" ng-if="Features.BUILD_SUPPORT">
+      <div class="stat-title">Recent Repo Builds</div>
+
+      <!-- Loading -->
+      <div class="cor-loader" ng-if="!builds"></div>
+
+      <!-- No Builds -->
+      <div class="empty" ng-if="builds && !builds.length">
+        <div class="empty-primary-msg">No builds have been run for this repository.</div>
+        <div class="empty-secondary-msg" ng-if="repository.can_write && !repository.tag_operations_disabled">
+          Click on the <i class="fa fa-tasks" style="margin-left: 6px"></i> Builds tab to start a new build.
+        </div>
+      </div>
+
+      <!-- Builds -->
+      <div ng-if="builds && builds.length">
+        <div class="build-mini-status" ng-repeat="build in builds" build="build"
+             can-view="repository.can_write || Features.READER_BUILD_LOGS"></div>
+      </div>
+
+      <!-- View All -->
+      <a href="/repository/{{ repository.namespace }}/{{ repository.name }}?tab=builds"
+         class="view-all" ng-if="repository.can_admin && builds.length">
+         View Build History
+      </a>
+    </div>
+  </div>
+
+  <!-- Repository Description -->
+  <div class="description-container">
+    <table class="co-fixed-table">
+    <tr>
+      <td>
+        <h4 style="font-size:20px;">Description</h4>
+        <div class="description">
+          <markdown-input content="repository.description"
+                          can-write="repository.can_write && !inReadOnlyMode"
+                          (content-changed)="updateDescription($event.content)"
+                          field-title="repository description"></markdown-input>
+        </div>
+      </td>
+      <td style="width: 400px;" class="hidden-xs hidden-sm" ng-if="Features.BUILD_SUPPORT">
+        <div class="right-pull-controls">
+          <div>Pull this container with the following Docker command:</div>
+          <div class="copy-box" value="pullCommand"></div>
+        </div>
+      </td>
+    </tr>
+    </table>
+  </div>
+</div>

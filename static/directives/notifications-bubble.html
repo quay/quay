@@ -1,0 +1,7 @@
+<span class="notifications-bubble-element">
+  <span class="badge user-notification notification-animated"
+        ng-show="notificationService.notifications.length"
+        ng-class="notificationService.notificationClasses">
+    {{ notificationService.notifications.length }}<span ng-if="notificationService.additionalNotifications">+</span>
+  </span>
+</span>

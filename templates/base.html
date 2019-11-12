@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html ng-app="quay" class="{% if onprem %}onprem{% else %}hosted{% endif %}">
+  <head>
+    <base href="/">
+
+    {% block title %}
+
+    {% endblock %}
+
+    {% block added_meta %}
+
+    {% endblock %}
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {% for style_url in external_styles %}
+      <link rel="stylesheet" href="{{ style_url }}" type="text/css">
+    {% endfor %}
+
+    <!-- Icons -->
+    <link rel="shortcut icon" href="/static/img/quay_favicon.png" type="image/png" />
+    <!-- /Icons -->
+
+    <!-- Hide the footer until the CSS loads properly. -->
+    <style type="text/css">
+    .page-footer {
+      display: none;
+    }
+
+    .loading-js-fade-in {
+      text-align: center;
+    }
+    </style>
+  
+    {% block added_stylesheets %}
+
+    {% endblock %}
+
+    <script type="text/javascript">
+      window.__endpoints = {{ route_data|tojson|safe }}.paths;
+      window.__features = {{ feature_set|tojson|safe }};
+      window.__config = {{ config_set|tojson|safe }};
+      window.__oauth = {{ oauth_set|tojson|safe }};
+      window.__external_login = {{ external_login_set|tojson|safe }};
+      window.__auth_scopes = {{ scope_set|tojson|safe }};
+      window.__vuln_priority = {{ vuln_priority_set|tojson|safe }}
+      window.__token = '{{ csrf_token() }}';
+      window.__kubernetes_namespace = {{ kubernetes_namespace|tojson|safe }};
+      window.__registry_state = '{{ registry_state }}';
+
+      {% if error_code %}
+      window.__error_code = {{ error_code }};
+      {% endif %}
+
+      {% if error_info %}
+      window.__error_info = {{ error_info|tojson|safe }};
+      {% endif %}
+    </script>
+
+    {% for script_url in external_scripts %}
+      <script src="{{ script_url }}"></script>
+    {% endfor %}
+
+    {% block added_dependencies %}
+
+    {% endblock %}
+
+    {% for script_path in main_scripts %}
+      <script src="/static/{{ script_path }}"></script>
+    {% endfor %}
+
+    {% if sentry_public_dsn %}
+      <script type="text/javascript">
+        Raven.config('{{ sentry_public_dsn }}').install();
+      </script>
+    {% endif %}
+
+    {% if munchkin_key %}
+      <script type="text/javascript">
+      (function() {
+        window.__quay_munchkin_queue = []
+
+        var didInit = false;
+        function initMunchkin() {
+          if(didInit === false) {
+            didInit = true;
+            if (!window['Munchkin'] || !Munchkin.init) {
+              return;
+            }
+
+            Munchkin.init('{{ munchkin_key }}');
+            window.__quay_munchkin_queue.forEach(function(queue_item) {
+              Munchkin.munchkinFunction.apply(Munchkin, queue_item);
+            });
+            window.__quay_munchkin_queue = [];
+          }
+        }
+        var s = document.createElement('script');
+        s.type = 'text/javascript';
+        s.async = true;
+        s.src = '//munchkin.marketo.net/munchkin-beta.js';
+        s.onreadystatechange = function() {
+          if (this.readyState == 'complete' || this.readyState == 'loaded') {
+            initMunchkin();
+          }
+        };
+        s.onload = initMunchkin;
+        document.getElementsByTagName('head')[0].appendChild(s);
+      })();
+      </script>
+    {% endif %}
+
+    {% if google_analytics_key %}
+      <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+        ga('create', '{{ google_analytics_key }}', 'auto');
+        ga('send', 'pageview');
+
+      </script>
+    {% endif %}
+
+{% if mixpanel_key %}
+<!-- start Mixpanel --><script type="text/javascript">
+(function(e,b){if(!b.__SV){var a,f,i,g;window.mixpanel=b;a=e.createElement("script");a.type="text/javascript";a.async=!0;a.src=("https:"===e.location.protocol?"https:":"http:")+'//cdn.mxpnl.com/libs/mixpanel-2.2.min.js';f=e.getElementsByTagName("script")[0];f.parentNode.insertBefore(a,f);b._i=[];b.init=function(a,e,d){function f(b,h){var a=h.split(".");2==a.length&&(b=b[a[0]],h=a[1]);b[h]=function(){b.push([h].concat(Array.prototype.slice.call(arguments,0)))}}var c=b;"undefined"!==
+typeof d?c=b[d]=[]:d="mixpanel";c.people=c.people||[];c.toString=function(b){var a="mixpanel";"mixpanel"!==d&&(a+="."+d);b||(a+=" (stub)");return a};c.people.toString=function(){return c.toString(1)+".people (stub)"};i="disable track track_pageview track_links track_forms register register_once alias unregister identify name_tag set_config people.set people.set_once people.increment people.append people.track_charge people.clear_charges people.delete_user".split(" ");for(g=0;g<i.length;g++)f(c,i[g]);
+b._i.push([a,e,d])};b.__SV=1.2}})(document,window.mixpanel||[]);
+mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug }} });</script><!-- end Mixpanel -->
+{% endif %}
+
+  </head>
+  <body ng-class="pageClass + ' ' + (user.anonymous ? 'anon' : 'signedin')" class="co-img-bg-network">
+    <div id="co-l-footer-wrapper">
+      <nav class="navbar navbar-default header-bar co-m-navbar co-fx-box-shadow" role="navigation"></nav>
+
+      <div class="quay-message-bar"></div>
+      <div quay-require="['BILLING']">
+        <div class="quay-service-status-bar"></div>
+      </div>
+
+      <div id="padding-container">
+        <div id="co-l-view-container">
+          <div ng-class="newLayout ? '' : 'main-panel co-fx-box-shadow-heavy'">
+            {% block body_content %}
+
+            {% endblock %}
+          </div>
+        </div>
+      </div>
+
+      <div id="co-l-footer-push"></div>
+    </div>
+
+    <nav id="co-l-footer" class="page-footer hidden-xs">
+      <div class="col-md-12">
+        <ul>
+          {% if config_set['BRANDING']['footer_img'] %}
+          <li><a href="{{ config_set['BRANDING']['footer_url'] }}" ng-safenewtab><img src="{{ config_set['BRANDING']['footer_img'] }}"></a></li>
+          {% endif %}
+          <li quay-require="['BILLING']"><a href="https://docs.quay.io" ng-safenewtab>Documentation</a></li>
+          <li quay-require="['BILLING']"><a href="/tos" target="_self">Terms</a></li>
+          <li quay-require="['BILLING']"><a href="/privacy" target="_self">Privacy</a></li>
+          <li quay-require="['BILLING']"><a href="/security/" target="_self">Security</a></li>
+          <li quay-require="['BILLING']"><a href="/about/" target="_self">About</a></li>
+          {% if has_contact %}
+          <li><b><a href="{{ contact_href or '/contact/' }}" target="_self">Contact</a></b></li>
+          {% endif %}
+          <li quay-require="['BILLING']">
+            <span class="quay-service-status"></span>
+          </li>
+          <li>{{ version_number }}</li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Modal message dialog -->
+    <div class="modal fade" id="couldnotloadModal" data-backdrop="static">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Uh Oh...</h4>
+          </div>
+          <div class="modal-body">
+            Something went wrong when trying to load Quay! Please report this to <a href="mailto:support@quay.io">support@quay.io</a>.
+          </div>
+          <div class="modal-footer">
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+    {% if google_tagmanager_key %}
+      <!-- Google Tag Manager (hooked up to CrossDomain) -->
+      <noscript><iframe src="//www.googletagmanager.com/ns.html?id={{ google_tagmanager_key }}"
+      height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+      <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      '//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','{{ google_tagmanager_key }}');</script>
+    {% endif %}
+
+    <div class="angular-tour-ui" inline="false" tour="angular_tour_current"></div>
+  </body>
+</html>

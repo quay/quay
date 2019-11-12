@@ -1,0 +1,20 @@
+<!-- Messages tab -->
+<div class="super-user-build-logs-element">
+  <div class="manager-header" header-title="Build Logs">
+    <span class="build-log-view">
+      <input class="form-control" type="text" ng-model="buildParams.buildUuid" placeholder="Build ID"
+             style="margin-right: 10px;">
+    </span>
+    <button class="create-button btn btn-primary" ng-click="loadBuild()">
+      <i class="fa fa-plus" style="margin-right: 6px;"></i>Get Logs
+    </button>
+  </div>
+  <div class="resource-view" resource="buildResource" error-message="'Cannot find or load build'"
+       ng-show="buildId">
+    <div class="build-logs-view"
+         build="build"
+         use-timestamps="showLogTimestamps"
+         is-super-user="true"
+         ng-show="build"></div>
+  </div>
+</div>

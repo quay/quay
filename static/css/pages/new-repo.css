@@ -1,0 +1,118 @@
+.new-repo .co-main-content-panel {
+  padding: 30px;
+}
+
+@media (max-width: 767px) {
+  .new-repo .co-main-content-panel {
+    padding: 20px;
+    padding-top: 10px;
+  }
+
+  .new-repo .repo-kind-select {
+    display: block;
+    width: 100%;
+    margin: 0px;
+  }
+}
+
+.new-repo .repo-kind-select {
+  display: inline-block;
+  width: 200px;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+.new-repo .namespace-selector-header .slash {
+  color: #444;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.new-repo .required-plan {
+  margin: 10px;
+  margin-top: 20px;
+}
+
+.new-repo .required-plan .alert {
+  color: #444 !important;
+}
+
+.new-repo .new-header .popover {
+  font-size: 14px;
+}
+
+.new-repo .new-header .repo-circle {
+   margin-right: 14px;
+}
+
+.new-repo .new-header .name-container {
+   display: inline-block;
+   width: 300px;
+   vertical-align: middle;
+}
+
+.new-repo .description {
+  margin-left: 10px;
+  margin-top: 10px;
+}
+
+.new-repo .section {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 16px;
+}
+
+.new-repo .section-title {
+  float: right;
+  color: #aaa;
+}
+
+.new-repo .repo-option {
+  margin: 6px;
+  margin-top: 16px;
+}
+
+.new-repo .repo-option label {
+  font-weight: normal;
+}
+
+.new-repo .repo-option i {
+  font-size: 18px;
+  padding-left: 10px;
+  padding-right: 10px;
+  width: 42px;
+  display: inline-block;
+  text-align: center;
+}
+
+.new-repo .repo-option-title {
+  white-space: nowrap;
+}
+
+.new-repo .option-description {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.new-repo .option-description label {
+  display: block;
+}
+
+.new-repo .cbox {
+  margin: 10px;
+}
+
+.new-repo .initialize-repo {
+  margin: 10px;
+  margin-top: 16px;
+  margin-left: 20px;
+}
+
+.new-repo .initialize-repo .file-drop {
+  margin: 10px;
+}
+
+.new-repo .xs-label {
+  margin-top: 10px;
+  margin-bottom: 6px;
+}

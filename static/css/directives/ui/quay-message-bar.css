@@ -1,0 +1,34 @@
+.quay-message-bar-element .markdown-view p {
+  margin: 0px;
+  display: inline-block;
+}
+
+.quay-message-bar-element .quay-service-status-description.warning {
+  background: #FFFBF0;
+  color: black;
+}
+
+.quay-message-bar-element .quay-service-status-description.warning:before {
+  font-family: FontAwesome;
+  content: "\f071";
+  font-size: 22px;
+  color: #E4C212;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+.quay-message-bar-element .quay-service-status-description.error {
+  background: #FFF0F0;
+  color: black;
+}
+
+.quay-message-bar-element .quay-service-status-description.error:before {
+  font-family: core-icons;
+  content: "\f109";
+  font-size: 22px;
+  color: red;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+}

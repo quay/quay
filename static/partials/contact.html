@@ -1,0 +1,25 @@
+<div class="cor-container">
+  <h2>
+    Contact Us<br>
+    <small>We are here to help!</small>
+  </h2>
+
+  <div class="row contact-options">
+    <div class="text-center" ng-repeat="info in Config.CONTACT_INFO"
+         ng-class="['option-' + getKind(info), 'col-sm-' + colsize]">
+      <span class="fa-stack fa-3x text-center">
+        <i class="fa fa-circle fa-stack-2x"></i>
+        <i class="fa fa-stack-1x fa-inverse"
+          ng-class="{'mailto': 'fa-envelope', 'irc': 'fa-comment', 'tel': 'fa-phone', 'twitter': 'fa-twitter', 'url': 'fa-ticket'}[getKind(info)]"></i>
+      </span>
+      <span ng-switch="getKind(info)">
+        <h4 ng-switch-when="mailto">Email</h4>
+        <h4 ng-switch-when="irc">IRC</h4>
+        <h4 ng-switch-when="tel">Call</h4>
+        <h4 ng-switch-when="twitter">Tweet</h4>
+        <h4 ng-switch-when="url">Help System</h4>
+      </span>
+      <h4><a ng-href="{{ info }}">{{ getTitle(info) }}</a></h4>
+    </div>
+  </div>
+</div>

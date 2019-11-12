@@ -1,0 +1,300 @@
+.repo-panel-tags-element .fa-tag {
+  margin-right: 10px;
+}
+
+.repo-panel-tags-element .empty {
+  margin-top: 20px;
+}
+
+.repo-panel-tags-element .image-track {
+  width: 20px;
+  position: relative;
+}
+
+.repo-panel-tags-element .image-track-dot {
+  display: inline-block;
+
+  position: absolute;
+  top: 15px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+
+  background: white;
+  z-index: 300;
+
+  border: 2px solid black;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.repo-panel-tags-element .image-track-filled-dot {
+  display: inline-block;
+
+  position: absolute;
+  top: 15px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+
+  background: white;
+  z-index: 300;
+
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.repo-panel-tags-element .image-track-line {
+  position: absolute;
+  top: 0px;
+  bottom: -1px;
+  left: 7px;
+  width: 0px;
+  display: inline-block;
+  border-left: 2px solid black;
+
+  display: none;
+  z-index: 200;
+}
+
+.repo-panel-tags-element .image-track-line.start {
+  top: 18px;
+  height: 28px;
+  display: block;
+}
+
+.repo-panel-tags-element .image-track-line.middle {
+  display: block;
+}
+
+.repo-panel-tags-element .image-track-line.end {
+  top: -1px;
+  height: 16px;
+  display: block;
+}
+
+.repo-panel-tags-element .options-col {
+  padding-left: 20px;
+}
+
+.repo-panel-tags-element .options-col .fa-download, .repo-panel-tags-element .options-col .fa-history {
+  color: #999;
+  cursor: pointer;
+}
+
+.repo-panel-tags-element .tag-image-history-item .image-id {
+  font-family: Consolas, "Lucida Console", Monaco, monospace;
+  font-size: 12px;
+}
+
+.repo-panel-tags-element .tag-image-history-item .image-apply-time {
+  color: #ccc;
+  font-size: 11px;
+  padding-left: 20px;
+}
+
+.repo-panel-tags-element .tag-image-history-item .fa-circle-o {
+  margin-right: 2px;
+}
+
+.repo-panel-tags-element .signing-col {
+  text-align: center;
+}
+
+.repo-panel-tags-element .security-scan-col span {
+  cursor: pointer;
+}
+
+.repo-panel-tags-element .security-scan-col .donut-chart {
+  margin-right: 4px;
+}
+
+.repo-panel-tags-element .security-scan-col .scanning,
+.repo-panel-tags-element .security-scan-col .failed-scan,
+.repo-panel-tags-element .security-scan-col .vuln-load-error {
+  color: #9B9B9B;
+  font-size: 12px;
+  cursor: default;
+}
+
+.repo-panel-tags-element .security-scan-col .no-vulns a {
+  color: #2FC98E;
+  display: flex;
+}
+
+.repo-panel-tags-element .security-scan-col .vuln-link,
+.repo-panel-tags-element .security-scan-col .vuln-link span {
+  text-decoration: none !important
+}
+
+.repo-panel-tags-element .security-scan-col .has-vulns.Critical .highest-vuln,
+.repo-panel-tags-element .security-scan-col .has-vulns.Defcon1 .highest-vuln {
+}
+
+.repo-panel-tags-element .security-scan-col .has-vulns {
+  font-size: 14px;
+}
+
+.repo-panel-tags-element .security-scan-col .has-vulns .donut-chart {
+  margin-right: 4px;
+}
+
+.repo-panel-tags-element .security-scan-col .has-vulns .dot {
+  margin-left: 2px;
+  margin-right: 2px;
+  font-size: 150%;
+  line-height: 100%;
+  vertical-align: middle;
+  color: #aaa;
+}
+
+.repo-panel-tags-element .other-vulns {
+  color: black;
+}
+
+.repo-panel-tags-element tr.expanded-view td {
+  border-bottom: 0px;
+}
+
+.repo-panel-tags-element .image-id-row {
+  margin-bottom: 6px;
+  padding-left: 6px;
+  position: relative;
+}
+
+.repo-panel-tags-element .image-id-row:before {
+    content: "\f1c5";
+    font-family: FontAwesome;
+    position: absolute;
+    left: -22px;
+    top: 0px;
+    font-size: 15px;
+    color: #888;
+}
+
+.repo-panel-tags-element .labels-col {
+  padding-top: 0px;
+}
+
+.repo-panel-tags-element .manifest-list .labels-col {
+  padding-top: 10px;
+}
+
+.repo-panel-tags-element .signing-delegations-list {
+  margin-top: 8px;
+}
+
+@media (max-width: 1000px) {
+  .repo-panel-tags-element .image-track {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .repo-panel-tags-element .tag-span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+    display: inline-block;
+  }
+
+  .repo-panel-tags-element .tag-span i {
+    display: none;
+  }
+
+  .repo-panel-tags-element .co-filter-box {
+    display: block;
+    float: none;
+    margin-top: 10px;
+    margin-bottom: 20px;
+  }
+
+  .repo-panel-tags-element .co-filter-box input {
+    width: 100%;
+  }
+
+  .repo-panel-tags-element .co-checked-actions .btn i {
+    font-size: 16px;
+    width: 18px;
+    text-align: center;
+    display: inline-block;
+  }
+
+  .repo-panel-tags-element .co-checked-actions .btn .text {
+    display: none;
+  }
+}
+
+.repo-panel-tags-element .disabled-option,
+.repo-panel-tags-element .disabled-option a {
+  color: #ccc;
+}
+
+.repo-panel-tags-element .image-tag-tooltip {
+  padding-bottom: 4px;
+}
+
+.repo-panel-tags-element .image-tag-tooltip .image-tag-tooltip-header {
+  padding: 4px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.repo-panel-tags-element .image-tag-tooltip .image-tag-tooltip-tags {
+  list-style: none;
+  padding: 10px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  margin-bottom: 4px;
+}
+
+.repo-panel-tags-element .image-tag-tooltip .image-tag-tooltip-tags .fa-tag {
+  margin-right: 8px;
+  color: #ccc;
+  vertical-align: middle;
+}
+
+.repo-panel-tags-element .image-tag-tooltip .image-tag-tooltip-tags-more {
+  color: #aaa;
+  font-size: 14px;
+  margin-bottom: 4px;
+  text-align: center;
+  padding: 4px;
+}
+
+.repo-panel-tags-element .manifest-list-icons {
+  display: inline-block;
+  float: right;
+}
+
+.repo-panel-tags-element .manifest-list-manifest-icon {
+  display: inline-block;
+  margin-right: 4px;
+  background-color: #e8f1f6;
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  vertical-align: middle;
+}
+
+.repo-panel-tags-element .secscan-manifestlist {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.repo-panel-tags-element .manifest-list-view td {
+  border-bottom: 0px;
+  border-top: 1px dotted #eee;
+}
+
+.repo-panel-tags-element .expanded-viewport.manifest-list {
+  border-top: 1px solid #eee;
+}
+
+.repo-panel-tags-element .manifest-list-view .image-track-line {
+  opacity: 0.2;
+}

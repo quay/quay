@@ -1,0 +1,21 @@
+<div class="resource-view"
+     resource="repositoryResource"
+     error-message="'Repository not found'">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link">
+        <a class="back-link" href="/repository/{{ namespace }}/{{ name }}">
+          {{ namespace }} / {{ name }}
+        </a>
+      </span>
+      <span class="cor-title-content">
+        <i class="fa fa-bell" style="margin-right: 10px"></i>
+        Create repository notification
+      </span>
+    </div>
+
+    <div class="co-main-content-panel">
+      <div class="create-external-notification" repository="repository" notification-created="notificationCreated()"></div>
+    </div>
+  </div>
+</div>

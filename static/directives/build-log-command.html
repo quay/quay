@@ -1,0 +1,4 @@
+<div class="build-log-command-element" ng-class="::{'multistep-seperator': !!isSecondaryFrom(command.message) || fromName(command.message)}">
+    <span class="from-name" ng-if="::!!fromName(command.message)">{{ ::fromName(command.message) }}</span>
+    <dockerfile-command class="command" command="getWithoutStep(command.message)"></dockerfile-command>
+</div>

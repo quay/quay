@@ -1,0 +1,41 @@
+<div class="signin-form-element" style="position: relative">
+  <form class="form-signin" ng-submit="signin();">
+
+    <h4 quay-show="!Features.DIRECT_LOGIN && EXTERNAL_LOGINS.length > 2">
+      Login via service
+    </h4>
+
+    <div class="external-logins" quay-show="EXTERNAL_LOGINS.length">
+      <div class="external-login-button" provider="provider" redirect-url="redirectUrl"
+           sign-in-started="markStarted()" ng-repeat="provider in EXTERNAL_LOGINS" is-link="true"></div>
+    </div>
+
+    <div class="or-bar" quay-show="Features.DIRECT_LOGIN && EXTERNAL_LOGINS.length">or</div>
+
+    <span class="cor-loader" ng-show="signingIn"></span>
+
+    <div class="co-alert co-alert-danger" ng-show="invalidCredentials">
+      {{ invalidCredentialsMessage || 'Invalid username or password.' }}
+    </div>
+    <div class="co-alert co-alert-danger" ng-show="needsEmailVerification">
+      You must verify your email address before you can sign in.
+    </div>
+    <div class="co-alert co-alert-warning" ng-show="tryAgainSoon > 0">
+      Too many attempts have been made to login. Please try again in {{ tryAgainSoon }} second<span ng-if="tryAgainSoon != 1">s</span>.
+    </div>
+
+    <div quay-show="Features.DIRECT_LOGIN">
+      <input type="text" class="form-control" id="signin-username" name="username"
+             placeholder="Username or E-mail Address" ng-model="signInUser.username"
+             ng-disabled="tryAgainSoon > 0 || signingIn" autofocus>
+
+      <input type="password" class="form-control" id="signin-password" name="password"
+             ng-disabled="tryAgainSoon > 0 || signingIn"
+             placeholder="Password" ng-model="signInUser.password">
+    </div>
+
+    <button class="btn btn-primary btn-block" type="submit" quay-show="Features.DIRECT_LOGIN" ng-disabled="tryAgainSoon > 0">
+      Sign in to <span class="registry-name"></span>
+    </button>
+  </form>
+</div>

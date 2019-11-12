@@ -1,0 +1,101 @@
+<div class="plan-manager-element">
+  <!-- Loading/Changing -->
+  <div class="cor-loader" ng-show="planLoading"></div>
+
+  <!-- Alerts -->
+  <div class="co-alert co-alert-danger" ng-show="limit == 'over' && !planLoading">
+    You are using more private repositories than your plan allows. Please
+    upgrade your subscription to avoid disruptions in your <span ng-show="organization">organization's</span> service.
+  </div>
+
+  <div class="co-alert co-alert-warning" ng-show="limit == 'at' && !planLoading">
+    You are at your current plan's number of allowed private repositories. It might be time to think about
+    upgrading your subscription to avoid future disruptions in your <span ng-show="organization">organization's</span> service.
+  </div>
+
+  <div class="co-alert co-alert-info" ng-show="limit == 'near' && !planLoading">
+    You are nearing the number of allowed private repositories. It might be time to think about
+    upgrading your subscription to avoid future disruptions in your <span ng-show="organization">organization's</span> service.
+  </div>
+
+  <!-- Trial info -->
+  <div class="co-alert co-alert-success" ng-show="subscription.trialEnd != null" style="font-size: 125%">
+    Free trial until <strong>{{ parseDate(subscription.trialEnd)  | date }}</strong>
+  </div>
+
+  <!-- QE Shoutout -->
+  <div class="qe-shoutout hidden-xs hidden-sm">
+    <table>
+      <tr>
+        <td>
+          <img src="/static/img/QuayEnterprise_horizontal_color.svg">
+          <div class="shoutout-text">
+            Run a private instance of Quay, with the same build features and geo-replication. Fixed price for unlimited users and repositories.
+          </div>
+        </td>
+        <td>
+          <a href="/plans?tab=enterprise" class="btn btn-default">Learn More</a>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Chart -->
+  <div class="usage-chart" total="subscribedPlan.privateRepos || 0"
+       current="subscription.usedPrivateRepos || 0"
+       limit="limit"
+       usage-title="Repository Usage"
+       ng-show="!planLoading"></div>
+
+  <!-- Plans Table -->
+  <div class="visible-xs" style="margin-top: 10px"></div>
+
+  <table class="table table-hover plans-list-table" ng-show="!planLoading">
+    <thead>
+      <td>Plan</td>
+      <td>
+        <span class="hidden-xs">Private Repositories</span>
+        <span class="visible-xs"><i class="fa fa-hdd-o"></i></span>
+      </td>
+      <td style="min-width: 64px"><span class="hidden-xs">Price</span><span class="visible-xs">$/mo</span></td>
+      <td></td>
+    </thead>
+
+    <tr ng-repeat="plan in plans" ng-show="isPlanVisible(plan, subscribedPlan)"
+        ng-class="{'active':isPlanActive(plan, subscribedPlan)}">
+      <td>
+        {{ plan.title }}
+        <div class="deprecated-plan-label" ng-show="plan.deprecated">
+          <span class="context-tooltip" data-title="This plan has been discontinued. As a valued early adopter, you may continue to stay on this plan indefinitely." bs-tooltip="tooltip.title" data-placement="right">Discontinued Plan</span>
+        </div>
+      </td>
+      <td>{{ plan.privateRepos }}</td>
+      <td><div class="plan-price">${{ plan.price / 100 }}</div></td>
+      <td class="controls">
+        <div ng-switch='plan.deprecated'>
+          <div ng-switch-when='true'>
+            <button class="btn btn-danger" ng-click="cancelSubscription()">
+              <span class="cor-loader-inline" ng-show="planChanging"></span>
+              <span ng-show="!planChanging">Cancel</span>
+            </button>
+          </div>
+          <div ng-switch-default>
+            <button class="btn" ng-show="!isPlanActive(plan, subscribedPlan)"
+                    ng-class="subscribedPlan.price == 0 ? 'btn-primary' : 'btn-default'"
+                    ng-click="changeSubscription(plan.stripeId)">
+              <span class="cor-loader-inline" ng-show="planChanging"></span>
+              <span ng-show="!planChanging && subscribedPlan.price != 0">Change</span>
+              <span ng-show="!planChanging && subscribedPlan.price == 0 && !isExistingCustomer">Start Free Trial</span>
+              <span ng-show="!planChanging && subscribedPlan.price == 0 && isExistingCustomer">Subscribe</span>
+            </button>
+            <button class="btn btn-danger" ng-show="isPlanActive(plan, subscribedPlan) && plan.price > 0"
+                    ng-click="cancelSubscription()">
+              <span class="cor-loader-inline" ng-show="planChanging"></span>
+              <span ng-show="!planChanging">Cancel</span>
+            </button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</div>

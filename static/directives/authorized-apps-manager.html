@@ -1,0 +1,54 @@
+<div class="authorized-apps-manager-element">
+  <div class="manager-header" header-title="Authorized Applications"></div>
+
+  <div class="section-description-header">
+    The authorized applications panel lists applications you have authorized to view information and perform actions on your behalf. You can revoke any of your authorizations here by clicking the gear icon and clicking "Revoke Authorization".
+  </div>
+
+  <div class="resource-view" resource="authorizedAppsResource"
+       error-message="'Cannot load authorized applications'"></div>
+
+    <div class="empty" ng-if="!authorizedApps.length">
+      <div class="empty-primary-msg">You have not authorized any external applications.</div>
+    </div>
+
+    <table class="cor-table" ng-if="authorizedApps.length">
+      <thead>
+        <td>Application Name</td>
+        <td>Authorized Permissions</td>
+        <td class="options-col"></td>
+      </thead>
+
+      <tr class="auth-info" ng-repeat="authInfo in authorizedApps">
+        <td>
+          <span class="avatar" size="24" data="authInfo.application.avatar"></span>
+          <a href="{{ authInfo.application.url }}" ng-if="authInfo.application.url" ng-safenewtab
+             data-title="{{ authInfo.application.description || authInfo.application.name }}" bs-tooltip>
+            {{ authInfo.application.name }}
+          </a>
+          <span ng-if="!authInfo.application.url"
+                data-title="{{ authInfo.application.description || authInfo.application.name }}"
+                bs-tooltip>
+            {{ authInfo.application.name }}
+          </span>
+          <span class="by">{{ authInfo.application.organization.name }}</span>
+        </td>
+        <td>
+          <span class="label label-default scope"
+                ng-class="{'repo:admin': 'label-primary', 'repo:write': 'label-success', 'repo:create': 'label-success'}[scopeInfo.scope]"
+                ng-repeat="scopeInfo in authInfo.scopes" data-title="{{ scopeInfo.description  }}"
+                bs-tooltip>
+            {{ scopeInfo.scope }}
+          </span>
+        </td>
+        <td class="options-col">
+          <span class="cor-options-menu">
+            <span class="cor-option" option-click="deleteAccess(authInfo)">
+              <i class="fa fa-times"></i> Revoke Authorization
+            </span>
+          </span>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,140 @@
+{
+   "schemaVersion": 1,
+   "name": "user/test",
+   "tag": "1",
+   "architecture": "amd64",
+   "fsLayers": [
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:e81e5181556720e9c821bdb826dd9dbeb078dd28af8fe84586aa904ff212d117"
+      },
+      {
+         "blobSum": "sha256:5f906b8da5fed2070448fed578b93cb1a995be5bdde5624163fbcb842ce4460f"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:cd2a6583723557a1dc58584f53564f791dbb7a5d264bb2f8d71aa8c5d21ac38c"
+      },
+      {
+         "blobSum": "sha256:a7905d9fbbea59dc29d709d1d61a96c06c26a2d1e506ac5c3832a348969052b8"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:0283dc49ef4e5bc0dc8897b14818de315faeceb0a5272464ff3c48cd4ea3b626"
+      },
+      {
+         "blobSum": "sha256:5ed0ae805b65407ddd0ff1aeb8371de3133e5daed97726717d4225cb7a8efaaa"
+      },
+      {
+         "blobSum": "sha256:e2ae0d063e89542abdd8abd1613e8e27743fa669f4a418c8b0a813991621d892"
+      },
+      {
+         "blobSum": "sha256:1f212fb371f936c524c624e6830242a8cb91b3b710942f9241004dae45828f87"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:283fa4c95fb4e349b501ef8c864b2259500d83ca6529253da12d658aa480cbb5"
+      },
+      {
+         "blobSum": "sha256:936836019e67889c1f5a95732c62c476d2450010988792e99d6e7ece84fdce2f"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:a5a6f2f73cd8abbdc55d0df0d8834f7262713e87d6c8800ea3851f103025e0f0"
+      }
+   ],
+   "history": [
+      {
+         "v1Compatibility": "{\"architecture\":\"amd64\",\"config\":{\"Hostname\":\"\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"ExposedPorts\":{\"3306/tcp\":{},\"33060/tcp\":{}},\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"GOSU_VERSION=1.7\",\"MYSQL_MAJOR=5.7\",\"MYSQL_VERSION=5.7.24-1debian9\"],\"Cmd\":[\"mysqld\"],\"ArgsEscaped\":true,\"Image\":\"sha256:fbfb8f1311c4e46e2b5122aef8b6753945c9db8de03258cc9ebff85aa9f59265\",\"Volumes\":{\"/var/lib/mysql\":{}},\"WorkingDir\":\"\",\"Entrypoint\":[\"docker-entrypoint.sh\"],\"OnBuild\":[],\"Labels\":null},\"container\":\"54bd04ff79350d28d0da33fa3e483567156c7c9f87a7254d6fa8267b0878c339\",\"container_config\":{\"Hostname\":\"54bd04ff7935\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"ExposedPorts\":{\"3306/tcp\":{},\"33060/tcp\":{}},\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"GOSU_VERSION=1.7\",\"MYSQL_MAJOR=5.7\",\"MYSQL_VERSION=5.7.24-1debian9\"],\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop) \",\"CMD [\\\"mysqld\\\"]\"],\"ArgsEscaped\":true,\"Image\":\"sha256:fbfb8f1311c4e46e2b5122aef8b6753945c9db8de03258cc9ebff85aa9f59265\",\"Volumes\":{\"/var/lib/mysql\":{}},\"WorkingDir\":\"\",\"Entrypoint\":[\"docker-entrypoint.sh\"],\"OnBuild\":[],\"Labels\":{}},\"created\":\"2018-11-16T01:14:20.755008004Z\",\"docker_version\":\"17.06.2-ce\",\"id\":\"3cc8ec7719abb3a11fc9ce9b5c5151f368bf3e7e2702d3618e17b4f5055237f8\",\"os\":\"linux\",\"parent\":\"2904b34db6cd1083a7b47ec5e8c1fcb538b9d0ecb790488ec22badabf6143fcb\",\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"2904b34db6cd1083a7b47ec5e8c1fcb538b9d0ecb790488ec22badabf6143fcb\",\"parent\":\"53d4b89c676dd5970862f366ded1a212a24f10a862a12a340ca2f35b5d766308\",\"created\":\"2018-11-16T01:14:20.416001274Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  EXPOSE 3306/tcp 33060/tcp\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"53d4b89c676dd5970862f366ded1a212a24f10a862a12a340ca2f35b5d766308\",\"parent\":\"73c0e3215914add0dc50583090572ae5cd78fb16cc3b3427c8874472cdca93fb\",\"created\":\"2018-11-16T01:14:20.063426223Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  ENTRYPOINT [\\\"docker-entrypoint.sh\\\"]\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"73c0e3215914add0dc50583090572ae5cd78fb16cc3b3427c8874472cdca93fb\",\"parent\":\"95180e8ac981681a12fa3767b32747b21514581605b20a99cf1713c78cf2ddaa\",\"created\":\"2018-11-16T01:14:19.715707659Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"95180e8ac981681a12fa3767b32747b21514581605b20a99cf1713c78cf2ddaa\",\"parent\":\"afb72c06112722395dcb38ffdda4c9564480a69bb0fe587bba8f10d8d0adffaa\",\"created\":\"2018-11-16T01:14:18.574646682Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) COPY file:4b5f8335c16a8bc9f76a2164458df1d71cf76facbf16d02f18ce7409122c2146 in /usr/local/bin/ \"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"afb72c06112722395dcb38ffdda4c9564480a69bb0fe587bba8f10d8d0adffaa\",\"parent\":\"ccadd71e7e80b1772df1c309938e1cbac71c6deed75c9b21212f72a662ce11be\",\"created\":\"2018-11-16T01:14:17.959906008Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  VOLUME [/var/lib/mysql]\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"ccadd71e7e80b1772df1c309938e1cbac71c6deed75c9b21212f72a662ce11be\",\"parent\":\"e053ced3cc09f28a3ab8547dac6bde4220a5f920c559318ba2c807353c0cbdad\",\"created\":\"2018-11-16T01:14:17.521774936Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c { \\t\\techo mysql-community-server mysql-community-server/data-dir select ''; \\t\\techo mysql-community-server mysql-community-server/root-pass password ''; \\t\\techo mysql-community-server mysql-community-server/re-root-pass password ''; \\t\\techo mysql-community-server mysql-community-server/remove-test-db select false; \\t} | debconf-set-selections \\t\\u0026\\u0026 apt-get update \\u0026\\u0026 apt-get install -y mysql-server=\\\"${MYSQL_VERSION}\\\" \\u0026\\u0026 rm -rf /var/lib/apt/lists/* \\t\\u0026\\u0026 rm -rf /var/lib/mysql \\u0026\\u0026 mkdir -p /var/lib/mysql /var/run/mysqld \\t\\u0026\\u0026 chown -R mysql:mysql /var/lib/mysql /var/run/mysqld \\t\\u0026\\u0026 chmod 777 /var/run/mysqld \\t\\u0026\\u0026 find /etc/mysql/ -name '*.cnf' -print0 \\t\\t| xargs -0 grep -lZE '^(bind-address|log)' \\t\\t| xargs -rt -0 sed -Ei 's/^(bind-address|log)/#\\u0026/' \\t\\u0026\\u0026 echo '[mysqld]\\\\nskip-host-cache\\\\nskip-name-resolve' \\u003e /etc/mysql/conf.d/docker.cnf\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"e053ced3cc09f28a3ab8547dac6bde4220a5f920c559318ba2c807353c0cbdad\",\"parent\":\"0dd7718b64000ac1bfb2c1d4bd3226244c9d55e4b741ef2eddf22c03ee638c3b\",\"created\":\"2018-11-16T01:13:51.211877582Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c echo \\\"deb http://repo.mysql.com/apt/debian/ stretch mysql-${MYSQL_MAJOR}\\\" \\u003e /etc/apt/sources.list.d/mysql.list\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"0dd7718b64000ac1bfb2c1d4bd3226244c9d55e4b741ef2eddf22c03ee638c3b\",\"parent\":\"5e0187996d55a7fa5c81fa75caa2cb57677edbd45abfa68a7a8769d8f640466b\",\"created\":\"2018-11-16T01:13:50.087751031Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  ENV MYSQL_VERSION=5.7.24-1debian9\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"5e0187996d55a7fa5c81fa75caa2cb57677edbd45abfa68a7a8769d8f640466b\",\"parent\":\"2d69915517f4a342dd3b3c719212e7349274a213551239b38c54ac0c44e7fb12\",\"created\":\"2018-11-16T01:13:49.699875841Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  ENV MYSQL_MAJOR=5.7\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"2d69915517f4a342dd3b3c719212e7349274a213551239b38c54ac0c44e7fb12\",\"parent\":\"a3492a643c2e7bd54083848276a38e7569e47ccdf42541abd082191f55632e22\",\"created\":\"2018-11-16T01:11:49.672488713Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c set -ex; \\tkey='A4A9406876FCBD3C456770C88C718D3B5072E1F5'; \\texport GNUPGHOME=\\\"$(mktemp -d)\\\"; \\tgpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys \\\"$key\\\"; \\tgpg --batch --export \\\"$key\\\" \\u003e /etc/apt/trusted.gpg.d/mysql.gpg; \\tgpgconf --kill all; \\trm -rf \\\"$GNUPGHOME\\\"; \\tapt-key list \\u003e /dev/null\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"a3492a643c2e7bd54083848276a38e7569e47ccdf42541abd082191f55632e22\",\"parent\":\"2e7e8bdd723f6a45f9d789b8d2595b1f6c0a702c70f6922792296c681cb5a14e\",\"created\":\"2018-11-16T01:11:46.048879774Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c apt-get update \\u0026\\u0026 apt-get install -y --no-install-recommends \\t\\tpwgen \\t\\topenssl \\t\\tperl \\t\\u0026\\u0026 rm -rf /var/lib/apt/lists/*\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"2e7e8bdd723f6a45f9d789b8d2595b1f6c0a702c70f6922792296c681cb5a14e\",\"parent\":\"855801645898a11047b72b6740ccc614f49a9cd5bd07f60820ade1635180acb3\",\"created\":\"2018-11-16T01:11:34.772616243Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c mkdir /docker-entrypoint-initdb.d\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"855801645898a11047b72b6740ccc614f49a9cd5bd07f60820ade1635180acb3\",\"parent\":\"123f7f7e13504138215a283c07589c9a506f249305ff2c78567ef3d1eaf27314\",\"created\":\"2018-11-16T01:11:33.651099664Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c set -x \\t\\u0026\\u0026 apt-get update \\u0026\\u0026 apt-get install -y --no-install-recommends ca-certificates wget \\u0026\\u0026 rm -rf /var/lib/apt/lists/* \\t\\u0026\\u0026 wget -O /usr/local/bin/gosu \\\"https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)\\\" \\t\\u0026\\u0026 wget -O /usr/local/bin/gosu.asc \\\"https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc\\\" \\t\\u0026\\u0026 export GNUPGHOME=\\\"$(mktemp -d)\\\" \\t\\u0026\\u0026 gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \\t\\u0026\\u0026 gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \\t\\u0026\\u0026 gpgconf --kill all \\t\\u0026\\u0026 rm -rf \\\"$GNUPGHOME\\\" /usr/local/bin/gosu.asc \\t\\u0026\\u0026 chmod +x /usr/local/bin/gosu \\t\\u0026\\u0026 gosu nobody true \\t\\u0026\\u0026 apt-get purge -y --auto-remove ca-certificates wget\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"123f7f7e13504138215a283c07589c9a506f249305ff2c78567ef3d1eaf27314\",\"parent\":\"6f3aeec2779f98f81f65151bc886b26eac21c79eecbc79aed3a414e1413643a4\",\"created\":\"2018-11-16T01:11:11.466721945Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  ENV GOSU_VERSION=1.7\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"6f3aeec2779f98f81f65151bc886b26eac21c79eecbc79aed3a414e1413643a4\",\"parent\":\"4597be70a8abf812caed7f0d37ddd738d361ff4fc271e8dc4dde8b7746378d0b\",\"created\":\"2018-11-16T01:11:11.128616814Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c apt-get update \\u0026\\u0026 apt-get install -y --no-install-recommends gnupg dirmngr \\u0026\\u0026 rm -rf /var/lib/apt/lists/*\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"4597be70a8abf812caed7f0d37ddd738d361ff4fc271e8dc4dde8b7746378d0b\",\"parent\":\"97569d305060de34859e5d55a8bbb010f4026af7cc4b9ca40294689bd6af1909\",\"created\":\"2018-11-16T01:11:01.00193007Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c groupadd -r mysql \\u0026\\u0026 useradd -r -g mysql mysql\"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"97569d305060de34859e5d55a8bbb010f4026af7cc4b9ca40294689bd6af1909\",\"parent\":\"0454203f6769f870345aa82f55f4699dfaab41bcb3e38f0c44c9ecc11ef2a38f\",\"created\":\"2018-11-15T22:45:07.243453424Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  CMD [\\\"bash\\\"]\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"0454203f6769f870345aa82f55f4699dfaab41bcb3e38f0c44c9ecc11ef2a38f\",\"created\":\"2018-11-15T22:45:06.938205528Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) ADD file:dab9baf938799c515ddce14c02f899da5992f0b76a432fa10a2338556a3cb04f in / \"]}}"
+      }
+   ],
+   "signatures": [
+      {
+         "header": {
+            "jwk": {
+               "crv": "P-256",
+               "kid": "BTGA:CY7S:HZ7T:FEUS:DZJD:FNS5:O5U2:BTGQ:SGZZ:AY5P:R5MA:UJEY",
+               "kty": "EC",
+               "x": "0xF2dZ_HLk8VVrqMLMm838LWFAi60P7V5fBjlhlt7xI",
+               "y": "niBqFvBqOvtABZSpMoQoSMT7H13Pb0POo00OX7Xsmvc"
+            },
+            "alg": "ES256"
+         },
+         "signature": "w8TITz0xkMNqgchKNSfQ-4OlfIGUnG4MLT4Tt738Z0NiD1bHaWFef8wCCBNuDLiKHllrqcqM6Aj__LhsctSwyA",
+         "protected": "eyJmb3JtYXRMZW5ndGgiOjEyODM2LCJmb3JtYXRUYWlsIjoiQ24wIiwidGltZSI6IjIwMTgtMTEtMjFUMTk6MTU6MTNaIn0"
+      }
+   ]
+}

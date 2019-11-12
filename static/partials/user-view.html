@@ -1,0 +1,267 @@
+<div class="resource-view user-view"
+     resource="userResource"
+     error-message="'User not found'">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link"></span>
+      <span class="cor-title-content">
+        <span class="avatar" size="32" data="context.viewuser.avatar"></span>
+        <span class="user-name">{{ context.viewuser.username }}</span>
+      </span>
+      <span class="cor-title-action" ng-if="context.viewuser.is_me && !inReadOnlyMode">
+        <a href="/new/?namespace={{ context.viewuser.username }}">
+            <i class="fa fa-plus" data-title="Create new repository"></i>
+            Create New Repository
+        </a>
+      </span>
+    </div>
+
+    <div class="co-main-content-panel user-repo-list" ng-if="!context.viewuser.is_me">
+      <div class="repo-list-view padded" namespaces="[context.viewuser]"
+           in-read-only-mode="inReadOnlyMode">&nbsp;</div>
+    </div>
+
+    <cor-tab-panel ng-if="context.viewuser.is_me"
+                   orientation="vertical"
+                   cor-nav-tabs>
+      <cor-tabs quay-show="context.viewuser.is_me">
+        <cor-tab tab-active="true" tab-title="Repositories" tab-id="repos">
+          <i class="fa fa-hdd-o"></i>
+        </cor-tab>
+        <cor-tab tab-title="Robot Accounts" tab-init="showRobots()" tab-id="robots">
+          <i class="fa ci-robot"></i>
+        </cor-tab>
+        <cor-tab tab-title="External Logins And Applications" tab-id="external"
+              tab-init="showApplications()" quay-show="!hasSingleSignin && !inReadOnlyMode">
+          <i class="fa fa-external-link-square"></i>
+        </cor-tab>
+        <cor-tab tab-title="Usage Logs" tab-id="logs" tab-init="showLogs()"
+              quay-show="Features.USER_LOG_ACCESS">
+          <i class="fa fa-bar-chart"></i>
+        </cor-tab>
+        <cor-tab tab-title="User Settings" tab-id="settings" tab-init="showBilling()">
+          <i class="fa fa-gears"></i>
+        </cor-tab>
+      </cor-tabs>
+
+      <cor-tab-content>
+        <!-- Repositories -->
+        <cor-tab-pane id="repos">
+          <div class="repo-list-view" namespaces="[context.viewuser]"
+               in-read-only-mode="inReadOnlyMode"><h3>Repositories</h3></div>
+        </cor-tab-pane>
+
+        <!-- Robot Accounts -->
+        <cor-tab-pane id="robots">
+          <div class="robots-manager" user="viewuser" is-enabled="showRobotsCounter"></div>
+        </cor-tab-pane>
+
+        <!-- Usage Logs -->
+        <cor-tab-pane id="logs">
+          <div class="logs-view" user="viewuser" makevisible="showLogsCounter"></div>
+        </cor-tab-pane>
+
+        <!-- External Logins And Applications -->
+        <cor-tab-pane id="external" quay-show="!hasSingleSignin && !inReadOnlyMode">
+          <div class="external-logins-manager" user="viewuser"
+               quay-show="!hasSingleSignin"></div>
+          <div style="margin: 50px" quay-show="!hasSingleSignin">
+          </div>
+          <div class="authorized-apps-manager" user="viewuser" is-enabled="showAppsCounter"></div>
+        </cor-tab-pane>
+
+        <!-- Settings -->
+        <cor-tab-pane id="settings">
+          <!-- Encrypted Password -->
+          <div class="settings-section" ng-if="Config.AUTHENTICATION_TYPE != 'AppToken'">
+            <h3>Docker CLI Password</h3>
+            <div ng-if="!Features.REQUIRE_ENCRYPTED_BASIC_AUTH">
+              The Docker CLI stores passwords entered on the command line in <strong>plaintext</strong>. It is therefore highly recommended to generate an an encrypted version of your password to use for <code>docker login</code>.
+            </div>
+
+            <div ng-if="Features.REQUIRE_ENCRYPTED_BASIC_AUTH">
+              This installation is set to <strong>require</strong> encrypted passwords when
+              using the Docker command line interface.
+            </div>
+
+            <table class="co-list-table" style="margin-top: 10px;">
+              <tr>
+                <td>CLI Password:</td>
+                <td>
+                  <div ng-if="user.has_password_set">
+                    <a ng-click="generateClientToken()">Generate Encrypted Password</a>
+                  </div>
+                  <div class="co-alert co-alert-info" ng-if="user.has_password_set === false">
+                    A password must be set on your account before generating an encrypted version.
+                    <span ng-show="!inReadOnlyMode">
+                      Click <a ng-click="showChangePassword()">Set password</a> to set your password now.
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- App Specific tokens -->
+          <div class="settings-section" ng-if="Features.APP_SPECIFIC_TOKENS">
+            <h3>Docker CLI and other Application Tokens</h3>
+            <div ng-if="Config.AUTHENTICATION_TYPE != 'AppToken'">
+              As an alternative to using your password for Docker and rkt CLIs, an application token can be generated below.
+            </div>
+            <div ng-if="Config.AUTHENTICATION_TYPE == 'AppToken'">
+              An application token is <strong>required</strong> to login via the Docker or rkt CLIs.
+            </div>
+            <app-specific-token-manager></app-specific-token-manager>
+          </div>
+
+          <!-- User Settings -->
+          <div class="settings-section" ng-show="!inReadOnlyMode">
+            <h3>User Settings</h3>
+            <table class="co-list-table">
+              <tr>
+                <td>Username:</td>
+                <td>
+                  {{ context.viewuser.username }}
+                  <div class="help-text">Usernames cannot currently be changed. Please <a href="/contact">contact support</a> to migrate accounts.</div>
+                </td>
+              </tr>
+              <tr>
+                <td>Avatar:</td>
+                <td>
+                  <span class="avatar" size="48" data="context.viewuser.avatar"></span>
+                  <div class="help-text" ng-if="Config.AVATAR_KIND == 'local'">Avatar is generated based off of your username.</div>
+                  <div class="help-text" ng-if="Config.AVATAR_KIND == 'gravatar'">Avatar is served by <a href="http://gravatar.com" rel="nofollow" target="_blank">Gravatar</a> based on the {{ context.viewuser.email }} e-mail address.</div>
+                </td>
+              </tr>
+              <tr quay-show="Features.MAILING">
+                <td>Email Address:</td>
+                <td>
+                  <div ng-if="context.emailAwaitingChange">
+                    An email has been sent to <code>{{ context.emailAwaitingChange }}</code>. Please click the Confirm button
+                    to apply the email change.
+                  </div>
+
+                  <a class="co-modify-link" ng-click="showChangeEmail()" ng-if="!context.emailAwaitingChange">{{ context.viewuser.email }}</a>
+                </td>
+              </tr>
+              <tr quay-show="Features.USER_METADATA">
+                <td>Given Name:</td>
+                <td>
+                  <a class="co-modify-link" ng-click="showChangeMetadata('given_name', 'given name')">{{ context.viewuser.given_name || '(None)' }}</a>
+                </td>
+              </tr>
+              <tr quay-show="Features.USER_METADATA">
+                <td>Family Name:</td>
+                <td>
+                  <a class="co-modify-link" ng-click="showChangeMetadata('family_name', 'family name')">{{ context.viewuser.family_name || '(None)' }}</a>
+                </td>
+              </tr>
+              <tr quay-show="Features.USER_METADATA">
+                  <td>Company:</td>
+                  <td>
+                    <a class="co-modify-link" ng-click="showChangeMetadata('company', 'company name')">{{ context.viewuser.company || '(None)' }}</a>
+                  </td>
+              </tr>
+              <tr quay-show="Features.USER_METADATA">
+                  <td>Location:</td>
+                  <td>
+                    <a class="co-modify-link" ng-click="showChangeMetadata('location', 'location')">{{ context.viewuser.location || '(None)' }}</a>
+                  </td>
+              </tr>
+              <tr quay-show="Config.AUTHENTICATION_TYPE == 'Database'">
+                <td>Password:</td>
+                <td>
+                  <a class="co-modify-link" ng-click="showChangePassword()"><span ng-if="user.has_password_set">Change</span><span ng-if="!user.has_password_set">Set</span> password</a>
+                </td>
+              </tr>
+              <tr quay-show="Config.AUTHENTICATION_TYPE == 'Database'">
+                <td>Account Type:</td>
+                <td>
+                  <a class="co-modify-link" ng-click="showChangeAccount()">Individual account</a>
+                </td>
+              </tr>
+              <tr>
+                  <td>Desktop Notifications:</td>
+                  <td>
+                      <a class="co-modify-link"
+                         ng-if="!desktopNotificationsPermissionIsDisabled()"
+                         ng-disabled="desktopNotificationsPermissionIsDisabled()"
+                         ng-click="toggleDesktopNotifications()"
+                         ng-model="notificationsPermissionsEnabled"
+                      >{{ notificationsPermissionsEnabled ? 'Enabled' : 'Disabled' }}
+                      </a>
+                      <span class="help-text"
+                            ng-if="desktopNotificationsPermissionIsDisabled()">
+                      Desktop notifications have been disabled, or are unavailable, in your browser.
+                      </span>
+                  </td>
+              </tr>
+            </table>
+          </div>
+
+          <div ng-show="!inReadOnlyMode">
+            <div class="delete-namespace-view" subscription-status="subscriptionStatus" user="context.viewuser" namespace-title="account" quay-show="Config.AUTHENTICATION_TYPE == 'Database'"></div>
+            <time-machine-settings user="context.viewuser"></time-machine-settings>
+          </div>
+
+          <!-- Billing Information -->
+          <div class="settings-section" quay-show="Features.BILLING" ng-show="!inReadOnlyMode">
+            <h3>Billing Information</h3>
+            <div class="billing-management-panel" user="context.viewuser" is-enabled="showBillingCounter" subscription-status="subscriptionStatus"></div>
+          </div>
+        </cor-tab-pane>
+      </cor-tab-content>
+  </cor-tab-panel>
+
+  <!-- Change metadata dialog -->
+  <div class="cor-confirm-dialog"
+    dialog-context="changeMetadataInfo"
+    dialog-action="updateMetadataInfo(info, callback)"
+    dialog-title="Update user information"
+    dialog-action-title="Update"
+    dialog-form="context.metadataform">
+    <form name="context.metadataform" class="co-single-field-dialog">
+      Please enter an updated {{ changeMetadataInfo.title }}:
+      <input type="text" class="form-control" ng-model="changeMetadataInfo.value">
+    </form>
+  </div>
+
+  <!-- Change email dialog -->
+  <div class="cor-confirm-dialog"
+     dialog-context="changeEmailInfo"
+     dialog-action="changeEmail(info, callback)"
+     dialog-title="Change E-mail Address"
+     dialog-action-title="Change Email"
+     dialog-form="context.emailform">
+     <form name="context.emailform" class="co-single-field-dialog">
+       Please enter a new email address. A verification email will be sent before the change is applied.
+       <input type="email" class="form-control" placeholder="Your new e-mail address"
+              ng-model="changeEmailInfo.email" required>
+     </form>
+  </div>
+
+  <!-- Change password dialog -->
+  <div class="cor-confirm-dialog"
+     dialog-context="changePasswordInfo"
+     dialog-action="changePassword(info, callback)"
+     dialog-title="Change Password"
+     dialog-action-title="Change Password"
+     dialog-form="context.passwordform">
+     <form name="context.passwordform" class="co-single-field-dialog">
+      Enter a new password. Passwords must be at least 8 characters in length.
+      <input type="password" class="form-control" placeholder="Your new password" ng-model="changePasswordInfo.password" required
+             ng-pattern="/^.{8,}$/">
+      <input type="password" class="form-control" placeholder="Verify your new password" ng-model="changePasswordInfo.repeatPassword"
+             match="changePasswordInfo.password" required ng-pattern="/^.{8,}$/">
+     </form>
+  </div>
+
+  <!-- Convert account dialog -->
+  <div class="convert-user-to-org" info="convertAccountInfo"></div>
+
+  <!-- Credentials for encrypted passwords -->
+  <div class="credentials-dialog" credentials="context.encryptedPasswordCredentials" secret-title="Encrypted Password" entity-title="encrypted password" entity-icon="fa-key"></div>
+
+  <!-- Credentials for ID token -->
+  <div class="credentials-dialog" credentials="context.idTokenCredentials" secret-title="CLI Token" entity-title="Docker CLI token" entity-icon="fa-key"></div>
+</div>
