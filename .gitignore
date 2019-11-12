@@ -22,7 +22,6 @@ htmlcov
 .cache
 .npm-debug.log
 Dockerfile-e
-build/
 .vscode
 *.iml
 .DS_Store
