@@ -1,11 +1,11 @@
 # Project Quay
 
-[![Build Status](https://travis-ci.com/quay/projectquay.svg?token=pWvEz2TeyDsVn69Hkiwq&branch=master)](https://travis-ci.com/quay/projectquay)
+[![Build Status](https://travis-ci.com/quay/quay.svg?token=pWvEz2TeyDsVn69Hkiwq&branch=master)](https://travis-ci.com/quay/quay)
 
 :warning: The `master` branch may be in an *unstable or even broken state* during development.
 Please use [releases] instead of the `master` branch in order to get stable software.
 
-[releases]: https://github.com/quay/projectquay/releases
+[releases]: https://github.com/quay/quay/releases
 
 ![Project Quay Logo](project_quay_logo.png)
 

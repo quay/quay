@@ -6,10 +6,10 @@ The instructions below describe how to create and setup a container for working 
 
 For convenience, the environment variable `QUAY_DEVEL_HOME` will be referenced for locations of the parent directory for source and other directories.
 
-The directory `$QUAY_DEVEL_HOME/quay` is your _development_ git checkout of [quay](https://github.com/quay/projectquay).
+The directory `$QUAY_DEVEL_HOME/quay` is your _development_ git checkout of [quay](https://github.com/quay/quay).
 ```
 cd $QUAY_DEVEL_HOME
-git checkout github.com/quay/projectquay.git
+git checkout github.com/quay/quay.git
 ```
 
 For local storage, create the directory where images will be written to disk.
