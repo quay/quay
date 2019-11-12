@@ -1,0 +1,42 @@
+.source-commit-link-element .commit-circle {
+  margin-right: 6px;
+  display: inline-block;
+  padding-top: 2px;
+}
+
+.source-commit-link-element .commit-circle {
+  display: inline-block;
+  border: 2px solid #999;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.source-commit-link-element .commit-circle:before,
+.source-commit-link-element .commit-circle:after {
+  content: "";
+  display: inline-block;
+  border-top: 2px solid #999;
+  height: 10px;
+  width: 4px;
+  position: absolute;
+  top: 2px;
+}
+
+.source-commit-link-element .commit-circle:before {
+  left: -5px;
+}
+
+.source-commit-link-element .commit-circle:after {
+  left: 7px;
+}
+
+
+.source-commit-link-element {
+  white-space: nowrap;
+}
+
+.source-commit-link-element .anchor {
+  vertical-align: middle;
+}

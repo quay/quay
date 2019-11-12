@@ -1,0 +1,129 @@
+{
+    "architecture": "amd64",
+    "config": {
+        "Hostname": "",
+        "Domainname": "",
+        "User": "",
+        "AttachStdin": false,
+        "AttachStdout": false,
+        "AttachStderr": false,
+        "ExposedPorts": {
+            "3306/tcp": {},
+            "33060/tcp": {}
+        },
+        "Tty": false,
+        "OpenStdin": false,
+        "StdinOnce": false,
+        "Env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "GOSU_VERSION=1.7", "MYSQL_MAJOR=5.7", "MYSQL_VERSION=5.7.24-1debian9"],
+        "Cmd": ["mysqld"],
+        "ArgsEscaped": true,
+        "Image": "sha256:fbfb8f1311c4e46e2b5122aef8b6753945c9db8de03258cc9ebff85aa9f59265",
+        "Volumes": {
+            "/var/lib/mysql": {}
+        },
+        "WorkingDir": "",
+        "Entrypoint": ["docker-entrypoint.sh"],
+        "OnBuild": [],
+        "Labels": null
+    },
+    "container": "54bd04ff79350d28d0da33fa3e483567156c7c9f87a7254d6fa8267b0878c339",
+    "container_config": {
+        "Hostname": "54bd04ff7935",
+        "Domainname": "",
+        "User": "",
+        "AttachStdin": false,
+        "AttachStdout": false,
+        "AttachStderr": false,
+        "ExposedPorts": {
+            "3306/tcp": {},
+            "33060/tcp": {}
+        },
+        "Tty": false,
+        "OpenStdin": false,
+        "StdinOnce": false,
+        "Env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "GOSU_VERSION=1.7", "MYSQL_MAJOR=5.7", "MYSQL_VERSION=5.7.24-1debian9"],
+        "Cmd": ["/bin/sh", "-c", "#(nop) ", "CMD [\"mysqld\"]"],
+        "ArgsEscaped": true,
+        "Image": "sha256:fbfb8f1311c4e46e2b5122aef8b6753945c9db8de03258cc9ebff85aa9f59265",
+        "Volumes": {
+            "/var/lib/mysql": {}
+        },
+        "WorkingDir": "",
+        "Entrypoint": ["docker-entrypoint.sh"],
+        "OnBuild": [],
+        "Labels": {}
+    },
+    "created": "2018-11-16T01:14:20.755008004Z",
+    "docker_version": "17.06.2-ce",
+    "history": [{
+        "created": "2018-11-15T22:45:06.938205528Z",
+        "created_by": "/bin/sh -c #(nop) ADD file:dab9baf938799c515ddce14c02f899da5992f0b76a432fa10a2338556a3cb04f in / "
+    }, {
+        "created": "2018-11-15T22:45:07.243453424Z",
+        "created_by": "/bin/sh -c #(nop)  CMD [\"bash\"]",
+        "empty_layer": true
+    }, {
+        "created": "2018-11-16T01:11:01.00193007Z",
+        "created_by": "/bin/sh -c groupadd -r mysql \u0026\u0026 useradd -r -g mysql mysql"
+    }, {
+        "created": "2018-11-16T01:11:11.128616814Z",
+        "created_by": "/bin/sh -c apt-get update \u0026\u0026 apt-get install -y --no-install-recommends gnupg dirmngr \u0026\u0026 rm -rf /var/lib/apt/lists/*"
+    }, {
+        "created": "2018-11-16T01:11:11.466721945Z",
+        "created_by": "/bin/sh -c #(nop)  ENV GOSU_VERSION=1.7",
+        "empty_layer": true
+    }, {
+        "created": "2018-11-16T01:11:33.651099664Z",
+        "created_by": "/bin/sh -c set -x \t\u0026\u0026 apt-get update \u0026\u0026 apt-get install -y --no-install-recommends ca-certificates wget \u0026\u0026 rm -rf /var/lib/apt/lists/* \t\u0026\u0026 wget -O /usr/local/bin/gosu \"https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)\" \t\u0026\u0026 wget -O /usr/local/bin/gosu.asc \"https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc\" \t\u0026\u0026 export GNUPGHOME=\"$(mktemp -d)\" \t\u0026\u0026 gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \t\u0026\u0026 gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \t\u0026\u0026 gpgconf --kill all \t\u0026\u0026 rm -rf \"$GNUPGHOME\" /usr/local/bin/gosu.asc \t\u0026\u0026 chmod +x /usr/local/bin/gosu \t\u0026\u0026 gosu nobody true \t\u0026\u0026 apt-get purge -y --auto-remove ca-certificates wget"
+    }, {
+        "created": "2018-11-16T01:11:34.772616243Z",
+        "created_by": "/bin/sh -c mkdir /docker-entrypoint-initdb.d"
+    }, {
+        "created": "2018-11-16T01:11:46.048879774Z",
+        "created_by": "/bin/sh -c apt-get update \u0026\u0026 apt-get install -y --no-install-recommends \t\tpwgen \t\topenssl \t\tperl \t\u0026\u0026 rm -rf /var/lib/apt/lists/*"
+    }, {
+        "created": "2018-11-16T01:11:49.672488713Z",
+        "created_by": "/bin/sh -c set -ex; \tkey='A4A9406876FCBD3C456770C88C718D3B5072E1F5'; \texport GNUPGHOME=\"$(mktemp -d)\"; \tgpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys \"$key\"; \tgpg --batch --export \"$key\" \u003e /etc/apt/trusted.gpg.d/mysql.gpg; \tgpgconf --kill all; \trm -rf \"$GNUPGHOME\"; \tapt-key list \u003e /dev/null"
+    }, {
+        "created": "2018-11-16T01:13:49.699875841Z",
+        "created_by": "/bin/sh -c #(nop)  ENV MYSQL_MAJOR=5.7",
+        "empty_layer": true
+    }, {
+        "created": "2018-11-16T01:13:50.087751031Z",
+        "created_by": "/bin/sh -c #(nop)  ENV MYSQL_VERSION=5.7.24-1debian9",
+        "empty_layer": true
+    }, {
+        "created": "2018-11-16T01:13:51.211877582Z",
+        "created_by": "/bin/sh -c echo \"deb http://repo.mysql.com/apt/debian/ stretch mysql-${MYSQL_MAJOR}\" \u003e /etc/apt/sources.list.d/mysql.list"
+    }, {
+        "created": "2018-11-16T01:14:17.521774936Z",
+        "created_by": "/bin/sh -c { \t\techo mysql-community-server mysql-community-server/data-dir select ''; \t\techo mysql-community-server mysql-community-server/root-pass password ''; \t\techo mysql-community-server mysql-community-server/re-root-pass password ''; \t\techo mysql-community-server mysql-community-server/remove-test-db select false; \t} | debconf-set-selections \t\u0026\u0026 apt-get update \u0026\u0026 apt-get install -y mysql-server=\"${MYSQL_VERSION}\" \u0026\u0026 rm -rf /var/lib/apt/lists/* \t\u0026\u0026 rm -rf /var/lib/mysql \u0026\u0026 mkdir -p /var/lib/mysql /var/run/mysqld \t\u0026\u0026 chown -R mysql:mysql /var/lib/mysql /var/run/mysqld \t\u0026\u0026 chmod 777 /var/run/mysqld \t\u0026\u0026 find /etc/mysql/ -name '*.cnf' -print0 \t\t| xargs -0 grep -lZE '^(bind-address|log)' \t\t| xargs -rt -0 sed -Ei 's/^(bind-address|log)/#\u0026/' \t\u0026\u0026 echo '[mysqld]\\nskip-host-cache\\nskip-name-resolve' \u003e /etc/mysql/conf.d/docker.cnf"
+    }, {
+        "created": "2018-11-16T01:14:17.959906008Z",
+        "created_by": "/bin/sh -c #(nop)  VOLUME [/var/lib/mysql]",
+        "empty_layer": true
+    }, {
+        "created": "2018-11-16T01:14:18.574646682Z",
+        "created_by": "/bin/sh -c #(nop) COPY file:4b5f8335c16a8bc9f76a2164458df1d71cf76facbf16d02f18ce7409122c2146 in /usr/local/bin/ "
+    }, {
+        "created": "2018-11-16T01:14:19.715707659Z",
+        "created_by": "/bin/sh -c ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat"
+    }, {
+        "created": "2018-11-16T01:14:20.063426223Z",
+        "created_by": "/bin/sh -c #(nop)  ENTRYPOINT [\"docker-entrypoint.sh\"]",
+        "empty_layer": true
+    }, {
+        "created": "2018-11-16T01:14:20.416001274Z",
+        "created_by": "/bin/sh -c #(nop)  EXPOSE 3306/tcp 33060/tcp",
+        "empty_layer": true
+    }, {
+        "created": "2018-11-16T01:14:20.755008004Z",
+        "created_by": "/bin/sh -c #(nop)  CMD [\"mysqld\"]",
+        "empty_layer": true
+    }],
+    "os": "linux",
+    "rootfs": {
+        "type": "layers",
+        "diff_ids": ["sha256:ef68f6734aa485edf13a8509fe60e4272428deaf63f446a441b79d47fc5d17d3", "sha256:a588c986cf971b87ee2aacd9b57877c47e68e4981b67793d301720a1d0d03a68", "sha256:0f1205f1cd43db6d5f837f792eecb84e773482eb0fb353a4f3f42c3cabb5747f", "sha256:0ad177796f339bf4f5c114bbd97721536d48b452915479884ff3d16acc1c612f", "sha256:2566141f200b8e249db6663d24063a3e1d0e33622e933fa99bee27a4f5b8db02", "sha256:783b13a988e3ec069e08019c89292fdf4e6316141ed74a6d896a422f7ee30077", "sha256:3d4164460bf0c8c4959e6acb51757d63dea47c162a334f65dfbf32537a4b552f", "sha256:ea66b8e6103f47f1934007a9b4c03c28f0398fdc7f9fbe9b5eea335b10448fed", "sha256:347571a8da208bf019b880ef4c73bad7884ad0570ec70dbfe8f95c6c0b37c082", "sha256:ceb15396dc26b48c1dc6222a4cc3934761c1ec06623d895efdb1cb77517a3887", "sha256:0d954c604c768947cd9630283f96bca6c244b971d004565b57f42db100ca3178"]
+    }
+}

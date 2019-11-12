@@ -1,0 +1,213 @@
+<div class="teams-manager-element">
+  <div class="feedback-bar" feedback="feedback"></div>
+  <div class="manager-header" header-title="Teams and Membership">
+    <div class="tab-header-controls visible-xs">
+      <button class="btn btn-primary"
+              ng-show="organization.is_admin && !inReadOnlyMode"
+              ng-click="askCreateTeam()">
+        <i class="fa fa-plus" style="margin-right: 4px;"></i> Create New Team
+      </button>
+    </div>
+
+    <div class="tab-header-controls hidden-xs">
+      <div class="btn-group btn-group-sm" ng-show="organization.is_admin">
+        <button class="btn"
+                ng-class="activeView == views.TEAMS ? 'btn-primary active' : 'btn-default'" ng-click="setActiveView(views.TEAMS)">
+          <i class="fa fa-group"></i>Teams View
+        </button>
+        <button class="btn"
+                ng-class="activeView == views.MEMBERS ? 'btn-info active' : 'btn-default'" ng-click="setActiveView(views.MEMBERS)">
+          <i class="fa fa-user"></i>Members View
+        </button>
+        <button class="btn"
+                ng-class="activeView == views.COLLABORATORS ? 'btn-info active' : 'btn-default'" ng-click="setActiveView(views.COLLABORATORS)">
+          <i class="fa fa-user-circle"></i>Collaborators View
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teams List -->
+  <div ng-show="activeView == views.TEAMS">
+    <button class="btn btn-primary hidden-xs"
+            ng-show="organization.is_admin && !inReadOnlyMode"
+            style="margin-bottom: 10px; "
+            ng-click="askCreateTeam()">
+      <i class="fa fa-plus" style="margin-right: 4px;"></i> Create New Team
+    </button>
+
+    <span class="co-filter-box">
+      <span class="filter-message" ng-if="options.filter">
+        Showing {{ orderedTeams.entries.length }} of {{ teams.length }} teams
+      </span>
+      <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Teams...">
+    </span>
+
+    <table class="co-table" style="margin-top: 10px;">
+      <thead>
+        <td class="options-col" ng-if="::Config.AUTHENTICATION_TYPE != 'Database' && Features.TEAM_SYNCING"></td>
+        <td ng-class="TableService.tablePredicateClass('name', options.predicate, options.reverse)">
+          <a ng-click="TableService.orderBy('name', options)">Team Name</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('member_count', options.predicate, options.reverse)">
+          <a ng-click="TableService.orderBy('member_count', options)">Members</a>
+        </td>
+        <td class="hidden-xs" ng-class="TableService.tablePredicateClass('repo_count', options.predicate, options.reverse)">
+          <a ng-click="TableService.orderBy('repo_count', options)">Repositories</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('role_index', options.predicate, options.reverse)">
+          <a ng-click="TableService.orderBy('role_index', options)">Team Role</a>
+
+          <i class="info-icon fa fa-info-circle" data-placement="bottom" data-original-title="" data-title=""
+             data-content="Global permissions for the team and its members<br><br><dl><dt>Member</dt><dd>Permissions are assigned on a per repository basis</dd><dt>Creator</dt><dd>A team can create its own repositories</dd><dt>Admin</dt><dd>A team has full control of the organization</dd></dl>"
+             data-html="true"
+             data-trigger="hover"
+             bs-popover></i>
+        </td>
+        <td class="options-col"></td>
+       </thead>
+
+       <tr class="co-checkable-row"
+           ng-repeat="team in orderedTeams.visibleEntries"
+           bindonce>
+        <td class="options-col" ng-if="::Config.AUTHENTICATION_TYPE != 'Database' && Features.TEAM_SYNCING">
+          <i class="fa fa-refresh" ng-if="team.is_synced" data-title="Team is synchronized with a backing group" bs-tooltip></i>
+        </td>
+        <td style="white-space: nowrap;">
+          <span class="avatar" data="team.avatar" size="24"></span>
+          <span bo-show="team.can_view">
+            <a href="/organization/{{ organization.name }}/teams/{{ team.name }}"><span bo-text="team.name"></span></a>
+          </span>
+          <span bo-show="!team.can_view" bo-text="team.name"></span>
+        </td>
+        <td>
+          <span bo-show="team.can_view">
+            <a href="/organization/{{ organization.name }}/teams/{{ team.name }}"><span bo-text="team.member_count"></span> <span class="hidden-xs">member<span bo-if="team.member_count != 1">s</span></span></a>
+          </span>
+          <span bo-show="!team.can_view">
+            <span bo-text="team.member_count"></span> <span class="hidden-xs">member<span bo-if="team.member_count != 1">s</span></span>
+          </span>
+        </td>
+        <td class="hidden-xs">
+          <span class="empty" ng-if="team.repo_count == 0">
+            <anchor is-only-text="!organization.is_admin || inReadOnlyMode" ng-click="setRepoPermissions(team.name)">
+              No repositories
+            </anchor>
+          </span>
+
+          <span class="member-perm-summary" ng-if="team.repo_count > 0">
+            <anchor is-only-text="!organization.is_admin || inReadOnlyMode" ng-click="setRepoPermissions(team.name)">
+              {{ team.repo_count }}
+              <span ng-if="team.repo_count == 1">repository</span>
+              <span ng-if="team.repo_count > 1">repositories</span>
+            </anchor>
+          </span>
+        </td>
+        <td>
+          <span class="role-group" current-role="team.role" pull-left="true"
+                role-changed="setRole(role, team.name)" roles="teamRoles"
+                read-only="!organization.is_admin || inReadOnlyMode"></span>
+        </td>
+        <td>
+          <span class="cor-options-menu" ng-show="organization.is_admin && !inReadOnlyMode">
+            <span class="cor-option" option-click="viewTeam(team.name)">
+              <i class="fa fa-user"></i> Manage Team Members
+            </span>
+            <span class="cor-option" option-click="setRepoPermissions(team.name)">
+              <i class="fa fa-hdd-o"></i> Set Repository Permissions
+            </span>
+            <span class="cor-option" option-click="askDeleteTeam(team.name)">
+              <i class="fa fa-times"></i> Delete Team {{ team.name }}
+            </span>
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <div class="empty" ng-if="!orderedTeams.entries.length"
+         style="margin-top: 20px;">
+      <div class="empty-primary-msg">No matching teams found.</div>
+      <div class="empty-secondary-msg">Try expanding your filtering terms.</div>
+    </div>
+  </div>
+
+  <!-- Members or Collaborators List -->
+  <div ng-show="activeView == views.MEMBERS || activeView == views.COLLABORATORS">
+    <div class="cor-loader" ng-if="!usersView"></div>
+
+    <div class="filter-box" collection="usersView" filter-model="userFilter"
+         filter-name="Users"></div>
+
+    <div class="empty" ng-if="usersView.length && !(usersView | filter:userFilter).length">
+      <div class="empty-primary-msg">No users found matching filter.</div>
+      <div class="empty-secondary-msg">
+        Please change your filter to display users.
+      </div>
+    </div>
+
+    <table class="cor-table">
+      <thead>
+        <td>User Name</td>
+        <td ng-if="activeView == views.MEMBERS">Teams</td>
+        <td>Direct Repository Permissions</td>
+        <td class="options-col"></td>
+      </thead>
+
+      <tbody ng-repeat="orgUser in usersView | filter:userFilter | orderBy:'name'" bindonce>
+        <tr>
+          <td>
+            <div class="entity-reference" entity="orgUser"></div>
+          </td>
+          <td ng-if="activeView == views.MEMBERS">
+             <span ng-repeat="team in orgUser.teams"
+                   data-title="Team {{ team.name }}" bs-tooltip>
+               <span class="anchor" href="/organization/{{ organization.name }}/teams/{{ team.name }}">
+                 <span class="avatar" size="24" data="team.avatar"></span>
+               </span>
+             </span>
+          </td>
+          <td>
+            <span class="empty" bo-if="orgUser.repositories.length == 0">
+              (No direct permissions on any repositories)
+            </span>
+
+            <span class="member-perm-summary" bo-if="orgUser.repositories.length > 0">
+              Direct permissions on {{ orgUser.repositories.length }}
+              <span bo-if="orgUser.repositories.length == 1">repository</span>
+              <span bo-if="orgUser.repositories.length > 1">repositories</span>
+              under this organization
+            </span>
+          </td>
+          <td class="options-col">
+            <span class="cor-options-menu" ng-if="orgUser.name != user.username && !inReadOnlyMode">
+              <span class="cor-option" option-click="askRemoveMember(orgUser)">
+                <i class="fa fa-times"></i> Remove From Organization
+              </span>
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Create team dialog -->
+  <div class="create-team-dialog" info="createTeamInfo" team-created="handleTeamCreated(team)"></div>
+
+  <!-- Set repo permissions dialog -->
+  <div class="set-repo-permissions-dialog" info="setRepoPermissionsInfo"
+       permissions-set="handlePermissionsSet(info, repositories)"></div>
+
+  <!-- Remove member confirm -->
+  <div class="cor-confirm-dialog"
+     dialog-context="removeMemberInfo"
+     dialog-action="removeMember(info, callback)"
+     dialog-title="Remove User from Organization"
+     dialog-action-title="Remove">
+     <div class="co-alert co-alert-info" style="margin-bottom: 10px;">
+       <span class="entity-reference" entity="removeMemberInfo"></span> will be removed from all teams and repositories under this organization in which they are a
+       member or have permissions.
+     </div>
+
+     Continue with removal of <span class="entity-reference" entity="removeMemberInfo"></span>?
+  </div>
+</div>

@@ -1,0 +1,22 @@
+<div class="time-machine-settings-element" ng-if="$ctrl.maximum != '0s' && $ctrl.Features.CHANGE_TAG_EXPIRATION">
+ <table class="co-list-table">
+    <tr>
+      <td>Time Machine:</td>
+      <td ng-show="$ctrl.updating">
+        <div class="cor-loader-inline"></div>
+      </td>
+      <td ng-show="!$ctrl.updating" ng-if="$ctrl.Config.TAG_EXPIRATION_OPTIONS.length">
+        <select class="form-control" ng-model="$ctrl.current_s"
+                ng-options="$ctrl.getSeconds(o) as $ctrl.durationExplanation($ctrl.getSeconds(o)) for o in $ctrl.Config.TAG_EXPIRATION_OPTIONS">
+        </select>
+
+        <div class="help-text">The amount of time, after a tag is deleted, that the tag is accessible in time machine before being garbage collected.</div>
+        <a class="btn btn-primary save-expiration" ng-disabled="$ctrl.current_s == $ctrl.initial_s" ng-click="$ctrl.updateExpiration()">Save Expiration Time</a>
+      </td>
+      <td ng-show="!$ctrl.updating" ng-if="!$ctrl.Config.TAG_EXPIRATION_OPTIONS.length">
+        <div>{{ $ctrl.durationExplanation($ctrl.current_s) }}</div>
+        <div class="help-text">The amount of time, after a tag is deleted, that the tag is accessible in time machine before being garbage collected.</div>
+      </td>
+    </tr>
+  </table>
+</div>

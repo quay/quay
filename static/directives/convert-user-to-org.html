@@ -1,0 +1,108 @@
+<div class="convert-user-to-org-element">
+  <div class="co-dialog modal fade" id="convertAccountModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Change Account Type</h4>
+        </div>
+        <div class="modal-body">
+          <!-- Step 0 -->
+          <div ng-show="convertStep == 0">
+            <div ng-show="user.organizations.length > 0">
+              This account cannot be converted into an organization, as it is a member of {{user.organizations.length}} other
+              organization{{user.organizations.length > 1 ? 's' : ''}}.
+              <br><br>
+              Please leave the following organizations first:
+              <ul class="org-list">
+                <li ng-repeat="org in user.organizations">
+                  <span class="avatar" size="avatarSize || 16" data="org.avatar"></span>
+                  <a href="/organization/{{ org.name }}">{{ org.name }}</a>
+                </li>
+              </ul>
+            </div>
+
+            <div ng-show="user.organizations.length == 0">
+              <table class="co-option-table">
+                <tr>
+                  <td><input type="radio" id="accountTypeI" ng-model="accountType" value="user"></td>
+                  <td>
+                    <label for="accountTypeI">Individual account (current)</label>
+                    <div class="help-text">Single account with multiple repositories</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td><input type="radio" id="accountTypeO" ng-model="accountType" value="organization"></td>
+                  <td>
+                     <label for="accountTypeO">Organization</label>
+                    <div class="help-text">Multiple users and teams that share access and billing under a single namespace</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="convert-form" ng-show="convertStep == 1">
+            Fill out the form below to convert your current user account into an organization. Your existing repositories will be maintained under the
+            namespace. All <strong>direct</strong> permissions delegated to {{ user.username }} will be deleted.
+
+            <form method="post" name="convertForm" id="convertForm" ng-submit="nextStep()">
+              <div class="form-group">
+                <label for="orgName">Organization Name</label>
+                <div class="form-group-content">
+                  <div class="existing-data">
+                    <span class="avatar" size="24" data="user.avatar"></span>
+                    <span class="username">{{ user.username }}</span>
+                  </div>
+                  <span class="description">This will continue to be the namespace for your repositories</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="orgName">Admin User</label>
+                <div class="form-group-content">
+                  <input id="adminUsername" name="adminUsername" type="text" class="form-control" placeholder="Admin Username"
+                         ng-model="org.adminUser" required autofocus>
+                  <input id="adminPassword" name="adminPassword" type="password" class="form-control" placeholder="Admin Password"
+                         ng-model="org.adminPassword" required>
+                  <span class="description">
+                    The username and password for the account that will become an administrator of the organization.
+                    Note that this account <b>must be a separate registered account</b> from the account that you are
+                    trying to convert, and <b>must already exist</b>.
+                  </span>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="convert-form" ng-show="convertStep == 2">
+            Please select the billing plan to use for the new organization. Select "Open Source" to create an organization without
+            private repositories.
+            <div class="plans-table" plans="orgPlans" current-plan="org.plan"></div>
+          </div>
+
+          <!-- Step 3 (conversion) -->
+          <div class="convert-form" ng-show="convertStep == 3">
+            <div class="cor-loader"></div>
+          </div>
+
+        </div>
+        <div class="modal-footer" ng-show="convertStep < 3">
+          <button class="btn btn-default" ng-show="convertStep == 0 && accountType == 'user'" data-dismiss="modal">Close</button>
+          <button class="btn btn-primary" ng-show="convertStep == 0 && accountType == 'organization'" ng-click="showConvertForm()">Convert Account</button>
+          <button class="btn btn-primary" ng-show="convertStep == 1"  ng-disabled="convertForm.$invalid" ng-click="nextStep()">
+            <span ng-if="Features.BILLING">Choose billing</span>
+            <span ng-if="!Features.BILLING">Convert Account</span>
+          </button>
+          <button class="btn btn-primary" ng-show="convertStep == 2"  ng-disabled="!org.plan" ng-click="performConversion()">
+            Convert Account
+          </button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+
+</div>

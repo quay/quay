@@ -1,0 +1,123 @@
+.teams-manager .co-filter-box {
+  display: block;
+  float: right;
+  margin-bottom: 20px;
+}
+
+.teams-manager.co-filter-box .filter-message {
+  left: -180px;
+  top: 4px;
+}
+
+.teams-manager .co-filter-box input {
+  width: 100%;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  height: 28px;
+}
+
+.teams-manager .manager-header {
+  border-bottom: 1px solid #eee;
+  margin-bottom: 16px;
+}
+
+.teams-manager .manager-header i.fa {
+  margin-right: 6px;
+}
+
+.teams-manager .cor-options-menu {
+  display: inline-block;
+  margin-left: 10px;
+}
+
+.cor-option a {
+  max-width: 500px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teams-manager td .empty {
+  color: #ccc;
+}
+
+.teams-manager .co-table .avatar {
+  margin-right: 6px;
+}
+
+.teams-manager .cor-confirm-dialog .entity-reference .avatar {
+  margin-left: 4px;
+  margin-right: 0px;
+}
+
+.teams-manager .cor-confirm-dialog .entity-reference .entity-name {
+  margin-left: 2px;
+}
+
+@media (min-width: 768px) {
+  .teams-manager .manager-header {
+    padding-bottom: 0px;
+  }
+}
+
+@media (max-width: 767px) {
+  .teams-manager .co-filter-box {
+    display: block;
+    float: none;
+  }
+}
+
+.teams-manager .info-icon {
+  margin-left: 4px;
+}
+
+.teams-manager .popover-content {
+  color: black;
+  font-size: 16px;
+  text-transform: none;
+}
+
+.teams-manager .header-col .header-text {
+  text-transform: uppercase;
+  font-size: 14px;
+  color: #aaa !important;
+  display: inline-block;
+  padding-top: 4px;
+}
+
+.teams-manager .control-col {
+  padding-top: 6px;
+}
+
+.teams-manager .team-listing {
+  margin-bottom: 10px;
+}
+
+.teams-manager .team-listing .avatar {
+  margin-right: 6px;
+}
+
+.teams-manager .team-member-list .fa {
+  color: #ccc;
+}
+
+.teams-manager .team-member-list {
+  position: relative;
+  min-height: 20px;
+  padding: 4px;
+  padding-left: 40px;
+}
+
+.teams-manager .team-member-list .team-member a {
+  text-decoration: none !important;
+}
+
+.teams-manager .team-member-list .team-member-more {
+  vertical-align: middle;
+  padding-left: 6px;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.teams-manager .fa-refresh {
+  color: #aaa;
+}

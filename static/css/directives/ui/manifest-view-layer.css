@@ -1,0 +1,69 @@
+.manifest-view-layer-element {
+  position: relative;
+  padding: 10px;
+  padding-left: 40px;
+}
+
+.manifest-view-layer-element .image-comment {
+  margin-bottom: 10px;
+}
+
+.manifest-view-layer-element .nondocker-command {
+  font-family: monospace;
+  padding: 2px;
+}
+
+.manifest-view-layer-element .nondocker-command:before {
+    content: "\f120";
+    font-family: "FontAwesome";
+    font-size: 16px;
+    margin-right: 6px;
+    color: #999;
+}
+
+.manifest-view-layer-element .image-layer-line {
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 10px;
+
+  border-left: 2px solid #428bca;
+  width: 0px;
+}
+
+.manifest-view-layer-element.first .image-layer-line {
+  top: 20px;
+}
+
+.manifest-view-layer-element.last .image-layer-line {
+  height: 16px;
+}
+
+.manifest-view-layer-element .image-layer-dot {
+  position: absolute;
+  top: 14px;
+  left: 5px;
+  border: 2px solid #428bca;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  background: white;
+
+  z-index: 2;
+}
+
+.manifest-view-layer-element.first .image-layer-dot {
+  background: #428bca;
+}
+
+@media (max-width: 767px) {
+  .manifest-view-layer-element .dockerfile-command-element .label {
+    position: relative;
+    display: block;
+  }
+
+  .manifest-view-layer-element .dockerfile-command-element .command-title {
+    padding-top: 10px;
+    padding-left: 0px;
+  }
+}

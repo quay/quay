@@ -1,0 +1,101 @@
+.entity-search-element {
+  position: relative;
+  display: block;
+}
+
+.entity-search-element .entity-reference {
+  position: absolute !important;
+  top: 7px;
+  left: 8px;
+  right: 36px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.entity-search-element .entity-reference .entity-reference-element {
+  pointer-events: none;
+}
+
+.entity-search-element .entity-reference-element i.fa-exclamation-triangle {
+  pointer-events: all;
+}
+
+.entity-search-element .entity-reference .entity-name {
+  display: none;
+}
+
+.entity-search-element input {
+  vertical-align: middle;
+  width: 100%;
+}
+
+.entity-search-element.persistent input {
+  padding-left: 28px;
+  padding-right: 28px;
+}
+
+.entity-search-element .twitter-typeahead {
+  vertical-align: middle;
+  display: block !important;
+  margin-right: 36px;
+}
+
+.entity-search-element .entity-menu {
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.entity-search-element .dropdown {
+  vertical-align: middle;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+}
+
+.entity-search-element .menuitem .avatar {
+  margin-right: 4px;
+}
+
+.entity-mini-listing {
+  margin: 2px;
+  white-space: nowrap !important;
+  position: relative;
+}
+
+.entity-mini-listing i {
+  margin-right: 8px;
+  position: relative;
+}
+
+.entity-mini-listing i.fa {
+  width: 20px;
+  text-align: center;
+  font-size: 16px;
+  line-height: 16px;
+  color: #444;
+}
+
+.entity-mini-listing i.fa-exclamation-triangle {
+  position: absolute;
+  right: -14px;
+  top: 4px;
+  color: #c09853;
+}
+
+.entity-mini-listing i.fa.ci-robot {
+  position: relative;
+  top: -2px;
+}
+
+.entity-mini-listing .warning {
+  margin-top: 6px;
+  font-size: 10px;
+  padding: 4px;
+}
+
+.entity-mini-listing span.title {
+  color: #aaa;
+  font-size: 12px;
+  display: block;
+}

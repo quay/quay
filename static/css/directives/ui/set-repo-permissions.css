@@ -1,0 +1,35 @@
+.set-repo-permissions-element label {
+  margin-top: 4px;
+}
+
+.set-repo-permissions-element .co-table {
+  margin-top: 20px;
+}
+
+.set-repo-permissions-element .fa-hdd-o {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.set-repo-permissions-element .co-filter-box {
+  display: block;
+  float: right;
+  margin-bottom: 20px;
+}
+
+.set-repo-permissions-element .co-filter-box .filter-message {
+  left: -180px;
+  top: 4px;
+}
+
+.set-repo-permissions-element .co-filter-box input {
+  width: 100%;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  height: 28px;
+}
+
+.set-repo-permissions-element label .avatar {
+  vertical-align: text-bottom;
+  margin-left: 4px;
+}

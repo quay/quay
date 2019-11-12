@@ -1,0 +1,25 @@
+.update-user p {
+    margin-top: 20px;
+}
+
+.update-user .username-status {
+    margin-left: 10px;
+    font-size: 125%;
+    vertical-align: middle;
+}
+
+.update-user .username-status .fa {
+    margin-right: 4px;
+}
+
+.update-user  i.fa-exclamation-triangle {
+  color: #FCA657;
+}
+
+.update-user  i.fa-check-circle {
+  color: #2FC98E;
+}
+
+.update-user  i.fa-ban {
+  color: #D64456;
+}

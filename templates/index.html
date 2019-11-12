@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}
+  <title ng-bind="title + ' · Quay'">Quay</title>
+{% endblock %}
+
+{% block added_meta %}
+  <base href="/">
+
+  <meta id="descriptionTag" name="description" content="Quay is the best place to build, store, and distribute your containers. Public repositories are always free." />
+  <meta name="google-site-verification" content="GalDznToijTsHYmLjJvE4QaB9uk_IP16aaGDz5D75T4" />
+  <meta name="google-site-verification" content="oio7ioMILUo9QDflvyFz8pWig1ac2eLq5IGyQuzFMh8" />
+
+{% if aci_conversion %}
+  <meta name="ac-discovery" content="{{ hostname }} {{ preferred_scheme }}://{{ hostname }}/c1/aci/{name}/{version}/{ext}/{os}/{arch}/">
+  <meta name="ac-discovery-pubkeys" content="{{ hostname }} {{ preferred_scheme }}://{{ hostname }}/aci-signing-key">
+{% endif %}
+
+{% endblock %}
+
+{% block body_content %}
+  <!-- Note: Must be in the <body> tag -->
+  <script src="static/standalonelib/jquery.overscroll.min.js"></script>
+
+  <div ng-view>
+    <div class="co-m-loader co-an-fade-in-out loading-js-fade-out">
+      <div class="co-m-loader-dot__one"></div>
+      <div class="co-m-loader-dot__two"></div>
+      <div class="co-m-loader-dot__three"></div>
+    </div>
+    <div class="co-alert co-alert-danger loading-js-fade-in">
+      The Quay application could not be loaded, which typically indicates an external library could not be loaded (usually due to an ad blocker). Please check the JavaScript console for errors.
+    </div>
+  </div>
+
+  <!-- Modal message dialog -->
+  <div class="modal fade" id="sessionexpiredModal" data-backdrop="static" style="display: none">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Session Expired</h4>
+        </div>
+        <div class="modal-body">
+          Your user session has expired. Please <a href="javascript:void(0)" data-dismiss="modal" onclick="location = '/signin'">sign in</a> to continue.
+        </div>
+        <div class="modal-footer">
+          <a href="javascript:void(0)" class="btn btn-primary" data-dismiss="modal" onclick="location = '/signin'">Sign In</a>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Modal message dialog -->
+  <div class="modal fade" id="cannotContactService" data-backdrop="static" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Cannot Contact External Service</h4>
+        </div>
+        <div class="modal-body">
+          A connection to an external service has failed. Please reload the page to try again.
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Modal message dialog -->
+  <div class="modal fade" id="readOnlyService" data-backdrop="static" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Service is currently read-only.</h4>
+        </div>
+        <div class="modal-body">
+          The service is currently in read-only mode. Pulls and other read-only operations
+          will succeed but all other operations are currently suspended.      
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+{% endblock %}

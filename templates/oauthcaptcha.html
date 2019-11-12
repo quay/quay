@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}
+  <title>Confirm · Quay</title>
+{% endblock %}
+
+{% block body_content %}
+  <style type="text/css">
+  .captcha-container {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .captcha-container div {
+    display: inline-block;
+  }
+  </style>
+
+  <div class="container">
+    <div class="col-sm-6 col-sm-offset-3">
+      <form name="continueForm" method="post" action="{{ callback_url }}/captcha">
+        <div class="captcha-container" vc-recaptcha ng-model="recaptcha_response" key="'{{ recaptcha_site_key }}'"></div>
+        <input type="hidden" name="recaptcha_response" value="{% raw %}{{ recaptcha_response }}{% endraw %}">
+        <button id="signupButton"
+                class="btn btn-primary btn-block" ng-disabled="continueForm.$invalid" type="submit">
+            Continue
+        </button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

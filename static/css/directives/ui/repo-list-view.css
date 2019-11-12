@@ -1,0 +1,12 @@
+.repo-list-view .btn-group {
+  float: right;
+  margin-bottom: 10px;
+}
+
+.repo-list-view.padded {
+    padding: 10px;
+}
+
+.repo-list-view-element {
+    min-height: 40px;
+}

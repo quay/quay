@@ -1,0 +1,37 @@
+<span class="manifest-link">
+    <span class="id-label" ng-if="::!$ctrl.hasSHA256($ctrl.manifestDigest)"
+            data-title="The Docker V1 ID for this image. This ID is not content addressable nor is it stable across pulls."
+            data-container="body"
+            ng-click="$ctrl.showCopyBox()"
+            bs-tooltip>V1ID</span>
+
+    <span class="id-label cas" ng-if="::$ctrl.hasSHA256($ctrl.manifestDigest)"
+            data-title="The content-addressable SHA256 hash of this tag."
+            data-container="body"
+            ng-click="$ctrl.showCopyBox()"
+            bs-tooltip>SHA256</span>
+
+    <a ng-href="/repository/{{ ::$ctrl.repository.namespace }}/{{ ::$ctrl.repository.name }}/manifest/{{ ::$ctrl.manifestDigest }}">
+      {{ $ctrl.getShortDigest($ctrl.manifestDigest) }}
+    </a>
+
+    <span ng-if="::!$ctrl.hasSHA256($ctrl.manifestDigest)">{{ ::$ctrl.imageId.substr(0, 12) }}</span>
+
+    <div class="modal fade co-dialog" ng-if="$ctrl.showingCopyBox">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+            <button type="button" class="close" ng-click="$ctrl.hideCopyBox()"
+                    aria-hidden="true">&times;</button>
+            <h4 class="modal-title"><span ng-if="$ctrl.hasSHA256($ctrl.manifestDigest)">Manifest SHA256</span><span ng-if="!$ctrl.hasSHA256($ctrl.manifestDigest)">V1 ID</span></h4>
+            </div>
+            <div class="modal-body">
+            <div class="copy-box" value="$ctrl.hasSHA256($ctrl.manifestDigest) ? $ctrl.manifestDigest : $ctrl.imageId"></div>            
+            </div>
+            <div class="modal-footer" ng-show="!working">
+            <button type="button" class="btn btn-default" ng-click="$ctrl.hideCopyBox()">Close</button>
+            </div>
+        </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+</span>

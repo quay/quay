@@ -1,0 +1,28 @@
+.tag-operations-dialog .image-id {
+  font-family: Consolas, "Lucida Console", Monaco, monospace;
+  font-size: 12px;
+}
+
+.tag-operations-dialog .loader-container {
+  height: 10px;
+  text-align: center;
+  margin-bottom: 20px;
+  margin-top: 10px;
+  position: relative;
+}
+
+.tag-operations-dialog .delete-tag-list {
+  margin: 4px;
+  padding: 0px;
+}
+
+.tag-operations-dialog .delete-tag-list li {
+  list-style: none;
+  display: inline-block;
+  margin: 4px;
+}
+
+.tag-operations-dialog .label-section {
+  margin-bottom: 10px;
+  padding: 6px;
+}

@@ -1,0 +1,68 @@
+<span class="search-box-element">
+  <script type="text/ng-template" id="search-result-template">
+    <div class="search-box-result">
+      <span class="kind">{{ result.title || result.kind }}</span>
+      <span ng-switch on="result.kind">
+        <!-- Team -->
+        <span ng-switch-when="team">
+          <strong>
+            <span class="avatar" data="result.avatar" size="16"></span>
+            <span class="result-name">{{ result.name }}</span>
+          </strong>
+          <span class="clarification">
+            in
+            <span class="avatar" data="result.organization.avatar"  size="16"></span>
+            <span class="result-name">{{ result.organization.name }}</span>
+          </span>
+        </span>
+        <span ng-switch-when="user">
+          <span class="avatar" data="result.avatar"  size="16"></span>
+          <span class="result-name">{{ result.name }}</span>
+        </span>
+        <span ng-switch-when="organization">
+          <span class="avatar" data="result.avatar"  size="16"></span>
+          <span class="result-name">{{ result.name }}</span>
+        </span>
+        <span ng-switch-when="robot">
+          <i class="fa ci-robot"></i>
+          <span class="result-name">{{ result.name }}</span>
+        </span>
+        <span ng-switch-when="repository">
+          <span class="avatar" data="result.namespace.avatar"  size="16"></span>
+          <span class="result-name">{{ result.namespace.name }}/{{ result.name }}</span>
+          <div class="result-description" ng-if="result.description">
+            <div class="description">
+              <markdown-view content="result.description"
+                             first-line-only="true"
+                             placeholder-needed="false"></markdown-view>
+            </div>
+          </div>
+        </span>
+        <span ng-switch-when="application">
+          <span class="avatar" data="result.namespace.avatar"  size="16"></span>
+          <span class="result-name">{{ result.namespace.name }}/{{ result.name }}</span>
+          <div class="result-description" ng-if="result.description">
+            <div class="description">
+              <markdown-view content="result.description"
+                             first-line-only="true"
+                             placeholder-needed="false"></markdown-view>
+            </div>
+          </div>
+        </span>
+      </span>
+    </div>
+  </script>
+  <input class="form-control" type="text" placeholder="search"
+         ng-model="$ctrl.enteredQuery"
+         typeahead="$ctrl.onTypeahead($event)"
+         ta-debounce="250"
+         ta-display-key="name"
+         ta-suggestion-tmpl="search-result-template"
+         ta-clear-on-select="$ctrl.clearOnSearch"
+         (ta-selected)="$ctrl.onSelected($event)"
+         (ta-entered)="$ctrl.onEntered($event)">
+  <span class="search-icon">
+    <span class="cor-loader-inline" ng-if="$ctrl.isSearching"></span>
+    <i class="fa fa-search" ng-if="!$ctrl.isSearching"></i>
+  </span>
+</span>

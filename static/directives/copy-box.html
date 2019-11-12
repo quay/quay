@@ -1,0 +1,18 @@
+<div class="copy-box-element" ng-class="disabled ? 'disabled' : ''">
+  <div class="id-container">
+    <div class="copy-container">
+      <input id="{{ ::inputId }}" type="text" class="form-control"
+             value="{{ value }}"
+             readonly>
+      <span class="copy-icon"
+            clipboard-copy="#{{ ::inputId }}"
+            data-title="Copy to Clipboard" data-container="body" data-placement="bottom" bs-tooltip>
+        <i class="fa fa-clipboard"></i>
+      </span>
+    </div>
+  </div>
+
+  <div class="clipboard-copied-message" style="display: none">
+    Copied to clipboard
+  </div>
+</div>

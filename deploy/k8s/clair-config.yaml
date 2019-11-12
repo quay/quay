@@ -1,0 +1,75 @@
+---
+clair:
+  database:
+    type: pgsql
+    options:
+      # Check that the database options match those set earlier in postgres-clair-deployment.yaml.
+      source: host=postgres-clair port=5432 dbname=clair user=clair password=test123 sslmode=disable
+      cachesize: 16384
+  api:
+    # The port at which Clair will report its health status. For example, if Clair is running at
+    # https://clair.mycompany.com, the health will be reported at
+    # http://clair.mycompany.com:6061/health.
+    healthport: 6061
+
+    port: 6062
+    timeout: 900s
+
+    # paginationkey can be any random set of characters. *Must be the same across all Clair
+    # instances*.
+    paginationkey: "XxoPtCUzrUv4JV5dS+yQ+MdW7yLEJnRMwigVY/bpgtQ="
+
+  updater:
+    # interval defines how often Clair will check for updates from its upstream vulnerability databases.
+    interval: 6h
+  notifier:
+    attempts: 3
+    renotifyinterval: 1h
+    http:
+      # QUAY_ENDPOINT defines the endpoint at which Quay Enterprise is running.
+      # For example: https://myregistry.mycompany.com
+      endpoint: http://quay-enterprise-clusterip/secscan/notify
+      proxy: http://localhost:6063
+
+jwtproxy:
+  signer_proxy:
+    enabled: true
+    listen_addr: :6063
+    ca_key_file: /certificates/mitm.key # Generated internally, do not change.
+    ca_crt_file: /certificates/mitm.crt # Generated internally, do not change.
+    signer:
+      issuer: security_scanner
+      expiration_time: 5m
+      max_skew: 1m
+      nonce_length: 32
+      private_key:
+        type: preshared
+        options:
+          # The ID of the service key generated for Clair. The ID is returned when setting up
+          # the key in [Quay Enterprise Setup](security-scanning.md)
+          key_id: cd40f1c6a63f574c68ce882258925374882fac2b2f535ae5f8157c429e0c4b2e
+          private_key_path: /clair/config/security_scanner.pem
+
+  verifier_proxies:
+  - enabled: true
+    # The port at which Clair will listen.
+    listen_addr: :6060
+
+    # If Clair is to be served via TLS, uncomment these lines. See the "Running Clair under TLS"
+    # section below for more information.
+    # key_file: /config/clair.key
+    # crt_file: /config/clair.crt
+
+    verifier:
+      # CLAIR_ENDPOINT is the endpoint at which this Clair will be accessible. Note that the port
+      # specified here must match the listen_addr port a few lines above this.
+      # Example: https://myclair.mycompany.com:6060
+      audience: http://clair-service:6060
+
+      upstream: http://localhost:6062
+      key_server:
+        type: keyregistry
+        options:
+          # QUAY_ENDPOINT defines the endpoint at which Quay Enterprise is running.
+          # Example: https://myregistry.mycompany.com
+          registry: http://quay-enterprise-clusterip/keys/

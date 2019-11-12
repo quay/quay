@@ -1,0 +1,21 @@
+<div class="tag-specific-images-view-element" ng-show="loading">
+  <div class="cor-loader-inline"></div>
+</div>
+
+<div class="tag-specific-images-view-element" ng-show="tagSpecificImages.length && !loading">
+  <div ng-transclude></div>
+  <div class="image-listings">
+    <div class="image-listing" ng-repeat="image in tagSpecificImages | limitTo:5"
+         ng-class="getImageListingClasses(image)">
+      <span class="image-listing-circle"></span>
+      <span class="image-listing-line"></span>
+      <span class="context-tooltip image-listing-id" bs-tooltip="" data-title="{{ getFirstTextLine(image.comment) }}"
+            data-html="true">
+        {{ image.id.substr(0, 12) }}
+      </span>
+    </div>
+  </div>
+  <div class="more-changes" ng-show="tagSpecificImages.length > 5">
+    And {{ tagSpecificImages.length - 5 }} more...
+  </div>
+</div>

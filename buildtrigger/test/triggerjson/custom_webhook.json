@@ -1,0 +1,20 @@
+{
+  "commit": "1c002dd",
+  "ref": "refs/heads/master",
+  "default_branch": "master",
+  "commit_info": {
+    "url": "gitsoftware.com/repository/commits/1234567",
+    "message": "initial commit",
+    "date": "timestamp",
+    "author": {
+      "username": "user",
+      "avatar_url": "gravatar.com/user.png",
+      "url": "gitsoftware.com/users/user"
+    },
+    "committer": {
+      "username": "user",
+      "avatar_url": "gravatar.com/user.png",
+      "url": "gitsoftware.com/users/user"
+    }
+  }
+}

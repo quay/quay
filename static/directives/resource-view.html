@@ -1,0 +1,9 @@
+<div class="resource-view-element">
+  <div class="cor-loader" ng-show="getState(resources) == 'loading'"></div>
+  <div class="co-alert co-alert-warning" ng-show="getState(resources) == 'error'">
+    {{ errorMessage || 'Could not load resource' }}
+  </div>
+  <div class="resource-content" ng-class="getState(resources) == 'ready' ? 'visible' : 'hidden'">
+    <span ng-transclude></span>
+  </div>
+</div>

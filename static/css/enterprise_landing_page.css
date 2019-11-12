@@ -1,0 +1,96 @@
+/* Enterprise LP specific styles */
+.enterpriseLP {font-family: "Source Sans Pro", sans-serif; font-size: 1.2em; padding: 20px 10px;}
+.enterpriseLP h2, .enterpriseLP h3, .enterpriseLP h4 {color: #003763; font-weight: bold;}
+.enterpriseLP h2 {font-size: 1.5em; margin-bottom: 60px;}
+.enterpriseLP h3 {font-size: 24px; margin-bottom: 40px;}
+.enterpriseLP h4 {font-size: 1.4em;}
+.enterpriseLP hr {border-top: 1px solid #c2c2c2;}
+.enterpriseLP a {text-decoration: underline;}
+.enterpriseLP .btn {background: #20ca8c; font-size: 1.1em; margin: 30px auto; padding: 16px 40px; text-decoration: none; white-space: normal;}
+.enterpriseLP .sectionTop {margin-top: 60px;}
+
+.enterpriseLP .logo {max-width: 100%}
+.enterpriseLP .img-responsive {margin: 0 auto;}
+.enterpriseLP .header p {color: #20ca8c; font-weight: bold; font-size: 1.5em;}
+.enterpriseLP .header .btn {font-size: 1.0em;}
+.enterpriseLP .header .fa {padding-left: 5px;}
+.enterpriseLP .contactBox {background: #e7e7e7; color: #003763; padding: 10px 30px}
+.enterpriseLP .contactBox hr {border-top: 1px dashed #c3c3c3; margin: 10px 0;}
+.enterpriseLP .contactBox p {margin: 0 0 10px;}
+.enterpriseLP .contactBox a {color: #2f79b9; font-size: 1.1em; font-weight: 400;}
+.enterpriseLP .contactBox .highlight {color: #20ca8c; font-weight: bold;}
+.enterpriseLP .contactBox .telephone {color: #2f79b9; font-size: 1.1em; font-weight: 400;}
+.enterpriseLP .enterpriseFeatures {margin-bottom: 30px;}
+.enterpriseLP .enterpriseFeatures p {font-size: 1em; margin: 0;}
+.enterpriseLP .enterpriseFeatures .row {margin-top: 40px;}
+.enterpriseLP .enterpriseFeatures .fa {color: #52575f; font-size: 2em; padding-top: 10px;}
+.enterpriseLP .enterpriseFeatures p.featuresHeader {color: #003763; font-size: 1.2em; font-weight: 700;}
+.enterpriseLP .planInfo {border: 1px solid #666666; box-sizing: border-box; margin: 50px 5px; padding: 10px}
+.enterpriseLP .planInfo p {font-size: 1.1em;}
+.enterpriseLP .planInfo .feature {padding-left: 30px;}
+.enterpriseLP .planName {font-size: 1.3em; text-transform: uppercase;}
+.enterpriseLP .planPrice {font-size: 1.4em;}
+.enterpriseLP .planDescription {font-size: 1.25em;}
+.enterpriseLP .planPrice span {font-size: 1.5em; font-weight: 600;}
+.enterpriseLP .planPrice span.symbol {display: inline-block; font-size: 1em; margin-top: 5px; vertical-align: top;}
+.enterpriseLP .pricing .fa {box-sizing: border-box; text-align: center; width: 10px;}
+.enterpriseLP .hosted {margin-bottom: 50px;}
+.enterpriseLP .hosted a {text-decoration: underline;}
+.enterpriseLP .featureSet .enterprise ul {color: #20ca8c;}
+.enterpriseLP .featureSet ul {list-style-type: square; color: #2f79b9;}
+.enterpriseLP .featureSet li p {font-size: 13px; color: #333333;}
+.enterpriseLP .featureSet li p.featureSetHeader {color: #003763; margin-bottom: 0; font-size: 16px;}
+.enterpriseLP .featureSet .planHeader {color: #003763; display: table; font-size: 16px; font-weight: 600;}
+.enterpriseLP .featureSet .planHeader:before, .enterpriseLP .featureSet .planHeader:after {  border-top: 1px solid #c2c2c2; content: ''; display: table-cell; position: relative; top: 0.5em; width: 45%;}
+.enterpriseLP .featureSet .planHeader:before {right: 1.5%} 
+.enterpriseLP .featureSet .planHeader:after {left: 1.5%}
+.enterpriseLP .featureSet .enterprise .planHeader {color: #20ca8c;}
+.enterpriseLP .faq {margin-bottom: 20px;}
+.enterpriseLP .faqQuestion {color: #003763; font-size: 1.2em; font-weight: 600;}
+.enterpriseLP .faqAnswer { font-size: 13px;}
+.enterpriseLP .faqHeader {font-size: 1.2em; font-weight: bold; padding-top: 20px;}
+.enterpriseLP .faqLists {margin-bottom: 80px;}
+.enterpriseLP .faqLists li {font-size: 13px;}
+.enterpriseLP .faqImg {padding-top: 40px;}
+.enterpriseLP .startTrial {margin: 20px auto;}
+.enterpriseLP .questions {color: #003763;}
+.enterpriseLP .bottom {margin-top: 40px;}
+
+@media (max-width: 768px) {
+    .enterpriseLP .btn {width: 100%}
+}
+
+@media (min-width: 700px) {
+    .enterpriseLP .enterpriseFeatures .fa {padding-top: 5px;}
+    .enterpriseLP .btn { margin-top: 15px; padding: 6px 30px;  text-decoration: none;}
+}        
+@media (min-width: 769px) {
+    .enterpriseLP {font-size: 1.0em; padding: 60px 100px;}
+    .enterpriseLP h2 {font-size: 1.9em; margin-bottom: 50px;}
+    .enterpriseLP p {margin: 0 0 10px;}
+    .enterpriseLP .header {margin-bottom: 70px;}
+    .enterpriseLP .header .btn {margin: 0 auto;}
+    .enterpriseLP .header p {margin: 0}
+    .enterpriseLP .enterpriseFeatures .row {margin-top: 40px;}
+    .enterpriseLP .planInfo {border: 1px solid #cecece; margin: 20px 5px;}
+    .enterpriseLP .pricing .fa {margin-right: 15px; width: 19px;}
+    .enterpriseLP .featureSet .planHeader {white-space: nowrap;}
+    .enterpriseLP .featureSet li p {font-size: .8em; color: #333333;}
+    .enterpriseLP .featureSet li p.featureSetHeader {color: #003763; margin-bottom: 10px; font-size: 16px;}
+    .enterpriseLP .faqLists {margin: 50px auto;}
+    .enterpriseLP .startTrial .btn {font-size: 1.2em; padding: 6px 40px;}
+}
+
+@media (min-width: 10100px) {
+    .enterpriseLP .featureSet li {height: 220px;}
+
+}
+
+@media (min-width: 1120px) {
+    .enterpriseLP .featureSet li {height: 160px;}
+}
+
+@media (min-width: 1300px) {
+    .enterpriseLP .planInfo .btn {width: 260px;}
+    .enterpriseLP .featureSet li {height: 120px;}
+}

@@ -1,0 +1,29 @@
+.avatar-element {
+  display: inline-block;
+  vertical-align: middle;
+  color: white !important;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar-element.team {
+  border-radius: 50%;
+}
+
+.avatar-element img {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.avatar-element .letter {
+  cursor: default !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-variant: normal !important;
+}
+
+a .avatar-element .letter {
+  cursor: pointer !important;
+}

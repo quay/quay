@@ -1,0 +1,78 @@
+body {
+  font-family: sans-serif;
+}
+
+pre, code{
+  white-space: normal;
+}
+
+div.root docs{
+  display: none;
+}
+
+div.name {
+  display: inline;
+}
+
+div.type {
+  display: inline;
+  font-weight: bold;
+  color: blue;
+}
+
+div.required {
+  display: inline;
+  font-weight: bold;
+}
+
+div.docs {
+  display: block;
+}
+
+div.title {
+  display: block;
+  font-weight: bold;
+}
+
+div.description {
+  display: block;
+  font-family: serif;
+  font-style: italic;
+}
+
+div.enum {
+  display: block;
+  font-family: serif;
+  font-style: italic;
+}
+
+div.x-example {
+  display: block;
+  font-family: serif;
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+div.pattern {
+  display: block;
+  font-family: serif;
+  font-style: italic;
+}
+
+div.x-reference {
+  display: block;
+  font-family: serif;
+  font-style: italic;
+}
+
+div.uniqueItems {
+  display: block;
+}
+
+div.minItems {
+  display: block;
+}
+
+div.maxItems {
+  display: block;
+}

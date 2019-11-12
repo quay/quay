@@ -1,0 +1,22 @@
+<div class="dropdown-select-element dropdown-select-direct-element" ng-class="selectedItem ? 'has-item' : ''">
+  <div class="current-item">
+    <i class="none-icon fa fa-lg" ng-class="noneIcon" ng-if="noneIcon"></i>
+    <i class="fa fa-lg dropdown-select-direct-icon" ng-repeat="item in items"
+       ng-class="iconMap[item[iconKey]]"
+       ng-show="selectedItem[valueKey] == item[valueKey]"></i>
+
+    <input type="text" class="lookahead-input form-control" placeholder="{{ placeholder }}"></input>
+  </div>
+  <div class="dropdown">
+    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+      <span class="caret"></span>
+    </button>
+
+    <ul class="dropdown-menu scrollable-menu" role="menu">
+      <li ng-repeat="item in items">
+        <a ng-click="setItem(item)">
+        <i class="fa" ng-class="iconMap[item[iconKey]]"></i>{{ item[titleKey] }}</a>
+      </li>
+    </ul>
+  </div>
+</div>

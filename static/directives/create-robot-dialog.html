@@ -1,0 +1,10 @@
+<div class="create-robot-dialog-element">
+  <div ng-if="info">
+    <div class="create-entity-dialog" info="info" entity-title="robot account"
+         entity-kind="robot"
+         entity-icon="ci-robot" entity-name-regex="{{ ROBOT_PATTERN }}"
+         allow-entity-description="true"
+         entity-create-requested="createRobot(name, description, callback)"
+         entity-create-completed="robotFinished(entity)"></div>
+  </div>
+</div>

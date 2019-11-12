@@ -1,0 +1,30 @@
+.plans-table-element table {
+  margin: 20px;
+  border: 1px solid #eee;
+}
+
+.plans-table-element thead td {
+  padding-top: 10px !important;
+}
+
+.plans-table-element td {
+  vertical-align: middle !important;
+}
+
+.plans-table-element .plan-price {
+  font-size: 16px;
+}
+
+.plans-table ul {
+  margin-top: 10px;
+  padding: 0px;
+}
+
+.plans-table ul li {
+  padding: 4px;
+  margin: 0px;
+}
+
+.plans-table ul li .plan-info {
+  padding: 4px;
+}

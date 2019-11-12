@@ -1,0 +1,124 @@
+.manifest-feature-view-element .donut-icon {
+  position: absolute;
+  top: 60px;
+  left: 95px;
+  font-size: 80px;
+  text-align: center;
+  color: #EAEAEA;
+  margin-left: -6px;
+}
+
+.manifest-feature-view-element > .empty {
+  margin-top: 20px;
+}
+
+.manifest-feature-view-element .no-vulns {
+  color: #2FC98E;
+}
+
+.manifest-feature-view-element .no-vulns i.fa {
+  margin-right: 6px;
+}
+
+.manifest-feature-view-element .security-header {
+  margin-top: -4px;
+  margin-bottom: 30px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #eee;
+}
+
+.manifest-feature-view-element .donut-col {
+  padding-top: 20px;
+  text-align: center;
+  max-width: 250px;
+  display: inline-block;
+  vertical-align: top;
+}
+
+
+.manifest-feature-view-element #featureDonutChart {
+  display: inline-block;
+}
+
+.manifest-feature-view-element .summary-col {
+  font-size: 18px;
+  display: inline-block;
+  vertical-align: top;
+  padding-top: 30px;
+}
+
+.manifest-feature-view-element .summary-col .title-item {
+  font-size: 24px;
+  margin-bottom: 30px;
+}
+
+.manifest-feature-view-element .summary-list {
+  text-align: left;
+  list-style: none;
+}
+
+.manifest-feature-view-element .summary-list i.fa {
+  margin-right: 10px;
+}
+
+.manifest-feature-view-element .summary-list .package-item strong {
+  text-align: right;
+  width: 40px;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.manifest-feature-view-element .co-table .empty {
+  color: #ddd;
+}
+
+.manifest-feature-view-element .co-table .single-col {
+  width: 12.5%;
+}
+
+.manifest-feature-view-element .co-table .double-col {
+  width: 25%;
+}
+
+.manifest-feature-view-element .co-table .impact-col {
+  text-align: center;
+  width: 130px;
+}
+
+.manifest-feature-view-element .co-table .image-col {
+  white-space: nowrap;
+}
+
+.manifest-feature-view-element .co-table .image-col .fa {
+  margin-left: 6px;
+  opacity: 0.5;
+}
+
+@media (max-width: 767px) {
+  .manifest-feature-view-element .co-table .single-col {
+      width: auto !important;
+  }
+}
+
+.manifest-feature-view-element .dockerfile-command {
+  cursor: default;
+}
+
+.manifest-feature-view-element .dockerfile-command .command-title {
+  font-size: 12px;
+  max-width: 297px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.manifest-feature-view-element .vuln-summary i.fa {
+  margin-right: 6px;
+}
+
+.manifest-feature-view-element .defcon1 {
+  background-color: #FB5151;
+  color: white;
+}

@@ -1,0 +1,7 @@
+<span class="channel-icon-element" data-title="{{ $ctrl.name }}" bs-tooltip>
+  <span class="hexagon" ng-style="{'background-color': $ctrl.color($ctrl.name)}">
+    <span class="before" ng-style="{'border-bottom-color': $ctrl.color($ctrl.name)}"></span>
+    <span class="after" ng-style="{'border-top-color': $ctrl.color($ctrl.name)}"></span>
+  </span>
+  <b>{{ $ctrl.initial($ctrl.name) }}</b>
+</span>

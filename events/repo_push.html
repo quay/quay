@@ -1,0 +1,12 @@
+{% if notification_data.performer_data.entity_name %}
+{{ notification_data.performer_data.entity_name | user_reference }} pushed
+{% else %}
+Push of
+{% endif %}
+
+{% if event_data.updated_tags %}
+ {{ 'tags' | icon_image }}
+ {% for tag in event_data.updated_tags %}{%if loop.index > 1 %}, {% endif %}{{ (event_data.repository, tag) | repository_tag_reference }}{% endfor %} in
+{% endif %}
+
+ repository {{ event_data.repository | repository_reference }}

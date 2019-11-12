@@ -1,0 +1,43 @@
+.repo-panel-changes .tab-header {
+  margin-bottom: 30px !important;
+}
+
+.repo-panel-changes .side-panel-title {
+  font-size: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.repo-panel-changes .side-panel-title i.fa {
+  margin-right: 10px;
+}
+
+.repo-panel-changes .side-panel {
+  padding: 10px;
+}
+
+.repo-panel-changes .visualized-tag {
+  font-size: 18px;
+  margin-left: 10px;
+}
+
+.repo-panel-changes .visualized-tag .fa {
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.repo-panel-changes .multiselect-dropdown {
+  display: inline-block;
+  margin-left: 10px;
+  min-width: 200px;
+}
+
+.repo-panel-changes .multiselect-dropdown .tag-span {
+  white-space: nowrap;
+  max-width: 150px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: text-bottom;
+}

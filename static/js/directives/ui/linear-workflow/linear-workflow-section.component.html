@@ -1,0 +1,7 @@
+<div class="linear-workflow-section-element"
+     ng-if="$ctrl.sectionVisible"
+     ng-class="$ctrl.isCurrentSection ? 'current-section' : ''">
+  <form ng-submit="$ctrl.onSubmitSection()">
+    <div ng-transclude />
+  </form>
+</div>

@@ -1,0 +1,6 @@
+<span ng-class="text ? 'co-step-element text' : 'co-step-element icon'">
+  <span data-title="{{ title }}" bs-tooltip>
+      <span class="text" ng-if="text">{{ text }}</span>
+      <i class="fa fa-lg" ng-if="icon" ng-class="'fa-' + icon"></i>
+  </span>
+</span>

@@ -1,0 +1,17 @@
+.create-entity-dialog-element .modal-body {
+  min-height: 300px;
+}
+
+.create-entity-dialog-element form {
+  padding: 10px;
+}
+
+.create-entity-dialog-element .help-text {
+  color: #aaa;
+  margin-top: 10px;
+}
+
+.create-entity-dialog-element h4 .fa {
+  margin-left: 4px;
+  margin-right: 4px;
+}

@@ -1,0 +1,20 @@
+<div class="notification-view-element">
+  <div class="notification-content" ng-click="showNotification();">
+    <div class="circle" ng-class="getClass(notification)"></div>
+    <div class="message" ng-bind-html="getMessage(notification)"></div>
+    <div class="orginfo" ng-if="notification.organization">
+      <span class="avatar" size="24" data="getAvatar(notification.organization)"></span>
+      <span class="orgname">{{ notification.organization }}</span>
+    </div>
+  </div>
+  <div class="right-controls" ng-show="!inReadOnlyMode">
+    <a ng-if="canDismiss(notification)" ng-click="dismissNotification(notification)" ng-show="!dismissing">
+      Dismiss Notification
+    </a>
+    <span class="cor-loader-inline" ng-show="dismissing"></span>
+    <button class="btn" ng-class="'btn-' + action.kind" ng-repeat="action in getActions(notification)" ng-click="action.handler(notification)">
+      {{ action.title }}
+    </button>
+  </div>
+  <div class="datetime">{{ parseDate(notification.created) | date:'medium'}}</div>
+</div>

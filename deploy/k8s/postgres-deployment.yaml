@@ -1,0 +1,38 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: quay-enterprise
+spec:
+  # Only one instance of the postgres database is defined here. Adjust replicas based on demand.
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: registry.access.redhat.com/rhscl/postgresql-10-rhel7:1-35
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 5432
+          env:
+          - name: POSTGRESQL_USER
+            # Replace "username" with a name for your Postgres user
+            value: "username"
+          - name: POSTGRESQL_DATABASE
+            # Replace "password" with a password for your Postgres user
+            value: "quay"
+          - name: POSTGRESQL_PASSWORD
+            value: "password"
+          volumeMounts:
+            - mountPath: /var/lib/pgsql/data
+              name: postgredb
+          serviceAccount: postgres
+          serviceAccountName: postgres
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: postgres-storage

@@ -1,0 +1,42 @@
+.multiselect-dropdown .dropdown,
+.multiselect-dropdown .dropdown .btn-dropdown,
+.multiselect-dropdown .dropdown .dropdown-menu {
+  width: 100%;
+}
+
+.multiselect-dropdown .dropdown .btn-dropdown {
+  text-align: left;
+  position: relative;
+  padding-right: 16px;
+}
+
+.multiselect-dropdown .dropdown .btn-dropdown .caret {
+  position: absolute;
+  top: 14px;
+  right: 10px;
+}
+
+.multiselect-dropdown .none {
+  color: #ccc;
+  margin-right: 10px;
+}
+
+.multiselect-dropdown .dropdown-menu {
+  padding: 10px;
+}
+
+.multiselect-dropdown .dropdown-menu .menu-item {
+  padding: 4px;
+}
+
+.multiselect-dropdown .dropdown-menu .menu-item .co-checkable-item {
+  margin-right: 6px;
+}
+
+.multiselect-dropdown .dropdown-menu .menu-item .menu-item-template {
+  vertical-align: middle;
+}
+
+.multiselect-dropdown .selected-item-template {
+  margin-right: 10px;
+}

@@ -1,0 +1,20 @@
+<div class="cor-container">
+  <div ng-show="!user.anonymous && user.verified">
+    <h3>Welcome <b>{{ user.username }}</b>. Your account is fully activated!</h3>
+
+    <div style="margin-top: 20px;">
+      <a class="btn btn-lg btn-primary" href="/repository/">Browse all repositories</a>
+    </div>
+  </div>
+  <div ng-show="!user.anonymous && !user.verified">
+    <h3>Welcome <b>{{ user.username }}</b>. Your account is pending email confirmation.</h3>
+    <p>Please check your inbox (and potentially your spam folder) for an email from <a href="mailto:support@quay.io">support@quay.io</a></p>
+  </div>
+  <div ng-show="user.anonymous">
+    <h3>Docker sent me here. What do I need to do?</h3>
+    <p>
+      <a href="/signin">Sign In</a> to check the activation status of your account. If you have already activated
+      your account previously, then you do not need to do anything further.
+    </p>
+  </div>
+</div>

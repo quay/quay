@@ -1,0 +1,15 @@
+<span class="source-ref-link-element">
+  <span ng-switch on="getKind(ref)">
+    <!-- Branch -->
+    <span ng-switch-when="heads">
+      <i class="fa fa-code-fork" data-container="body" data-title="Branch" bs-tooltip></i>
+      <span class="anchor" href="{{ getUrl(ref, branchTemplate, 'branch') }}" is-only-text="!branchTemplate || !getUrl(ref, branchTemplate, 'branch')" ng-safenewtab>{{ getTitle(ref) }}</span>
+    </span>
+
+    <!-- Tag -->
+    <span ng-switch-when="tags">
+      <i class="fa fa-tag" data-container="body" data-title="Tag" bs-tooltip></i>
+      <span class="anchor" href="{{ getUrl(ref, tagTemplate, 'tag') }}" is-only-text="!tagTemplate || !getUrl(ref, tagTemplate, 'tag')" ng-safenewtab>{{ getTitle(ref) }}</span>
+    </span>
+  </span>
+</span>

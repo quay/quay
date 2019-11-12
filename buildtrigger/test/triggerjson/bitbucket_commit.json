@@ -1,0 +1,24 @@
+{
+    "files": [
+        {
+            "type": "added",
+            "file": "AnotherFile.txt"
+        },
+        {
+            "type": "modified",
+            "file": "Readme"
+        }
+    ],
+    "raw_author": "Mark Anthony <manthony@example.com>",
+    "utctimestamp": "2012-07-23 22:26:36+00:00",
+    "author": "Mark Anthony",
+    "timestamp": "2012-07-24 00:26:36",
+    "node": "abdeaf1b2b4a6b9ddf742c1e1754236380435a62",
+    "parents": [
+        "86432202a2d5"
+    ],
+    "branch": "master",
+    "message": "making some changes\n",
+    "revision": null,
+    "size": -1
+}

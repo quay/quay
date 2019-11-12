@@ -1,0 +1,38 @@
+.build-status {
+  display: inline-block;
+}
+
+.build-status-container {
+  padding: 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  width: 350px;
+}
+
+.build-status-container .build-message {
+  display: block;
+  white-space: nowrap;
+  font-size: 14px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  margin-left: 20px;
+}
+
+.build-status-container .progress {
+  height: 10px;
+  margin: 0px;
+  margin-top: 10px;
+  margin-left: 20px;
+  width: 310px;
+}
+
+.build-status-container .timing {
+  margin-left: 20px;
+  margin-top: 6px;
+}
+
+.build-status-container:last-child {
+  margin-bottom: 0px;
+  border-bottom: 0px solid white;
+}

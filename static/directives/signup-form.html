@@ -1,0 +1,52 @@
+<div class="signup-form-element">
+  <h4 ng-show="!registering && !awaitingConfirmation">
+    Create new account
+  </h4>
+
+  <div class="co-alert co-alert-warning" ng-show="registerIssue">
+    {{ registerIssue }}
+  </div>
+
+  <form class="form-signup" name="signupForm" ng-submit="register()" ng-show="!awaitingConfirmation && !registering">
+    <label for="username">Username:</label>
+    <span class="namespace-input" binding="newUser.username" back-incompat-message="backIncompatMessage" namespace-title="Requested username"></span>
+
+    <div class="expandable" ng-class="{'expanded': backIncompatMessage || (!signupForm.namespaceField.$error.required && signupForm.namespaceField.$invalid)}">
+      <div class="co-alert co-alert-warning thin" ng-show="backIncompatMessage">{{ backIncompatMessage }}</div>
+      <div class="co-alert co-alert-danger thin" ng-show="!signupForm.namespaceField.$error.required && signupForm.namespaceField.$invalid">
+        Usernames must be alphanumeric and between 2 and 255 characters in length
+      </div>
+    </div>
+
+    <label for="email">E-mail address:</label>
+    <input type="email" class="form-control" placeholder="Your email address" name="email" ng-model="newUser.email" required>
+
+    <label for="password">Password:</label>
+    <input type="password" class="form-control" placeholder="Create a password" name="password" ng-model="newUser.password" required
+           ng-pattern="/^.{8,}$/">
+    <input type="password" class="form-control" placeholder="Verify your password" ng-model="newUser.repeatPassword"
+           match="newUser.password" required
+           ng-pattern="/^.{8,}$/">
+
+    <div quay-require="['RECAPTCHA']">
+      <div class="captcha"
+           ng-class="{'expanded': !!(newUser.password == newUser.repeatPassword && newUser.password)}">
+        <div vc-recaptcha ng-model="newUser.recaptcha_response" key="Config.RECAPTCHA_SITE_KEY"></div>
+      </div>
+    </div>
+
+    <button id="signupButton"
+            class="btn btn-primary btn-block landing-signup-button" ng-disabled="signupForm.$invalid" type="submit"
+            analytics-on analytics-event="register">
+      <span quay-show="Features.BILLING">Create Free Account</span>
+      <span quay-show="!Features.BILLING">Create Account</span>
+    </button>
+  </form>
+
+
+  <div class="cor-loader" ng-show="registering"></div>
+  <div class="co-alert co-alert-info" ng-show="awaitingConfirmation && hideRegisteredMessage != 'true'">
+    Thank you for registering! We have sent you an activation email.
+    You must <b>verify your email address</b> before you can continue.
+  </div>
+</div>

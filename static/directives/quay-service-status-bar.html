@@ -1,0 +1,24 @@
+<div class="announcement inline"
+     ng-show="indicator != 'loading' && (scheduled_maintenances.length || incidents.length)">
+  <div ng-repeat="incident in incidents" class="message">
+      <span class="quay-service-status-indicator" ng-class="indicator"
+            ng-if="indicator != 'loading'"></span>
+        <a ng-href="{{ incident.shortlink }}" class="quay-service-status-description">{{ incident.name }}</a>
+  </div>
+
+  <div ng-repeat="scheduled in scheduled_maintenances" class="message">
+     <i class="fa fa-calendar" style="margin-right: 6px;"></i>
+     <span ng-switch on="scheduled.status" style="vertical-align: middle">
+       <span ng-switch-when="scheduled">
+         Scheduled for <time-display datetime="scheduled.scheduled_for"></time-display>:
+       </span>
+       <b ng-switch-when="in_progress" style="color: #FDFFB9;">
+         In progress:
+       </b>
+       <b ng-switch-when="verifying" style="color: #FDFFB9;">
+         In progress:
+       </b>
+     </span>
+     <a ng-href="{{ scheduled.shortlink }}" class="quay-service-status-description">{{ scheduled.name }}</a>
+  </div>
+</div>

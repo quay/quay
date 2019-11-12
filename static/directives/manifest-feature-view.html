@@ -1,0 +1,181 @@
+<div class="manifest-feature-view-element">
+  <!-- Unable to load -->
+  <div class="empty" ng-if="securityStatus == 'error'">
+    <div class="empty-icon">
+      <i class="fa fa-times-circle"></i>
+    </div>
+    <div class="empty-primary-msg">Could not load security scan information</div>
+    <div class="empty-secondary-msg">
+      Please try again in a few minutes. If this problem persists, please contact support.
+    </div>
+  </div>
+
+  <!-- Not scanned -->
+  <div class="empty" ng-if="securityStatus == 'queued'">
+    <div class="empty-icon">
+      <i class="fa fa-ellipsis-h"></i>
+    </div>
+    <div class="empty-primary-msg">This manifest has not been indexed yet</div>
+    <div class="empty-secondary-msg">
+      Please try again in a few minutes.
+    </div>
+  </div>
+
+  <!-- Unable to scan -->
+  <div class="empty" ng-if="securityStatus == 'failed'">
+    <div class="empty-icon">
+      <i class="fa fa-times-circle"></i>
+    </div>
+    <div class="empty-primary-msg">This manifest could not be indexed</div>
+    <div class="empty-secondary-msg">
+      Quay security scanner was unable to index this manifest.
+    </div>
+  </div>
+
+  <!-- Scanned and has no features -->
+  <div ng-if="securityStatus == 'scanned' && !featuresInfo.features.length">
+    <div class="empty">
+      <div class="empty-icon">
+        <i class="fa ci-package"></i>
+      </div>
+      <div class="empty-primary-msg">Manifest is not supported by Quay Security Scanner</div>
+      <div class="empty-secondary-msg">
+        This manifest has an operating system or package manager unsupported by Quay Security Scanner.
+      </div>
+    </div>
+  </div>
+
+  <!-- Scanned -->
+  <div ng-if="securityStatus == 'scanned' && featuresInfo.features.length">
+    <!-- Header -->
+    <div class="security-header row">
+      <div class="donut-col col-md-3">
+        <div id="featureDonutChart" style="position: relative;">
+          <svg style="height:250px; width:250px"></svg>
+          <span class="donut-icon">
+            <i class="fa ci-package"></i>
+          </span>
+        </div>
+      </div>
+      <div class="summary-col col-md-9">
+        <ul class="summary-list">
+          <li class="title-item">Quay Security Scanner has recognized <strong>{{ featuresInfo.features.length }}</strong> packages.</li>
+          <li ng-repeat="severity in featuresInfo.severityBreakdown">
+            <span class="package-item" ng-if="severity.label != 'None'">
+              <i class="fa ci-package" ng-style="{'color': severity.color}"></i> <strong>{{ severity.value }}</strong> packages with {{ severity.label }}-level vulnerabilities.
+            </span>
+            <span class="package-item" ng-if="severity.label == 'None'" style="margin-top: 20px; display: inline-block;">
+              <i class="fa ci-package" ng-style="{'color': severity.color}"></i> <strong>{{ severity.value }}</strong> packages with no vulnerabilities.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <span class="co-filter-box">
+      <span class="filter-message" ng-if="options.filter">
+        Showing {{ orderedFeatures.entries.length }} of {{ featuresInfo.features.length }} packages
+      </span>
+      <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Packages...">
+    </span>
+    <h3>Packages</h3>
+
+    <!-- Table -->
+    <table class="co-table">
+     <thead>
+      <td ng-class="TableService.tablePredicateClass('name', options.predicate, options.reverse)">
+        <a ng-click="TableService.orderBy('name', options)">Package Name</a>
+      </td>
+      <td class="hidden-xs">
+        Package Version
+      </td>
+      <td ng-class="TableService.tablePredicateClass('score', options.predicate, options.reverse)">
+        <a ng-click="TableService.orderBy('score', options)">Vulnerabilities</a>
+      </td>
+      <td class="hidden-xs hidden-sm hidden-md"
+          ng-class="TableService.tablePredicateClass('leftoverScore', options.predicate, options.reverse)"
+          data-title="Identified vulnerabilities remaining after the package is upgraded to the latest version"
+          data-container="body" bs-tooltip>
+        <a ng-click="TableService.orderBy('leftoverScore', options)">Remaining after upgrade</a>
+      </td>
+      <td ng-class="TableService.tablePredicateClass('fixableScore', options.predicate, options.reverse)">
+        <a ng-click="TableService.orderBy('fixableScore', options)"
+           data-title="Delta of the severity of vulnerabilities in the package before->after upgrading" data-container="body" bs-tooltip>Upgrade impact</a>
+      </td>
+      <td class="hidden-xs hidden-sm hidden-md">
+        Introduced In Layer
+      </td>
+      <td class="hidden-xs options-col"></td>
+     </thead>
+     <tbody ng-repeat="feature in orderedFeatures.visibleEntries" bindonce>
+       <tr ng-class="feature.primarySeverity.index == 0 ? 'defcon1' : ''">
+         <td class="single-col">
+          <span bo-text="feature.name"></span>
+         </td>
+         <td class="single-col hidden-xs">
+          <span bo-text="feature.version"></span>
+         </td>
+         <td>
+            <span class="no-vulns" bo-if="feature.vulnCount == 0">
+              <i class="fa fa-check-circle"></i>None Detected
+            </span>
+            <span class="vuln-summary" bo-if="feature.vulnCount != 0">
+              <span ng-style="{'color': feature.severityBreakdown[0].color}">
+                <i class="fa fa fa-exclamation-triangle"></i>
+                {{ feature.primarySeverity.value }}
+                {{ feature.primarySeverity.label }}
+              </span>
+              <span bo-if="feature.vulnCount - feature.primarySeverity.value > 0">
+              + {{ feature.vulnCount - feature.primarySeverity.value }} additional
+              </span>
+            </span>
+         </td>
+         <td class="hidden-xs hidden-sm hidden-md">
+            <span class="empty" bo-if="feature.vulnCount == 0">
+              (N/A)
+            </span>
+            <span class="no-vulns" bo-if="feature.vulnCount != 0 && feature.leftoverCount == 0">
+                <i class="fa fa-arrow-circle-right"></i>
+                All identified vulnerabilities fixed
+            </span>
+            <span class="vuln-summary" bo-if="feature.vulnCount != 0 && feature.leftoverCount != 0">
+              <span ng-style="{'color': feature.primaryLeftover.color}">
+                <i class="fa fa-arrow-circle-right"></i>
+                {{ feature.primaryLeftover.value }}
+                {{ feature.primaryLeftover.label }}
+              </span>
+              <span bo-if="feature.leftoverCount - feature.primaryLeftover.value > 0">
+              + {{ feature.leftoverCount - feature.primaryLeftover.value }} additional
+              </span>
+            </span>
+         </td>
+         <td class="impact-col">
+           <span class="empty" bo-if="feature.vulnCount == 0">
+             (N/A)
+           </span>
+           <span class="empty" bo-if="feature.fixableScore == 0">
+             (No changes)
+           </span>
+           <span bo-if="feature.vulnCount > 0 && feature.fixableScore > 0">
+             <span class="strength-indicator" value="feature.fixableScore" maximum="featuresInfo.highestFixableScore"
+                   log-base="2"></span>
+           </span>
+         </td>
+         <td class="double-col image-col hidden-xs hidden-sm hidden-md">
+            <span bo-if="feature.imageCommand">
+              <image-command command="feature.imageCommand"></image-command>
+            </span>
+            <span bo-if="!feature.imageCommand">(No Command)</span>
+         </td>
+         <td></td>
+        </tr>
+      </tbody>
+    </table>
+   <div class="empty" ng-if="featuresInfo.features.length && !orderedFeatures.entries.length"
+        style="margin-top: 20px;">
+    <div class="empty-primary-msg">No matching packages found.</div>
+    <div class="empty-secondary-msg">Try expanding your filtering terms.</div>
+   </div>
+ </div>
+</div>

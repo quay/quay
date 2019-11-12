@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+Schema for Red Hat Quay<ul class="level0">
+<li class="schema item">
+<div class="name">AUTHENTICATION_TYPE</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="root_docs">
+<div class="title"></div>
+<div class="description">The authentication engine to use for credential authentication.</div>
+<div class="enum">enum: Database, LDAP, JWT, Keystone, OIDC</div>
+<div class="x-example">Example: <code>Database</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">BUILDLOGS_REDIS</div>
+<div class="type">[object]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Connection information for Redis for build logs caching</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">host</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The hostname at which Redis is accessible</div>
+<div class="x-example">Example: <code>my.redis.cluster</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">password</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The password to connect to the Redis instance</div>
+<div class="x-example">Example: <code>mypassword</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">port</div>
+<div class="type">[number]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The port at which Redis is accessible</div>
+<div class="x-example">Example: <code>1234</code></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">DB_URI</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The URI at which to access the database, including any credentials.</div>
+<div class="x-reference"><a href="https://www.postgresql.org/docs/9.3/static/libpq-connect.html#AEN39495">Reference: https://www.postgresql.org/docs/9.3/static/libpq-connect.html#AEN39495</a></div>
+<div class="x-example">Example: <code>mysql+pymysql://username:password@dns.of.database/quay</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">DEFAULT_TAG_EXPIRATION</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The default, configurable tag expiration time for time machine. Defaults to `2w`.</div>
+<div class="pattern">Pattern: ^[0-9]+(w|m|d|h|s)$</div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">DISTRIBUTED_STORAGE_CONFIG</div>
+<div class="type">[object]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Configuration for storage engine(s) to use in Quay. Each key is a unique ID for a storage engine, with the value being a tuple of the type and  configuration for that engine.</div>
+<div class="x-example">Example: <code>{"local_storage": ["LocalStorage", {"storage_path": "some/path/"}]}</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">DISTRIBUTED_STORAGE_PREFERENCE</div>
+<div class="type">[array]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The preferred storage engine(s) (by ID in DISTRIBUTED_STORAGE_CONFIG) to use. A preferred engine means it is first checked for pullig and images are pushed to it.</div>
+<div class="minItems">Min Items: None</div>
+<div class="x-example">Example: <code>[u's3_us_east', u's3_us_west']</code></div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">array item</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">PREFERRED_URL_SCHEME</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The URL scheme to use when hitting Quay. If Quay is behind SSL *at all*, this *must* be `https`</div>
+<div class="enum">enum: http, https</div>
+<div class="x-example">Example: <code>https</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">SERVER_HOSTNAME</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The URL at which Quay is accessible, without the scheme.</div>
+<div class="x-example">Example: <code>quay.io</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">TAG_EXPIRATION_OPTIONS</div>
+<div class="type">[array]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The options that users can select for expiration of tags in their namespace (if enabled)</div>
+<div class="minItems">Min Items: None</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">array item</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"></div>
+<div class="pattern">Pattern: ^[0-9]+(w|m|d|h|s)$</div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">USER_EVENTS_REDIS</div>
+<div class="type">[object]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Connection information for Redis for user event handling</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">host</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The hostname at which Redis is accessible</div>
+<div class="x-example">Example: <code>my.redis.cluster</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">password</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The password to connect to the Redis instance</div>
+<div class="x-example">Example: <code>mypassword</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">port</div>
+<div class="type">[number]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The port at which Redis is accessible</div>
+<div class="x-example">Example: <code>1234</code></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">ALLOW_PULLS_WITHOUT_STRICT_LOGGING</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If true, pulls in which the pull audit log entry cannot be written will still succeed. Useful if the database can fallback into a read-only state and it is desired for pulls to continue during that time. Defaults to False.</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">AVATAR_KIND</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The types of avatars to display, either generated inline (local) or Gravatar (gravatar)</div>
+<div class="enum">enum: local, gravatar</div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">BITTORRENT_ANNOUNCE_URL</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The URL of the announce endpoint on the bittorrent tracker</div>
+<div class="pattern">Pattern: ^http(s)?://(.)+$</div>
+<div class="x-example">Example: <code>https://localhost:6881/announce</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">BITTORRENT_PIECE_SIZE</div>
+<div class="type">[number]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The bittorent piece size to use. If not specified, defaults to 512 * 1024.</div>
+<div class="x-example">Example: <code>524288</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">CONTACT_INFO</div>
+<div class="type">[array]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If specified, contact information to display on the contact page. If only a single piece of contact information is specified, the contact footer will link directly.</div>
+<div class="minItems">Min Items: 1</div>
+<div class="uniqueItems">Unique Items: True</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">array item 0</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Adds a link to send an e-mail</div>
+<div class="pattern">Pattern: ^mailto:(.)+$</div>
+<div class="x-example">Example: <code>mailto:support@quay.io</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">array item 1</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Adds a link to visit an IRC chat room</div>
+<div class="pattern">Pattern: ^irc://(.)+$</div>
+<div class="x-example">Example: <code>irc://chat.freenode.net:6665/quay</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">array item 2</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Adds a link to call a phone number</div>
+<div class="pattern">Pattern: ^tel:(.)+$</div>
+<div class="x-example">Example: <code>tel:+1-888-930-3475</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">array item 3</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Adds a link to a defined URL</div>
+<div class="pattern">Pattern: ^http(s)?://(.)+$</div>
+<div class="x-example">Example: <code>https://twitter.com/quayio</code></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">DIRECT_OAUTH_CLIENTID_WHITELIST</div>
+<div class="type">[array]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">A list of client IDs of *Quay-managed* applications that are allowed to perform direct OAuth approval without user approval.</div>
+<div class="minItems">Min Items: None</div>
+<div class="uniqueItems">Unique Items: True</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/direct-oauth.html">Reference: https://coreos.com/quay-enterprise/docs/latest/direct-oauth.html</a></div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">array item</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS</div>
+<div class="type">[array]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The list of storage engine(s) (by ID in DISTRIBUTED_STORAGE_CONFIG) whose images should be fully replicated, by default, to all other storage engines.</div>
+<div class="minItems">Min Items: None</div>
+<div class="x-example">Example: <code>[u's3_us_east', u's3_us_west']</code></div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">array item</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">EXTERNAL_TLS_TERMINATION</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If TLS is supported, but terminated at a layer before Quay, must be true.</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_ACI_CONVERSION</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to enable conversion to ACIs. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_ACTION_LOG_ROTATION</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether or not to rotate old action logs to storage. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_ADVERTISE_V2</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether the v2/ endpoint is visible. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_ANONYMOUS_ACCESS</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"> Whether to allow anonymous users to browse and pull public repositories. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_APP_REGISTRY</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to enable support for App repositories. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_REPO_MIRROR</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to enable support for repository mirroring. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+<li class="schema item">
+<div class="name">REPO_MIRROR_TLS_VERIFY</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Require HTTPS and verify certificates of Quay registry during mirror. Defaults to True</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_BITBUCKET_BUILD</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to support Bitbucket build triggers. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_BITTORRENT</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to allow using Bittorrent-based pulls. Defaults to False</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/bittorrent.html">Reference: https://coreos.com/quay-enterprise/docs/latest/bittorrent.html</a></div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_BUILD_SUPPORT</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to support Dockerfile build. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_CHANGE_TAG_EXPIRATION</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True.</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_DIRECT_LOGIN</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether users can directly login to the UI. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_GITHUB_BUILD</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to support GitHub build triggers. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_GITHUB_LOGIN</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether GitHub login is supported. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_GITLAB_BUILD</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to support GitLab build triggers. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_GOOGLE_LOGIN</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether Google login is supported. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_INVITE_ONLY_USER_CREATION</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether users being created must be invited by another user. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_LIBRARY_SUPPORT</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to allow for "namespace-less" repositories when pulling and pushing from Docker. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_MAILING</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether emails are enabled. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_PARTIAL_USER_AUTOCOMPLETE</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If set to true, autocompletion will apply to partial usernames. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_PERMANENT_SESSIONS</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether sessions are permanent. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_PROXY_STORAGE</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to proxy all direct download URLs in storage via the registry nginx. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_PUBLIC_CATALOG</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If set to true, the _catalog endpoint returns public repositories. Otherwise, only private repositories can be returned. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_READER_BUILD_LOGS</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If set to true, build logs may be read by those with read access to the repo, rather than only write access or admin access. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_REQUIRE_ENCRYPTED_BASIC_AUTH</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether non-encrypted passwords (as opposed to encrypted tokens) can be used for basic auth. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_REQUIRE_TEAM_INVITE</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to require invitations when adding a user to a team. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_SECURITY_NOTIFICATIONS</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If the security scanner is enabled, whether to turn of/off security notificaitons. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_SECURITY_SCANNER</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to turn of/off the security scanner. Defaults to False</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/security-scanning.html">Reference: https://coreos.com/quay-enterprise/docs/latest/security-scanning.html</a></div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_STORAGE_REPLICATION</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to automatically replicate between storage engines. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_SUPER_USERS</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether super users are supported. Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_TEAM_SYNCING</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to allow for team membership to be synced from a backing group in the authentication engine (LDAP or Keystone)</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_USER_CREATION</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether users can be created (by non-super users). Defaults to True</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">FEATURE_USER_METADATA</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Whether to collect and support user metadata. Defaults to False</div>
+<div class="x-example">Example: <code>False</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">GITHUB_LOGIN_CONFIG</div>
+<div class="type">[object]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Configuration for using GitHub (Enterprise) as an external login provider</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/github-auth.html">Reference: https://coreos.com/quay-enterprise/docs/latest/github-auth.html</a></div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">ALLOWED_ORGANIZATIONS</div>
+<div class="type">[array]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The names of the GitHub (Enterprise) organizations whitelisted to work with the ORG_RESTRICT option</div>
+<div class="minItems">Min Items: None</div>
+<div class="uniqueItems">Unique Items: True</div>
+</div>
+</li>
+<ul class="level2">
+<li class="schema item">
+<div class="name">array item</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">API_ENDPOINT</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com</div>
+<div class="x-example">Example: <code>https://api.github.com/</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">CLIENT_ID</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client ID for this Quay instance; cannot be shared with GITHUB_TRIGGER_CONFIG</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/github-app.html">Reference: https://coreos.com/quay-enterprise/docs/latest/github-app.html</a></div>
+<div class="x-example">Example: <code>0e8dbe15c4c7630b6780</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">CLIENT_SECRET</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client secret for this Quay instance</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/github-app.html">Reference: https://coreos.com/quay-enterprise/docs/latest/github-app.html</a></div>
+<div class="x-example">Example: <code>e4a58ddd3d7408b7aec109e85564a0d153d3e846</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">GITHUB_ENDPOINT</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The endpoint of the GitHub (Enterprise) being hit</div>
+<div class="x-example">Example: <code>https://github.com/</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">ORG_RESTRICT</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If true, only users within the organization whitelist can login using this provider</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">GITHUB_TRIGGER_CONFIG</div>
+<div class="type">[object]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Configuration for using GitHub (Enterprise) for build triggers</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/github-build.html">Reference: https://coreos.com/quay-enterprise/docs/latest/github-build.html</a></div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">API_ENDPOINT</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com</div>
+<div class="x-example">Example: <code>https://api.github.com/</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">CLIENT_ID</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client ID for this Quay instance; cannot be shared with GITHUB_LOGIN_CONFIG</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/github-app.html">Reference: https://coreos.com/quay-enterprise/docs/latest/github-app.html</a></div>
+<div class="x-example">Example: <code>0e8dbe15c4c7630b6780</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">CLIENT_SECRET</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client secret for this Quay instance</div>
+<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/github-app.html">Reference: https://coreos.com/quay-enterprise/docs/latest/github-app.html</a></div>
+<div class="x-example">Example: <code>e4a58ddd3d7408b7aec109e85564a0d153d3e846</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">GITHUB_ENDPOINT</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The endpoint of the GitHub (Enterprise) being hit</div>
+<div class="x-example">Example: <code>https://github.com/</code></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">GITLAB_TRIGGER_CONFIG</div>
+<div class="type">[object]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Configuration for using Gitlab (Enterprise) for external authentication</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">CLIENT_ID</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client ID for this Quay instance</div>
+<div class="x-example">Example: <code>0e8dbe15c4c7630b6780</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">CLIENT_SECRET</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client secret for this Quay instance</div>
+<div class="x-example">Example: <code>e4a58ddd3d7408b7aec109e85564a0d153d3e846</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">GITLAB_ENDPOINT</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The endpoint at which Gitlab(Enterprise) is running</div>
+<div class="x-example">Example: <code>https://gitlab.com</code></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">GOOGLE_LOGIN_CONFIG</div>
+<div class="type">[object]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Configuration for using Google for external authentication</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">CLIENT_ID</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client ID for this Quay instance</div>
+<div class="x-example">Example: <code>0e8dbe15c4c7630b6780</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">CLIENT_SECRET</div>
+<div class="type">[string]</div>
+<div class="required">required</div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The registered client secret for this Quay instance</div>
+<div class="x-example">Example: <code>e4a58ddd3d7408b7aec109e85564a0d153d3e846</code></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">MAIL_DEFAULT_SENDER</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If specified, the e-mail address used as the `from` when Quay sends e-mails. If none, defaults to `support@quay.io`.</div>
+<div class="x-example">Example: <code>support@myco.com</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">MAIL_PASSWORD</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The SMTP password to use when sending e-mails.</div>
+<div class="x-example">Example: <code>mypassword</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">MAIL_PORT</div>
+<div class="type">[number]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The SMTP port to use. If not specified, defaults to 587.</div>
+<div class="x-example">Example: <code>588</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">MAIL_SERVER</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The SMTP server to use for sending e-mails. Only required if FEATURE_MAILING is set to true.</div>
+<div class="x-example">Example: <code>smtp.somedomain.com</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">MAIL_USERNAME</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The SMTP username to use when sending e-mails.</div>
+<div class="x-example">Example: <code>myuser</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">MAIL_USE_TLS</div>
+<div class="type">[boolean]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If specified, whether to use TLS for sending e-mails.</div>
+<div class="x-example">Example: <code>True</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">MAXIMUM_LAYER_SIZE</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Maximum allowed size of an image layer. Defaults to 20G</div>
+<div class="pattern">Pattern: ^[0-9]+(G|M)$</div>
+<div class="x-example">Example: <code>100G</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">PUBLIC_NAMESPACES</div>
+<div class="type">[array]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If a namespace is defined in the public namespace list, then it will appear on *all* user's repository list pages, regardless of whether that user is a member of the namespace. Typically, this is used by an enterprise customer in configuring a set of "well-known" namespaces.</div>
+<div class="minItems">Min Items: None</div>
+<div class="uniqueItems">Unique Items: True</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">array item</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">REGISTRY_TITLE</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If specified, the long-form title for the registry. Defaults to `Red Hat Quay`.</div>
+<div class="x-example">Example: <code>Corp Container Service</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">REGISTRY_TITLE_SHORT</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If specified, the short-form title for the registry. Defaults to `Red Hat Quay`.</div>
+<div class="x-example">Example: <code>CCS</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">SECURITY_SCANNER_ENDPOINT</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The endpoint for the security scanner</div>
+<div class="pattern">Pattern: ^http(s)?://(.)+$</div>
+<div class="x-example">Example: <code>http://192.168.99.101:6060</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">SECURITY_SCANNER_INDEXING_INTERVAL</div>
+<div class="type">[number]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">The number of seconds between indexing intervals in the security scanner. Defaults to 30.</div>
+<div class="x-example">Example: <code>30</code></div>
+</div>
+</li>
+<li class="schema item">
+<div class="name">SUPER_USERS</div>
+<div class="type">[array]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">Quay usernames of those users to be granted superuser privileges</div>
+<div class="minItems">Min Items: None</div>
+<div class="uniqueItems">Unique Items: True</div>
+</div>
+</li>
+<ul class="level1">
+<li class="schema item">
+<div class="name">array item</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description"></div>
+</div>
+</li>
+</ul>
+<li class="schema item">
+<div class="name">TEAM_RESYNC_STALE_TIME</div>
+<div class="type">[string]</div>
+<div class="required"></div>
+<div class="docs">
+<div class="title"></div>
+<div class="description">If team syncing is enabled for a team, how often to check its membership and resync if necessary (Default: 30m)</div>
+<div class="pattern">Pattern: ^[0-9]+(w|m|d|h|s)$</div>
+<div class="x-example">Example: <code>2h</code></div>
+</div>
+</li>
+</ul>
+</body>
+</html>

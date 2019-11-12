@@ -1,0 +1,59 @@
+.super-user .user-row {
+  border-bottom: 0px;
+}
+
+.super-user .user-row td {
+  vertical-align: middle;
+}
+
+.super-user .user-row .user-class {
+  text-transform: uppercase;
+}
+
+.super-user .user-row .labels {
+  float: right;
+  white-space: nowrap;
+}
+
+.super-user .user-row .labels .label {
+  text-transform: uppercase;
+  margin-right: 10px;
+}
+
+.super-user .user-row.disabled .avatar {
+  -webkit-filter: grayscale(100%);
+}
+
+.super-user td .co-alert {
+  margin: 16px 0 0 0;
+}
+
+.super-user .add-storage-link {
+  margin-top: 5px;
+}
+
+.super-user .storage-config {
+  border-bottom: 1px solid #eee;
+  padding: 0 0 10px 0;
+  margin: 10px 0 0 0;
+}
+
+.super-user .last {
+  border-bottom: none;
+}
+
+.super-user .feature-storage-replication {
+  margin: 15px 0 10px 0;
+}
+
+.super-user .input-util {
+  margin-top: 10px;
+}
+
+.super-user .take-ownership-dialog .avatar {
+  margin-left: 6px;
+}
+
+.super-user .take-ownership-dialog .co-alert {
+  margin-top: 20px;
+}

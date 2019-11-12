@@ -1,0 +1,16 @@
+.repository-signing-config-element td {
+    vertical-align: top;
+}
+
+.repository-signing-config-element .status-icon {
+    font-size: 48px;
+    margin-right: 10px;
+}
+
+.repository-signing-config-element .status-icon.ci-shield-check-outline {
+    color: #2FC98E;
+}
+
+.repository-signing-config-element .status-icon.ci-shield-none {
+    color: #9B9B9B;
+}

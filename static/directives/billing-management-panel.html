@@ -1,0 +1,80 @@
+<div class="billing-management-panel-element">
+  <div class="cor-loader-inline" ng-show="updating"></div>
+  <div ng-show="!updating">
+    <table class="co-list-table">
+      <tr>
+        <td>Current Plan:</td>
+        <td>
+          <div class="sub-usage" ng-if="subscription.usedPrivateRepos > currentPlan.privateRepos">
+            <i class="fa fa-exclamation-triangle red"></i> <strong>{{ subscription.usedPrivateRepos }}</strong> private repositories exceeds the amount allowed by your plan. Upgrade your plan to avoid service disruptions.
+          </div>
+
+          <div class="sub-usage" ng-if="subscription.usedPrivateRepos == currentPlan.privateRepos">
+            <i class="fa fa-exclamation-triangle yellow"></i> <strong>{{ subscription.usedPrivateRepos }}</strong> private repositories is the maximum allowed by your plan. Upgrade your plan to create more private repositories.
+          </div>
+
+          <a class="co-modify-link" ng-href="{{ getEntityPrefix() }}/billing">{{ currentPlan.privateRepos }} private repositories</a>
+          <div class="help-text">Up to {{ currentPlan.privateRepos }} private repositories, unlimited public repositories</div>
+        </td>
+      </tr>
+      <tr ng-show="currentCard">
+        <td>Credit Card:</td>
+        <td>
+          <img class="credit-card-image" ng-src="/static/img/creditcards/{{ getCreditImage(currentCard) }}">
+          <span class="credit-card-number">
+            &#8226;&#8226;&#8226;&#8226;&nbsp;
+            &#8226;&#8226;&#8226;&#8226;&nbsp;
+            &#8226;&#8226;&#8226;&#8226;&nbsp;
+            {{ currentCard.last4 }}
+          </span>
+          <a class="co-modify-link" ng-click="changeCreditCard()">Change card</a>
+          <div class="help-text">Expires {{ currentCard.exp_month }}/{{ currentCard.exp_year }}</div>
+        </td>
+      </tr>
+      <tr>
+        <td>Invoices:</td>
+        <td>
+          <a ng-href="{{ getEntityPrefix() }}/billing/invoices">View Invoices</a>
+        </td>
+      </tr>
+      <tr>
+        <td>Receipts:</td>
+        <td>
+          <a class="co-modify-link" ng-click="showChangeReceipts()" ng-show="!invoice_email">Do not email after successful charges</a>
+          <a class="co-modify-link" ng-click="showChangeReceipts()" ng-show="invoice_email">Email receipts to {{ invoice_email_address }}</a>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Change receipts dialog -->
+  <div class="cor-confirm-dialog"
+     dialog-context="changeReceiptsInfo"
+     dialog-action="changeReceipts(info, callback)"
+     dialog-title="Receipts Settings"
+     dialog-action-title="Update Setting"
+     dialog-form="context.receiptform">
+    <form class="receipt-form" name="context.receiptform">
+      <table class="co-option-table">
+        <tr>
+          <td><input type="radio" id="emailReceiptNo" ng-model="changeReceiptsInfo.sendOption" ng-value="false"></td>
+          <td>
+            <label for="emailReceiptNo">Do not send email receipts</label>
+            <div class="help-text">Log into your account to view invoices</div>
+          </td>
+        </tr>
+        <tr>
+          <td><input type="radio" id="emailReceiptYes" ng-model="changeReceiptsInfo.sendOption" ng-value="true"></td>
+          <td>
+             <label for="emailReceiptYes">Send receipts via email</label>
+            <div class="help-text">
+              After every successful charge send an email to:
+              <div style="margin-top: 6px;"><input type="email" class="form-control" ng-model="changeReceiptsInfo.address" required></div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </form>
+  </div>
+
+</div>

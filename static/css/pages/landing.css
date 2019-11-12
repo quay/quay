@@ -1,0 +1,340 @@
+.landing-page {
+  color: #555;
+}
+
+.landing-page #padding-container {
+  padding: 0px;
+}
+
+.landing-page .main-panel {
+  padding: 0px;
+  border: 0px;
+  padding-bottom: 10px;
+}
+
+.landing.jumbotron {
+  background: transparent;
+  position: relative;
+  color: white;
+
+  margin-bottom: 0px;
+  min-height: 440px;
+}
+
+.landing.jumbotron p {
+  font-size: 100%;
+}
+
+.landing.jumbotron h1 {
+  margin-bottom: 30px;
+  font-size: 40px;
+  line-height: 60px;
+  font-weight: 200;
+}
+
+.landing-content h1 .highlight {
+  display: inline-block;
+  padding-left: 10px;
+  padding-right: 10px;
+  color: #38b3e7;
+}
+
+.landing.jumbotron h1 .bracket {
+  font-size: 60px;
+  vertical-align: text-bottom;
+}
+
+
+.landing.jumbotron .buttons {
+  margin-top: 60px;
+  margin-bottom: 80px;
+}
+
+.landing.jumbotron .buttons .btn {
+  padding: 6px;
+  padding-left: 40px;
+  padding-right: 40px;
+
+  border: 1px solid #40B4E5;
+  border-radius: 6px;
+  margin-left: 30px;
+  background-color: transparent;
+  text-transform: uppercase;
+  font-size: 26px;
+  font-weight: 500;
+
+  color: white !important;
+}
+
+.landing.jumbotron .buttons .btn.highlighted {
+  background-color: rgba(64, 180, 229, 0.4);
+}
+
+.landing.jumbotron .buttons .btn:hover {
+  background-color: rgba(64, 180, 229, 0.8);
+}
+
+.landing.jumbotron .buttons .btn:first-child {
+  margin-left: 0px;
+}
+
+.landing-background {
+  z-index: 0;
+
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  right: 0px;
+
+  background: url('/static/img/quay_pattern.png') left top repeat, linear-gradient(30deg, #2277ad, #144768) no-repeat left top fixed;
+  background-color: #2277ad;
+  background-size: 100% 100%;
+}
+
+.landing-content {
+  z-index: 1;
+  text-align: center;
+  padding-left: 20px;
+  padding-right: 20px;
+  position: relative;
+}
+
+.landing-content .works-with {
+  line-height: 30px;
+  vertical-align: middle;
+}
+
+.landing-content .works-with img {
+  max-height: 28px;
+  margin-left: 30px;
+}
+
+.landing-content .works-with .supports {
+  vertical-align: middle;
+  margin-left: 30px;
+  font-size: 12px;
+  max-width: 400px;
+  display: inline-block;
+  padding-left: 30px;
+  border-left: 1px solid white;
+  height: 42px;
+  text-align: left;
+  padding-top: 4px;
+}
+
+
+.landing-section {
+  padding: 20px;
+  padding-bottom: 40px;
+  border-top: 1px solid #ddd;
+  display: block;
+}
+
+.landing-section h2 {
+  text-align: center;
+  display: block;
+  margin-bottom: 30px;
+  font-weight: 200;
+}
+
+.landing-section h3 {
+  text-align: center;
+  display: block;
+  margin-bottom: 30px;
+  font-weight: 200;
+}
+
+.landing-page .trusted-logo-large {
+  line-height: 60px;
+  text-align: center;
+}
+
+.landing-page .trusted-logo-large img {
+  max-width: 100%;
+  max-height: 60px;
+}
+
+.landing-page .trusted-logo-medium {
+  line-height: 45px;
+  text-align: center;
+}
+
+.landing-page .trusted-logo-medium img {
+  max-width: 100%;
+  max-height: 45px;
+}
+
+
+.landing-page .tour-overview img {
+  width: 500px;
+  padding: 10px;
+  display: inline-block;
+}
+
+.landing-signup-button {
+  margin-bottom: 10px;
+}
+
+.landing-page .twitter-tweet {
+  width: 100%;
+  margin: 0px;
+  border: 0px;
+}
+
+.landing-page .twitter-tweet p {
+  display: block;
+  text-align: center;
+  font-size: 20px;
+}
+
+.landing-page .twitter-tweet .attribute {
+  display: block;
+  text-align: center;
+  margin-bottom: 20px;
+  position: relative;
+  margin-top: 20px;
+}
+
+.landing-page .twitter-tweet .info-wrap {
+  display: inline-block;
+  padding-left: 70px;
+}
+
+.landing-page .twitter-tweet .twitter-avatar img {
+  border-radius: 4px;
+  border: 2px solid rgb(70, 70, 70);
+  width: 50px;
+  float: left;
+}
+
+.landing-page .twitter-tweet .info {
+  display: inline-block;
+  margin-left: 10px;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.landing-page .twitter-tweet .reference {
+    display: block;
+}
+
+.landing-page .twitter-tweet .author {
+    display: block;
+}
+
+.landing-page .shoutout {
+  font-size: 14px;
+  text-align: center;
+  line-height: normal;
+  padding-top: 30px;
+  margin-bottom: 20px;
+}
+
+.landing-page .shoutout > i {
+  font-size: 50px;
+  display: inline-block;
+  width: 100px;
+  height: 92px;
+  text-align: center;
+  line-height: 92px;
+  background-image: url(/static/img/landing-icon-background.svg);
+  color: #337ab7;
+}
+
+.landing-page .shoutout .shoutout-link {
+  font-size: 20px;
+  display: block;
+  line-height: 31px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.landing-page .shoutout .shoutout-expand {
+  font-family: Source Sans Pro;
+  font-size: 12px;
+  line-height: 16px;
+  color: #717273;
+}
+
+.landing-page .feature-shoutout {
+  margin-bottom: 20px;
+}
+
+.landing-page .feature-shoutout > a {
+  font-size: 22px;
+  display: block;
+  line-height: 31px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-align: center;
+}
+
+.landing-page .feature-shoutout .img-responsive {
+  border: 2px solid #eee;
+  padding: 6px;
+}
+
+.landing-page .landing-action {
+  text-align: center;
+}
+
+.landing-page .landing-action .btn {
+  font-size: 26px;
+}
+
+@media (max-width: 989px) {
+  .landing-content .works-with .supports {
+    display: block;
+    margin: 0px;
+    margin-top: 20px;
+    padding: 0px;
+    border: 0px;
+    text-align: center;
+    max-width: 989px;
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-page .buttons {
+    text-align: center;
+  }
+
+  .landing-page .btn {
+    margin: 0px !important;
+    display: block;
+  }
+
+  .landing-page .btn:last-child {
+      margin-top: 20px !important;
+  }
+
+  .landing-content .works-with {
+    text-align: center;
+  }
+
+  .landing-content .works-with .text {
+    display: block;
+  }
+
+  .landing-content .works-with .works-logo {
+    display: block;
+  }
+
+  .landing-content .works-with img {
+    margin-left: 0px;
+    margin-top: 10px;
+  }
+
+  .landing-page .trusted-logo-large {
+    line-height: 65px;
+  }
+
+  .landing-page .trusted-logo-large img {
+    max-height: 55px;
+  }
+
+  .landing-page .trusted-logo-medium img {
+    max-height: 30px;
+  }
+}

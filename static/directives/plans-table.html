@@ -1,0 +1,41 @@
+<div class="plans-table-element">
+  <ul class="plans-table-list visible-xs">
+    <li ng-repeat="plan in plans" ng-class="currentPlan == plan ? 'active' : ''">
+
+        <a class="btn"
+           ng-class="currentPlan == plan ? 'btn-primary' : 'btn-default'"
+           ng-click="setPlan(plan)">
+          {{ plan.title }}
+        </a>
+
+      <div class="plan-info">
+        ${{ plan.price / 100 }} / month -
+        {{ plan.privateRepos }} repositories
+      </div>
+    </li>
+  </ul>
+
+  <div class="hidden-xs">
+    <table class="co-table plans-table-table" ng-show="plans">
+      <thead>
+        <td>Plan</td>
+        <td>Private Repositories</td>
+        <td style="min-width: 85px">Price</td>
+        <td></td>
+      </thead>
+
+      <tr ng-repeat="plan in plans" ng-class="currentPlan == plan ? 'active' : ''">
+        <td>{{ plan.title }}</td>
+        <td>{{ plan.privateRepos }}</td>
+        <td><div class="plan-price">${{ plan.price / 100 }}</div></td>
+        <td class="controls">
+          <a class="btn"
+             ng-class="currentPlan == plan ? 'btn-primary' : 'btn-default'"
+             ng-click="setPlan(plan)">
+            {{ currentPlan == plan ? 'Selected' : 'Choose' }}
+          </a>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

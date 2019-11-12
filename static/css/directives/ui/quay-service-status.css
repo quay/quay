@@ -1,0 +1,36 @@
+.quay-service-status-element {
+  display: flex;
+  align-items: center;
+}
+
+.quay-service-status-indicator {
+  display: inline-block;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  background: #eee;
+  vertical-align: middle
+}
+
+.quay-service-status-description {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.quay-service-status-indicator.none {
+  background: #2fcc66;
+}
+
+.quay-service-status-indicator.minor {
+  background: #f1c40f;
+}
+
+.quay-service-status-indicator.major {
+  background: #e67e22;
+}
+
+.quay-service-status-indicator.critical {
+  background: #e74c3c;
+}

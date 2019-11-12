@@ -1,0 +1,62 @@
+{
+   "schemaVersion": 1,
+   "name": "josephschorr/buildtest2",
+   "tag": "latest",
+   "architecture": "amd64",
+   "fsLayers": [
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:f0880d1639d2e72499fe0cfb218a98ca7aa3bffda6e0b808861505a1536cca10"
+      },
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:8e3ba11ec2a2b39ab372c60c16b421536e50e5ce64a0bc81765c2e38381bcff6"
+      }
+   ],
+   "history": [
+      {
+         "v1Compatibility": "{\"architecture\":\"amd64\",\"config\":{\"Hostname\":\"\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"/bin/sh\"],\"ArgsEscaped\":true,\"Image\":\"sha256:ebd938adb98827e85616f288beb990fd9f07335305c3d77ff783253b97d84b99\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":{\"foo\":\"bar\",\"this.is.cool\":\"{\\\"some\\\": \\\"json\\\"}\"}},\"container\":\"a06cd9c29efac778d1e670a2d26971cf21360f9c59eb250e771f5852ff9f49ca\",\"container_config\":{\"Hostname\":\"\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"/bin/sh\",\"-c\",\"cat baz\"],\"ArgsEscaped\":true,\"Image\":\"sha256:ebd938adb98827e85616f288beb990fd9f07335305c3d77ff783253b97d84b99\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":{\"foo\":\"bar\",\"this.is.cool\":\"{\\\"some\\\": \\\"json\\\"}\"}},\"created\":\"2018-08-13T19:19:53.358734989Z\",\"docker_version\":\"18.02.0-ce\",\"id\":\"08b0a1239a30dc9c12585c415538a3a43fab399a07cb341881b46e2fb69ae8f7\",\"os\":\"linux\",\"parent\":\"bc560233cb7ec4158c1858fd24fb093dc70a6fb7ad80b25f2a6f36a2138dd724\",\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"bc560233cb7ec4158c1858fd24fb093dc70a6fb7ad80b25f2a6f36a2138dd724\",\"parent\":\"cefdff8f1be4330d2e0414f598b0f38def3fb5c6a383d3b709162d51efe859b9\",\"created\":\"2018-08-13T19:19:52.919686159Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  LABEL this.is.cool={\\\"some\\\": \\\"json\\\"}\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"cefdff8f1be4330d2e0414f598b0f38def3fb5c6a383d3b709162d51efe859b9\",\"parent\":\"a86432a6eeb137d2342ee5ddcbc0dd32b5e58dfe3301dd09991147bb458ad6a9\",\"created\":\"2018-08-13T19:19:52.834827335Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  LABEL foo=bar\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"a86432a6eeb137d2342ee5ddcbc0dd32b5e58dfe3301dd09991147bb458ad6a9\",\"parent\":\"8b5fc1032bbcc570c28adc9b13525051c83bbf37ce305735f9c7be6e36ebff7d\",\"created\":\"2018-08-13T19:19:52.766315533Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) COPY file:9990e969595bc050f081c07b0bdf71524f3c46e6ffe8537c1778516c123f9f55 in baz \"]}}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"8b5fc1032bbcc570c28adc9b13525051c83bbf37ce305735f9c7be6e36ebff7d\",\"parent\":\"f18ee96f0b1656cab52554b270f19e8df5046d307296d2146539c04565d67747\",\"created\":\"2018-07-06T14:14:06.393355914Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop)  CMD [\\\"/bin/sh\\\"]\"]},\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"f18ee96f0b1656cab52554b270f19e8df5046d307296d2146539c04565d67747\",\"created\":\"2018-07-06T14:14:06.165546783Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) ADD file:25f61d70254b9807a40cd3e8d820f6a5ec0e1e596de04e325f6a33810393e95a in / \"]}}"
+      }
+   ],
+   "signatures": [
+      {
+         "header": {
+            "jwk": {
+               "crv": "P-256",
+               "kid": "H4QD:5X6G:2G7T:QXGN:EH3X:3UQU:REXP:7LAH:SGCZ:4FBI:EUSI:3P7Z",
+               "kty": "EC",
+               "x": "FowcV0YK1Dsn8FldhFJQJnxE247QUH43EchdZSmWrsQ",
+               "y": "4uUZBA9U1jC-AxmNzrwb1r9Oh2SXNXE3yqSpz7pwoiI"
+            },
+            "alg": "ES256"
+         },
+         "signature": "rJNUkqKUZ2_d2JTWTLu4XWFcNpNIMDEH6qoiOie9o_BlD_Ifhrw31OIUT23eKa-HyVm5sYOfx4DY3N5Xy1kr9A",
+         "protected": "eyJmb3JtYXRMZW5ndGgiOjQxMzksImZvcm1hdFRhaWwiOiJDbjAiLCJ0aW1lIjoiMjAxOC0wOC0xM1QxOToyMDowMVoifQ"
+      }
+   ]
+}

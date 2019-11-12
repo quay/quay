@@ -1,0 +1,65 @@
+<div class="triggered-build-description-element">
+  <div ng-switch on="infoDisplay">
+    <!-- Manually built with no user -->
+    <div class="tbd-content" class="manual" ng-switch-when="manual">
+      (Manually Triggered Build)
+    </div>
+
+    <!-- Manually built with a user -->
+    <div class="tbd-content" ng-switch-when="manual+user">
+      <i class="fa fa-user"></i> {{ build.manual_user }}
+    </div>
+
+    <!-- Source information only (i.e. no info) -->
+    <div class="tbd-content" ng-switch-when="source">
+      Triggered by
+      <trigger-description trigger="build.trigger"
+                           style="display: inline-block; margin-left: 4px;"></trigger-description>
+    </div>
+
+    <!-- Just commit SHA -->
+    <div class="tbd-content" ng-switch-when="commitsha">
+      Triggered by commit
+      <span class="source-commit-link"
+            commit-sha="TriggerService.getCommitSHA(build.trigger_metadata)"></span>
+    </div>
+
+    <!-- Full Commit Information -->
+    <div class="tbd-content" ng-switch-when="fullcommit">
+      <div class="commit-message">
+        <span class="anchor" is-only-text="!TriggerService.getCommitUrl(build)"
+              ng-safenewtab href="{{ TriggerService.getCommitUrl(build) }}">
+          {{ getMessageSummary(build.trigger_metadata.commit_info.message) }}
+        </span>
+        <span class="long-description-toggle"
+              ng-if="hasLongDescription(build.trigger_metadata.commit_info.message)"
+              ng-click="toggleLongDescription()">
+          ...
+        </span>
+      </div>
+      <div class="commit-information">
+        <span class="commit-who-when" ng-if="build.trigger_metadata.commit_info.date || build.trigger_metadata.commit_info.author">
+          Authored
+          <time-ago datetime="build.trigger_metadata.commit_info.date" ng-if="build.trigger_metadata.commit_info.date"></time-ago>
+          <span class="anchor commit-who"
+                href="{{ build.trigger_metadata.commit_info.author.url }}"
+                is-only-text="!build.trigger_metadata.commit_info.author.url"
+                ng-safenewtab
+                ng-if="build.trigger_metadata.commit_info.author">
+            <img ng-src="{{ build.trigger_metadata.commit_info.author.avatar_url }}"
+                 ng-if="build.trigger_metadata.commit_info.author.avatar_url">
+            {{ build.trigger_metadata.commit_info.author.username }}
+          </span>
+        </span>
+        <span class="source-commit-link"
+              commit-sha="TriggerService.getCommitSHA(build.trigger_metadata)"
+              url-template="TriggerService.getFullLinkTemplate(build, 'commit')"></span>
+        <span class="source-ref-link"
+              ref="build.trigger_metadata.ref"
+              branch-template="TriggerService.getFullLinkTemplate(build, 'branch')"
+              tag-template="TriggerService.getFullLinkTemplate(build, 'tag')"></span>
+      </div>
+    </div>
+    <div class="long-commit-description" ng-if="showLongDescription">{{ getMessageLongDescription(build.trigger_metadata.commit_info.message) }}</div>
+  </div>
+</div>

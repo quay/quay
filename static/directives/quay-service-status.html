@@ -1,0 +1,7 @@
+<span class="quay-service-status-element">
+  <span class="quay-service-status-indicator" ng-class="indicator"
+        ng-if="indicator != 'loading'"></span>
+  <span class="cor-loader-inline" ng-if="indicator == 'loading'"></span>
+  <a href="http://status.quay.io" class="quay-service-status-description">{{ description }}</a>
+  <span ng-if="degraded && degraded.length == 1" style="vertical-align: middle;">: {{ degraded[0].name }}</span>
+</span>

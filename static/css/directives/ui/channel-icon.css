@@ -1,0 +1,54 @@
+.channel-icon-element {
+  position: relative;
+  vertical-align: middle;
+  margin-right: 4px;
+  display: inline-block;
+  height: 32px;
+  cursor: default;
+}
+
+/* From: http://csshexagon.com/ */
+.channel-icon-element .hexagon {
+  display: inline-block;
+  position: relative;
+  width: 30px;
+  height: 17.32px;
+  background-color: red;
+  margin: 8.66px 0;
+}
+
+.channel-icon-element .hexagon .before,
+.channel-icon-element .hexagon .after {
+  content: "";
+  position: absolute;
+  width: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+}
+
+.channel-icon-element .hexagon .before {
+  bottom: 100%;
+  border-bottom: 8.66px solid red;
+}
+
+.channel-icon-element .hexagon .after {
+  top: 100%;
+  width: 0;
+  border-top: 8.66px solid red;
+}
+
+.channel-icon-element b {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+
+  line-height: 34px;
+  text-align: center;
+  display: inline-block;
+  z-index: 1;
+  color: white;
+  font-weight: normal;
+  font-size: 18px;
+}

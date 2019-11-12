@@ -1,0 +1,64 @@
+linear-workflow-section {
+    margin-bottom: 10px;
+}
+
+linear-workflow-section.row {
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+linear-workflow .upcoming-table {
+  vertical-align: middle;
+  margin-left: 20px;
+}
+
+linear-workflow .upcoming-table .fa {
+  margin-right: 8px;
+}
+
+linear-workflow .upcoming {
+    color: #888;
+    vertical-align: middle;
+    margin-left: 10px;
+}
+
+linear-workflow .upcoming ul {
+    padding: 0px;
+    display: inline-block;
+    margin: 0px;
+}
+
+linear-workflow .upcoming li {
+    display: inline-block;
+    margin-right: 6px;
+    margin-left: 2px;
+}
+
+linear-workflow .upcoming li:after {
+    content: "•";
+    display: inline-block;
+    margin-left: 6px;
+    margin-right: 2px;
+}
+
+linear-workflow .upcoming li:last-child:after {
+    content: "";
+}
+
+linear-workflow .bottom-controls {
+    padding: 10px;
+}
+
+.linear-workflow-section-element {
+  padding: 20px;
+  padding-top: 10px;
+}
+
+.linear-workflow-section-element h3, .linear-workflow-section-element strong {
+    color: #444;
+}
+
+.linear-workflow-section-element.current-section h3,
+.linear-workflow-section-element.current-section strong {
+    color: black;
+}

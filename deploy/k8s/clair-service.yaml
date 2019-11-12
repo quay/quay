@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clair-service
+  namespace: quay-enterprise
+spec:
+  ports:
+  - name: clair-api
+    port: 6060
+    protocol: TCP
+    targetPort: 6060
+  - name: clair-health
+    port: 6061
+    protocol: TCP
+    targetPort: 6061
+  selector:
+    quay-enterprise-component: clair-scanner
+  type: ClusterIP

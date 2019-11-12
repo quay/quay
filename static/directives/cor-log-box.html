@@ -1,0 +1,11 @@
+<div class="co-log-box-element">
+  <div id="co-log-viewer"  class="co-log-viewer" ng-if="logs">
+    <div class="quay-spinner" ng-if="!logs"></div>
+    <div class="co-log-container">
+      <div id="co-log-content" class="co-log-content">{{ logs }}</div>
+    </div>
+  </div>
+  <div class="co-log-viewer-new-logs" ng-show="hasNewLogs" ng-click="moveToBottom()">
+    New Logs <i class="fa fa-lg fa-arrow-circle-down"></i>
+  </div>
+</div>

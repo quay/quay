@@ -1,0 +1,61 @@
+{
+    "ref": "refs/tags/fourthtag", 
+    "user_id": 4797254, 
+    "object_kind": "tag_push", 
+    "repository": {
+      "git_ssh_url": "git@gitlab.com:someuser/some-test-project.git", 
+      "name": "Some test project", 
+      "url": "git@gitlab.com:someuser/some-test-project.git", 
+      "git_http_url": "https://gitlab.com/someuser/some-test-project.git", 
+      "visibility_level": 0, 
+      "homepage": "https://gitlab.com/someuser/some-test-project", 
+      "description": "Some test project"
+    }, 
+    "event_name": "tag_push", 
+    "commits": [
+      {
+        "added": [], 
+        "author": {
+          "name": "Some User", 
+          "email": "someuser@somedomain.com"
+        }, 
+        "url": "https://gitlab.com/someuser/some-test-project/commit/770830e7ca132856991e6db4f7fc0f4dbe20bd5f", 
+        "timestamp": "2019-10-17T18:07:48Z", 
+        "message": "Update Dockerfile", 
+        "removed": [], 
+        "modified": [
+          "Dockerfile"
+        ], 
+        "id": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f"
+      }
+    ], 
+    "after": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f", 
+    "project": {
+      "git_ssh_url": "git@gitlab.com:someuser/some-test-project.git", 
+      "ci_config_path": null, 
+      "web_url": "https://gitlab.com/someuser/some-test-project", 
+      "description": "Some test project", 
+      "url": "git@gitlab.com:someuser/some-test-project.git", 
+      "namespace": "Some User", 
+      "default_branch": "master", 
+      "homepage": "https://gitlab.com/someuser/some-test-project", 
+      "git_http_url": "https://gitlab.com/someuser/some-test-project.git", 
+      "avatar_url": null, 
+      "ssh_url": "git@gitlab.com:someuser/some-test-project.git", 
+      "http_url": "https://gitlab.com/someuser/some-test-project.git", 
+      "path_with_namespace": "someuser/some-test-project", 
+      "visibility_level": 0, 
+      "id": 14838571, 
+      "name": "Some test project"
+    }, 
+    "user_username": "someuser", 
+    "checkout_sha": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f", 
+    "total_commits_count": 1, 
+    "before": "0000000000000000000000000000000000000000", 
+    "user_avatar": "https://secure.gravatar.com/avatar/0ea05bdf5c3f2cb8aac782a4a2ac3177?s=80&d=identicon", 
+    "message": "", 
+    "project_id": 14838571, 
+    "user_name": "Some User", 
+    "user_email": "", 
+    "push_options": {}
+  }

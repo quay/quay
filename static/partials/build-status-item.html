@@ -1,0 +1,9 @@
+<div class="build-statuses">
+ <div ng-repeat="build in buildsInfo">
+   <div class="build-status" build="build"></div>
+ </div>
+
+ <div ng-show="buildsInfo.length == 0">
+   All Dockerfile builds complete
+ </div>
+</div>

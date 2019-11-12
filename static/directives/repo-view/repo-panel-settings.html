@@ -1,0 +1,171 @@
+<div class="repo-panel-settings-element">
+  <h3 class="tab-header"><span class="repository-title" repository="repository"></span> Settings</h3>
+
+    <!-- User/Team Permissions -->
+    <div class="co-panel" id="repoPermissions">
+      <div class="co-panel-heading"><i class="fa fa-key"></i> User and Robot Permissions</div>
+      <div class="panel-body" style="padding-top: 5px;">
+        <div class="repository-permissions-table" repository="repository"
+             is-enabled="isEnabled"></div>
+      </div>
+    </div>
+
+    <!-- Signing and Trust -->
+    <div ng-if="repository.kind == 'image'">
+      <repository-signing-config repository="repository"></repository-signing-config>
+    </div>
+
+    <!-- Events and Notifications -->
+    <div ng-if="repository.kind == 'image'">
+      <div class="repository-events-table" repository="repository"
+           is-enabled="isEnabled"></div>
+    </div>
+
+    <!-- Visibility settings -->
+    <div class="co-panel">
+      <div class="co-panel-heading"><i class="fa fa-unlock-alt"></i>
+        <span class="repository-title" repository="repository"></span> Visibility
+      </div>
+      <div class="cor-loader" ng-show="!repository"></div>
+      <div ng-show="repository">
+        <!-- Public/Private -->
+        <div class="panel-body panel-section lock-section" ng-if="!repository.is_public">
+          <i class="fa fa-lock lock-icon"></i>
+          <div>This <span class="repository-title" repository="repository"></span> is currently <b>private</b>. Only users on the permissions list may view and interact with it.</div>
+
+          <button class="btn btn-default" ng-click="askChangeAccess('public')" ng-show="!inReadOnlyMode">
+            <i class="fa fa-unlock"></i>Make Public
+          </button>
+        </div>
+
+        <div class="panel-body panel-section lock-section" ng-if="repository.is_public">
+          <i class="fa fa-unlock lock-icon"></i>
+
+          <div>This <span class="repository-title" repository="repository"></span> is currently <b>public</b> and is visible to all users, and may be pulled by all users.</div>
+
+          <button class="btn btn-default" ng-click="askChangeAccess('private')" ng-show="!planRequired && !inReadOnlyMode">
+            <i class="fa fa-lock"></i>Make Private
+          </button>
+
+          <!-- Payment -->
+          <div class="repo-count-checker" namespace="repository.namespace" plan-required="planRequired"
+               is-enabled="repository.is_public">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Repository State -->
+    <div class="co-panel" quay-show="Features.REPO_MIRROR">
+      <div class="co-panel-heading"><i class="fa fa-unlock-alt"></i>
+        <span class="repository-title" repository="repository"></span>State
+      </div>
+      <div class="cor-loader" ng-show="!repository"></div>
+
+      <div ng-show="repository">
+        <div class="panel-body panel-section lock-section">
+
+          <i class="fa fa-hdd-o lock-icon" ng-show="repository.state == 'NORMAL'"></i>
+          <i class="fa fa-archive lock-icon" ng-show="repository.state == 'READ_ONLY'"></i>
+          <i class="fa fa-refresh lock-icon" quay-show="Features.REPO_MIRROR && repository.state == 'MIRROR'" ng-show="repository.state == 'MIRROR'"></i>
+
+          <div>
+            This <span class="repository-title" repository="repository"></span> state is currently <b>{{ repository.state }}</b>.
+            <span ng-show="repository.state == 'NORMAL'">Standard permissions apply.</span>
+            <span ng-show="repository.state == 'READ_ONLY'">Users will not be able to push or modify images.</span>
+            <span ng-show="repository.state == 'MIRROR'" quay-show="Features.REPO_MIRROR && repository.state == 'MIRROR'">The images and tags are maintained by Quay and Users can not push or modify them.</span>
+          </div>
+
+          <!-- TODO: Enhance the appearance of this. Move style to .css file. -->
+          <div style="margin-top: 1em">
+            <form>
+              <select ng-options="option for option in repoStates"
+                      ng-model="selectedState"
+                      ng-change="changeState()"></select>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete repository -->
+    <div class="co-panel" ng-show="!inReadOnlyMode">
+      <div class="co-panel-heading">
+        <i class="fa fa-trash"></i> Delete <span class="repository-title" repository="repository"></span>
+      </div>
+      <div class="cor-loader" ng-show="!repository"></div>
+      <div ng-show="repository">
+        <div class="panel-body panel-section">
+          <div class="co-alert co-alert-danger">
+            <button class="btn btn-danger delete-btn" ng-click="askDelete()">
+              <i class="fa fa-trash"></i>
+              Delete <span class="repository-title" repository="repository"></span>
+            </button>
+
+            Deleting a <span class="repository-title" repository="repository"></span> <b>cannot be undone</b>. Here be dragons!
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Build Status Badge -->
+    <div class="co-panel hidden-xs" ng-if="repository.kind == 'image' && Features.BUILD_SUPPORT">
+      <div class="co-panel-heading"><i class="fa fa-tasks"></i> Build Status Badge</div>
+      <div class="cor-loader" ng-show="!repository"></div>
+      <div ng-show="repository">
+        <div class="panel-body panel-section">
+          <!-- Token Info Banner -->
+          <div class="co-alert co-alert-info" ng-if="!repository.is_public" style="margin-bottom: 20px;">
+             Note: This badge contains a token so the badge can be seen by external users. The token does not grant any other access and is safe to share!
+          </div>
+
+          <!-- Status Image -->
+          <a ng-href="/repository/{{ repository.namespace }}/{{ repository.name }}">
+            <img ng-src="/repository/{{ repository.namespace }}/{{ repository.name }}/status?token={{ repository.status_token }}"
+                 data-title="Container Repository on Quay">
+          </a>
+
+          <!-- Embed formats -->
+          <table style="margin-top: 20px; width: 600px;">
+            <thead>
+              <th style="width: 150px"></th>
+              <th></th>
+            </thead>
+            <tr>
+              <td>Image (SVG):</td>
+              <td>
+                <div class="copy-box" value="getBadgeFormat('svg', repository)"></div>
+              </td>
+            </tr>
+            <tr>
+              <td>Markdown:</td>
+              <td>
+                <div class="copy-box" value="getBadgeFormat('md', repository)"></div>
+              </td>
+            </tr>
+            <tr>
+              <td>AsciiDoc:</td>
+              <td>
+                <div class="copy-box" value="getBadgeFormat('asciidoc', repository)"></div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Repository Dialog -->
+    <div class="cor-confirm-dialog"
+       dialog-context="deleteRepoInfo"
+       dialog-action="deleteRepo(info, callback)"
+       dialog-title="Delete"
+       dialog-action-title="Delete">
+     <div class="co-alert co-alert-danger" style="margin-bottom: 10px;">
+       This action cannot be undone!
+     </div>
+
+     Continue with deletion of this <span class="repository-title" repository="repository"></span>?
+  </div>
+</div>

@@ -1,0 +1,36 @@
+.regex-match-view-element .match-list {
+  list-style: none;
+  overflow: auto;
+  max-height: 150px;
+}
+
+.regex-match-view-element .match-list li {
+  display: inline-block;
+  margin-right: 4px;
+  width: 120px;
+  padding: 4px;
+}
+
+.regex-match-view-element .match-list li .fa {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.regex-match-view-element .match-list.not-matching li {
+  color: #aaa;
+}
+
+.regex-match-view-element .match-list.matching li {
+  color: #2fc98e;
+}
+
+.regex-match-view-element .match-table td:first-child {
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+
+.regex-match-view-element .fa-exclamation-triangle {
+  margin-right: 4px;
+}
+

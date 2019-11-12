@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 15.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="453.54px" height="453.54px" viewBox="0 0 453.54 453.54" enable-background="new 0 0 453.54 453.54" xml:space="preserve">
+<rect fill="#00A9D3" width="453.54" height="453.54"/>
+<g>
+	<path fill="#CAD5DA" d="M88.553,86.368L119.628,34l16.113,6.042l21.004,17.264c0,0,14.963,16.688,15.826,16.977
+		c0.863,0.288,18.415-12.373,18.415-12.373l9.783-1.726c0,0,10.934,46.038,11.221,48.339s32.515,54.958,32.803,56.972
+		c0.287,2.014-0.288,72.222-2.302,73.085c-2.015,0.863-108.189,9.494-108.189,9.494l-59.561-4.604V120.608L88.553,86.368z"/>
+	<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="111.6489" y1="52.2725" x2="107.9083" y2="201.6065">
+		<stop  offset="0" style="stop-color:#FFFFFF"/>
+		<stop  offset="1" style="stop-color:#000000"/>
+	</linearGradient>
+	<polygon fill="url(#SVGID_1_)" points="120.204,36.59 91.143,86.943 78.194,120.32 83.374,199.735 139.482,208.655 	"/>
+	<linearGradient id="SVGID_2_" gradientUnits="userSpaceOnUse" x1="155.4292" y1="35.3975" x2="192.2593" y2="175.8124">
+		<stop  offset="0" style="stop-color:#FFFFFF"/>
+		<stop  offset="1" style="stop-color:#000000"/>
+	</linearGradient>
+	<polygon fill="url(#SVGID_2_)" points="122.218,36.59 146.1,190.24 240.478,169.235 151.147,111.113 	"/>
+	<linearGradient id="SVGID_3_" gradientUnits="userSpaceOnUse" x1="180.3018" y1="100.7939" x2="155.2686" y2="32.0245">
+		<stop  offset="0" style="stop-color:#FFFFFF"/>
+		<stop  offset="1" style="stop-color:#000000"/>
+	</linearGradient>
+	<polygon fill="url(#SVGID_3_)" points="125.383,38.316 154.156,107.085 206.812,107.085 198.899,63.493 178.039,86.368
+		169.695,80.9 155.883,59.896 136.029,42.632 	"/>
+</g>
+<path fill="#CAD5DA" d="M50.447,81.587L59.739,77l2.667,8.333L69.573,95.5l6.667,41.5c0,0-20,18.333-20.667,18.5s-19.167-5-19.167-5
+	l5.833-35.5l1.91-18.329L50.447,81.587z"/>
+<linearGradient id="SVGID_4_" gradientUnits="userSpaceOnUse" x1="54.2388" y1="80.3335" x2="54.2388" y2="118.3335">
+	<stop  offset="0" style="stop-color:#FFFFFF"/>
+	<stop  offset="1" style="stop-color:#000000"/>
+</linearGradient>
+<polygon fill="url(#SVGID_4_)" points="51.406,82 45.906,96 44.072,115.585 64.406,118.333 56.322,80.333 "/>
+</svg>

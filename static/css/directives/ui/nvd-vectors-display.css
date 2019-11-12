@@ -1,0 +1,50 @@
+.nvd-vectors-display-element dl {
+    display: inline-block;
+    vertical-align: top;
+    max-width: 200px;
+    padding-right: 20px;
+}
+
+.nvd-vectors-display-element dt {
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.nvd-vectors-display-element dd {
+    cursor: pointer;
+}
+
+.nvd-vectors-display-element dd:before {
+    display: inline-block;
+    margin-right: 4px;
+    font-family: FontAwesome;
+    content: '\f111';
+}
+
+.nvd-vectors-display-element dd.not-current-vector {
+  color: #ddd;
+}
+
+.nvd-vectors-display-element dd.current-vector.high:before {
+    content: '\f071';
+}
+
+.nvd-vectors-display-element dd.current-vector.medium:before {
+    content: '\f06a';
+}
+
+.nvd-vectors-display-element dd.current-vector.low:before {
+    content: '\f056';
+}
+
+.nvd-vectors-display-element .current-vector.high {
+    color: rgb(214, 68, 86);
+}
+
+.nvd-vectors-display-element .current-vector.medium {
+    color: rgb(252, 166, 87);
+}
+
+.nvd-vectors-display-element .current-vector.low {
+    color: rgb(47, 201, 142);
+}

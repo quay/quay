@@ -1,0 +1,199 @@
+{
+  "actor": {
+    "account_id": "SomeCoolLabs_CodeShip",
+    "links": {
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/users/SomeCoolLabs_CodeShip"
+      },
+      "avatar": {
+        "href": "https://bitbucket.org/account/SomeCoolLabs_CodeShip/avatar/32/"
+      }
+    },
+    "type": "user",
+    "display_name": "CodeShip Tagging"
+  },
+  "repository": {
+    "full_name": "somecoollabs/svc-identity",
+    "name": "svc-identity",
+    "scm": "git",
+    "type": "repository",
+    "links": {
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity"
+      },
+      "avatar": {
+        "href": "https://bitbucket.org/somecoollabs/svc-identity/avatar/16/"
+      }
+    },
+    "is_private": true,
+    "owner": {
+      "account_id": "somecoollabs",
+      "links": {
+        "self": {
+          "href": "https://api.bitbucket.org/2.0/teams/somecoollabs"
+        },
+        "avatar": {
+          "href": "https://bitbucket.org/account/somecoollabs/avatar/32/"
+        }
+      },
+      "type": "team",
+      "display_name": "Some Cool Labs"
+    }
+  },
+  "push": {
+    "changes": [
+      {
+        "commits": [
+          {
+            "hash": "a0ec139843b2bb281ab21a433266ddc498e605dc",
+            "links": {
+              "self": {
+                "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/a0ec139843b2bb281ab21a433266ddc498e605dc"
+              },
+              "html": {
+                "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/a0ec139843b2bb281ab21a433266ddc498e605dc"
+              }
+            },
+            "author": {
+              "raw": "scripts/autotag_version.py <utilitybelt@somecoollabs.com>"
+            },
+            "type": "commit",
+            "message": "Update version.py to 0.1.2 [skip ci]\n\n(by utilitybelt/scripts/autotag_version.py)\n"
+          }
+        ],
+        "created": false,
+        "forced": false,
+        "old": {
+          "target": {
+            "parents": [
+              {
+                "hash": "bd749165b0c50c65c15fc4df526b8e9df26eff10",
+                "links": {
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/bd749165b0c50c65c15fc4df526b8e9df26eff10"
+                  },
+                  "html": {
+                    "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/bd749165b0c50c65c15fc4df526b8e9df26eff10"
+                  }
+                },
+                "type": "commit"
+              },
+              {
+                "hash": "910b5624b74190dfaa51938d851563a4c5254926",
+                "links": {
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/910b5624b74190dfaa51938d851563a4c5254926"
+                  },
+                  "html": {
+                    "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/910b5624b74190dfaa51938d851563a4c5254926"
+                  }
+                },
+                "type": "commit"
+              }
+            ],
+            "date": "2015-09-25T00:54:41+00:00",
+            "type": "commit",
+            "message": "Merged in create-update-user (pull request #3)\n\nCreate + update identity\n",
+            "hash": "263736ecc250113fad56a93f83b712093554ad42",
+            "links": {
+              "self": {
+                "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/263736ecc250113fad56a93f83b712093554ad42"
+              },
+              "html": {
+                "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/263736ecc250113fad56a93f83b712093554ad42"
+              }
+            },
+            "author": {
+              "raw": "John Smith <j@smith.com>",
+              "user": {
+                "account_id": "jsmith",
+                "links": {
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/users/jsmith"
+                  },
+                  "avatar": {
+                    "href": "https://bitbucket.org/account/jsmith/avatar/32/"
+                  }
+                },
+                "type": "user",
+                "display_name": "John Smith"
+              }
+            }
+          },
+          "links": {
+            "self": {
+              "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/refs/branches/master"
+            },
+            "commits": {
+              "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commits/master"
+            },
+            "html": {
+              "href": "https://bitbucket.org/somecoollabs/svc-identity/branch/master"
+            }
+          },
+          "name": "master",
+          "type": "branch"
+        },
+        "links": {
+          "diff": {
+            "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/diff/a0ec139843b2bb281ab21a433266ddc498e605dc..263736ecc250113fad56a93f83b712093554ad42"
+          },
+          "commits": {
+            "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commits?include=a0ec139843b2bb281ab21a433266ddc498e605dc&exclude=263736ecc250113fad56a93f83b712093554ad42"
+          },
+          "html": {
+            "href": "https://bitbucket.org/somecoollabs/svc-identity/branches/compare/a0ec139843b2bb281ab21a433266ddc498e605dc..263736ecc250113fad56a93f83b712093554ad42"
+          }
+        },
+        "new": {
+          "target": {
+            "parents": [
+              {
+                "hash": "263736ecc250113fad56a93f83b712093554ad42",
+                "links": {
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/263736ecc250113fad56a93f83b712093554ad42"
+                  },
+                  "html": {
+                    "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/263736ecc250113fad56a93f83b712093554ad42"
+                  }
+                },
+                "type": "commit"
+              }
+            ],
+            "date": "2015-09-25T00:55:08+00:00",
+            "type": "commit",
+            "message": "Update version.py to 0.1.2 [skip ci]\n\n(by utilitybelt/scripts/autotag_version.py)\n",
+            "hash": "a0ec139843b2bb281ab21a433266ddc498e605dc",
+            "links": {
+              "self": {
+                "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commit/a0ec139843b2bb281ab21a433266ddc498e605dc"
+              },
+              "html": {
+                "href": "https://bitbucket.org/somecoollabs/svc-identity/commits/a0ec139843b2bb281ab21a433266ddc498e605dc"
+              }
+            },
+            "author": {
+              "raw": "scripts/autotag_version.py <utilitybelt@somecoollabs.com>"
+            }
+          },
+          "links": {
+            "self": {
+              "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/refs/branches/master"
+            },
+            "commits": {
+              "href": "https://api.bitbucket.org/2.0/repositories/somecoollabs/svc-identity/commits/master"
+            },
+            "html": {
+              "href": "https://bitbucket.org/somecoollabs/svc-identity/branch/master"
+            }
+          },
+          "name": "master",
+          "type": "branch"
+        },
+        "closed": false,
+        "truncated": false
+      }
+    ]
+  }
+}

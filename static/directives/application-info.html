@@ -1,0 +1,12 @@
+<div class="application-info-element" style="padding-bottom: 18px">
+  <div class="auth-header">
+    <span class="avatar" size="48" data="application.avatar"></span>
+    <h2><a href="{{ application.url }}" ng-safenewtab>{{ application.name }}</a></h2>
+    <h4>
+      {{ application.organization.name }}
+    </h4>
+  </div>
+  <div style="padding-top: 10px">
+    {{ application.description || '(No Description)' }}
+  </div>
+</div>

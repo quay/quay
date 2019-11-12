@@ -1,0 +1,27 @@
+.build-state-icon {
+  width: 42px;
+  padding: 4px;
+  text-align: center;
+  display: inline-block;
+  font-size: 18px;
+}
+
+.build-state-icon .error {
+  color: #D64456;
+}
+
+.build-state-icon .expired {
+  color: #FCA657;
+}
+
+.build-state-icon .internalerror {
+  color: #99BA45;
+}
+
+.build-state-icon .complete {
+  color: #2fcc66;
+}
+
+.build-state-icon .cancelled {
+  color: #9b9b9b;
+}

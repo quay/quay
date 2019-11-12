@@ -1,0 +1,5 @@
+.cor-table-element .co-top-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+}

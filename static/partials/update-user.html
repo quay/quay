@@ -1,0 +1,88 @@
+<div class="cor-loader-inline" ng-if="!user || user.anonymous || state == 'updating'"></div>
+
+<!-- Confirm username -->
+<div class="update-user" ng-show="hasPrompt(user, 'confirm_username') && state != 'updating'">
+    <h2>Confirm Username</h2>
+    <p>
+    The username <strong>{{ user.username }}</strong> was automatically generated to conform to the
+    Docker CLI guidelines for use as a namespace in <span class="registry-title"></span>.
+    </p>
+    <p>Please confirm the selected username or enter a different username below:</p>
+    <form name="usernameForm" ng-submit="updateUser({'username': username})">
+        <div class="namespace-input" binding="username" back-incompat-message="backIncompatMessage"
+              namespace-title="Username" style="margin-bottom: 20px;"
+              has-external-error="state == 'existing'"></div>
+
+        <input type="submit" class="btn btn-primary"
+               ng-disabled="usernameForm.$invalid || state != 'confirmed'"
+               value="Confirm Username">
+        <span class="cor-loader-inline" ng-show="state == 'confirming'"></span>
+        <span class="username-status" ng-show="state == 'confirmed' && !backIncompatMessage">
+            <i class="fa fa-check-circle"></i> Username valid
+        </span>
+        <span class="username-status" ng-show="state == 'existing'">
+            <i class="fa fa-ban"></i> Username already taken
+        </span>
+        <span class="username-status" ng-show="state == 'error'">
+            <i class="fa fa-exclamation-triangle"></i> Could not check username
+        </span>
+        <span class="username-status" ng-show="state == 'editing' && usernameForm.$invalid">
+            Usernames must be alphanumeric and be at least four characters in length
+        </span>
+        <span class="username-status" ng-show="state == 'confirmed' && backIncompatMessage">
+            <i class="fa fa-exclamation-triangle"></i>{{ backIncompatMessage }}
+        </span>
+    </form>
+</div>
+
+<!-- Enter metadata -->
+<div class="update-user" ng-show="!hasPrompt(user, 'confirm_username') && (hasPrompt(user, 'enter_name') || hasPrompt(user, 'enter_company')) && state != 'updating'">
+    <h2>Tell us a bit more about yourself</h2>
+    <div>This information will be displayed in your user profile.</div>
+
+    <form name="metadataForm" ng-submit="updateUser(metadata)" style="margin-top: 20px;">
+      <div class="form-group nested">
+        <label for="givenName">Given Name</label>
+        <div class="field-row">
+          <span class="field-container">
+            <input type="text" class="form-control" placeholder="Given Name" ng-model="metadata.given_name" name="givenName">
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group nested">
+        <label for="familyName">Family Name</label>
+        <div class="field-row">
+          <span class="field-container">
+            <input type="text" class="form-control" placeholder="Family Name" ng-model="metadata.family_name" name="familyName">
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group nested">
+        <label for="company">Company</label>
+        <div class="field-row">
+          <span class="field-container">
+            <input type="text" class="form-control" placeholder="Company name" ng-model="metadata.company" name="company"></span>
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group nested">
+        <label for="location">Location</label>
+        <div class="field-row">
+          <span class="field-container">
+            <input type="text" class="form-control" placeholder="Location" ng-model="metadata.location" name="location"></span>
+          </span>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px">
+          <input type="submit" class="btn btn-primary" value="Save Details"
+                 ng-disabled="!metadata.name && !metadata.company">
+          <button class="btn btn-default"
+                  ng-click="updateUser({'company': '', 'name': ''})">
+                  No thanks</button>
+      </div>
+    </form>
+</div>

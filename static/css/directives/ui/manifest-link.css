@@ -1,0 +1,29 @@
+.manifest-link {
+  display: inline-block;
+  white-space: nowrap;
+  width: 120px;
+}
+
+.manifest-link a {
+  font-family: Consolas, "Lucida Console", Monaco, monospace;
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.manifest-link .id-label {
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px;
+  background-color: #eee;
+  border-radius: 5px;
+  padding-left: 4px;
+  padding-right: 4px;
+  width: 40px;
+  text-align: center;
+  color: black !important;
+  display: inline-block;
+}
+
+.manifest-link .id-label.cas {
+  background-color: #e8f1f6;
+}

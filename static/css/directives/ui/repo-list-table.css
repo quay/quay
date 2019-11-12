@@ -1,0 +1,36 @@
+.repo-list-table .repo-name-icon .avatar {
+  margin-right: 10px;
+}
+
+.repo-list-table .repo-name-icon .namespace {
+  color: #444;
+  font-size: 85%;
+}
+
+.repo-list-table .repo-name-icon .namespace:after {
+  content: " / ";
+}
+
+.repo-list-table .empty {
+  color: #ccc;
+}
+
+.repo-list-table .last-modified {
+  font-size: 13px;
+}
+
+.repo-list-table .strength-indicator {
+  display: inline-block;
+}
+
+.repo-list-table .popularity {
+  line-height: 10px;
+}
+
+.repo-list-table .repo-star i {
+  color: #ccc;
+}
+
+.repo-list-table table tbody tr:last-child td {
+  border: 0px;
+}

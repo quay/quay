@@ -1,0 +1,165 @@
+<div class="super-user">
+  <div class="cor-loader" ng-show="!configStatus"></div>
+  <div class="page-content" quay-show="Features.SUPER_USERS && configStatus == 'ready'">
+    <div class="cor-title">
+      <span class="cor-title-link"></span>
+      <span class="cor-title-content">Red Hat Quay Management</span>
+    </div>
+
+    <cor-tab-panel orientation="vertical" cor-nav-tabs>
+      <cor-tabs>
+        <cor-tab tab-title="Manage Users"
+                 tab-id="users" tab-init="loadUsers()">
+          <i class="fa fa-group"></i>
+        </cor-tab>
+        <cor-tab tab-title="Manage Organizations"
+                 tab-id="organizations" tab-init="loadOrganizations()">
+          <i class="fa fa-sitemap"></i>
+        </cor-tab>
+        <cor-tab tab-title="Manage Service Keys"
+                 tab-id="servicekeys" tab-init="loadServiceKeys()">
+          <i class="fa fa-key"></i>
+        </cor-tab>
+        <cor-tab tab-title="Change Log" tab-id="change-log" tab-init="getChangeLog()">
+          <i class="fa fa-rss"></i>
+        </cor-tab>
+        <cor-tab tab-title="Usage Logs" tab-id="logs" tab-init="loadUsageLogs()">
+          <i class="fa fa-bar-chart"></i>
+        </cor-tab>
+        <cor-tab tab-title="Globally visible user messages" tab-id="message-of-the-day"
+                 tab-init="loadMessageOfTheDay()">
+          <i class="fa fa-newspaper-o"></i>
+        </cor-tab>
+        <cor-tab tab-title="Build Logs" tab-id="super-user-build-logs"
+                 tab-init="loadSuperUserBuildLogs()"
+                 quay-show="Features.BUILD_SUPPORT">
+          <i class="fa fa-history"></i>
+        </cor-tab>
+      </cor-tabs>
+
+      <cor-tab-content>
+        <!-- Super user build logs tab-->
+        <cor-tab-pane id="super-user-build-logs">
+          <div class="super-user-build-logs" is-enabled="superUserBuildLogsActive"></div>
+        </cor-tab-pane> <!-- Super user build logs tab -->
+
+        <!-- Messages tab -->
+        <cor-tab-pane id="message-of-the-day">
+          <div class="global-message-tab" is-enabled="globalMessagesActive"></div>
+        </cor-tab-pane> <!-- Messages tab -->
+
+        <!-- Service keys tab -->
+        <cor-tab-pane id="servicekeys">
+          <div class="service-keys-manager" is-enabled="serviceKeysActive"></div>
+        </cor-tab-pane>
+
+        <!-- Logs tab -->
+        <cor-tab-pane id="logs">
+          <div class="logsView" makevisible="logsCounter" all-logs="true"></div>
+        </cor-tab-pane> <!-- /logs tab-->
+
+        <!-- Change Log tab -->
+        <cor-tab-pane id="change-log">
+          <h3 style="margin-top: 0px;">Change Log</h3>
+          <div class="cor-loader" ng-if="!changeLog"></div>
+          <markdown-view ng-if="changeLog"
+                         content="changeLog.log" ></markdown-view>
+        </cor-tab-pane> <!-- /change-log tab-->
+
+        <!-- Organizations tab -->
+        <cor-tab-pane id="organizations">
+          <div class="resource-view" resource="organizationsResource"
+               error-message="'Could not load organizations'">
+            <div class="manager-header" header-title="Organizations">
+            </div>
+
+            <div class="co-top-bar">
+              <span class="co-filter-box">
+                <span class="page-controls" total-count="orderedOrgs.entries.length" current-page="options.page" page-size="orgsPerPage"></span>
+                <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Organizations..." style="margin-right: 10px;">
+              </span>
+            </div>
+
+            <table class="cor-table" ng-if="orderedOrgs.entries.length && !isLoading">
+              <thead>
+              <td style="width: 24px;"></td>
+
+              <td ng-class="tablePredicateClass('name', options.predicate, options.reverse)">
+                <a ng-click="orderBy('name')">Name</a>
+              </td>
+              <td ng-class="tablePredicateClass('email', options.predicate, options.reverse)"
+                  ng-if="Features.MAILING">
+                <a ng-click="orderBy('email')">Admin Email</a>
+              </td>
+              <td style="width: 24px;"></td>
+              </thead>
+
+              <tr ng-repeat="current_org in orderedOrgs.entries | slice
+                     :(orgsPerPage * options.page)
+                     :(orgsPerPage * (options.page + 1))"
+                  class="org-row">
+                <td>
+                  <span class="avatar" data="current_org.avatar" size="24"></span>
+                </td>
+                <td>
+                  {{ current_org.name }}
+                </td>
+                <td ng-if="Features.MAILING">
+                  <a href="mailto:{{ current_org.email }}">{{ current_org.email }}</a>
+                </td>
+                <td style="text-align: center;">
+                  <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+                    <span class="cor-option" option-click="askRenameOrganization(current_org)">
+                      <i class="fa fa-arrow-right"></i> Rename Organization
+                    </span>
+                    <span class="cor-option" option-click="askDeleteOrganization(current_org)">
+                      <i class="fa fa-times"></i> Delete Organization
+                    </span>
+                    <span class="cor-option" option-click="askTakeOwnership(current_org)">
+                      <i class="fa fa-bolt"></i> Take Ownership
+                    </span>
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </div> <!-- /resource -->
+        </cor-tab-pane> <!-- organizations tab -->
+
+        <!-- Users tab -->
+        <cor-tab-pane id="users" class="tab-pane active">
+          <div class="manage-user-tab" is-enabled="manageUsersActive"></div>
+        </cor-tab-pane> <!-- users-tab -->
+      </cor-tab-content>
+    </cor-tab-panel>
+
+    <!-- Modal message dialog -->
+    <div class="co-dialog modal fade" id="restartingContainerModal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Container Currently Restarting</h4>
+          </div>
+          <div class="modal-body" style="padding: 20px;">
+           <i class="fa fa-lg fa-refresh" style="margin-right: 10px;"></i>
+           <span class="registry-name"></span> is currently being restarted.
+           <br><br>
+           This can take several minutes. If the container does not restart on its own,
+           please reexecute the <code>docker run</code> command.
+          </div>
+          <div class="modal-footer working">
+            <span class="cor-loader-inline"></span> Waiting for container to restart...
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+  <div class="cor-confirm-dialog take-ownership-dialog"
+       dialog-context="takeOwnershipInfo"
+       dialog-action="takeOwnership(info, callback)"
+       dialog-title="Take Ownership"
+       dialog-action-title="Take Ownership">
+    Are you sure you want to take ownership of organization <span class="avatar" data="takeOwnershipInfo.entity.avatar" size="16"></span> {{ takeOwnershipInfo.entity.name }}?</span>
+  </div>
+
+  </div> <!-- /page-content -->
+</div>

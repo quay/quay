@@ -1,0 +1,8 @@
+<p>Now that we've tagged our image with a repository name, we can <code>push</code> the repository to <span class="registry-name"></span>:</p>
+
+<pre class="command">
+<code ng-show="tour.tourScope.showSudo">sudo </code>docker push {{ tour.tourScope.domainName }}/{{ tour.tourScope.username }}/<var class="var2">{{ tour.tourScope.repoName || 'myfirstrepo' }}</var>
+The push refers to a repository [{{ tour.tourScope.domainName }}/{{ tour.tourScope.username }}/<var class="var2">{{ tour.tourScope.repoName || 'myfirstrepo' }}</var>] (len: 1)
+Sending image list
+Pushing repository {{ tour.tourScope.domainName }}/{{ tour.tourScope.username }}/<var class="var2">{{ tour.tourScope.repoName || 'myfirstrepo' }}</var> (1 tags)
+</pre>

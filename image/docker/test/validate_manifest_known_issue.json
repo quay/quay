@@ -1,0 +1,56 @@
+{
+   "schemaVersion": 1,
+   "name": "quaymonitor/monitortest2",
+   "tag": "latest",
+   "architecture": "x86_64",
+   "fsLayers": [
+      {
+         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+      },
+      {
+         "blobSum": "sha256:184dc3db39b5e19dc39547f43db46ea48cd6cc779e806a3c8a5e5396acd20206"
+      },
+      {
+         "blobSum": "sha256:db80bcab0e8b69656505332fcdff3ef2b9f664a2029d1b2f97224cffcf689afc"
+      },
+      {
+         "blobSum": "sha256:184dc3db39b5e19dc39547f43db46ea48cd6cc779e806a3c8a5e5396acd20206"
+      },
+      {
+         "blobSum": "sha256:f0a98344d604e54694fc6118cf7a0cbd10dc7b2e9be8607ba8c5bfd7ba3c1067"
+      }
+   ],
+   "history": [
+      {
+         "v1Compatibility": "{\"architecture\":\"x86_64\",\"config\":{\"Hostname\":\"4c9181ab6b87\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"sh\",\"echo\",\"\\\"2019-01-08 19:13:20 +0000\\\" \\u003e foo\"],\"Image\":\"quay.io/quay/busybox\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":{}},\"container\":\"4c9181ab6b87fe75b5c0955c6c78983dec337914b05e65fb0073cce0ad076106\",\"container_config\":{\"Hostname\":\"4c9181ab6b87\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"sh\",\"echo\",\"\\\"2019-01-08 19:13:20 +0000\\\" \\u003e foo\"],\"Image\":\"quay.io/quay/busybox\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":{}},\"created\":\"2019-01-08T19:13:20.674196032Z\",\"docker_version\":\"18.06.1-ce\",\"id\":\"7da7c4e4bcb121915fb33eb5c76ffef194cdcc14608010692cfce5734bd84751\",\"os\":\"linux\",\"parent\":\"ec75e623647b299585bdb0991293bd446e5545e9a4dabf9d37922d5671d9d860\",\"throwaway\":true}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"ec75e623647b299585bdb0991293bd446e5545e9a4dabf9d37922d5671d9d860\",\"parent\":\"f32bc6daa02c76f0b1773688684bf3bee719a69db06192432e6c28a238f4cf4a\",\"created\":\"2014-02-03T15:58:08.872585903Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) CMD [/bin/sh -c /bin/sh]\"]},\"author\":\"Jérôme Petazzoni \\u003cjerome@docker.com\\u003e\"}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"f32bc6daa02c76f0b1773688684bf3bee719a69db06192432e6c28a238f4cf4a\",\"parent\":\"02feaf4fdc57dba2b142dae9d8dd0c90e710be710bea25ce63269e65d8f32872\",\"created\":\"2014-02-03T15:58:08.72383042Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) ADD rootfs.tar in /\"]},\"author\":\"Jérôme Petazzoni \\u003cjerome@docker.com\\u003e\"}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"02feaf4fdc57dba2b142dae9d8dd0c90e710be710bea25ce63269e65d8f32872\",\"parent\":\"f9a6e54178f312aa3686d7305b970e7d908d58b32e3f4554731b647e07b48fd2\",\"created\":\"2014-02-03T15:58:08.52236968Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) MAINTAINER Jérôme Petazzoni \\u003cjerome@docker.com\\u003e\"]},\"author\":\"Jérôme Petazzoni \\u003cjerome@docker.com\\u003e\"}"
+      },
+      {
+         "v1Compatibility": "{\"id\":\"f9a6e54178f312aa3686d7305b970e7d908d58b32e3f4554731b647e07b48fd2\",\"comment\":\"Imported from -\",\"created\":\"2013-06-13T14:03:50.821769-07:00\",\"container_config\":{\"Cmd\":[\"\"]}}"
+      }
+   ],
+   "signatures": [
+      {
+         "header": {
+            "jwk": {
+               "crv": "P-256",
+               "kid": "XPAM:RVQE:4LWW:ABXI:QLLK:O2LK:XJ4V:UAOJ:WM24:ZG6J:UIJ3:JAYM",
+               "kty": "EC",
+               "x": "ijnW3d93SINE1y3GjNsCMYghAb7NT21vSiYK8pWdBkM",
+               "y": "7t-mGjoYOhEIGVaCSEclLLkMgHz2S9WXkReZJEBx-_U"
+            },
+            "alg": "ES256"
+         },
+         "signature": "N9m-NNL8CdGwxEHHHaJDhbT5_FFKBSdyy-7lP4jnWG3AQmOWbPEXTFANTeH2CNPvAbaM9ZqQm0dQFQVnOe5GNQ",
+         "protected": "eyJmb3JtYXRMZW5ndGgiOjM1OTgsImZvcm1hdFRhaWwiOiJDbjAiLCJ0aW1lIjoiMjAxOS0wMS0wOFQxOToxMzoyM1oifQ"
+      }
+   ]
+}

@@ -1,0 +1,71 @@
+<div class="repository-signing-config-element" quay-require="['SIGNING']">
+  <div class="repository-events-table-element">
+    <div class="co-panel">
+      <div class="co-panel-heading">
+        <i class="fa ci-shield-check-full"></i> Trust and Signing
+      </div>
+      <div class="panel-body">
+        <table>
+        <tr>
+        <td>
+        <i class="fa status-icon"
+           ng-class="{'ci-shield-check-outline': $ctrl.repository.trust_enabled, 'ci-shield-none': !$ctrl.repository.trust_enabled}"></i>
+        </td>
+        <td>
+        <div ng-if="$ctrl.repository.trust_enabled">
+          <h4>Trust Enabled</h4>
+          <p>
+            Signing is enabled on this repository and all tag operations must be signed via Docker Content Trust.
+          </p>
+          <p>
+            When this feature is enabled, it will be possible to use the UI or client tools to change tag data without 
+              signing.
+              This can make a signed tag point to a different image than the actual tag, and the underlying data could
+              be garbage collected. It is important to have a strict separation between tags that are signed and tags
+              that are not.
+          </p>
+          <button class="btn btn-danger" ng-click="$ctrl.askChangeTrust(false)" ng-show="!$ctrl.inReadOnlyMode">Disable Trust</button>
+        </div>
+
+        <div ng-if="!$ctrl.repository.trust_enabled">
+          <h4>Trust Disabled</h4>
+          <p>
+              Signing is disabled on this repository.
+          </p>
+          <button class="btn btn-default" ng-click="$ctrl.askChangeTrust(true)" ng-show="!$ctrl.inReadOnlyMode">Enable Trust</button>
+        </div>
+        </td>
+        </tr>
+        </table>
+      </div>
+  </div>
+
+  <!-- Change trust dialogs -->
+  <div class="cor-confirm-dialog"
+     dialog-context="$ctrl.enableTrustInfo"
+     dialog-action="$ctrl.changeTrust(true, callback)"
+     dialog-title="Enable Trust"
+     dialog-action-title="Enable Trust">
+     <p>Click "Enable Trust" to enable content trust on this repository.</p>
+      <p>Please note that this will not prevent users from overwriting signed tags without updating signatures.
+      This means that:
+        <ul>
+          <li>Any tag operations in the UI or client can cause inconsistency
+          <li>Builds should not push to signed tags
+        </ul>
+      We recommend you maintain a strict separation between signed and unsigned tags to avoid any issues with garbage
+      collection.
+     </p>
+  </div>
+
+  <div class="cor-confirm-dialog"
+     dialog-context="$ctrl.disableTrustInfo"
+     dialog-action="$ctrl.changeTrust(false, callback)"
+     dialog-title="Disable Trust"
+     dialog-action-title="Disable Trust and Delete Data">
+     <div class="co-alert co-alert-warning">
+      <strong>Warning:</strong> Disabling content trust will prevent users from pushing signed
+      manifests to this repository and will <strong>delete all existing signing and trust data</strong>.
+     </div>
+  </div>
+</div>

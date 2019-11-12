@@ -1,0 +1,20 @@
+.manifest-label-list-element {
+  padding-left: 6px;
+  display: inline-block;
+  position: relative;
+}
+
+.manifest-label-list-element:before {
+    content: "\f02c";
+    font-family: FontAwesome;
+    position: absolute;
+    left: -22px;
+    top: 0px;
+    font-size: 15px;
+    color: #888;
+}
+
+.manifest-label-list-element .none {
+  font-size: 12px;
+  color: #ccc;
+}

@@ -1,0 +1,162 @@
+.repo-panel-info-element .right-sec-controls {
+  border: 1px solid #ddd;
+  padding: 20px;
+  border-radius: 4px;
+  max-width: 400px;
+}
+
+.repo-panel-info-element .right-sec-controls {
+  color: #333;
+  font-weight: 300;
+  padding-left: 70px;
+  position: relative;
+}
+
+.repo-panel-info-element .right-sec-controls .sec-logo {
+  position: absolute;
+  top: 17px;
+  left: 15px;
+}
+
+.repo-panel-info-element .right-sec-controls .sec-logo .lock {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+}
+
+.repo-panel-info-element .right-sec-controls b {
+  color: #333;
+  font-weight: normal;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.repo-panel-info-element .right-sec-controls .configure-alerts {
+  margin-top: 20px;
+  font-weight: normal;
+}
+
+.repo-panel-info-element .right-sec-controls .configure-alerts .fa {
+  margin-right: 6px;
+}
+
+.repo-panel-info-element .right-sec-controls .repository-events-summary {
+  margin-top: 20px;
+}
+
+.repo-panel-info-element .right-pull-controls {
+  margin-bottom: 20px;
+}
+
+.repo-panel-info-element .right-pull-controls .copy-box {
+  width: 400px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+.repo-panel-info-element .stat-col {
+  border-right: 2px solid #eee;
+  padding-right: 26px;
+}
+
+.repo-panel-info-element .stat-title {
+  text-align: center;
+  display: block;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.repo-panel-info-element .stat-row {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.repo-panel-info-element .stat-row .heatmap {
+  margin-top: 20px;
+}
+
+.repo-panel-info-element .stat {
+  display: inline-block;
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.repo-panel-info-element .stat .stat-value {
+  font-size: 46px;
+}
+
+.repo-panel-info-element .stat .stat-subtitle {
+  font-size: 12px;
+  color: #ccc;
+  text-transform: uppercase;
+}
+
+.repo-panel-info-element .description-container {
+  margin-top: 30px;
+  border-top: 2px solid #eee;
+  padding-top: 18px;
+}
+
+.repo-panel-info-element .description-container table {
+  width: 100%;
+}
+
+.repo-panel-info-element .description-container table td {
+  vertical-align: top;
+}
+
+.repo-panel-info-element .description-container table td:first-child {
+  width: 100%;
+  padding: 10px;
+  padding-right: 30px;
+}
+
+.repo-panel-info-element .description-container table td:first-child p {
+  display: block;
+}
+
+.repo-panel-info-element .description-container table td:first-child pre {
+  max-width: 100%;
+}
+
+.repo-panel-info-element .description {
+  padding-bottom: 0px;
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  .repo-panel-info-element .description {
+    margin-right: 0px;
+  }
+
+  .repo-panel-info-element .description-container table td:first-child {
+    padding: 6px;
+  }
+}
+
+.repo-panel-info-element .description p {
+  font-size: 16px !important;
+}
+
+.repo-panel-info-element .description .fa-edit {
+  display: none;
+}
+
+.repo-panel-info-element .build-mini-status {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.repo-panel-info-element .view-all {
+  display: block;
+  padding: 10px;
+  text-align: center;
+}
+
+.repo-panel-info-element .builds-list {
+  min-height: 200px;
+}
+
+.repo-panel-info-element .copy-box {
+  vertical-align: middle;
+}

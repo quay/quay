@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-storage
+  namespace: quay-enterprise
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      # The 10Gi creates 10 gigabytes of storage for use by the Postgres database.
+      storage: 10Gi
+  storageClassName: quay-storageclass

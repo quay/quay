@@ -1,0 +1,13 @@
+<li class="cor-tab-itself" ng-class="{'active': $ctrl.isActive, 'co-top-tab': !$ctrl.parent.isVertical()}">
+  <a href="{{ $ctrl.panel.basePath ? $ctrl.panel.basePath + '?tab=' + $ctrl.tabId : '' }}"
+     ng-click="$ctrl.tabClicked($event)">
+    <span class="cor-tab-icon"
+          data-title="{{ ::($ctrl.panel.isVertical() ? $ctrl.tabTitle : '') }}"
+          data-placement="right"
+          data-container="body"
+          style="display: inline-block"
+          bs-tooltip>
+      <span ng-transclude /><span class="horizontal-label">{{ ::$ctrl.tabTitle }}</span>
+    </span>
+  </a>
+</li>

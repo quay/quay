@@ -1,0 +1,4 @@
+<div class="duration-input-element">
+    <range-slider ng-range-min="$ctrl.min_s" ng-range-max="$ctrl.max_s" ng-model="$ctrl.seconds"></range-slider>
+    <span class="duration-explanation">{{ $ctrl.durationExplanation($ctrl.seconds) }}</span>
+</div>

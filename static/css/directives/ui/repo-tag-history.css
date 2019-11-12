@@ -1,0 +1,270 @@
+.repo-tag-history-element .history-list {
+  margin: 10px;
+}
+
+.repo-tag-history-element .co-table thead {
+  margin-bottom: 20px;
+}
+
+.repo-tag-history-element .co-table tbody td {
+  border-bottom: 0px;
+}
+
+.repo-tag-history-element .co-table td.revert-col {
+  font-size: 12px;
+}
+
+.repo-tag-history-element .co-table td.revert-col .tag-span {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.repo-tag-history-element .co-table td.icon-col {
+  border-bottom: 0px;
+  width: 32px;
+  height: 32px;
+  text-align: center;
+  line-height: 32px;
+  vertical-align: middle;
+  padding: 0px;
+  position: relative;
+}
+
+.repo-tag-history-element .co-table td.history-col {
+  width: 520px;
+}
+
+.repo-tag-history-element .co-table td.datetime-col {
+  width: 250px;
+}
+
+.repo-tag-history-element .co-table td.icon-col:after {
+  content: " ";
+  display: inline-block;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 15px;
+  width: 2px;
+  background-color: #ddd;
+  z-index: 1;
+}
+
+.repo-tag-history-element .co-table td.icon-col .history-icon {
+  position: absolute;
+  top: 7px;
+  left: 0px;
+  z-index: 2;
+}
+
+.repo-tag-history-element .co-table td.icon-col .datetime-icon {
+  position: absolute;
+  top: 13px;
+  left: 9px;
+  z-index: 2;
+  background-color: white;
+}
+
+.repo-tag-history-element .history-row {
+  font-size: 13px;
+  color: #aaa;
+}
+
+.repo-tag-history-element .history-entry {
+  position:relative;
+  margin-top:  20px;
+  padding-left: 26px;
+
+  transition: all 350ms ease-in-out;
+}
+
+.repo-tag-history-element .history-entry .history-description,
+.repo-tag-history-element .history-entry .history-datetime,
+.repo-tag-history-element .history-entry .history-revert {
+  transition: height 350ms ease-in-out, opacity 350ms ease-in-out;
+  overflow: hidden;
+  height: 24px;
+}
+
+.repo-tag-history-element .co-filter-box {
+  float: right;
+  margin-bottom: 14px;
+}
+
+.repo-tag-history-element .history-datetime-small {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .repo-tag-history-element .history-list {
+    margin: 10px;
+  }
+
+  .repo-tag-history-element .history-entry .history-text {
+    height: 60px;
+  }
+
+  .repo-tag-history-element .co-filter-box {
+    float: none;
+    display: block;
+  }
+
+  .repo-tag-history-element .history-entry .history-description {
+    overflow: visible;
+    margin-bottom: 10px;
+    margin-left: 20px;
+    display: block;
+    height: auto;
+  }
+
+  .repo-tag-history-element .history-row {
+    padding-left: 20px;
+  }
+
+  .repo-tag-history-element .history-datetime-small {
+    font-size: 12px;
+    margin-left: 20px;
+    margin-top: 10px;
+    color: #aaa;
+    display: block;
+  }
+}
+
+.repo-tag-history-element .history-entry .history-revert a {
+  white-space: nowrap;
+}
+
+.repo-tag-history-element .history-entry.filtered-mismatch {
+  margin-top: 10px;
+}
+
+.repo-tag-history-element .history-entry.filtered-mismatch .history-datetime {
+  height: 18px;
+  opacity: 0;
+}
+
+.repo-tag-history-element .history-entry.filtered-mismatch .history-revert {
+  height: 18px;
+  opacity: 0;
+}
+
+.repo-tag-history-element .history-entry.filtered-mismatch .history-description {
+  height: 18px;
+  opacity: 0;
+}
+
+.repo-tag-history-element .history-entry.filtered-mismatch .history-icon {
+  opacity: 0.5;
+  transform: scale(0.5, 0.5);
+}
+
+.repo-tag-history-element .history-entry.filtered-mismatch.current .history-icon {
+  background-color: #ccc !important;
+}
+
+.repo-tag-history-element .history-entry .history-date-break {
+  font-size: 16px;
+}
+
+.repo-tag-history-element .history-entry .history-date-break:before {
+  content: "\f073";
+  font-family: FontAwesome;
+
+  width: 12px;
+  height: 12px;
+  background: white;
+}
+
+.repo-tag-history-element .history-entry .history-icon {
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  font-size: 20px;
+  color: white;
+  background: #ccc;
+
+  display: inline-block;
+  transition: all 350ms ease-in-out;
+}
+
+.repo-tag-history-element .history-entry.move .history-icon:before {
+  content: "\f061";
+  font-family: FontAwesome;
+}
+
+.repo-tag-history-element .history-entry.create .history-icon:before {
+  content: "\f02b";
+  font-family: FontAwesome;
+}
+
+.repo-tag-history-element .history-entry.recreate .history-icon:before {
+  content: "\f10d";
+  font-family: core-icons;
+}
+
+.repo-tag-history-element .history-entry.revert .history-icon:before {
+  content: "\f0e2";
+  font-family: FontAwesome;
+}
+
+.repo-tag-history-element .history-entry.delete .history-icon:before {
+  content: "\f014";
+  font-family: FontAwesome;
+}
+
+.repo-tag-history-element .history-entry.current.revert .history-icon {
+  background-color: #F0C577;
+}
+
+.repo-tag-history-element .history-entry.current.move .history-icon {
+  background-color: #77BFF0;
+}
+
+.repo-tag-history-element .history-entry.current.create .history-icon {
+  background-color: #98df8a;
+}
+
+.repo-tag-history-element .history-entry.current.recreate .history-icon {
+  background-color: #ba8adf;
+}
+
+.repo-tag-history-element .history-entry.current.delete .history-icon {
+  background-color: #ff9896;
+}
+
+.repo-tag-history-element .history-entry .history-icon .fa-tag {
+  margin-right: 0px;
+}
+
+.repo-tag-history-element .history-entry .tag-span {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px;
+  background: #eee;
+  padding-left: 6px;
+  padding-right: 6px;
+  color: black;
+  cursor: default;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.repo-tag-history-element .history-entry .tag-span.checked {
+  background: #F6FCFF;
+}
+
+.repo-tag-history-element .history-entry .manifest-link {
+  margin-left: 6px;
+}
+
+.repo-tag-history-element .history-entry .history-description {
+  color: #777;
+}
+
+.repo-tag-history-element .history-entry .history-datetime {
+  font-size: 13px;
+}

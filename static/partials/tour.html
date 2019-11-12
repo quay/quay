@@ -1,0 +1,11 @@
+<div class="tour-section-container">
+  <ul class="tour-sections">
+    <li ng-class="kind == '' || kind == 'features' ? 'active' : ''"><a href="/tour/features">Features</a></li>
+    <li ng-class="kind == 'organizations' ? 'active' : ''"><a href="/tour/organizations">Teams and Organizations</a></li>
+    <li ng-class="kind == 'enterprise' ? 'active' : ''" quay-require="['BILLING']"><a href="/tour/enterprise">Enterprise</a></li>
+  </ul>
+</div>
+
+<div class="cor-container">
+  <div class="tour-content" kind="kind"></div>
+</div>

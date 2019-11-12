@@ -1,0 +1,10 @@
+<span class="expiration-status-view-element">
+  <span ng-if="::$ctrl.expirationDate" ng-class="::$ctrl.getExpirationInfo($ctrl.expirationDate).className">
+      <i class="fa" ng-class="::$ctrl.getExpirationInfo($ctrl.expirationDate).icon"></i>
+      <time-ago datetime="$ctrl.expirationDate"></time-ago>
+    </a>
+  </span>
+  <span class="no-expiration" ng-if="::!$ctrl.expirationDate">
+    Never
+  </span>
+</span>

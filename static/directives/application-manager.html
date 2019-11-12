@@ -1,0 +1,37 @@
+<div class="application-manager-element">
+  <div class="feedback-bar" feedback="feedback"></div>
+  <div class="cor-loader" ng-show="loading"></div>
+  <div ng-show="!loading">
+    <div class="manager-header" header-title="OAuth Applications">
+      <span class="popup-input-button" placeholder="'Application Name'"
+            submitted="createApplication(value)">
+        <i class="fa fa-plus"></i> Create New Application
+      </span>
+    </div>
+
+    <div class="section-description-header">
+      The OAuth Applications panel allows organizations to define custom OAuth applications that can be used by internal or external customers to access <span class="registry-name"></span> data on behalf of the customers. More information about the  <span class="registry-name"></span> API can be found by contacting support.
+    </div>
+
+    <div class="empty" ng-if="!applications.length">
+      <div class="empty-primary-msg">No OAuth applications defined.</div>
+      <div class="empty-secondary-msg">
+        Click the "Create New Application" button above to create a new OAuth application under
+        this organization.
+      </div>
+    </div>
+
+    <table class="cor-table" ng-show="applications.length">
+      <thead>
+        <td>Application Name</td>
+        <td>Application URI</td>
+      </thead>
+
+      <tr ng-repeat="app in applications">
+        <td><a href="/organization/{{ organization.name }}/application/{{ app.client_id }}">{{ app.name }}</a></td>
+        <td><a href="{{ app.application_uri  }}" ng-if="app.application_uri" ng-safenewtab>{{ app.application_uri  }}</a></td>
+      </tr>
+    </table>
+  </div>
+
+</div>

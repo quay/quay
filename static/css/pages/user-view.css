@@ -1,0 +1,46 @@
+.user-view .user-name {
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.user-view .user-repo-list {
+  padding: 20px;
+}
+
+.user-view h3 {
+  margin-top: 0px;
+}
+
+.user-view .section-description-header {
+  position: relative;
+  margin-bottom: 20px;
+  min-height: 50px;
+}
+
+.user-view .user-settings-form .row {
+  padding: 10px;
+  margin: 0px;
+}
+
+.user-view .co-panel {
+  position: relative;
+  min-height: 50px;
+}
+
+.user-view .co-panel .panel-body {
+  position: relative;
+}
+
+.user-view .co-panel .row {
+  margin: 10px;
+}
+
+.user-view .co-panel .row .panel {
+  margin-bottom: 20px;
+  border-bottom: 0px;
+  box-shadow: none;
+}
+
+.user-view .settings-section {
+  margin-bottom: 50px;
+}

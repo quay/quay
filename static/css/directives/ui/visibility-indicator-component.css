@@ -1,0 +1,17 @@
+.visibility-indicator-component-element {
+  display: inline-block;
+  padding: 4px;
+  color: white;
+  height: 25px;
+  font-size: 16px;
+  padding: 0 12px;
+  color: #ffffff;
+}
+
+.visibility-indicator-component-element.private {
+  background-color: #d64456;
+}
+
+.visibility-indicator-component-element.public {
+  background-color: #2fc98e;
+}

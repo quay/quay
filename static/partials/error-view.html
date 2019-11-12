@@ -1,0 +1,57 @@
+<div class="error-view-element">
+  <div ng-switch on="info.reason">
+    <!-- Confirmation error -->
+    <div ng-switch-when="confirmerror">
+      <h2><i class="fa fa-exclamation-triangle"></i> Confirmation Error</h2>
+      <h3>{{ info.error_message || 'There was an error confirming your e-mail address' }}</h3>
+      <div>
+        If you've received this error after trying to recover your account, please perform the recovery process again.
+      </div>
+    </div>
+
+    <!-- OAuth login error -->
+    <div ng-switch-when="ologinerror">
+      <h2><i class="fa fa-exclamation-triangle"></i>{{ info.service_name }} login error</h2>
+      <h3 ng-if="info.error_message">{{ info.error_message }}</h3>
+      <div ng-if="info.user_creation && info.register_redirect">
+        To continue, please register using the <a href="/signin">registration form</a>.
+        You will be able to reassociate this {{ info.service_name }} account to your new Quay account in the user settings panel.
+      </div>
+    </div>
+
+    <!-- Otherwise -->
+    <div ng-switch-default>
+      <!-- 404 -->
+      <div class="err404" ng-if="code == 404">
+        <h2>404: Not Found</h2>
+        <h3 ng-if="!info.for_repo && !info.namespace_exists">The resource you're looking for doesn't exist</h3>
+        <h3 ng-if="info && !info.namespace_exists">Namespace <strong>{{ info.namespace }}</strong> doesn't exist</h3>
+        <h3 ng-if="info && info.for_repo && info.namespace_exists">The repository you're looking for doesn't exist</h3>
+
+        <img src="/static/img/40x/quay-logo-404.svg">
+
+        <h4 ng-if="!info.for_repo && !info.namespace_exists">
+          Return to the <a href="/">main page</a>
+        </h4>
+        <h4 ng-if="info && !info.namespace_exists && info.namespace">
+          <a href="/organizations/new?namespace={{ info.namespace }}">Create this namespace</a> or return to the <a href="/">main page</a>
+        </h4>
+        <h4 ng-if="info && info.for_repo && info.namespace_exists && info.namespace">
+          <a href="/new?namespace={{ info.namespace }}&name={{ info.repo_name }}">Create this repository</a> or return to the <a href="/">main page</a>
+        </h4>
+      </div>
+
+      <!-- 403 -->
+      <div class="err403" ng-if="code == 403">
+        <h2>403: Unauthorized</h2>
+        <h3 ng-if="!info.for_repo">You are not authorized to view this resource</h3>
+        <h3 ng-if="info.for_repo">You are not authorized to view this repository</h3>
+        <img src="/static/img/40x/RHQ-logomark.svg">
+
+        <h4 ng-if="info.for_repo">Contact the admin of the <strong>{{ info.namespace }}</strong> namespace for access to the repository or you can return to the <a href="/">main page</a></h4>
+        <h4 ng-if="!info.for_repo">Return to the <a href="/">main page</a></h4>
+      </div>
+
+    </div>
+  </div>
+</div>

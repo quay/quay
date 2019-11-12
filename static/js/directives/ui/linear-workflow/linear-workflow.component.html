@@ -1,0 +1,39 @@
+<div class="linear-workflow-element">
+  <!-- Contents -->
+  <div ng-transclude />
+
+  <div class="bottom-controls">
+    <table class="upcoming-table">
+      <tr>
+        <td>
+          <!-- Next button -->
+          <button class="btn btn-primary"
+                  ng-disabled="!$ctrl.currentSection.component.sectionValid"
+                  ng-click="$ctrl.onNextSection()"
+                  ng-class="{
+                    'btn-success': $ctrl.currentSection.index == $ctrl.sections.length - 1,
+                    'btn-lg': $ctrl.currentSection.index == $ctrl.sections.length - 1
+                  }">
+            <span ng-if="$ctrl.currentSection.index != sections.length - 1">Continue</span>
+            <span ng-if="$ctrl.currentSection.index == sections.length - 1">
+              <i class="fa fa-check-circle"></i>{{ ::$ctrl.doneTitle }}
+            </span>
+          </button>
+        </td>
+        <td>
+          <!-- Next sections -->
+          <div class="upcoming"
+               ng-if="$ctrl.currentSection.index < $ctrl.sections.length - 1">
+            <b>Next:</b>
+            <ul>
+              <li ng-repeat="section in $ctrl.sections"
+                  ng-if="section.index > $ctrl.currentSection.index && !section.component.skipSection">
+                {{ section.component.sectionTitle }}
+              </li>
+            </ul>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>

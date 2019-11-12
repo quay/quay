@@ -1,0 +1,7 @@
+<span>
+  <i class="fa fa-github fa-lg" style="margin-right: 6px" data-title="GitHub" bs-tooltip="tooltip.title"></i>
+  Push to GitHub <span ng-if="KeyService.isEnterprise('github-trigger')">Enterprise</span> repository
+  <a href="{{ trigger.repository_url }}" target="_new">
+    {{ trigger.config.build_source }}
+  </a>
+</span>

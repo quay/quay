@@ -1,0 +1,368 @@
+<div class="service-keys-manager-element">
+  <div class="resource-view" resource="keysResource" error-message="'Could not load service keys'">
+    <div class="manager-header" header-title="Service Keys">
+      <button class="btn btn-primary" ng-click="showCreateKey()" ng-show="!inReadOnlyMode">
+        Create Preshareable Key
+      </button>
+    </div>
+
+    <div class="section-description-header twenty">
+      Service keys provide a recognized means of authentication between Red Hat Quay and external services, as well as between external services. <br>Example services include Quay Security Scanner speaking to a <a href="https://github.com/coreos/clair" target="_blank">Clair</a> cluster, or Red Hat Quay speaking to its
+      <a href="https://tectonic.com/quay-enterprise/docs/latest/build-support.html" target="_blank">build workers</a>.
+    </div>
+
+    <div class="co-check-bar" ng-show="keys.length">
+      <span class="cor-checkable-menu" controller="checkedKeys">
+        <div class="cor-checkable-menu-item" item-filter="allKeyFilter(item)">
+          <i class="fa fa-check-square-o"></i>All Keys
+        </div>
+        <div class="cor-checkable-menu-item" item-filter="noKeyFilter(item)">
+          <i class="fa fa-square-o"></i>No Keys
+        </div>
+        <div class="cor-checkable-menu-item" item-filter="unapprovedKeyFilter(item)">
+          <i class="fa fa-question-circle"></i>Unapproved Keys
+        </div>
+        <div class="cor-checkable-menu-item" item-filter="expiredKeyFilter(item)">
+          <i class="fa fa-warning"></i>Expired Keys
+        </div>
+      </span>
+
+      <span class="co-checked-actions" ng-if="checkedKeys.checked.length" ng-show="!inReadOnlyMode">
+        <button class="btn btn-primary"
+                ng-click="askApproveMultipleKeys(checkedKeys.checked)"
+                ng-show="allRequireApproval(checkedKeys.checked)">
+          <i class="fa fa-check"></i><span class="text">Approve Keys</span>
+        </button>
+
+        <button class="btn btn-primary"
+                ng-click="askChangeExpirationMultipleKeys(checkedKeys.checked)"
+                ng-if="allExpired(checkedKeys.checked)">
+          <i class="fa fa-refresh"></i>
+          <span class="text">Revive Keys</span>
+        </button>
+
+        <button class="btn btn-default"
+                ng-click="askChangeExpirationMultipleKeys(checkedKeys.checked)"
+                ng-if="!allExpired(checkedKeys.checked)">
+          <i class="fa fa-clock-o"></i>
+          <span class="text">Change Keys Expiration</span>
+        </button>
+
+        <button class="btn btn-default"
+                ng-click="askDeleteMultipleKeys(checkedKeys.checked)">
+          <i class="fa fa-times"></i><span class="text">Delete Keys</span>
+        </button>
+      </span>
+
+      <span class="co-filter-box">
+        <span class="filter-message" ng-if="options.filter">
+          Showing {{ orderedKeys.entries.length }} of {{ keys.length }} keys
+        </span>
+        <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Keys...">
+      </span>
+    </div>
+
+    <!-- Table -->
+    <div class="empty" ng-if="!keys.length" style="margin-top: 20px;">
+      <div class="empty-primary-msg">No service keys defined</div>
+      <div class="empty-secondary-msg">There are no keys defined for working with external services</div>
+    </div>
+
+    <table class="co-table" ng-show="keys.length">
+      <thead>
+        <td class="checkbox-col"></td>
+        <td class="caret-col"></td>
+        <td ng-class="TableService.tablePredicateClass('name', options.predicate, options.reverse)">
+          <a href="javascript:void(0)" ng-click="TableService.orderBy('name', options)">Name</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('service', options.predicate, options.reverse)">
+          <a href="javascript:void(0)" ng-click="TableService.orderBy('service', options)">Service Name</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('creation_datetime', options.predicate, options.reverse)">
+          <a href="javascript:void(0)" ng-click="TableService.orderBy('creation_datetime', options)">Created</a>
+        </td>
+        <td ng-class="TableService.tablePredicateClass('expiration_datetime', options.predicate, options.reverse)">
+          <a href="javascript:void(0)" ng-click="TableService.orderBy('expiration_datetime', options)">Expires</a>
+        </td>
+        <td>
+          Approval Status
+        </td>
+        <td class="hidden-xs options-col"></td>
+      </thead>
+      <tbody class="co-checkable-row"
+             ng-repeat="key in orderedKeys.visibleEntries"
+             ng-class="checkedKeys.isChecked(key, checkedKeys.checked) ? 'checked' : ''"
+             bindonce>
+        <tr>
+         <td><span class="cor-checkable-item" controller="checkedKeys" item="key"></span></td>
+         <td class="caret-col">
+           <span ng-click="toggleDetails(key)">
+             <i class="fa"
+                ng-class="key.expanded ? 'fa-caret-down' : 'fa-caret-right'"
+                data-title="View Details" bs-tooltip></i>
+           </span>
+          </td>
+          <td>
+            <span class="max-text">
+              <a ng-click="toggleDetails(key)" bo-if="key.name"><span bo-text="key.name"></span></a>
+              <a ng-click="toggleDetails(key)" bo-if="!key.name" class="unnamed">(Unnamed)</a>
+            </span>
+          </td>
+          <td><span class="max-text" bo-text="key.service"></span></td>
+          <td>
+            <time-ago datetime="key.created_date"></time-ago>
+          </td>
+          <td>
+            <span class="rotation" bo-if="key.expiration_date && willRotate(key)">
+                <i class="fa" ng-class="getExpirationInfo(key).icon"></i>
+                Automatically rotated <time-ago datetime="getRotationDate(key)"></time-ago>
+            </span>
+            <span bo-if="!willRotate(key)">
+              <a ng-click="showChangeExpiration(key)">
+                <expiration-status-view expiration-date="key.expiration_date"></expiration-status-view>
+              </a>
+            </span>
+          </td>
+          <td>
+            <span class="approval-automatic" bo-if="key.approval && key.approval.approval_type == 'ServiceKeyApprovalType.AUTOMATIC'">
+              Generated Automatically
+            </span>
+            <span class="approval-user" bo-if="key.approval && key.approval.approval_type == 'ServiceKeyApprovalType.SUPERUSER'">
+              <span class="pretext">Approved by</span><span class="entity-reference" entity="key.approval.approver"></span>
+            </span>
+            <span class="approval-rotation" bo-if="key.approval && key.approval.approval_type == 'ServiceKeyApprovalType.KEY_ROTATION'">
+              <i class="fa fa-refresh"></i>Approved via key rotation
+            </span>
+            <span class="approval-required" bo-if="!key.approval">
+              Awaiting Approval <a ng-click="showApproveKey(key)" ng-show="!inReadOnlyMode">Approve Now</a>
+            </span>
+          </td>
+          <td class="options-col">
+            <span class="cor-options-menu"  ng-show="!inReadOnlyMode">
+              <span class="cor-option" option-click="showChangeName(key)">
+                <i class="fa fa-tag"></i> Set Friendly Name
+              </span>
+              <span class="cor-option" option-click="showChangeExpiration(key)">
+                <i class="fa fa-clock-o"></i> Change Expiration Time
+              </span>
+              <span class="cor-option" option-click="showApproveKey(key)" ng-show="!key.approval">
+                <i class="fa fa-check-circle"></i> Approve Key
+              </span>
+              <span class="cor-option" option-click="showDeleteKey(key)">
+                <i class="fa fa-times"></i> Delete Key
+              </span>
+            </span>
+          </td>
+        </tr>
+        <tr ng-if="key.expanded">
+          <td colspan="7">
+            <div class="subtitle">Full Key ID</div>
+            <span bo-text="key.kid"></span>
+
+            <div bo-if="key.approval.notes">
+              <div class="subtitle">Approval notes</div>
+              <markdown-view content="key.approval.notes"></markdown-view>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+     </table>
+
+   <div class="empty" ng-if="keys.length && !orderedKeys.entries.length"
+        style="margin-top: 20px;">
+    <div class="empty-primary-msg">No matching keys found.</div>
+    <div class="empty-secondary-msg">Try expanding your filtering terms.</div>
+   </div>
+  </div>
+
+  <!-- Change Keys Expiration Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="changeKeysInfo"
+       dialog-action="changeKeysExpiration(changeKeysInfo, callback)"
+       dialog-title="Change Service Keys Expiration"
+       dialog-action-title="Change Expiration">
+    <form class="expiration-form">
+      Please choose the new expiration date and time (if any) for the following keys:
+      <ul class="keys-list">
+        <li ng-repeat="key in changeKeysInfo.keys">{{ getKeyTitle(key) }}</li>
+      </ul>
+      <label>Expiration Date:</label>
+      <span class="datetime-picker" datetime="changeKeysInfo.expiration_date"></span>
+      <span class="co-help-text">
+        If specified, the date and time at which the keys expire. It is highly recommended to have an expiration date.
+      </span>
+    </form>
+  </div>
+
+  <!-- Change Key Expiration Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="context.expirationChangeInfo"
+       dialog-action="changeKeyExpiration(context.expirationChangeInfo, callback)"
+       dialog-title="Change Service Key Expiration"
+       dialog-action-title="Change Expiration">
+    <form class="expiration-form">
+      <label>Expiration Date:</label>
+      <span class="datetime-picker" datetime="context.expirationChangeInfo.expiration_date"></span>
+      <span class="co-help-text">
+        If specified, the date and time that the key expires. It is highly recommended to have an expiration date.
+      </span>
+    </form>
+  </div>
+
+  <!-- Delete Keys Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="deleteKeysInfo"
+       dialog-action="deleteKeys(deleteKeysInfo, callback)"
+       dialog-title="Delete Service Keys"
+       dialog-action-title="Delete Keys">
+       Are you <strong>sure</strong> you want to delete the follopwing service keys?<br>
+       All external services that use these keys for authentication will fail.
+       <ul class="keys-list">
+         <li ng-repeat="key in deleteKeysInfo.keys">{{ getKeyTitle(key) }}</li>
+       </ul>
+  </div>
+
+  <!-- Delete Key Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="deleteKeyInfo"
+       dialog-action="deleteKey(deleteKeyInfo, callback)"
+       dialog-title="Delete Service Key"
+       dialog-action-title="Delete Key">
+       Are you <strong>sure</strong> you want to delete service key <strong>{{ getKeyTitle(deleteKeyInfo.key) }}</strong>?<br><br>
+       All external services that use this key for authentication will fail.
+  </div>
+
+  <!-- Approve Keys Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="approveKeysInfo"
+       dialog-action="approveKeys(approveKeysInfo, callback)"
+       dialog-title="Approve Service Keys"
+       dialog-action-title="Approve Keys">
+    <form>
+      <div style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+        Approve the following service keys?
+        <ul class="keys-list">
+          <li ng-repeat="key in approveKeysInfo.keys">{{ getKeyTitle(key) }}</li>
+        </ul>
+      </div>
+      <markdown-input content="approveKeysInfo.notes"
+                      can-write="true"
+                      (content-changed)="updateApproveKeysInfoNotes($event.content)"
+                      field-title="notes"></markdown-input>
+      <span class="co-help-text">
+        Enter optional notes for additional human-readable information about why the keys were approved.
+      </span>
+    </form>
+  </div>
+
+  <!-- Approve Key Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="approvalKeyInfo"
+       dialog-action="approveKey(approvalKeyInfo, callback)"
+       dialog-title="Approve Service Key"
+       dialog-action-title="Approve Key">
+    <form>
+      <div style="margin-bottom: 10px;">
+        Approve service key <strong>{{ getKeyTitle(approvalKeyInfo.key) }}</strong>?
+      </div>
+      <markdown-input content="approvalKeysInfo.notes"
+                      can-write="true"
+                      (content-changed)="updateApprovalKeyInfoNotes($event.content)"
+                      field-title="notes"></markdown-input>
+      <span class="co-help-text">
+        Enter optional notes for additional human-readable information about why the key was approved.
+      </span>
+    </form>
+  </div>
+
+  <!-- Created key modal -->
+  <div id="createdKeyModal" class="modal fade co-dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" ng-show="!creatingKey" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Created Preshareable Service Key <strong>{{ getKeyTitle(createdKey) }}</strong></h4>
+        </div>
+        <div class="modal-body">
+          <div class="co-alert co-alert-warning">
+            Please copy or download the following private key. <strong>Once this dialog is closed the key will not be accessible anywhere else</strong>.
+          </div>
+          <textarea class="key-display form-control" onclick="this.focus();this.select()" readonly>{{ createdKey.private_key }}</textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" ng-click="downloadPrivateKey(createdKey)" ng-if="isDownloadSupported()">
+            <i class="fa fa-download"></i> Download Private Key
+          </button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Create key modal -->
+  <div id="createKeyModal" class="modal fade co-dialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" ng-show="!creatingKey" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Create Preshareable Service Key</h4>
+        </div>
+        <div class="modal-body" ng-show="creatingKey">
+          <div class="cor-loader"></div>
+        </div>
+        <div class="modal-body" ng-show="!creatingKey">
+          <form name="createForm" ng-submit="createServiceKey()">
+            <table class="co-form-table">
+              <tr>
+                <td><label for="create-key-name">Key Name:</label></td>
+                <td>
+                  <input class="form-control" name="create-key-name" type="text" ng-model="newKey.name" placeholder="Friendly Key Name" ng-pattern="/^[\s a-zA-Z0-9\-_:/]*$/" required>
+                  <span class="co-help-text">
+                    A friendly name for the key for later reference. Must match ^[\s a-zA-Z0-9\-_:/]*$.
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td><label for="create-servce-name">Service Name:</label></td>
+                <td>
+                  <input class="form-control" name="create-servce-name" type="text" ng-model="newKey.service" placeholder="Service Name" ng-pattern="/^[a-z0-9_]+$/" required>
+                  <span class="co-help-text">
+                    The name of the service for the key. Keys within the same cluster should share service names,  representing
+                    a single logical service. Must match [a-z0-9_]+.
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td><label for="create-key-expiration">Expires:</label></td>
+                <td>
+                  <span class="datetime-picker" datetime="newKey.expiration"></span>
+                  <span class="co-help-text">
+                    If specified, the date and time that the key expires. It is highly recommended to have an expiration date.
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td><label for="create-key-notes">Approval Notes:</label></td>
+                <td>
+                  <markdown-input content="newKey.notes"
+                                  can-write="true"
+                                  (content-changed)="updateNewKeyNotes($event.content)"
+                                  field-title="notes"></markdown-input>
+                  <span class="co-help-text">
+                    Optional notes for additional human-readable information about why the key was added.
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </form>
+        </div>
+        <div class="modal-footer" ng-show="!creatingKey">
+          <button type="button" class="btn btn-primary" ng-click="createServiceKey()" ng-disabled="createForm.$invalid">
+            Create Key
+          </button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+</div>

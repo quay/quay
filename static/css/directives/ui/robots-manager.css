@@ -1,0 +1,114 @@
+.robots-manager-element .robot {
+  white-space: nowrap;
+  max-width: 550px;
+}
+
+.robots-manager-element .robot-account-name {
+  display: inline-block;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 90%;
+}
+
+.robots-manager-element .robots-description {
+  word-break: break-all;
+  max-width: 500px;
+  display: inline-block;
+}
+
+.robots-manager-element .robot a {
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.robots-manager-element .robot .prefix {
+  color: #aaa;
+}
+
+.robots-manager-element .robot i {
+  margin-right: 10px;
+}
+
+.robots-manager-element .popup-input-button i.fa {
+  margin-right: 4px;
+}
+
+.robots-manager-element .empty {
+  color: #ccc;
+}
+
+.robots-manager-element tr.open td {
+   border-bottom: 1px solid transparent;
+}
+
+.robots-manager-element .permissions-table-wrapper {
+   margin-left: 0px;
+   margin-top: 0px;
+
+   background-color: rgba(238, 238, 238, 0.21);
+   padding: 14px;
+   padding-bottom: 8px;
+
+   padding-left: 16px;
+   padding-top: 20px;
+}
+
+.robots-manager-element .permissions-table {
+  margin-bottom: 10px;
+}
+
+.robots-manager-element .permissions-table tbody tr td {
+  border-bottom: 0px;
+  padding: 4px;
+}
+
+.robots-manager-element .permissions-display-row {
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.robots-manager-element .permissions-display-row td:first-child {
+  min-width: 300px;
+}
+
+.robots-manager-element .repo-circle {
+  color: #999;
+  display: inline-block;
+  position: relative;
+  background: #eee;
+  padding: 4px;
+  border-radius: 50%;
+  display: inline-block;
+  width: 46px;
+  height: 46px;
+  margin-right: 6px;
+}
+
+.robots-manager-element .fa-caret-down, .robots-manager-element .fa-caret-right {
+  margin-right: 4px;
+  color: #aaa;
+}
+
+.robots-manager-element .repo-circle .fa-hdd-o {
+  font-size: 1.7em;
+}
+
+.robots-manager-element .repo-circle.no-background .fa-hdd-o {
+  font-size: 1.7em;
+}
+
+.robots-manager-element .repo-circle .fa-lock {
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  font-size: 12px !important;
+}
+
+.robots-manager-element .repo-circle.no-background .fa-lock {
+  bottom: 5px;
+  right: 2px;
+}
+
+.robots-manager-element .member-perm-summary {
+  margin-right: 14px;
+}

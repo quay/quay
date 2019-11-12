@@ -1,0 +1,35 @@
+<div class="set-repo-permissions-dialog-element">
+  <div class="modal fade co-dialog wider">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" ng-click="hide()" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">
+            Set permissions for <i class="fa {{ info.entityIcon }}"></i> {{ info.entityName }}
+          </h4>
+        </div> <!-- /.model-header -->
+        <div class="modal-body" ng-show="working">
+          <div class="cor-loader"></div>
+        </div>
+        <div class="modal-body co-modal-body-scrollable" ng-show="!working" style="padding-bottom: 210px;">
+          <div class="set-repo-permissions"
+               namespace="context.info.namespace"
+               entity-name="context.info.entityName"
+               entity-kind="context.info.entityKind"
+               has-changed-repositories="context.hasChangedRepositories"
+               has-checked-repositories="context.hasCheckedRepositories"
+               setting-permissions="settingPermissions()"
+               permissions-set="permissionsSetComplete(repositories)"
+               set-permissions="setPermissionsCounter"
+               ng-if="context.info.namespace && context.info.entityName && context.info.entityKind">
+           </div>
+        </div> <!-- /.modal-body -->
+        <div class="modal-footer" ng-show="!working">
+          <button type="button" class="btn btn-primary" ng-click="setPermissions()"
+                  ng-show="context.hasChangedRepositories">Update permissions</button>
+          <button type="button" class="btn btn-default" ng-click="hide()">Close</button>
+        </div> <!-- /.footer-body -->
+      </div>
+    </div>
+  </div>
+</div>

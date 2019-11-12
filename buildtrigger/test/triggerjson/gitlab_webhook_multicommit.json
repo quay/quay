@@ -1,0 +1,100 @@
+{
+  "object_kind": "push",
+  "event_name": "push",
+  "before": "0da5b5ebb397f0a8569c97f28e266c718607e8da",
+  "after": "9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
+  "ref": "refs\/heads\/master",
+  "checkout_sha": "9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
+  "message": null,
+  "user_id": 750047,
+  "user_name": "John Smith",
+  "user_email": "j@smith.com",
+  "user_avatar": "https:\/\/secure.gravatar.com\/avatar\/32784623495678234678234?s=80&d=identicon",
+  "project_id": 1756744,
+  "project": {
+    "name": "some-test-project",
+    "description": "",
+    "web_url": "https:\/\/gitlab.com\/jsmith\/some-test-project",
+    "avatar_url": null,
+    "git_ssh_url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "git_http_url": "https:\/\/gitlab.com\/jsmith\/some-test-project.git",
+    "namespace": "jsmith",
+    "visibility_level": 0,
+    "path_with_namespace": "jsmith\/some-test-project",
+    "default_branch": "master",
+    "homepage": "https:\/\/gitlab.com\/jsmith\/some-test-project",
+    "url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "ssh_url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "http_url": "https:\/\/gitlab.com\/jsmith\/some-test-project.git"
+  },
+  "commits": [
+    {
+      "id": "f00a0a6a71118721ac1f586bf79650170042609f",
+      "message": "Add changelog",
+      "timestamp": "2016-09-29T14:59:23+00:00",
+      "url": "https:\/\/gitlab.com\/jsmith\/some-test-project\/commit\/f00a0a6a71118721ac1f586bf79650170042609f",
+      "author": {
+        "name": "John Smith",
+        "email": "j@smith.com"
+      },
+      "added": [
+        "CHANGELOG"
+      ],
+      "modified": [
+
+      ],
+      "removed": [
+
+      ]
+    },
+    {
+      "id": "cc66287314cb154c986665a6c29377ef42edee60",
+      "message": "Add new file",
+      "timestamp": "2016-09-29T15:02:01+00:00",
+      "url": "https:\/\/gitlab.com\/jsmith\/some-test-project\/commit\/cc66287314cb154c986665a6c29377ef42edee60",
+      "author": {
+        "name": "John Smith",
+        "email": "j@smith.com"
+      },
+      "added": [
+        "YetAnotherFIle"
+      ],
+      "modified": [
+
+      ],
+      "removed": [
+
+      ]
+    },
+    {
+      "id": "9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
+      "message": "Merge branch 'foobar' into 'master'\r\n\r\nAdd changelog\r\n\r\nSome merge thing\r\n\r\nSee merge request !1",
+      "timestamp": "2016-09-29T15:02:41+00:00",
+      "url": "https:\/\/gitlab.com\/jsmith\/some-test-project\/commit\/9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
+      "author": {
+        "name": "John Smith",
+        "email": "j@smith.com"
+      },
+      "added": [
+        "CHANGELOG",
+        "YetAnotherFIle"
+      ],
+      "modified": [
+
+      ],
+      "removed": [
+
+      ]
+    }
+  ],
+  "total_commits_count": 3,
+  "repository": {
+    "name": "some-test-project",
+    "url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "description": "",
+    "homepage": "https:\/\/gitlab.com\/jsmith\/some-test-project",
+    "git_http_url": "https:\/\/gitlab.com\/jsmith\/some-test-project.git",
+    "git_ssh_url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "visibility_level": 0
+  }
+}

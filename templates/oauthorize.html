@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}
+  <title>Authorize {{ application.name }} · Quay</title>
+{% endblock %}
+
+{% block body_content %}
+  <div class="container" ng-if="user.anonymous">
+    <div class="col-sm-6 col-sm-offset-3">
+      <div class="user-setup"></div>
+    </div>
+  </div>
+
+  <div class="container auth-container" ng-if="!user.anonymous">
+    <div class="auth-header">
+      <span class="avatar" size="48" data="{{ application.avatar }}"></span>
+      <h2><a href="{{ application.url }}" ng-safenewtab>{{ application.name }}</a></h2>
+      <h4>
+        <span class="avatar" size="24" data="{{ application.organization.avatar }}"
+              style="vertical-align: middle; margin-right: 4px;"></span>
+        <span style="vertical-align: middle">{{ application.organization.name }}</span>
+      </h4>
+    </div>
+
+    <div class="auth-scopes">
+      <div class="reason">This application would like permission to:</div>
+      <div class="panel-group">
+        {% for index, scope in enumerate(scopes) %}
+        <div class="scope panel panel-default {% if scope.dangerous %} dangerous {% endif %}">
+          <div class="panel-heading">
+            <h4 class="panel-title">
+                <div class="title-container">
+                  <div class="title {% if not scope.dangerous %}collapsed{% endif %}" data-toggle="collapse"
+                       data-parent="#scopeGroup" data-target="#description-{{ index }}">
+                    <i class="fa arrow"></i>
+                    <i class="fa {{ scope.icon }} fa-lg"></i>
+                    <a data-toggle="collapse" href="#collapseOne">
+                      {{ scope.title }}
+                    </a>
+
+                    {% if scope.dangerous %}
+                      <i class="fa fa-lg fa-exclamation-triangle"
+                         data-title="This scope grants permissions which are potentially dangerous. Be careful when authorizing it!"
+                         data-container="body" bs-tooltip></i>
+                    {% endif %}
+                  </div>
+                </div>
+            </h4>
+          </div>
+          <div id="description-{{ index }}" class="panel-collapse {% if not scope.dangerous %} collapse {% else %} in {% endif %}">
+            <div class="panel-body">
+              {% if scope.dangerous %}
+              <div class="alert alert-warning">This scope grants permissions which are potentially dangerous. Be careful when authorizing it!</div>
+              {% endif %}
+
+              {{ scope.description }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="button-bar">
+      {% if has_dangerous_scopes %}
+      <button type="button" class="btn btn-warning" onclick="$('#confirmAuthorizeModal').modal()">Authorize Application</button>
+      {% else %}
+      <form method="post" action="/oauth/authorizeapp">
+        <input type="hidden" name="client_id" value="{{ client_id }}">
+        <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+        <input type="hidden" name="scope" value="{{ scope }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token_val }}">
+        <button type="submit" class="btn btn-success">Authorize Application</button>
+      </form>
+      {% endif %}
+      <form method="post" action="/oauth/denyapp">
+        <input type="hidden" name="client_id" value="{{ client_id }}">
+        <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+        <input type="hidden" name="scope" value="{{ scope }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token_val }}">
+        <button type="submit" class="btn btn-default">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal message dialog -->
+  <div class="modal fade" id="confirmAuthorizeModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Confirm Authorization</h4>
+        </div>
+        <div class="modal-body">
+          The application <strong>{{ application.name }}</strong> is requesting permission to perform actions which are potentially dangerous.
+          <br><br>
+          Are you sure you want to authorize this application?
+        </div>
+        <div class="modal-footer">
+          <form method="post" action="/oauth/authorizeapp" style="display: inline-block">
+            <input type="hidden" name="client_id" value="{{ client_id }}">
+            <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+            <input type="hidden" name="scope" value="{{ scope }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token_val }}">
+            <button type="submit" class="btn btn-success">Authorize Application</button>
+          </form>
+          <form method="post" action="/oauth/denyapp" style="display: inline-block">
+            <input type="hidden" name="client_id" value="{{ client_id }}">
+            <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+            <input type="hidden" name="scope" value="{{ scope }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token_val }}">
+            <button type="submit" class="btn btn-default">Deny</button>
+          </form>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+
+{% endblock %}

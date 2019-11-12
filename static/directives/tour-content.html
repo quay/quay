@@ -1,0 +1,204 @@
+<!-- Features -->
+<div class="product-tour" ng-if="kind == '' || kind == 'features'">
+  <div class="tour-section row tour-header">
+    <div class="col-md-12">
+      <div class="tour-section-title">The most advanced repository insight available</div>
+      <div class="tour-section-description">
+        Features and benefits that make working with Docker repositories awesome
+      </div>
+    </div>
+  </div>
+
+
+  <div class="tour-section row">
+    <div class="col-md-7"><img src="/static/img/user-home.png" title="User Home" data-screenshot-url="https://quay.io/" class="img-responsive"></div>
+    <div class="col-md-5">
+      <div class="tour-section-title">Customized for you</div>
+      <div class="tour-section-description">
+        Your personal home screen shows those repositories most important to you, ordered by recent activity.
+      </div>
+      <div class="tour-section-description">Keep up to date on the status of those repositories you deem important.</div>
+    </div>
+  </div>
+
+  <div class="tour-section row">
+    <div class="col-md-7 col-md-push-5"><img src="/static/img/repo-view.png" title="Repository View" data-screenshot-url="https://quay.io/repository/devtable/complex" class="img-responsive"></div>
+    <div class="col-md-5 col-md-pull-7">
+      <div class="tour-section-title">Useful views of repositories</div>
+      <div class="tour-section-description">
+        Each repository is presented with the maximum amount of useful information, including its image history, <b>markdown</b>-based description, and tags.
+      </div>
+    </div>
+  </div>
+
+  <div class="tour-section row">
+    <div class="col-md-7"><img src="/static/img/build-history.png" title="View Image"
+                               data-screenshot-url="https://quay.io/repository/devtable/building/build"
+                               class="img-responsive"></div>
+    <div class="col-md-5">
+      <div class="tour-section-title">Dockerfile build in the cloud</div>
+      <div class="tour-section-description">
+        Like to use <b>Dockerfiles</b> to build your images? Simply upload your Dockerfile (and any additional files it needs) and we'll build your Dockerfile into an image and push it to your repository.
+      </div>
+      <div class="tour-section-description">
+        If you store your Dockerfile in <i class="fa fa-github fa-lg" style="margin: 6px;"></i><b>GitHub</b>, <b>Bitbucket</b>, or <b>Gitlab</b>, add a <b>Build Trigger</b> to your repository and we'll start a Dockerfile build for every change you make.
+      </div>
+    </div>
+  </div>
+
+  <div class="tour-section row">
+    <div class="col-md-7 col-md-push-5"><img src="/static/img/repo-settings.png" title="Repository Settings" data-screenshot-url="https://quay.io/repository/devtable/complex/admin" class="img-responsive"></div>
+    <div class="col-md-5 col-md-pull-7">
+      <div class="tour-section-title">Share at your control</div>
+      <div class="tour-section-description">
+        Share any repository with as many (or as few) users as you choose.
+      </div>
+      <div class="tour-section-description">Need a repository only for your team? Easily <b>share</b> with your team members.</div>
+      <div class="tour-section-description">Need finer grain control? Mark a user as <b>read-only</b> or <b>read/write</b>.</div>
+      <div class="tour-section-description">Have a build script or a deploy process that needs access? Generate an <b>access token</b> to grant revocable access for pushing or pulling.</div>
+      <div class="tour-section-description">Want to share with the world? Make your repository <b>fully public</b>.</div>
+    </div>
+  </div>
+
+  <div class="row testimonial" quay-require="['BILLING']">
+    <div class="tour-action" quay-require="['BILLING']">
+      <a href="/plans?trial-plan=personal">
+        <button class="btn btn-success">
+          Start free trial
+        </button>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Organizations -->
+<div class="product-tour" ng-if="kind == 'organizations'">
+  <div class="tour-section row tour-header">
+    <div class="col-md-12">
+      <div class="tour-section-title">Organize your repositories like you organize your company</div>
+      <div class="tour-section-description">
+        Organizations in <span class="registry-name"></span> provide unique features for <span  quay-require="['BILLING']">businesses and other</span>
+        groups, including team-based sharing and fine-grained permission controls.
+      </div>
+    </div>
+  </div>
+
+  <div class="tour-section row">
+    <div class="col-md-7"><img src="/static/img/org-view.png" data-title="Repositories" data-screenshot-url="https://quay.io/repository/" class="img-responsive"></div>
+    <div class="col-md-5">
+      <div class="tour-section-title">A central collection of repositories</div>
+      <div class="tour-section-description">
+        Your organization is the focal point for all activity that occurs within
+        your public or private repositories. Your repositories are centrally visible
+        and managed within the namespace of your organization. You may share
+        your repositories with as many users and teams as you like, without
+        any additional cost.
+      </div>
+    </div>
+  </div>
+
+  <div class="tour-section row">
+    <div class="col-md-7 col-md-push-5"><img src="/static/img/org-settings.png" data-title="buynlarge Admin" data-screenshot-url="https://quay.io/organization/buynlarge" class="img-responsive"></div>
+    <div class="col-md-5 col-md-pull-7">
+      <div class="tour-section-title">Organization settings at a glance</div>
+      <div class="tour-section-description">
+        Your organization allows you to view your private repository count
+        and manage billing settings in a centralized place.
+      </div>
+      <div class="tour-section-description">
+        You can also see all of the users who have access to your organization
+        and the teams of which they are members. This allows you to audit the
+        access that has been granted in your organization.
+      </div>
+    </div>
+  </div>
+
+  <div class="tour-section row">
+    <div class="col-md-7"><img src="/static/img/org-logs.png" data-title="buynlarge Logs" data-screenshot-url="https://quay.io/organization/buynlarge" class="img-responsive"></div>
+    <div class="col-md-5">
+      <div class="tour-section-title">Logging for comprehensive analysis</div>
+      <div class="tour-section-description">
+        Every time a user in your organization performs an action it is logged
+        and categorized in a way that allows for a complete understanding of
+        how your repositories have been accessed and modified. Each log entry
+        includes the action performed, the authorization which allowed the action
+        to occur, and additional relevant data such as the name of the item
+        which was modified or accessed.
+      </div>
+      <div class="tour-section-description">
+        For those times when you need full control when generating reports from
+        your logs, we also allow you to export your logs in JSON format. These
+        can be ingested by custom tooling solutions allowing you to visualize
+        reports in whatever format you require.
+      </div>
+    </div>
+  </div>
+
+  <div class="tour-section row">
+    <div class="col-md-7 col-md-push-5"><img src="/static/img/org-teams.png" data-title="buynlarge" data-screenshot-url="https://quay.io/organization/buynlarge" class="img-responsive"></div>
+    <div class="col-md-5 col-md-pull-7">
+      <div class="tour-section-title">Teams simplify access controls</div>
+      <div class="tour-section-description">
+        Teams allow your organization to delegate access to your namespace and
+        repositories in a controlled fashion. Each team has permissions that
+        apply across the entire org, and can also be given specific levels of
+        access to specific repositories. A user is switching roles? No problem,
+        change their team membership and their access will be adjusted accordingly.
+      </div>
+      <div class="tour-section-description">
+        Owners of your organization, and members of other teams with
+        administrator privileges, have full permissions to all repositories
+        in the organization, as well as permissions to view and adjust the
+        account settings for the organization. Add users to these teams with
+        caution.
+      </div>
+    </div>
+  </div>
+
+  <div class="row testimonial" quay-require="['BILLING']">
+    <div class="message">
+      Docker is at the core of Aptible's deployment platform, and Quay provides the secure repository hosting we need to safely store our customer's application images, and our own. With its thorough team access control model, we can be sure that only authorized users are able to access a Docker image repository. No other Docker repository index makes this as easy as Quay.
+    </div>
+
+    <div class="speaker-info">
+      <img src="/static/img/testimonial-frank.png">
+      <span class="speaker-info-internal">
+        <span class="speaker">Frank Macreery</span>
+        <span class="speaker-title"><a href="https://www.aptible.com" ng-safenewtab alt="Aptible">Aptible</a> - CTO & Co-Founder</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="tour-action" quay-require="['BILLING']">
+    <a href="/organizations/new/" data-title="Starts the process to create a new organization" bs-tooltip="tooltip.title">
+      <button class="btn btn-success">
+        Create New Organization
+      </button>
+    </a>
+    <a href="/user/?migrate" data-title="Starts the process to convert this account into an organization" quay-show="Config.AUTHENTICATION_TYPE == 'Database' && !user.anonymous" bs-tooltip="tooltip.title">
+      <button class="btn btn-primary">
+        Convert account now
+      </button>
+    </a>
+  </div>
+</div>
+
+
+<!-- Enterprise -->
+<div class="product-tour enterprise-tour" ng-if="kind == 'enterprise'">
+  <div class="tour-section row tour-header">
+    <div class="col-md-12">
+      <div class="tour-section-title"><img src="/static/img/QuayEnterprise_horizontal_color.svg"></div>
+      <div class="tour-section-description">
+        <div class="col-lg-6 enterprise-plan col-lg-offset-3">
+          Run a private instance of Quay behind your firewall, with all the same build features and geo-replication. Fixed price for unlimited users and repositories.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="text-align: center; margin-bottom: 20px;">
+    <a href="/plans?tab=enterprise" class="btn btn-primary">Learn more about Red Hat Quay</a>
+  </div>
+
+</div>

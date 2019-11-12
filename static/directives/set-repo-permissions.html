@@ -1,0 +1,69 @@
+<div class="set-repo-permissions-element">
+  <span class="co-filter-box">
+    <span class="filter-message" ng-if="options.filter">
+      Showing {{ orderedRepositories.entries.length }} of {{ repositories.length }} repositories
+    </span>
+    <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Repositories...">
+  </span>
+
+  <label>
+    Select repositories in
+    <span class="avatar" size="16" data="namespaceInfo.avatar"></span>
+    {{ namespace }}:
+  </label>
+
+  <table class="co-table">
+    <thead>
+      <td class="checkbox-col checkbox-menu-col">
+        <span class="cor-checkable-menu" controller="checkedRepos" filter="orderedRepositories.entries">
+          <div class="cor-checkable-menu-item" item-filter="allRepositoriesFilter(item)">
+            <i class="fa fa-check-square-o"></i>All Repositories
+          </div>
+          <div class="cor-checkable-menu-item" item-filter="noRepositoriesFilter(item)">
+            <i class="fa fa-square-o"></i>No Repositories
+          </div>
+          <div class="cor-checkable-menu-item" item-filter="missingPermsRepositoriesFilter(item)">
+            <i class="fa fa-circle-o"></i>Missing Permissions
+          </div>
+        </span>
+      </td>
+      <td ng-class="TableService.tablePredicateClass('name', options.predicate, options.reverse)">
+        <a ng-click="TableService.orderBy('name', options)">Repository Name</a>
+      </td>
+      <td>Permission</td>
+      <td ng-class="TableService.tablePredicateClass('last_modified_datetime', options.predicate, options.reverse)">
+        <a ng-click="TableService.orderBy('last_modified_datetime', options)">Last Updated</a>
+      </td>
+     </thead>
+
+     <tr class="co-checkable-row"
+         ng-repeat="repo in orderedRepositories.visibleEntries"
+         ng-class="checkedRepos.isChecked(repo, checkedRepos.checked) ? 'checked' : ''"
+         bindonce>
+      <td class="offset-check-col">
+        <span class="cor-checkable-item" controller="checkedRepos" item="repo"></span>
+      </td>
+      <td>
+        <i class="fa fa-hdd-o"></i>
+        <span bo-text="repo.name"></span>
+      </td>
+      <td>
+        <span class="role-group small" current-role="repo.permission"
+              roles="repoRolesOrNone"
+              role-changed="setRole(role, repo)"></span>
+      </td>
+      <td>
+         <span ng-if="repo.last_modified">
+           {{ repo.last_modified * 1000 | amCalendar }}
+         </span>
+         <span class="empty" ng-if="!repo.last_modified">(Empty Repository)</span>
+      </td>
+    </tr>
+  </table>
+
+  <div class="empty" ng-if="!orderedRepositories.entries.length"
+       style="margin-top: 20px;">
+    <div class="empty-primary-msg">No matching repositories found.</div>
+    <div class="empty-secondary-msg">Try expanding your filtering terms.</div>
+  </div>
+</div>

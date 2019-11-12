@@ -1,0 +1,4 @@
+<span class="co-tab-element" ng-class="$ctrl.isClosed ? 'closed' : 'open'">
+  <span class="xs-toggle" ng-click="$ctrl.toggleClosed($event)"></span>
+  <ul ng-class="$ctrl.parent.isVertical() ? 'co-tabs col-md-1' : 'co-top-tab-bar'" ng-transclude></ul>
+</span>

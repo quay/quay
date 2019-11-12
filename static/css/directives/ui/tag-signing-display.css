@@ -1,0 +1,175 @@
+.tag-signing-display-element {
+    text-align: center;
+    display: inline-block;
+    cursor: default;
+    position: relative;
+}
+
+.tag-signing-display-element .fa {
+    font-size: 24px;
+}
+
+.tag-signing-display-element .fa.fa-question-circle {
+    font-size: 14px;
+    line-height: 18px;
+    text-align: center;
+}
+
+.tag-signing-display-element .signing-load-error {
+    color: #CCC;
+}
+
+.tag-signing-display-element .signing-not-signed {
+    color: #9B9B9B;
+}
+
+.tag-signing-display-element .signing-valid.okay-release {
+    color: #2FC98E;
+}
+
+.tag-signing-display-element .signing-valid.okay {
+    color: #5f9dd0;
+}
+
+.tag-signing-display-element .signing-valid.partial-okay {
+    color: #FCA657;
+}
+
+.tag-signing-display-element .signing-invalid {
+    color: #D64456;
+}
+
+.tag-signing-display-element .indicator {
+    position: relative;
+}
+
+.tag-signing-display-element .expiring-soon {
+  border-radius: 100%;
+  background-color: #fbab62;
+
+  position: absolute;
+  right: 0px;
+  bottom: 0px;
+  width: 8px;
+  height: 8px;
+  z-index: 2;
+}
+
+.tag-signing-display-element .expired {
+  border-radius: 100%;
+  background-color: #ec5266;
+
+  position: absolute;
+  right: 0px;
+  bottom: 0px;
+  width: 8px;
+  height: 8px;
+  z-index: 3;
+}
+
+.tag-signing-display-element .invalid {
+  border-radius: 100%;
+  background-color: #ec5266;
+
+  position: absolute;
+  right: 0px;
+  bottom: 0px;
+  width: 8px;
+  height: 8px;
+  z-index: 4;
+}
+
+.tag-signing-display-element.extended {
+    display: block;
+    position: relative;
+}
+
+.tag-signing-display-element.extended .fa {
+  color: #888 !important;
+  font-size: 16px;
+}
+
+.tag-signing-display-element.extended .indicator {
+    font-size: 16px;
+    position: absolute;
+    left: -22px;
+    top: 4px;
+}
+
+.tag-signing-display-element.extended .delegations {
+    margin: 0px;
+    padding: 0px;
+    text-align: left;
+    padding-left: 6px;
+    padding-top: 6px;
+}
+
+.tag-signing-display-element.extended .delegations td {
+  padding: 4px;
+  border: 0px;
+}
+
+.tag-signing-display-element.extended .delegations .delegation {
+    padding: 4px;
+    background-color: #eee;
+    border-radius: 4px;
+    font-size: 13px;
+    padding-right: 6px;
+    display: inline-block;
+}
+
+.tag-signing-display-element.extended .delegations .delegation:before {
+    content: "\f00c";
+    font-family: FontAwesome;
+    margin-right: 2px;
+    margin-left: 2px;
+    display: inline-block;
+    font-size: 10px;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.okay {
+  background-color: #d0deea;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.okay:before {
+    color: #5f9dd0;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.default {
+  background-color: #bdf1dd;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.default:before {
+    color: #2FC98E;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.warning {
+   background-color: #ffe0c4;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.warning:before {
+    content: "\f12a";
+    color: #FCA657;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.error {
+   background-color: #ffcad1;
+}
+
+.tag-signing-display-element.extended .delegations .delegation.error:before {
+   content: "\f00d";
+    color: #D64456;
+}
+
+.tag-signing-display-element.extended .delegations .delegation-name {
+    font-size: 14px;
+}
+
+.tag-signing-display-element.extended .delegations .delegation-info {
+    display: inline-block;
+    white-space: nowrap;
+    vertical-align: middle;
+    margin-left: 4px;
+    font-size: 12px;
+}
+

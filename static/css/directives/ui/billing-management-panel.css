@@ -1,0 +1,32 @@
+.billing-management-panel-element .credit-card-image {
+    width: 33px;
+    margin-right: 10px;
+}
+
+.billing-management-panel-element .credit-card-number {
+    display: inline-block;
+    font-size: 16px;
+    margin-right: 10px;
+}
+
+.billing-management-panel-element .receipt-form {
+    padding-top: 20px;
+    padding-bottom: 12px;
+}
+
+.billing-management-panel-element .sub-usage {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.billing-management-panel-element .sub-usage .fa {
+    margin-right: 4px;
+}
+
+.billing-management-panel-element .sub-usage .red {
+    color: #D64456;
+}
+
+.billing-management-panel-element .sub-usage .yellow {
+    color: #FCA657;
+}

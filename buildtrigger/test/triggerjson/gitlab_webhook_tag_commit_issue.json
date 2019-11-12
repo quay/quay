@@ -1,0 +1,61 @@
+{
+    "after": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
+    "before": "0000000000000000000000000000000000000000",
+    "checkout_sha": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
+    "commits": [
+      {
+        "added": [],
+        "author": {
+            "name": "Some User",
+            "email": "some.user@someplace.com"    
+        },
+        "id": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
+        "message": "Update Dockerfile",
+        "modified": [
+          "Dockerfile"
+        ],
+        "removed": [],
+        "timestamp": "2019-10-17T18:07:48Z",
+        "url": "https://gitlab.com/someuser/some-test-project/commit/770830e7ca132856991e6db4f7fc0f4dbe20bd5f"
+      }
+    ],
+    "event_name": "tag_push",
+    "message": "",
+    "object_kind": "tag_push",
+    "project": {
+      "avatar_url": null,
+      "ci_config_path": null,
+      "default_branch": "master",
+      "description": "Some test project",
+      "git_http_url": "https://gitlab.com/someuser/some-test-project.git",
+      "git_ssh_url": "git@gitlab.com:someuser/some-test-project.git",
+      "homepage": "https://gitlab.com/someuser/some-test-project",
+      "http_url": "https://gitlab.com/someuser/some-test-project.git",
+      "id": 14838571,
+      "name": "Some test project",
+      "namespace": "Joey Schorr",
+      "path_with_namespace": "someuser/some-test-project",
+      "ssh_url": "git@gitlab.com:someuser/some-test-project.git",
+      "url": "git@gitlab.com:someuser/some-test-project.git",
+      "visibility_level": 0,
+      "web_url": "https://gitlab.com/someuser/some-test-project"
+    },
+    "project_id": 14838571,
+    "push_options": {},
+    "ref": "refs/tags/thirdtag",
+    "repository": {
+      "description": "Some test project",
+      "git_http_url": "https://gitlab.com/someuser/some-test-project.git",
+      "git_ssh_url": "git@gitlab.com:someuser/some-test-project.git",
+      "homepage": "https://gitlab.com/someuser/some-test-project",
+      "name": "Some test project",
+      "url": "git@gitlab.com:someuser/some-test-project.git",
+      "visibility_level": 0
+    },
+    "total_commits_count": 1,
+    "user_avatar": "https://secure.gravatar.com/avatar/someavatar?s=80&d=identicon",
+    "user_email": "",
+    "user_id": 4797254,
+    "user_name": "Some User",
+    "user_username": "someuser"
+  }

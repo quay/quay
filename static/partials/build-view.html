@@ -1,0 +1,66 @@
+<div class="build-view">
+  <div class="resource-view" resources="[buildResource, repoResource]"
+       error-message="'Build not found'">
+
+    <div class="page-content">
+      <div class="cor-title">
+        <span class="cor-title-link">
+          <a class="back-link" href="/repository/{{ namespace }}/{{ name }}?tab=builds">
+            <i class="fa fa-hdd-o" style="margin-right: 4px"></i>
+            {{ namespace }}/{{ name }}
+          </a>
+        </span>
+        <span class="cor-title-content">
+          <i class="fa fa-tasks fa-lg" style="margin-right: 10px"></i> {{ build.display_name }}
+        </span>
+      </div>
+
+      <div class="co-main-content-panel">
+        <!-- Build Information -->
+        <div class="build-info-bar" build="build" show-time="false"></div>
+
+        <!-- Error Status -->
+        <div class="co-alert co-alert-warning" ng-show="originalBuild.error"
+             style="margin-bottom: 8px; margin-top: 12px;">
+          {{ originalBuild.error }}
+        </div>
+
+        <!-- Current Status -->
+        <div class="build-status-header" ng-show="!originalBuild.error">
+          <span class="build-icon-message" ng-class="build.phase">
+            <span class="build-state-icon" build="build"></span>
+            <span class="build-message" phase="build.phase"></span>
+          </span>
+
+          <span class="cor-options-menu">
+            <span class="cor-option" option-click="toggleTimestamps()">
+              <span ng-if="showLogTimestamps">
+                <i class="fa fa-clock-o"></i> Hide Timestamps
+              </span>
+              <span ng-if="!showLogTimestamps">
+                <i class="fa fa-clock-o"></i> Show Timestamps
+              </span>
+            </span>
+            <span class="cor-option" option-click="askCancelBuild(build)" ng-show="!inReadOnlyMode">
+              <i class="fa fa-times"></i> Cancel Build
+            </span>
+          </span>
+
+          <div class="timing">
+            <i class="fa fa-clock-o"></i>
+            Build started
+            <time-ago datetime="build.started"></time-ago>
+          </div>
+        </div>
+
+        <!-- Build Logs -->
+        <div class="build-logs-view"
+             build="originalBuild"
+             use-timestamps="showLogTimestamps"
+             build-updated="setUpdatedBuild(build)"
+             is-super-user="false"
+             ng-show="!originalBuild.error"></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,9 @@
+<div class="manifest-view-layer-element" ng-class="getClass()">
+  <div class="image-command">
+    <image-command command="layer.command" ng-if="layer.command"></image-command>
+    <i ng-if="!layer.command && layer.comment">{{ layer.comment }}</i>
+    <code ng-if="!layer.command && !layer.comment">{{ layer.blob_digest }}</code>
+  </div>
+  <div class="image-layer-dot"></div>
+  <div class="image-layer-line"></div>
+</div>

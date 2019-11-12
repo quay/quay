@@ -1,0 +1,8 @@
+.repo-star .star-icon:hover {
+  cursor: pointer;
+  cursor: hand;
+}
+
+.repo-star .star-icon.starred {
+  color: #ffba6d;
+}

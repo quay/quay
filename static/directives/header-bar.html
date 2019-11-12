@@ -1,0 +1,155 @@
+<span class="header-bar-parent">
+  <div class="header-bar-element">
+    <div class="header-bar-content">
+      <!-- Quay -->
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+          &equiv;
+        </button>
+        <a class="navbar-brand" ng-href="{{ user.anonymous ? '/' : '/repository/' }}">
+          <span id="quay-logo" ng-style="{'background-image': 'url(' + getEnterpriseLogo() + ')'}"></span>
+        </a>
+      </div>
+
+      <!-- Collapsable stuff -->
+      <div class="collapse navbar-collapse navbar-ex1-collapse">
+        <!-- Not signed in -->
+        <ul class="nav navbar-nav navbar-links" ng-if="user.anonymous">
+          <li ng-if="searchingAllowed"><a ng-href="/search" quay-section="search">Explore</a></li>
+          <li><a ng-href="/tutorial/" quay-section="tutorial" ng-if="!inReadOnlyMode">Tutorial</a></li>
+          <li quay-require="['BILLING']"><a ng-href="/plans/" quay-section="plans">Pricing</a></li>
+        </ul>
+
+        <!-- Signed in -->
+        <ul class="nav navbar-nav navbar-links" ng-if="!user.anonymous">
+          <li ng-if="searchingAllowed"><a ng-href="/search" quay-section="search">Explore</a></li>
+          <li quay-require="['APP_REGISTRY']"><a ng-href="/application/" quay-section="application">Applications</a></li>
+          <li><a ng-href="/repository/" quay-section="repository">Repositories</a></li>
+          <li><a ng-href="/tutorial/" quay-section="tutorial" ng-if="!inReadOnlyMode">Tutorial</a></li>
+        </ul>
+
+        <!-- Phone -->
+        <ul class="nav navbar-nav navbar-right visible-xs" ng-switch on="user.anonymous">
+          <li ng-switch-when="false">
+            <a href="/user/{{ user.username }}?tab=settings" class="user-view">
+              <span class="avatar" size="32" data="user.avatar"></span>
+              {{ user.username }}
+            </a>
+            <a ng-click="signout()">Sign out all sessions</a>
+          </li>
+          <li ng-switch-default>
+            <a class="user-view" href="/signin/" ng-if="!externalSigninUrl">Sign in</a>
+            <a class="user-view" ng-href="{{ externalSigninUrl }}" ng-if="externalSigninUrl">Sign in</a>
+          </li>
+        </ul>
+
+        <!-- Normal -->
+        <ul class="nav navbar-nav navbar-right hidden-xs" ng-switch on="user.anonymous">
+          <li>
+            <span class="navbar-left user-tools"
+                  ng-class="{'navbar-anon': user.anonymous, 'navbar-signedin': !user.anonymous}">
+              <search-box ng-if="searchingAllowed"></search-box>
+            </span>
+          </li>
+          <li>
+            <span class="navbar-left user-tools with-menu hidden-sm" ng-show="!user.anonymous && !inReadOnlyMode">
+              <span class="dropdown">
+                <a class="dropdown-toggle new-menu" data-toggle="dropdown">
+                  <i class="fa fa-plus user-tool"
+                     data-placement="bottom" data-title="Create New..." data-trigger="hover click" bs-tooltip></i>
+                  <b class="caret"></b>
+                </a>
+                <ul class="dropdown-menu context-dropdown">
+                  <li>
+                    <a href="/organizations/new">
+                      <span class="avatar" size="16" data="{'name': '+', color: '#ccc'}"></span>
+                      New Organization
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/new{{ getNamespace(currentPageContext) ? '?namespace=' + getNamespace(currentPageContext) : '' }}">
+                      <i class="fa fa-hdd-o"></i> New Repository
+                    </a>
+                  </li>
+                  <li role="presentation" class="divider" ng-if="getNamespace(currentPageContext) && canAdmin(getNamespace(currentPageContext))"></li>
+                  <li role="presentation" class="dropdown-header"
+                      ng-if="getNamespace(currentPageContext) && canAdmin(getNamespace(currentPageContext))">
+                    Namespace {{ getNamespace(currentPageContext) }}
+                  </li>
+                  <li ng-if="isOrganization(getNamespace(currentPageContext)) && canAdmin(getNamespace(currentPageContext))">
+                    <a ng-click="askCreateTeam(currentPageContext)">
+                      <i class="fa fa-group"></i> New Team
+                    </a>
+                  </li>
+                  <li ng-if="canAdmin(getNamespace(currentPageContext))">
+                    <a ng-click="askCreateRobot(currentPageContext)">
+                      <i class="fa ci-robot"></i> New Robot Account
+                    </a>
+                  </li>
+                  <li role="presentation" class="divider" ng-if="currentPageContext.repository && currentPageContext.repository.can_write && !currentPageContext.repository.tag_operations_disabled && Features.BUILD_SUPPORT"></li>
+                  <li role="presentation" class="dropdown-header"
+                      ng-if="currentPageContext.repository && currentPageContext.repository.can_write &&
+                             !currentPageContext.repository.tag_operations_disabled && Features.BUILD_SUPPORT">
+                    Repository {{ currentPageContext.repository.namespace }}/{{ currentPageContext.repository.name }}
+                  </li>
+                  <li ng-if="currentPageContext.repository && currentPageContext.repository.can_write &&
+                             !currentPageContext.repository.tag_operations_disabled && Features.BUILD_SUPPORT">
+                    <a ng-click="startBuild()">
+                      <i class="fa fa-tasks"></i> New Dockerfile Build
+                    </a>
+                  </li>
+                </ul>
+              </span>
+            </span>
+          </li>
+
+          <li>
+            <span class="navbar-left user-tools hidden-sm" ng-show="!user.anonymous">
+              <a data-template="/static/directives/notification-bar.html"
+                  data-container="body" data-animation="am-slide-right" bs-aside>
+                <i class="fa fa-bell user-tool"
+                   data-placement="bottom" data-title="Notifications" bs-tooltip></i>
+                <span class="notifications-bubble"></span>
+              </a>
+            </span>
+          </li>
+
+          <li class="dropdown" ng-switch-when="false">
+            <a class="dropdown-toggle user-dropdown user-view" data-toggle="dropdown">
+              <span class="avatar" size="32" data="user.avatar"></span>
+              {{ user.username }}
+              <b class="caret"></b>
+            </a>
+            <ul class="dropdown-menu">
+              <li>
+                <a href="/user/{{ user.username }}?tab=settings">
+                  Account Settings
+                </a>
+              </li>
+              <li ng-if="user.super_user"><a href="/superuser/"><strong>Super User Admin Panel</strong></a></li>
+              <li ng-if="!inReadOnlyMode"><a ng-click="signout()">Sign out all sessions</a></li>
+            </ul>
+          </li>
+          <li ng-switch-default>
+            <a class="user-view" href="/signin/" ng-if="!externalSigninUrl">Sign in</a>
+            <a class="user-view" ng-href="{{ externalSigninUrl }}" ng-if="externalSigninUrl">Sign in</a>
+          </li>
+        </ul>
+      </div><!-- /.navbar-collapse -->
+    </div>
+
+    <div class="create-robot-dialog" info="createRobotInfo"
+         robot-created="handleRobotCreated(robot, currentPageContext)">
+    </div>
+
+    <div class="create-team-dialog" info="createTeamInfo"
+         team-created="handleTeamCreated(team, currentPageContext)">
+    </div>
+
+    <div class="dockerfile-build-dialog"
+         show-now="showBuildDialogCounter"
+         repository="currentPageContext.repository"
+         build-started="handleBuildStarted(build, currentPageContext)">
+    </div>
+  </div>
+</span>

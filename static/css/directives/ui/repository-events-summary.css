@@ -1,0 +1,24 @@
+.repository-events-summary-element .summary-list {
+    padding: 0px;
+    margin: 0px;
+    list-style: none;
+}
+
+.repository-events-summary-element .summary-list > li {
+    margin-bottom: 8px;
+    position: relative;
+    margin-left: 26px;
+}
+
+.repository-events-summary-element .summary-list > li i.fa {
+    position: absolute;
+    top: 4px;
+    left: -26px;
+}
+
+.repository-events-summary-element .notification-event-fields {
+    display: inline-block;
+    padding: 0px;
+    margin: 0px;
+    list-style: none;
+}

@@ -1,0 +1,84 @@
+<div class="fetch-tag-dialog-element">
+  <!-- Modal message dialog -->
+  <div class="co-dialog modal fade" id="fetchTagDialog">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">
+            Fetch Tag: <i class="fa fa-tag" style="margin-left: 6px; margin-right: 4px"></i>  {{ currentTag.name }}
+          </h4>
+        </div>
+        <div class="modal-body">
+          <table class="modal-table">
+            <tr>
+              <td class="first-col">Image Format:</td>
+              <td>
+                <div class="dropdown-select"
+                     placeholder="'(Select Image Format)'"
+                     selected-item="currentFormat.title"
+                     handle-item-selected="handleFormatSelected(datum)"
+                     clear-value="clearCounter">
+
+                  <!-- Icons -->
+                  <i class="dropdown-select-icon fa fa-lg" ng-class="currentFormat.icon"></i>
+
+                  <!-- Dropdown menu -->
+                  <ul class="dropdown-select-menu pull-right" role="menu">
+                    <li ng-repeat="format in formats">
+                      <a ng-click="setFormat(format)">
+                        <i class="fa fa-lg" ng-class="format.icon"></i> {{ format.title }}
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </td>
+            </tr>
+            <tr ng-show="currentFormat.require_creds">
+              <td class="first-col">Pull Credentials:</td>
+              <td>
+                <div class="entity-search" namespace="repository.namespace"
+                     for-repository="repository"
+                     placeholder="'Choose Pull Credentials'"
+                     allowed-entities="['robot']"
+                     clear-value="clearCounter"
+                     auto-clear="false"
+                     current-entity="currentEntity"
+                     ng-show="currentFormat.has_creds"></div>
+
+                <div class="co-alert co-alert-warning" ng-show="!currentFormat.has_creds"
+                     style="margin-top: 4px; margin-bottom: 0px">
+                  Fetching a {{ currentFormat.title }} requires a robot account. You must therefore
+                  have admin access on namespace <strong>{{ repository.namespace }}</strong> to setup
+                  this fetch.
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div class="cor-loader-inline" ng-if="currentEntity && !currentRobot"></div>
+
+          <div class="co-alert co-alert-warning"
+               ng-if="currentRobotHasPermission === false">
+            Warning: Robot account <strong>{{ currentRobot.name }}</strong> does not have
+            read permission on this repository, so the command below will fail with an authorization error.
+          </div>
+
+          <div ng-if="getCommand(currentFormat, currentRobot)">
+            Command:
+            <pre id="command-data" class="command">{{ getCommand(currentFormat, currentRobot) }}</pre>
+          </div>
+        </div>
+        <div class="modal-footer">
+         <div class="clipboard-copied-message" style="display: none">
+           Copied
+         </div>
+         <button type="button" class="btn btn-primary"
+                 clipboard-copy="#command-data"
+                 ng-show="getCommand(currentFormat, currentRobot)">Copy Command</button>
+         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+</div>

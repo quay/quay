@@ -1,0 +1,155 @@
+<div class="repository-permissions-table-element">
+  <div class="resource-view"
+       resources="[permissionResources.team, permissionResources.user]"
+       error-message="'Could not load repository permissions'">
+      <table class="co-table no-lines permissions">
+        <tr ng-show="!hasPermissions(permissionResources.team, permissionResources.user)">
+          <td colspan="3">
+             <div class="empty">
+               <div class="empty-primary-msg">No permissions found.</div>
+               <div class="empty-secondary-msg">
+                 To add a permission, enter the information below and click "Add Permission".
+               </div>
+             </div>
+          </td>
+        </tr>
+
+        <!-- Team Permissions -->
+        <tr class="co-table-header-row"
+            ng-if="(permissionResources.team.value | objectFilter:allEntries).length">
+          <td colspan="3"><i class="fa fa-group"></i> Team Permissions</td>
+        </tr>
+        <tr class="indented-row" ng-repeat="(name, permission) in permissionResources.team.value">
+          <td class="team entity">
+            <span class="entity-reference" namespace="repository.namespace"
+                  entity="buildEntityForPermission(permission, 'team')"
+                  avatar-size="24">
+            </span>
+          </td>
+          <td class="user-permissions">
+            <span class="role-group" current-role="permission.role"
+                  role-changed="setRole(role, name, 'team')" roles="repoRoles"
+                  read-only="inReadOnlyMode"></span>
+          </td>
+
+          <td class="options-col">
+            <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+              <span class="cor-option" option-click="deleteRole(name, 'team')">
+                <i class="fa fa-times"></i> Delete Permission
+              </span>
+            </span>
+          </td>
+        </tr>
+
+        <!-- User Permissions -->
+        <tr class="co-table-header-row"
+            ng-if="(permissionResources.user.value | objectFilter:onlyUser).length">
+          <td colspan="3"><i class="fa fa-user"></i>  User Permissions</td>
+        </tr>
+        <tr class="indented-row"
+            ng-repeat="permission in (permissionResources.user.value | objectFilter:onlyUser)">
+          <td class="user-permission-entity">
+            <span class="entity-reference" namespace="repository.namespace"
+                  entity="buildEntityForPermission(permission, 'user')"
+                  avatar-size="24">
+            </span>
+            <i class="fa fa-exclamation-triangle outside-org"
+               ng-if="permission.is_org_member === false"
+               data-title="This user is not a member of the organization" bs-tooltip></i>
+          </td>
+          <td class="user-permissions">
+            <div class="btn-group btn-group-sm">
+              <span class="role-group" current-role="permission.role"
+                    role-changed="setRole(role, permission.name, 'user')"
+                    roles="repoRoles" read-only="inReadOnlyMode"></span>
+            </div>
+          </td>
+          <td class="options-col">
+            <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+              <span class="cor-option" option-click="deleteRole(permission.name, 'user')">
+                <i class="fa fa-times"></i> Delete Permission
+              </span>
+            </span>
+          </td>
+        </tr>
+
+        <!-- Robot Permissions -->
+        <tr class="co-table-header-row"
+            ng-if="(permissionResources.user.value | objectFilter:onlyRobot).length">
+          <td colspan="3"><i class="fa ci-robot"></i> Robot Account Permissions</td>
+        </tr>
+        <tr class="indented-row"
+            ng-repeat="permission in (permissionResources.user.value | objectFilter:onlyRobot)">
+          <td class="user-permission-entity">
+            <span class="entity-reference" namespace="repository.namespace"
+                  entity="buildEntityForPermission(permission, 'user')"
+                  avatar-size="24">
+            </span>
+          </td>
+          <td class="user-permissions">
+            <div class="btn-group btn-group-sm">
+              <span class="role-group" current-role="permission.role"
+                    role-changed="setRole(role, permission.name, 'user')"
+                    roles="repoRoles" read-only="inReadOnlyMode"></span>
+            </div>
+          </td>
+          <td class="options-col">
+            <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+              <span class="cor-option" option-click="deleteRole(permission.name, 'user')">
+                <i class="fa fa-times"></i> Delete Permission
+              </span>
+            </span>
+          </td>
+        </tr>
+
+        <tr class="add-row-spacer" ng-show="!inReadOnlyMode"><td colspan="3"></td></tr>
+
+        <tr class="add-row" ng-if-media="'(min-width: 768px)'" ng-show="!inReadOnlyMode">
+          <td id="add-entity-permission" class="admin-search">
+            <span class="entity-search" namespace="repository.namespace"
+                  for-repository="repository"
+                  skip-permissions="true"
+                  placeholder="'Select a ' + (repository.is_organization ? 'team or ' : '') + 'user...'"
+                  current-entity="addPermissionInfo.entity"></span>
+          </td>
+          <td colspan="2">
+            <span class="role-group" current-role="addPermissionInfo.role"
+                  roles="repoRoles"
+                  role-changed="addPermissionInfo.role = role"></span>
+            <button class="btn btn-success" style="margin-left: 10px"
+                    ng-disabled="!addPermissionInfo.role || !addPermissionInfo.entity"
+                    ng-click="addPermission()">
+              Add Permission
+            </button>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Mobile add permissions -->
+      <div class="mobile-add-row" ng-if-media="'(max-width: 767px)'">
+        <span class="entity-search" namespace="repository.namespace"
+              for-repository="repository"
+              skip-permissions="true"
+              placeholder="'Select a ' + (repository.is_organization ? 'team or ' : '') + 'user...'"
+              current-entity="addPermissionInfo.entity"
+              pull-right="true"></span>
+        <span class="role-group" current-role="addPermissionInfo.role"
+              roles="repoRoles"
+              role-changed="addPermissionInfo.role = role"></span>
+        <button class="btn btn-success add-button"
+                ng-disabled="!addPermissionInfo.role || !addPermissionInfo.entity"
+                ng-click="addPermission()">
+          Add Permission
+        </button>
+      </div>
+  </div>
+
+  <!-- Grant Permission Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="grantPermissionInfo"
+       dialog-action="grantPermission(info.entity, callback)"
+       dialog-title="Grant Permission"
+       dialog-action-title="Grant Permission">
+      The selected user is outside of your organization. Are you sure you want to grant the user access to this repository?
+  </div>
+</div>

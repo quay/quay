@@ -1,0 +1,14 @@
+.markdown-input-container .glyphicon-edit {
+  float: right;
+  color: #ddd;
+  transition: color 0.5s ease-in-out;
+}
+
+.markdown-input-container .glyphicon-edit:hover {
+  cursor: pointer;
+  color: #444;
+}
+
+.markdown-input-placeholder-editable:hover {
+  cursor: pointer;
+}

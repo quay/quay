@@ -1,0 +1,663 @@
+.flex-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.top-section {
+  flex-direction: row;
+  justify-content: space-around;
+  max-width: 1170px;
+  margin: 0 auto;
+  padding: 0 60px;
+}
+
+.co-p-quay-enterprise-values {
+    padding-top: 35px;
+    padding-bottom: 50px;
+    padding-right: 60px;
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value {
+    margin-bottom: 30px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value:last-child {
+    margin-bottom: 0
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-icon {
+    width: 32px;
+    display: inline-block;
+    margin-right: 15px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-icon img {
+    max-width: 32px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-text {
+    display: inline;
+    font-size: 18px;
+    color: #1e394c;
+    line-height: 32px;
+    font-weight: 600
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-desc {
+    margin-top: 10px;
+    font-size: 16px;
+    line-height: 18px
+}
+
+
+.co-p-quay-enterprise-top-cta {
+    padding: 20px 90px;
+    border-radius: 4px;
+    border: 1px solid rgba(153, 153, 153, 0.75);
+    margin-bottom: 50px;
+}
+
+.co-p-quay-enterprise-top-cta .co-p-quay-enterprise-top-cta-text {
+    font-weight: 500;
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 10px
+}
+
+.co-p-quay-enterprise-top-cta .co-p-quay-enterprise-top-cta-buttons {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    margin-bottom: 20px
+}
+
+.co-p-quay-enterprise-top-cta .co-p-quay-enterprise-top-cta-buttons .co-p-quay-enterprise-top-cta-button-wrap {
+    display: flex;
+    flex-direction: column;
+    margin-left: 15px;
+    width: 180px
+}
+
+.co-p-quay-enterprise-top-cta .co-p-quay-enterprise-top-cta-buttons .button-subtext {
+    font-size: 12px;
+    margin-top: 5px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value {
+    margin-bottom: 30px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value:last-child {
+    margin-bottom: 0
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-icon {
+    width: 32px;
+    display: inline-block;
+    margin-right: 15px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-icon img {
+    max-width: 32px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-text {
+    display: inline;
+    font-size: 18px;
+    color: #1e394c;
+    line-height: 32px
+}
+
+.co-p-quay-enterprise-values .co-p-quay-enterprise-value-desc {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 18px
+}
+
+.co-p-quay-diagram img {
+    width: 340px;
+}
+
+.co-p-quay-diagram .horizontal {
+  display: none;
+}
+
+.co-p-quay-enterprise-tagline {
+    font-weight: 300;
+    color: #1e394c;
+    font-size: 26px;
+    line-height: 36px;
+    margin-bottom: 30px;
+    margin-top: 0;
+    text-align: center;
+}
+
+.co-p-quay-enterprise-tagline button {
+  margin-left: 40px;
+}
+
+.co-p-quay-enterprise-trial {
+    text-align: center;
+    margin-top: 30px;
+    margin-bottom: 40px
+}
+
+.co-p-quay-enterprise-trial-left {
+    text-align: left
+}
+
+.co-p-quay-enterprise-faq {
+    background: #fff;
+}
+
+.co-p-quay-enterprise-plans {
+    padding-bottom: 40px
+}
+
+.co-p-quay-enterprise-plans .co-p-quay-enterprise-plans-header {
+    text-align: center;
+    margin-bottom: 30px
+}
+.plans-panel {
+   padding: 0px;
+   padding-top: 50px;
+}
+
+.plans-panel .plans-header {
+    font-size: 24px;
+    color: #1D314F;
+    font-weight: 300;
+    margin-bottom: 40px;
+    text-align: center;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.plans-panel .plan-tabs {
+    text-align: center;
+    padding-left: 30px;
+    padding-right: 30px;
+    margin-bottom: 40px;
+}
+
+.plans-panel .plan-tabs li {
+    display: inline-block;
+    width: 49%;
+}
+
+.plans-panel .plan-tabs a {
+    padding-bottom: 25px;
+}
+
+.plans-panel .plan-tabs a:hover {
+    background-color: transparent;
+    border-color: transparent;
+    cursor: pointer !important; /* override very specific bootstrap style */
+}
+
+.plans-panel .plan-tabs a:hover svg [fill="#003764"] {
+    fill: #345D84;
+}
+
+.plans-panel .plan-tabs a .tab-logo {
+    display: block;
+    margin-bottom: 25px;
+    text-align: center;
+    margin-top: 25px;
+}
+
+.plans-panel .plan-tabs a .tab-logo svg {
+    height: 40px;
+}
+
+.plans-panel .plan-tabs a .tab-title {
+    display: block;
+    text-align: center;
+    font-size: 16px;
+    color: #1D314F;
+    font-weight: 300;
+}
+
+.plans-panel .plan-tabs a:hover .tab-title {
+    color: #51A3D9;
+}
+
+@media (max-width: 992px) {
+    .plans-panel .plan-tabs a .tab-logo svg {
+        height: 30px;
+    }
+    .plans-panel .plan-tabs a .tab-title {
+    	font-size: 13px;
+    }
+}
+
+@media (max-width: 767px) {
+    .plans-panel .plan-tabs {
+        margin-bottom: 0px;
+        padding-right: 5px;
+        padding-left: 5px;
+    }
+
+    .co-p-quay-diagram-caption {
+      text-align: center;
+    }
+
+    .co-p-quay-enterprise-tagline {
+      margin-bottom: 0;
+      margin-top: 30px;
+    }
+
+    .top-section {
+      flex-wrap: wrap;
+      padding: 0;
+    }
+
+    .co-p-quay-diagram {
+      margin-bottom: 50px;
+    }
+
+    .co-p-quay-diagram img {
+      width: 100%;
+    }
+
+    .co-p-quay-diagram .horizontal {
+      display: block;
+    }
+
+    .co-p-quay-diagram .vertical {
+      display: none;
+    }
+
+    .plans-panel .plan-tabs a {
+        padding-bottom: 0px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .plans-panel .plan-tabs a .tab-title {
+        display: none;
+    }
+
+    .plans-panel .plan-tabs a .tab-logo {
+         margin-top: 5px;
+         margin-bottom: 10px;
+    }
+
+    .plans-panel .plan-tabs a .tab-logo svg {
+        height: 20px;
+        max-width: 100%;
+    }
+}
+
+.plans-panel .tab-pane .plan-col {
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-bottom: 30px;
+}
+
+.plans-panel .plan-col:before {
+   display: block;
+   text-align: center;
+   content: "-";
+   text-transform: uppercase;
+   color: white;
+   height: 25px;
+}
+
+.plans-panel .plan-col.popular:before {
+  content: "Most Popular";
+  color: #ffffff;
+  height: 25px;
+  line-height: 25px;
+  background-color: #888888;
+}
+
+.plans-panel .plan-box {
+    background-color: #444444;
+    color: #fff;
+    padding: 20px;
+}
+
+.plans-panel .plan-box .plan-header {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed #495b6a;
+}
+
+.plans-panel .plan-box.gray .plan-header {
+   border-bottom: 1px dashed #ccc;
+}
+
+.plans-panel .plan-box .qe-plan-description {
+    margin-bottom: 20px;
+}
+
+.plans-panel .plan-box .plan-description {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px dashed #495b6a;
+
+    text-align: center;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.plans-panel .plan-box .plan-header b {
+   font-size: 18px;
+   color: white;
+}
+
+.plans-panel .plan-box.gray .plan-header b {
+   color: black;
+}
+
+.plans-panel .plan-box .plan-header .plan-box-price {
+    float: right;
+    width: 75px;
+    text-align: right;
+    font-size: 18px;
+    position: relative;
+}
+
+.plans-panel .plan-box .plan-header .plan-box-price-hidden {
+    font-style: italic;
+    font-size: 13px;
+    line-height: 27px;
+}
+
+.plans-panel .plan-box .trial-button {
+    display: block;
+    text-align: center;
+    width: 100%;
+}
+
+.plans-panel .plan-box .trial-button .fa {
+    padding-left: 5px;
+}
+
+.plans-panel .plan-box select {
+    margin-bottom: 10px;
+}
+
+.plans-panel .plan-box ul {
+    padding: 0px;
+    padding-left: 16px;
+    list-style: square;
+}
+
+.plans-panel .plan-box.gray {
+    background-color: #f5f5f5;
+    text-align: center;
+    color: black;
+}
+
+.plans-panel .plan-box.gray .qe-plan-description {
+    margin-bottom: 10px;
+}
+
+.plans-panel .plan-box.gray .qe-plan-description i {
+  margin-right: 5px;
+}
+
+.plans-panel .plan-features {
+  margin: 0px;
+  margin-top: 10px;
+  list-style: none;
+  text-align: center;
+  padding: 0px;
+}
+
+.plans-panel .plan-features li {
+  text-align: left;
+  margin-bottom: 10px;
+  position: relative;
+  padding-left: 25px;
+}
+
+.plans-panel .plan-features i.fa {
+  position: absolute;
+  left: 0px;
+  top: 4px;
+  color: #6aab56;
+}
+
+.plans-panel .plan-features li b {
+  color: #6aab56;
+}
+
+.plans-panel .plan-features.single-feature li {
+  text-align: center;
+  color: #6aab56;
+}
+
+.plans-panel .plan-features.single-feature i.fa {
+  position: static;
+  margin-right: 4px;
+}
+
+.plans-panel .plan-features li.disabled {
+  color: #aaa;
+}
+
+.plans-panel .faq-features {
+    margin-top: 15px;
+    border-top: 1px solid #ddd;
+}
+
+.plans-panel .features-col {
+    background-color: #f9f9f9;
+    padding: 30px;
+    border-bottom: 1px solid #ddd;
+    border-top: none;
+}
+
+.plans-panel .row-container {
+    margin-left: 30px;
+    margin-right: 30px;
+}
+
+.plans-panel .row-container-no-margin {
+    margin-right: 15px;
+    margin-left: 15px;
+}
+
+.plans-panel .tab-content {
+    margin-bottom: 0px;
+}
+
+.plans-panel .features-col .features-title {
+    text-align: center;
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #1d3447;
+    font-weight: bold;
+}
+
+.plans-panel .features-col .features-list {
+    padding: 0px;
+    list-style: none;
+}
+
+.plans-panel .features-col .features-list li {
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 20px;
+}
+
+.plans-panel .features-col .features-list li i {
+    position: absolute;
+    font-size: 25px;
+    color: #464646;
+    left: 0px;
+    display: block;
+    width: 30px;
+    text-align: center;
+}
+
+.plans-panel .features-col .features-list li b {
+    display: block;
+    color: #464646;
+    font-size: 16px;
+    margin-bottom: 12px;
+}
+
+.plans-panel .features-col .features-list li p {
+    display: none;
+}
+
+@media (min-width: 992px) {
+    .plans-panel .features-col .features-list li p {
+        display: block;
+    }
+    .plans-panel .features-col {
+        border-right: none;
+        border-left: 1px solid #ddd;
+    }
+}
+
+.plans-panel .faq-col {
+    padding-bottom: 0px;
+    padding-top: 30px;
+    padding-left: 30px;
+    padding-right: 30px;
+    margin-bottom: 20px
+}
+
+.plans-panel .faq-col h4 {
+    color: #4e4e4e;
+    margin-top: 50px;
+    font-weight: 500;
+    margin-bottom: 23px;
+}
+
+.plans-panel .faq-col p+h4 {
+   margin-top: 40px;
+}
+
+.plans-panel .faq-col h4:first-child {
+    margin-top: 0px;
+}
+
+.plans-panel .faq-col > b {
+    margin-bottom: 10px;
+    display: block;
+}
+
+.plans-panel .faq-col p+b {
+    margin-top: 20px;
+}
+
+.plans-panel .faq-sub-col {
+   padding: 40px;
+   padding-bottom: 0px;
+}
+
+.plans-panel .faq-sub-col ul {
+   padding: 0px;
+   list-style: square;
+}
+
+.plans-panel .faq-sub-col img {
+    width: 100%;
+    max-height: 45px;
+    margin-bottom: 20px;
+}
+
+.plans-panel .faq-sub-col b {
+    margin-bottom: 20px;
+    text-align: center;
+    display: block;
+}
+
+#redhatManagerDialog .modal-body {
+  text-align: center;
+  padding: 40px;
+}
+
+#redhatManagerDialog .qe-logo {
+  max-height: 50px;
+  margin-bottom: 30px;
+  max-width: 100%;
+}
+
+#redhatManagerDialog b {
+  display: block;
+  margin-bottom: 15px;
+}
+
+#redhatManagerDialog .buttons {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+#redhatManagerDialog .buttons .btn {
+  margin-left: 30px;
+  font-size: 14px;
+  padding-left: 20px;
+  padding-right: 20px
+}
+
+@media (max-width: 767px) {
+  #redhatManagerDialog .buttons .btn {
+    margin: 0px;
+    margin-top: 20px;
+  }
+}
+
+#redhatManagerDialog .buttons .btn:first-child {
+  margin-left: 0px;
+}
+
+#redhatManagerDialog .shoutout {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-width: 300px;
+  display: inline-block;
+  color: #1d304f;
+
+  font-size: 13px;
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
+#redhatManagerDialog .shoutout img {
+  max-width: 260px;
+  max-height: 20px;
+  margin-top: 20px;
+}
+
+#redhatManagerDialog h1 {
+  margin-bottom: 30px;
+}
+
+#redhatManagerDialog .plan-box .step-text {
+  font-size: 18px;
+  margin: 15px 0 5px;
+}
+
+#redhatManagerDialog .plan-box p {
+  margin-left: 10px;
+}
+
+#redhatManagerDialog a {
+  color: #44a2f3;
+}
+
+#redhatManagerDialog a:focus, #redhatManagerDialog a:hover {
+  color: #b2daff;
+}
+
+@media screen and (min-width: 992px) {
+  #redhatManagerDialog .plan-box.same-height {
+    min-height: 938px;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  #redhatManagerDialog .plan-box.same-height {
+    min-height: 767px;
+  }
+}

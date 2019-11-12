@@ -1,0 +1,7 @@
+<span class="location-view-element" data-title="{{ getLocationTooltip(location, locationPing) }}" data-html="true" bs-tooltip>
+  <span class="flag" ng-class="locationPing == -1 ? 'error' : ''">
+    <img ng-src="{{ '/static/img/flags/' + getLocationImage(location) }}">
+  </span>
+
+  <span class="strength-indicator" value="1000 - (locationPing || 0)" maximum="1000"></span>
+</span>

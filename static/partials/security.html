@@ -1,0 +1,44 @@
+<div class="cor-container">
+  <div class="row">
+    <div class="col-md-12">
+      <h1>Quay Security</h1>
+      <p>We understand that when you upload one of your repositories to Quay that you are trusting us with some potentially very sensitive data. On this page we will lay out our security features and practices to help you make an informed decision about whether you can trust us with your data.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>SSL Everywhere</h3>
+      <p>We expressly forbid connections to Quay using unencrypted HTTP traffic. This helps keep your data and account information safe on the wire. Our SSL traffic is decrypted on our application servers, so your traffic is encrypted even within the datacenter. We use a 4096-bit RSA key, and after the key exchange is complete, traffic is transferred using 256-bit AES, for the maximum encryption strength.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Encryption</h3>
+      <p>Our binary data is currently stored in Amazon's <a href="http://aws.amazon.com/s3/">S3</a> service. We use HTTPS when transferring your data internally between our application servers and S3, so your data is never exposed in plain text on the internet. We use their <a href="http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html">server side encryption</a> to protect your data while stored at rest in their data centers.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Passwords</h3>
+      <p>There have been a number of high profile leaks recently where companies have been storing their customers' passwords in plain text, an unsalted hash, or a <a href="http://en.wikipedia.org/wiki/Salt_(cryptography)">salted hash</a> where every salt is the same. At Quay we use the <a href="http://en.wikipedia.org/wiki/Bcrypt">bcrypt</a> algorithm to generate a salted hash from your password, using a unique salt for each password. This method of storage is safe against <a href="http://en.wikipedia.org/wiki/Rainbow_table">rainbow attacks</a> and is obviously superior to plain-text storage. Your credentials are also never written in plain text to our application logs, a leak that is commonly overlooked.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Access Controls</h3>
+      <p>Repositories will only ever be shared with people to whom you delegate access. Repositories created from the Docker command line are private by default and must be made public with an explicit action in the Quay UI. We have a test suite which is run before every code push which tests all methods which expose private data with all levels of access to ensure nothing is accidentally leaked.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Firewalls</h3>
+      <p>Our application servers and database servers are all protected with firewall settings that only allow communication with known hosts and host groups on sensitive ports (e.g. SSH). None of our servers have SSH password authentication enabled, preventing brute force password attacks.</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Data Resilience</h3>
+      <p>While not related directly to security, many of you are probably worried about whether you can depend on the data you store in Quay. All binary data that we store is stored in Amazon S3 at the highest redundancy level, which Amazon claims provides <a href="http://aws.amazon.com/s3/faqs/#How_is_Amazon_S3_designed_to_achieve_99.999999999%_durability">11-nines of durability</a>. Our service metadata (e.g. logins, tags, teams) is stored in a database which is backed up nightly, and backups are preserved for 7 days.</p>
+    </div>
+  </div>
+</div>

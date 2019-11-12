@@ -1,0 +1,29 @@
+<div class="markdown-input-container">
+  <div>
+    <span class="glyphicon glyphicon-edit"
+          ng-if="$ctrl.canWrite && !$ctrl.isEditing"
+          ng-click="$ctrl.editContent()"
+          data-title="Edit {{ ::$ctrl.fieldTitle }}" data-placement="left" bs-tooltip></span>
+    <div ng-if="$ctrl.content && !$ctrl.isEditing">
+      <markdown-view content="$ctrl.content"></markdown-view>
+    </div>
+    <!-- Not set and can write -->
+    <span class="markdown-input-placeholder-editable"
+       ng-if="!$ctrl.content && $ctrl.canWrite"
+       ng-click="$ctrl.editContent()">
+      <i>Click to set {{ ::$ctrl.fieldTitle }}</i>
+    </span>
+    <!-- Not set and cannot write -->
+    <span class="markdown-input-placeholder"
+          ng-if="!$ctrl.content && !$ctrl.canWrite">
+      <i>No {{ ::$ctrl.fieldTitle }} has been set</i>
+    </span>
+  </div>
+
+  <!-- Inline editor -->
+  <div ng-if="$ctrl.isEditing" style="margin-top: 20px;">
+    <markdown-editor content="$ctrl.content"
+                     (save)="$ctrl.saveContent($event)"
+                     (discard)="$ctrl.discardContent($event)"></markdown-editor>
+  </div>
+</div>

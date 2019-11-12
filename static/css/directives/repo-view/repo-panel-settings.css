@@ -1,0 +1,51 @@
+.repo-panel-settings-element .panel-section {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.repo-panel-settings-element .lock-section {
+  position: relative;
+  padding-left: 80px;
+}
+
+.repo-panel-settings-element .lock-section .lock-icon {
+  position: absolute;
+  top: 10px;
+  left: 22px;
+  color: #ccc;
+  font-size: 46px;
+}
+
+.repo-panel-settings-element .panel-section .btn {
+  margin-top: 20px;
+}
+
+.repo-panel-settings-element .panel-section .btn .fa {
+  margin-right: 6px;
+}
+
+.repo-panel-settings-element .delete-btn {
+  float: right;
+  margin-top: -7px !important;
+}
+
+.repo-panel-settings-element .repo-count-checker {
+  margin-top: 20px;
+}
+
+.repo-panel-settings-element .co-alert {
+  margin-bottom: 0px;
+}
+
+.repo-panel-settings-element .panel-body {
+  border-bottom: 0px;
+}
+
+@media (max-width: 767px) {
+  .repo-panel-settings-element .delete-btn {
+    float: none;
+    margin-top: 0px !important;
+    margin-bottom: 20px;
+    display: block;
+  }
+}

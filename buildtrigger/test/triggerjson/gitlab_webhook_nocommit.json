@@ -1,0 +1,44 @@
+{
+  "object_kind": "push",
+  "event_name": "push",
+  "before": "cc66287314cb154c986665a6c29377ef42edee60",
+  "after": "0000000000000000000000000000000000000000",
+  "ref": "refs\/heads\/foobar",
+  "checkout_sha": null,
+  "message": null,
+  "user_id": 750047,
+  "user_name": "John Smith",
+  "user_email": "j@smith.com",
+  "user_avatar": "https:\/\/secure.gravatar.com\/avatar\/2348972348972348973?s=80&d=identicon",
+  "project_id": 1756744,
+  "project": {
+    "name": "some-test-project",
+    "description": "",
+    "web_url": "https:\/\/gitlab.com\/jsmith\/some-test-project",
+    "avatar_url": null,
+    "git_ssh_url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "git_http_url": "https:\/\/gitlab.com\/jsmith\/some-test-project.git",
+    "namespace": "jsmith",
+    "visibility_level": 0,
+    "path_with_namespace": "jsmith\/some-test-project",
+    "default_branch": "master",
+    "homepage": "https:\/\/gitlab.com\/jsmith\/some-test-project",
+    "url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "ssh_url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "http_url": "https:\/\/gitlab.com\/jsmith\/some-test-project.git"
+  },
+  "commits": [
+
+  ],
+  "total_commits_count": 0,
+  "repository": {
+    "name": "some-test-project",
+    "url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "description": "",
+    "homepage": "https:\/\/gitlab.com\/jsmith\/some-test-project",
+    "git_http_url": "https:\/\/gitlab.com\/jsmith\/some-test-project.git",
+    "git_ssh_url": "git@gitlab.com:jsmith\/some-test-project.git",
+    "visibility_level": 0
+  }
+}
+

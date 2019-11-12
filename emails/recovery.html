@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 style="font-weight: 400">Account recovery</h3>
+<hr style="border:none; border-top: 1px solid #D9D9D9; margin: 25px 0">
+
+<table>
+	<tr>
+		<td style="font-size: 13px;">A user at {{ app_title }} has attempted to recover their access to the account registered to this email address.</td>
+	</tr>
+</table>
+
+<table style="margin: 25px 0;">
+	<tr>
+		<td style="background: #40B4E5; padding: 10px; border-radius: 3px; color: #fff; font-size: 20px; font-weight: 500"><a style="text-decoration: none; color: #ffffff;" href="{{ app_link('recovery?code=' + token) }}">Recover Account</a></td>
+	</tr>
+</table>
+
+<table style="margin: 25px 0 35px">
+	<tr>
+		<td style="font-size: 13px;">If you did not request this password reset, you can safely ignore this message and the account password and access will not change.</td>
+	</tr>
+</table>
+
+
+<span style="font-size: 13px;">Best Wishes,</span><br>
+<span style="font-size: 13px;">The {{ app_title }} Team</span><br>
+
+{% endblock %}

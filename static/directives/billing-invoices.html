@@ -1,0 +1,85 @@
+<div class="billing-invoices-element">
+  <div class="cor-loader" ng-show="loading"></div>
+
+   <div class="empty" ng-if="!loading && !invoices.length">
+      <div class="empty-primary-msg">No billing invoices found.</div>
+      <div class="empty-secondary-msg">
+        This account has not been billed by <span class="registry-name"></span>.
+      </div>
+    </div>
+
+  <div ng-show="!loading && invoices.length">
+    <div class="dropdown fields-menu" data-title="Custom Invoice Fields" bs-tooltip>
+      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+        <i class="fa fa-bars"></i>
+        <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu pull-right" role="menu">
+        <li role="presentation" ng-repeat="invoiceField in invoiceFields">
+          <a class="invoice-field" role="menuitem" tabindex="-1" >
+            {{ invoiceField.title }}: {{ invoiceField.value }}
+            <i class="fa fa-trash-o btn btn-danger" ng-click="askDeleteField(invoiceField)"></i>
+          </a>
+        </li>
+        <li role="presentation" class="disabled" ng-if="!invoiceFields.length">
+          <a role="menuitem" tabindex="-1">No Custom Fields Defined</a>
+        </li>
+        <li role="presentation" class="divider"></li>
+        <li role="presentation">
+          <a role="menuitem" tabindex="-1" ng-click="showCreateField()">
+            <i class="fa fa-plus"></i>Add Custom Invoice Field
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <table class="co-table">
+      <thead>
+        <td>Billing Date/Time</td>
+        <td>Amount Due</td>
+        <td>Status</td>
+        <td class="options-col"></td>
+      </thead>
+
+      <tbody class="invoice" ng-repeat="invoice in invoices">
+        <tr class="invoice-title">
+          <td><span class="invoice-datetime">{{ invoice.date * 1000 | date:'medium' }}</span></td>
+          <td><span class="invoice-amount">{{ invoice.amount_due / 100 }}</span></td>
+          <td>
+            <span class="invoice-status">
+              <span class="success" ng-show="invoice.paid">Paid - Thank you!</span>
+              <span class="danger" ng-show="!invoice.paid && invoice.attempted && invoice.closed">Payment failed</span>
+              <span class="danger" ng-show="!invoice.paid && invoice.attempted && !invoice.closed">Payment failed - Will retry soon</span>
+              <span class="pending" ng-show="!invoice.paid && !invoice.attempted">Payment pending</span>
+            </span>
+          </td>
+          <td class="options-col">
+            <a ng-show="invoice.paid" href="/receipt?id={{ invoice.id }}" target="_new" download>
+              <i class="fa fa-download" data-title="Download Receipt" bs-tooltip="tooltip.title"></i>
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Delete Tag Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="createFieldInfo"
+       dialog-action="createCustomField(info.title, info.value, callback)"
+       dialog-title="Create Custom Field"
+       dialog-action-title="Create Field">
+    <form>
+      <div class="form-group">
+        <label for="titleInput">Enter Field Title</label>
+        <input id="titleInput" type="text" class="form-control"ng-model="createFieldInfo.title" placeholder="Field Title">
+      </div>
+      <div class="form-group">
+        <label for="valueInput">Enter Field Value</label>
+        <input id="valueInput" type="text" class="form-control" ng-model="createFieldInfo.value" placeholder="Field Value">
+      </div>
+    </form>
+  </div>
+</div>
+
+</div>

@@ -1,0 +1,24 @@
+<p>The first step to creating an image is to create a container and fill it with some data.</p>
+
+<p>First we'll create a container with a single new file based off of the <code>busybox</code> base image:</p>
+
+<pre class="command">
+<code ng-show="tour.tourScope.showSudo">sudo </code>docker run busybox echo "fun" > newfile
+</pre>
+
+<p>The container will immediately terminate (because its one command is <code>echo</code>), so we'll use <code>docker ps -l</code> to list it:
+
+<pre class="command">
+<code ng-show="tour.tourScope.showSudo">sudo </code>docker ps -l
+CONTAINER ID        IMAGE               COMMAND             CREATED
+<var class="var1">07f2065197ef</var>          busybox:latest        echo fun            31 seconds ago
+</pre>
+
+<div class="user-enter-box">
+  <div class="control-group">
+    <label class="control-label" for="containerId">Enter the container ID returned:</label>
+    <div class="form-inline">
+      <input type="text" id="containerId" class="form-control" placeholder="containerId" ng-model="tour.tourScope.containerId">
+    </div>
+  </div>
+</div>

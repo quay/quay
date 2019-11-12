@@ -1,0 +1,35 @@
+<div class="delete-namespace-view-element" quay-show="!Features.BILLING || subscriptionStatus != 'loading'">
+  <table class="co-list-table">
+    <tr>
+      <td>Delete {{ namespaceTitle }}:</td>
+      <td quay-show="!Features.BILLING || subscriptionStatus == 'none'">
+        <a class="co-modify-link" ng-click="showDeleteNamespace()">Begin deletion</a>
+      </td>
+      <td quay-show="Features.BILLING && subscriptionStatus == 'valid'">
+        <i class="fa fa-exclamation-triangle yellow"></i> You must cancel your billing subscription before this {{ namespaceTitle }} can be deleted.
+      </td>
+   </tr>
+  </table>
+
+  <!-- Delete account dialog -->
+  <div class="cor-confirm-dialog"
+     dialog-context="deleteNamespaceInfo"
+     dialog-action="deleteNamespace(info, callback)"
+     dialog-title="Delete {{ namespaceTitle }}"
+     dialog-action-title="Delete {{ namespaceTitle }}"
+     dialog-form="context.deleteform"
+     dialog-button-class="btn-danger">
+     <form name="context.deleteform" class="co-single-field-dialog">
+     <div class="co-alert co-alert-danger">
+       Deleting an {{ namespaceTitle }} is <strong>non-reversable</strong> and will delete
+       <strong>all of the {{ namespaceTitle }}'s data</strong> including repositories, created build triggers,
+       and notifications.
+     </div>
+
+     You must type <code>{{ deleteNamespaceInfo.namespace }}</code> below to confirm deletion is requested:
+     <input type="text" class="form-control" placeholder="Enter namespace here"
+            ng-model="deleteNamespaceInfo.verification" ng-pattern="deleteNamespaceInfo.namespace"
+            required>
+     </form>
+  </div>
+</div>

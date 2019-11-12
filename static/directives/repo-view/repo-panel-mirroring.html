@@ -1,0 +1,484 @@
+<div class="repo-panel-mirror-element">
+  <h3 class="tab-header">
+    <span class="repository-title" repository="repository"></span>
+    Mirroring
+  </h3>
+
+  <div class="co-panel">
+
+    <!-- View 1: Repository is in wrong state -->
+    <div class="co-panel"
+         ng-show="repository.state != 'MIRROR'"
+         ng-if="repository.state != 'MIRROR'">
+      This repository's state is <strong>{{ repository.state }}</strong>. Use the
+      <a href="/repository/{{ repository.namespace }}/{{ repository.name}}?tab=settings">settings tab</a>
+      and change it to <strong><i class="fa fa-refresh lock-icon"></i> Mirror</strong> to manage its
+      mirroring configuration.
+    </div>
+
+    <!-- View 2: Setup Repository Mirroring -->
+    <!-- TODO: We should use the wizard workflow for initial Setup. -->
+    <div class="co-panel"
+         ng-show="repository.state == 'MIRROR' && !vm.isSetup"
+         ng-if="!vm.isSetup">
+      <p>
+        This feature will convert
+        <a href="/repository/{{ repository.namespace }}/{{ repository.name }}">
+          <strong>{{ repository.namespace }}/{{ repository.name }}</strong>
+        </a> into a mirror. Changes to the external repository will be duplicated here. While
+        enabled, users will be unable to push images to this repository.
+      </p>
+      <!-- TODO: Move custom styles into CSS -->
+      <form name="enableMirroring">
+        <table class="co-table" style="width: 600px">
+          <!-- A little "hack" taken from the settings tab. This should probably be done in CSS. -->
+          <thead>
+            <th style="width: 200px"></th>
+            <th></th>
+          </thead>
+          <tr>
+            <td colspan="2" style="text-align: center">
+              <h4>External Repository</h4>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="external_registry">Registry Location</label></td>
+            <td>
+              <input class="form-control"
+                     id="external_reference"
+                     type="text"
+                     ng-model="vm.externalReference"
+                     placeholder="quay.io/redhat/quay"
+                     required></input>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <label for="sync_tag_filter">Tags</label><br>
+              <small>Comma-separated list of tag patterns to synchronize.</small>
+            </td>
+            <td>
+              <input class="form-control"
+                      id="tags_input"
+                      type="text"
+                      ng-model="vm.tags"
+                      placeholder="Examples: latest, 3.3*, *"
+                      required>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="sync_start_date">Start Date</label></td>
+            <td>
+              <span id="sync_start_date"
+                    class="datetime-picker"
+                    datetime="vm.syncStartDate"></span>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="create_sync_interval">Sync Interval</label></td>
+            <td>
+              <span class="interval-input" seconds="vm.syncInterval"></span>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="choose_robot">Robot User</label></td>
+            <td>
+              <span class="entity-search"
+                    namespace="repository.namespace"
+                    for-repository="repository"
+                    skip-permissions="true"
+                    placeholder="'Select a ' + (repository.is_organization ? 'team or ' : '') + 'user...'"
+                    current-entity="vm.robot"
+                    pull-right="true"></span>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="text-align: center">
+              <h4>Credentials</h4>
+              <small style="color: #333">
+                Required if the external repository is private.
+              </small>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="external_registry_username">Username</label></td>
+            <td><input class="form-control"
+                        id="external_registry_username"
+                        type="text"
+                        ng-model="vm.username"></input>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="external_registry_password">Password</label></td>
+            <td><input class="form-control"
+                        id="external_registry_password"
+                        type="password"
+                        ng-model="vm.password"></input>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="text-align: center">
+              <h4>Advanced Settings</h4>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <label for="sync_verify_tls">Verify TLS</label><br>
+              <small>
+                Require HTTPS and verify certificates when talking to the external registry.
+              </small>
+            </td>
+            <td>
+              <input type="checkbox"
+                      ng-model="vm.verifyTLS"
+                      id="sync_verify_tls"></input>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="sync_http_proxy">HTTP Proxy</label></td>
+            <td>
+              <input ng-model="vm.httpProxy"
+                      placeholder="proxy.example.com"
+                      class="form-control"></input>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="sync_https_proxy">HTTPs Proxy</label></td>
+            <td>
+              <input ng-model="vm.httpsProxy"
+                      placeholder="proxy.example.com"
+                      class="form-control"></input>
+            </td>
+          </tr>
+          <tr>
+            <td><label for="sync_no_proxy">No Proxy</label></td>
+            <td>
+              <input ng-model="vm.noProxy"
+                      placeholder="example.com"
+                      class="form-control"></input>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="text-align: center">
+              <button class="btn btn-primary"
+                      ng-click="vm.setupMirror()"
+                      ng-disabled="enableMirroring.$invalid || !vm.robot">
+                Enable Mirror
+              </button>
+            </td>
+          </tr>
+        </table>
+      </form>
+    </div>
+
+    <!-- View 3: Manage existing Mirror configuration. -->
+    <div class="co-panel"
+         ng-show="repository.state == 'MIRROR' && vm.isSetup"
+         style="width: 600px">
+      <p>
+        This repository is configured as a mirror. While enabled, Quay will
+        periodically replicate any matching images on the external
+        registry. Users cannot manually push to this repository.
+      </p>
+      <table class="co-table" style="width: 600px">
+        <!-- A little "hack" taken from the settings tab. This should probably be done in CSS. -->
+        <thead>
+          <th style="width: 200px"></th>
+          <th></th>
+        </thead>
+        <tr>
+          <td colspan="2" style="text-align: center"><h4>Configuration</h4></td>
+        </tr>
+        <tr>
+          <td>
+            <label for="is_enabled">Enabled</label><br>
+            <small ng-show="vm.isEnabled">
+              Scheduled mirroring enabled. Immediate sync available via <i>Sync Now</i>.
+            </small>
+            <small ng-show="!vm.isEnabled">
+              Scheduled mirroring disabled. Immediate sync available via <i>Sync Now</i>.
+            </small>
+          </td>
+          <td>
+            <input id="is_enabled"
+                   type="checkbox"
+                   ng-checked="vm.isEnabled"
+                   ng-click="vm.toggleMirroring()"></input>
+          </td>
+        </tr>
+        <tr>
+          <td><label for="external_reference">External Repository</label></td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeExternalRepository()">
+              {{ vm.externalReference }}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td><label for="tags">Tags</label></td>
+          <td>
+            <a class="co-modify-link"
+               ng-click="vm.showChangeTags()">
+               <!-- TODO: re-use "tag-span" class from other directive(s) -->
+               <span ng-repeat="tag in vm.tags track by $index"
+                     style="
+                      display: inline-block;
+                      border-radius: 4px;
+                      padding: 2px;
+                      background: #eee;
+                      padding-left: 6px;
+                      padding-right: 6px;
+                      color: #000;
+                      max-width: 150px;
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                      vertical-align: middle;
+                      margin-right: 6px;
+                     ">
+                 {{ tag }}
+                </span>
+              </a>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="sync_interval">Sync Interval</label>
+          </td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeSyncInterval()">
+              {{ vm.syncInterval | humanizeInterval }}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td><label for="view_sync_start_date">Next Sync Date</label></td>
+          <td>
+            <a style="float: left"
+               class="co-modify-link"
+               ng-click="vm.showChangeSyncStartDate()"
+               id="view_sync_start_date">
+              {{ vm.syncStartDate | humanizeDate }}
+            </a>
+            <button style="float: right"
+                    class="btn btn-primary"
+                    ng-disabled="vm.status === 'SYNCING' || vm.status === 'SYNC_NOW'"
+                    ng-click="vm.syncNow()">Sync Now</button>
+          </td>
+        </tr>
+        <tr>
+          <td><label for="choose_robot">Robot User</label></td>
+          <td>
+            <span class="entity-search"
+                  namespace="repository.namespace"
+                  for-repository="repository"
+                  skip-permissions="true"
+                  placeholder="'Select a ' + (repository.is_organization ? 'team or ' : '') + 'user...'"
+                  current-entity="vm.robot"
+                  entity-selected="vm.changeRobot(entity)"
+                  pull-right="true"></span>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="text-align: center">
+            <h4>Advanced Settings</h4>
+          </td>
+        </tr>
+        <tr>
+          <td><label for="external_registry_username">Credentials</label></td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeCredentials()">
+              {{ vm.username || 'None' }}
+            </a>
+            <button style="float: right"
+                    class="btn btn-primary"
+                    ng-click="vm.deleteCredentials()">Delete Credentials</button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label for="verify_certificate">Verify TLS</label><br>
+            <small>
+              Require HTTPS and verify certificates when talking to the external registry.
+            </small>
+          </td>
+          <td>
+            <input type="checkbox" ng-click="vm.toggleVerifyTLS()" ng-checked="vm.verifyTLS"></input>
+          </td>
+        </tr>
+        <tr>
+          <td><label>HTTP Proxy</label></td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeHTTPProxy()">
+              {{ vm.httpProxy || 'None' }}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td><label>HTTPs Proxy</label></td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeHTTPsProxy()">
+              {{ vm.httpsProxy || 'None' }}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td><label>No Proxy</label></td>
+          <td>
+            <a class="co-modify-link" ng-click="vm.showChangeNoProxy()">
+              {{ vm.noProxy || 'None' }}
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="text-align: center">
+            <h4>Status</h4>
+          </td>
+        </tr>
+        <tr>
+          <td><label for="sync_status">State</label></td>
+          <td>
+            {{ vm.statusLabels[vm.status] || vm.status }}
+            <button style="float: right"
+                    class="btn btn-danger"
+                    ng-disabled="vm.status !== 'SYNCING' && vm.status !== 'SYNC_NOW'"
+                    ng-click="vm.syncCancel()">Cancel</button>
+          </td>
+        </tr>
+        <tr>
+          <td><label>Timeout</label></td>
+          <td>
+            {{ vm.expirationDate ? (vm.expirationDate | humanizeDate) : 'None' }}
+          </td>
+        </tr>
+        <tr>
+          <td><label for="sync_retries_remaining">Retries Remaining</label></td>
+          <td>
+            {{ vm.retriesRemaining }} / 3
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Modal: Change mirroring sync date dialog -->
+    <div class="cor-confirm-dialog"
+         dialog-context="vm.syncStartDateChanges"
+         dialog-action="vm.changeSyncStartDate(info, callback)"
+         dialog-title="Update next synchronization date"
+         dialog-action-title="Update"
+         dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      Next Synchronization Date:
+      <span id="change_sync_start_date"
+            class="datetime-picker"
+            datetime="vm.syncStartDateChanges.values.sync_start_date"></span>
+    </form>
+  </div>
+
+  <!-- Modal: Change mirroring sync interval -->
+  <div class="cor-confirm-dialog"
+       dialog-context="vm.syncIntervalChanges"
+       dialog-action="vm.changeConfig(info, callback)"
+       dialog-title="Update next synchronization date"
+       dialog-action-title="Update"
+       dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      <label>Synchronization Interval</label>
+      <div>
+        <span class="interval-input" seconds="vm.syncIntervalChanges.values.sync_interval"></span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Change external repository -->
+  <div class="cor-confirm-dialog"
+       dialog-context="vm.externalRepositoryChanges"
+       dialog-action="vm.changeConfig(info, callback)"
+       dialog-title="Update external repository"
+       dialog-action-title="Update"
+       dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      External Repository
+      <input type="text"
+             class="form-control"
+             ng-model="vm.externalRepositoryChanges.values.external_reference">
+    </form>
+  </div>
+
+  <!-- Modal: Change Credentials -->
+  <div class="cor-confirm-dialog"
+       dialog-context="vm.credentialsChanges"
+       dialog-action="vm.changeConfig(info, callback)"
+       dialog-title="Update Credentials"
+       dialog-action-title="Update"
+       dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      <label>Username</label>
+      <input type="text"
+             class="form-control"
+             ng-model="vm.credentialsChanges.values.external_registry_username">
+      <label>Password</label>
+      <input type="password"
+             class="form-control"
+             ng-model="vm.credentialsChanges.values.external_registry_password">
+    </form>
+  </div>
+
+  <!-- Modal: Change Tag Pattern -->
+  <div class="cor-confirm-dialog"
+       dialog-context="vm.tagChanges"
+       dialog-action="vm.changeTagRules(info, callback)"
+       dialog-title="Update Tag Filter"
+       dialog-action-title="Update"
+       dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      <label>Tags</label>
+      <input type="text" class="form-control" ng-model="vm.tagChanges.values.rule_value">
+    </form>
+  </div>
+
+  <!-- Modal: Change "HTTP Proxy" -->
+  <div class="cor-confirm-dialog"
+       dialog-context="vm.httpProxyChanges"
+       dialog-action="vm.changeConfig(info, callback)"
+       dialog-title="Update HTTP Proxy"
+       dialog-action-title="Update"
+       dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      <label>HTTP_PROXY</label>
+      <input type="text"
+             class="form-control"
+             ng-model="vm.httpProxyChanges.values.external_registry_config.proxy.http_proxy">
+    </form>
+  </div>
+
+  <!-- Modal: Change "HTTPs Proxy" -->
+  <div class="cor-confirm-dialog"
+       dialog-context="vm.httpsProxyChanges"
+       dialog-action="vm.changeConfig(info, callback)"
+       dialog-title="Update HTTP Proxy"
+       dialog-action-title="Update"
+       dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      <label>HTTPS_PROXY</label>
+      <input type="text"
+             class="form-control"
+             ng-model="vm.httpsProxyChanges.values.external_registry_config.proxy.https_proxy">
+    </form>
+  </div>
+
+  <!-- Modal: Change "No Proxy" -->
+  <div class="cor-confirm-dialog"
+       dialog-context="vm.noProxyChanges"
+       dialog-action="vm.changeConfig(info, callback)"
+       dialog-title="Update HTTP Proxy"
+       dialog-action-title="Update"
+       dialog-form="context.mirroringform">
+    <form name="context.mirroringform" class="co-single-field-dialog">
+      <label>NO_PROXY</label>
+      <input type="text"
+             class="form-control"
+             ng-model="vm.noProxyChanges.values.external_registry_config.proxy.no_proxy">
+    </form>
+  </div>
+
+</div>

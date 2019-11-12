@@ -1,0 +1,90 @@
+{
+    "architecture": "amd64",
+    "config": {
+      "Hostname": "",
+      "Domainname": "",
+      "User": "",
+      "AttachStdin": false,
+      "AttachStdout": false,
+      "AttachStderr": false,
+      "Tty": false,
+      "OpenStdin": false,
+      "StdinOnce": false,
+      "Env": [
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "Cmd": [
+        "/bin/bash"
+      ],
+      "ArgsEscaped": true,
+      "Image": "sha256:a141f6fbdbbcfc331f12db000daa2e636820152fa35dff4ca56cf02382aece7a",
+      "Volumes": null,
+      "WorkingDir": "",
+      "Entrypoint": null,
+      "OnBuild": null,
+      "Labels": null
+    },
+    "container": "1501390588c62f6c7c0e4fec25d6587c75c2f330536b9d08c610a56ed013f64b",
+    "container_config": {
+      "Hostname": "1501390588c6",
+      "Domainname": "",
+      "User": "",
+      "AttachStdin": false,
+      "AttachStdout": false,
+      "AttachStderr": false,
+      "Tty": false,
+      "OpenStdin": false,
+      "StdinOnce": false,
+      "Env": [
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "Cmd": [
+        "/bin/sh",
+        "-c",
+        "#(nop) ",
+        "CMD [\"/bin/bash\"]"
+      ],
+      "ArgsEscaped": true,
+      "Image": "sha256:a141f6fbdbbcfc331f12db000daa2e636820152fa35dff4ca56cf02382aece7a",
+      "Volumes": null,
+      "WorkingDir": "",
+      "Entrypoint": null,
+      "OnBuild": null,
+      "Labels": {}
+    },
+    "created": "2018-11-19T21:20:42.235528208Z",
+    "docker_version": "17.06.2-ce",
+    "history": [
+      {
+        "created": "2018-11-19T21:20:39.739838469Z",
+        "created_by": "/bin/sh -c #(nop) ADD file:39e5bc157a8be63bbb36a142e18b644b0cfff07a8a02b42f7d0c4ee4ba75a5bc in / "
+      },
+      {
+        "created": "2018-11-19T21:20:40.571619714Z",
+        "created_by": "/bin/sh -c set -xe \t\t&& echo '#!/bin/sh' > /usr/sbin/policy-rc.d \t&& echo 'exit 101' >> /usr/sbin/policy-rc.d \t&& chmod +x /usr/sbin/policy-rc.d \t\t&& dpkg-divert --local --rename --add /sbin/initctl \t&& cp -a /usr/sbin/policy-rc.d /sbin/initctl \t&& sed -i 's/^exit.*/exit 0/' /sbin/initctl \t\t&& echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/docker-apt-speedup \t\t&& echo 'DPkg::Post-Invoke { \"rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true\"; };' > /etc/apt/apt.conf.d/docker-clean \t&& echo 'APT::Update::Post-Invoke { \"rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true\"; };' >> /etc/apt/apt.conf.d/docker-clean \t&& echo 'Dir::Cache::pkgcache \"\"; Dir::Cache::srcpkgcache \"\";' >> /etc/apt/apt.conf.d/docker-clean \t\t&& echo 'Acquire::Languages \"none\";' > /etc/apt/apt.conf.d/docker-no-languages \t\t&& echo 'Acquire::GzipIndexes \"true\"; Acquire::CompressionTypes::Order:: \"gz\";' > /etc/apt/apt.conf.d/docker-gzip-indexes \t\t&& echo 'Apt::AutoRemove::SuggestsImportant \"false\";' > /etc/apt/apt.conf.d/docker-autoremove-suggests"
+      },
+      {
+        "created": "2018-11-19T21:20:41.293060457Z",
+        "created_by": "/bin/sh -c rm -rf /var/lib/apt/lists/*"
+      },
+      {
+        "created": "2018-11-19T21:20:42.002883522Z",
+        "created_by": "/bin/sh -c mkdir -p /run/systemd && echo 'docker' > /run/systemd/container"
+      },
+      {
+        "created": "2018-11-19T21:20:42.235528208Z",
+        "created_by": "/bin/sh -c #(nop)  CMD [\"/bin/bash\"]",
+        "empty_layer": true
+      }
+    ],
+    "os": "linux",
+    "rootfs": {
+      "type": "layers",
+      "diff_ids": [
+        "sha256:bc7f4b25d0ae3524466891c41cefc7c6833c533e00ba80f8063c68da9a8b65fe",
+        "sha256:a768c3f3878e96565d2bf0dcf90508261862847b2e7b8fc804a0770c07f0d5d5",
+        "sha256:ca2991e4676cba899ad9bc6ad3a044cd0816915f9e97a6f2e67b6accbc779ba5",
+        "sha256:b9b7103af585bd8ae9130de947817be7ce76092aa19cf6d2f9d5290440c645eb"
+      ]
+    }
+  }

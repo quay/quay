@@ -1,0 +1,34 @@
+<span class="namespace-selector-dropdown">
+  <span ng-show="user.organizations.length == 0">
+    <span class="avatar" size="24" data="user.avatar"></span>
+    <span class="namespace-name">{{user.username}}</span>
+  </span>
+
+  <div class="btn-group" ng-show="user.organizations.length > 0">
+  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+    <span class="avatar" size="16" data="namespaceObj.avatar"></span>
+    {{namespace}} <span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu" role="menu">
+    <li class="namespace-item" ng-repeat="org in user.organizations"
+        ng-class="(requireCreate && !namespaces[org.name].can_create_repo) ? 'disabled' : ''">
+      <a class="namespace" ng-click="setNamespace(org)">
+        <span class="avatar" size="24" data="org.avatar"></span>
+        <span class="namespace-name">{{ org.name }}</span>
+      </a>
+
+      <i class="fa fa-exclamation-triangle" ng-show="requireCreate && !namespaces[org.name].can_create_repo"
+         data-title="You do not have permission to create repositories for this organization"
+         data-placement="right"
+         bs-tooltip="tooltip.title"></i>
+    </li>
+    <li class="divider"></li>
+    <li>
+      <a class="namespace" ng-click="setNamespace(user)">
+        <span class="avatar" size="24" data="user.avatar"></span>
+        <span class="namespace-name">{{ user.username }}</span>
+      </a>
+    </li>
+  </ul>
+</div>
+</span>

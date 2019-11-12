@@ -1,0 +1,77 @@
+<span class="entity-search-element" ng-class="autoClear ? '' : 'persistent'"><input class="entity-search-control form-control">
+  <span class="entity-reference block-reference" ng-show="!autoClear && currentEntityInternal" entity="currentEntityInternal"></span>
+  <div class="dropdown">
+    <button class="btn btn-default dropdown-toggle" type="button" id="entityDropdownMenu" data-toggle="dropdown"
+            ng-click="lazyLoad()">
+      <span class="caret"></span>
+    </button>
+    <ul class="dropdown-menu entity-menu" ng-class="pullRight == 'true' ? 'pull-right': ''" role="menu"
+        aria-labelledby="entityDropdownMenu">
+      <li ng-show="requiresLazyLoading" style="padding: 10px"><div class="cor-loader"></div></li>
+
+      <li role="presentation" class="dropdown-header" ng-show="!requiresLazyLoading && !page.robots && !isAdmin && !teams">
+        You do not have permission to manage teams and robots for this organization
+      </li>
+
+      <li role="presentation" ng-show="includeTeams && isOrganization && !requiresLazyLoading && isAdmin && !inReadOnlyMode">
+        <a role="menuitem" class="new-action" tabindex="-1" ng-click="askCreateTeam()">
+          <i class="fa fa-group"></i> Create team
+        </a>
+      </li>
+      <li role="presentation" ng-show="includeRobots && !requiresLazyLoading && isAdmin && !inReadOnlyMode">
+        <a role="menuitem" class="new-action" tabindex="-1" ng-click="askCreateRobot()">
+          <i class="fa ci-robot"></i>
+          Create robot account
+        </a>
+      </li>
+
+      <li role="presentation" class="divider" ng-show="!requiresLazyLoading && page.robots && isAdmin && !inReadOnlyMode"></li>
+
+      <li role="presentation" class="dropdown-header"
+          ng-show="!requiresLazyLoading && !teams.length && !page.robots.length && !((includeTeams && isOrganization && isAdmin) || (includeRobots && isAdmin))">
+        <span ng-if="includeRobots && includeTeams && isOrganization">
+          No robot accounts or teams found
+        </span>
+        <span ng-if="!includeRobots && includeTeams && isOrganization">
+          No teams found
+        </span>
+        <span ng-if="includeRobots && !includeTeams && isOrganization">
+          No robot accounts found
+        </span>
+        <span ng-if="!includeRobots && !includeTeams && isOrganization">
+          Robot accounts and teams are not permitted
+        </span>
+
+        <span ng-if="includeRobots && !isOrganization">
+          No robot accounts found
+        </span>
+        <span ng-if="!includeRobots && !isOrganization">
+          Robot accounts are not permitted
+        </span>
+      </li>
+
+      <li role="presentation" class="dropdown-header" ng-show="!requiresLazyLoading && teams">Teams</li>
+
+      <li class="menuitem" role="presentation" ng-repeat="team in teams | orderBy: 'name'" ng-show="!requiresLazyLoading"
+          ng-click="setEntity(team.name, 'team', false, team.avatar)">
+        <a role="menuitem" tabindex="-1">
+          <span class="avatar" data="team.avatar" size="16"></span> <span>{{ team.name }}</span>
+        </a>
+      </li>
+
+      <li role="presentation" class="divider" ng-show="!requiresLazyLoading && teams && (isAdmin || page.robots)"></li>
+
+      <li role="presentation" class="dropdown-header" ng-show="!requiresLazyLoading && page.robots">Robot Accounts</li>
+
+      <li class="menuitem" role="presentation" ng-repeat="robot in page.robots | orderBy:'name'" ng-show="!requiresLazyLoading">
+        <a role="menuitem" tabindex="-1" ng-click="setEntity(robot.name, 'user', true)">
+          <i class="fa ci-robot"></i> <span>{{ robot.name }}</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+  <div class="create-team-dialog" info="createTeamInfo"
+       team-created="handleTeamCreated(team)"></div>
+  <div class="create-robot-dialog" info="createRobotInfo"
+       robot-created="handleRobotCreated(robot)"></div>
+</span>

@@ -1,0 +1,18 @@
+<div class="aside" tabindex="-1" role="dialog">
+  <div class="aside-dialog">
+    <div class="aside-content">
+      <div class="aside-header">
+        <button type="button" class="close" ng-click="$hide()">&times;</button>
+        <h4 class="aside-title">
+          Notifications
+          <span class="notifications-bubble"></span>
+        </h4>
+      </div>
+      <div class="aside-body">
+        <div ng-repeat="notification in notificationService.notifications">
+          <div class="notification-view" notification="notification" parent="this"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,101 @@
+.service-keys-manager-element .co-filter-box {
+  float: right;
+}
+
+.service-keys-manager-element .manager-header {
+    margin-bottom:  20px;
+}
+
+@media (max-width: 767px) {
+  .service-keys-manager-element .co-filter-box {
+    float: none;
+    display: block;
+  }
+}
+
+.service-keys-manager-element .approval-user .pretext {
+    vertical-align: middle;
+    margin-right: 4px;
+    font-size: 12px;
+    color: #777;
+}
+
+.service-keys-manager-element .rotation {
+  color: #777;
+}
+
+.service-keys-manager-element .approval-automatic {
+    font-size: 12px;
+    color: #777;
+}
+
+.service-keys-manager-element i.fa {
+    margin-right: 4px;
+}
+
+.service-keys-manager-element .approval-rotation {
+    font-size: 12px;
+    color: #777;
+}
+
+.service-keys-manager-element .approval-rotation i.fa {
+    margin-right: 6px;
+}
+
+.service-keys-manager-element .subtitle {
+  color: #999;
+  font-size: 90%;
+  text-transform: uppercase;
+  font-weight: 300;
+  padding-top: 0!important;
+  text-align: left;
+  margin-bottom: 6px;
+  margin-top: 10px;
+}
+
+.service-keys-manager-element .approval-required i.fa {
+    margin-right: 4px;
+}
+
+.service-keys-manager-element .approval-required a {
+    margin-left: 10px;
+}
+
+.service-keys-manager-element .unnamed {
+  color: #ddd;
+}
+
+.service-keys-manager-element .key-display {
+    margin-top: 10px;
+    font-size: 12px;
+    font-family: Menlo,Monaco,Consolas,"Courier New",monospace;
+    background: white;
+    min-height: 500px;
+}
+
+.service-keys-manager-element .max-text {
+  display: inline-block;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+
+.service-keys-manager-element .keys-list {
+  list-style: circle;
+  padding: 10px;
+  padding-left: 40px;
+}
+
+.service-keys-manager-element .keys-list li {
+  padding: 4px;
+  font-family: Consolas, "Lucida Console", Monaco, monospace;
+}
+
+.service-keys-manager-element .expiration-form .datetime-picker {
+  margin-top: 4px;
+  display: block;
+  margin-bottom: 2px;
+}

@@ -1,0 +1,44 @@
+.build-info-bar-element {
+  position: relative;
+  padding: 6px;
+  padding-left: 20px;
+}
+
+.build-info-bar-element .phase-icon {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  bottom: 0px;
+  height: auto;
+  border-radius: 0px;
+  width: 5px;
+}
+
+.build-info-bar-element .build-side-info {
+  float: right;
+}
+
+.build-info-bar-element .build-side-info .build-side-id {
+  font-size: 12px;
+  color: #ccc;
+  margin-bottom: 10px;
+}
+
+.build-info-bar-element .build-side-info .timing .fa {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.build-info-bar-element .build-side-info .timing {
+  text-align: right;
+}
+
+.build-info-bar-element .source-commit-link {
+  margin-left: 4px;
+}
+
+@media (max-width: 767px) {
+  .build-info-bar-element .build-side-info .build-side-id {
+    display: none;
+  }
+}

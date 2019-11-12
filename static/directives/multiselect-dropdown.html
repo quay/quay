@@ -1,0 +1,43 @@
+<div class="multiselect-dropdown-element">
+  <div class="dropdown" style="text-align: left;">
+    <button class="btn-dropdown btn btn-default" data-toggle="dropdown">
+      <span class="selected-item-template" ng-repeat="item in selectedItems | limitTo:10" ng-transcope></span>
+      <span class="selected-item-template"
+            ng-if="(selectedItems | limitTo:11).length > 10">
+          and {{ selectedItems.length - 10 }} more...
+      </span>
+
+      <span class="none" ng-if="!selectedItems.length">(No {{ itemName }}s selected)</span>
+      <span class="caret" ng-if="!readOnly"></span>
+    </button>
+
+    <ul class="dropdown-menu noclose">
+      <li>
+        <input type="search" class="form-control" ng-model="filter" placeholder="{{ itemName }} filter...">
+      </li>
+      <li role="presentation" class="divider"></li>
+      <li ng-repeat="item in items | filter:filter | limitTo:10">
+        <a class="menu-item" ng-click="toggleItem(item)">
+            <span class="co-checkable-item" ng-class="isChecked(selectedItems, item) ? 'checked': 'not-checked'">
+            </span>
+            <span class="menu-item-template" ng-transcope></span>
+        </a>
+      </li>
+      <li role="presentation" ng-if="(items | filter:filter | limitTo:11).length == 11">
+        <div class="empty" style="margin-top: 10px;">
+          <div class="empty-secondary-msg">
+            + {{ (items | filter:filter).length - 10 }} additional
+          </div>
+        </div>
+      </li>
+      <li role="presentation" ng-if="(items | filter:filter | limitTo:1).length == 0">
+        <div class="empty">
+          <div class="empty-primary-msg">No matching {{ itemName }}s found</div>
+          <div class="empty-secondary-msg">
+            Please reduce your filter above
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>

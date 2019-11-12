@@ -1,0 +1,19 @@
+.fetch-tag-dialog .modal-table {
+   width: 100%;
+}
+
+.fetch-tag-dialog .modal-table .first-col {
+  width: 140px;
+}
+
+.fetch-tag-dialog .co-dialog .modal-body {
+  padding: 20px;
+}
+
+.fetch-tag-dialog .entity-search {
+  margin: 10px;
+}
+
+.fetch-tag-dialog pre.command {
+  margin-top: 10px;
+}

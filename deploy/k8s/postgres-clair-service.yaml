@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: postgres-clair
+  name: postgres-clair
+  namespace: quay-enterprise
+spec:
+  ports:
+  - nodePort: 30680
+    port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    app: postgres-clair
+  type: NodePort

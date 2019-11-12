@@ -1,0 +1,10 @@
+<span class="build-state-icon-element" ng-class="build.phase">
+ <span class="cor-loader-inline" ng-if="isBuilding(build)"></span>
+ <span ng-if="!isBuilding(build)">
+   <i class="fa fa-check-circle" ng-if="build.phase == 'complete'"></i>
+   <i class="fa fa-times-circle" ng-if="build.phase == 'error'"></i>
+   <i class="fa fa-exclamation-circle" ng-if="build.phase == 'expired'"></i>
+   <i class="fa fa-exclamation-circle" ng-if="build.phase == 'internalerror'"></i>
+   <i class="fa fa-minus-circle" ng-if="build.phase == 'cancelled'"></i>
+ </span>
+</span>

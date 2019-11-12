@@ -1,0 +1,236 @@
+<div class="manage-users-tab-element">
+  <div class="cor-loader" ng-show="!users"></div>
+  <div class="alert alert-error" ng-show="usersError">
+    {{ usersError }}
+  </div>
+  <div ng-show="users">
+    <div class="manager-header" header-title="Users">
+      <button class="create-button btn btn-primary" ng-click="showCreateUser()"
+              quay-show="Config.AUTHENTICATION_TYPE == 'Database' && !inReadOnlyMode">
+        <i class="fa fa-plus" style="margin-right: 6px;"></i>Create User
+      </button>
+      <span class="co-alert co-alert-info" quay-show="Config.AUTHENTICATION_TYPE != 'Database' && Config.AUTHENTICATION_TYPE != 'AppToken'">
+                Note: <span class="registry-name"></span> is configured to use external authentication, so users can only be created in that system
+              </span>
+    </div>
+
+    <div class="co-top-bar">
+      <span class="co-filter-box">
+        <span class="page-controls" total-count="orderedUsers.entries.length" current-page="options.page" page-size="usersPerPage"></span>
+        <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Users..." style="margin-right: 10px;">
+      </span>
+    </div>
+    <table class="cor-table" ng-if="orderedUsers.entries.length && !isLoading">
+      <thead>
+        <td style="width: 24px;"></td>
+        <td ng-class="tablePredicateClass('username', options.predicate, options.reverse)">
+          <a ng-click="orderBy('username')">Username</a>
+        </td>
+        <td ng-class="tablePredicateClass('email', options.predicate, options.reverse)"
+            ng-if="Features.MAILING">
+          <a ng-click="orderBy('email')">E-mail address</a>
+        </td>
+        <td style="width: 24px;"></td>
+      </thead>
+
+      <tr ng-repeat="current_user in orderedUsers.entries | slice
+                     :(usersPerPage * options.page)
+                     :(usersPerPage * (options.page + 1))"
+          class="user-row"
+          ng-class="current_user.enabled ? 'enabled': 'disabled'">
+        <td>
+             <span class="avatar" data="current_user.avatar" size="24"></span>
+        </td>
+        <td>
+          <span class="labels">
+            <span class="label label-success" ng-if="user.username == current_user.username">You</span>
+            <span class="label label-primary"
+                  ng-if="current_user.super_user">Superuser</span>
+            <span class="label label-default"
+                  ng-if="!current_user.enabled">Disabled</span>
+          </span>
+          {{ current_user.username }}
+        </td>
+        <td ng-if="Features.MAILING">
+          <a href="mailto:{{ current_user.email }}">{{ current_user.email }}</a>
+        </td>
+        <td style="text-align: center;">
+                  <span class="cor-options-menu"
+                        ng-if="user.username != current_user.username && !current_user.super_user && !inReadOnlyMode">
+                    <span class="cor-option" option-click="showChangeEmail(current_user)"
+                          quay-show="Config.AUTHENTICATION_TYPE == 'Database' || Config>.AUTHENTICATION_TYPE == 'AppToken'">
+                      <i class="fa fa-envelope-o"></i> Change E-mail Address
+                    </span>
+                    <span class="cor-option" option-click="showChangePassword(current_user)"
+                          quay-show="Config.AUTHENTICATION_TYPE == 'Database'">
+                      <i class="fa fa-key"></i> Change Password
+                    </span>
+                    <span class="cor-option" option-click="sendRecoveryEmail(current_user)"
+                          quay-show="Features.MAILING && Config.AUTHENTICATION_TYPE == 'Database'">
+                      <i class="fa fa-envelope"></i> Send Recovery E-mail
+                    </span>
+                    <span class="cor-option" option-click="showDeleteUser(current_user)">
+                      <i class="fa fa-times"></i> Delete User
+                    </span>
+                    <span class="cor-option" option-click="askDisableUser(current_user)">
+                      <i class="fa" ng-class="current_user.enabled ? 'fa-circle-o' : 'fa-check-circle-o'"></i> <span
+                        ng-if="current_user.enabled">Disable</span> <span ng-if="!current_user.enabled">Enable</span> User
+                    </span>
+                    <span class="cor-option" option-click="askTakeOwnership(current_user)"
+                          ng-if="user.username != current_user.username && !current_user.super_user">
+                      <i class="fa fa-bolt"></i> Take Ownership
+                    </span>
+                  </span>
+        </td>
+      </tr>
+    </table>
+  </div> <!-- /show if users -->
+
+  <!-- Take ownership dialog -->
+  <div class="cor-confirm-dialog take-ownership-dialog"
+       dialog-context="takeOwnershipInfo"
+       dialog-action="takeOwnership(info, callback)"
+       dialog-title="Take Ownership"
+       dialog-action-title="Take Ownership">
+    Are you sure you want to take ownership of user namespace <span class="avatar" data="takeOwnershipInfo.entity.avatar"
+                                                                 size="16"></span> {{ takeOwnershipInfo .entity.username }}?</span>
+    <div class="co-alert co-alert-warning">
+      Note: This will convert the user namespace into an organization. <strong>The user will no longer be able to login
+      to
+      this account.</strong>
+    </div>
+  </div>
+
+  <!-- Modal message dialog -->
+  <div class="co-dialog modal fade" id="confirmDeleteUserModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Delete User?</h4>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger">
+            This operation <strong>cannot be undone</strong> and will <strong>delete any repositories owned by the
+            user</strong>.
+          </div>
+          Are you <strong>sure</strong> you want to delete user <strong>{{ userToDelete.username }}</strong>?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" ng-click="deleteUser(userToDelete)">Delete User</button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Modal create user dialog -->
+  <div class="co-dialog modal fade" id="createUserModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Create New User</h4>
+        </div>
+        <form name="createUserForm" ng-submit="createUser()">
+          <div class="modal-body" ng-show="createdUser">
+            <table class="table">
+              <thead>
+              <th>Username</th>
+              <th>E-mail address</th>
+              <th>Temporary Password</th>
+              </thead>
+
+              <tr class="user-row">
+                <td>{{ createdUser.username }}</td>
+                <td>{{ createdUser.email }}</td>
+                <td>{{ createdUser.password }}</td>
+              </tr>
+            </table>
+          </div>
+          <div class="modal-body" ng-show="creatingUser">
+            <div class="cor-loader"></div>
+          </div>
+          <div class="modal-body" ng-show="!creatingUser && !createdUser">
+            <div class="form-group">
+              <label>Username</label>
+              <input class="form-control" type="text" ng-model="newUser.username" ng-pattern="/^[a-z0-9_]{4,30}$/"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label>Email address</label>
+              <input class="form-control" type="email" ng-model="newUser.email" required>
+            </div>
+          </div>
+          <div class="modal-footer" ng-show="createdUser">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+          <div class="modal-footer" ng-show="!creatingUser && !createdUser">
+            <button class="btn btn-primary" type="submit" ng-disabled="!createUserForm.$valid">
+              Create User
+            </button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+
+  <!-- Modal change password dialog -->
+  <div class="co-dialog modal fade" id="changePasswordModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Change User Password</h4>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning">
+            The user will no longer be able to access the registry with their current password
+          </div>
+
+          <form class="form-change" id="changePasswordForm" name="changePasswordForm" data-trigger="manual">
+            <input type="password" class="form-control" placeholder="User's new password"
+                   ng-model="userToChange.password"
+                   required ng-pattern="/^.{8,}$/">
+            <input type="password" class="form-control" placeholder="Verify the new password"
+                   ng-model="userToChange.repeatPassword"
+                   match="userToChange.password" required ng-pattern="/^.{8,}$/">
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" ng-click="changeUserPassword(userToChange)"
+                  ng-disabled="changePasswordForm.$invalid">Change User Password
+          </button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Modal change email dialog -->
+  <div class="co-dialog modal fade" id="changeEmailModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title">Change User E-mail Address</h4>
+        </div>
+        <div class="modal-body">
+          <form class="form-change" id="changeEmailForm" name="changeEmailForm" data-trigger="manual">
+            <input type="email" class="form-control" placeholder="User's new email" ng-model="userToChange.newemail"
+                   required>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" ng-click="changeUserEmail(userToChange)"
+                  ng-disabled="changeEmailForm.$invalid">Change User E-mail
+          </button>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+</div>

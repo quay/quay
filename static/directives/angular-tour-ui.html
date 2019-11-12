@@ -1,0 +1,32 @@
+<div class="angular-tour-ui-element"
+     ng-class="[tour ? 'touring' : 'nottouring', inline ? 'inline' : 'overlay']">
+
+  <div class="tour-contents" ng-show="!supported">
+    Your browser does not support features required for this tour. Please upgrade and try again.
+  </div>
+
+  <div class="co-alert co-alert-warning" ng-show="step.signal.$hasError">
+    There was an error registering to listen for server side events. Steps of the tutorial may not be
+    possible. If this problem persists, please contact support.
+  </div>
+
+  <div class="tour-contents" ng-show="supported">
+    <div class="step-title" ng-show="step.title">{{ step.title }}</div>
+    <div class="slide-animate-container">
+      <div class="step-content" ng-show="step.content" ng-bind-html="step.content || ''"></div>
+      <div class="step-content">
+        <ng:include src="step.templateUrl" scope="info"></ng:include>
+      </div>
+    </div>
+
+    <div class="controls" ng-show="(hasNextStep && !step.signal) || (!hasNextStep && !inline)">
+      <button class="btn btn-primary" ng-click="next()" ng-show="hasNextStep && !step.signal">Continue Tutorial</button>
+      <button class="btn btn-primary" ng-click="stop()" ng-show="!hasNextStep && !inline">Done</button>
+    </div>
+
+    <div class="wait-message" ng-show="step.waitMessage">
+      <div class="cor-loader-inline"></div> {{ step.waitMessage }}
+      <span class="skip-message" ng-show="step.skipTitle"><button class="btn btn-default" ng-click="next()">{{ step.skipTitle }}</button></span>
+    </div>
+  </div>
+</div>

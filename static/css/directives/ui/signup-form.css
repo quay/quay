@@ -1,0 +1,33 @@
+.signup-form-element h4 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.signup-form-element label {
+    font-weight: 600;
+}
+
+
+.signup-form-element input {
+    margin-bottom: 10px;
+}
+
+.signup-form-element .captcha {
+    display: block;
+    text-align: center;
+}
+
+.signup-form-element .captcha div {
+    display: inline-block;
+    margin: 2px;
+}
+
+.signup-form-element .captcha {
+    height: 0px;
+    transition: height ease-in-out 250ms;
+    overflow: hidden;
+}
+
+.user-setup-element .captcha.expanded {
+    height: 94px;
+}

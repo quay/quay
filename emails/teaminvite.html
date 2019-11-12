@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3 style="font-weight: 400">Invitation to join team: <strong>{{ organization }}/{{ teamname }}</strong></h3>
+<hr style="border:none; border-top: 1px solid #D9D9D9; margin: 25px 0">
+
+<table>
+	<tr>
+		<td style="font-size: 13px;">You’ve been invited to join the team <strong>{{ teamname }}</strong> in the organization <strong>{{ organization }}</strong> by user <strong>{{ inviter | user_reference }}</strong>.</td>
+	</tr>
+</table>
+
+<table style="margin-top: 25px">
+	<tr>
+		<td style="background: #40B4E5; padding: 8px 25px; border-radius: 3px; color: #fff; font-size: 20px; font-weight: 500"><a style="text-decoration: none; color: #ffffff;" href="{{ app_link('confirminvite?code=' + token) }}">Join Team</a></td>
+	</tr>
+</table>
+
+<table style="margin: 25px 0 35px;">
+	<tr>
+		<td style="font-size: 13px;">If you were not expecting this invitation, you can safely ignore this email.</td>
+	</tr>
+</table>
+
+
+<span style="font-size: 13px;">Thank you,</span><br>
+<span style="font-size: 13px;">The {{ app_title }} Team</span><br>
+
+{% endblock %}

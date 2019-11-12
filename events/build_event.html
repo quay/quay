@@ -1,0 +1,33 @@
+<a href="{{ event_data.homepage }}">Build {{ event_data.build_id[:7] }}</a> {% block eventkind %}{% endblock %} for
+{% if event_data.trigger_id %}
+  change
+  {% if event_data.trigger_metadata %}
+    {% if event_data.trigger_metadata.commit_info %}
+      <a href="{{ event_data.trigger_metadata.commit_info.url }}">
+        {{ event_data.trigger_metadata.commit[:7] }}
+      </a> to
+      {% if event_data.trigger_metadata.ref.split('/')[1] == 'tags' %}
+      tag
+      {% else %}
+      branch
+      {% endif %}
+      {{ event_data.trigger_metadata.ref.split('/')[2] }}
+      {% if event_data.trigger_metadata.commit_info.author %}
+        by <a href="{{ event_data.trigger_metadata.commit_info.author.url }}">
+             {% if event_data.trigger_metadata.commit_info.author.avatar_url %}
+             <img src="{{ event_data.trigger_metadata.commit_info.author.avatar_url }}" width="16" height="16">{% endif %}{{ event_data.trigger_metadata.commit_info.author.username }}
+           </a>
+      {% endif %}
+    {% else %}
+      {{ event_data.trigger_metadata.commit[:7] }}
+    {% endif %}
+  {% else %}
+    to {{ event_data.trigger_kind }} repository
+  {% endif %}
+{% else %}
+ uploaded Dockerfile
+{% endif %}
+ for repository {{ event_data.repository | repository_reference }}
+{% if event_data.error_message %}
+<br>{{ event_data.error_message }}
+{% endif %}

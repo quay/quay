@@ -1,0 +1,80 @@
+.team-view .co-main-content-panel {
+  padding: 20px;
+  position: relative;
+}
+
+.team-view .team-sync-table {
+  margin-bottom: 20px;
+}
+
+.team-view .team-sync-table td {
+  padding: 6px;
+}
+
+.team-view .team-sync-table td:first-child {
+  font-weight: bold;
+}
+
+.team-view .team-title {
+  vertical-align: middle;
+  margin-right: 10px;
+  color: #ccc;
+}
+
+.team-view .team-name {
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.team-view .team-view-header, .team-view .team-sync-header {
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+
+.team-view .team-view-header button i.fa {
+  margin-right: 4px;
+}
+
+.team-view .team-view-header > h3 {
+  margin-top: 10px;
+}
+
+.team-view .team-view-header .popover {
+  max-width: none !important;
+}
+
+.team-view .team-view-header .popover.bottom-right .arrow:after {
+  border-bottom-color: #f7f7f7;
+  top: 2px;
+}
+
+.team-view .team-view-header .popover-content {
+  font-size: 14px;
+  padding-top: 6px;
+  min-width: 500px;
+}
+
+.team-view .team-view-header .popover-content input {
+  background: white;
+}
+
+.team-view .team-view-add-element .help-text {
+  font-size: 13px;
+  color: #ccc;
+  margin-top: 10px;
+}
+
+.team-view .co-table-header-row td {
+  padding-top: 20px !important;
+}
+
+.team-view .co-table-header-row:first-child td {
+  padding-top: 10px !important;
+}
+
+.team-view .section-header {
+  text-align: left;
+  color: #aaa;
+  margin-bottom: 20px;
+}

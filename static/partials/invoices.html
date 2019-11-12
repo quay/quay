@@ -1,0 +1,37 @@
+<div class="billing-page page-content">
+  <div class="resource-view" resource="entityResource"  error-message="'Could not load entity'">
+    <div class="cor-title" ng-if="organization">
+      <span class="cor-title-link">
+        <a class="back-link" href="/organization/{{ organization.name }}?tab=settings">
+          <span class="avatar" size="24" data="organization.avatar"></span>
+          {{ organization.name }}
+        </a>
+      </span>
+      <span class="cor-title-content">
+        Billing Invoices
+      </span>
+    </div>
+
+    <div class="cor-title" ng-if="viewuser">
+      <span class="cor-title-link">
+        <a class="back-link" href="/user/{{ viewuser.username }}?tab=settings">
+          <span class="avatar" size="24" data="viewuser.avatar"></span>
+          {{ viewuser.username }}
+        </a>
+      </span>
+      <span class="cor-title-content">
+        Billing Invoices
+      </span>
+    </div>
+
+    <div class="co-main-content-panel" style="min-height: 500px;">
+      <div ng-if="!invaliduser">
+        <div class="billing-invoices" user="viewuser" makevisible="true" ng-if="!organization"></div>
+        <div class="billing-invoices" organization="organization" makevisible="true" ng-if="organization"></div>
+      </div>
+      <div class="co-alert co-alert-danger" ng-if="invaliduser">
+        You do not have access to this resource
+      </div>
+    </div>
+  </div>
+</div>

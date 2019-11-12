@@ -1,0 +1,249 @@
+<div class="new-repo">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link">
+        <a class="back-link" href="/repository">
+          Repositories
+        </a>
+      </span>
+      <span class="cor-title-content">
+        Create New Repository
+      </span>
+    </div>
+
+    <div class="co-main-content-panel">
+      <div class="" ng-show="user.anonymous">
+        <div class="col-sm-6 col-sm-offset-3">
+          <div class="user-setup" redirect-url="'/new/'"></div>
+        </div>
+      </div>
+
+      <div class="cor-loader" ng-show="!user.anonymous && building"></div>
+      <div class="cor-loader" ng-show="!user.anonymous && creating"></div>
+
+      <div class="new-repo" ng-show="!user.anonymous && !creating && !building">
+        <form method="post" name="newRepoForm" id="newRepoForm" ng-submit="createNewRepo()">
+
+        <!-- Header -->
+        <div class="row">
+
+          <div class="col-md-12">
+            <div class="section">
+              <div class="new-header">
+                <div class="namespace-selector-header">
+                  <span quay-show="Features.APP_REGISTRY">
+                    <span class="visible-xs xs-label">Repository Kind:</span>
+                    <select class="form-control repo-kind-select" ng-model="repo.repo_kind">
+                      <option value="image">Container Image Repository</option>
+                      <option value="application">Application Repository</option>
+                    </select>
+                  </span>
+
+                  <span class="visible-xs xs-label">Namespace:</span>
+                  <span class="namespace-selector" user="user" namespace="repo.namespace" require-create="true"></span>
+
+                  <span class="slash hidden-xs">/</span>
+
+                  <span class="visible-xs xs-label">Repository Name:</span>
+                  <span class="name-container">
+                    <input id="repoName" name="repoName" type="text" class="form-control" placeholder="Repository Name" ng-model="repo.name"
+                           required autofocus data-trigger="manual" data-content="{{ createError }}" data-placement="right" ng-pattern="/^[.a-z0-9_-]+$/">
+                  </span>
+                  <span class="co-alert co-alert-warning co-alert-popin-warning" ng-show="!creating && !newRepoForm.repoName.$error.required && !newRepoForm.repoName.$valid">
+                    Repository names must match [a-z0-9_-]+
+                  </span>
+                  <span class="co-alert co-alert-danger co-alert-popin-warning" ng-show="!creating && createError">
+                    {{ createError }}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="section">
+              <div class="section-title">Repository Description</div>
+              <br>
+              <div class="description">
+                <markdown-input content="repo.description"
+                                can-write="true"
+                                (content-changed)="updateDescription($event.content)"
+                                field-title="repository description"></markdown-input>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Private/public -->
+        <div class="row">
+
+          <div class="col-md-12">
+            <div class="section">
+              <div class="section-title">Repository Visibility</div>
+              <br>
+              <div class="repo-option">
+                <div class="repo-option-title">
+                  <input type="radio" id="publicrepo" name="publicorprivate" ng-model="repo.is_public" value="1">
+                  <i class="fa fa-unlock fa-large" data-title="Public Repository"></i>
+                  <label for="publicrepo"><strong>Public</strong></label>
+                </div>
+
+                <div class="option-description">
+                  <span class="description-text">Anyone can see and pull from this repository. You choose who can push.</span>
+                </div>
+              </div>
+              <div class="repo-option">
+                <div class="repo-option-title">
+                  <input type="radio" id="privaterepo" name="publicorprivate" ng-model="repo.is_public" value="0">
+                  <i class="fa fa-lock fa-large" data-title="Private Repository"></i>
+                  <label for="privaterepo"><strong>Private</strong></label>
+                </div>
+
+                <div class="option-description">
+                  <span class="description-text">You choose who can see, pull and push from/to this repository.</span>
+                </div>
+              </div>
+
+              <!-- Payment -->
+              <div class="repo-count-checker" namespace="repo.namespace" plan-required="planRequired"
+                   is-enabled="repo.is_public == '0'">
+              </div>
+          </div>
+        </div>
+        <div ng-show="repo.is_public == '1' || (!planRequired && !checkingPlan)">
+          <div class="row" ng-show="Features.BUILD_SUPPORT && repo.repo_kind == 'image'">
+            <div class="col-md-12">
+              <div class="section">
+                <div class="section-title">Initialize repository</div>
+
+                <div style="padding-top: 10px;">
+                  <!-- Empty -->
+                  <div class="repo-option">
+                    <input type="radio" id="initEmpty" name="initialize" ng-model="repo.initialize" value="">
+                    <i class="fa fa-hdd-o fa-lg" style="padding: 6px; padding-left: 8px; padding-right: 6px;"></i>
+                    <label for="initEmpty" style="color: #aaa;">(Empty repository)</label>
+                  </div>
+
+                  <!-- Dockerfile -->
+                  <div class="repo-option">
+                    <input type="radio" id="initDockerfile" name="initialize" ng-model="repo.initialize" value="dockerfile">
+                    <i class="fa fa-file fa-lg" style="padding: 6px; padding-left: 10px; padding-right: 8px;"></i>
+                    <label for="initDockerfile">Initialize from a <b>Dockerfile</b></label>
+                  </div>
+
+                  <!-- SCM -->
+                  <div class="repo-option"
+                       ng-repeat="type in TriggerService.getTypes()"
+                       ng-if="TriggerService.isEnabled(type)">
+                    <input type="radio" id="init{{type}}" name="initialize" ng-model="repo.initialize" value="{{ type }}">
+                    <i class="fa fa-lg" ng-class="TriggerService.getIcon(type)"
+                       style="padding: 6px; padding-left: 10px; padding-right: 12px;"></i>
+                    <label for="init{{type}}">Link to a {{ TriggerService.getTitle(type) }}</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row" ng-show="(repo.initialize == 'dockerfile' || repo.initialize == 'zipfile') && repo.repo_kind == 'image'">
+            <div class="col-md-12">
+              <div class="section">
+                <div class="section-title">Initialize from Dockerfile</div>
+                <div style="padding-top: 20px;">
+                  <div class="initialize-repo">
+                    <div class="dockerfile-build-form" repository="repo || createdForBuild"
+                         is-ready="hasDockerfile"
+                         ready-for-build="readyForBuild(startBuild)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row"
+               ng-repeat="type in TriggerService.getTypes()"
+               ng-if="TriggerService.isEnabled(type) && repo.initialize == type && repo.repo_kind == 'image'">
+            <div class="col-md-12">
+              <div class="co-alert co-alert-info">
+                You will be redirected to authorize for {{ TriggerService.getTitle(type) }} once the repository has been created
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12">
+              <button class="btn btn-large btn-primary" type="submit"
+                      ng-disabled="buildStarted || newRepoForm.$invalid || (repo.is_public == '0' && (planRequired || checkingPlan)) || ((repo.initialize == 'dockerfile' || repo.initialize == 'zipfile') && !hasDockerfile)">
+                <i class="fa fa-large" ng-class="repo.is_public == '1' ? 'fa-unlock' : 'fa-lock'"
+                   style="margin-right: 4px"></i>
+                Create {{ repo.is_public == '1' ? 'Public' : 'Private' }} Repository
+              </button>
+            </div>
+          </div>
+        </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal edit for the description -->
+<div class="modal fade" id="editModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Edit Repository Description</h4>
+      </div>
+      <div class="modal-body">
+        <div class="wmd-panel">
+          <div id="wmd-button-bar-description"></div>
+          <textarea class="wmd-input" id="wmd-input-description" placeholder="Enter description">{{ repo.description }}</textarea>
+        </div>
+
+        <div id="wmd-preview-description" class="wmd-panel wmd-preview"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" ng-click="saveDescription()">Save changes</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<!-- Modal message dialog -->
+<div class="modal fade" id="cannotcreateModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Cannot create repository</h4>
+      </div>
+      <div class="modal-body">
+        The repository could not be created.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<!-- Modal message dialog -->
+<div class="modal fade" id="couldnotsubscribeModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Cannot upgrade plan</h4>
+      </div>
+      <div class="modal-body">
+        Your current plan could not be upgraded. Please try again.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->

@@ -1,0 +1,186 @@
+<div class="tag-operations-dialog-element">
+  <!-- Loading Images Dialog -->
+  <div class="modal fade" id="loadingImagesModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4 class="modal-title">Loading Repository Images</h4>
+        </div>
+        <div class="modal-body">
+          <div class="loader-container">
+            <div class="cor-loader"></div>
+          </div>
+          <div style="text-align: center;">
+            Please wait while we load the repository's full image list
+          </div>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Edit Labels Dialog -->
+  <div class="cor-confirm-dialog"
+       dialog-context="editLabelsInfo"
+       dialog-action="editLabels(info, callback)"
+       dialog-title="Edit Manifest Labels"
+       dialog-action-title="Edit Labels">
+
+    <div class="cor-loader" ng-if="editLabelsInfo.loading"></div>
+    <div ng-if="!editLabelsInfo.loading && editLabelsInfo.labels">
+      <div><strong>Read-only labels:</strong></div>
+      <div class="label-section">
+        <div class="label-list" labels="editLabelsInfo.readonly_labels"></div>
+      </div>
+
+      <div><strong>Mutable labels:</strong></div>
+      <div class="label-section">
+        <div class="label-input" labels="editLabelsInfo.mutable_labels"
+             updated-labels="editLabelsInfo.updated_labels"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Tag Dialog -->
+  <div class="modal fade" id="createOrMoveTagModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal"
+                  aria-hidden="true" ng-show="!addingTag">&times;</button>
+          <h4 class="modal-title">{{ isAnotherImageTag(toTagImage, tagToCreate) ? 'Move' : 'Add' }} Tag to {{ toTagManifestDigest ? ('Manifest ' + toTagManifestDigest.substr(0, 19)) : ('Image ' + toTagImage.substr(0, 12)) }}</h4>
+        </div>
+        <form name="addTagForm" ng-submit="createOrMoveTag(toTagImage, tagToCreate, toTagManifestDigest);">
+          <div class="modal-body">
+            <div class="cor-loader" ng-show="addingTag"></div>
+            <div ng-show="!addingTag">
+              <input type="text" class="form-control" id="tagName"
+                     placeholder="Enter tag name"
+                     ng-model="tagToCreate" ng-pattern="/^[\w][\w\.-]{0,127}$/"
+                     ng-disabled="creatingTag" autofocus required>
+
+              <div style="margin: 10px; margin-top: 20px;"
+                   ng-show="isOwnedTag(toTagImage, tagToCreate)">
+                Note: <span class="label tag label-default">{{ tagToCreate }}</span> is already applied to this image.
+              </div>
+
+              <div style="margin: 10px; margin-top: 20px;"
+                   ng-show="isAnotherImageTag(toTagImage, tagToCreate)">
+                Note: <span class="label tag label-default">{{ tagToCreate }}</span> is already applied to another image. This will <b>move</b> the tag.
+              </div>
+
+              <div class="tag-specific-images-view"
+                   tag="tagToCreate"
+                   repository="repository"
+                   repository-tags="repositoryTags"
+                   image-cutoff="toTagImage"
+                   style="margin: 10px; margin-top: 20px; margin-bottom: -10px;"
+                   ng-show="isAnotherImageTag(toTagImage, tagToCreate)"
+                   image-loader="imageLoader">
+                This will also delete any unattached images and delete the following images:
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" ng-show="!addingTag">
+            <button type="submit" class="btn btn-primary"
+                    ng-disabled="addTagForm.$invalid || isOwnedTag(toTagImage, tagToCreate)"
+                    ng-class="isAnotherImageTag(toTagImage, tagToCreate) ? 'btn-warning' : 'btn-primary'"
+                    ng-show="!creatingTag">
+              {{ isAnotherImageTag(toTagImage, tagToCreate) ? 'Move Tag' : 'Create Tag' }}
+            </button>
+            <button class="btn btn-default" data-dismiss="modal" ng-show="!addingTag">Cancel</button>
+          </div>
+        </form>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+  <!-- Delete Tags Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="deleteMultipleTagsInfo"
+       dialog-action="deleteMultipleTags(info.tags, callback)"
+       dialog-title="Delete Tags"
+       dialog-action-title="Delete Tags">
+    Are you sure you want to delete the following tags:
+    <ul class="delete-tag-list">
+      <li ng-repeat="tag_info in deleteMultipleTagsInfo.tags">
+        <span class="label label-default tag">{{ tag_info.name }}</span>
+      </li>
+    </ul>
+
+    <div style="margin-top: 20px">
+      <strong>Note: </strong>This operation can take several minutes.
+    </div>
+  </div>
+
+  <!-- Change Tags Expiration -->
+  <div class="cor-confirm-dialog"
+       dialog-context="changeTagsExpirationInfo"
+       dialog-action="changeTagsExpiration(info.tags, info.expiration_date, callback)"
+       dialog-title="Change Tags Expiration"
+       dialog-action-title="Change Expiration">
+    <form class="expiration-form">
+      <label>Tags that will be updated:</label>
+      <ul class="delete-tag-list">
+        <li ng-repeat="tag_info in changeTagsExpirationInfo.tags">
+          <span class="label label-default tag">{{ tag_info.name }}</span>
+        </li>
+      </ul>
+
+      <label style="margin-top: 20px;">Expiration Date:</label>
+      <span class="datetime-picker" datetime="changeTagsExpirationInfo.expiration_date"
+            ng-if="changeTagsExpirationInfo"></span>
+      <span class="co-help-text">
+        If specified, the date and time that the key expires. If set to none, the tag(s) will not expire.
+      </span>
+    </form>
+  </div>
+
+  <!-- Delete Tag Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="deleteTagInfo"
+       dialog-action="deleteTag(info.tag, callback)"
+       dialog-title="Delete Tag"
+       dialog-action-title="Delete Tag">
+    Are you sure you want to delete tag
+    <span class="label label-default tag">{{ deleteTagInfo.tag }}</span>?
+
+    <div class="tag-specific-images-view" tag="deleteTagInfo.tag" repository="repository" repository-tags="repositoryTags"
+         image-loader="imageLoader" style="margin-top: 20px">
+      The following images and any other images not referenced by a tag will be <span ng-if="repository.tag_expiration_s == 0">deleted</span><span ng-if="repository.tag_expiration_s != 0">unavailable and deleted in {{ getFormattedTimespan(repository.tag_expiration_s) }}</span>:
+    </div>
+  </div>
+
+  <!-- Restore Tag Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="restoreTagInfo"
+       dialog-action="restoreTag(info.tag, info.image_id, info.manifest_digest, callback)"
+       dialog-title="Restore Tag"
+       dialog-action-title="Restore Tag">
+
+    <div class="co-alert co-alert-warning">
+      This will change the image to which the tag points.
+    </div>
+
+    Are you sure you want to restore tag
+    <span class="label label-default tag">{{ restoreTagInfo.tag.name }}</span> to image
+    <manifest-link repository="repository"
+                   image-id="restoreTagInfo.image_id"
+                   manifest-digest="restoreTagInfo.manifest_digest"></manifest-link>?
+  </div>
+
+  <!-- Tag Operations Disabled Dialog -->
+  <div class="modal fade" id="tagOperationsDisabledModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          Tag operations have been disabled.
+        </div>
+        <div class="modal-body">
+          The selected operation cannot be performed on this repository because tag operations have been disabled
+          by an administrator. <span ng-if="repository.trust_enabled">Trust is enabled for this repo, so any tag changes
+          should be performed by users with signing keys.</span>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+</div>

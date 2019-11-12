@@ -1,0 +1,9 @@
+<div class="interval-input-element">
+  <input class="form-control"
+        ng-model="vm.quantity"
+        ng-change="vm.updateSeconds()"></input>
+  <select class="form-control"
+          ng-options="period.label for period in vm.periods"
+          ng-model="vm.selectedPeriod"
+          ng-change="vm.updateSeconds()"></select>
+</div>
