@@ -1,11 +1,11 @@
 # Project Quay
 
-[![Build Status](https://travis-ci.com/quay/projectquay.svg?token=pWvEz2TeyDsVn69Hkiwq&branch=master)](https://travis-ci.com/quay/projectquay)
+[![Build Status](https://travis-ci.com/quay/quay.svg?token=pWvEz2TeyDsVn69Hkiwq&branch=master)](https://travis-ci.com/quay/quay)
 
 :warning: The `master` branch may be in an *unstable or even broken state* during development.
 Please use [releases] instead of the `master` branch in order to get stable software.
 
-[releases]: https://github.com/quay/projectquay/releases
+[releases]: https://github.com/quay/quay/releases
 
 ![Project Quay Logo](project_quay_logo.png)
 
@@ -61,12 +61,12 @@ High-level features include:
 
 * Mailing List: [quay-dev@googlegroups.com]
 * IRC: #quay on [freenode.net]
-* Bug tracking: [GitHub Issues]
+* Bug tracking: [JBoss JIRA]
 * Security Issues: [security@redhat.com]
 
 [quay-dev@googlegroups.com]: https://groups.google.com/forum/#!forum/quay-dev
 [freenode.net]: https://webchat.freenode.net
-[GitHub Issues]: https://github.com/quay/projectquay/issues
+[JBoss JIRA]: https://issues.jboss.org/projects/PROJQUAY
 [security@redhat.com]: mailto:security@redhat.com
 
 ## License
