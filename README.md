@@ -13,19 +13,18 @@ Project Quay builds, stores, and distributes your container images.
 
 High-level features include:
 
-- Docker Registry Protocol [v1], [v2]
+- Docker Registry Protocol [v2]
 - Docker Manifest Schema [v2.1], [v2.2]
 - [AppC Image Discovery] via on-demand transcoding
 - Image Squashing via on-demand transcoding
-- Authentication provided by [LDAP], [Keystone], [OIDC], [Google], [GitHub]
+- Authentication provided by [LDAP], [Keystone], [OIDC], [Google], and [GitHub]
 - ACLs, team management, and auditability logs
-- Geo-replicated storage provided by local filesystems, [S3], [GCS], [Swift], [Ceph]
+- Geo-replicated storage provided by local filesystems, [S3], [GCS], [Swift], and [Ceph]
 - Continuous Integration integrated with [GitHub], [Bitbucket], [GitLab], and [git]
 - Security Vulnerability Analysis via [Clair]
 - [Swagger]-compliant HTTP API
 
-[v1]: https://docs.docker.com/v1.6/reference/api/registry_api/
-[v2]: https://docs.docker.com/v1.6/registry/
+[v2]: https://docs.docker.com/registry/spec/api/
 [v2.1]: https://github.com/docker/distribution/blob/master/docs/spec/manifest-v2-1.md
 [v2.2]: https://github.com/docker/distribution/blob/master/docs/spec/manifest-v2-2.md
 [AppC Image Discovery]: https://github.com/appc/spec/blob/master/spec/discovery.md
