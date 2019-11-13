@@ -545,8 +545,8 @@ class DefaultConfig(ImmutableConfig):
     # The whitelist of client IDs for OAuth applications that allow for direct login.
     DIRECT_OAUTH_CLIENTID_WHITELIST = []
 
-    # URL that specifies the location of the prometheus stats aggregator.
-    PROMETHEUS_AGGREGATOR_URL = "http://localhost:9092"
+    # URL that specifies the location of the prometheus pushgateway.
+    PROMETHEUS_PUSHGATEWAY_URL = "http://localhost:9091"
 
     # Namespace prefix for all prometheus metrics.
     PROMETHEUS_NAMESPACE = "quay"

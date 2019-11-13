@@ -49,7 +49,7 @@ def _get_storage_providers(config, ip_resolver, config_provider):
 
     try:
         for name, parameters in storage_config.items():
-            driver = get_storage_driver(None, None, None, config_provider, ip_resolver, parameters)
+            driver = get_storage_driver(None, None, config_provider, ip_resolver, parameters)
             drivers[name] = (parameters[0], driver)
     except TypeError:
         raise ConfigValidationException("Missing required parameter(s) for storage %s" % name)

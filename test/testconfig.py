@@ -78,7 +78,7 @@ class TestConfig(DefaultConfig):
     INSTANCE_SERVICE_KEY_KID_LOCATION = "test/data/test.kid"
     INSTANCE_SERVICE_KEY_LOCATION = "test/data/test.pem"
 
-    PROMETHEUS_AGGREGATOR_URL = None
+    PROMETHEUS_PUSHGATEWAY_URL = None
 
     GITHUB_LOGIN_CONFIG = {}
     GOOGLE_LOGIN_CONFIG = {}

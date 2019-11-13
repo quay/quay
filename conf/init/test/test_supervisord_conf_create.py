@@ -1,8 +1,7 @@
 import os
-import pytest
-import json
-import yaml
+
 import jinja2
+import pytest
 
 from ..supervisord_conf_create import QUAYCONF_DIR, default_services, limit_services
 
@@ -362,8 +361,8 @@ stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:prometheus-aggregator]
-command=/usr/local/bin/prometheus-aggregator
+[program:pushgateway]
+command=/usr/local/bin/pushgateway
 autostart = true
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
@@ -401,7 +400,7 @@ stderr_events_enabled = true
 
 def test_supervisord_conf_create_all_overrides():
     config = default_services()
-    limit_services(config, "servicekey,prometheus-aggregator")
+    limit_services(config, "servicekey,pushgateway")
     rendered = render_supervisord_conf(config)
 
     expected = """[supervisord]
@@ -746,8 +745,8 @@ stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:prometheus-aggregator]
-command=/usr/local/bin/prometheus-aggregator
+[program:pushgateway]
+command=/usr/local/bin/pushgateway
 autostart = true
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0

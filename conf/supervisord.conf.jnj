@@ -340,9 +340,9 @@ stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:prometheus-aggregator]
-command=/usr/local/bin/prometheus-aggregator
-autostart = {{ config['prometheus-aggregator']['autostart'] }}
+[program:pushgateway]
+command=/usr/local/bin/pushgateway
+autostart = {{ config['pushgateway']['autostart'] }}
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stdout

@@ -222,7 +222,7 @@ class WorkQueue(object):
         while remaining:
             current_batch = remaining[0:batch_size]
             QueueItem.insert_many(current_batch).execute()
-            queue_item_puts.labels(self._queue_name).inc(current_batch)
+            queue_item_puts.labels(self._queue_name).inc(len(current_batch))
             remaining = remaining[batch_size:]
 
     def put(self, canonical_name_list, message, available_after=0, retries_remaining=5):
@@ -267,8 +267,7 @@ class WorkQueue(object):
             return None
 
     def _attempt_to_claim_item(self, db_item, now, processing_time):
-        """ Attempts to claim the specified queue item for this instance. Returns True on success and
-        False on failure.
+        """ Attempts to claim the specified queue item for this instance. Returns True on success and False on failure.
 
         Note that the underlying QueueItem row in the database will be changed on success, but
         the db_item object given as a parameter will *not* have its fields updated. """

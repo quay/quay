@@ -8,23 +8,18 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from data.database import QueueItem
-from data.queue import WorkQueue, MINIMUM_EXTENSION
+from data.queue import (
+    WorkQueue,
+    MINIMUM_EXTENSION,
+    queue_items_locked,
+    queue_items_available,
+    queue_items_available_unlocked,
+)
 
 from test.fixtures import *
 
+
 QUEUE_NAME = "testqueuename"
-
-
-class SaveLastCountReporter(object):
-    def __init__(self):
-        self.currently_processing = None
-        self.running_count = None
-        self.total = None
-
-    def __call__(self, currently_processing, running_count, total_jobs):
-        self.currently_processing = currently_processing
-        self.running_count = running_count
-        self.total = total_jobs
 
 
 class AutoUpdatingQueue(object):
@@ -59,21 +54,20 @@ def fake_transaction(arg):
 
 
 @pytest.fixture()
-def reporter():
-    return SaveLastCountReporter()
-
-
-@pytest.fixture()
 def transaction_factory():
     return fake_transaction
 
 
+def gauge_value(g):
+    return g.collect()[0].samples[0].value
+
+
 @pytest.fixture()
-def queue(reporter, transaction_factory, initialized_db):
-    return AutoUpdatingQueue(WorkQueue(QUEUE_NAME, transaction_factory, reporter=reporter))
+def queue(transaction_factory, initialized_db):
+    return AutoUpdatingQueue(WorkQueue(QUEUE_NAME, transaction_factory))
 
 
-def test_get_single_item(queue, reporter, transaction_factory):
+def test_get_single_item(queue, transaction_factory):
     # Add a single item to the queue.
     queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-1)
 
@@ -100,7 +94,7 @@ def test_get_single_item(queue, reporter, transaction_factory):
     assert first_item.state_id != QueueItem.get().state_id
 
 
-def test_extend_processing(queue, reporter, transaction_factory):
+def test_extend_processing(queue, transaction_factory):
     # Add and retrieve a queue item.
     queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-1)
     queue_item = queue.get(processing_time=10)
@@ -142,63 +136,68 @@ def test_extend_processing(queue, reporter, transaction_factory):
     assert updated_db_item.body == "newbody"
 
 
-def test_same_canonical_names(queue, reporter, transaction_factory):
-    assert reporter.currently_processing is None
-    assert reporter.running_count is None
-    assert reporter.total is None
+def test_same_canonical_names(queue, transaction_factory):
+    queue_items_locked.labels(queue._queue_name).set(0)
+    queue_items_available.labels(queue._queue_name).set(0)
+    queue_items_available_unlocked.labels(queue._queue_name).set(0)
 
     id_1 = int(queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-1))
     id_2 = int(queue.put(["abc", "def"], TEST_MESSAGE_2, available_after=-1))
     assert id_1 + 1 == id_2
-    assert not reporter.currently_processing
-    assert reporter.running_count == 0
-    assert reporter.total == 1
+    assert not queue._currently_processing
+    assert gauge_value(queue_items_locked) == 0
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     one = queue.get(ordering_required=True)
     assert one is not None
     assert one.body == TEST_MESSAGE_1
-    assert reporter.currently_processing
-    assert reporter.running_count == 1
-    assert reporter.total == 1
+    assert queue._currently_processing
+    assert gauge_value(queue_items_locked) == 1
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     two_fail = queue.get(ordering_required=True)
     assert two_fail is None
-    assert reporter.running_count == 1
-    assert reporter.total == 1
+    assert gauge_value(queue_items_locked) == 1
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     queue.complete(one)
-    assert not reporter.currently_processing
-    assert reporter.running_count == 0
-    assert reporter.total == 1
+    assert not queue._currently_processing
+    assert gauge_value(queue_items_locked) == 0
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     two = queue.get(ordering_required=True)
     assert two is not None
-    assert reporter.currently_processing
+    assert queue._currently_processing
     assert two.body == TEST_MESSAGE_2
-    assert reporter.running_count == 1
-    assert reporter.total == 1
+    assert gauge_value(queue_items_locked) == 1
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
 
-def test_different_canonical_names(queue, reporter, transaction_factory):
+def test_different_canonical_names(queue, transaction_factory):
+    queue_items_locked.labels(queue._queue_name).set(0)
+    queue_items_available.labels(queue._queue_name).set(0)
+    queue_items_available_unlocked.labels(queue._queue_name).set(0)
+
     queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-1)
     queue.put(["abc", "ghi"], TEST_MESSAGE_2, available_after=-1)
-    assert reporter.running_count == 0
-    assert reporter.total == 2
+
+    assert gauge_value(queue_items_locked) == 0
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 2
 
     one = queue.get(ordering_required=True)
     assert one is not None
     assert one.body == TEST_MESSAGE_1
-    assert reporter.running_count == 1
-    assert reporter.total == 2
+    assert gauge_value(queue_items_locked) == 1
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 2
 
     two = queue.get(ordering_required=True)
     assert two is not None
     assert two.body == TEST_MESSAGE_2
-    assert reporter.running_count == 2
-    assert reporter.total == 2
+    assert gauge_value(queue_items_locked) == 2
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 2
 
 
-def test_canonical_name(queue, reporter, transaction_factory):
+def test_canonical_name(queue, transaction_factory):
     queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-1)
     queue.put(["abc", "def", "ghi"], TEST_MESSAGE_1, available_after=-1)
 
@@ -209,31 +208,35 @@ def test_canonical_name(queue, reporter, transaction_factory):
     assert QUEUE_NAME + "/abc/def/ghi/" != two
 
 
-def test_expiration(queue, reporter, transaction_factory):
+def test_expiration(queue, transaction_factory):
+    queue_items_locked.labels(queue._queue_name).set(0)
+    queue_items_available.labels(queue._queue_name).set(0)
+    queue_items_available_unlocked.labels(queue._queue_name).set(0)
+
     queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-1)
-    assert reporter.running_count == 0
-    assert reporter.total == 1
+    assert gauge_value(queue_items_locked) == 0
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     one = queue.get(processing_time=0.5, ordering_required=True)
     assert one is not None
-    assert reporter.running_count == 1
-    assert reporter.total == 1
+    assert gauge_value(queue_items_locked) == 1
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     one_fail = queue.get(ordering_required=True)
     assert one_fail is None
 
     time.sleep(1)
     queue.update_metrics()
-    assert reporter.running_count == 0
-    assert reporter.total == 1
+    assert gauge_value(queue_items_locked) == 0
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     one_again = queue.get(ordering_required=True)
     assert one_again is not None
-    assert reporter.running_count == 1
-    assert reporter.total == 1
+    assert gauge_value(queue_items_locked) == 1
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
 
-def test_alive(queue, reporter, transaction_factory):
+def test_alive(queue, transaction_factory):
     # No queue item = not alive.
     assert not queue.alive(["abc", "def"])
 
@@ -254,7 +257,7 @@ def test_alive(queue, reporter, transaction_factory):
     assert not queue.alive(["abc", "def"])
 
 
-def test_specialized_queue(queue, reporter, transaction_factory):
+def test_specialized_queue(queue, transaction_factory):
     queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-1)
     queue.put(["def", "def"], TEST_MESSAGE_2, available_after=-1)
 
@@ -272,7 +275,7 @@ def test_specialized_queue(queue, reporter, transaction_factory):
     assert one.body == TEST_MESSAGE_1
 
 
-def test_random_queue_no_duplicates(queue, reporter, transaction_factory):
+def test_random_queue_no_duplicates(queue, transaction_factory):
     for msg in TEST_MESSAGES:
         queue.put(["abc", "def"], msg, available_after=-1)
     seen = set()
@@ -290,31 +293,31 @@ def test_random_queue_no_duplicates(queue, reporter, transaction_factory):
         assert msg in seen
 
 
-def test_bulk_insert(queue, reporter, transaction_factory):
-    assert reporter.currently_processing is None
-    assert reporter.running_count is None
-    assert reporter.total is None
+def test_bulk_insert(queue, transaction_factory):
+    queue_items_locked.labels(queue._queue_name).set(0)
+    queue_items_available.labels(queue._queue_name).set(0)
+    queue_items_available_unlocked.labels(queue._queue_name).set(0)
 
     with queue.batch_insert() as queue_put:
         queue_put(["abc", "def"], TEST_MESSAGE_1, available_after=-1)
         queue_put(["abc", "def"], TEST_MESSAGE_2, available_after=-1)
 
     queue.update_metrics()
-    assert not reporter.currently_processing
-    assert reporter.running_count == 0
-    assert reporter.total == 1
+    assert not queue._currently_processing
+    assert gauge_value(queue_items_locked) == 0
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 1
 
     with queue.batch_insert() as queue_put:
         queue_put(["abd", "def"], TEST_MESSAGE_1, available_after=-1)
         queue_put(["abd", "ghi"], TEST_MESSAGE_2, available_after=-1)
 
     queue.update_metrics()
-    assert not reporter.currently_processing
-    assert reporter.running_count == 0
-    assert reporter.total == 3
+    assert not queue._currently_processing
+    assert gauge_value(queue_items_locked) == 0
+    assert gauge_value(queue_items_locked) + gauge_value(queue_items_available_unlocked) == 3
 
 
-def test_num_available_between(queue, reporter, transaction_factory):
+def test_num_available_between(queue, transaction_factory):
     now = datetime.utcnow()
     queue.put(["abc", "def"], TEST_MESSAGE_1, available_after=-10)
     queue.put(["abc", "ghi"], TEST_MESSAGE_2, available_after=-5)
@@ -332,7 +335,7 @@ def test_num_available_between(queue, reporter, transaction_factory):
     assert count == 0
 
 
-def test_incomplete(queue, reporter, transaction_factory):
+def test_incomplete(queue, transaction_factory):
     # Add an item.
     queue.put(["somenamespace", "abc", "def"], TEST_MESSAGE_1, available_after=-10)
 
@@ -343,21 +346,21 @@ def test_incomplete(queue, reporter, transaction_factory):
     # Retrieve it.
     item = queue.get()
     assert item is not None
-    assert reporter.currently_processing
+    assert queue._currently_processing
 
     # Mark it as incomplete.
     queue.incomplete(item, retry_after=-1)
-    assert not reporter.currently_processing
+    assert not queue._currently_processing
 
     # Retrieve again to ensure it is once again available.
     same_item = queue.get()
     assert same_item is not None
-    assert reporter.currently_processing
+    assert queue._currently_processing
 
     assert item.id == same_item.id
 
 
-def test_complete(queue, reporter, transaction_factory):
+def test_complete(queue, transaction_factory):
     # Add an item.
     queue.put(["somenamespace", "abc", "def"], TEST_MESSAGE_1, available_after=-10)
 
@@ -368,14 +371,14 @@ def test_complete(queue, reporter, transaction_factory):
     # Retrieve it.
     item = queue.get()
     assert item is not None
-    assert reporter.currently_processing
+    assert queue._currently_processing
 
     # Mark it as complete.
     queue.complete(item)
-    assert not reporter.currently_processing
+    assert not queue._currently_processing
 
 
-def test_cancel(queue, reporter, transaction_factory):
+def test_cancel(queue, transaction_factory):
     # Add an item.
     queue.put(["somenamespace", "abc", "def"], TEST_MESSAGE_1, available_after=-10)
     queue.put(["somenamespace", "abc", "def"], TEST_MESSAGE_2, available_after=-5)
@@ -399,10 +402,8 @@ def test_cancel(queue, reporter, transaction_factory):
     assert not queue.cancel(item.id)
 
 
-def test_deleted_namespaced_items(queue, reporter, transaction_factory):
-    queue = AutoUpdatingQueue(
-        WorkQueue(QUEUE_NAME, transaction_factory, reporter=reporter, has_namespace=True)
-    )
+def test_deleted_namespaced_items(queue, transaction_factory):
+    queue = AutoUpdatingQueue(WorkQueue(QUEUE_NAME, transaction_factory, has_namespace=True))
 
     queue.put(["somenamespace", "abc", "def"], TEST_MESSAGE_1, available_after=-10)
     queue.put(["somenamespace", "abc", "ghi"], TEST_MESSAGE_2, available_after=-5)
