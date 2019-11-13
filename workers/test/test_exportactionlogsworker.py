@@ -16,12 +16,13 @@ from workers.exportactionlogsworker import ExportActionLogsWorker, POLL_PERIOD_S
 
 from test.fixtures import *
 
+
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "some_bucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"
-_TEST_CONTEXT = StorageContext("nyc", None, None, None, None)
+_TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 
 @pytest.fixture(params=["test", "mock_s3"])

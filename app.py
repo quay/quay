@@ -25,7 +25,6 @@ from _init import (
     IS_BUILDING,
 )
 
-from auth.auth_context import get_authenticated_user
 from avatars.avatars import Avatar
 from buildman.manager.buildcanceller import BuildCanceller
 from data import database
@@ -36,12 +35,16 @@ from data.billing import Billing
 from data.buildlogs import BuildLogs
 from data.cache import get_model_cache
 from data.model.user import LoginWrappedDBUser
-from data.queue import WorkQueue, BuildMetricQueueReporter
+from data.queue import WorkQueue
 from data.userevent import UserEventsBuilderModule
 from data.userfiles import Userfiles
 from data.users import UserAuthentication
 from data.registry_model import registry_model
-from path_converters import RegexConverter, RepositoryPathConverter, APIRepositoryPathConverter
+from path_converters import (
+    RegexConverter,
+    RepositoryPathConverter,
+    APIRepositoryPathConverter,
+)
 from oauth.services.github import GithubOAuthService
 from oauth.services.gitlab import GitLabOAuthService
 from oauth.loginmanager import OAuthLoginManager
@@ -58,14 +61,13 @@ from util.names import urn_generator
 from util.config.configutil import generate_secret_key
 from util.config.superusermanager import SuperUserManager
 from util.label_validator import LabelValidator
-from util.metrics.metricqueue import MetricQueue
 from util.metrics.prometheus import PrometheusPlugin
-from util.saas.cloudwatch import start_cloudwatch_sender
 from util.secscan.api import SecurityScannerAPI
 from util.repomirror.api import RepoMirrorAPI
 from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
 from util.security.signing import Signer
+from util.greenlet_tracing import enable_tracing
 
 
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(CONF_DIR, "stack/config.yaml")
@@ -174,7 +176,7 @@ def _request_start():
 
         host, port = os.getenv("PYDEV_DEBUG").split(":")
         pydevd.settrace(
-            host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False
+            host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False,
         )
 
     logger.debug(
@@ -227,6 +229,10 @@ def _request_end(resp):
     return resp
 
 
+if app.config.get("GREENLET_TRACING", True):
+    enable_tracing()
+
+
 root_logger = logging.getLogger()
 
 app.request_class = RequestWithId
@@ -245,15 +251,10 @@ avatar = Avatar(app)
 login_manager = LoginManager(app)
 mail = Mail(app)
 prometheus = PrometheusPlugin(app)
-metric_queue = MetricQueue(prometheus)
-chunk_cleanup_queue = WorkQueue(
-    app.config["CHUNK_CLEANUP_QUEUE_NAME"], tf, metric_queue=metric_queue
-)
+chunk_cleanup_queue = WorkQueue(app.config["CHUNK_CLEANUP_QUEUE_NAME"], tf)
 instance_keys = InstanceKeys(app)
 ip_resolver = IPResolver(app)
-storage = Storage(
-    app, metric_queue, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver
-)
+storage = Storage(app, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver)
 userfiles = Userfiles(app, storage)
 log_archive = LogArchive(app, storage)
 analytics = Analytics(app)
@@ -269,42 +270,27 @@ instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
 
-start_cloudwatch_sender(metric_queue, app)
-
 github_trigger = GithubOAuthService(app.config, "GITHUB_TRIGGER_CONFIG")
 gitlab_trigger = GitLabOAuthService(app.config, "GITLAB_TRIGGER_CONFIG")
 
 oauth_login = OAuthLoginManager(app.config)
 oauth_apps = [github_trigger, gitlab_trigger]
 
-image_replication_queue = WorkQueue(
-    app.config["REPLICATION_QUEUE_NAME"], tf, has_namespace=False, metric_queue=metric_queue
-)
+image_replication_queue = WorkQueue(app.config["REPLICATION_QUEUE_NAME"], tf, has_namespace=False)
 dockerfile_build_queue = WorkQueue(
-    app.config["DOCKERFILE_BUILD_QUEUE_NAME"],
-    tf,
-    metric_queue=metric_queue,
-    reporter=BuildMetricQueueReporter(metric_queue),
-    has_namespace=True,
+    app.config["DOCKERFILE_BUILD_QUEUE_NAME"], tf, has_namespace=True
 )
-notification_queue = WorkQueue(
-    app.config["NOTIFICATION_QUEUE_NAME"], tf, has_namespace=True, metric_queue=metric_queue
-)
+notification_queue = WorkQueue(app.config["NOTIFICATION_QUEUE_NAME"], tf, has_namespace=True)
 secscan_notification_queue = WorkQueue(
-    app.config["SECSCAN_NOTIFICATION_QUEUE_NAME"],
-    tf,
-    has_namespace=False,
-    metric_queue=metric_queue,
+    app.config["SECSCAN_NOTIFICATION_QUEUE_NAME"], tf, has_namespace=False
 )
 export_action_logs_queue = WorkQueue(
-    app.config["EXPORT_ACTION_LOGS_QUEUE_NAME"], tf, has_namespace=True, metric_queue=metric_queue
+    app.config["EXPORT_ACTION_LOGS_QUEUE_NAME"], tf, has_namespace=True
 )
 
 # Note: We set `has_namespace` to `False` here, as we explicitly want this queue to not be emptied
 # when a namespace is marked for deletion.
-namespace_gc_queue = WorkQueue(
-    app.config["NAMESPACE_GC_QUEUE_NAME"], tf, has_namespace=False, metric_queue=metric_queue
-)
+namespace_gc_queue = WorkQueue(app.config["NAMESPACE_GC_QUEUE_NAME"], tf, has_namespace=False)
 
 all_queues = [
     image_replication_queue,
@@ -329,8 +315,25 @@ secscan_api = SecurityScannerAPI(
     instance_keys=instance_keys,
 )
 
+url_scheme_and_hostname = URLSchemeAndHostname(
+    app.config["PREFERRED_URL_SCHEME"], app.config["SERVER_HOSTNAME"]
+)
+secscan_api = SecurityScannerAPI(
+    app.config,
+    storage,
+    app.config["SERVER_HOSTNAME"],
+    app.config["HTTPCLIENT"],
+    uri_creator=get_blob_download_uri_getter(
+        app.test_request_context("/"), url_scheme_and_hostname
+    ),
+    instance_keys=instance_keys,
+)
+
 repo_mirror_api = RepoMirrorAPI(
-    app.config, app.config["SERVER_HOSTNAME"], app.config["HTTPCLIENT"], instance_keys=instance_keys
+    app.config,
+    app.config["SERVER_HOSTNAME"],
+    app.config["HTTPCLIENT"],
+    instance_keys=instance_keys,
 )
 
 tuf_metadata_api = TUFMetadataAPI(app, app.config)
@@ -345,6 +348,7 @@ else:
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
     raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
+
 
 database.configure(app.config)
 

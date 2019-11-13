@@ -1,13 +1,15 @@
 import logging
-import boto
 import time
 import random
 
 from Queue import Empty
 from threading import Thread
 
+import boto
+
 
 logger = logging.getLogger(__name__)
+
 
 MAX_BATCH_METRICS = 20
 

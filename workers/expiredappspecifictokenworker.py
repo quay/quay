@@ -9,9 +9,11 @@ from workers.worker import Worker
 from util.log import logfile_path
 from util.timedeltastring import convert_to_timedelta
 
-POLL_PERIOD_SECONDS = 60 * 60  # 1 hour
 
 logger = logging.getLogger(__name__)
+
+
+POLL_PERIOD_SECONDS = 60 * 60  # 1 hour
 
 
 class ExpiredAppSpecificTokenWorker(Worker):

@@ -692,3 +692,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether garbage collection is enabled.
     FEATURE_GARBAGE_COLLECTION = True
+
+    # When enabled, sets a tracing callback to report greenlet metrics.
+    GREENLET_TRACING = True

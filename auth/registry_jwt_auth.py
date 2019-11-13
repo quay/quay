@@ -6,10 +6,14 @@ from jsonschema import validate, ValidationError
 from flask import request, url_for
 from flask_principal import identity_changed, Identity
 
-from app import app, get_app_url, instance_keys, metric_queue
+from app import app, get_app_url, instance_keys
 from auth.auth_context import set_authenticated_context
 from auth.auth_context_type import SignedAuthContext
-from auth.permissions import repository_read_grant, repository_write_grant, repository_admin_grant
+from auth.permissions import (
+    repository_read_grant,
+    repository_write_grant,
+    repository_admin_grant,
+)
 from util.http import abort
 from util.names import parse_namespace_repository
 from util.security.registry_jwt import (
@@ -79,9 +83,7 @@ def identity_from_bearer_token(bearer_header):
     logger.debug("Validating auth header: %s", bearer_header)
 
     try:
-        payload = decode_bearer_header(
-            bearer_header, instance_keys, app.config, metric_queue=metric_queue
-        )
+        payload = decode_bearer_header(bearer_header, instance_keys, app.config)
     except InvalidBearerTokenException as bte:
         logger.exception("Invalid bearer token: %s", bte)
         raise InvalidJWTException(bte)

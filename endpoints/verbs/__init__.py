@@ -3,11 +3,14 @@ import json
 import logging
 import uuid
 
+from functools import wraps
+
 from flask import redirect, Blueprint, abort, send_file, make_response, request
+from prometheus_client import Counter
 
 import features
 
-from app import app, signer, storage, metric_queue, config_provider, ip_resolver, instance_keys
+from app import app, signer, storage, config_provider, ip_resolver, instance_keys
 from auth.auth_context import get_authenticated_user
 from auth.decorators import process_auth
 from auth.permissions import ReadRepositoryPermission
@@ -21,6 +24,7 @@ from endpoints.decorators import (
     parse_repository_name,
     check_region_blacklisted,
 )
+from endpoints.metrics import image_pulls, image_pulled_bytes
 from endpoints.v2.blob import BLOB_DIGEST_ROUTE
 from image.appc import AppCImageFormatter
 from image.docker import ManifestException
@@ -40,9 +44,17 @@ from util.registry.torrent import (
     TorrentConfiguration,
 )
 
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 verbs = Blueprint("verbs", __name__)
+
+
+verb_stream_passes = Counter(
+    "quay_verb_stream_passes_total",
+    "number of passes over a tar stream used by verb requests",
+    labelnames=["kind"],
+)
+
 
 LAYER_MIMETYPE = "binary/octet-stream"
 
@@ -52,7 +64,7 @@ class VerbReporter(TarLayerFormatterReporter):
         self.kind = kind
 
     def report_pass(self, pass_count):
-        metric_queue.verb_action_passes.Inc(labelvalues=[self.kind, pass_count])
+        verb_stream_passes.labels(self.kind).inc(pass_count)
 
 
 def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, reporter):
@@ -77,7 +89,7 @@ def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, r
 
     def tar_stream_getter_iterator():
         # Re-Initialize the storage engine because some may not respond well to forking (e.g. S3)
-        store = Storage(app, metric_queue, config_provider=config_provider, ip_resolver=ip_resolver)
+        store = Storage(app, config_provider=config_provider, ip_resolver=ip_resolver)
 
         # Note: We reverse because we have to start at the leaf layer and move upward,
         # as per the spec for the formatters.
@@ -130,7 +142,7 @@ def _write_derived_image_to_storage(verb, derived_image, queue_file):
     queue_file.add_exception_handler(handle_exception)
 
     # Re-Initialize the storage engine because some may not respond well to forking (e.g. S3)
-    store = Storage(app, metric_queue, config_provider=config_provider, ip_resolver=ip_resolver)
+    store = Storage(app, config_provider=config_provider, ip_resolver=ip_resolver)
 
     try:
         store.stream_write(
@@ -351,14 +363,10 @@ def _repo_verb(
     # Check for torrent. If found, we return a torrent for the repo verb image (if the derived
     # image already exists).
     if request.accept_mimetypes.best == "application/x-bittorrent":
-        metric_queue.repository_pull.Inc(
-            labelvalues=[namespace, repository, verb + "+torrent", True]
-        )
         return _torrent_repo_verb(repo, tag, manifest, verb, **kwargs)
 
     # Log the action.
     track_and_log("repo_verb", wrap_repository(repo), tag=tag.name, verb=verb, **kwargs)
-    metric_queue.repository_pull.Inc(labelvalues=[namespace, repository, verb, True])
 
     is_readonly = app.config.get("REGISTRY_STATE", "normal") == "readonly"
 
@@ -384,7 +392,7 @@ def _repo_verb(
         logger.debug("Derived %s image %s exists in storage", verb, derived_image)
         is_head_request = request.method == "HEAD"
 
-        metric_queue.pull_byte_count.Inc(derived_image.blob.compressed_size, labelvalues=[verb])
+        image_pulled_bytes.labels("bittorrent").inc(derived_image.blob.compressed_size)
 
         download_url = storage.get_direct_download_url(
             derived_image.blob.placements, derived_image.blob.storage_path, head=is_head_request
@@ -505,10 +513,26 @@ def os_arch_checker(os, arch):
     return checker
 
 
+def observe_route(protocol):
+    """ Decorates verb endpoints to record the image_pulls metric into Prometheus. """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            rv = func(*args, **kwargs)
+            image_pulls.labels(protocol, "tag", rv.status_code)
+            return rv
+
+        return wrapper
+
+    return decorator
+
+
 @route_show_if(features.ACI_CONVERSION)
 @anon_protect
 @verbs.route("/aci/<server>/<namespace>/<repository>/<tag>/sig/<os>/<arch>/", methods=["GET"])
 @verbs.route("/aci/<server>/<namespace>/<repository>/<tag>/aci.asc/<os>/<arch>/", methods=["GET"])
+@observe_route("aci")
 @process_auth
 def get_aci_signature(server, namespace, repository, tag, os, arch):
     return _repo_verb_signature(
@@ -521,6 +545,7 @@ def get_aci_signature(server, namespace, repository, tag, os, arch):
 @verbs.route(
     "/aci/<server>/<namespace>/<repository>/<tag>/aci/<os>/<arch>/", methods=["GET", "HEAD"]
 )
+@observe_route("aci")
 @process_auth
 def get_aci_image(server, namespace, repository, tag, os, arch):
     return _repo_verb(
@@ -538,6 +563,7 @@ def get_aci_image(server, namespace, repository, tag, os, arch):
 
 @anon_protect
 @verbs.route("/squash/<namespace>/<repository>/<tag>", methods=["GET"])
+@observe_route("squash")
 @process_auth
 def get_squashed_tag(namespace, repository, tag):
     return _repo_verb(namespace, repository, tag, "squash", SquashedDockerImageFormatter())
@@ -546,6 +572,7 @@ def get_squashed_tag(namespace, repository, tag):
 @route_show_if(features.BITTORRENT)
 @anon_protect
 @verbs.route("/torrent{0}".format(BLOB_DIGEST_ROUTE), methods=["GET"])
+@observe_route("bittorrent")
 @process_auth
 @parse_repository_name()
 @check_region_blacklisted(namespace_name_kwarg="namespace_name")
@@ -573,7 +600,6 @@ def get_tag_torrent(namespace_name, repo_name, digest):
     if blob is None:
         abort(404)
 
-    metric_queue.repository_pull.Inc(labelvalues=[namespace_name, repo_name, "torrent", True])
     return _torrent_for_blob(blob, repo_is_public)
 
 

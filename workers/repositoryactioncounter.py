@@ -7,9 +7,11 @@ from data import model
 from data.logs_model import logs_model
 from workers.worker import Worker, with_exponential_backoff
 
-POLL_PERIOD_SECONDS = 10
 
 logger = logging.getLogger(__name__)
+
+
+POLL_PERIOD_SECONDS = 10
 
 
 class RepositoryActionCountWorker(Worker):

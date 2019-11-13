@@ -10,10 +10,12 @@ from util.streamingjsonencoder import StreamingJSONEncoder
 from workers.buildlogsarchiver.models_pre_oci import pre_oci_model as model
 from workers.worker import Worker
 
-POLL_PERIOD_SECONDS = 30
-MEMORY_TEMPFILE_SIZE = 64 * 1024  # Large enough to handle approximately 99% of builds in memory
 
 logger = logging.getLogger(__name__)
+
+
+POLL_PERIOD_SECONDS = 30
+MEMORY_TEMPFILE_SIZE = 64 * 1024  # Large enough to handle approximately 99% of builds in memory
 
 
 class ArchiveBuildLogsWorker(Worker):

@@ -63,7 +63,7 @@ def test_direct_download(
             if ipranges_populated
             else test_empty_ip_range_cache["all_amazon"]
         )
-        context = StorageContext("nyc", None, None, config_provider, ipresolver)
+        context = StorageContext("nyc", None, config_provider, ipresolver)
 
         # Create a test bucket and put some test content.
         boto.connect_s3().create_bucket(_TEST_BUCKET)
@@ -96,7 +96,7 @@ def test_direct_download(
 @mock_s3
 def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populated, app):
     ipresolver = IPResolver(app)
-    context = StorageContext("nyc", None, None, config_provider, ipresolver)
+    context = StorageContext("nyc", None, config_provider, ipresolver)
 
     # Create a test bucket and put some test content.
     boto.connect_s3().create_bucket(_TEST_BUCKET)

@@ -3,46 +3,54 @@ import uuid
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 
+from prometheus_client import Counter, Gauge
+
 from data.database import QueueItem, db, db_for_update, db_random_func
 from util.morecollections import AttrDict
+
+
+queue_item_puts = Counter(
+    "quay_queue_item_puts_total",
+    "number of items that have been added to the queue",
+    labelnames=["queue_name"],
+)
+queue_item_gets = Counter(
+    "quay_queue_item_gets_total",
+    "number of times get() has been called on queue",
+    labelnames=["queue_name", "availability"],
+)
+queue_item_deletes = Counter(
+    "quay_queue_item_deletes_total", "number of expired queue items that have been deleted"
+)
+
+queue_items_locked = Gauge(
+    "quay_queue_items_locked",
+    "number of queue items that have been acquired",
+    labelnames=["queue_name"],
+)
+queue_items_available = Gauge(
+    "quay_queue_items_available",
+    "number of queue items that have not expired",
+    labelnames=["queue_name"],
+)
+queue_items_available_unlocked = Gauge(
+    "quay_queue_items_available_unlocked",
+    "number of queue items that have not expired and are not locked",
+    labelnames=["queue_name"],
+)
 
 
 MINIMUM_EXTENSION = timedelta(seconds=20)
 DEFAULT_BATCH_SIZE = 1000
 
 
-class BuildMetricQueueReporter(object):
-    """ Metric queue reporter for the build system. """
-
-    def __init__(self, metric_queue):
-        self._metric_queue = metric_queue
-
-    def __call__(self, currently_processing, running_count, total_count):
-        need_capacity_count = total_count - running_count
-        self._metric_queue.put_deprecated(
-            "BuildCapacityShortage", need_capacity_count, unit="Count"
-        )
-        self._metric_queue.build_capacity_shortage.Set(need_capacity_count)
-
-        building_percent = 100 if currently_processing else 0
-        self._metric_queue.percent_building.Set(building_percent)
-
-
 class WorkQueue(object):
     """ Work queue defines methods for interacting with a queue backed by the database. """
 
     def __init__(
-        self,
-        queue_name,
-        transaction_factory,
-        canonical_name_match_list=None,
-        reporter=None,
-        metric_queue=None,
-        has_namespace=False,
+        self, queue_name, transaction_factory, canonical_name_match_list=None, has_namespace=False,
     ):
         self._queue_name = queue_name
-        self._reporter = reporter
-        self._metric_queue = metric_queue
         self._transaction_factory = transaction_factory
         self._currently_processing = False
         self._has_namespaced_items = has_namespace
@@ -87,9 +95,7 @@ class WorkQueue(object):
         )
 
     def num_alive_jobs(self, canonical_name_list):
-        """
-    Returns the number of alive queue items with a given prefix.
-    """
+        """ Returns the number of alive queue items with a given prefix. """
 
         def strip_slash(name):
             return name.lstrip("/")
@@ -107,9 +113,7 @@ class WorkQueue(object):
     def num_available_jobs_between(
         self, available_min_time, available_max_time, canonical_name_list
     ):
-        """
-    Returns the number of available queue items with a given prefix, between the two provided times.
-    """
+        """ Returns the number of available queue items with a given prefix, between the two provided times. """
 
         def strip_slash(name):
             return name.lstrip("/")
@@ -149,26 +153,10 @@ class WorkQueue(object):
         return (running_count, available_not_running_count, available_count)
 
     def update_metrics(self):
-        if self._reporter is None and self._metric_queue is None:
-            return
-
         (running_count, available_not_running_count, available_count) = self.get_metrics()
-
-        if self._metric_queue:
-            self._metric_queue.work_queue_running.Set(running_count, labelvalues=[self._queue_name])
-            self._metric_queue.work_queue_available.Set(
-                available_count, labelvalues=[self._queue_name]
-            )
-            self._metric_queue.work_queue_available_not_running.Set(
-                available_not_running_count, labelvalues=[self._queue_name]
-            )
-
-        if self._reporter:
-            self._reporter(
-                self._currently_processing,
-                running_count,
-                running_count + available_not_running_count,
-            )
+        queue_items_locked.labels(self._queue_name).set(running_count)
+        queue_items_available.labels(self._queue_name).set(available_count)
+        queue_items_available_unlocked.labels(self._queue_name).set(available_not_running_count)
 
     def has_retries_remaining(self, item_id):
         """ Returns whether the queue item with the given id has any retries remaining. If the
@@ -232,23 +220,23 @@ class WorkQueue(object):
         # Chunk the inserted items into batch_size chunks and insert_many
         remaining = list(items_to_insert)
         while remaining:
-            QueueItem.insert_many(remaining[0:batch_size]).execute()
+            current_batch = remaining[0:batch_size]
+            QueueItem.insert_many(current_batch).execute()
+            queue_item_puts.labels(self._queue_name).inc(current_batch)
             remaining = remaining[batch_size:]
 
     def put(self, canonical_name_list, message, available_after=0, retries_remaining=5):
-        """
-    Put an item, if it shouldn't be processed for some number of seconds,
-    specify that amount as available_after. Returns the ID of the queue item added.
-    """
+        """ Put an item, if it shouldn't be processed for some number of seconds,
+            specify that amount as available_after. Returns the ID of the queue item added. """
         item = QueueItem.create(
             **self._queue_dict(canonical_name_list, message, available_after, retries_remaining)
         )
+        queue_item_puts.labels(self._queue_name).inc()
         return str(item.id)
 
     def _select_available_item(self, ordering_required, now):
         """ Selects an available queue item from the queue table and returns it, if any. If none,
-        return None.
-    """
+        return None. """
         name_match_query = self._name_match_query()
 
         try:
@@ -283,8 +271,7 @@ class WorkQueue(object):
         False on failure.
 
         Note that the underlying QueueItem row in the database will be changed on success, but
-        the db_item object given as a parameter will *not* have its fields updated.
-    """
+        the db_item object given as a parameter will *not* have its fields updated. """
 
         # Try to claim the item. We do so by updating the item's information only if its current
         # state ID matches that returned in the previous query. Since all updates to the QueueItem
@@ -306,26 +293,27 @@ class WorkQueue(object):
         return changed == 1
 
     def get(self, processing_time=300, ordering_required=False):
-        """
-    Get an available item and mark it as unavailable for the default of five
-    minutes. The result of this method must always be composed of simple
-    python objects which are JSON serializable for network portability reasons.
-    """
+        """ Get an available item and mark it as unavailable for the default of five
+            minutes. The result of this method must always be composed of simple
+            python objects which are JSON serializable for network portability reasons. """
         now = datetime.utcnow()
 
         # Select an available queue item.
         db_item = self._select_available_item(ordering_required, now)
         if db_item is None:
             self._currently_processing = False
+            queue_item_gets.labels(self._queue_name, "nonexistant").inc()
             return None
 
         # Attempt to claim the item for this instance.
         was_claimed = self._attempt_to_claim_item(db_item, now, processing_time)
         if not was_claimed:
             self._currently_processing = False
+            queue_item_gets.labels(self._queue_name, "claimed").inc()
             return None
 
         self._currently_processing = True
+        queue_item_gets.labels(self._queue_name, "acquired").inc()
 
         # Return a view of the queue item rather than an active db object
         return AttrDict(
@@ -337,9 +325,8 @@ class WorkQueue(object):
         )
 
     def cancel(self, item_id):
-        """ Attempts to cancel the queue item with the given ID from the queue. Returns true on success
-        and false if the queue item could not be canceled.
-    """
+        """ Attempts to cancel the queue item with the given ID from the queue.
+            Returns true on success and false if the queue item could not be canceled. """
         count_removed = QueueItem.delete().where(QueueItem.id == item_id).execute()
         return count_removed > 0
 
@@ -407,4 +394,5 @@ def delete_expired(expiration_threshold, deletion_threshold, batch_size):
         return 0
 
     QueueItem.delete().where(QueueItem.id << to_delete).execute()
+    queue_item_deletes.inc(to_delete)
     return len(to_delete)

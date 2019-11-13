@@ -9,7 +9,9 @@ from data import model
 from workers.queueworker import QueueWorker, WorkerUnhealthyException, JobException
 from util.log import logfile_path
 
+
 logger = logging.getLogger(__name__)
+
 
 POLL_PERIOD_SECONDS = 10
 RESERVATION_SECONDS = app.config.get("STORAGE_REPLICATION_PROCESSING_SECONDS", 60 * 20)

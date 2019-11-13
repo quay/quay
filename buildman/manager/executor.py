@@ -5,25 +5,25 @@ import os
 import socket
 import subprocess
 import threading
+import time
 import uuid
 
-from functools import partial
+from functools import partial, wraps
 
 import boto.ec2
 import cachetools.func
 import requests
-import trollius
 
 from container_cloud_config import CloudConfigContext
 from jinja2 import FileSystemLoader, Environment
-from trollius import coroutine, From, Return, get_event_loop
+from trollius import coroutine, sleep, From, Return, get_event_loop
+from prometheus_client import Histogram
 
 import release
 
-from buildman.asyncutil import AsyncWrapper
-from app import metric_queue, app
-from util.metrics.metricqueue import duration_collector_async
 from _init import ROOT_DIR
+from app import app
+from buildman.asyncutil import AsyncWrapper
 
 
 logger = logging.getLogger(__name__)
@@ -39,9 +39,33 @@ TEMPLATE = ENV.get_template("cloudconfig.yaml")
 CloudConfigContext().populate_jinja_environment(ENV)
 
 
+build_start_duration = Histogram(
+    "quay_build_start_duration_seconds",
+    "seconds taken for a executor to start executing a queued build",
+    labelnames=["executor"],
+    buckets=[0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 180.0, 240.0, 300.0, 600.0],
+)
+
+
+def async_observe(metric, *labels):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            trigger_time = time.time()
+            try:
+                rv = func(*args, **kwargs)
+            except Return as e:
+                metric.labels(*labels).observe(time.time() - trigger_time)
+                raise e
+            return rv
+
+        return wrapper
+
+    return decorator
+
+
 class ExecutorException(Exception):
-    """ Exception raised when there is a problem starting or stopping a builder.
-  """
+    """ Exception raised when there is a problem starting or stopping a builder. """
 
     pass
 
@@ -49,8 +73,7 @@ class ExecutorException(Exception):
 class BuilderExecutor(object):
     def __init__(self, executor_config, manager_hostname):
         """ Interface which can be plugged into the EphemeralNodeManager to provide a strategy for
-        starting and stopping builders.
-    """
+        starting and stopping builders. """
         self.executor_config = executor_config
         self.manager_hostname = manager_hostname
 
@@ -65,21 +88,18 @@ class BuilderExecutor(object):
     @property
     def setup_time(self):
         """ Returns the amount of time (in seconds) to wait for the execution to start for the build.
-        If None, the manager's default will be used.
-    """
+        If None, the manager's default will be used. """
         return self.executor_config.get("SETUP_TIME")
 
     @coroutine
     def start_builder(self, realm, token, build_uuid):
         """ Create a builder with the specified config. Returns a unique id which can be used to manage
-        the builder.
-    """
+        the builder. """
         raise NotImplementedError
 
     @coroutine
     def stop_builder(self, builder_id):
-        """ Stop a builder which is currently running.
-    """
+        """ Stop a builder which is currently running. """
         raise NotImplementedError
 
     def allowed_for_namespace(self, namespace):
@@ -144,8 +164,7 @@ class BuilderExecutor(object):
 
 class EC2Executor(BuilderExecutor):
     """ Implementation of BuilderExecutor which uses libcloud to start machines on a variety of cloud
-      providers.
-  """
+      providers. """
 
     COREOS_STACK_URL = (
         "http://%s.release.core-os.net/amd64-usr/current/coreos_production_ami_hvm.txt"
@@ -156,8 +175,7 @@ class EC2Executor(BuilderExecutor):
         super(EC2Executor, self).__init__(*args, **kwargs)
 
     def _get_conn(self):
-        """ Creates an ec2 connection which can be used to manage instances.
-    """
+        """ Creates an ec2 connection which can be used to manage instances. """
         return AsyncWrapper(
             boto.ec2.connect_to_region(
                 self.executor_config["EC2_REGION"],
@@ -169,14 +187,13 @@ class EC2Executor(BuilderExecutor):
     @classmethod
     @cachetools.func.ttl_cache(ttl=ONE_HOUR)
     def _get_coreos_ami(cls, ec2_region, coreos_channel):
-        """ Retrieve the CoreOS AMI id from the canonical listing.
-    """
+        """ Retrieve the CoreOS AMI id from the canonical listing. """
         stack_list_string = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).text
         stack_amis = dict([stack.split("=") for stack in stack_list_string.split("|")])
         return stack_amis[ec2_region]
 
     @coroutine
-    @duration_collector_async(metric_queue.builder_time_to_start, ["ec2"])
+    @async_observe(build_start_duration, "ec2")
     def start_builder(self, realm, token, build_uuid):
         region = self.executor_config["EC2_REGION"]
         channel = self.executor_config.get("COREOS_CHANNEL", "stable")
@@ -224,7 +241,6 @@ class EC2Executor(BuilderExecutor):
             )
         except boto.exception.EC2ResponseError as ec2e:
             logger.exception("Unable to spawn builder instance")
-            metric_queue.ephemeral_build_worker_failure.Inc()
             raise ec2e
 
         if not reservation.instances:
@@ -235,7 +251,7 @@ class EC2Executor(BuilderExecutor):
         launched = AsyncWrapper(reservation.instances[0])
 
         # Sleep a few seconds to wait for AWS to spawn the instance.
-        yield From(trollius.sleep(_TAG_RETRY_SLEEP))
+        yield From(sleep(_TAG_RETRY_SLEEP))
 
         # Tag the instance with its metadata.
         for i in range(0, _TAG_RETRY_COUNT):
@@ -259,7 +275,7 @@ class EC2Executor(BuilderExecutor):
                             build_uuid,
                             i,
                         )
-                        yield From(trollius.sleep(_TAG_RETRY_SLEEP))
+                        yield From(sleep(_TAG_RETRY_SLEEP))
                         continue
 
                     raise ExecutorException("Unable to find builder instance.")
@@ -287,19 +303,14 @@ class EC2Executor(BuilderExecutor):
 
 
 class PopenExecutor(BuilderExecutor):
-    """ Implementation of BuilderExecutor which uses Popen to fork a quay-builder process.
-  """
+    """ Implementation of BuilderExecutor which uses Popen to fork a quay-builder process. """
 
     def __init__(self, executor_config, manager_hostname):
         self._jobs = {}
-
         super(PopenExecutor, self).__init__(executor_config, manager_hostname)
 
-    """ Executor which uses Popen to fork a quay-builder process.
-  """
-
     @coroutine
-    @duration_collector_async(metric_queue.builder_time_to_start, ["fork"])
+    @async_observe(build_start_duration, "fork")
     def start_builder(self, realm, token, build_uuid):
         # Now start a machine for this job, adding the machine id to the etcd information
         logger.debug("Forking process for build")
@@ -531,7 +542,7 @@ class KubernetesExecutor(BuilderExecutor):
         return job_resource
 
     @coroutine
-    @duration_collector_async(metric_queue.builder_time_to_start, ["k8s"])
+    @async_observe(build_start_duration, "k8s")
     def start_builder(self, realm, token, build_uuid):
         # generate resource
         channel = self.executor_config.get("COREOS_CHANNEL", "stable")
@@ -574,13 +585,10 @@ class KubernetesExecutor(BuilderExecutor):
 
 
 class LogPipe(threading.Thread):
-    """ Adapted from http://codereview.stackexchange.com/a/17959
-  """
+    """ Adapted from http://codereview.stackexchange.com/a/17959 """
 
     def __init__(self, level):
-        """Setup the object with a logger and a loglevel
-    and start the thread
-    """
+        """ Setup the object with a logger and a loglevel and start the thread """
         threading.Thread.__init__(self)
         self.daemon = False
         self.level = level
@@ -589,19 +597,16 @@ class LogPipe(threading.Thread):
         self.start()
 
     def fileno(self):
-        """Return the write file descriptor of the pipe
-    """
+        """ Return the write file descriptor of the pipe """
         return self.fd_write
 
     def run(self):
-        """Run the thread, logging everything.
-    """
+        """ Run the thread, logging everything. """
         for line in iter(self.pipe_reader.readline, ""):
             logging.log(self.level, line.strip("\n"))
 
         self.pipe_reader.close()
 
     def close(self):
-        """Close the write end of the pipe.
-    """
+        """ Close the write end of the pipe. """
         os.close(self.fd_write)

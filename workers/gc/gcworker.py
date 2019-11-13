@@ -9,6 +9,7 @@ from data.model.repository import find_repository_with_garbage, get_random_gc_po
 from data.model.gc import garbage_collect_repo
 from workers.worker import Worker
 
+
 logger = logging.getLogger(__name__)
 
 

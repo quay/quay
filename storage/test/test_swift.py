@@ -11,7 +11,7 @@ from storage.swift import SwiftStorage, _EMPTY_SEGMENTS_KEY
 from swiftclient.client import ClientException
 
 base_args = {
-    "context": StorageContext("nyc", None, None, None, None),
+    "context": StorageContext("nyc", None, None, None),
     "swift_container": "container-name",
     "storage_path": "/basepath",
     "auth_url": "https://auth.com",
@@ -273,7 +273,7 @@ def test_cancel_chunked_upload():
     chunk_cleanup_queue = FakeQueue()
 
     args = dict(base_args)
-    args["context"] = StorageContext("nyc", None, chunk_cleanup_queue, None, None)
+    args["context"] = StorageContext("nyc", chunk_cleanup_queue, None, None)
 
     swift = FakeSwiftStorage(**args)
     uuid, metadata = swift.initiate_chunked_upload()
@@ -297,7 +297,7 @@ def test_cancel_chunked_upload():
 def test_empty_chunks_queued_for_deletion():
     chunk_cleanup_queue = FakeQueue()
     args = dict(base_args)
-    args["context"] = StorageContext("nyc", None, chunk_cleanup_queue, None, None)
+    args["context"] = StorageContext("nyc", chunk_cleanup_queue, None, None)
 
     swift = FakeSwiftStorage(**args)
     uuid, metadata = swift.initiate_chunked_upload()

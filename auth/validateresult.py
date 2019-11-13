@@ -9,6 +9,9 @@ class AuthKind(Enum):
     signed_grant = "signed_grant"
     credentials = "credentials"
 
+    def __str__(self):
+        return "%s" % self.value
+
 
 class ValidateResult(object):
     """ A result of validating auth in one form or another. """

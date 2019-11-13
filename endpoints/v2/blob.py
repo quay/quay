@@ -3,7 +3,7 @@ import re
 
 from flask import url_for, request, redirect, Response, abort as flask_abort
 
-from app import storage, app, get_app_url, metric_queue, model_cache
+from app import storage, app, get_app_url, model_cache
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from auth.permissions import ReadRepositoryPermission
 from data import database
@@ -25,6 +25,7 @@ from endpoints.decorators import (
     check_region_blacklisted,
     check_readonly,
 )
+from endpoints.metrics import image_pulled_bytes
 from endpoints.v2 import v2_bp, require_repo_read, require_repo_write, get_input_stream
 from endpoints.v2.errors import (
     BlobUnknown,
@@ -100,7 +101,7 @@ def download_blob(namespace_name, repo_name, digest):
     if storage.get_supports_resumable_downloads(blob.placements):
         headers["Accept-Ranges"] = "bytes"
 
-    metric_queue.pull_byte_count.Inc(blob.compressed_size, labelvalues=["v2"])
+    image_pulled_bytes.labels("v2").inc(blob.compressed_size)
 
     # Short-circuit by redirecting if the storage supports it.
     path = blob.storage_path
@@ -493,7 +494,7 @@ def _upload_chunk(blob_uploader, commit_digest=None):
 
     try:
         # Upload the data received.
-        blob_uploader.upload_chunk(app.config, input_fp, start_offset, length, metric_queue)
+        blob_uploader.upload_chunk(app.config, input_fp, start_offset, length)
 
         if commit_digest is not None:
             # Commit the upload to a blob.

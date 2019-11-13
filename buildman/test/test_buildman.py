@@ -6,7 +6,6 @@ from mock import Mock, ANY
 from six import iteritems
 from trollius import coroutine, get_event_loop, From, Future, Return
 
-from app import metric_queue
 from buildman.asyncutil import AsyncWrapper
 from buildman.component.buildcomponent import BuildComponent
 from buildman.manager.ephemeral import EphemeralBuilderManager, REALM_PREFIX, JOB_PREFIX
@@ -14,7 +13,6 @@ from buildman.manager.executor import BuilderExecutor, ExecutorException
 from buildman.orchestrator import KeyEvent, KeyChange
 from buildman.server import BuildJobResult
 from util import slash_join
-from util.metrics.metricqueue import duration_collector_async
 
 
 BUILD_UUID = "deadbeef-dead-beef-dead-deadbeefdead"
@@ -36,7 +34,6 @@ class TestExecutor(BuilderExecutor):
     job_stopped = None
 
     @coroutine
-    @duration_collector_async(metric_queue.builder_time_to_start, labelvalues=["testlabel"])
     def start_builder(self, realm, token, build_uuid):
         self.job_started = str(uuid.uuid4())
         raise Return(self.job_started)
@@ -48,7 +45,6 @@ class TestExecutor(BuilderExecutor):
 
 class BadExecutor(BuilderExecutor):
     @coroutine
-    @duration_collector_async(metric_queue.builder_time_to_start, labelvalues=["testlabel"])
     def start_builder(self, realm, token, build_uuid):
         raise ExecutorException("raised on purpose!")
 

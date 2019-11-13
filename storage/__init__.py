@@ -27,24 +27,19 @@ STORAGE_DRIVER_CLASSES = {
 }
 
 
-def get_storage_driver(
-    location, metric_queue, chunk_cleanup_queue, config_provider, ip_resolver, storage_params
-):
+def get_storage_driver(location, chunk_cleanup_queue, config_provider, ip_resolver, storage_params):
     """ Returns a storage driver class for the given storage configuration
       (a pair of string name and a dict of parameters). """
     driver = storage_params[0]
     parameters = storage_params[1]
     driver_class = STORAGE_DRIVER_CLASSES.get(driver, FakeStorage)
-    context = StorageContext(
-        location, metric_queue, chunk_cleanup_queue, config_provider, ip_resolver
-    )
+    context = StorageContext(location, chunk_cleanup_queue, config_provider, ip_resolver)
     return driver_class(context, **parameters)
 
 
 class StorageContext(object):
-    def __init__(self, location, metric_queue, chunk_cleanup_queue, config_provider, ip_resolver):
+    def __init__(self, location, chunk_cleanup_queue, config_provider, ip_resolver):
         self.location = location
-        self.metric_queue = metric_queue
         self.chunk_cleanup_queue = chunk_cleanup_queue
         self.config_provider = config_provider
         self.ip_resolver = ip_resolver or NoopIPResolver()
@@ -54,7 +49,6 @@ class Storage(object):
     def __init__(
         self,
         app=None,
-        metric_queue=None,
         chunk_cleanup_queue=None,
         instance_keys=None,
         config_provider=None,
@@ -63,23 +57,16 @@ class Storage(object):
         self.app = app
         if app is not None:
             self.state = self.init_app(
-                app, metric_queue, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver
+                app, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver
             )
         else:
             self.state = None
 
-    def init_app(
-        self, app, metric_queue, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver
-    ):
+    def init_app(self, app, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver):
         storages = {}
         for location, storage_params in app.config.get("DISTRIBUTED_STORAGE_CONFIG").items():
             storages[location] = get_storage_driver(
-                location,
-                metric_queue,
-                chunk_cleanup_queue,
-                config_provider,
-                ip_resolver,
-                storage_params,
+                location, chunk_cleanup_queue, config_provider, ip_resolver, storage_params,
             )
 
         preference = app.config.get("DISTRIBUTED_STORAGE_PREFERENCE", None)

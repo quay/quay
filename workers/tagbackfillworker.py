@@ -42,7 +42,9 @@ from util.bytes import Bytes
 from util.log import logfile_path
 from util.migrate.allocator import yield_random_entries
 
+
 logger = logging.getLogger(__name__)
+
 
 WORKER_TIMEOUT = app.config.get("BACKFILL_TAGS_TIMEOUT", 6000)
 

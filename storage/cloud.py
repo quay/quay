@@ -3,33 +3,43 @@ import os
 import logging
 import copy
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-
-from cachetools.func import lru_cache
-from itertools import chain
-
+from collections import namedtuple
 from datetime import datetime, timedelta
+from io import BufferedIOBase
+from itertools import chain
+from uuid import uuid4
 
-from botocore.signers import CloudFrontSigner
-from boto.exception import S3ResponseError
 import boto.s3.connection
 import boto.s3.multipart
 import boto.gs.connection
 import boto.s3.key
 import boto.gs.key
 
-from io import BufferedIOBase
-from uuid import uuid4
-from collections import namedtuple
+from boto.exception import S3ResponseError
+from botocore.signers import CloudFrontSigner
+from cachetools.func import lru_cache
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from prometheus_client import Counter
 
 from util.registry import filelike
 from storage.basestorage import BaseStorageV2
 
 
 logger = logging.getLogger(__name__)
+
+
+multipart_uploads_started = Counter(
+    "quay_multipart_uploads_started_total",
+    "number of multipart uploads to Quay storage that started",
+)
+multipart_uploads_completed = Counter(
+    "quay_multipart_uploads_completed_total",
+    "number of multipart uploads to Quay storage that completed",
+)
+
 
 _PartUploadMetadata = namedtuple("_PartUploadMetadata", ["path", "offset", "length"])
 _CHUNKS_KEY = "chunks"
@@ -195,8 +205,7 @@ class _CloudStorage(BaseStorageV2):
         if content_encoding is not None:
             metadata["Content-Encoding"] = content_encoding
 
-        if self._context.metric_queue is not None:
-            self._context.metric_queue.multipart_upload_start.Inc()
+        multipart_uploads_started.inc()
 
         return self._cloud_bucket.initiate_multipart_upload(
             path, metadata=metadata, **self._upload_params
@@ -204,8 +213,7 @@ class _CloudStorage(BaseStorageV2):
 
     def stream_write(self, path, fp, content_type=None, content_encoding=None):
         """ Writes the data found in the file-like stream to the given path. Raises an IOError
-        if the write fails.
-    """
+        if the write fails. """
         _, write_error = self._stream_write_internal(path, fp, content_type, content_encoding)
         if write_error is not None:
             logger.error("Error when trying to stream_write path `%s`: %s", path, write_error)
@@ -223,8 +231,7 @@ class _CloudStorage(BaseStorageV2):
         """ Writes the data found in the file-like stream to the given path, with optional limit
         on size. Note that this method returns a *tuple* of (bytes_written, write_error) and should
         *not* raise an exception (such as IOError) if a problem uploading occurred. ALWAYS check
-        the returned tuple on calls to this method.
-    """
+        the returned tuple on calls to this method. """
         write_error = None
 
         try:
@@ -261,8 +268,7 @@ class _CloudStorage(BaseStorageV2):
                 )
                 write_error = e
 
-                if self._context.metric_queue is not None:
-                    self._context.metric_queue.multipart_upload_end.Inc(labelvalues=["failure"])
+                multipart_uploads_completed.inc()
 
                 if cancel_on_error:
                     try:
@@ -275,8 +281,7 @@ class _CloudStorage(BaseStorageV2):
                     break
 
         if total_bytes_written > 0:
-            if self._context.metric_queue is not None:
-                self._context.metric_queue.multipart_upload_end.Inc(labelvalues=["success"])
+            multipart_uploads_completed.inc()
 
             self._perform_action_with_retry(mp.complete_upload)
 

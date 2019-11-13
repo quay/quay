@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from flask import request
 
-from app import app, dockerfile_build_queue, metric_queue
+from app import app, dockerfile_build_queue
 from data import model
 from data.logs_model import logs_model
 from data.database import db, RepositoryState
@@ -20,18 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 class MaximumBuildsQueuedException(Exception):
-    """
-  This exception is raised when a build is requested, but the incoming build
-  would exceed the configured maximum build rate.
-  """
+    """ This exception is raised when a build is requested, but the incoming build
+        would exceed the configured maximum build rate. """
 
     pass
 
 
 class BuildTriggerDisabledException(Exception):
-    """
-  This exception is raised when a build is required, but the build trigger has been disabled.
-  """
+    """ This exception is raised when a build is required, but the build trigger has been disabled. """
 
     pass
 
@@ -111,11 +107,6 @@ def start_build(repository, prepared_build, pull_robot_name=None):
         build_request.queue_id = queue_id
         build_request.save()
 
-    # Add the queueing of the build to the metrics queue.
-    metric_queue.repository_build_queued.Inc(
-        labelvalues=[repository.namespace_user.username, repository.name]
-    )
-
     # Add the build to the repo's log and spawn the build_queued notification.
     event_log_metadata = {
         "build_id": build_request.uuid,
@@ -157,8 +148,7 @@ def start_build(repository, prepared_build, pull_robot_name=None):
 
 class PreparedBuild(object):
     """ Class which holds all the information about a prepared build. The build queuing service
-      will use this result to actually invoke the build.
-  """
+      will use this result to actually invoke the build. """
 
     def __init__(self, trigger=None):
         self._dockerfile_id = None
