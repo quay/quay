@@ -30,20 +30,34 @@ class NullDataMigration(DataMigration):
 
 class DefinedDataMigration(DataMigration):
   def __init__(self, name, env_var, phases):
+    assert phases
+
     self.name = name
     self.phases = {phase.name: phase for phase in phases}
 
+    # Add a synthetic phase for new installations that skips the entire migration.
+    self.phases['new-installation'] = phases[-1]._replace(name='new-installation',
+                                                          alembic_revision='head')
+
     phase_name = os.getenv(env_var)
     if phase_name is None:
-      msg = 'Missing env var `%s` for data migration `%s`' % (env_var, self.name)
+      msg = 'Missing env var `%s` for data migration `%s`. %s' % (env_var, self.name,
+                                                                  self._error_suffix)
       raise Exception(msg)
 
     current_phase = self.phases.get(phase_name)
     if current_phase is None:
-      msg = 'Unknown phase `%s` for data migration `%s`' % (phase_name, self.name)
+      msg = 'Unknown phase `%s` for data migration `%s`. %s' % (phase_name, self.name,
+                                                                self._error_suffix)
       raise Exception(msg)
 
     self.current_phase = current_phase
+
+  @property
+  def _error_suffix(self):
+    message = 'Available values for this migration: %s. ' % (self.phases.keys())
+    message += 'If this is a new installation, please use `new-installation`.'
+    return message
 
   @property
   def alembic_migration_revision(self):

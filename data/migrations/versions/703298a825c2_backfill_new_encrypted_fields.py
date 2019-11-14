@@ -98,157 +98,159 @@ class OAuthApplication(BaseModel):
 def upgrade(tables, tester, progress_reporter):
   op = ProgressWrapper(original_op, progress_reporter)
 
-  # Empty all access token names to fix the bug where we put the wrong name and code
-  # in for some tokens.
-  AccessToken.update(token_name=None).where(AccessToken.token_name >> None).execute()
+  from app import app
+  if app.config.get('SETUP_COMPLETE', False) or tester.is_testing:
+    # Empty all access token names to fix the bug where we put the wrong name and code
+    # in for some tokens.
+    AccessToken.update(token_name=None).where(AccessToken.token_name >> None).execute()
 
-  # AccessToken.
-  logger.info('Backfilling encrypted credentials for access tokens')
-  for access_token in _iterate(AccessToken, ((AccessToken.token_name >> None) |
-                                             (AccessToken.token_name == ''))):
-    logger.info('Backfilling encrypted credentials for access token %s', access_token.id)
-    assert access_token.code is not None
-    assert access_token.code[:ACCESS_TOKEN_NAME_PREFIX_LENGTH]
-    assert access_token.code[ACCESS_TOKEN_NAME_PREFIX_LENGTH:]
+    # AccessToken.
+    logger.info('Backfilling encrypted credentials for access tokens')
+    for access_token in _iterate(AccessToken, ((AccessToken.token_name >> None) |
+                                              (AccessToken.token_name == ''))):
+      logger.info('Backfilling encrypted credentials for access token %s', access_token.id)
+      assert access_token.code is not None
+      assert access_token.code[:ACCESS_TOKEN_NAME_PREFIX_LENGTH]
+      assert access_token.code[ACCESS_TOKEN_NAME_PREFIX_LENGTH:]
 
-    token_name = access_token.code[:ACCESS_TOKEN_NAME_PREFIX_LENGTH]
-    token_code = _decrypted(access_token.code[ACCESS_TOKEN_NAME_PREFIX_LENGTH:])
+      token_name = access_token.code[:ACCESS_TOKEN_NAME_PREFIX_LENGTH]
+      token_code = _decrypted(access_token.code[ACCESS_TOKEN_NAME_PREFIX_LENGTH:])
 
-    (AccessToken
-     .update(token_name=token_name, token_code=token_code)
-     .where(AccessToken.id == access_token.id, AccessToken.code == access_token.code)
-     .execute())
+      (AccessToken
+      .update(token_name=token_name, token_code=token_code)
+      .where(AccessToken.id == access_token.id, AccessToken.code == access_token.code)
+      .execute())
 
-  assert AccessToken.select().where(AccessToken.token_name >> None).count() == 0
+    assert AccessToken.select().where(AccessToken.token_name >> None).count() == 0
 
-  # Robots.
-  logger.info('Backfilling encrypted credentials for robots')
-  while True:
-    has_row = False
-    query = (User
-             .select()
-             .join(RobotAccountToken, JOIN.LEFT_OUTER)
-             .where(User.robot == True, RobotAccountToken.id >> None)
-             .limit(BATCH_SIZE))
+    # Robots.
+    logger.info('Backfilling encrypted credentials for robots')
+    while True:
+      has_row = False
+      query = (User
+              .select()
+              .join(RobotAccountToken, JOIN.LEFT_OUTER)
+              .where(User.robot == True, RobotAccountToken.id >> None)
+              .limit(BATCH_SIZE))
 
-    for robot_user in query:
-      logger.info('Backfilling encrypted credentials for robot %s', robot_user.id)
-      has_row = True
-      try:
-        RobotAccountToken.create(robot_account=robot_user,
-                                 token=_decrypted(robot_user.email),
-                                 fully_migrated=False)
-      except IntegrityError:
+      for robot_user in query:
+        logger.info('Backfilling encrypted credentials for robot %s', robot_user.id)
+        has_row = True
+        try:
+          RobotAccountToken.create(robot_account=robot_user,
+                                  token=_decrypted(robot_user.email),
+                                  fully_migrated=False)
+        except IntegrityError:
+          break
+
+      if not has_row:
         break
 
-    if not has_row:
-      break
+    # RepositoryBuildTrigger
+    logger.info('Backfilling encrypted credentials for repo build triggers')
+    for repo_build_trigger in _iterate(RepositoryBuildTrigger,
+                                      (RepositoryBuildTrigger.fully_migrated == False)):
+      logger.info('Backfilling encrypted credentials for repo build trigger %s',
+                  repo_build_trigger.id)
 
-  # RepositoryBuildTrigger
-  logger.info('Backfilling encrypted credentials for repo build triggers')
-  for repo_build_trigger in _iterate(RepositoryBuildTrigger,
-                                     (RepositoryBuildTrigger.fully_migrated == False)):
-    logger.info('Backfilling encrypted credentials for repo build trigger %s',
-                repo_build_trigger.id)
+      (RepositoryBuildTrigger
+      .update(secure_auth_token=_decrypted(repo_build_trigger.auth_token),
+              secure_private_key=_decrypted(repo_build_trigger.private_key),
+              fully_migrated=True)
+      .where(RepositoryBuildTrigger.id == repo_build_trigger.id,
+              RepositoryBuildTrigger.uuid == repo_build_trigger.uuid)
+      .execute())
 
-    (RepositoryBuildTrigger
-     .update(secure_auth_token=_decrypted(repo_build_trigger.auth_token),
-             secure_private_key=_decrypted(repo_build_trigger.private_key),
-             fully_migrated=True)
-     .where(RepositoryBuildTrigger.id == repo_build_trigger.id,
-            RepositoryBuildTrigger.uuid == repo_build_trigger.uuid)
-     .execute())
+    assert (RepositoryBuildTrigger
+            .select()
+            .where(RepositoryBuildTrigger.fully_migrated == False)
+            .count()) == 0
 
-  assert (RepositoryBuildTrigger
-          .select()
-          .where(RepositoryBuildTrigger.fully_migrated == False)
-          .count()) == 0
+    # AppSpecificAuthToken
+    logger.info('Backfilling encrypted credentials for app specific auth tokens')
+    for token in _iterate(AppSpecificAuthToken, ((AppSpecificAuthToken.token_name >> None) |
+                                                (AppSpecificAuthToken.token_name == '') |
+                                                (AppSpecificAuthToken.token_secret >> None))):
+      logger.info('Backfilling encrypted credentials for app specific auth %s',
+                  token.id)
+      assert token.token_code[AST_TOKEN_NAME_PREFIX_LENGTH:]
 
-  # AppSpecificAuthToken
-  logger.info('Backfilling encrypted credentials for app specific auth tokens')
-  for token in _iterate(AppSpecificAuthToken, ((AppSpecificAuthToken.token_name >> None) |
-                                               (AppSpecificAuthToken.token_name == '') |
-                                               (AppSpecificAuthToken.token_secret >> None))):
-    logger.info('Backfilling encrypted credentials for app specific auth %s',
-                token.id)
-    assert token.token_code[AST_TOKEN_NAME_PREFIX_LENGTH:]
+      token_name = token.token_code[:AST_TOKEN_NAME_PREFIX_LENGTH]
+      token_secret = _decrypted(token.token_code[AST_TOKEN_NAME_PREFIX_LENGTH:])
+      assert token_name
+      assert token_secret
 
-    token_name = token.token_code[:AST_TOKEN_NAME_PREFIX_LENGTH]
-    token_secret = _decrypted(token.token_code[AST_TOKEN_NAME_PREFIX_LENGTH:])
-    assert token_name
-    assert token_secret
+      (AppSpecificAuthToken
+      .update(token_name=token_name,
+              token_secret=token_secret)
+      .where(AppSpecificAuthToken.id == token.id,
+              AppSpecificAuthToken.token_code == token.token_code)
+      .execute())
 
-    (AppSpecificAuthToken
-     .update(token_name=token_name,
-             token_secret=token_secret)
-     .where(AppSpecificAuthToken.id == token.id,
-            AppSpecificAuthToken.token_code == token.token_code)
-     .execute())
+    assert (AppSpecificAuthToken
+            .select()
+            .where(AppSpecificAuthToken.token_name >> None)
+            .count()) == 0
 
-  assert (AppSpecificAuthToken
-          .select()
-          .where(AppSpecificAuthToken.token_name >> None)
-          .count()) == 0
+    # OAuthAccessToken
+    logger.info('Backfilling credentials for OAuth access tokens')
+    for token in _iterate(OAuthAccessToken, ((OAuthAccessToken.token_name >> None) |
+                                            (OAuthAccessToken.token_name == ''))):
+      logger.info('Backfilling credentials for OAuth access token %s', token.id)
+      token_name = token.access_token[:OAUTH_ACCESS_TOKEN_PREFIX_LENGTH]
+      token_code = Credential.from_string(token.access_token[OAUTH_ACCESS_TOKEN_PREFIX_LENGTH:])
+      assert token_name
+      assert token.access_token[OAUTH_ACCESS_TOKEN_PREFIX_LENGTH:]
 
-  # OAuthAccessToken
-  logger.info('Backfilling credentials for OAuth access tokens')
-  for token in _iterate(OAuthAccessToken, ((OAuthAccessToken.token_name >> None) |
-                                           (OAuthAccessToken.token_name == ''))):
-    logger.info('Backfilling credentials for OAuth access token %s', token.id)
-    token_name = token.access_token[:OAUTH_ACCESS_TOKEN_PREFIX_LENGTH]
-    token_code = Credential.from_string(token.access_token[OAUTH_ACCESS_TOKEN_PREFIX_LENGTH:])
-    assert token_name
-    assert token.access_token[OAUTH_ACCESS_TOKEN_PREFIX_LENGTH:]
+      (OAuthAccessToken
+      .update(token_name=token_name,
+              token_code=token_code)
+      .where(OAuthAccessToken.id == token.id,
+              OAuthAccessToken.access_token == token.access_token)
+      .execute())
 
-    (OAuthAccessToken
-     .update(token_name=token_name,
-             token_code=token_code)
-     .where(OAuthAccessToken.id == token.id,
-            OAuthAccessToken.access_token == token.access_token)
-     .execute())
+    assert (OAuthAccessToken
+            .select()
+            .where(OAuthAccessToken.token_name >> None)
+            .count()) == 0
 
-  assert (OAuthAccessToken
-          .select()
-          .where(OAuthAccessToken.token_name >> None)
-          .count()) == 0
+    # OAuthAuthorizationCode
+    logger.info('Backfilling credentials for OAuth auth code')
+    for code in _iterate(OAuthAuthorizationCode, ((OAuthAuthorizationCode.code_name >> None) |
+                                                  (OAuthAuthorizationCode.code_name == ''))):
+      logger.info('Backfilling credentials for OAuth auth code %s', code.id)
+      user_code = code.code or random_string_generator(AUTHORIZATION_CODE_PREFIX_LENGTH * 2)()
+      code_name = user_code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
+      code_credential = Credential.from_string(user_code[AUTHORIZATION_CODE_PREFIX_LENGTH:])
+      assert code_name
+      assert user_code[AUTHORIZATION_CODE_PREFIX_LENGTH:]
 
-  # OAuthAuthorizationCode
-  logger.info('Backfilling credentials for OAuth auth code')
-  for code in _iterate(OAuthAuthorizationCode, ((OAuthAuthorizationCode.code_name >> None) |
-                                                (OAuthAuthorizationCode.code_name == ''))):
-    logger.info('Backfilling credentials for OAuth auth code %s', code.id)
-    user_code = code.code or random_string_generator(AUTHORIZATION_CODE_PREFIX_LENGTH * 2)()
-    code_name = user_code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
-    code_credential = Credential.from_string(user_code[AUTHORIZATION_CODE_PREFIX_LENGTH:])
-    assert code_name
-    assert user_code[AUTHORIZATION_CODE_PREFIX_LENGTH:]
+      (OAuthAuthorizationCode
+      .update(code_name=code_name, code_credential=code_credential)
+      .where(OAuthAuthorizationCode.id == code.id)
+      .execute())
 
-    (OAuthAuthorizationCode
-     .update(code_name=code_name, code_credential=code_credential)
-     .where(OAuthAuthorizationCode.id == code.id)
-     .execute())
+    assert (OAuthAuthorizationCode
+            .select()
+            .where(OAuthAuthorizationCode.code_name >> None)
+            .count()) == 0
 
-  assert (OAuthAuthorizationCode
-          .select()
-          .where(OAuthAuthorizationCode.code_name >> None)
-          .count()) == 0
+    # OAuthApplication
+    logger.info('Backfilling secret for OAuth applications')
+    for app in _iterate(OAuthApplication, OAuthApplication.fully_migrated == False):
+      logger.info('Backfilling secret for OAuth application %s', app.id)
+      client_secret = app.client_secret or str(uuid.uuid4())
+      secure_client_secret = _decrypted(client_secret)
 
-  # OAuthApplication
-  logger.info('Backfilling secret for OAuth applications')
-  for app in _iterate(OAuthApplication, OAuthApplication.fully_migrated == False):
-    logger.info('Backfilling secret for OAuth application %s', app.id)
-    client_secret = app.client_secret or str(uuid.uuid4())
-    secure_client_secret = _decrypted(client_secret)
+      (OAuthApplication
+      .update(secure_client_secret=secure_client_secret, fully_migrated=True)
+      .where(OAuthApplication.id == app.id, OAuthApplication.fully_migrated == False)
+      .execute())
 
-    (OAuthApplication
-     .update(secure_client_secret=secure_client_secret, fully_migrated=True)
-     .where(OAuthApplication.id == app.id, OAuthApplication.fully_migrated == False)
-     .execute())
-
-  assert (OAuthApplication
-          .select()
-          .where(OAuthApplication.fully_migrated == False)
-          .count()) == 0
+    assert (OAuthApplication
+            .select()
+            .where(OAuthApplication.fully_migrated == False)
+            .count()) == 0
 
   # Adjust existing fields to be nullable.
   op.alter_column('accesstoken', 'code', nullable=True, existing_type=sa.String(length=255))       
@@ -271,10 +273,6 @@ def upgrade(tables, tester, progress_reporter):
 
 def downgrade(tables, tester, progress_reporter):
   op = ProgressWrapper(original_op, progress_reporter)
-  op.alter_column('accesstoken', 'code', nullable=False, existing_type=sa.String(length=255))       
-  op.alter_column('oauthaccesstoken', 'access_token', nullable=False, existing_type=sa.String(length=255))       
-  op.alter_column('oauthauthorizationcode', 'code', nullable=False, existing_type=sa.String(length=255))
-  op.alter_column('appspecificauthtoken', 'token_code', nullable=False, existing_type=sa.String(length=255))
 
   op.alter_column('accesstoken', 'token_name', nullable=True, existing_type=sa.String(length=255))       
   op.alter_column('accesstoken', 'token_code', nullable=True, existing_type=sa.String(length=255))       

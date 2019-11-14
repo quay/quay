@@ -59,11 +59,15 @@ class FieldEncrypter(object):
       and the application.
   """
   def __init__(self, secret_key, version='v0'):
-    self._secret_key = convert_secret_key(secret_key)
+    # NOTE: secret_key will be None when the system is being first initialized, so we allow that
+    # case here, but make sure to assert that it is *not* None below if any encryption is actually
+    # needed.
+    self._secret_key = convert_secret_key(secret_key) if secret_key is not None else None
     self._encryption_version = _VERSIONS[version]
 
   def encrypt_value(self, value, field_max_length=None):
     """ Encrypts the value using the current version of encryption. """
+    assert self._secret_key is not None
     encrypted_value = self._encryption_version.encrypt(self._secret_key, value, field_max_length)
     return '%s%s%s' % (self._encryption_version.prefix, _SEPARATOR, encrypted_value)
 
@@ -71,6 +75,7 @@ class FieldEncrypter(object):
     """ Decrypts the value, returning it. If the value cannot be decrypted
         raises a DecryptionFailureException.
     """
+    assert self._secret_key is not None
     if _SEPARATOR not in value:
       raise DecryptionFailureException('Invalid encrypted value')
 
