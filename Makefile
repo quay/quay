@@ -140,6 +140,15 @@ docker-build: pkgs build
 	git checkout $(NAME)
 	echo $(TAG)
 
+app-sre-docker-build:
+	# get named head (ex: branch, tag, etc..)
+	export NAME=$(shell git rev-parse --abbrev-ref HEAD)
+	# checkout commit so .git/HEAD points to full sha (used in Dockerfile)
+	echo "$(SHA)"
+	git checkout $(SHA)
+	$(BUILD_CMD) -t ${IMG} .
+	git checkout $(NAME)
+
 run: license
 	goreman start
 
