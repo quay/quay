@@ -80,11 +80,13 @@ def upgrade(tables, tester, progress_reporter):
 
   op.add_column('repomirrorconfig', sa.Column('external_reference', sa.Text(), nullable=True))
 
-  for repo_mirror in _iterate(RepoMirrorConfig, (RepoMirrorConfig.external_reference >> None)):
-    repo = '%s/%s/%s' % (repo_mirror.external_registry, repo_mirror.external_namespace, repo_mirror.external_repository)
-    logger.info('migrating %s' % repo)
-    repo_mirror.external_reference = repo
-    repo_mirror.save()
+  from app import app
+  if app.config.get('SETUP_COMPLETE', False) or tester.is_testing:
+    for repo_mirror in _iterate(RepoMirrorConfig, (RepoMirrorConfig.external_reference >> None)):
+      repo = '%s/%s/%s' % (repo_mirror.external_registry, repo_mirror.external_namespace, repo_mirror.external_repository)
+      logger.info('migrating %s' % repo)
+      repo_mirror.external_reference = repo
+      repo_mirror.save()
 
   op.drop_column('repomirrorconfig', 'external_registry')
   op.drop_column('repomirrorconfig', 'external_namespace')
@@ -109,14 +111,16 @@ def downgrade(tables, tester, progress_reporter):
   op.add_column('repomirrorconfig', sa.Column('external_namespace', sa.String(length=255), nullable=True))
   op.add_column('repomirrorconfig', sa.Column('external_repository', sa.String(length=255), nullable=True))
 
-  logger.info('Restoring columns from external_reference')
-  for repo_mirror in _iterate(RepoMirrorConfig, (RepoMirrorConfig.external_registry >> None)):
-    logger.info('Restoring %s' % repo_mirror.external_reference)
-    parts = repo_mirror.external_reference.split('/', 2)
-    repo_mirror.external_registry = parts[0] if len(parts) >= 1 else 'DOWNGRADE-FAILED'
-    repo_mirror.external_namespace = parts[1] if len(parts) >= 2 else 'DOWNGRADE-FAILED'
-    repo_mirror.external_repository = parts[2] if len(parts) >= 3 else 'DOWNGRADE-FAILED'
-    repo_mirror.save()
+  from app import app
+  if app.config.get('SETUP_COMPLETE', False):
+    logger.info('Restoring columns from external_reference')
+    for repo_mirror in _iterate(RepoMirrorConfig, (RepoMirrorConfig.external_registry >> None)):
+      logger.info('Restoring %s' % repo_mirror.external_reference)
+      parts = repo_mirror.external_reference.split('/', 2)
+      repo_mirror.external_registry = parts[0] if len(parts) >= 1 else 'DOWNGRADE-FAILED'
+      repo_mirror.external_namespace = parts[1] if len(parts) >= 2 else 'DOWNGRADE-FAILED'
+      repo_mirror.external_repository = parts[2] if len(parts) >= 3 else 'DOWNGRADE-FAILED'
+      repo_mirror.save()
 
   op.drop_column('repomirrorconfig', 'external_reference')
 

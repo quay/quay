@@ -378,7 +378,7 @@ def configure(config_object, testing=False):
                                                              real_for_update))
   db_concat_func.initialize(SCHEME_SPECIALIZED_CONCAT.get(parsed_write_uri.drivername,
                                                           function_concat))
-  db_encrypter.initialize(FieldEncrypter(config_object['DATABASE_SECRET_KEY']))
+  db_encrypter.initialize(FieldEncrypter(config_object.get('DATABASE_SECRET_KEY')))
 
   read_replicas = config_object.get('DB_READ_REPLICAS', None)
   is_read_only = config_object.get('REGISTRY_STATE', 'normal') == 'readonly'

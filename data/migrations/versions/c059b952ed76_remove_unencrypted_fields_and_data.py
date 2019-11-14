@@ -39,22 +39,24 @@ def upgrade(tables, tester, progress_reporter):
     # ### end Alembic commands ###
 
     # Overwrite all plaintext robot credentials.
-    while True:
-        try:
-            robot_account_token = RobotAccountToken.get(fully_migrated=False)
-            robot_account = robot_account_token.robot_account
+    from app import app
+    if app.config.get('SETUP_COMPLETE', False) or tester.is_testing:
+        while True:
+            try:
+                robot_account_token = RobotAccountToken.get(fully_migrated=False)
+                robot_account = robot_account_token.robot_account
 
-            robot_account.email = str(uuid.uuid4())
-            robot_account.save()
+                robot_account.email = str(uuid.uuid4())
+                robot_account.save()
 
-            federated_login = FederatedLogin.get(user=robot_account)
-            federated_login.service_ident = 'robot:%s' % robot_account.id
-            federated_login.save()
+                federated_login = FederatedLogin.get(user=robot_account)
+                federated_login.service_ident = 'robot:%s' % robot_account.id
+                federated_login.save()
 
-            robot_account_token.fully_migrated = True
-            robot_account_token.save()
-        except RobotAccountToken.DoesNotExist:
-            break
+                robot_account_token.fully_migrated = True
+                robot_account_token.save()
+            except RobotAccountToken.DoesNotExist:
+                break
 
 
 def downgrade(tables, tester, progress_reporter):

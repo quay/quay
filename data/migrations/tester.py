@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 from datetime import datetime
 from six import add_metaclass
 
@@ -92,6 +92,10 @@ class MigrationTester(object):
   """
   TestDataType = DataTypes
 
+  @abstractproperty
+  def is_testing(self):
+    """ Returns whether we are currently under a migration test. """
+
   @abstractmethod
   def populate_table(self, table_name, fields):
     """ Called to populate a table with the given fields filled in with testing data. """
@@ -107,6 +111,10 @@ class NoopTester(MigrationTester):
 
 
 class PopulateTestDataTester(MigrationTester):
+  @property
+  def is_testing(self):
+    return True
+
   def populate_table(self, table_name, fields):
     columns = {field_name: field_type() for field_name, field_type in fields}
     field_name_vars = [':' + field_name for field_name, _ in fields]
