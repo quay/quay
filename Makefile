@@ -18,10 +18,12 @@ show-modified:
 all: clean pkgs test build
 
 pkgs: requirements.txt requirements-dev.txt requirements-tests.txt
-	pip install -r $<
+	echo "hello"
+	pip install -r $< --user
 
 requirements.txt: requirements-nover.txt
 	# Create a new virtualenv and activate it
+	echo "bye"
 	pyenv virtualenv 2.7.12 quay-deps
 	pyenv activate quay-deps
 
@@ -139,6 +141,16 @@ docker-build: pkgs build
 	docker build -t $(TAG) .
 	git checkout $(NAME)
 	echo $(TAG)
+
+app-sre-docker-build:
+	# get named head (ex: branch, tag, etc..)
+	export NAME=$(shell git rev-parse --abbrev-ref HEAD)
+	# checkout commit so .git/HEAD points to full sha (used in Dockerfile)
+	echo "$(SHA)"
+	git checkout $(SHA)
+	$(BUILD_CMD) -t ${IMG} .
+	git checkout $(NAME)
+
 
 run: license
 	goreman start
