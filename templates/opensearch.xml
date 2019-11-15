@@ -1,0 +1,9 @@
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/" xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+<ShortName>{{ registry_title }}</ShortName>
+<Description>Find public container repositories on {{ registry_title }}</Description>
+<InputEncoding>UTF-8</InputEncoding>
+<AdultContent>false</AdultContent>
+<Language>en-us</Language>
+<Image width="16" height="16" type="image/x-icon">//static/img/quay_favicon.png</Image>
+<Url type="text/html" method="get" template="{{ baseurl }}/search?q={searchTerms}"/>
+</OpenSearchDescription>
