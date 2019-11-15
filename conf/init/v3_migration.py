@@ -10,6 +10,9 @@ else:
   elif v3_upgrade_mode == 'production-transition':
     print '481623ba00ba'
   elif v3_upgrade_mode == 'post-oci-rollout' or v3_upgrade_mode == 'post-oci-roll-back-compat' or v3_upgrade_mode == 'complete':
-    print ActiveDataMigration.alembic_migration_revision
+    if ActiveDataMigration is not None:
+      print ActiveDataMigration.alembic_migration_revision
+    else:
+      print 'head'
   else:
     raise Exception('Unknown V3_UPGRADE_MODE: %s' % v3_upgrade_mode)
