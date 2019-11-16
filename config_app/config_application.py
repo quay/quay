@@ -1,5 +1,6 @@
-from config_app import config_web
+import logging
 from config_app.c_app import app as application
+from util.log import logfile_path
 
 
 if __name__ == "__main__":

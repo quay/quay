@@ -3,8 +3,6 @@ language: python
 python:
 - 3.6
 
-sudo: required
-
 services:
   - docker
 
@@ -33,6 +31,8 @@ stages:
   - clean
 
 jobs:
+  allow_failures:
+    - python: 3.8
   include:
     - stage: lint
       name: Lint python
