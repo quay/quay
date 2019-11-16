@@ -2,8 +2,6 @@
 language: python
 python: 2.7
 
-sudo: required
-
 services:
   - docker
 
@@ -24,6 +22,7 @@ cache:
     - $HOME/docker
 
 stages:
+  - lint
   - build
   - test
   - clean
@@ -31,7 +30,18 @@ stages:
 # We should label the steps if Travis ever supports it:
 # https://github.com/travis-ci/travis-ci/issues/5898
 jobs:
+  allow_failures:
+    - python: 3.8
   include:
+    - stage: lint
+      script:
+        - pip install flake8
+        - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    - stage: lint
+      python: 3.8
+      script:
+        - pip install flake8
+        - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
     - stage: build
       name: Build
       script: scripts/ci build
