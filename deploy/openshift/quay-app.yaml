@@ -1,0 +1,219 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: quay
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: Role
+  metadata:
+    name: ${{NAME}}
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - get
+    - patch
+    - update
+  - apiGroups:
+    - ""
+    resources:
+    - namespaces
+    verbs:
+    - get
+  - apiGroups:
+    - extensions
+    - apps
+    resources:
+    - deployments
+    verbs:
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiVersion: rbac.authorization.k8s.io/v1beta1
+  kind: RoleBinding
+  metadata:
+    name: ${{NAME}}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: ${{NAME}}
+  subjects:
+  - kind: ServiceAccount
+    name: default
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-clusterip-service
+  spec:
+    type: ClusterIP
+    ports:
+      - protocol: TCP
+        name: clusterip
+        port: ${{CLUSTERIP_SERVICE_PORT}}
+        targetPort: ${{CLUSTERIP_SERVICE_TARGET_PORT}}
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-loadbalancer-service
+  spec:
+    ports:
+    - name: loadbalancer
+      protocol: TCP
+      port: ${{LOADBALANCER_SERVICE_PORT}}
+      targetPort: ${{LOADBALANCER_SERVICE_TARGET_PORT}}
+    loadBalancerIP:
+    type: LoadBalancer
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: quay-app
+    labels:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+  spec:
+    replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS}}
+    minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
+    progressDeadlineSeconds: ${{QUAY_APP_DEPLOYMENT_PROGRESS_DEADLINE_SECONDS}}
+    revisionHistoryLimit: ${{QUAY_APP_DEPLOYMENT_REVISION_HISTORY_LIMITS}}
+    strategy:
+      type: ${{QUAY_APP_DEPLOYMENT_STRATEGY_TYPE}}
+      rollingUpdate:
+        maxUnavailable: ${{QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE}}
+        maxSurge: ${{QUAY_APP_DEPLOYMENT_MAX_SURGE}}
+    selector:
+      matchLabels:
+        ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+    template:
+      metadata:
+        labels:
+          ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+      spec:
+        volumes:
+        - name: configvolume
+          secret:
+            secretName: ${{QUAY_APP_CONFIG_SECRET}}
+        containers:
+        - name: quay-app
+          image: ${IMAGE}:${IMAGE_TAG}
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8443
+          volumeMounts:
+          - name: configvolume
+            readOnly: false
+            mountPath: /conf/stack
+          livenessProbe:
+            httpGet:
+              path: /health/instance
+              port: 8443
+            initialDelaySeconds: ${{QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
+            periodSeconds: ${{QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS}}
+            timeoutSeconds: ${{QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS}}
+          readinessProbe:
+            httpGet:
+              path: /health/endtoend
+              port: 8443
+            initialDelaySeconds: ${{QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
+            periodSeconds: ${{QUAY_APP_READINESS_PROBE_PERIOD_SECONDS}}
+            timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
+          resources:
+            limits:
+              cpu: ${{QUAY_APP_CPU_LIMIT}}
+              memory: ${{QUAY_APP_MEMORY_LIMIT}}
+            requests:
+              cpu: ${{QUAY_APP_CPU_REQUEST}}
+              memory: ${{QUAY_APP_MEMORY_REQUEST}}
+parameters:
+  - name: NAME
+    value: "quay"
+    displayName: name
+    description: Defaults to quay.
+  - name: IMAGE
+    value: "quay.io/app-sre/quay"
+    displayName: quay image
+    description: quay docker image. Defaults to quay.io/app-sre/quay.
+  - name: IMAGE_TAG
+    value: "latest"
+    displayName: quay version
+    description: quay version which defaults to latest
+  - name: CLUSTERIP_SERVICE_PORT
+    value: "443"
+    displayName: clusterip service port
+  - name: CLUSTERIP_SERVICE_TARGET_PORT
+    value: "8443"
+    displayName: clusterip service target port
+  - name: QUAY_APP_COMPONENT_LABEL_KEY
+    value: "quay-component"
+    displayName: quay app selector label
+  - name: QUAY_APP_COMPONENT_LABEL_VALUE
+    value: "app"
+    displayName:  quay app selector label value
+  - name: LOADBALANCER_SERVICE_PORT
+    value: "443"
+    displayName: loadbalancer service port
+  - name: LOADBALANCER_SERVICE_TARGET_PORT
+    value: "8443"
+    displayName: loadbalancer service target port
+  - name: QUAY_APP_CONFIG_SECRET
+    value: "quay-config-secret"
+    displayName: quay app config secret
+  - name: QUAY_APP_DEPLOYMENT_REPLICAS
+    value: "1"
+    displayName: quay app deployment replicas
+  - name: QUAY_APP_MEMORY_REQUEST
+    value: "4096Mi"
+    displayName: "quay app memory request"
+  - name: QUAY_APP_CPU_REQUEST
+    value: "1"
+    displayName: "quay app CPU request"
+  - name: QUAY_APP_MEMORY_LIMIT
+    value: "4096Mi"
+    displayName: "quay app memory limit"
+  - name: QUAY_APP_CPU_LIMIT
+    value: "1"
+    displayName: "quay app CPU limit"
+  - name: QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS
+    value: "0"
+    displayName: quay app deployment min ready seconds
+  - name: QUAY_APP_DEPLOYMENT_PROGRESS_DEADLINE_SECONDS
+    value: "600s"
+    displayName: quay app deployment progress deadline seconds
+  - name: QUAY_APP_DEPLOYMENT_REVISION_HISTORY_LIMITS
+    value: "10"
+    displayName: quay app deployment revision history limits
+  - name: QUAY_APP_DEPLOYMENT_STRATEGY_TYPE
+    value: "RollingUpdate"
+    displayName: quay app deployment strategy
+  - name: QUAY_APP_DEPLOYMENT_MAX_SURGE
+    value: "1"
+    displayName: quay app deployment max surge
+  - name: QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE
+    value: "0"
+    displayName: quay app deployment max unavailable
+  - name: QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS
+    value: "15"
+    displayName: quay app liveness probe initial delay seconds
+  - name: QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS
+    value: "30"
+    displayName: quay app liveness probe period seconds
+  - name: QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS
+    value: "10"
+    displayName: quay app liveness probe timeout
+  - name: QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS
+    value: "15"
+    displayName: quay app readiness probe initial delay seconds
+  - name: QUAY_APP_READINESS_PROBE_PERIOD_SECONDS
+    value: "30"
+    displayName: quay app readiness probe period seconds
+  - name: QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS
+    value: "10"
+    displayName: quay app readiness probe timeout
+
