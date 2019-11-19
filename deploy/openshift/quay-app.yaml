@@ -184,7 +184,7 @@ parameters:
     value: "0"
     displayName: quay app deployment min ready seconds
   - name: QUAY_APP_DEPLOYMENT_PROGRESS_DEADLINE_SECONDS
-    value: "600s"
+    value: "600"
     displayName: quay app deployment progress deadline seconds
   - name: QUAY_APP_DEPLOYMENT_REVISION_HISTORY_LIMITS
     value: "10"
