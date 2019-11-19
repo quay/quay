@@ -2246,7 +2246,7 @@ def test_repository_states(state, use_robot, create_mirror, robot_exists, expect
       'sync_interval': 1000,
       'sync_start_date': '2020-01-01T00:00:00Z',
       'root_rule': {
-        'rule_type': 'TAG_GLOB_CSV',
+        'rule_kind': "tag_glob_csv",
         'rule_value': ['latest', '1.3*', 'foo']
       },
       'robot_username': robot_full_name,

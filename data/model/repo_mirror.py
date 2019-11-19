@@ -466,17 +466,20 @@ def set_mirroring_robot(repository, robot):
 
 # -------------------- Mirroring Rules --------------------------#
 
+def validate_rule(rule_type, rule_value):
+  if rule_type != RepoMirrorRuleType.TAG_GLOB_CSV:
+    raise ValidationError('validation failed: rule_type must be TAG_GLOB_CSV')
+
+  if not rule_value or not isinstance(rule_value, list) or len(rule_value) < 1:
+    raise ValidationError('validation failed: rule_value for TAG_GLOB_CSV must be a list with at least one rule')
+
 
 def create_rule(repository, rule_value, rule_type=RepoMirrorRuleType.TAG_GLOB_CSV, left_child=None, right_child=None):
   """
   Create a new Rule for mirroring a Repository
   """
 
-  if rule_type != RepoMirrorRuleType.TAG_GLOB_CSV:
-    raise ValidationError('validation failed: rule_type must be TAG_GLOB_CSV')
-
-  if not isinstance(rule_value, list) or len(rule_value) < 1:
-    raise ValidationError('validation failed: rule_value for TAG_GLOB_CSV must be a list with at least one rule')
+  validate_rule(rule_type, rule_value)
 
   rule_kwargs = {
     'repository': repository,
@@ -509,11 +512,18 @@ def get_root_rule(repository):
     return None
 
 
-def change_rule_value(rule, value):
+def change_rule(repository, rule_type, rule_value):
   """
   Update the value of an existing rule.
   """
+
+  validate_rule(rule_type, rule_value)
+
+  mirrorRule = get_root_rule(repository)
+  if not mirrorRule:
+    raise ValidationError('validation failed: rule not found')
+
   query = (RepoMirrorRule
-          .update(rule_value=value)
-          .where(RepoMirrorRule.id == rule.id))
+          .update(rule_value=rule_value)
+          .where(RepoMirrorRule.id == mirrorRule.id))
   return query.execute()

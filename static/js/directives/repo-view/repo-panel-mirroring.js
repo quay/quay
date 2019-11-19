@@ -70,7 +70,7 @@ angular.module('quay').directive('repoPanelMirror', function () {
             };
           }
 
-          vm.tags = resp.root_rule.rule_value || []; // TODO: Use RepoMirrorRule-specific endpoint
+          vm.tags = resp.root_rule.rule_value || [];
 
           // TODO: These are not consistently provided by the API. Correct that in the API.
           vm.verifyTLS = resp.external_registry_config.verify_tls;
@@ -356,8 +356,16 @@ angular.module('quay').directive('repoPanelMirror', function () {
        * Update Tag-Rules
        */
       vm.changeTagRules = function(data, callback) {
-        let csv = data.values.rule_value;
-        let patterns = csv.split(',');
+        let csv = data.values.rule_value,
+            patterns;
+
+        // If already an array then the data has not changed
+        if (Array.isArray(csv)) {
+          patterns = csv;
+        } else {
+          patterns = csv.split(',');
+        }
+
 
         patterns.map(s => s.trim()); // Trim excess whitespace
         patterns = Array.from(new Set(patterns)); // De-duplicate
@@ -370,7 +378,7 @@ angular.module('quay').directive('repoPanelMirror', function () {
 
         data = {
           'root_rule': {
-            'rule_type': 'TAG_GLOB_CSV',
+            'rule_kind': "tag_glob_csv",
             'rule_value': patterns
           }
         }
@@ -378,7 +386,7 @@ angular.module('quay').directive('repoPanelMirror', function () {
         let displayError = ApiService.errorDisplay('Could not change Tag Rules', callback);
 
         ApiService
-        .changeRepoMirrorRule(data, params)
+        .changeRepoMirrorConfig(data, params)
         .then(function(resp) {
           vm.getMirror();
           callback(true);
@@ -452,7 +460,7 @@ angular.module('quay').directive('repoPanelMirror', function () {
              }
            },
            'root_rule': {
-             'rule_type': 'TAG_GLOB_CSV',
+             'rule_kind': "tag_glob_csv",
              'rule_value': patterns
            }
         }
