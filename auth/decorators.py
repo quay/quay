@@ -14,83 +14,101 @@ from util.http import abort
 
 logger = logging.getLogger(__name__)
 
+
 def _auth_decorator(pass_result=False, handlers=None):
-  """ Builds an auth decorator that runs the given handlers and, if any return successfully,
+    """ Builds an auth decorator that runs the given handlers and, if any return successfully,
       sets up the auth context. The wrapped function will be invoked *regardless of success or
       failure of the auth handler(s)*
   """
-  def processor(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-      auth_header = request.headers.get('authorization', '')
-      result = None
 
-      for handler in handlers:
-        result = handler(auth_header)
-        # If the handler was missing the necessary information, skip it and try the next one.
-        if result.missing:
-          continue
+    def processor(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            auth_header = request.headers.get("authorization", "")
+            result = None
 
-        # Check for a valid result.
-        if result.auth_valid:
-          logger.debug('Found valid auth result: %s', result.tuple())
+            for handler in handlers:
+                result = handler(auth_header)
+                # If the handler was missing the necessary information, skip it and try the next one.
+                if result.missing:
+                    continue
 
-          # Set the various pieces of the auth context.
-          result.apply_to_context()
+                # Check for a valid result.
+                if result.auth_valid:
+                    logger.debug("Found valid auth result: %s", result.tuple())
 
-          # Log the metric.
-          metric_queue.authentication_count.Inc(labelvalues=[result.kind, True])
-          break
+                    # Set the various pieces of the auth context.
+                    result.apply_to_context()
 
-        # Otherwise, report the error.
-        if result.error_message is not None:
-          # Log the failure.
-          metric_queue.authentication_count.Inc(labelvalues=[result.kind, False])
-          break
+                    # Log the metric.
+                    metric_queue.authentication_count.Inc(
+                        labelvalues=[result.kind, True]
+                    )
+                    break
 
-      if pass_result:
-        kwargs['auth_result'] = result
+                # Otherwise, report the error.
+                if result.error_message is not None:
+                    # Log the failure.
+                    metric_queue.authentication_count.Inc(
+                        labelvalues=[result.kind, False]
+                    )
+                    break
 
-      return func(*args, **kwargs)
-    return wrapper
-  return processor
+            if pass_result:
+                kwargs["auth_result"] = result
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return processor
 
 
-process_oauth = _auth_decorator(handlers=[validate_bearer_auth, validate_session_cookie])
+process_oauth = _auth_decorator(
+    handlers=[validate_bearer_auth, validate_session_cookie]
+)
 process_auth = _auth_decorator(handlers=[validate_signed_grant, validate_basic_auth])
-process_auth_or_cookie = _auth_decorator(handlers=[validate_basic_auth, validate_session_cookie])
+process_auth_or_cookie = _auth_decorator(
+    handlers=[validate_basic_auth, validate_session_cookie]
+)
 process_basic_auth = _auth_decorator(handlers=[validate_basic_auth], pass_result=True)
 process_basic_auth_no_pass = _auth_decorator(handlers=[validate_basic_auth])
 
 
 def require_session_login(func):
-  """ Decorates a function and ensures that a valid session cookie exists or a 401 is raised. If
+    """ Decorates a function and ensures that a valid session cookie exists or a 401 is raised. If
       a valid session cookie does exist, the authenticated user and identity are also set.
   """
-  @wraps(func)
-  def wrapper(*args, **kwargs):
-    result = validate_session_cookie()
-    if result.has_nonrobot_user:
-      result.apply_to_context()
-      metric_queue.authentication_count.Inc(labelvalues=[result.kind, True])
-      return func(*args, **kwargs)
-    elif not result.missing:
-      metric_queue.authentication_count.Inc(labelvalues=[result.kind, False])
 
-    abort(401, message='Method requires login and no valid login could be loaded.')
-  return wrapper
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        result = validate_session_cookie()
+        if result.has_nonrobot_user:
+            result.apply_to_context()
+            metric_queue.authentication_count.Inc(labelvalues=[result.kind, True])
+            return func(*args, **kwargs)
+        elif not result.missing:
+            metric_queue.authentication_count.Inc(labelvalues=[result.kind, False])
+
+        abort(401, message="Method requires login and no valid login could be loaded.")
+
+    return wrapper
 
 
 def extract_namespace_repo_from_session(func):
-  """ Extracts the namespace and repository name from the current session (which must exist)
+    """ Extracts the namespace and repository name from the current session (which must exist)
       and passes them into the decorated function as the first and second arguments. If the
       session doesn't exist or does not contain these arugments, a 400 error is raised.
   """
-  @wraps(func)
-  def wrapper(*args, **kwargs):
-    if 'namespace' not in session or 'repository' not in session:
-      logger.error('Unable to load namespace or repository from session: %s', session)
-      abort(400, message='Missing namespace in request')
 
-    return func(session['namespace'], session['repository'], *args, **kwargs)
-  return wrapper
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if "namespace" not in session or "repository" not in session:
+            logger.error(
+                "Unable to load namespace or repository from session: %s", session
+            )
+            abort(400, message="Missing namespace in request")
+
+        return func(session["namespace"], session["repository"], *args, **kwargs)
+
+    return wrapper

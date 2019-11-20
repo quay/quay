@@ -1,28 +1,29 @@
 import itertools
 import uuid
 
+
 def convert_secret_key(config_secret_key):
-  """ Converts the secret key from the app config into a secret key that is usable by AES
+    """ Converts the secret key from the app config into a secret key that is usable by AES
       Cipher. """
-  secret_key = None
+    secret_key = None
 
-  # First try parsing the key as an int.
-  try:
-    big_int = int(config_secret_key)
-    secret_key = str(bytearray.fromhex('{:02x}'.format(big_int)))
-  except ValueError:
-    pass
-
-  # Next try parsing it as an UUID.
-  if secret_key is None:
+    # First try parsing the key as an int.
     try:
-      secret_key = uuid.UUID(config_secret_key).bytes
+        big_int = int(config_secret_key)
+        secret_key = str(bytearray.fromhex("{:02x}".format(big_int)))
     except ValueError:
-      pass
+        pass
 
-  if secret_key is None:
-    secret_key = str(bytearray(map(ord, config_secret_key)))
+    # Next try parsing it as an UUID.
+    if secret_key is None:
+        try:
+            secret_key = uuid.UUID(config_secret_key).bytes
+        except ValueError:
+            pass
 
-  # Otherwise, use the bytes directly.
-  assert len(secret_key)
-  return ''.join(itertools.islice(itertools.cycle(secret_key), 32))
+    if secret_key is None:
+        secret_key = str(bytearray(map(ord, config_secret_key)))
+
+    # Otherwise, use the bytes directly.
+    assert len(secret_key)
+    return "".join(itertools.islice(itertools.cycle(secret_key), 32))

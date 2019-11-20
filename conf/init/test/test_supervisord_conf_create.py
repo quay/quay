@@ -6,17 +6,23 @@ import jinja2
 
 from ..supervisord_conf_create import QUAYCONF_DIR, default_services, limit_services
 
+
 def render_supervisord_conf(config):
-  with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../supervisord.conf.jnj")) as f:
-    template = jinja2.Template(f.read())
-  return template.render(config=config)
+    with open(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "../../supervisord.conf.jnj"
+        )
+    ) as f:
+        template = jinja2.Template(f.read())
+    return template.render(config=config)
+
 
 def test_supervisord_conf_create_defaults():
-  config = default_services()
-  limit_services(config, [])
-  rendered = render_supervisord_conf(config)
+    config = default_services()
+    limit_services(config, [])
+    rendered = render_supervisord_conf(config)
 
-  expected = """[supervisord]
+    expected = """[supervisord]
 nodaemon=true
 
 [unix_http_server]
@@ -392,14 +398,15 @@ stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 # EOF NO NEWLINE"""
-  assert rendered == expected
+    assert rendered == expected
+
 
 def test_supervisord_conf_create_all_overrides():
-  config = default_services()
-  limit_services(config, "servicekey,prometheus-aggregator")
-  rendered = render_supervisord_conf(config)
+    config = default_services()
+    limit_services(config, "servicekey,prometheus-aggregator")
+    rendered = render_supervisord_conf(config)
 
-  expected = """[supervisord]
+    expected = """[supervisord]
 nodaemon=true
 
 [unix_http_server]
@@ -775,4 +782,4 @@ stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 # EOF NO NEWLINE"""
-  assert rendered == expected
+    assert rendered == expected
