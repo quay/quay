@@ -1417,11 +1417,6 @@ SECURITY_TESTS = [
   (RepositoryStateResource, 'PUT', {'repository': 'devtable/simple'}, None, 'devtable', 400),
   (RepositoryStateResource, 'PUT', {'repository': 'devtable/simple'}, None, 'freshuser', 403),
   (RepositoryStateResource, 'PUT', {'repository': 'devtable/simple'}, None, 'reader', 403),
-
-  (ManageRepoMirrorRule, 'PUT', {'repository': 'devtable/simple'}, None, None, 401),
-  (ManageRepoMirrorRule, 'PUT', {'repository': 'devtable/simple'}, None, 'devtable', 400),
-  (ManageRepoMirrorRule, 'PUT', {'repository': 'devtable/simple'}, None, 'freshuser', 403),
-  (ManageRepoMirrorRule, 'PUT', {'repository': 'devtable/simple'}, None, 'reader', 403),
 ]
 
 @pytest.mark.parametrize('resource,method,params,body,identity,expected', SECURITY_TESTS)

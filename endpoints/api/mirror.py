@@ -11,6 +11,7 @@ import features
 
 from auth.auth_context import get_authenticated_user
 from data import model
+from data.database import RepoMirrorRuleType
 from endpoints.api import (RepositoryParamResource, nickname, path_param, require_repo_admin,
                            resource, validate_json_request, define_json_response, show_if,
                            format_date)
@@ -53,13 +54,14 @@ common_properties = {
     'type': 'object',
     'description': 'Tag mirror rule',
     'required': [
-      'rule_type',
+      'rule_kind',
       'rule_value'
     ],
     'properties': {
-      'rule_type': {
+      'rule_kind': {
         'type': 'string',
-        'description': 'Rule type must be "TAG_GLOB_CSV"'
+        'description': 'The kind of rule type',
+        'enum': ['tag_glob_csv'],
       },
       'rule_value': {
         'type': 'array',
@@ -231,7 +233,7 @@ class RepoMirrorResource(RepositoryParamResource):
       'sync_retries_remaining': mirror.sync_retries_remaining,
       'sync_status': mirror.sync_status.name,
       'root_rule': {
-        'rule_type': 'TAG_GLOB_CSV',
+        'rule_kind': 'tag_glob_csv',
         'rule_value': rules
       },
       'robot_username': robot,
@@ -368,6 +370,14 @@ class RepoMirrorResource(RepositoryParamResource):
             if model.repo_mirror.change_external_registry_config(repo, updates):
               track_and_log('repo_mirror_config_changed', wrap_repository(repo), changed='no_proxy', to=proxy_values['no_proxy'])
 
+    if 'root_rule' in values:
+
+      if values['root_rule']['rule_kind'] != "tag_glob_csv":
+        raise ValidationError('validation failed: rule_kind must be "tag_glob_csv"')
+
+      if model.repo_mirror.change_rule(repo, RepoMirrorRuleType.TAG_GLOB_CSV, values['root_rule']['rule_value']):
+        track_and_log('repo_mirror_config_changed', wrap_repository(repo), changed="mirror_rule", to=values['root_rule']['rule_value'])
+
     return '', 201
 
   def _setup_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
@@ -423,45 +433,3 @@ class RepoMirrorResource(RepositoryParamResource):
     if username is None:
       return None
     return username.decrypt()
-
-
-@resource('/v1/repository/<apirepopath:repository>/mirror/rules')
-@show_if(features.REPO_MIRROR)
-class ManageRepoMirrorRule(RepositoryParamResource):
-  """
-  Operations to manage a single Repository Mirroring Rule.
-  TODO: At the moment, we are only dealing with a single rule associated with the mirror.
-        This should change to update the rule and address it using its UUID.
-  """
-  schemas = {
-    'MirrorRule': {
-      'type': 'object',
-      'description': 'A rule used to define how a repository is mirrored.',
-      'required': ['root_rule'],
-      'properties': {
-        'root_rule': common_properties['root_rule']
-      }
-    }
-  }
-
-  @require_repo_admin
-  @nickname('changeRepoMirrorRule')
-  @validate_json_request('MirrorRule')
-  def put(self, namespace_name, repository_name):
-    """
-    Update an existing RepoMirrorRule
-    """
-    repo = model.repository.get_repository(namespace_name, repository_name)
-    if not repo:
-      raise NotFound()
-
-    rule = model.repo_mirror.get_root_rule(repo)
-    if not rule:
-      return {'detail': 'The rule appears to be missing.'}, 400
-
-    data = request.get_json()
-    if model.repo_mirror.change_rule_value(rule, data['root_rule']['rule_value']):
-      track_and_log('repo_mirror_config_changed', wrap_repository(repo), changed="mirror_rule", to=data['root_rule']['rule_value'])
-      return 200
-    else:
-      return {'detail': 'Unable to update rule.'}, 400

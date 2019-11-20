@@ -58,7 +58,7 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
       'sync_interval': 100,
       'sync_start_date': '2019-08-20T17:51:00Z',
       'root_rule': {
-        'rule_type': 'TAG_GLOB_CSV',
+        'rule_kind': 'tag_glob_csv',
         'rule_value': ['latest','foo', 'bar']
       },
       'robot_username': 'devtable+newmirrorbot',
@@ -154,6 +154,11 @@ def test_get_mirror(client):
   ('verify_tls', False, 201),
   ('verify_tls', None,  400),
   ('verify_tls', 'abc', 400),
+
+  ('root_rule', {'rule_kind': 'tag_glob_csv', 'rule_value': ['3.1', '3.1*']}, 201),
+  ('root_rule', {'rule_kind': 'tag_glob_csv'}, 400),
+  ('root_rule', {'rule_kind': 'tag_glob_csv', 'rule_value': []}, 400),
+  ('root_rule', {'rule_kind': 'incorrect', 'rule_value': ['3.1', '3.1*']}, 400),
 
 ])
 def test_change_config(key, value, expected_status, client):
