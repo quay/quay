@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting global prometheus stats worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.globalpromstats.globalpromstats
-
-echo 'Global prometheus stats exited'

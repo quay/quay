@@ -1,7 +1,0 @@
-#! /bin/bash
-
-echo 'Starting prometheus pushgateway'
-
-/usr/local/bin/pushgateway
-
-echo 'Prometheus pushgateway exited'

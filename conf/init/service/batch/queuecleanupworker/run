@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting Queue cleanup worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.queuecleanupworker 2>&1
-
-echo 'Repository Queue cleanup exited'

@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting Export Actions Log worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.exportactionlogsworker 2>&1
-
-echo 'Export Actions Log worker exited'

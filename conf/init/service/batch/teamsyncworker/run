@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting team synchronization worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.teamsyncworker.teamsyncworker 2>&1
-
-echo 'Team synchronization worker exited'

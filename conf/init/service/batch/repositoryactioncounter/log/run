@@ -1,4 +1,0 @@
-#!/bin/sh
-
-# Start the logger
-exec logger -i -t repositoryactioncounter

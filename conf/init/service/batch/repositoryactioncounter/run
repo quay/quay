@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting repository action count worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.repositoryactioncounter 2>&1
-
-echo 'Repository action worker exited'
