@@ -83,6 +83,16 @@ def not_found_error_display(e = None):
   resp.status_code = 404
   return resp
 
+@web.route('/opensearch.xml')
+def opensearch():
+  template = render_template('opensearch.xml', 
+                             baseurl=get_app_url(),
+                             registry_title=app.config.get('REGISTRY_TITLE', 'Quay'))
+  resp = make_response(template)
+  resp.headers['Content-Type'] = 'application/xml'
+  return resp
+  
+
 @web.route('/organization/<path:path>', methods=['GET'])
 @web.route('/organization/<path:path>/', methods=['GET'])
 @no_cache
