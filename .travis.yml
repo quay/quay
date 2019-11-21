@@ -9,10 +9,6 @@ services:
 
 install: true
 
-branches:
-  only:
-    - master
-
 # Stop default database instances here to avoid port conflicts.
 before_script:
   - sudo service mysql stop
