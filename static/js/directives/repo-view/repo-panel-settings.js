@@ -96,24 +96,20 @@ angular.module('quay').directive('repoPanelSettings', function () {
         }, ApiService.errorDisplay('Could not change visibility'));
       };
 
-      // Hide State, for now, if mirroring feature-flag is not enabled.
       if (Features.REPO_MIRROR) {
-        $scope.repoStates = ['NORMAL', 'READ_ONLY'];
-      }
-
-      // Only show MIRROR as an option if the feature-flag is enabled.
-      if (Features.REPO_MIRROR) { $scope.repoStates.push('MIRROR'); }
-
-      // Hide State, for now, if mirroring feature-flag is not enabled.
-      if (Features.REPO_MIRROR) {
-        $scope.selectedState = $scope.repository.state;
-        $scope.changeState = function() {
-          let state = {'state': $scope.selectedState};
-          let params = {'repository': $scope.repository.namespace + '/' + $scope.repository.name};
-          ApiService.changeRepoState(state, params)
+        $scope.repoStates = [
+          {value: 'NORMAL', title: 'Normal', description: 'Standard permissions apply.'},
+          {value: 'READ_ONLY', title: 'Readonly', description: 'Users will not be able to push or modify images.'},
+          {value: 'MIRROR', title: 'Mirror', description: 'The images and tags are maintained by Quay and Users can not push or modify them.'},
+        ];
+        $scope.selectedState = $scope.repoStates.find(s => s.value === $scope.repository.state);
+        $scope.changeState = function(event) {
+          ApiService.changeRepoState({state: event.state.value}, 
+                                     {repository: [$scope.repository.namespace, $scope.repository.name].join('/')})
             .then(function() {
-              $scope.repository.state = $scope.selectedState;
-              $route.reload(); // State will eventually affect many UI elements. Reload the view.
+              $scope.repository.state = $scope.selectedState.value;
+              // State will eventually affect many UI elements. Reload the view.
+              $route.reload();
             }, ApiService.errorDisplay('Could not change state'));
         }
       }
