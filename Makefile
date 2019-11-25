@@ -141,13 +141,7 @@ docker-build: pkgs build
 	echo $(TAG)
 
 app-sre-docker-build:
-	# get named head (ex: branch, tag, etc..)
-	export NAME=$(shell git rev-parse --abbrev-ref HEAD)
-	# checkout commit so .git/HEAD points to full sha (used in Dockerfile)
-	echo "$(SHA)"
-	git checkout $(SHA)
-	$(BUILD_CMD) -t ${IMG} .
-	git checkout $(NAME)
+	$(BUILD_CMD) -t ${IMG} -f Dockerfile.centos7.osbs .
 
 run: license
 	goreman start
