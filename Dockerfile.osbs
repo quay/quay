@@ -1,4 +1,4 @@
-FROM registry.redhat.io/rhel7:7.7
+FROM registry.access.redhat.com/rhel7:7.7
 LABEL maintainer "thomasmckay@redhat.com"
 
 ENV PYTHON_VERSION=2.7 \
