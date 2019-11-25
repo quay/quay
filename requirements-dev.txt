@@ -4,3 +4,4 @@ ipdb
 tqdm
 yapf==0.15.2
 ffctl>=0.1.2
+black

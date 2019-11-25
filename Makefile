@@ -175,3 +175,7 @@ yapf-diff:
 
 yapf-test:
 	if [ `yapf -d -p $(MODIFIED_FILES) | wc -l` -gt 0 ] ; then false ; else true ;fi
+
+
+black:
+	black --line-length 100 --target-version py27 .
