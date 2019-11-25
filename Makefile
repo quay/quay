@@ -140,8 +140,11 @@ docker-build: pkgs build
 	git checkout $(NAME)
 	echo $(TAG)
 
-app-sre-docker-build:
+app-sre-docker-build-centos7:
 	$(BUILD_CMD) -t ${IMG} -f Dockerfile.centos7.osbs .
+
+app-sre-docker-build-rhel7:
+	$(BUILD_CMD) -t ${IMG} -f Dockerfile.osbs .
 
 run: license
 	goreman start
