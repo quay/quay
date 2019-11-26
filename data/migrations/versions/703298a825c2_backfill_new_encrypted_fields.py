@@ -59,6 +59,7 @@ class AccessToken(BaseModel):
   code = CharField(default=random_string_generator(length=64), unique=True, index=True)
   token_name = CharField(default=random_string_generator(length=32), unique=True, index=True)
   token_code = EncryptedCharField(default_token_length=32)
+  temporary = BooleanField(default=True)
 
 class RobotAccountToken(BaseModel):
   robot_account = QuayUserField(index=True, allows_robots=True, unique=True)
@@ -102,7 +103,11 @@ def upgrade(tables, tester, progress_reporter):
   if app.config.get('SETUP_COMPLETE', False) or tester.is_testing:
     # Empty all access token names to fix the bug where we put the wrong name and code
     # in for some tokens.
-    AccessToken.update(token_name=None).where(AccessToken.token_name >> None).execute()
+    (AccessToken
+     .update(token_name=None)
+     .where(~(AccessToken.token_name >> None),
+            AccessToken.temporary == False)
+     .execute())
 
     # AccessToken.
     logger.info('Backfilling encrypted credentials for access tokens')
