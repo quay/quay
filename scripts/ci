@@ -90,7 +90,7 @@ gunicorn_test() {
     echo "Sleeping for CI image start"
     if ! (sleep 120 && quay_ping); then
         echo "Quay container logs:"
-        docker log quay-gunicorn-test
+        docker logs quay-gunicorn-test
         echo "Quay failed to respond in time."
         exit 1
     fi
