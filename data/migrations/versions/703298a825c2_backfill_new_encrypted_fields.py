@@ -99,7 +99,7 @@ def upgrade(tables, tester, progress_reporter):
   op = ProgressWrapper(original_op, progress_reporter)
 
   from app import app
-  if app.config.get('SETUP_COMPLETE', False) or tester.is_testing:
+  if app.config.get('SETUP_COMPLETE', False) or tester.is_testing():
     # Empty all access token names to fix the bug where we put the wrong name and code
     # in for some tokens.
     AccessToken.update(token_name=None).where(AccessToken.token_name >> None).execute()

@@ -92,7 +92,7 @@ class MigrationTester(object):
   """
   TestDataType = DataTypes
 
-  @abstractproperty
+  @abstractmethod
   def is_testing(self):
     """ Returns whether we are currently under a migration test. """
 
@@ -111,7 +111,6 @@ class NoopTester(MigrationTester):
 
 
 class PopulateTestDataTester(MigrationTester):
-  @property
   def is_testing(self):
     return True
 

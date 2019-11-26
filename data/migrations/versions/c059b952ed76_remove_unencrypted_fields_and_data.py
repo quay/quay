@@ -40,7 +40,7 @@ def upgrade(tables, tester, progress_reporter):
 
     # Overwrite all plaintext robot credentials.
     from app import app
-    if app.config.get('SETUP_COMPLETE', False) or tester.is_testing:
+    if app.config.get('SETUP_COMPLETE', False) or tester.is_testing():
         while True:
             try:
                 robot_account_token = RobotAccountToken.get(fully_migrated=False)
