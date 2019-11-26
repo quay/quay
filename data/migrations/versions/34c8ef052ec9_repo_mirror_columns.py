@@ -81,7 +81,7 @@ def upgrade(tables, tester, progress_reporter):
   op.add_column('repomirrorconfig', sa.Column('external_reference', sa.Text(), nullable=True))
 
   from app import app
-  if app.config.get('SETUP_COMPLETE', False) or tester.is_testing:
+  if app.config.get('SETUP_COMPLETE', False) or tester.is_testing():
     for repo_mirror in _iterate(RepoMirrorConfig, (RepoMirrorConfig.external_reference >> None)):
       repo = '%s/%s/%s' % (repo_mirror.external_registry, repo_mirror.external_namespace, repo_mirror.external_repository)
       logger.info('migrating %s' % repo)
