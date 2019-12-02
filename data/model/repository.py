@@ -126,9 +126,14 @@ def _get_gc_expiration_policies():
 
 
 def get_random_gc_policy():
-    """ Return a single random policy from the database to use when garbage collecting.
+    """ Return a single random policy from the database to use when garbage collecting or None if
+      none available.
   """
-    return random.choice(_get_gc_expiration_policies())
+    policies = _get_gc_expiration_policies()
+    if not policies:
+        return None
+
+    return random.choice(policies)
 
 
 def find_repository_with_garbage(limit_to_gc_policy_s):
