@@ -14,88 +14,89 @@ from app import app
 from peewee import *
 from data.database import BaseModel
 
-revision = 'a6c463dfb9fe'
-down_revision = 'b4df55dea4b3'
+revision = "a6c463dfb9fe"
+down_revision = "b4df55dea4b3"
 
 from alembic import op as original_op
 from data.migrations.progress import ProgressWrapper
 
 
 class RepositoryBuildTrigger(BaseModel):
-  config = TextField(default='{}')
+    config = TextField(default="{}")
+
 
 def upgrade(tables, tester, progress_reporter):
-  op = ProgressWrapper(original_op, progress_reporter)
-  if not app.config.get('SETUP_COMPLETE', False):
-    return
+    op = ProgressWrapper(original_op, progress_reporter)
+    if not app.config.get("SETUP_COMPLETE", False):
+        return
 
-  repostioryBuildTriggers = RepositoryBuildTrigger.select()
-  for repositoryBuildTrigger in repostioryBuildTriggers:
-    config = json.loads(repositoryBuildTrigger.config)
-    repositoryBuildTrigger.config = json.dumps(get_config_expand(config))
-    repositoryBuildTrigger.save()
+    repostioryBuildTriggers = RepositoryBuildTrigger.select()
+    for repositoryBuildTrigger in repostioryBuildTriggers:
+        config = json.loads(repositoryBuildTrigger.config)
+        repositoryBuildTrigger.config = json.dumps(get_config_expand(config))
+        repositoryBuildTrigger.save()
 
 
 def downgrade(tables, tester, progress_reporter):
-  op = ProgressWrapper(original_op, progress_reporter)
-  if not app.config.get('SETUP_COMPLETE', False):
-    return
+    op = ProgressWrapper(original_op, progress_reporter)
+    if not app.config.get("SETUP_COMPLETE", False):
+        return
 
-  repostioryBuildTriggers = RepositoryBuildTrigger.select()
-  for repositoryBuildTrigger in repostioryBuildTriggers:
-    config = json.loads(repositoryBuildTrigger.config)
-    repositoryBuildTrigger.config = json.dumps(get_config_expand(config))
-    repositoryBuildTrigger.save()
+    repostioryBuildTriggers = RepositoryBuildTrigger.select()
+    for repositoryBuildTrigger in repostioryBuildTriggers:
+        config = json.loads(repositoryBuildTrigger.config)
+        repositoryBuildTrigger.config = json.dumps(get_config_expand(config))
+        repositoryBuildTrigger.save()
 
 
 def create_context(current_subdir):
-  if current_subdir == "":
-    current_subdir = os.path.sep + current_subdir
+    if current_subdir == "":
+        current_subdir = os.path.sep + current_subdir
 
-  if current_subdir[len(current_subdir) - 1] != os.path.sep:
-    current_subdir += os.path.sep
+    if current_subdir[len(current_subdir) - 1] != os.path.sep:
+        current_subdir += os.path.sep
 
-  context, _ = os.path.split(current_subdir)
-  return context
+    context, _ = os.path.split(current_subdir)
+    return context
 
 
 def create_dockerfile_path(current_subdir):
-  if current_subdir == "":
-    current_subdir = os.path.sep + current_subdir
+    if current_subdir == "":
+        current_subdir = os.path.sep + current_subdir
 
-  if current_subdir[len(current_subdir) - 1] != os.path.sep:
-    current_subdir += os.path.sep
+    if current_subdir[len(current_subdir) - 1] != os.path.sep:
+        current_subdir += os.path.sep
 
-  return current_subdir + "Dockerfile"
+    return current_subdir + "Dockerfile"
 
 
 def get_config_expand(config):
-  """ A function to transform old records into new records """
-  if not config:
-    return config
+    """ A function to transform old records into new records """
+    if not config:
+        return config
 
-  # skip records that have been updated
-  if "context" in config or "dockerfile_path" in config:
-    return config
+    # skip records that have been updated
+    if "context" in config or "dockerfile_path" in config:
+        return config
 
-  config_expand = {}
-  if "subdir" in config:
-    config_expand = dict(config)
-    config_expand["context"] = create_context(config["subdir"])
-    config_expand["dockerfile_path"] = create_dockerfile_path(config["subdir"])
+    config_expand = {}
+    if "subdir" in config:
+        config_expand = dict(config)
+        config_expand["context"] = create_context(config["subdir"])
+        config_expand["dockerfile_path"] = create_dockerfile_path(config["subdir"])
 
-  return config_expand
+    return config_expand
 
 
 def get_config_contract(config):
-  """ A function to delete context and dockerfile_path from config """
-  if not config:
+    """ A function to delete context and dockerfile_path from config """
+    if not config:
+        return config
+
+    if "context" in config:
+        del config["context"]
+
+    if "dockerfile_path" in config:
+        del config["dockerfile_path"]
+
     return config
-
-  if "context" in config:
-    del config["context"]
-
-  if "dockerfile_path" in config:
-    del config["dockerfile_path"]
-
-  return config

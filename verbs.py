@@ -4,4 +4,4 @@ from app import app as application
 from endpoints.verbs import verbs
 
 
-application.register_blueprint(verbs, url_prefix='/c1')
+application.register_blueprint(verbs, url_prefix="/c1")

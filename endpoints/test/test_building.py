@@ -2,96 +2,103 @@ import pytest
 
 from data import model
 from buildtrigger.triggerutil import raise_if_skipped_build, SkipRequestException
-from endpoints.building import (start_build, PreparedBuild, MaximumBuildsQueuedException,
-                                BuildTriggerDisabledException)
+from endpoints.building import (
+    start_build,
+    PreparedBuild,
+    MaximumBuildsQueuedException,
+    BuildTriggerDisabledException,
+)
 
 from test.fixtures import *
 
+
 def test_maximum_builds(app):
-  # Change the maximum number of builds to 1.
-  user = model.user.create_user('foobar', 'password', 'foo@example.com')
-  user.maximum_queued_builds_count = 1
-  user.save()
+    # Change the maximum number of builds to 1.
+    user = model.user.create_user("foobar", "password", "foo@example.com")
+    user.maximum_queued_builds_count = 1
+    user.save()
 
-  repo = model.repository.create_repository('foobar', 'somerepo', user)
+    repo = model.repository.create_repository("foobar", "somerepo", user)
 
-  # Try to queue a build; should succeed.
-  prepared_build = PreparedBuild()
-  prepared_build.build_name = 'foo'
-  prepared_build.is_manual = True
-  prepared_build.dockerfile_id = 'foobar'
-  prepared_build.archive_url = 'someurl'
-  prepared_build.tags = ['latest']
-  prepared_build.subdirectory = '/'
-  prepared_build.context = '/'
-  prepared_build.metadata = {}
+    # Try to queue a build; should succeed.
+    prepared_build = PreparedBuild()
+    prepared_build.build_name = "foo"
+    prepared_build.is_manual = True
+    prepared_build.dockerfile_id = "foobar"
+    prepared_build.archive_url = "someurl"
+    prepared_build.tags = ["latest"]
+    prepared_build.subdirectory = "/"
+    prepared_build.context = "/"
+    prepared_build.metadata = {}
 
-  start_build(repo, prepared_build)
-
-  # Try to queue a second build; should fail.
-  with pytest.raises(MaximumBuildsQueuedException):
     start_build(repo, prepared_build)
+
+    # Try to queue a second build; should fail.
+    with pytest.raises(MaximumBuildsQueuedException):
+        start_build(repo, prepared_build)
 
 
 def test_start_build_disabled_trigger(app):
-  trigger = model.build.list_build_triggers('devtable', 'building')[0]
-  trigger.enabled = False
-  trigger.save()
+    trigger = model.build.list_build_triggers("devtable", "building")[0]
+    trigger.enabled = False
+    trigger.save()
 
-  build = PreparedBuild(trigger=trigger)
+    build = PreparedBuild(trigger=trigger)
 
-  with pytest.raises(BuildTriggerDisabledException):
-    start_build(trigger.repository, build)
+    with pytest.raises(BuildTriggerDisabledException):
+        start_build(trigger.repository, build)
 
 
-@pytest.mark.parametrize('ref, expected_tags', [
-  ('ref/heads/somebranch', ['somebranch']),
-  ('ref/heads/master', ['master', 'latest']),
-
-  ('ref/tags/somebranch', ['somebranch']),
-  ('ref/tags/master', ['master', 'latest']),
-
-  ('ref/heads/slash/branch', ['slash_branch']),
-  ('ref/tags/slash/tag', ['slash_tag']),
-
-  ('ref/heads/foobar#2', ['foobar_2']),
-])
+@pytest.mark.parametrize(
+    "ref, expected_tags",
+    [
+        ("ref/heads/somebranch", ["somebranch"]),
+        ("ref/heads/master", ["master", "latest"]),
+        ("ref/tags/somebranch", ["somebranch"]),
+        ("ref/tags/master", ["master", "latest"]),
+        ("ref/heads/slash/branch", ["slash_branch"]),
+        ("ref/tags/slash/tag", ["slash_tag"]),
+        ("ref/heads/foobar#2", ["foobar_2"]),
+    ],
+)
 def test_tags_for_ref(ref, expected_tags):
-  prepared = PreparedBuild()
-  prepared.tags_from_ref(ref, default_branch='master')
-  assert set(prepared._tags) == set(expected_tags)
+    prepared = PreparedBuild()
+    prepared.tags_from_ref(ref, default_branch="master")
+    assert set(prepared._tags) == set(expected_tags)
 
 
-@pytest.mark.parametrize('metadata, config', [
-  ({}, {}),
-  pytest.param({'ref': 'ref/heads/master'}, {'branchtag_regex': 'nothing'}, id='branchtag regex'),
-  pytest.param({
-    'ref': 'ref/heads/master',
-    'commit_info': {
-      'message': '[skip build]',
-    },
-  }, {}, id='commit message'),
-])
+@pytest.mark.parametrize(
+    "metadata, config",
+    [
+        ({}, {}),
+        pytest.param(
+            {"ref": "ref/heads/master"}, {"branchtag_regex": "nothing"}, id="branchtag regex"
+        ),
+        pytest.param(
+            {"ref": "ref/heads/master", "commit_info": {"message": "[skip build]",},},
+            {},
+            id="commit message",
+        ),
+    ],
+)
 def test_skip(metadata, config):
-  prepared = PreparedBuild()
-  prepared.metadata = metadata
-  config = config
+    prepared = PreparedBuild()
+    prepared.metadata = metadata
+    config = config
 
-  with pytest.raises(SkipRequestException):
-    raise_if_skipped_build(prepared, config)
+    with pytest.raises(SkipRequestException):
+        raise_if_skipped_build(prepared, config)
 
 
 def test_does_not_skip():
-  prepared = PreparedBuild()
-  prepared.metadata = {
-    'ref': 'ref/heads/master',
-    'commit_info': {
-      'message': 'some cool message',
-    },
-  }
+    prepared = PreparedBuild()
+    prepared.metadata = {
+        "ref": "ref/heads/master",
+        "commit_info": {"message": "some cool message",},
+    }
 
-  config = {
-    'branchtag_regex': '(master)|(heads/master)',
-  }
+    config = {
+        "branchtag_regex": "(master)|(heads/master)",
+    }
 
-  raise_if_skipped_build(prepared, config)
+    raise_if_skipped_build(prepared, config)

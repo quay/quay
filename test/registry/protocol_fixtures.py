@@ -16,213 +16,252 @@ from test.registry.protocol_v2 import V2Protocol
 
 @pytest.fixture(scope="session")
 def basic_images():
-  """ Returns basic images for push and pull testing. """
-  # Note: order is from base layer down to leaf.
-  parent_bytes = layer_bytes_for_contents('parent contents')
-  image_bytes = layer_bytes_for_contents('some contents')
-  return [
-    Image(id='parentid', bytes=parent_bytes, parent_id=None),
-    Image(id='someid', bytes=image_bytes, parent_id='parentid'),
-  ]
+    """ Returns basic images for push and pull testing. """
+    # Note: order is from base layer down to leaf.
+    parent_bytes = layer_bytes_for_contents("parent contents")
+    image_bytes = layer_bytes_for_contents("some contents")
+    return [
+        Image(id="parentid", bytes=parent_bytes, parent_id=None),
+        Image(id="someid", bytes=image_bytes, parent_id="parentid"),
+    ]
 
 
 @pytest.fixture(scope="session")
 def unicode_images():
-  """ Returns basic images for push and pull testing that contain unicode in the image metadata. """
-  # Note: order is from base layer down to leaf.
-  parent_bytes = layer_bytes_for_contents('parent contents')
-  image_bytes = layer_bytes_for_contents('some contents')
-  return [
-    Image(id='parentid', bytes=parent_bytes, parent_id=None),
-    Image(id='someid', bytes=image_bytes, parent_id='parentid',
-          config={'comment': u'the Pawe\xc5\x82 Kami\xc5\x84ski image',
-                  'author': u'Sômé guy'}),
-  ]
+    """ Returns basic images for push and pull testing that contain unicode in the image metadata. """
+    # Note: order is from base layer down to leaf.
+    parent_bytes = layer_bytes_for_contents("parent contents")
+    image_bytes = layer_bytes_for_contents("some contents")
+    return [
+        Image(id="parentid", bytes=parent_bytes, parent_id=None),
+        Image(
+            id="someid",
+            bytes=image_bytes,
+            parent_id="parentid",
+            config={"comment": u"the Pawe\xc5\x82 Kami\xc5\x84ski image", "author": u"Sômé guy"},
+        ),
+    ]
 
 
 @pytest.fixture(scope="session")
 def different_images():
-  """ Returns different basic images for push and pull testing. """
-  # Note: order is from base layer down to leaf.
-  parent_bytes = layer_bytes_for_contents('different parent contents')
-  image_bytes = layer_bytes_for_contents('some different contents')
-  return [
-    Image(id='anotherparentid', bytes=parent_bytes, parent_id=None),
-    Image(id='anothersomeid', bytes=image_bytes, parent_id='anotherparentid'),
-  ]
+    """ Returns different basic images for push and pull testing. """
+    # Note: order is from base layer down to leaf.
+    parent_bytes = layer_bytes_for_contents("different parent contents")
+    image_bytes = layer_bytes_for_contents("some different contents")
+    return [
+        Image(id="anotherparentid", bytes=parent_bytes, parent_id=None),
+        Image(id="anothersomeid", bytes=image_bytes, parent_id="anotherparentid"),
+    ]
 
 
 @pytest.fixture(scope="session")
 def sized_images():
-  """ Returns basic images (with sizes) for push and pull testing. """
-  # Note: order is from base layer down to leaf.
-  parent_bytes = layer_bytes_for_contents('parent contents', mode='')
-  image_bytes = layer_bytes_for_contents('some contents', mode='')
-  return [
-    Image(id='parentid', bytes=parent_bytes, parent_id=None, size=len(parent_bytes),
-          config={'foo': 'bar'}),
-    Image(id='someid', bytes=image_bytes, parent_id='parentid', size=len(image_bytes),
-          config={'foo': 'childbar', 'Entrypoint': ['hello']},
-          created='2018-04-03T18:37:09.284840891Z'),
-  ]
+    """ Returns basic images (with sizes) for push and pull testing. """
+    # Note: order is from base layer down to leaf.
+    parent_bytes = layer_bytes_for_contents("parent contents", mode="")
+    image_bytes = layer_bytes_for_contents("some contents", mode="")
+    return [
+        Image(
+            id="parentid",
+            bytes=parent_bytes,
+            parent_id=None,
+            size=len(parent_bytes),
+            config={"foo": "bar"},
+        ),
+        Image(
+            id="someid",
+            bytes=image_bytes,
+            parent_id="parentid",
+            size=len(image_bytes),
+            config={"foo": "childbar", "Entrypoint": ["hello"]},
+            created="2018-04-03T18:37:09.284840891Z",
+        ),
+    ]
 
 
 @pytest.fixture(scope="session")
 def multi_layer_images():
-  """ Returns complex images (with sizes) for push and pull testing. """
-  # Note: order is from base layer down to leaf.
-  layer1_bytes = layer_bytes_for_contents('layer 1 contents', mode='', other_files={
-    'file1': 'from-layer-1',
-  })
+    """ Returns complex images (with sizes) for push and pull testing. """
+    # Note: order is from base layer down to leaf.
+    layer1_bytes = layer_bytes_for_contents(
+        "layer 1 contents", mode="", other_files={"file1": "from-layer-1",}
+    )
 
-  layer2_bytes = layer_bytes_for_contents('layer 2 contents', mode='', other_files={
-    'file2': 'from-layer-2',
-  })
+    layer2_bytes = layer_bytes_for_contents(
+        "layer 2 contents", mode="", other_files={"file2": "from-layer-2",}
+    )
 
-  layer3_bytes = layer_bytes_for_contents('layer 3 contents', mode='', other_files={
-    'file1': 'from-layer-3',
-    'file3': 'from-layer-3',
-  })
+    layer3_bytes = layer_bytes_for_contents(
+        "layer 3 contents", mode="", other_files={"file1": "from-layer-3", "file3": "from-layer-3",}
+    )
 
-  layer4_bytes = layer_bytes_for_contents('layer 4 contents', mode='', other_files={
-    'file3': 'from-layer-4',
-  })
+    layer4_bytes = layer_bytes_for_contents(
+        "layer 4 contents", mode="", other_files={"file3": "from-layer-4",}
+    )
 
-  layer5_bytes = layer_bytes_for_contents('layer 5 contents', mode='', other_files={
-    'file4': 'from-layer-5',
-  })
+    layer5_bytes = layer_bytes_for_contents(
+        "layer 5 contents", mode="", other_files={"file4": "from-layer-5",}
+    )
 
-  return [
-    Image(id='layer1', bytes=layer1_bytes, parent_id=None, size=len(layer1_bytes),
-          config={'internal_id': 'layer1'}),
-    Image(id='layer2', bytes=layer2_bytes, parent_id='layer1', size=len(layer2_bytes),
-          config={'internal_id': 'layer2'}),
-    Image(id='layer3', bytes=layer3_bytes, parent_id='layer2', size=len(layer3_bytes),
-          config={'internal_id': 'layer3'}),
-    Image(id='layer4', bytes=layer4_bytes, parent_id='layer3', size=len(layer4_bytes),
-          config={'internal_id': 'layer4'}),
-    Image(id='someid', bytes=layer5_bytes, parent_id='layer4', size=len(layer5_bytes),
-          config={'internal_id': 'layer5'}),
-  ]
+    return [
+        Image(
+            id="layer1",
+            bytes=layer1_bytes,
+            parent_id=None,
+            size=len(layer1_bytes),
+            config={"internal_id": "layer1"},
+        ),
+        Image(
+            id="layer2",
+            bytes=layer2_bytes,
+            parent_id="layer1",
+            size=len(layer2_bytes),
+            config={"internal_id": "layer2"},
+        ),
+        Image(
+            id="layer3",
+            bytes=layer3_bytes,
+            parent_id="layer2",
+            size=len(layer3_bytes),
+            config={"internal_id": "layer3"},
+        ),
+        Image(
+            id="layer4",
+            bytes=layer4_bytes,
+            parent_id="layer3",
+            size=len(layer4_bytes),
+            config={"internal_id": "layer4"},
+        ),
+        Image(
+            id="someid",
+            bytes=layer5_bytes,
+            parent_id="layer4",
+            size=len(layer5_bytes),
+            config={"internal_id": "layer5"},
+        ),
+    ]
 
 
 @pytest.fixture(scope="session")
 def remote_images():
-  """ Returns images with at least one remote layer for push and pull testing. """
-  # Note: order is from base layer down to leaf.
-  remote_bytes = layer_bytes_for_contents('remote contents')
-  parent_bytes = layer_bytes_for_contents('parent contents')
-  image_bytes = layer_bytes_for_contents('some contents')
-  return [
-    Image(id='remoteid', bytes=remote_bytes, parent_id=None, urls=['http://some/url']),
-    Image(id='parentid', bytes=parent_bytes, parent_id='remoteid'),
-    Image(id='someid', bytes=image_bytes, parent_id='parentid'),
-  ]
+    """ Returns images with at least one remote layer for push and pull testing. """
+    # Note: order is from base layer down to leaf.
+    remote_bytes = layer_bytes_for_contents("remote contents")
+    parent_bytes = layer_bytes_for_contents("parent contents")
+    image_bytes = layer_bytes_for_contents("some contents")
+    return [
+        Image(id="remoteid", bytes=remote_bytes, parent_id=None, urls=["http://some/url"]),
+        Image(id="parentid", bytes=parent_bytes, parent_id="remoteid"),
+        Image(id="someid", bytes=image_bytes, parent_id="parentid"),
+    ]
 
 
 @pytest.fixture(scope="session")
 def images_with_empty_layer():
-  """ Returns images for push and pull testing that contain an empty layer. """
-  # Note: order is from base layer down to leaf.
-  parent_bytes = layer_bytes_for_contents('parent contents')
-  empty_bytes = layer_bytes_for_contents('', empty=True)
-  image_bytes = layer_bytes_for_contents('some contents')
-  middle_bytes = layer_bytes_for_contents('middle')
+    """ Returns images for push and pull testing that contain an empty layer. """
+    # Note: order is from base layer down to leaf.
+    parent_bytes = layer_bytes_for_contents("parent contents")
+    empty_bytes = layer_bytes_for_contents("", empty=True)
+    image_bytes = layer_bytes_for_contents("some contents")
+    middle_bytes = layer_bytes_for_contents("middle")
 
-  return [
-    Image(id='parentid', bytes=parent_bytes, parent_id=None),
-    Image(id='emptyid', bytes=empty_bytes, parent_id='parentid', is_empty=True),
-    Image(id='middleid', bytes=middle_bytes, parent_id='emptyid'),
-    Image(id='emptyid2', bytes=empty_bytes, parent_id='middleid', is_empty=True),
-    Image(id='someid', bytes=image_bytes, parent_id='emptyid2'),
-  ]
+    return [
+        Image(id="parentid", bytes=parent_bytes, parent_id=None),
+        Image(id="emptyid", bytes=empty_bytes, parent_id="parentid", is_empty=True),
+        Image(id="middleid", bytes=middle_bytes, parent_id="emptyid"),
+        Image(id="emptyid2", bytes=empty_bytes, parent_id="middleid", is_empty=True),
+        Image(id="someid", bytes=image_bytes, parent_id="emptyid2"),
+    ]
 
 
 @pytest.fixture(scope="session")
 def unicode_emoji_images():
-  """ Returns basic images for push and pull testing that contain unicode in the image metadata. """
-  # Note: order is from base layer down to leaf.
-  parent_bytes = layer_bytes_for_contents('parent contents')
-  image_bytes = layer_bytes_for_contents('some contents')
-  return [
-    Image(id='parentid', bytes=parent_bytes, parent_id=None),
-    Image(id='someid', bytes=image_bytes, parent_id='parentid',
-          config={'comment': u'😱',
-                  'author': u'Sômé guy'}),
-  ]
+    """ Returns basic images for push and pull testing that contain unicode in the image metadata. """
+    # Note: order is from base layer down to leaf.
+    parent_bytes = layer_bytes_for_contents("parent contents")
+    image_bytes = layer_bytes_for_contents("some contents")
+    return [
+        Image(id="parentid", bytes=parent_bytes, parent_id=None),
+        Image(
+            id="someid",
+            bytes=image_bytes,
+            parent_id="parentid",
+            config={"comment": u"😱", "author": u"Sômé guy"},
+        ),
+    ]
 
 
 @pytest.fixture(scope="session")
 def jwk():
-  return RSAKey(key=RSA.generate(2048))
+    return RSAKey(key=RSA.generate(2048))
 
 
 @pytest.fixture(params=[V2Protocol])
 def v2_protocol(request, jwk):
-  return request.param(jwk)
+    return request.param(jwk)
 
 
 @pytest.fixture()
 def v22_protocol(request, jwk):
-  return V2Protocol(jwk, schema2=True)
+    return V2Protocol(jwk, schema2=True)
 
 
 @pytest.fixture(params=[V1Protocol])
 def v1_protocol(request, jwk):
-  return request.param(jwk)
+    return request.param(jwk)
 
 
-@pytest.fixture(params=['schema1', 'schema2'])
+@pytest.fixture(params=["schema1", "schema2"])
 def manifest_protocol(request, data_model, jwk):
-  return V2Protocol(jwk, schema2=(request == 'schema2' and data_model == 'oci_model'))
+    return V2Protocol(jwk, schema2=(request == "schema2" and data_model == "oci_model"))
 
 
-@pytest.fixture(params=['v1', 'v2_1', 'v2_2'])
+@pytest.fixture(params=["v1", "v2_1", "v2_2"])
 def pusher(request, data_model, jwk):
-  if request.param == 'v1':
-    return V1Protocol(jwk)
+    if request.param == "v1":
+        return V1Protocol(jwk)
 
-  if request.param == 'v2_2' and data_model == 'oci_model':
-    return V2Protocol(jwk, schema2=True)
+    if request.param == "v2_2" and data_model == "oci_model":
+        return V2Protocol(jwk, schema2=True)
 
-  return V2Protocol(jwk)
+    return V2Protocol(jwk)
 
 
-
-@pytest.fixture(params=['v1', 'v2_1'])
+@pytest.fixture(params=["v1", "v2_1"])
 def legacy_puller(request, data_model, jwk):
-  if request.param == 'v1':
-    return V1Protocol(jwk)
+    if request.param == "v1":
+        return V1Protocol(jwk)
 
-  return V2Protocol(jwk)
+    return V2Protocol(jwk)
 
 
-@pytest.fixture(params=['v1', 'v2_1'])
+@pytest.fixture(params=["v1", "v2_1"])
 def legacy_pusher(request, data_model, jwk):
-  if request.param == 'v1':
-    return V1Protocol(jwk)
+    if request.param == "v1":
+        return V1Protocol(jwk)
 
-  return V2Protocol(jwk)
+    return V2Protocol(jwk)
 
 
-@pytest.fixture(params=['v1', 'v2_1', 'v2_2'])
+@pytest.fixture(params=["v1", "v2_1", "v2_2"])
 def puller(request, data_model, jwk):
-  if request.param == 'v1':
-    return V1Protocol(jwk)
+    if request.param == "v1":
+        return V1Protocol(jwk)
 
-  if request.param == 'v2_2' and data_model == 'oci_model':
-    return V2Protocol(jwk, schema2=True)
+    if request.param == "v2_2" and data_model == "oci_model":
+        return V2Protocol(jwk, schema2=True)
 
-  return V2Protocol(jwk)
+    return V2Protocol(jwk)
 
 
 @pytest.fixture(params=[V1Protocol, V2Protocol])
 def loginer(request, jwk):
-  return request.param(jwk)
+    return request.param(jwk)
 
 
 @pytest.fixture(scope="session")
 def random_layer_data():
-  size = 4096
-  contents = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
-  return layer_bytes_for_contents(contents)
+    size = 4096
+    contents = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
+    return layer_bytes_for_contents(contents)

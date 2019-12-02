@@ -7,86 +7,87 @@ from buildman.manager.basemanager import BaseManager
 
 from trollius import From, Return, coroutine
 
-REGISTRATION_REALM = 'registration'
+REGISTRATION_REALM = "registration"
 RETRY_TIMEOUT = 5
 logger = logging.getLogger(__name__)
 
+
 class DynamicRegistrationComponent(BaseComponent):
-  """ Component session that handles dynamic registration of the builder components. """
+    """ Component session that handles dynamic registration of the builder components. """
 
-  def onConnect(self):
-    self.join(REGISTRATION_REALM)
+    def onConnect(self):
+        self.join(REGISTRATION_REALM)
 
-  def onJoin(self, details):
-    logger.debug('Registering registration method')
-    yield From(self.register(self._worker_register, u'io.quay.buildworker.register'))
+    def onJoin(self, details):
+        logger.debug("Registering registration method")
+        yield From(self.register(self._worker_register, u"io.quay.buildworker.register"))
 
-  def _worker_register(self):
-    realm = self.parent_manager.add_build_component()
-    logger.debug('Registering new build component+worker with realm %s', realm)
-    return realm
+    def _worker_register(self):
+        realm = self.parent_manager.add_build_component()
+        logger.debug("Registering new build component+worker with realm %s", realm)
+        return realm
 
-  def kind(self):
-    return 'registration'
+    def kind(self):
+        return "registration"
 
 
 class EnterpriseManager(BaseManager):
-  """ Build manager implementation for the Enterprise Registry. """
+    """ Build manager implementation for the Enterprise Registry. """
 
-  def __init__(self, *args, **kwargs):
-    self.ready_components = set()
-    self.all_components = set()
-    self.shutting_down = False
+    def __init__(self, *args, **kwargs):
+        self.ready_components = set()
+        self.all_components = set()
+        self.shutting_down = False
 
-    super(EnterpriseManager, self).__init__(*args, **kwargs)
+        super(EnterpriseManager, self).__init__(*args, **kwargs)
 
-  def initialize(self, manager_config):
-    # Add a component which is used by build workers for dynamic registration. Unlike
-    # production, build workers in enterprise are long-lived and register dynamically.
-    self.register_component(REGISTRATION_REALM, DynamicRegistrationComponent)
+    def initialize(self, manager_config):
+        # Add a component which is used by build workers for dynamic registration. Unlike
+        # production, build workers in enterprise are long-lived and register dynamically.
+        self.register_component(REGISTRATION_REALM, DynamicRegistrationComponent)
 
-  def overall_setup_time(self):
-    # Builders are already registered, so the setup time should be essentially instant. We therefore
-    # only return a minute here.
-    return 60
+    def overall_setup_time(self):
+        # Builders are already registered, so the setup time should be essentially instant. We therefore
+        # only return a minute here.
+        return 60
 
-  def add_build_component(self):
-    """ Adds a new build component for an Enterprise Registry. """
-    # Generate a new unique realm ID for the build worker.
-    realm = str(uuid.uuid4())
-    new_component = self.register_component(realm, BuildComponent, token="")
-    self.all_components.add(new_component)
-    return realm
+    def add_build_component(self):
+        """ Adds a new build component for an Enterprise Registry. """
+        # Generate a new unique realm ID for the build worker.
+        realm = str(uuid.uuid4())
+        new_component = self.register_component(realm, BuildComponent, token="")
+        self.all_components.add(new_component)
+        return realm
 
-  @coroutine
-  def schedule(self, build_job):
-    """ Schedules a build for an Enterprise Registry. """
-    if self.shutting_down or not self.ready_components:
-      raise Return(False, RETRY_TIMEOUT)
+    @coroutine
+    def schedule(self, build_job):
+        """ Schedules a build for an Enterprise Registry. """
+        if self.shutting_down or not self.ready_components:
+            raise Return(False, RETRY_TIMEOUT)
 
-    component = self.ready_components.pop()
+        component = self.ready_components.pop()
 
-    yield From(component.start_build(build_job))
+        yield From(component.start_build(build_job))
 
-    raise Return(True, None)
+        raise Return(True, None)
 
-  @coroutine
-  def build_component_ready(self, build_component):
-    self.ready_components.add(build_component)
+    @coroutine
+    def build_component_ready(self, build_component):
+        self.ready_components.add(build_component)
 
-  def shutdown(self):
-    self.shutting_down = True
+    def shutdown(self):
+        self.shutting_down = True
 
-  @coroutine
-  def job_completed(self, build_job, job_status, build_component):
-    yield From(self.job_complete_callback(build_job, job_status))
+    @coroutine
+    def job_completed(self, build_job, job_status, build_component):
+        yield From(self.job_complete_callback(build_job, job_status))
 
-  def build_component_disposed(self, build_component, timed_out):
-    self.all_components.remove(build_component)
-    if build_component in self.ready_components:
-      self.ready_components.remove(build_component)
+    def build_component_disposed(self, build_component, timed_out):
+        self.all_components.remove(build_component)
+        if build_component in self.ready_components:
+            self.ready_components.remove(build_component)
 
-    self.unregister_component(build_component)
+        self.unregister_component(build_component)
 
-  def num_workers(self):
-    return len(self.all_components)
+    def num_workers(self):
+        return len(self.all_components)
