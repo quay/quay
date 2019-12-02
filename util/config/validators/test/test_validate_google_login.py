@@ -9,37 +9,40 @@ from util.config.validators.validate_google_login import GoogleLoginValidator
 
 from test.fixtures import *
 
-@pytest.mark.parametrize('unvalidated_config', [
-  ({}),
-  ({'GOOGLE_LOGIN_CONFIG': {}}),
-  ({'GOOGLE_LOGIN_CONFIG': {'CLIENT_ID': 'foo'}}),
-  ({'GOOGLE_LOGIN_CONFIG': {'CLIENT_SECRET': 'foo'}}),
-])
-def test_validate_invalid_google_login_config(unvalidated_config, app):
-  validator = GoogleLoginValidator()
 
-  with pytest.raises(ConfigValidationException):
-    validator.validate(ValidatorContext(unvalidated_config))
+@pytest.mark.parametrize(
+    "unvalidated_config",
+    [
+        ({}),
+        ({"GOOGLE_LOGIN_CONFIG": {}}),
+        ({"GOOGLE_LOGIN_CONFIG": {"CLIENT_ID": "foo"}}),
+        ({"GOOGLE_LOGIN_CONFIG": {"CLIENT_SECRET": "foo"}}),
+    ],
+)
+def test_validate_invalid_google_login_config(unvalidated_config, app):
+    validator = GoogleLoginValidator()
+
+    with pytest.raises(ConfigValidationException):
+        validator.validate(ValidatorContext(unvalidated_config))
+
 
 def test_validate_google_login(app):
-  url_hit = [False]
-  @urlmatch(netloc=r'www.googleapis.com', path='/oauth2/v3/token')
-  def handler(_, __):
-    url_hit[0] = True
-    return {'status_code': 200, 'content': ''}
+    url_hit = [False]
 
-  validator = GoogleLoginValidator()
+    @urlmatch(netloc=r"www.googleapis.com", path="/oauth2/v3/token")
+    def handler(_, __):
+        url_hit[0] = True
+        return {"status_code": 200, "content": ""}
 
-  with HTTMock(handler):
-    unvalidated_config = ValidatorContext({
-      'GOOGLE_LOGIN_CONFIG': {
-        'CLIENT_ID': 'foo',
-        'CLIENT_SECRET': 'bar',
-      },
-    })
+    validator = GoogleLoginValidator()
 
-    unvalidated_config.http_client = build_requests_session()
+    with HTTMock(handler):
+        unvalidated_config = ValidatorContext(
+            {"GOOGLE_LOGIN_CONFIG": {"CLIENT_ID": "foo", "CLIENT_SECRET": "bar",},}
+        )
 
-    validator.validate(unvalidated_config)
+        unvalidated_config.http_client = build_requests_session()
 
-  assert url_hit[0]
+        validator.validate(unvalidated_config)
+
+    assert url_hit[0]

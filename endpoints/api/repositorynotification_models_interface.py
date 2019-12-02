@@ -7,16 +7,20 @@ from six import add_metaclass
 
 
 class RepositoryNotification(
-    namedtuple('RepositoryNotification', [
-        'uuid',
-        'title',
-        'event_name',
-        'method_name',
-        'config_json',
-        'event_config_json',
-        'number_of_failures',
-    ])):
-  """
+    namedtuple(
+        "RepositoryNotification",
+        [
+            "uuid",
+            "title",
+            "event_name",
+            "method_name",
+            "config_json",
+            "event_config_json",
+            "number_of_failures",
+        ],
+    )
+):
+    """
   RepositoryNotification represents a notification for a repository.
   :type uuid: string
   :type event: string
@@ -27,38 +31,46 @@ class RepositoryNotification(
   :type number_of_failures: int
   """
 
-  def to_dict(self):
-    try:
-      config = json.loads(self.config_json)
-    except ValueError:
-      config = {}
+    def to_dict(self):
+        try:
+            config = json.loads(self.config_json)
+        except ValueError:
+            config = {}
 
-    try:
-      event_config = json.loads(self.event_config_json)
-    except ValueError:
-      event_config = {}
+        try:
+            event_config = json.loads(self.event_config_json)
+        except ValueError:
+            event_config = {}
 
-    return {
-      'uuid': self.uuid,
-      'title': self.title,
-      'event': self.event_name,
-      'method': self.method_name,
-      'config': config,
-      'event_config': event_config,
-      'number_of_failures': self.number_of_failures,
-    }
+        return {
+            "uuid": self.uuid,
+            "title": self.title,
+            "event": self.event_name,
+            "method": self.method_name,
+            "config": config,
+            "event_config": event_config,
+            "number_of_failures": self.number_of_failures,
+        }
 
 
 @add_metaclass(ABCMeta)
 class RepoNotificationInterface(object):
-  """
+    """
   Interface that represents all data store interactions required by the RepositoryNotification API
   """
 
-  @abstractmethod
-  def create_repo_notification(self, namespace_name, repository_name, event_name, method_name,
-                               method_config, event_config, title=None):
-    """
+    @abstractmethod
+    def create_repo_notification(
+        self,
+        namespace_name,
+        repository_name,
+        event_name,
+        method_name,
+        method_config,
+        event_config,
+        title=None,
+    ):
+        """
 
     Args:
       namespace_name: namespace of repository
@@ -73,11 +85,11 @@ class RepoNotificationInterface(object):
       RepositoryNotification object
 
     """
-    pass
+        pass
 
-  @abstractmethod
-  def list_repo_notifications(self, namespace_name, repository_name, event_name=None):
-    """
+    @abstractmethod
+    def list_repo_notifications(self, namespace_name, repository_name, event_name=None):
+        """
 
     Args:
       namespace_name: namespace of repository
@@ -87,11 +99,11 @@ class RepoNotificationInterface(object):
     Returns:
       list(RepositoryNotification)
     """
-    pass
+        pass
 
-  @abstractmethod
-  def get_repo_notification(self, uuid):
-    """
+    @abstractmethod
+    def get_repo_notification(self, uuid):
+        """
 
     Args:
       uuid: uuid of notification
@@ -100,11 +112,11 @@ class RepoNotificationInterface(object):
       RepositoryNotification or None
 
     """
-    pass
+        pass
 
-  @abstractmethod
-  def delete_repo_notification(self, namespace_name, repository_name, uuid):
-    """
+    @abstractmethod
+    def delete_repo_notification(self, namespace_name, repository_name, uuid):
+        """
 
     Args:
       namespace_name: namespace of repository
@@ -115,11 +127,11 @@ class RepoNotificationInterface(object):
       RepositoryNotification or None
 
     """
-    pass
+        pass
 
-  @abstractmethod
-  def reset_notification_number_of_failures(self, namespace_name, repository_name, uuid):
-    """
+    @abstractmethod
+    def reset_notification_number_of_failures(self, namespace_name, repository_name, uuid):
+        """
 
     Args:
       namespace_name: namespace of repository
@@ -130,11 +142,11 @@ class RepoNotificationInterface(object):
       RepositoryNotification
 
     """
-    pass
+        pass
 
-  @abstractmethod
-  def queue_test_notification(self, uuid):
-    """
+    @abstractmethod
+    def queue_test_notification(self, uuid):
+        """
 
     Args:
       uuid: uuid of notification
@@ -143,4 +155,4 @@ class RepoNotificationInterface(object):
       RepositoryNotification or None
 
     """
-    pass
+        pass

@@ -2,16 +2,16 @@ from abc import ABCMeta, abstractmethod
 
 from six import add_metaclass
 
-  
+
 @add_metaclass(ABCMeta)
 class InitDataInterface(object):
-  """
+    """
   Interface that represents all data store interactions required by __init__.
   """
 
-  @abstractmethod
-  def is_app_repository(self, namespace_name, repository_name):
-    """
+    @abstractmethod
+    def is_app_repository(self, namespace_name, repository_name):
+        """
     
     Args:
       namespace_name: namespace or user 
@@ -20,11 +20,11 @@ class InitDataInterface(object):
     Returns:
       Boolean
     """
-    pass
-  
-  @abstractmethod
-  def repository_is_public(self, namespace_name, repository_name):
-    """
+        pass
+
+    @abstractmethod
+    def repository_is_public(self, namespace_name, repository_name):
+        """
     
     Args:
       namespace_name: namespace or user 
@@ -33,11 +33,11 @@ class InitDataInterface(object):
     Returns:
       Boolean
     """
-    pass
-    
-  @abstractmethod
-  def log_action(self, kind, namespace_name, repository_name, performer, ip, metadata):
-    """
+        pass
+
+    @abstractmethod
+    def log_action(self, kind, namespace_name, repository_name, performer, ip, metadata):
+        """
     
     Args:
       kind: type of log
@@ -50,5 +50,4 @@ class InitDataInterface(object):
     Returns:
       None
     """
-    pass
-
+        pass

@@ -10,30 +10,34 @@ from util.config.validators.validate_torrent import BittorrentValidator
 
 from test.fixtures import *
 
-@pytest.mark.parametrize('unvalidated_config,expected', [
-  ({}, ConfigValidationException),
-  ({'BITTORRENT_ANNOUNCE_URL': 'http://faketorrent/announce'}, None),
-])
+
+@pytest.mark.parametrize(
+    "unvalidated_config,expected",
+    [
+        ({}, ConfigValidationException),
+        ({"BITTORRENT_ANNOUNCE_URL": "http://faketorrent/announce"}, None),
+    ],
+)
 def test_validate_torrent(unvalidated_config, expected, app):
-  announcer_hit = [False]
+    announcer_hit = [False]
 
-  @urlmatch(netloc=r'faketorrent', path='/announce')
-  def handler(url, request):
-    announcer_hit[0] = True
-    return {'status_code': 200, 'content': ''}
+    @urlmatch(netloc=r"faketorrent", path="/announce")
+    def handler(url, request):
+        announcer_hit[0] = True
+        return {"status_code": 200, "content": ""}
 
-  with HTTMock(handler):
-    validator = BittorrentValidator()
-    if expected is not None:
-      with pytest.raises(expected):
-        config = ValidatorContext(unvalidated_config, instance_keys=instance_keys)
-        config.http_client = build_requests_session()
+    with HTTMock(handler):
+        validator = BittorrentValidator()
+        if expected is not None:
+            with pytest.raises(expected):
+                config = ValidatorContext(unvalidated_config, instance_keys=instance_keys)
+                config.http_client = build_requests_session()
 
-        validator.validate(config)
-      assert not announcer_hit[0]
-    else:
-      config = ValidatorContext(unvalidated_config, instance_keys=instance_keys)
-      config.http_client = build_requests_session()
+                validator.validate(config)
+            assert not announcer_hit[0]
+        else:
+            config = ValidatorContext(unvalidated_config, instance_keys=instance_keys)
+            config.http_client = build_requests_session()
 
-      validator.validate(config)
-      assert announcer_hit[0]
+            validator.validate(config)
+            assert announcer_hit[0]

@@ -24,6 +24,12 @@ export POSTGRES_PASSWORD="quay"
 export POSTGRES_DB="quay_ci"
 
 
+run_black() {
+    pip install black
+    black --line-length 100 --target-version py27 --check --diff .
+}
+
+
 build_image() {
     # Build the image and save it to the shared cache.
     docker build -t "${IMAGE}:${IMAGE_TAG}" .
@@ -179,6 +185,10 @@ postgres() {
 
 
 case "$1" in
+    lint)
+        run_black
+        ;;
+
     build)
         build_image
         ;;

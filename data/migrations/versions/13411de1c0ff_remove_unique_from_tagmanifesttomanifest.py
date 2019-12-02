@@ -7,12 +7,13 @@ Create Date: 2018-08-19 23:30:24.969549
 """
 
 # revision identifiers, used by Alembic.
-revision = '13411de1c0ff'
-down_revision = '654e6df88b71'
+revision = "13411de1c0ff"
+down_revision = "654e6df88b71"
 
 from alembic import op as original_op
 from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
+
 
 def upgrade(tables, tester, progress_reporter):
     op = ProgressWrapper(original_op, progress_reporter)
@@ -20,25 +21,46 @@ def upgrade(tables, tester, progress_reporter):
     # it without the unique=False, nor can we simply alter the index. To make it work, we'd have to
     # remove the primary key on the field, so instead we simply drop the table entirely and
     # recreate it with the modified index. The backfill will re-fill this in.
-    op.drop_table('tagmanifesttomanifest')
+    op.drop_table("tagmanifesttomanifest")
 
-    op.create_table('tagmanifesttomanifest',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('tag_manifest_id', sa.Integer(), nullable=False),
-    sa.Column('manifest_id', sa.Integer(), nullable=False),
-    sa.Column('broken', sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()),
-    sa.ForeignKeyConstraint(['manifest_id'], ['manifest.id'], name=op.f('fk_tagmanifesttomanifest_manifest_id_manifest')),
-    sa.ForeignKeyConstraint(['tag_manifest_id'], ['tagmanifest.id'], name=op.f('fk_tagmanifesttomanifest_tag_manifest_id_tagmanifest')),
-    sa.PrimaryKeyConstraint('id', name=op.f('pk_tagmanifesttomanifest'))
+    op.create_table(
+        "tagmanifesttomanifest",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("tag_manifest_id", sa.Integer(), nullable=False),
+        sa.Column("manifest_id", sa.Integer(), nullable=False),
+        sa.Column("broken", sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()),
+        sa.ForeignKeyConstraint(
+            ["manifest_id"],
+            ["manifest.id"],
+            name=op.f("fk_tagmanifesttomanifest_manifest_id_manifest"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["tag_manifest_id"],
+            ["tagmanifest.id"],
+            name=op.f("fk_tagmanifesttomanifest_tag_manifest_id_tagmanifest"),
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_tagmanifesttomanifest")),
     )
-    op.create_index('tagmanifesttomanifest_broken', 'tagmanifesttomanifest', ['broken'], unique=False)
-    op.create_index('tagmanifesttomanifest_manifest_id', 'tagmanifesttomanifest', ['manifest_id'], unique=False)
-    op.create_index('tagmanifesttomanifest_tag_manifest_id', 'tagmanifesttomanifest', ['tag_manifest_id'], unique=True)
+    op.create_index(
+        "tagmanifesttomanifest_broken", "tagmanifesttomanifest", ["broken"], unique=False
+    )
+    op.create_index(
+        "tagmanifesttomanifest_manifest_id", "tagmanifesttomanifest", ["manifest_id"], unique=False
+    )
+    op.create_index(
+        "tagmanifesttomanifest_tag_manifest_id",
+        "tagmanifesttomanifest",
+        ["tag_manifest_id"],
+        unique=True,
+    )
 
-    tester.populate_table('tagmanifesttomanifest', [
-        ('manifest_id', tester.TestDataType.Foreign('manifest')),
-        ('tag_manifest_id', tester.TestDataType.Foreign('tagmanifest')),
-    ])
+    tester.populate_table(
+        "tagmanifesttomanifest",
+        [
+            ("manifest_id", tester.TestDataType.Foreign("manifest")),
+            ("tag_manifest_id", tester.TestDataType.Foreign("tagmanifest")),
+        ],
+    )
 
 
 def downgrade(tables, tester, progress_reporter):

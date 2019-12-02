@@ -3,128 +3,142 @@ import io
 import logging
 import re
 
+
 class TriggerException(Exception):
-  pass
+    pass
+
 
 class TriggerAuthException(TriggerException):
-  pass
+    pass
+
 
 class InvalidPayloadException(TriggerException):
-  pass
+    pass
+
 
 class BuildArchiveException(TriggerException):
-  pass
+    pass
+
 
 class InvalidServiceException(TriggerException):
-  pass
+    pass
+
 
 class TriggerActivationException(TriggerException):
-  pass
+    pass
+
 
 class TriggerDeactivationException(TriggerException):
-  pass
+    pass
+
 
 class TriggerStartException(TriggerException):
-  pass
+    pass
+
 
 class ValidationRequestException(TriggerException):
-  pass
+    pass
+
 
 class SkipRequestException(TriggerException):
-  pass
+    pass
+
 
 class EmptyRepositoryException(TriggerException):
-  pass
+    pass
+
 
 class RepositoryReadException(TriggerException):
-  pass
+    pass
+
 
 class TriggerProviderException(TriggerException):
-  pass
+    pass
+
 
 logger = logging.getLogger(__name__)
 
+
 def determine_build_ref(run_parameters, get_branch_sha, get_tag_sha, default_branch):
-  run_parameters = run_parameters or {}
+    run_parameters = run_parameters or {}
 
-  kind = ''
-  value = ''
+    kind = ""
+    value = ""
 
-  if 'refs' in run_parameters and run_parameters['refs']:
-    kind = run_parameters['refs']['kind']
-    value = run_parameters['refs']['name']
-  elif 'branch_name' in run_parameters:
-    kind = 'branch'
-    value = run_parameters['branch_name']
+    if "refs" in run_parameters and run_parameters["refs"]:
+        kind = run_parameters["refs"]["kind"]
+        value = run_parameters["refs"]["name"]
+    elif "branch_name" in run_parameters:
+        kind = "branch"
+        value = run_parameters["branch_name"]
 
-  kind = kind or 'branch'
-  value = value or default_branch or 'master'
+    kind = kind or "branch"
+    value = value or default_branch or "master"
 
-  ref = 'refs/tags/' + value if kind == 'tag' else 'refs/heads/' + value
-  commit_sha = get_tag_sha(value) if kind == 'tag' else get_branch_sha(value)
-  return (commit_sha, ref)
+    ref = "refs/tags/" + value if kind == "tag" else "refs/heads/" + value
+    commit_sha = get_tag_sha(value) if kind == "tag" else get_branch_sha(value)
+    return (commit_sha, ref)
 
 
 def find_matching_branches(config, branches):
-  if 'branchtag_regex' in config:
-    try:
-      regex = re.compile(config['branchtag_regex'])
-      return [branch for branch in branches
-              if matches_ref('refs/heads/' + branch, regex)]
-    except:
-      pass
+    if "branchtag_regex" in config:
+        try:
+            regex = re.compile(config["branchtag_regex"])
+            return [branch for branch in branches if matches_ref("refs/heads/" + branch, regex)]
+        except:
+            pass
 
-  return branches
+    return branches
 
 
 def should_skip_commit(metadata):
-  if 'commit_info' in metadata:
-    message = metadata['commit_info']['message']
-    return '[skip build]' in message or '[build skip]' in message
-  return False
+    if "commit_info" in metadata:
+        message = metadata["commit_info"]["message"]
+        return "[skip build]" in message or "[build skip]" in message
+    return False
 
 
 def raise_if_skipped_build(prepared_build, config):
-  """ Raises a SkipRequestException if the given build should be skipped. """
-  # Check to ensure we have metadata.
-  if not prepared_build.metadata:
-    logger.debug('Skipping request due to missing metadata for prepared build')
-    raise SkipRequestException()
+    """ Raises a SkipRequestException if the given build should be skipped. """
+    # Check to ensure we have metadata.
+    if not prepared_build.metadata:
+        logger.debug("Skipping request due to missing metadata for prepared build")
+        raise SkipRequestException()
 
-  # Check the branchtag regex.
-  if 'branchtag_regex' in config:
-    try:
-      regex = re.compile(config['branchtag_regex'])
-    except:
-      regex = re.compile('.*')
+    # Check the branchtag regex.
+    if "branchtag_regex" in config:
+        try:
+            regex = re.compile(config["branchtag_regex"])
+        except:
+            regex = re.compile(".*")
 
-    if not matches_ref(prepared_build.metadata.get('ref'), regex):
-      raise SkipRequestException()
+        if not matches_ref(prepared_build.metadata.get("ref"), regex):
+            raise SkipRequestException()
 
-  # Check the commit message.
-  if should_skip_commit(prepared_build.metadata):
-    logger.debug('Skipping request due to commit message request')
-    raise SkipRequestException()
+    # Check the commit message.
+    if should_skip_commit(prepared_build.metadata):
+        logger.debug("Skipping request due to commit message request")
+        raise SkipRequestException()
 
 
 def matches_ref(ref, regex):
-  match_string = ref.split('/', 1)[1]
-  if not regex:
-    return False
+    match_string = ref.split("/", 1)[1]
+    if not regex:
+        return False
 
-  m = regex.match(match_string)
-  if not m:
-    return False
+    m = regex.match(match_string)
+    if not m:
+        return False
 
-  return len(m.group(0)) == len(match_string)
+    return len(m.group(0)) == len(match_string)
 
 
 def raise_unsupported():
-  raise io.UnsupportedOperation
+    raise io.UnsupportedOperation
 
 
 def get_trigger_config(trigger):
-  try:
-    return json.loads(trigger.config)
-  except ValueError:
-    return {}
+    try:
+        return json.loads(trigger.config)
+    except ValueError:
+        return {}

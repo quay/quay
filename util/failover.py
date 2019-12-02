@@ -7,15 +7,17 @@ logger = logging.getLogger(__name__)
 
 
 class FailoverException(Exception):
-  """ Exception raised when an operation should be retried by the failover decorator.
+    """ Exception raised when an operation should be retried by the failover decorator.
       Wraps the exception of the initial failure.
   """
-  def __init__(self, exception):
-    super(FailoverException, self).__init__()
-    self.exception = exception
+
+    def __init__(self, exception):
+        super(FailoverException, self).__init__()
+        self.exception = exception
+
 
 def failover(func):
-  """ Wraps a function such that it can be retried on specified failures.
+    """ Wraps a function such that it can be retried on specified failures.
       Raises FailoverException when all failovers are exhausted.
       Example:
 
@@ -37,14 +39,16 @@ def failover(func):
         )
         print('Successfully contacted ' + r.url)
   """
-  @wraps(func)
-  def wrapper(*args_sets):
-    for arg_set in args_sets:
-      try:
-        return func(*arg_set[0], **arg_set[1])
-      except FailoverException as ex:
-        logger.debug('failing over')
-        exception = ex.exception
-        continue
-    raise exception
-  return wrapper
+
+    @wraps(func)
+    def wrapper(*args_sets):
+        for arg_set in args_sets:
+            try:
+                return func(*arg_set[0], **arg_set[1])
+            except FailoverException as ex:
+                logger.debug("failing over")
+                exception = ex.exception
+                continue
+        raise exception
+
+    return wrapper

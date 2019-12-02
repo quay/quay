@@ -7,8 +7,8 @@ Create Date: 2019-03-14 13:38:03.411609
 """
 
 # revision identifiers, used by Alembic.
-revision = 'b918abdbee43'
-down_revision = '481623ba00ba'
+revision = "b918abdbee43"
+down_revision = "481623ba00ba"
 
 import logging.config
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def upgrade(tables, tester, progress_reporter):
-    if not app.config.get('SETUP_COMPLETE', False):
+    if not app.config.get("SETUP_COMPLETE", False):
         return
 
     start_id = 0
@@ -40,16 +40,19 @@ def upgrade(tables, tester, progress_reporter):
         if start_id > max_id:
             break
 
-        logger.info('Checking tag range %s - %s', start_id, end_id)
-        r = list(RepositoryTag
-                .select()
-                .join(Repository)
-                .switch(RepositoryTag)
-                .join(TagToRepositoryTag, JOIN.LEFT_OUTER)
-                .where(TagToRepositoryTag.id >> None)
-                .where(RepositoryTag.hidden == False,
-                        RepositoryTag.id >= start_id,
-                        RepositoryTag.id < end_id))
+        logger.info("Checking tag range %s - %s", start_id, end_id)
+        r = list(
+            RepositoryTag.select()
+            .join(Repository)
+            .switch(RepositoryTag)
+            .join(TagToRepositoryTag, JOIN.LEFT_OUTER)
+            .where(TagToRepositoryTag.id >> None)
+            .where(
+                RepositoryTag.hidden == False,
+                RepositoryTag.id >= start_id,
+                RepositoryTag.id < end_id,
+            )
+        )
 
         if len(r) < 1000 and size < 100000:
             size *= 2
@@ -60,7 +63,7 @@ def upgrade(tables, tester, progress_reporter):
         if not len(r):
             continue
 
-        logger.info('Found %s tags to backfill', len(r))
+        logger.info("Found %s tags to backfill", len(r))
         for index, t in enumerate(r):
             logger.info("Backfilling tag %s of %s", index, len(r))
             backfill_tag(t)
