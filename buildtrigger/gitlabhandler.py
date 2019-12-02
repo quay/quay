@@ -256,7 +256,13 @@ class GitLabBuildTrigger(BuildTriggerHandler):
 
     def deactivate(self):
         config = self.config
-        gl_client = self._get_authorized_client()
+        try:
+            gl_client = self._get_authorized_client()
+        except TriggerAuthException:
+            config.pop("key_id", None)
+            config.pop("hook_id", None)
+            self.config = config
+            return config
 
         # Find the GitLab repository.
         try:
