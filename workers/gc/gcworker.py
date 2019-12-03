@@ -22,7 +22,12 @@ class GarbageCollectionWorker(Worker):
     def _garbage_collection_repos(self):
         """ Performs garbage collection on repositories. """
         with UseThenDisconnect(app.config):
-            repository = find_repository_with_garbage(get_random_gc_policy())
+            policy = get_random_gc_policy()
+            if policy is None:
+                logger.debug("No GC policies found")
+                return
+
+            repository = find_repository_with_garbage(policy)
             if repository is None:
                 logger.debug("No repository with garbage found")
                 return
