@@ -22,6 +22,9 @@ ActiveDataMigration = DefinedDataMigration(
         MigrationPhase(
             "backfill-then-read-only-new", "703298a825c2", [ERTMigrationFlags.WRITE_OLD_FIELDS]
         ),
+        MigrationPhase(
+            "change-column-types", "49e1138ed12d", [ERTMigrationFlags.WRITE_OLD_FIELDS],
+        ),
         MigrationPhase("stop-writing-both", "703298a825c2", []),
         MigrationPhase("remove-old-fields", "c059b952ed76", []),
     ],

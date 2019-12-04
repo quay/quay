@@ -1,14 +1,14 @@
 """Remove unencrypted fields and data
 
 Revision ID: c059b952ed76
-Revises: 703298a825c2
+Revises: 49e1138ed12d
 Create Date: 2019-08-19 16:31:00.952773
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "c059b952ed76"
-down_revision = "703298a825c2"
+down_revision = "49e1138ed12d"
 
 import uuid
 
