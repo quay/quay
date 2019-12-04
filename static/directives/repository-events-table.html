@@ -5,7 +5,7 @@
 
       <div class="heading-controls hidden-sm hidden-xs">
         <a href="/repository/{{ repository.namespace }}/{{ repository.name }}/create-notification"
-           class="btn btn-primary" ng-show="repository.can_write && !inReadOnlyMode">
+           class="btn btn-primary" ng-show="canCreateNotification()">
            <span class="create-notification-btn"><i class="fa fa-plus"></i> Create Notification</span>
         </a>
       </div>
@@ -16,7 +16,7 @@
 
           <div class="empty" ng-if="!notifications.length">
             <div class="empty-primary-msg">No notifications have been setup for this repository.</div>
-            <div class="empty-secondary-msg hidden-sm hidden-xs" ng-if="repository.can_write && !inReadOnlyMode">
+            <div class="empty-secondary-msg hidden-sm hidden-xs" ng-if="canCreateNotification()">
               Click the "Create Notification" button above to add a new notification for a repository event.
             </div>
             <div class="empty-secondary-msg visible-sm visible-xs" ng-if="repository.can_write">
@@ -78,7 +78,7 @@
                 </td>
 
                 <td>
-                  <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+                  <span class="cor-options-menu" ng-show="canCreateNotification()">
                     <span class="cor-option" option-click="testNotification(notification)">
                       <i class="fa fa-send"></i> Test Notification
                     </span>
