@@ -43,6 +43,7 @@ import { AppSpecificTokenManagerComponent } from './directives/ui/app-specific-t
 import { ManifestLinkComponent } from './directives/ui/manifest-link/manifest-link.component';
 import { ManifestSecurityView } from './directives/ui/manifest-security-view/manifest-security-view.component';
 import { MarkdownModule } from './directives/ui/markdown/markdown.module';
+import { RepoStateComponent } from './directives/ui/repo-state/repo-state.component';
 import * as Clipboard from 'clipboard';
 
 
@@ -89,6 +90,7 @@ import * as Clipboard from 'clipboard';
     AppSpecificTokenManagerComponent,
     ManifestLinkComponent,
     ManifestSecurityView,
+    RepoStateComponent,
   ],
   providers: [
     ViewArrayImpl,
