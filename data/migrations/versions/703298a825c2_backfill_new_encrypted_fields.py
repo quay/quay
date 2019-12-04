@@ -314,77 +314,7 @@ def upgrade(tables, tester, progress_reporter):
             OAuthApplication.select().where(OAuthApplication.fully_migrated == False).count()
         ) == 0
 
-    # Adjust existing fields to be nullable.
-    op.alter_column("accesstoken", "code", nullable=True, existing_type=sa.String(length=255))
-    op.alter_column(
-        "oauthaccesstoken", "access_token", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthauthorizationcode", "code", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "appspecificauthtoken", "token_code", nullable=True, existing_type=sa.String(length=255)
-    )
-
-    # Adjust new fields to be non-nullable.
-    op.alter_column(
-        "accesstoken", "token_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "accesstoken", "token_code", nullable=False, existing_type=sa.String(length=255)
-    )
-
-    op.alter_column(
-        "appspecificauthtoken", "token_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "appspecificauthtoken", "token_secret", nullable=False, existing_type=sa.String(length=255)
-    )
-
-    op.alter_column(
-        "oauthaccesstoken", "token_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthaccesstoken", "token_code", nullable=False, existing_type=sa.String(length=255)
-    )
-
-    op.alter_column(
-        "oauthauthorizationcode", "code_name", nullable=False, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthauthorizationcode",
-        "code_credential",
-        nullable=False,
-        existing_type=sa.String(length=255),
-    )
-
 
 def downgrade(tables, tester, progress_reporter):
     op = ProgressWrapper(original_op, progress_reporter)
-
-    op.alter_column("accesstoken", "token_name", nullable=True, existing_type=sa.String(length=255))
-    op.alter_column("accesstoken", "token_code", nullable=True, existing_type=sa.String(length=255))
-
-    op.alter_column(
-        "appspecificauthtoken", "token_name", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "appspecificauthtoken", "token_secret", nullable=True, existing_type=sa.String(length=255)
-    )
-
-    op.alter_column(
-        "oauthaccesstoken", "token_name", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthaccesstoken", "token_code", nullable=True, existing_type=sa.String(length=255)
-    )
-
-    op.alter_column(
-        "oauthauthorizationcode", "code_name", nullable=True, existing_type=sa.String(length=255)
-    )
-    op.alter_column(
-        "oauthauthorizationcode",
-        "code_credential",
-        nullable=True,
-        existing_type=sa.String(length=255),
-    )
+    pass
