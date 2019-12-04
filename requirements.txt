@@ -18,11 +18,11 @@ attrs==19.1.0
 autobahn==0.9.3.post3
 aws-sam-translator==1.14.0
 aws-xray-sdk==2.4.2
-azure-common==1.1.23
-azure-nspkg==3.0.2
-azure-storage-blob==2.1.0
-azure-storage-common==2.1.0
-azure-storage-nspkg==3.1.0
+azure-common==1.1.10
+azure-nspkg==2.0.0
+azure-storage-blob==1.1.0
+azure-storage-common==1.1.0
+azure-storage-nspkg==3.0.0
 Babel==2.7.0
 backoff==1.8.0
 backports.functools-lru-cache==1.5
