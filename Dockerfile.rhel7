@@ -13,6 +13,9 @@ ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
 ENV QUAYPATH "."
 
+# Determines migration path
+ENV ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=new-installation
+
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
