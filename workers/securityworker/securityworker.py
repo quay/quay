@@ -11,7 +11,9 @@ from util.secscan.analyzer import LayerAnalyzer
 from util.log import logfile_path
 from endpoints.v2 import v2_bp
 
+
 logger = logging.getLogger(__name__)
+
 
 DEFAULT_INDEXING_INTERVAL = 30
 

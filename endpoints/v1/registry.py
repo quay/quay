@@ -7,7 +7,7 @@ from time import time
 
 from flask import make_response, request, session, Response, redirect, abort as flask_abort
 
-from app import storage as store, app, docker_v2_signing_key, metric_queue
+from app import storage as store, app, docker_v2_signing_key
 from auth.auth_context import get_authenticated_user
 from auth.decorators import extract_namespace_repo_from_session, process_auth
 from auth.permissions import ReadRepositoryPermission, ModifyRepositoryPermission
@@ -16,6 +16,7 @@ from data.registry_model import registry_model
 from data.registry_model.blobuploader import upload_blob, BlobUploadSettings, BlobUploadException
 from data.registry_model.manifestbuilder import lookup_manifest_builder
 from digest import checksums
+from endpoints.metrics import image_pulled_bytes
 from endpoints.v1 import v1_bp, check_v1_push_enabled
 from endpoints.v1.index import ensure_namespace_enabled
 from endpoints.decorators import (
@@ -24,9 +25,10 @@ from endpoints.decorators import (
     check_repository_state,
     check_readonly,
 )
-from util.http import abort, exact_abort
+from util.http import abort
 from util.registry.replication import queue_storage_replication
 from util.request import get_request_ip
+
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +140,7 @@ def get_image_layer(namespace, repository, image_id, headers):
             abort(404, "Image %(image_id)s not found", issue="unknown-image", image_id=image_id)
 
         path = legacy_image.blob.storage_path
-        metric_queue.pull_byte_count.Inc(legacy_image.blob.compressed_size, labelvalues=["v1"])
+        image_pulled_bytes.labels("v1").inc(legacy_image.blob.compressed_size)
 
         try:
             logger.debug("Looking up the direct download URL for path: %s", path)

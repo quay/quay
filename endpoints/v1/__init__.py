@@ -6,16 +6,16 @@ from flask import Blueprint, make_response, jsonify
 
 import features
 
-from app import metric_queue, app
+from app import app
 from data.readreplica import ReadOnlyModeException
 from endpoints.decorators import anon_protect, anon_allowed
-from util.metrics.metricqueue import time_blueprint
 from util.http import abort
+from util.metrics.prometheus import timed_blueprint
 
-v1_bp = Blueprint("v1", __name__)
-time_blueprint(v1_bp, metric_queue)
 
 logger = logging.getLogger(__name__)
+v1_bp = timed_blueprint(Blueprint("v1", __name__))
+
 
 # Note: This is *not* part of the Docker index spec. This is here for our own health check,
 # since we have nginx handle the _ping below.

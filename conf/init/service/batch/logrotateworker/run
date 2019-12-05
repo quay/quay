@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting log rotation worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.logrotateworker
-
-echo 'Log rotation worker exited'

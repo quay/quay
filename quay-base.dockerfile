@@ -2,6 +2,8 @@
 
 FROM phusion/baseimage:0.10.0
 
+ENV OS linux
+ENV ARCH amd64
 ENV DEBIAN_FRONTEND noninteractive
 ENV HOME /root
 ENV QUAYDIR /quay-registry
@@ -70,12 +72,17 @@ RUN curl -O https://storage.googleapis.com/golang/go1.10.linux-amd64.tar.gz && \
     rm -rf /gocode && rm -rf /usr/local/go
 
 # Install jwtproxy
-RUN curl -L -o /usr/local/bin/jwtproxy https://github.com/coreos/jwtproxy/releases/download/v0.0.1/jwtproxy-linux-x64 \
-    && chmod +x /usr/local/bin/jwtproxy
+ENV JWTPROXY_VERSION=0.0.3
+RUN curl -fsSL -o /usr/local/bin/jwtproxy https://github.com/coreos/jwtproxy/releases/download/v$(JWTPROXY_VERSION)/jwtproxy-$(OS)-$(ARCH) && \
+    chmod +x /usr/local/bin/jwtproxy
 
-# Install prometheus-aggregator
-RUN curl -L -o /usr/local/bin/prometheus-aggregator https://github.com/coreos/prometheus-aggregator/releases/download/v0.0.1-alpha/prometheus-aggregator \
-    && chmod +x /usr/local/bin/prometheus-aggregator
+# Install pushgateway
+ENV PUSHGATEWAY_VERSION=1.0.0
+RUN curl -fsSL https://github.com/prometheus/pushgateway/releases/download/$(PUSHGATEWAY_VERSION)/pushgateway-$(PUSHGATEWAY_VERSION).$(OS)-$(ARCH).tar.gz | \
+    tar xz pushgateway-$(PUSHGATEWAY_VERSION).$(OS)-$(ARCH)/pushgateway && \
+    mv pushgateway-$(PUSHGATEWAY_VERSION).$(OS)-$(ARCH)/pushgateway /usr/local/bin/pushgateway && \
+    rm -rf pushgateway-$(PUSHGATEWAY_VERSION).$(OS)-$(ARCH) && \
+    chmod +x /usr/local/bin/pushgateway
 
 # Install python dependencies
 COPY requirements.txt requirements-tests.txt ./

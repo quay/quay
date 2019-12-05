@@ -75,9 +75,9 @@ case "$QUAYENTRY" in
         echo "Entering repository mirroring mode"
         if [ -z "${QUAY_SERVICES}" ]
         then
-            export QUAY_SERVICES=repomirrorworker,prometheus-aggregator
+            export QUAY_SERVICES=repomirrorworker,pushgateway
         else
-            export QUAY_SERVICES=${QUAY_SERVICES},repomirrorworker,prometheus-aggregator
+            export QUAY_SERVICES=${QUAY_SERVICES},repomirrorworker,pushgateway
         fi
         ;&
     "registry")

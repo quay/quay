@@ -18,7 +18,9 @@ from workers.worker import Worker
 from util.log import logfile_path
 from util.migrate.allocator import yield_random_entries
 
+
 logger = logging.getLogger(__name__)
+
 
 WORKER_TIMEOUT = 600
 

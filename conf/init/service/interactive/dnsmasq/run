@@ -1,7 +1,0 @@
-#! /bin/bash
-
-echo 'Starting dnsmasq'
-
-/usr/sbin/dnsmasq --no-daemon --user=root --listen-address=127.0.0.1
-
-echo 'dnsmasq'

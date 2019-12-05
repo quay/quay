@@ -10,7 +10,7 @@ from flask_restful import Resource, abort, Api, reqparse
 from flask_restful.utils.cors import crossdomain
 from jsonschema import validate, ValidationError
 
-from app import app, metric_queue, authentication
+from app import app, authentication
 from auth.permissions import (
     ReadRepositoryPermission,
     ModifyRepositoryPermission,
@@ -37,7 +37,7 @@ from endpoints.exception import (
     NotFound,
 )
 from endpoints.decorators import check_anon_protection, require_xhr_from_browser, check_readonly
-from util.metrics.metricqueue import time_decorator
+from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
 from util.pagination import encrypt_page_token, decrypt_page_token
 from util.request import get_request_ip
@@ -45,7 +45,7 @@ from __init__models_pre_oci import pre_oci_model as model
 
 
 logger = logging.getLogger(__name__)
-api_bp = Blueprint("api", __name__)
+api_bp = timed_blueprint(Blueprint("api", __name__))
 
 
 CROSS_DOMAIN_HEADERS = ["Authorization", "Content-Type", "X-Requested-With"]
@@ -63,7 +63,6 @@ api.decorators = [
     csrf_protect(),
     crossdomain(origin="*", headers=CROSS_DOMAIN_HEADERS),
     process_oauth,
-    time_decorator(api_bp.name, metric_queue),
     require_xhr_from_browser,
 ]
 

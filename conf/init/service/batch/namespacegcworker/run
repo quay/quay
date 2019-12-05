@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting Namespace GC worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.namespacegcworker 2>&1
-
-echo 'Namespace GC exited'

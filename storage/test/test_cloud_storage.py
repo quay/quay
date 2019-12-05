@@ -18,7 +18,7 @@ _TEST_BUCKET = "some_bucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"
-_TEST_CONTEXT = StorageContext("nyc", None, None, None, None)
+_TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 
 @pytest.fixture(scope="function")

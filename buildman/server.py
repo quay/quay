@@ -1,21 +1,23 @@
 import logging
 import json
+
+from datetime import timedelta
+from threading import Event
+
 import trollius
 
-from threading import Event
-from datetime import timedelta
-from trollius.coroutines import From
+from aiowsgi import create_server as create_wsgi_server
 from autobahn.asyncio.wamp import RouterFactory, RouterSessionFactory
 from autobahn.asyncio.websocket import WampWebSocketServerFactory
 from autobahn.wamp import types
-from aiowsgi import create_server as create_wsgi_server
 from flask import Flask
+from trollius.coroutines import From
 
+from app import app
 from buildman.enums import BuildJobResult, BuildServerStatus, RESULT_PHASES
-from buildman.jobutil.buildstatus import StatusHandler
 from buildman.jobutil.buildjob import BuildJob, BuildJobLoadException
+from buildman.jobutil.buildstatus import StatusHandler
 from data import database, model
-from app import app, metric_queue
 
 
 logger = logging.getLogger(__name__)
@@ -31,8 +33,7 @@ HEARTBEAT_PERIOD_SEC = 30
 
 class BuilderServer(object):
     """ Server which handles both HTTP and WAMP requests, managing the full state of the build
-      controller.
-  """
+      controller. """
 
     def __init__(
         self,
@@ -76,8 +77,11 @@ class BuilderServer(object):
 
         @controller_app.route("/status")
         def status():
-            metrics = server._queue.get_metrics()
-            (running_count, available_not_running_count, available_count) = metrics
+            (
+                running_count,
+                available_not_running_count,
+                available_count,
+            ) = server._queue.get_metrics()
 
             workers = [
                 component
@@ -128,8 +132,7 @@ class BuilderServer(object):
 
     def _register_component(self, realm, component_klass, **kwargs):
         """ Registers a component with the server. The component_klass must derive from
-        BaseComponent.
-    """
+        BaseComponent. """
         logger.debug("Registering component with realm %s", realm)
         if realm in self._realm_map:
             logger.debug("Component with realm %s already registered", realm)
@@ -192,8 +195,6 @@ class BuilderServer(object):
 
         if self._current_status == BuildServerStatus.SHUTDOWN and not self._job_count:
             self._shutdown_event.set()
-
-        _report_completion_status(build_job, job_status, executor_name)
 
     @trollius.coroutine
     def _work_checker(self):
@@ -296,20 +297,3 @@ class BuilderServer(object):
 
         # Initialize the work queue checker.
         yield From(self._work_checker())
-
-
-def _report_completion_status(build_job, status, executor_name):
-    metric_queue.build_counter.Inc(labelvalues=[status])
-    metric_queue.repository_build_completed.Inc(
-        labelvalues=[build_job.namespace, build_job.repo_name, status, executor_name or "executor"]
-    )
-    if status == BuildJobResult.COMPLETE:
-        status_name = "CompleteBuilds"
-    elif status == BuildJobResult.ERROR:
-        status_name = "FailedBuilds"
-    elif status == BuildJobResult.INCOMPLETE:
-        status_name = "IncompletedBuilds"
-    else:
-        return
-
-    metric_queue.put_deprecated(status_name, 1, unit="Count")

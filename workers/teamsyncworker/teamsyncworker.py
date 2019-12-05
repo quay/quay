@@ -9,7 +9,9 @@ from workers.worker import Worker
 from util.timedeltastring import convert_to_timedelta
 from util.log import logfile_path
 
+
 logger = logging.getLogger(__name__)
+
 
 WORKER_FREQUENCY = app.config.get("TEAM_SYNC_WORKER_FREQUENCY", 60)
 STALE_CUTOFF = convert_to_timedelta(app.config.get("TEAM_RESYNC_STALE_TIME", "30m"))

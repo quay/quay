@@ -8,9 +8,9 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from six import iteritems
 
+from prometheus_client import Counter, Histogram
 from trollius import From, coroutine, Return, async, sleep
 
-from app import metric_queue
 from buildman.orchestrator import (
     orchestrator_from_config,
     KeyEvent,
@@ -28,6 +28,21 @@ from util.morecollections import AttrDict
 
 
 logger = logging.getLogger(__name__)
+
+
+build_fallback = Counter(
+    "quay_build_fallback_total", "number of times a build has been retried", labelnames=["executor"]
+)
+build_ack_duration = Histogram(
+    "quay_build_ack_duration_seconds",
+    "seconds taken for the builder to acknowledge a queued build",
+    labelnames=["executor"],
+)
+build_duration = Histogram(
+    "quay_build_duration_seconds",
+    "seconds taken for a build's execution",
+    labelnames=["executor", "job_status"],
+)
 
 
 JOB_PREFIX = "building/"
@@ -485,7 +500,7 @@ class EphemeralBuilderManager(BaseManager):
 
             # Check if we can use this executor based on the retries remaining.
             if executor.minimum_retry_threshold > build_job.retries_remaining:
-                metric_queue.builder_fallback.Inc()
+                build_fallback.labels(executor.name).inc()
                 logger.debug(
                     "Job %s cannot use executor %s as it is below retry threshold %s (retry #%s)",
                     build_uuid,
@@ -502,38 +517,8 @@ class EphemeralBuilderManager(BaseManager):
             try:
                 execution_id = yield From(executor.start_builder(realm, token, build_uuid))
             except:
-                try:
-                    metric_queue.build_start_failure.Inc(labelvalues=[executor.name])
-                    metric_queue.put_deprecated(
-                        ("ExecutorFailure-%s" % executor.name), 1, unit="Count"
-                    )
-                except:
-                    logger.exception(
-                        "Exception when writing failure metric for execution %s for job %s",
-                        execution_id,
-                        build_uuid,
-                    )
-
                 logger.exception("Exception when starting builder for job: %s", build_uuid)
                 continue
-
-            try:
-                metric_queue.build_start_success.Inc(labelvalues=[executor.name])
-            except:
-                logger.exception(
-                    "Exception when writing success metric for execution %s for job %s",
-                    execution_id,
-                    build_uuid,
-                )
-
-            try:
-                metric_queue.ephemeral_build_workers.Inc()
-            except:
-                logger.exception(
-                    "Exception when writing start metrics for execution %s for job %s",
-                    execution_id,
-                    build_uuid,
-                )
 
             started_with_executor = executor
 
@@ -652,11 +637,7 @@ class EphemeralBuilderManager(BaseManager):
         )
         yield From(build_component.start_build(job))
 
-        yield From(
-            self._write_duration_metric(
-                metric_queue.builder_time_to_build, build_component.builder_realm
-            )
-        )
+        yield From(self._write_duration_metric(build_ack_duration, build_component.builder_realm))
 
         # Clean up the bookkeeping for allowing any manager to take the job.
         try:
@@ -677,7 +658,9 @@ class EphemeralBuilderManager(BaseManager):
         )
 
         yield From(
-            self._write_duration_metric(metric_queue.build_time, build_component.builder_realm)
+            self._write_duration_metric(
+                build_duration, build_component.builder_realm, job_status=job_status
+            )
         )
 
         # Mark the job as completed. Since this is being invoked from the component, we don't need
@@ -787,29 +770,28 @@ class EphemeralBuilderManager(BaseManager):
             yield From(sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION))
 
     @coroutine
-    def _write_duration_metric(self, metric, realm):
+    def _write_duration_metric(self, metric, realm, job_status=None):
+        """ :returns: True if the metric was written, otherwise False
+            :rtype: bool
         """
-    :returns: True if the metric was written, otherwise False
-    :rtype: bool
-    """
         try:
             metric_data = yield From(self._orchestrator.get_key(self._metric_key(realm)))
             parsed_metric_data = json.loads(metric_data)
             start_time = parsed_metric_data["start_time"]
-            metric.Observe(
-                time.time() - start_time,
-                labelvalues=[parsed_metric_data.get("executor_name", "unknown")],
-            )
+            executor = parsed_metric_data.get("executor_name", "unknown")
+            if job_status is not None:
+                metric.labels(executor, job_status).observe(time.time() - start_time)
+            else:
+                metric.labels(executor).observe(time.time() - start_time)
         except Exception:
             logger.exception("Could not write metric for realm %s", realm)
 
     def num_workers(self):
-        """
-    The number of workers we're managing locally.
+        """ The number of workers we're managing locally.
 
-    :returns: the number of the workers locally managed
-    :rtype: int
-    """
+            :returns: the number of the workers locally managed
+            :rtype: int
+        """
         return len(self._component_to_job)
 
     @coroutine

@@ -7,6 +7,8 @@ from collections import namedtuple
 import bitmath
 import resumablehashlib
 
+from prometheus_client import Counter, Histogram
+
 from data.registry_model import registry_model
 from data.database import CloseForLongOperation, db_transaction
 from digest import digest_tools
@@ -16,6 +18,16 @@ from util.registry.torrent import PieceHasher
 
 
 logger = logging.getLogger(__name__)
+
+
+chunk_upload_duration = Histogram(
+    "quay_chunk_upload_duration_seconds",
+    "number of seconds for a chunk to be uploaded to the registry",
+    labelnames=["region"],
+)
+pushed_bytes_total = Counter(
+    "quay_registry_pushed_bytes_total", "number of bytes pushed to the registry"
+)
 
 
 BLOB_CONTENT_TYPE = "application/octet-stream"
@@ -116,8 +128,7 @@ def upload_blob(repository_ref, storage, settings, extra_blob_stream_handlers=No
 
 class _BlobUploadManager(object):
     """ Defines a helper class for easily interacting with blob uploads in progress, including
-      handling of database and storage calls.
-  """
+      handling of database and storage calls. """
 
     def __init__(
         self, repository_ref, blob_upload, settings, storage, extra_blob_stream_handlers=None
@@ -137,16 +148,12 @@ class _BlobUploadManager(object):
         """ Returns the unique ID for the blob upload. """
         return self.blob_upload.upload_id
 
-    def upload_chunk(self, app_config, input_fp, start_offset=0, length=-1, metric_queue=None):
+    def upload_chunk(self, app_config, input_fp, start_offset=0, length=-1):
         """ Uploads a chunk of data found in the given input file-like interface. start_offset and
-        length are optional and should match a range header if any was given.
+            length are optional and should match a range header if any was given.
 
-        If metric_queue is given, the upload time and chunk size are written into the metrics in
-        the queue.
-
-        Returns the total number of bytes uploaded after this upload has completed. Raises
-        a BlobUploadException if the upload failed.
-    """
+            Returns the total number of bytes uploaded after this upload has completed. Raises
+            a BlobUploadException if the upload failed. """
         assert start_offset is not None
         assert length is not None
 
@@ -223,12 +230,8 @@ class _BlobUploadManager(object):
                 raise BlobUploadException(upload_error)
 
             # Update the chunk upload time and push bytes metrics.
-            if metric_queue is not None:
-                metric_queue.chunk_upload_time.Observe(
-                    time.time() - start_time, labelvalues=[length_written, list(location_set)[0]]
-                )
-
-                metric_queue.push_byte_count.Inc(length_written)
+            chunk_upload_duration.labels(list(location_set)[0]).observe(time.time() - start_time)
+            pushed_bytes_total.inc(length_written)
 
         # Ensure we have not gone beyond the max layer size.
         new_blob_bytes = self.blob_upload.byte_count + length_written
@@ -284,12 +287,11 @@ class _BlobUploadManager(object):
 
     def commit_to_blob(self, app_config, expected_digest=None):
         """ Commits the blob upload to a blob under the repository. The resulting blob will be marked
-        to not be GCed for some period of time (as configured by `committed_blob_expiration`).
+            to not be GCed for some period of time (as configured by `committed_blob_expiration`).
 
-        If expected_digest is specified, the content digest of the data uploaded for the blob is
-        compared to that given and, if it does not match, a BlobDigestMismatchException is
-        raised. The digest given must be of type `Digest` and not a string.
-    """
+            If expected_digest is specified, the content digest of the data uploaded for the blob is
+            compared to that given and, if it does not match, a BlobDigestMismatchException is
+            raised. The digest given must be of type `Digest` and not a string. """
         # Compare the content digest.
         if expected_digest is not None:
             self._validate_digest(expected_digest)
@@ -320,9 +322,7 @@ class _BlobUploadManager(object):
         return blob
 
     def _validate_digest(self, expected_digest):
-        """
-    Verifies that the digest's SHA matches that of the uploaded data.
-    """
+        """ Verifies that the digest's SHA matches that of the uploaded data. """
         computed_digest = digest_tools.sha256_digest_from_hashlib(self.blob_upload.sha_state)
         if not digest_tools.digests_equal(computed_digest, expected_digest):
             logger.error(
@@ -334,12 +334,9 @@ class _BlobUploadManager(object):
             raise BlobDigestMismatchException()
 
     def _finalize_blob_storage(self, app_config):
-        """
-    When an upload is successful, this ends the uploading process from the
-    storage's perspective.
+        """ When an upload is successful, this ends the uploading process from the storage's perspective.
 
-    Returns True if the blob already existed.
-    """
+            Returns True if the blob already existed. """
         computed_digest = digest_tools.sha256_digest_from_hashlib(self.blob_upload.sha_state)
         final_blob_location = digest_tools.content_path(computed_digest)
 

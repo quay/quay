@@ -31,7 +31,7 @@ from jwkest.jwk import RSAKey
 
 import endpoints.decorated  # required for side effect
 
-from app import app, storage, instance_keys, get_app_url, metric_queue
+from app import app, storage, instance_keys, get_app_url
 from data.database import close_db_filter, configure, DerivedStorageForImage, QueueItem, Image
 from data import model
 from digest.checksums import compute_simple
@@ -2455,7 +2455,7 @@ class V2LoginTests(
         encoded = response.json()["token"]
         header = "Bearer " + encoded
 
-        payload = decode_bearer_header(header, instance_keys, app.config, metric_queue=metric_queue)
+        payload = decode_bearer_header(header, instance_keys, app.config)
         self.assertIsNotNone(payload)
 
         if scope is None:

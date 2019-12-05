@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting tag backfill worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.tagbackfillworker 2>&1
-
-echo 'Repository tag backfill exited'

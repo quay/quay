@@ -1,10 +1,24 @@
-import time
-import jwt
 import logging
+import time
+
+from functools import wraps
+
+import jwt
+
+from prometheus_client import Counter
 
 from util.security import jwtutil
 
+
 logger = logging.getLogger(__name__)
+
+
+bearer_token_decoded = Counter(
+    "bearer_token_decoded_total",
+    "number of times a bearer token has been validated",
+    labelnames=["success"],
+)
+
 
 ANONYMOUS_SUB = "(anonymous)"
 ALGORITHM = "RS256"
@@ -23,11 +37,10 @@ class InvalidBearerTokenException(Exception):
     pass
 
 
-def decode_bearer_header(bearer_header, instance_keys, config, metric_queue=None):
+def decode_bearer_header(bearer_header, instance_keys, config):
     """ decode_bearer_header decodes the given bearer header that contains an encoded JWT with both
       a Key ID as well as the signed JWT and returns the decoded and validated JWT. On any error,
-      raises an InvalidBearerTokenException with the reason for failure.
-  """
+      raises an InvalidBearerTokenException with the reason for failure. """
     # Extract the jwt token from the header
     match = jwtutil.TOKEN_REGEX.match(bearer_header)
     if match is None:
@@ -35,14 +48,36 @@ def decode_bearer_header(bearer_header, instance_keys, config, metric_queue=None
 
     encoded_jwt = match.group(1)
     logger.debug("encoded JWT: %s", encoded_jwt)
-    return decode_bearer_token(encoded_jwt, instance_keys, config, metric_queue=metric_queue)
+    return decode_bearer_token(encoded_jwt, instance_keys, config)
 
 
-def decode_bearer_token(bearer_token, instance_keys, config, metric_queue=None):
+def observe_decode():
+    """
+  Decorates `decode_bearer_tokens` to record a metric into Prometheus such that any exceptions
+  raised get recorded as a failure and the return of a payload is considered a success.
+  """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                rv = func(*args, **kwargs)
+            except Exception as e:
+                bearer_token_decoded.labels(False).inc()
+                raise e
+            bearer_token_decoded.labels(True).inc()
+            return rv
+
+        return wrapper
+
+    return decorator
+
+
+@observe_decode()
+def decode_bearer_token(bearer_token, instance_keys, config):
     """ decode_bearer_token decodes the given bearer token that contains both a Key ID as well as the
       encoded JWT and returns the decoded and validated JWT. On any error, raises an
-      InvalidBearerTokenException with the reason for failure.
-  """
+      InvalidBearerTokenException with the reason for failure. """
     # Decode the key ID.
     try:
         headers = jwt.get_unverified_header(bearer_token)
@@ -58,9 +93,6 @@ def decode_bearer_token(bearer_token, instance_keys, config, metric_queue=None):
     # Find the matching public key.
     public_key = instance_keys.get_service_key_public_key(kid)
     if public_key is None:
-        if metric_queue is not None:
-            metric_queue.invalid_instance_key_count.Inc(labelvalues=[kid])
-
         logger.error(
             "Could not find requested service key %s with encoded JWT: %s", kid, bearer_token
         )

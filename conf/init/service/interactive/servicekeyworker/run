@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting service key worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.servicekeyworker.servicekeyworker 2>&1
-
-echo 'Service key worker exited'

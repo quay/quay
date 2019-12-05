@@ -5,19 +5,17 @@ from functools import wraps
 from cnr.exception import Forbidden
 from flask import Blueprint
 
-from app import metric_queue
 from auth.permissions import (
     AdministerRepositoryPermission,
     ReadRepositoryPermission,
     ModifyRepositoryPermission,
 )
 from endpoints.appr.decorators import require_repo_permission
-from util.metrics.metricqueue import time_blueprint
+from util.metrics.prometheus import timed_blueprint
 
 
-appr_bp = Blueprint("appr", __name__)
-time_blueprint(appr_bp, metric_queue)
 logger = logging.getLogger(__name__)
+appr_bp = timed_blueprint(Blueprint("appr", __name__))
 
 
 def _raise_method(repository, scopes):

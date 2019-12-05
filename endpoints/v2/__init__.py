@@ -10,7 +10,7 @@ from semantic_version import Spec
 
 import features
 
-from app import app, metric_queue, get_app_url
+from app import app, get_app_url
 from auth.auth_context import get_authenticated_context
 from auth.permissions import (
     ReadRepositoryPermission,
@@ -29,14 +29,13 @@ from endpoints.v2.errors import (
     ReadOnlyMode,
 )
 from util.http import abort
-from util.metrics.metricqueue import time_blueprint
+from util.metrics.prometheus import timed_blueprint
 from util.registry.dockerver import docker_version
 from util.pagination import encrypt_page_token, decrypt_page_token
 
-logger = logging.getLogger(__name__)
 
-v2_bp = Blueprint("v2", __name__)
-time_blueprint(v2_bp, metric_queue)
+logger = logging.getLogger(__name__)
+v2_bp = timed_blueprint(Blueprint("v2", __name__))
 
 
 @v2_bp.app_errorhandler(V2RegistryException)

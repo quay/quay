@@ -6,7 +6,7 @@ from functools import wraps
 
 from flask import request, make_response, jsonify, session
 
-from app import userevents, metric_queue, storage, docker_v2_signing_key
+from app import userevents, storage, docker_v2_signing_key
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.credentials import validate_credentials, CredentialKind
 from auth.decorators import process_auth
@@ -29,6 +29,7 @@ from endpoints.decorators import (
     check_repository_state,
     check_readonly,
 )
+from endpoints.metrics import image_pulls, image_pushes
 from endpoints.v1 import v1_bp, check_v1_push_enabled
 from notifications import spawn_notification
 from util.audit import track_and_log
@@ -271,7 +272,6 @@ def create_repository(namespace_name, repo_name):
 @check_readonly
 def update_images(namespace_name, repo_name):
     permission = ModifyRepositoryPermission(namespace_name, repo_name)
-
     if permission.can():
         logger.debug("Looking up repository")
         repository_ref = registry_model.lookup_repository(
@@ -279,12 +279,14 @@ def update_images(namespace_name, repo_name):
         )
         if repository_ref is None:
             # Make sure the repo actually exists.
+            image_pushes.labels("v1", 404).inc()
             abort(404, message="Unknown repository", issue="unknown-repo")
 
         builder = lookup_manifest_builder(
             repository_ref, session.get("manifest_builder"), storage, docker_v2_signing_key
         )
         if builder is None:
+            image_pushes.labels("v1", 400).inc()
             abort(400)
 
         # Generate a job for each notification that has been added to this repo
@@ -297,9 +299,10 @@ def update_images(namespace_name, repo_name):
 
         track_and_log("push_repo", repository_ref)
         spawn_notification(repository_ref, "repo_push", event_data)
-        metric_queue.repository_push.Inc(labelvalues=[namespace_name, repo_name, "v1", True])
+        image_pushes.labels("v1", 204).inc()
         return make_response("Updated", 204)
 
+    image_pushes.labels("v1", 403).inc()
     abort(403)
 
 
@@ -318,6 +321,7 @@ def get_repository_images(namespace_name, repo_name):
     if permission.can() or (repository_ref and repository_ref.is_public):
         # We can't rely on permissions to tell us if a repo exists anymore
         if repository_ref is None:
+            image_pulls.labels("v1", "tag", 404).inc()
             abort(404, message="Unknown repository", issue="unknown-repo")
 
         logger.debug("Building repository image response")
@@ -327,9 +331,10 @@ def get_repository_images(namespace_name, repo_name):
         track_and_log(
             "pull_repo", repository_ref, analytics_name="pull_repo_100x", analytics_sample=0.01
         )
-        metric_queue.repository_pull.Inc(labelvalues=[namespace_name, repo_name, "v1", True])
+        image_pulls.labels("v1", "tag", 200).inc()
         return resp
 
+    image_pulls.labels("v1", "tag", 403).inc()
     abort(403)
 
 

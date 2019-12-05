@@ -4,9 +4,11 @@ import traceback
 import fnmatch
 import logging.config
 
+from prometheus_client import Gauge
+
 import features
 
-from app import app, prometheus
+from app import app
 from data import database
 from data.model.repo_mirror import claim_mirror, release_mirror
 from data.logs_model import logs_model
@@ -16,12 +18,15 @@ from data.model.oci.tag import delete_tag, retarget_tag, lookup_alive_tags_shall
 from notifications import spawn_notification
 from util.audit import wrap_repository
 
-
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
 
+
 logger = logging.getLogger(__name__)
-unmirrored_repositories_gauge = prometheus.create_gauge(
-    "unmirrored_repositories", "Number of repositories that need to be scanned."
+
+
+unmirrored_repositories = Gauge(
+    "quay_repository_rows_unmirrored",
+    "number of repositories in the database that have not yet been mirrored",
 )
 
 
@@ -67,7 +72,7 @@ def process_mirrors(skopeo, token=None):
                 logger.exception("Repository Mirror service unavailable")
                 return None
 
-            unmirrored_repositories_gauge.Set(num_remaining)
+            unmirrored_repositories.set(num_remaining)
 
     return next_token
 

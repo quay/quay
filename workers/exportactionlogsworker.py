@@ -15,9 +15,10 @@ from app import app, export_action_logs_queue, storage as app_storage, get_app_u
 from endpoints.api import format_date
 from data.logs_model import logs_model
 from data.logs_model.interface import LogsIterationTimeout
-from workers.queueworker import QueueWorker, JobException
+from workers.queueworker import QueueWorker
 from util.log import logfile_path
 from util.useremails import send_logs_exported_email
+
 
 logger = logging.getLogger(__name__)
 

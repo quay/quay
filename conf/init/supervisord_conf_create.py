@@ -41,7 +41,7 @@ def default_services():
         "jwtproxy": {"autostart": "true"},
         "memcache": {"autostart": "true"},
         "nginx": {"autostart": "true"},
-        "prometheus-aggregator": {"autostart": "true"},
+        "pushgateway": {"autostart": "true"},
         "servicekey": {"autostart": "true"},
         "repomirrorworker": {"autostart": "false"},
     }
