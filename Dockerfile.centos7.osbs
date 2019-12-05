@@ -1,7 +1,9 @@
 FROM centos:7
 LABEL maintainer "thomasmckay@redhat.com"
 
-ENV PYTHON_VERSION=2.7 \
+ENV OS=linux \
+    ARCH=amd64 \
+    PYTHON_VERSION=2.7 \
     PATH=$HOME/.local/bin/:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8 \
@@ -76,13 +78,18 @@ RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
 
 # TODO: Build jwtproxy in dist-git
 #       https://jira.coreos.com/browse/QUAY-1315
-RUN curl -fsSL -o /usr/local/bin/jwtproxy https://github.com/coreos/jwtproxy/releases/download/v0.0.3/jwtproxy-linux-x64 && \
+ENV JWTPROXY_VERSION=0.0.3
+RUN curl -fsSL -o /usr/local/bin/jwtproxy "https://github.com/coreos/jwtproxy/releases/download/v${JWTPROXY_VERSION}/jwtproxy-${OS}-${ARCH}" && \
     chmod +x /usr/local/bin/jwtproxy
 
-# TODO: Build prometheus-aggregator in dist-git
+# TODO: Build pushgateway in dist-git
 #       https://jira.coreos.com/browse/QUAY-1324
-RUN curl -fsSL -o /usr/local/bin/prometheus-aggregator https://github.com/coreos/prometheus-aggregator/releases/download/v0.0.1-alpha/prometheus-aggregator &&\
-    chmod +x /usr/local/bin/prometheus-aggregator
+ENV PUSHGATEWAY_VERSION=1.0.0
+RUN curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" | \
+    tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" && \
+    mv "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway && \
+    rm -rf "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}" && \
+    chmod +x /usr/local/bin/pushgateway
 
 # Update local copy of AWS IP Ranges.
 RUN curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json
@@ -105,7 +112,7 @@ RUN UNINSTALL_PKGS="\
     yum clean all && \
     rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache
 
-EXPOSE 8080 8443 7443
+EXPOSE 8080 8443 7443 9091
 
 RUN chgrp -R 0 $QUAYDIR && \
     chmod -R g=u $QUAYDIR
