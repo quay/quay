@@ -67,11 +67,15 @@ class ThreadPusher(threading.Thread):
                     job=self._app.config.get("PROMETHEUS_NAMESPACE", "quay"),
                     registry=REGISTRY,
                 )
+                logger.debug("pushed registry to pushgateway at %s", agg_url)
             except urllib2.URLError:
                 # There are many scenarios when the gateway might not be running.
                 # These could be testing scenarios or simply processes racing to start.
                 # Rather than try to guess all of them, keep it simple and let it fail.
-                pass
+                if os.getenv("DEBUGLOG", "false").lower() == "true":
+                    logger.exception("failed to push registry to pushgateway at %s", agg_url)
+                else:
+                    pass
 
 
 def timed_blueprint(bp):
