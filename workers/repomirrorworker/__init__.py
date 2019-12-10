@@ -11,6 +11,7 @@ import features
 from app import app
 from data import database
 from data.model.repo_mirror import claim_mirror, release_mirror
+from data.model.user import retrieve_robot_token
 from data.logs_model import logs_model
 from data.registry_model import registry_model
 from data.database import RepoMirrorStatus
@@ -179,7 +180,7 @@ def perform_mirror(skopeo, mirror):
                     src_username=username,
                     src_password=password,
                     dest_username=mirror.internal_robot.username,
-                    dest_password=mirror.internal_robot.email,
+                    dest_password=retrieve_robot_token(mirror.internal_robot),
                     proxy=mirror.external_registry_config.get("proxy", {}),
                     verbose_logs=verbose_logs,
                 )
