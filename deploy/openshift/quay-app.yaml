@@ -249,9 +249,3 @@ parameters:
   - name: IMAGE_PULL_POLICY
     value: "IfNotPresent"
     displayName: image pull policy
-  # - name:
-  #   value: ""
-  #   displayName:
-
-
-
