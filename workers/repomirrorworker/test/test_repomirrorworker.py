@@ -8,6 +8,7 @@ from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from data.registry_model import registry_model
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
+from data.model.user import retrieve_robot_token
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 
 from workers.repomirrorworker import delete_obsolete_tags
@@ -91,7 +92,8 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 u"docker://registry.example.com/namespace/repository:latest",
                 u"docker://localhost:5000/mirror/repo:latest",
             ],
@@ -147,7 +149,8 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 u"docker://registry.example.com/namespace/repository:latest",
                 u"docker://localhost:5000/mirror/repo:latest",
             ],
@@ -202,7 +205,8 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 u"docker://registry.example.com/namespace/repository:latest",
                 u"docker://localhost:5000/mirror/repo:latest",
             ],
@@ -263,7 +267,8 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 u"docker://registry.example.com/namespace/repository:created",
                 u"docker://localhost:5000/mirror/repo:created",
             ],
@@ -276,7 +281,8 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 u"docker://registry.example.com/namespace/repository:updated",
                 u"docker://localhost:5000/mirror/repo:updated",
             ],
@@ -289,7 +295,8 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 u"docker://registry.example.com/namespace/repository:zzerror",
                 u"docker://localhost:5000/mirror/repo:zzerror",
             ],
@@ -369,7 +376,8 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 u"docker://registry.example.com/namespace/repository:latest",
                 u"docker://config_server_hostname/mirror/repo:latest",
             ],
@@ -431,7 +439,8 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                "%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 "--src-creds",
                 u"`rm -rf /`",
                 u"'docker://& rm -rf /;/namespace/repository:latest'",
@@ -492,7 +501,8 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                u"%s:%s" % (mirror.internal_robot.username, mirror.internal_robot.email),
+                u"%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 "--src-creds",
                 u'`rm -rf /`:""$PATH\\"',
                 u"'docker://& rm -rf /;/namespace/repository:latest'",
