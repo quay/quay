@@ -1,5 +1,6 @@
 import logging
 import os
+import socket
 import sys
 import threading
 import time
@@ -31,7 +32,11 @@ def process_grouping_key():
     """ Implements a grouping key based on the last argument used to run the current process.
         https://github.com/prometheus/client_python#exporting-to-a-pushgateway
     """
-    return {"instance": "{0}:{1}".format(sys.argv[-1], os.getpid())}
+    return {
+        "host": socket.gethostname(),
+        "process_name": argv[-1],
+        "pid": str(os.getpid()),
+    }
 
 
 class PrometheusPlugin(object):
@@ -79,13 +84,21 @@ class ThreadPusher(threading.Thread):
                     registry=REGISTRY,
                     grouping_key=process_grouping_key(),
                 )
-                logger.debug("pushed registry to pushgateway at %s", agg_url)
+                logger.debug(
+                    "pushed registry to pushgateway at %s with grouping key %s",
+                    agg_url,
+                    process_grouping_key(),
+                )
             except urllib2.URLError:
                 # There are many scenarios when the gateway might not be running.
                 # These could be testing scenarios or simply processes racing to start.
                 # Rather than try to guess all of them, keep it simple and let it fail.
                 if os.getenv("DEBUGLOG", "false").lower() == "true":
-                    logger.exception("failed to push registry to pushgateway at %s", agg_url)
+                    logger.exception(
+                        "failed to push registry to pushgateway at %s with grouping key %s",
+                        agg_url,
+                        process_grouping_key(),
+                    )
                 else:
                     pass
 
