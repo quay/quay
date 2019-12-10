@@ -1,8 +1,11 @@
 import logging
 import os
+import sys
 import threading
 import time
 import urllib2
+
+from cachetools.func import lru_cache
 
 from flask import g, request
 from prometheus_client import push_to_gateway, REGISTRY, Histogram
@@ -21,6 +24,14 @@ request_duration = Histogram(
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
+
+
+@lru_cache(maxsize=1)
+def process_grouping_key():
+    """ Implements a grouping key based on the last argument used to run the current process.
+        https://github.com/prometheus/client_python#exporting-to-a-pushgateway
+    """
+    return {"instance": "{0}:{1}".format(sys.argv[-1], os.getpid())}
 
 
 class PrometheusPlugin(object):
@@ -66,6 +77,7 @@ class ThreadPusher(threading.Thread):
                     agg_url,
                     job=self._app.config.get("PROMETHEUS_NAMESPACE", "quay"),
                     registry=REGISTRY,
+                    grouping_key=process_grouping_key(),
                 )
                 logger.debug("pushed registry to pushgateway at %s", agg_url)
             except urllib2.URLError:
