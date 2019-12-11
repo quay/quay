@@ -1,10 +1,8 @@
-
 /**
  * An element which displays a box to search for an entity (org, user, robot, team). This control
  * allows for filtering of the entities found and whether to allow selection by e-mail.
  */
 angular.module('quay').directive('entitySearch', function () {
-  var number = 0;
   var directiveDefinitionObject = {
     priority: 0,
     templateUrl: '/static/directives/entity-search.html',
