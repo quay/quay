@@ -34,7 +34,7 @@ def process_grouping_key():
     """
     return {
         "host": socket.gethostname(),
-        "process_name": sys.argv[-1],
+        "process_name": os.path.basename(sys.argv[-1]),
         "pid": str(os.getpid()),
     }
 
