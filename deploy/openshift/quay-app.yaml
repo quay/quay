@@ -49,6 +49,8 @@ objects:
   kind: Service
   metadata:
     name: quay-clusterip-service
+    labels:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
   spec:
     type: ClusterIP
     ports:
@@ -56,6 +58,10 @@ objects:
         name: clusterip
         port: ${{CLUSTERIP_SERVICE_PORT}}
         targetPort: ${{CLUSTERIP_SERVICE_TARGET_PORT}}
+      - protocol: TCP
+        name: metrics
+        port: ${{CLUSTERIP_METRICS_SERVICE_PORT}}
+        targetPort: ${{CLUSTERIP_METRICS_SERVICE_TARGET_PORT}}
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: v1
@@ -165,6 +171,12 @@ parameters:
   - name: CLUSTERIP_SERVICE_TARGET_PORT
     value: "8443"
     displayName: clusterip service target port
+  - name: CLUSTERIP_METRICS_SERVICE_PORT
+    value: "9091"
+    displayName: clusterip metrics port
+  - name: CLUSTERIP_METRICS_SERVICE_TARGET_PORT
+    value: "9091"
+    displayName: clusterip metrics target port
   - name: QUAY_APP_COMPONENT_LABEL_KEY
     value: "quay-component"
     displayName: quay app selector label
