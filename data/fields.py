@@ -99,9 +99,10 @@ class LazyEncryptedValue(object):
         self.encrypted_value = encrypted_value
         self._field = field
 
-    def decrypt(self):
+    def decrypt(self, encrypter=None):
         """ Decrypts the value. """
-        return self._field.model._meta.encrypter.decrypt_value(self.encrypted_value)
+        encrypter = encrypter or self._field.model._meta.encrypter
+        return encrypter.decrypt_value(self.encrypted_value)
 
     def matches(self, unencrypted_value):
         """ Returns whether the value of this field matches the unencrypted_value. """
