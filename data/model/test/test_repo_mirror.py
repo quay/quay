@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from jsonschema import ValidationError
+import json
+import pytest
 
-from data.database import RepoMirrorConfig, RepoMirrorStatus, User
+from data.database import RepoMirrorConfig, RepoMirrorStatus, User, RepoMirrorRuleType
 from data import model
 from data.model.repo_mirror import (
     create_mirroring_rule,
@@ -10,7 +12,14 @@ from data.model.repo_mirror import (
     update_sync_status_to_cancel,
     MAX_SYNC_RETRIES,
     release_mirror,
+    claim_mirror,
+    release_mirror,
+    expire_mirror,
+    change_external_registry_config,
+    set_mirroring_robot,
+    validate_rule,
 )
+from util.names import format_robot_username
 
 from test.fixtures import *
 
@@ -52,6 +61,94 @@ def disable_existing_mirrors():
     for mirror in mirrors:
         mirror.is_enabled = False
         mirror.save()
+
+
+def test_claim_mirror(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    config = claim_mirror(mirror)
+
+    assert config is not None
+
+    config = claim_mirror(mirror)
+
+    assert config is None
+
+
+def test_release_mirror_fail(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    config = release_mirror(mirror, RepoMirrorStatus.FAIL)
+
+    assert config.sync_retries_remaining == MAX_SYNC_RETRIES - 1
+
+
+def test_release_mirror_success(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    config = release_mirror(mirror, RepoMirrorStatus.SUCCESS)
+
+    assert config.sync_retries_remaining == MAX_SYNC_RETRIES
+
+
+def test_release_mirror_claimed(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    claim_mirror(mirror)
+    config = release_mirror(mirror, RepoMirrorStatus.FAIL)
+
+    assert config is None
+
+
+def test_expire_mirror(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    config = expire_mirror(mirror)
+
+    assert config.sync_retries_remaining == MAX_SYNC_RETRIES
+
+
+def test_expire_mirror_claimed(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    claim_mirror(mirror)
+    config = expire_mirror(mirror)
+
+    assert config is None
+
+
+def test_change_external_registry_config(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    updates = {"verify_tls": True, "proxy": {"https_proxy": "some_value", "no_proxy": "no_value",}}
+    config = change_external_registry_config(repo, updates)
+
+    assert json.dumps(config.external_registry_config) == json.dumps(updates)
+
+
+def test_set_mirroring_robot(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    set_mirroring_robot(repo, mirror.internal_robot)
+    updated_mirror = RepoMirrorConfig.get_by_id(mirror.id)
+
+    assert updated_mirror.internal_robot == mirror.internal_robot
+
+
+def test_set_mirroring_robot_invalid(initialized_db):
+    disable_existing_mirrors()
+    mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    mirror.internal_robot.username = format_robot_username("different", "robot")
+    with pytest.raises(model.DataModelException):
+        set_mirroring_robot(repo, mirror.internal_robot)
+
+
+def test_validate_rule_invalid(initialized_db):
+    with pytest.raises(ValidationError):
+        validate_rule(None, None)
+
+    with pytest.raises(ValidationError):
+        validate_rule(RepoMirrorRuleType.TAG_GLOB_CSV, None)
 
 
 def test_eligible_oldest_first(initialized_db):
