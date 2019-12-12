@@ -147,7 +147,7 @@ class PreOCIModel(RepositoryDataInterface):
         # in the returned results.
         star_set = set()
         if username:
-            starred_repos = model.repository.get_user_starred_repositories(user)
+            starred_repos = model.repository.get_user_starred_repositories(user, repo_kind)
             star_set = {starred.id for starred in starred_repos}
 
         return (
