@@ -7,6 +7,8 @@ QUAYPATH = os.getenv("QUAYPATH", ".")
 QUAYDIR = os.getenv("QUAYDIR", "/")
 QUAYCONF_DIR = os.getenv("QUAYCONF", os.path.join(QUAYDIR, QUAYPATH, "conf"))
 
+QUAY_LOGGING = os.getenv("QUAY_LOGGING", "stdout")  # or "syslog"
+
 QUAY_SERVICES = os.getenv("QUAY_SERVICES", [])
 QUAY_OVERRIDE_SERVICES = os.getenv("QUAY_OVERRIDE_SERVICES", [])
 
@@ -47,10 +49,10 @@ def default_services():
     }
 
 
-def generate_supervisord_config(filename, config):
+def generate_supervisord_config(filename, config, logdriver):
     with open(filename + ".jnj") as f:
         template = jinja2.Template(f.read())
-    rendered = template.render(config=config)
+    rendered = template.render(config=config, logdriver=logdriver)
 
     with open(filename, "w") as f:
         f.write(rendered)
@@ -82,4 +84,6 @@ if __name__ == "__main__":
     config = default_services()
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
-    generate_supervisord_config(os.path.join(QUAYCONF_DIR, "supervisord.conf"), config)
+    generate_supervisord_config(
+        os.path.join(QUAYCONF_DIR, "supervisord.conf"), config, QUAY_LOGGING,
+    )

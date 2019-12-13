@@ -14,10 +14,14 @@ supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 [eventlistener:stdout]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
+{%- if logdriver == "syslog" %}
+command = supervisor_logging
+{% else %}
 command = supervisor_stdout
+result_handler = supervisor_stdout:event_handler
+{% endif -%}
 buffer_size = 1024
 events = PROCESS_LOG
-result_handler = supervisor_stdout:event_handler
 
 ;;; Run batch scripts
 [program:blobuploadcleanupworker]
@@ -25,10 +29,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.blobuploadcleanupworker.blobuploadcleanupworker
 autostart = {{ config['blobuploadcleanupworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -37,10 +37,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.buildlogsarchiver.buildlogsarchiver
 autostart = {{ config['buildlogsarchiver']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -49,10 +45,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m buildman.builder
 autostart = {{ config['builder']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -61,10 +53,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.chunkcleanupworker
 autostart = {{ config['chunkcleanupworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -73,10 +61,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.expiredappspecifictokenworker
 autostart = {{ config['expiredappspecifictokenworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -85,10 +69,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.exportactionlogsworker
 autostart = {{ config['exportactionlogsworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -97,10 +77,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.gc.gcworker
 autostart = {{ config['gcworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -109,10 +85,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.globalpromstats.globalpromstats
 autostart = {{ config['globalpromstats']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -121,10 +93,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.labelbackfillworker
 autostart = {{ config['labelbackfillworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -133,10 +101,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.logrotateworker
 autostart = {{ config['logrotateworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -145,10 +109,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.namespacegcworker
 autostart = {{ config['namespacegcworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -157,10 +117,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.notificationworker.notificationworker
 autostart = {{ config['notificationworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -169,10 +125,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.queuecleanupworker
 autostart = {{ config['queuecleanupworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -181,10 +133,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.repositoryactioncounter
 autostart = {{ config['repositoryactioncounter']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -193,10 +141,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.security_notification_worker
 autostart = {{ config['security_notification_worker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -205,10 +149,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.securityworker.securityworker
 autostart = {{ config['securityworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -217,10 +157,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.storagereplication
 autostart = {{ config['storagereplication']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -229,10 +165,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.tagbackfillworker
 autostart = {{ config['tagbackfillworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -241,10 +173,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.teamsyncworker.teamsyncworker
 autostart = {{ config['teamsyncworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -252,10 +180,6 @@ stderr_events_enabled = true
 [program:dnsmasq]
 command=/usr/sbin/dnsmasq --no-daemon --user=root --listen-address=127.0.0.1 --port=8053
 autostart = {{ config['dnsmasq']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -265,10 +189,6 @@ environment=
   DB_CONNECTION_POOLING=%(ENV_DB_CONNECTION_POOLING_REGISTRY)s
 command=nice -n 10 gunicorn -c %(ENV_QUAYCONF)s/gunicorn_registry.py registry:application
 autostart = {{ config['gunicorn-registry']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -277,10 +197,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=gunicorn -c %(ENV_QUAYCONF)s/gunicorn_secscan.py secscan:application
 autostart = {{ config['gunicorn-secscan']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -289,10 +205,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=nice -n 10 gunicorn -c %(ENV_QUAYCONF)s/gunicorn_verbs.py verbs:application
 autostart = {{ config['gunicorn-verbs']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -301,30 +213,18 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=gunicorn -c %(ENV_QUAYCONF)s/gunicorn_web.py web:application
 autostart = {{ config['gunicorn-web']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
 [program:jwtproxy]
 command=/usr/local/bin/jwtproxy --config %(ENV_QUAYCONF)s/jwtproxy_conf.yaml
 autostart = {{ config['jwtproxy']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
 [program:memcache]
 command=memcached -u memcached -m 64 -l 127.0.0.1 -p 18080
 autostart = {{ config['memcache']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -333,20 +233,12 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=nginx -c %(ENV_QUAYCONF)s/nginx/nginx.conf
 autostart = {{ config['nginx']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
 [program:pushgateway]
 command=/usr/local/bin/pushgateway
 autostart = {{ config['pushgateway']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -355,10 +247,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.servicekeyworker.servicekeyworker
 autostart = {{ config['servicekey']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 
@@ -367,10 +255,6 @@ environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m workers.repomirrorworker.repomirrorworker
 autostart = {{ config['repomirrorworker']['autostart'] }}
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stdout
-stderr_logfile_maxbytes=0
 stdout_events_enabled = true
 stderr_events_enabled = true
 # EOF NO NEWLINE

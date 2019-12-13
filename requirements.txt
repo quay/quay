@@ -169,6 +169,7 @@ sshpubkeys==3.1.0
 stevedore==1.31.0
 stringscore==0.1.0
 stripe==2.36.2
+supervisor-logging==0.0.9
 supervisor-stdout==0.1.1
 supervisor==4.0.4
 tldextract==2.2.1
