@@ -1297,7 +1297,7 @@ def populate_database(minimal=False, with_storage=False):
         if not to_count:
             break
 
-        model.repositoryactioncount.count_repository_actions(to_count)
+        model.repositoryactioncount.count_repository_actions(to_count, datetime.utcnow().day)
         model.repositoryactioncount.update_repository_score(to_count)
 
 
