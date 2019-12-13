@@ -28,7 +28,8 @@ from data.database import (
     IntegerField,
     JSONField,
 )
-from data.fields import EnumField as ClientEnumField, CharField, EncryptedCharField
+from data.fields import EnumField as ClientEnumField, CharField, EncryptedCharField, DecryptedValue
+from data.encryption import FieldEncrypter, DecryptionFailureException
 
 import logging
 
@@ -86,12 +87,48 @@ def _iterate(model_class, clause):
 
 def upgrade(tables, tester, progress_reporter):
     op = ProgressWrapper(original_op, progress_reporter)
+    from app import app
 
     logger.info("Migrating to external_reference from existing columns")
-
     op.add_column("repomirrorconfig", sa.Column("external_reference", sa.Text(), nullable=True))
 
-    from app import app
+    logger.info("Reencrypting existing columns")
+    if app.config.get("SETUP_COMPLETE", False) and not tester.is_testing():
+        old_key_encrypter = FieldEncrypter(app.config.get("SECRET_KEY"))
+
+        starting_id = 0
+        has_additional = True
+        while has_additional:
+            has_additional = False
+
+            query = RepoMirrorConfig.select().where(RepoMirrorConfig.id >= starting_id).limit(10)
+            for row in query:
+                starting_id = max(starting_id, row.id + 1)
+                has_additional = True
+                logger.debug("Re-encrypting information for row %s", row.id)
+
+                has_changes = False
+                try:
+                    if row.external_registry_username:
+                        row.external_registry_username.decrypt()
+                except DecryptionFailureException:
+                    # Encrypted using the older SECRET_KEY. Migrate it.
+                    decrypted = row.external_registry_username.decrypt(old_key_encrypter)
+                    row.external_registry_username = DecryptedValue(decrypted)
+                    has_changes = True
+
+                try:
+                    if row.external_registry_password:
+                        row.external_registry_password.decrypt()
+                except DecryptionFailureException:
+                    # Encrypted using the older SECRET_KEY. Migrate it.
+                    decrypted = row.external_registry_password.decrypt(old_key_encrypter)
+                    row.external_registry_password = DecryptedValue(decrypted)
+                    has_changes = True
+
+                if has_changes:
+                    logger.debug("Saving re-encrypted information for row %s", row.id)
+                    row.save()
 
     if app.config.get("SETUP_COMPLETE", False) or tester.is_testing():
         for repo_mirror in _iterate(
