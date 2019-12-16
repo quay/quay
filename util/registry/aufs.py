@@ -1,7 +1,7 @@
 import os
 
-AUFS_METADATA = u".wh..wh."
-AUFS_WHITEOUT = u".wh."
+AUFS_METADATA = ".wh..wh."
+AUFS_WHITEOUT = ".wh."
 AUFS_WHITEOUT_PREFIX_LENGTH = len(AUFS_WHITEOUT)
 
 

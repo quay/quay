@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def _raise_unauthorized(repository, scopes):
-    raise StandardError("Unauthorized acces to %s", repository)
+    raise Exception("Unauthorized acces to %s", repository)
 
 
 def _get_reponame_kwargs(*args, **kwargs):

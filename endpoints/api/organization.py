@@ -345,7 +345,7 @@ class OrganizationCollaboratorList(ApiResource):
 
             collaborators[username]["repositories"].append(perm.repository.name)
 
-        return {"collaborators": collaborators.values()}
+        return {"collaborators": list(collaborators.values())}
 
 
 @resource("/v1/organization/<orgname>/members")
@@ -396,7 +396,7 @@ class OrganizationMemberList(ApiResource):
 
                 members_dict[username]["repositories"].append(permission.repository.name)
 
-            return {"members": members_dict.values()}
+            return {"members": list(members_dict.values())}
 
         raise Unauthorized()
 

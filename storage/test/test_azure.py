@@ -4,7 +4,7 @@ import pytest
 import io
 
 from contextlib import contextmanager
-from urlparse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse
 from httmock import urlmatch, HTTMock
 from xml.dom import minidom
 
