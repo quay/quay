@@ -33,7 +33,7 @@ class GzipWrap(object):
             input_buffer = ""
             while input_size < GZIP_BUFFER_SIZE:
                 try:
-                    s = self.input.next()
+                    s = next(self.input)
                     input_buffer += s
                     input_size = input_size + len(s)
                 except StopIteration:

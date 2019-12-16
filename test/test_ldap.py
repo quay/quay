@@ -4,8 +4,8 @@ import ldap
 
 from app import app
 from initdb import setup_database_for_testing, finished_database_for_testing
-from data.users import LDAPUsers
-from data import model
+from .data.users import LDAPUsers
+from .data import model
 from mockldap import MockLdap
 from mock import patch
 from contextlib import contextmanager
@@ -280,97 +280,97 @@ class TestLDAP(unittest.TestCase):
             # Try to login.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "somepass")
             self.assertIsNone(response)
-            self.assertEquals("LDAP Admin dn or password is invalid", err_msg)
+            self.assertEqual("LDAP Admin dn or password is invalid", err_msg)
 
     def test_login(self):
         with mock_ldap() as ldap:
             # Verify we can login.
             (response, _) = ldap.verify_and_link_user("someuser", "somepass")
-            self.assertEquals(response.username, "someuser")
+            self.assertEqual(response.username, "someuser")
             self.assertTrue(model.user.has_user_prompt(response, "confirm_username"))
 
             # Verify we can confirm the user.
             (response, _) = ldap.confirm_existing_user("someuser", "somepass")
-            self.assertEquals(response.username, "someuser")
+            self.assertEqual(response.username, "someuser")
 
     def test_login_empty_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Anonymous binding not allowed")
+            self.assertEqual(err_msg, "Anonymous binding not allowed")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid user")
 
     def test_login_whitespace_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "    ")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Invalid password")
+            self.assertEqual(err_msg, "Invalid password")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "    ")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid user")
 
     def test_login_secondary(self):
         with mock_ldap() as ldap:
             # Verify we can login.
             (response, _) = ldap.verify_and_link_user("secondaryuser", "somepass")
-            self.assertEquals(response.username, "secondaryuser")
+            self.assertEqual(response.username, "secondaryuser")
 
             # Verify we can confirm the user.
             (response, _) = ldap.confirm_existing_user("secondaryuser", "somepass")
-            self.assertEquals(response.username, "secondaryuser")
+            self.assertEqual(response.username, "secondaryuser")
 
     def test_invalid_wildcard(self):
         with mock_ldap() as ldap:
             # Verify we cannot login with a wildcard.
             (response, err_msg) = ldap.verify_and_link_user("some*", "somepass")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Username not found")
+            self.assertEqual(err_msg, "Username not found")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("some*", "somepass")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid user")
 
     def test_invalid_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login with an invalid password.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "invalidpass")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Invalid password")
+            self.assertEqual(err_msg, "Invalid password")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "invalidpass")
             self.assertIsNone(response)
-            self.assertEquals(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid user")
 
     def test_missing_mail(self):
         with mock_ldap() as ldap:
             (response, err_msg) = ldap.get_user("nomail")
             self.assertIsNone(response)
-            self.assertEquals('Missing mail field "mail" in user record', err_msg)
+            self.assertEqual('Missing mail field "mail" in user record', err_msg)
 
     def test_missing_mail_allowed(self):
         with mock_ldap(requires_email=False) as ldap:
             (response, _) = ldap.get_user("nomail")
-            self.assertEquals(response.username, "nomail")
+            self.assertEqual(response.username, "nomail")
 
     def test_confirm_different_username(self):
         with mock_ldap() as ldap:
             # Verify that the user is logged in and their username was adjusted.
             (response, _) = ldap.verify_and_link_user("cool.user", "somepass")
-            self.assertEquals(response.username, "cool_user")
+            self.assertEqual(response.username, "cool_user")
 
             # Verify we can confirm the user's quay username.
             (response, _) = ldap.confirm_existing_user("cool_user", "somepass")
-            self.assertEquals(response.username, "cool_user")
+            self.assertEqual(response.username, "cool_user")
 
             # Verify that we *cannot* confirm the LDAP username.
             (response, _) = ldap.confirm_existing_user("cool.user", "somepass")
@@ -379,11 +379,11 @@ class TestLDAP(unittest.TestCase):
     def test_referral(self):
         with mock_ldap() as ldap:
             (response, _) = ldap.verify_and_link_user("referred", "somepass")
-            self.assertEquals(response.username, "cool_user")
+            self.assertEqual(response.username, "cool_user")
 
             # Verify we can confirm the user's quay username.
             (response, _) = ldap.confirm_existing_user("cool_user", "somepass")
-            self.assertEquals(response.username, "cool_user")
+            self.assertEqual(response.username, "cool_user")
 
     def test_invalid_referral(self):
         with mock_ldap() as ldap:
@@ -393,7 +393,7 @@ class TestLDAP(unittest.TestCase):
     def test_multientry(self):
         with mock_ldap() as ldap:
             (response, _) = ldap.verify_and_link_user("multientry", "somepass")
-            self.assertEquals(response.username, "multientry")
+            self.assertEqual(response.username, "multientry")
 
     def test_login_empty_userdn(self):
         with mock_ldap():
@@ -418,11 +418,11 @@ class TestLDAP(unittest.TestCase):
 
             # Verify we can login.
             (response, _) = ldap.verify_and_link_user("someuser", "somepass")
-            self.assertEquals(response.username, "someuser")
+            self.assertEqual(response.username, "someuser")
 
             # Verify we can confirm the user.
             (response, _) = ldap.confirm_existing_user("someuser", "somepass")
-            self.assertEquals(response.username, "someuser")
+            self.assertEqual(response.username, "someuser")
 
     def test_link_user(self):
         with mock_ldap() as ldap:
@@ -430,16 +430,16 @@ class TestLDAP(unittest.TestCase):
             user, error_message = ldap.link_user("someuser")
             self.assertIsNone(error_message)
             self.assertIsNotNone(user)
-            self.assertEquals("someuser", user.username)
+            self.assertEqual("someuser", user.username)
 
             # Link again. Should return the same user record.
             user_again, _ = ldap.link_user("someuser")
-            self.assertEquals(user_again.id, user.id)
+            self.assertEqual(user_again.id, user.id)
 
             # Confirm someuser.
             result, _ = ldap.confirm_existing_user("someuser", "somepass")
             self.assertIsNotNone(result)
-            self.assertEquals("someuser", result.username)
+            self.assertEqual("someuser", result.username)
             self.assertTrue(model.user.has_user_prompt(user, "confirm_username"))
 
     def test_query(self):
@@ -447,18 +447,18 @@ class TestLDAP(unittest.TestCase):
             # Lookup cool.
             (response, federated_id, error_message) = ldap.query_users("cool")
             self.assertIsNone(error_message)
-            self.assertEquals(1, len(response))
-            self.assertEquals("ldap", federated_id)
+            self.assertEqual(1, len(response))
+            self.assertEqual("ldap", federated_id)
 
             user_info = response[0]
-            self.assertEquals("cool.user", user_info.username)
-            self.assertEquals("foo@bar.com", user_info.email)
+            self.assertEqual("cool.user", user_info.username)
+            self.assertEqual("foo@bar.com", user_info.email)
 
             # Lookup unknown.
             (response, federated_id, error_message) = ldap.query_users("unknown")
             self.assertIsNone(error_message)
-            self.assertEquals(0, len(response))
-            self.assertEquals("ldap", federated_id)
+            self.assertEqual(0, len(response))
+            self.assertEqual("ldap", federated_id)
 
     def test_timeout(self):
         base_dn = ["dc=quay", "dc=io"]
@@ -469,7 +469,7 @@ class TestLDAP(unittest.TestCase):
         email_attr = "mail"
         secondary_user_rdns = ["ou=otheremployees"]
 
-        with self.assertRaisesRegexp(Exception, "Can't contact LDAP server"):
+        with self.assertRaisesRegex(Exception, "Can't contact LDAP server"):
             ldap = LDAPUsers(
                 "ldap://localhost",
                 base_dn,
@@ -492,7 +492,7 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err)
 
             results = list(it)
-            self.assertEquals(2, len(results))
+            self.assertEqual(2, len(results))
 
             first = results[0][0]
             second = results[1][0]
@@ -502,13 +502,13 @@ class TestLDAP(unittest.TestCase):
             else:
                 testy, someuser = second, first
 
-            self.assertEquals("testy", testy.id)
-            self.assertEquals("testy", testy.username)
-            self.assertEquals("bar@baz.com", testy.email)
+            self.assertEqual("testy", testy.id)
+            self.assertEqual("testy", testy.username)
+            self.assertEqual("bar@baz.com", testy.email)
 
-            self.assertEquals("someuser", someuser.id)
-            self.assertEquals("someuser", someuser.username)
-            self.assertEquals("foo@bar.com", someuser.email)
+            self.assertEqual("someuser", someuser.id)
+            self.assertEqual("someuser", someuser.username)
+            self.assertEqual("foo@bar.com", someuser.email)
 
     def test_iterate_group_members_with_pagination(self):
         with mock_ldap() as ldap:
@@ -517,7 +517,7 @@ class TestLDAP(unittest.TestCase):
                 self.assertIsNone(err)
 
                 results = list(it)
-                self.assertEquals(2, len(results))
+                self.assertEqual(2, len(results))
 
                 first = results[0][0]
                 second = results[1][0]
@@ -527,13 +527,13 @@ class TestLDAP(unittest.TestCase):
                 else:
                     testy, someuser = second, first
 
-                self.assertEquals("testy", testy.id)
-                self.assertEquals("testy", testy.username)
-                self.assertEquals("bar@baz.com", testy.email)
+                self.assertEqual("testy", testy.id)
+                self.assertEqual("testy", testy.username)
+                self.assertEqual("bar@baz.com", testy.email)
 
-                self.assertEquals("someuser", someuser.id)
-                self.assertEquals("someuser", someuser.username)
-                self.assertEquals("foo@bar.com", someuser.email)
+                self.assertEqual("someuser", someuser.id)
+                self.assertEqual("someuser", someuser.username)
+                self.assertEqual("foo@bar.com", someuser.email)
 
     def test_check_group_lookup_args(self):
         with mock_ldap() as ldap:
@@ -575,7 +575,7 @@ class TestLDAP(unittest.TestCase):
             # Try to query with invalid credentials.
             (response, err_msg) = ldap.at_least_one_user_exists()
             self.assertFalse(response)
-            self.assertEquals("LDAP Admin dn or password is invalid", err_msg)
+            self.assertEqual("LDAP Admin dn or password is invalid", err_msg)
 
     def test_at_least_one_user_exists_no_users(self):
         base_dn = ["dc=quay", "dc=io"]

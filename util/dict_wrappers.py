@@ -63,10 +63,10 @@ class JSONPathDict(object):
         return self.get(path)
 
     def __iter__(self):
-        return self._object.itervalues()
+        return iter(self._object.values())
 
     def iterkeys(self):
-        return self._object.iterkeys()
+        return iter(self._object.keys())
 
     def get(self, path, not_found_handler=None):
         """ Returns the value found at the given path. Path is a json-path expression. """
@@ -92,4 +92,4 @@ class JSONPathDict(object):
         return match
 
     def keys(self):
-        return self._object.keys()
+        return list(self._object.keys())

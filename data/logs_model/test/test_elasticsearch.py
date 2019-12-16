@@ -14,7 +14,7 @@ from httmock import urlmatch, HTTMock
 from data.model.log import _json_serialize
 from data.logs_model.elastic_logs import ElasticsearchLogs, INDEX_NAME_PREFIX, INDEX_DATE_FORMAT
 from data.logs_model import configure, LogsModelProxy
-from mock_elasticsearch import *
+from .mock_elasticsearch import *
 
 FAKE_ES_HOST = "fakees"
 FAKE_ES_HOST_PATTERN = r"fakees.*"
