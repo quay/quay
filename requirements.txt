@@ -64,7 +64,6 @@ Flask==1.1.1
 funcparserlib==0.3.6
 funcsigs==1.0.2
 furl==2.0.0
-futures==3.3.0
 geoip2==2.9.0
 gevent==1.4.0
 gipc==1.0.1
