@@ -19,8 +19,8 @@ RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
 RUN INSTALL_PKGS="\
-        python27 \
-        python27-python-pip \
+        python36 \
+        python36-python-pip \
         rh-nginx112 rh-nginx112-nginx \
         openldap \
         scl-utils \
@@ -40,7 +40,7 @@ RUN INSTALL_PKGS="\
 
 COPY . .
 
-RUN scl enable python27 "\
+RUN scl enable python36 "\
     pip install --upgrade setuptools pip && \
     pip install -r requirements.txt --no-cache && \
     pip install -r requirements-tests.txt --no-cache && \
@@ -61,8 +61,8 @@ RUN cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
 # 'docutils' is a setup dependency of botocore required by s3transfer. It's under
 # GPLv3, and so is manually removed.
 RUN rm -Rf /opt/rh/python27/root/usr/lib/python2.7/site-packages/docutils && \
-    scl enable python27 "pip freeze" | grep -v '^-e' | awk -F == '{print $1}' | grep -v docutils > piplist.txt && \
-    scl enable python27 "xargs -a piplist.txt pip --disable-pip-version-check show" > pipinfo.txt && \
+    scl enable python36 "pip freeze" | grep -v '^-e' | awk -F == '{print $1}' | grep -v docutils > piplist.txt && \
+    scl enable python36 "xargs -a piplist.txt pip --disable-pip-version-check show" > pipinfo.txt && \
     test -z "$(cat pipinfo.txt | grep GPL | grep -v LGPL)" && \
     rm -f piplist.txt pipinfo.txt
 
