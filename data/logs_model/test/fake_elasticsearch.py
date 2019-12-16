@@ -75,7 +75,7 @@ def fake_elasticsearch(allow_wildcard=True):
     def index_delete(url, request):
         index_name_or_pattern = url.path[1:]
         to_delete = []
-        for index_name in docs.keys():
+        for index_name in list(docs.keys()):
             if not fnmatch.fnmatch(index_name, index_name_or_pattern):
                 continue
 
@@ -94,7 +94,7 @@ def fake_elasticsearch(allow_wildcard=True):
     def index_lookup(url, request):
         index_name_or_pattern = url.path[1:]
         found = {}
-        for index_name in docs.keys():
+        for index_name in list(docs.keys()):
             if not fnmatch.fnmatch(index_name, index_name_or_pattern):
                 continue
 
@@ -115,7 +115,7 @@ def fake_elasticsearch(allow_wildcard=True):
         found = []
         found_index = False
 
-        for index_name in docs.keys():
+        for index_name in list(docs.keys()):
             if not allow_wildcard and index_name_or_pattern.find("*") >= 0:
                 break
 
@@ -128,8 +128,8 @@ def fake_elasticsearch(allow_wildcard=True):
                 if current_query is None:
                     return True
 
-                for filter_type, filter_params in current_query.iteritems():
-                    for field_name, filter_props in filter_params.iteritems():
+                for filter_type, filter_params in current_query.items():
+                    for field_name, filter_props in filter_params.items():
                         if filter_type == "range":
                             lt = transform(filter_props["lt"], field_name)
                             gte = transform(filter_props["gte"], field_name)
@@ -244,7 +244,7 @@ def fake_elasticsearch(allow_wildcard=True):
                     source = item["_source"]
                     key = ""
                     for sort_config in sort:
-                        for sort_key, direction in sort_config.iteritems():
+                        for sort_key, direction in sort_config.items():
                             assert direction == "desc"
                             sort_key = sort_key.replace(".keyword", "")
                             key += str(transform(source[sort_key], sort_key))
@@ -258,11 +258,11 @@ def fake_elasticsearch(allow_wildcard=True):
         if search_after:
             sort_fields = []
             for sort_config in sort:
-                if isinstance(sort_config, unicode):
+                if isinstance(sort_config, str):
                     sort_fields.append(sort_config)
                     continue
 
-                for sort_key, _ in sort_config.iteritems():
+                for sort_key, _ in sort_config.items():
                     sort_key = sort_key.replace(".keyword", "")
                     sort_fields.append(sort_key)
 
@@ -304,7 +304,7 @@ def fake_elasticsearch(allow_wildcard=True):
         def _by_field(agg_field_params, results):
             aggregated_by_field = defaultdict(list)
 
-            for agg_means, agg_means_params in agg_field_params.iteritems():
+            for agg_means, agg_means_params in agg_field_params.items():
                 if agg_means == "terms":
                     field_name = agg_means_params["field"]
                     for result in results:
@@ -324,7 +324,7 @@ def fake_elasticsearch(allow_wildcard=True):
 
             # Invoke the aggregation recursively.
             buckets = []
-            for field_value, field_results in aggregated_by_field.iteritems():
+            for field_value, field_results in aggregated_by_field.items():
                 aggregated = _aggregate(agg_field_params, field_results)
                 if isinstance(aggregated, list):
                     aggregated = {"doc_count": len(aggregated)}
@@ -335,12 +335,12 @@ def fake_elasticsearch(allow_wildcard=True):
             return {"buckets": buckets}
 
         def _aggregate(query_config, results):
-            agg_params = query_config.get(u"aggs")
+            agg_params = query_config.get("aggs")
             if not agg_params:
                 return results
 
             by_field_name = {}
-            for agg_field_name, agg_field_params in agg_params.iteritems():
+            for agg_field_name, agg_field_params in agg_params.items():
                 by_field_name[agg_field_name] = _by_field(agg_field_params, results)
 
             return by_field_name
@@ -364,10 +364,10 @@ def fake_elasticsearch(allow_wildcard=True):
 
     @urlmatch(netloc=FAKE_ES_HOST)
     def catchall_handler(url, request):
-        print "Unsupported URL: %s %s" % (
+        print("Unsupported URL: %s %s" % (
             request.method,
             url,
-        )
+        ))
         return {"status_code": 501}
 
     handlers = [

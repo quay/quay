@@ -2,7 +2,7 @@
 
 import json
 import time
-import urlparse
+import urllib.parse
 
 import jwt
 import pytest
@@ -166,8 +166,8 @@ def discovery_handler(discovery_content):
 def authorize_handler(discovery_content):
     @urlmatch(netloc=r"fakeoidc", path=r"/authorize")
     def handler(_, request):
-        parsed = urlparse.urlparse(request.url)
-        params = urlparse.parse_qs(parsed.query)
+        parsed = urllib.parse.urlparse(request.url)
+        params = urllib.parse.parse_qs(parsed.query)
         return json.dumps(
             {"authorized": True, "scope": params["scope"][0], "state": params["state"][0]}
         )
@@ -179,7 +179,7 @@ def authorize_handler(discovery_content):
 def token_handler(oidc_service, id_token, valid_code):
     @urlmatch(netloc=r"fakeoidc", path=r"/token")
     def handler(_, request):
-        params = urlparse.parse_qs(request.body)
+        params = urllib.parse.parse_qs(request.body)
         if params.get("redirect_uri")[0] != "http://localhost/oauth2/someoidc/callback":
             return {"status_code": 400, "content": "Invalid redirect URI"}
 
@@ -294,7 +294,7 @@ def test_public_config(oidc_service, discovery_handler):
         assert oidc_service.get_public_config()["CLIENT_ID"] == "foo"
 
         assert "CLIENT_SECRET" not in oidc_service.get_public_config()
-        assert "bar" not in oidc_service.get_public_config().values()
+        assert "bar" not in list(oidc_service.get_public_config().values())
 
 
 def test_auth_url(oidc_service, discovery_handler, http_client, authorize_handler):
