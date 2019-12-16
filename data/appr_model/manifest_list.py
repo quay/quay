@@ -49,7 +49,7 @@ def create_manifestlistmanifest(manifestlist, manifest_ids, manifest_list_json, 
     From a manifestlist, manifests, and the manifest list blob, create if doesn't exist the
     manfiestlistmanifest for each manifest.
     """
-    for pos in xrange(len(manifest_ids)):
+    for pos in range(len(manifest_ids)):
         manifest_id = manifest_ids[pos]
         manifest_json = manifest_list_json[pos]
         get_or_create_manifestlistmanifest(

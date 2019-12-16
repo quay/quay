@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 TYPE_CONVERTER = {
     truthy_bool: "boolean",
     str: "string",
-    basestring: "string",
+    str: "string",
     reqparse.text_type: "string",
     int: "integer",
 }
@@ -67,7 +67,7 @@ def render_page_template(name, route_data=None, js_bundle_name=DEFAULT_JS_BUNDLE
         external_scripts=external_scripts,
         config_set=frontend_visible_config(app.config),
         kubernetes_namespace=IS_KUBERNETES and get_k8s_namespace(),
-        **kwargs
+        **kwargs,
     )
 
     resp = make_response(contents)

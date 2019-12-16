@@ -16,7 +16,7 @@ from collections import namedtuple
 from hashlib import sha1
 from random import SystemRandom
 from time import time
-from urlparse import urlparse
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from cachetools.func import lru_cache

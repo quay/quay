@@ -76,14 +76,14 @@ class BuildComponent(BaseComponent):
     @trollius.coroutine
     def onJoin(self, details):
         logger.debug("Registering methods and listeners for component %s", self.builder_realm)
-        yield From(self.register(self._on_ready, u"io.quay.buildworker.ready"))
+        yield From(self.register(self._on_ready, "io.quay.buildworker.ready"))
         yield From(
-            self.register(self._determine_cache_tag, u"io.quay.buildworker.determinecachetag")
+            self.register(self._determine_cache_tag, "io.quay.buildworker.determinecachetag")
         )
-        yield From(self.register(self._ping, u"io.quay.buildworker.ping"))
-        yield From(self.register(self._on_log_message, u"io.quay.builder.logmessagesynchronously"))
+        yield From(self.register(self._ping, "io.quay.buildworker.ping"))
+        yield From(self.register(self._on_log_message, "io.quay.builder.logmessagesynchronously"))
 
-        yield From(self.subscribe(self._on_heartbeat, u"io.quay.builder.heartbeat"))
+        yield From(self.subscribe(self._on_heartbeat, "io.quay.builder.heartbeat"))
 
         yield From(self._set_status(ComponentStatus.WAITING))
 

@@ -40,7 +40,7 @@ def test_readonly_failover(stop_on, exception):
     """
     counter = Counter()
     arg_sets = []
-    for i in xrange(stop_on):
+    for i in range(stop_on):
         should_raise = exception if exception is not None and i == stop_on - 1 else None
         arg_sets.append(((counter,), {"should_raise": should_raise}))
 

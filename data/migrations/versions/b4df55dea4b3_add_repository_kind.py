@@ -28,7 +28,7 @@ def upgrade(op, tables, tester):
     )
 
     op.add_column(
-        u"repository", sa.Column("kind_id", sa.Integer(), nullable=False, server_default="1")
+        "repository", sa.Column("kind_id", sa.Integer(), nullable=False, server_default="1")
     )
     op.create_index("repository_kind_id", "repository", ["kind_id"], unique=False)
     op.create_foreign_key(
@@ -49,5 +49,5 @@ def downgrade(op, tables, tester):
         op.f("fk_repository_kind_id_repositorykind"), "repository", type_="foreignkey"
     )
     op.drop_index("repository_kind_id", table_name="repository")
-    op.drop_column(u"repository", "kind_id")
+    op.drop_column("repository", "kind_id")
     op.drop_table("repositorykind")

@@ -62,7 +62,7 @@ def log_prototype_action(action_kind, orgname, prototype, **kwargs):
         "role": prototype.role.name,
     }
 
-    for key, value in kwargs.items():
+    for key, value in list(kwargs.items()):
         log_params[key] = value
 
     if prototype.delegate_user:

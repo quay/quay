@@ -395,7 +395,7 @@ def _db_from_url(
         db_kwargs.pop("stale_timeout", None)
         db_kwargs.pop("max_connections", None)
 
-    for key, value in _EXTRA_ARGS.get(parsed_url.drivername, {}).iteritems():
+    for key, value in _EXTRA_ARGS.get(parsed_url.drivername, {}).items():
         if key not in db_kwargs:
             db_kwargs[key] = value
 

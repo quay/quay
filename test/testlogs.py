@@ -177,9 +177,9 @@ class TestBuildLogs(RedisBuildLogs):
 
     @staticmethod
     def _compute_total_completion(statuses, total_images):
-        percentage_with_sizes = float(len(statuses.values())) / total_images
-        sent_bytes = sum([status[u"current"] for status in statuses.values()])
-        total_bytes = sum([status[u"total"] for status in statuses.values()])
+        percentage_with_sizes = float(len(list(statuses.values()))) / total_images
+        sent_bytes = sum([status["current"] for status in list(statuses.values())])
+        total_bytes = sum([status["total"] for status in list(statuses.values())])
         return float(sent_bytes) / total_bytes * percentage_with_sizes
 
     @staticmethod

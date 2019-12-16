@@ -24,6 +24,7 @@ from data.database import (
     db_count_estimator,
     db,
 )
+from functools import reduce
 
 logger = logging.getLogger(__name__)
 

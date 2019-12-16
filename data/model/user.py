@@ -166,7 +166,7 @@ def create_user_noverify(
 
         return new_user
     except Exception as ex:
-        raise DataModelException(ex.message)
+        raise DataModelException(ex)
 
 
 def increase_maximum_build_count(user, maximum_queued_builds_count):
@@ -354,7 +354,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
             )
             return created, token
     except Exception as ex:
-        raise DataModelException(ex.message)
+        raise DataModelException(ex)
 
 
 def get_or_create_robot_metadata(robot):
@@ -1346,4 +1346,4 @@ class LoginWrappedDBUser(UserMixin):
         return self.db_user() and self.db_user().verified
 
     def get_id(self):
-        return unicode(self._uuid)
+        return str(self._uuid)

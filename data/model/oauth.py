@@ -281,12 +281,12 @@ def create_application(org, name, application_uri, redirect_uri, **kwargs):
         application_uri=application_uri,
         redirect_uri=redirect_uri,
         secure_client_secret=DecryptedValue(client_secret),
-        **kwargs
+        **kwargs,
     )
 
 
 def validate_access_token(access_token):
-    assert isinstance(access_token, basestring)
+    assert isinstance(access_token, str)
     token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
     if not token_name:
         return None

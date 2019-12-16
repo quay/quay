@@ -160,7 +160,7 @@ class LDAPUsers(FederatedUsers):
         return u"(&{0}{1})".format(query, user_filter)
 
     def _ldap_user_search_with_rdn(self, conn, username_or_email, user_search_dn, suffix=""):
-        query = u"(|({0}={2}{3})({1}={2}{3}))".format(
+        query = "(|({0}={2}{3})({1}={2}{3}))".format(
             self._uid_attr, self._email_attr, escape_filter_chars(username_or_email), suffix
         )
         query = self._add_user_filter(query)
@@ -174,7 +174,7 @@ class LDAPUsers(FederatedUsers):
                 return (None, "Failed to follow referral when looking up username")
 
             try:
-                subquery = u"(%s=%s)" % (self._uid_attr, username_or_email)
+                subquery = "(%s=%s)" % (self._uid_attr, username_or_email)
                 subquery = self._add_user_filter(subquery)
                 return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery), None)
             except ldap.LDAPError:

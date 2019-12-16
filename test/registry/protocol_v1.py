@@ -1,6 +1,6 @@
 import json
 
-from cStringIO import StringIO
+from io import StringIO
 from enum import Enum, unique
 
 from digest.checksums import compute_simple, compute_tarsum

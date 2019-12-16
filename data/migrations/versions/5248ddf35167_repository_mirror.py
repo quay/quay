@@ -117,7 +117,7 @@ def upgrade(op, tables, tester):
     )
 
     op.add_column(
-        u"repository", sa.Column("state", sa.Integer(), nullable=False, server_default="0")
+        "repository", sa.Column("state", sa.Integer(), nullable=False, server_default="0")
     )
     op.create_index("repository_state", "repository", ["state"], unique=False)
 

@@ -1,6 +1,6 @@
 import logging
 import logging.config
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import re
 import os
 import hashlib
@@ -113,9 +113,9 @@ def format_local_name(url):
 def _download_url(url):
     for index in range(0, MAX_RETRY_COUNT):
         try:
-            response = urllib2.urlopen(url)
+            response = urllib.request.urlopen(url)
             return response.read()
-        except urllib2.URLError:
+        except urllib.error.URLError:
             logger.exception(
                 "Got exception when trying to download URL %s (try #%s)", url, index + 1
             )
@@ -141,7 +141,7 @@ if __name__ == "__main__":
                 filename = os.path.basename(url).split("?")[0]
 
             path = os.path.join(local_directory, filename)
-            print "Downloading %s to %s" % (url, path)
+            print("Downloading %s to %s" % (url, path))
             contents = _download_url("https://" + url)
 
             with open(path, "wb") as local_file:
