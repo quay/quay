@@ -68,6 +68,21 @@ def test_list_starred_repos(client):
         assert "public/publicrepo" not in repos
 
 
+def test_list_starred_app_repos(client, initialized_db):
+    with client_with_identity("devtable", client) as cl:
+        params = {"starred": "true", "repo_kind": "application"}
+
+        devtable = model.user.get_user("devtable")
+        repo = model.repository.create_repository(
+            "devtable", "someappr", devtable, repo_kind="application"
+        )
+        model.repository.star_repository(model.user.get_user("devtable"), repo)
+
+        response = conduct_api_call(cl, RepositoryList, "GET", params).json
+        repos = {r["namespace"] + "/" + r["name"] for r in response["repositories"]}
+        assert "devtable/someappr" in repos
+
+
 def test_list_repositories_last_modified(client):
     with client_with_identity("devtable", client) as cl:
         params = {
