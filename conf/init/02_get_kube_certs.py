@@ -63,7 +63,7 @@ def main():
         service_token = f.read()
 
     secret_data = _lookup_secret(service_token).get("data", {})
-    cert_keys = filter(is_extra_cert, secret_data.keys())
+    cert_keys = list(filter(is_extra_cert, list(secret_data.keys())))
 
     for cert_key in cert_keys:
         if not os.path.exists(KUBE_EXTRA_CA_CERTDIR):
@@ -71,7 +71,7 @@ def main():
 
         cert_value = base64.b64decode(secret_data[cert_key])
         cert_filename = cert_key.replace(EXTRA_CA_DIRECTORY_PREFIX, "")
-        print "Found an extra cert %s in config-secret, copying to kube ca dir"
+        print("Found an extra cert %s in config-secret, copying to kube ca dir")
 
         with open(os.path.join(KUBE_EXTRA_CA_CERTDIR, cert_filename), "w") as f:
             f.write(cert_value)

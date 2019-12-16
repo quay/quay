@@ -2,7 +2,7 @@ import logging
 import os
 
 from logging.config import fileConfig
-from urllib import unquote
+from urllib.parse import unquote
 
 from alembic import context
 from alembic.script.revision import ResolutionError
@@ -79,7 +79,7 @@ def get_progress_reporter():
 
         labels = {
             _process_label_key(k): v
-            for k, v in os.environ.items()
+            for k, v in list(os.environ.items())
             if k.startswith(PROM_LABEL_PREFIX)
         }
 
@@ -124,7 +124,7 @@ def run_migrations_online():
         and not "GENMIGRATE" in os.environ
         and not "DB_URI" in os.environ
     ):
-        print "Skipping Sqlite migration!"
+        print("Skipping Sqlite migration!")
         return
 
     progress_reporter = get_progress_reporter()

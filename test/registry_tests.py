@@ -14,7 +14,7 @@ import time
 import unittest
 import uuid
 
-from cStringIO import StringIO
+from io import StringIO
 from tempfile import NamedTemporaryFile
 
 import bencode
@@ -32,8 +32,8 @@ from jwkest.jwk import RSAKey
 import endpoints.decorated  # required for side effect
 
 from app import app, storage, instance_keys, get_app_url
-from data.database import close_db_filter, configure, DerivedStorageForImage, QueueItem, Image
-from data import model
+from .data.database import close_db_filter, configure, DerivedStorageForImage, QueueItem, Image
+from .data import model
 from digest.checksums import compute_simple
 from endpoints.api import api_bp
 from endpoints.csrf import generate_csrf_token
@@ -329,7 +329,7 @@ class RegistryTestCaseMixin(LiveServerTestCase):
             return
 
         tar = tarfile.open(fileobj=StringIO(response.content))
-        self.assertEquals(tar.extractfile("contents").read(), image_data["contents"])
+        self.assertEqual(tar.extractfile("contents").read(), image_data["contents"])
 
 
 class BaseRegistryMixin(object):
@@ -412,7 +412,7 @@ class BaseRegistryMixin(object):
             return response
 
         if response.status_code != expected_code:
-            print response.text
+            print(response.text)
 
         if "www-authenticate" in response.headers:
             self.signature = response.headers["www-authenticate"]
@@ -420,7 +420,7 @@ class BaseRegistryMixin(object):
         if "X-Docker-Token" in response.headers:
             self.docker_token = response.headers["X-Docker-Token"]
 
-        self.assertEquals(response.status_code, expected_code)
+        self.assertEqual(response.status_code, expected_code)
         return response
 
     def _get_default_images(self):
@@ -539,7 +539,7 @@ class V1RegistryPullMixin(V1RegistryMixin):
 
         # GET /v1/repositories/{namespace}/{repository}/tags
         tags_result = json.loads(self.conduct("GET", prefix + "tags", auth="sig").text)
-        self.assertEquals(1, len(tags_result.values()))
+        self.assertEqual(1, len(list(tags_result.values())))
 
         tag_image_id = tags_result["latest"]
         if not munge_shas:
@@ -556,7 +556,7 @@ class V1RegistryPullMixin(V1RegistryMixin):
             self.conduct("GET", image_prefix + "ancestry", auth="sig")
 
             response = self.conduct("GET", image_prefix + "json", auth="sig")
-            self.assertEquals(image_id, response.json()["id"])
+            self.assertEqual(image_id, response.json()["id"])
 
             # Ensure we can HEAD the image layer.
             self.conduct("HEAD", image_prefix + "layer", auth="sig")
@@ -597,7 +597,7 @@ class V2RegistryMixin(BaseRegistryMixin):
 
     def v2_ping(self):
         response = self.conduct("GET", "/v2/", expected_code=200 if self.jwt else 401, auth="jwt")
-        self.assertEquals(response.headers["Docker-Distribution-API-Version"], "registry/2.0")
+        self.assertEqual(response.headers["Docker-Distribution-API-Version"], "registry/2.0")
 
     def do_auth(self, username, password, namespace, repository, expected_code=200, scopes=[]):
         auth = None
@@ -762,8 +762,8 @@ class V2RegistryPushMixin(V2RegistryMixin):
                         auth="jwt",
                         headers=dict(host=self.get_server_url()),
                     )
-                    self.assertEquals(response.headers["Docker-Upload-UUID"], upload_uuid)
-                    self.assertEquals(response.headers["Range"], "bytes=0-%s" % end_byte)
+                    self.assertEqual(response.headers["Docker-Upload-UUID"], upload_uuid)
+                    self.assertEqual(response.headers["Range"], "bytes=0-%s" % end_byte)
 
             if cancel:
                 self.conduct(
@@ -786,15 +786,15 @@ class V2RegistryPushMixin(V2RegistryMixin):
                 "PUT", location, params=dict(digest=checksum), expected_code=201, auth="jwt"
             )
 
-            self.assertEquals(response.headers["Docker-Content-Digest"], checksum)
+            self.assertEqual(response.headers["Docker-Content-Digest"], checksum)
             checksums[image_id] = checksum
 
             # Ensure the layer exists now.
             response = self.conduct(
                 "HEAD", "/v2/%s/blobs/%s" % (repo_name, checksum), expected_code=200, auth="jwt"
             )
-            self.assertEquals(response.headers["Docker-Content-Digest"], checksum)
-            self.assertEquals(response.headers["Content-Length"], str(len(layer_bytes)))
+            self.assertEqual(response.headers["Docker-Content-Digest"], checksum)
+            self.assertEqual(response.headers["Content-Length"], str(len(layer_bytes)))
 
         for tag_name in tag_names:
             manifest = manifests[tag_name]
@@ -904,9 +904,9 @@ class V1RegistryLoginMixin(object):
 
         response = self.conduct("POST", "/v1/users/", json_data=data, expected_code=400)
         if expect_success:
-            self.assertEquals(response.text, '"Username or email already exists"')
+            self.assertEqual(response.text, '"Username or email already exists"')
         else:
-            self.assertNotEquals(response.text, '"Username or email already exists"')
+            self.assertNotEqual(response.text, '"Username or email already exists"')
 
 
 class V2RegistryLoginMixin(object):
@@ -1124,7 +1124,7 @@ class RegistryTestsMixin(object):
             {
                 "id": "latestid",
                 "contents": "The latest image",
-                "unicode": u"the Pawe\xc5\x82 Kami\xc5\x84ski image",
+                "unicode": "the Pawe\xc5\x82 Kami\xc5\x84ski image",
                 "parent": "baseid",
             },
         ]
@@ -1162,11 +1162,11 @@ class RegistryTestsMixin(object):
         result = self.conduct("GET", "/api/v1/repository/public/newrepo/logs")
         logs = result.json()["logs"]
 
-        self.assertEquals(1, len(logs))
-        self.assertEquals("push_repo", logs[0]["kind"])
-        self.assertEquals("public", logs[0]["metadata"]["namespace"])
-        self.assertEquals("newrepo", logs[0]["metadata"]["repo"])
-        self.assertEquals("public", logs[0]["performer"]["name"])
+        self.assertEqual(1, len(logs))
+        self.assertEqual("push_repo", logs[0]["kind"])
+        self.assertEqual("public", logs[0]["metadata"]["namespace"])
+        self.assertEqual("newrepo", logs[0]["metadata"]["repo"])
+        self.assertEqual("public", logs[0]["performer"]["name"])
 
         # Pull the repository.
         self.do_pull("public", "newrepo", "public", "password")
@@ -1175,9 +1175,9 @@ class RegistryTestsMixin(object):
         result = self.conduct("GET", "/api/v1/repository/public/newrepo/logs")
         logs = result.json()["logs"]
 
-        self.assertEquals(2, len(logs))
-        self.assertEquals("pull_repo", logs[0]["kind"])
-        self.assertEquals("public", logs[0]["performer"]["name"])
+        self.assertEqual(2, len(logs))
+        self.assertEqual("pull_repo", logs[0]["kind"])
+        self.assertEqual("public", logs[0]["performer"]["name"])
 
     def test_push_pull_logging_byrobot(self):
         # Lookup the robot's password.
@@ -1192,11 +1192,11 @@ class RegistryTestsMixin(object):
         result = self.conduct("GET", "/api/v1/repository/buynlarge/newrepo/logs")
         logs = result.json()["logs"]
 
-        self.assertEquals(1, len(logs))
-        self.assertEquals("push_repo", logs[0]["kind"])
-        self.assertEquals("buynlarge", logs[0]["metadata"]["namespace"])
-        self.assertEquals("newrepo", logs[0]["metadata"]["repo"])
-        self.assertEquals("buynlarge+ownerbot", logs[0]["performer"]["name"])
+        self.assertEqual(1, len(logs))
+        self.assertEqual("push_repo", logs[0]["kind"])
+        self.assertEqual("buynlarge", logs[0]["metadata"]["namespace"])
+        self.assertEqual("newrepo", logs[0]["metadata"]["repo"])
+        self.assertEqual("buynlarge+ownerbot", logs[0]["performer"]["name"])
 
         # Pull the repository.
         self.do_pull("buynlarge", "newrepo", "buynlarge+ownerbot", robot_token)
@@ -1205,11 +1205,11 @@ class RegistryTestsMixin(object):
         result = self.conduct("GET", "/api/v1/repository/buynlarge/newrepo/logs")
         logs = result.json()["logs"]
 
-        self.assertEquals(2, len(logs))
-        self.assertEquals("pull_repo", logs[0]["kind"])
-        self.assertEquals("buynlarge", logs[0]["metadata"]["namespace"])
-        self.assertEquals("newrepo", logs[0]["metadata"]["repo"])
-        self.assertEquals("buynlarge+ownerbot", logs[0]["performer"]["name"])
+        self.assertEqual(2, len(logs))
+        self.assertEqual("pull_repo", logs[0]["kind"])
+        self.assertEqual("buynlarge", logs[0]["metadata"]["namespace"])
+        self.assertEqual("newrepo", logs[0]["metadata"]["repo"])
+        self.assertEqual("buynlarge+ownerbot", logs[0]["performer"]["name"])
 
     def test_pull_publicrepo_anonymous(self):
         # Add a new repository under the public user, so we have a real repository to pull.
@@ -1392,7 +1392,7 @@ class RegistryTestsMixin(object):
                 {
                     "id": "latestid",
                     "contents": "The latest image",
-                    "unicode": u"the Pawe\xc5\x82 Kami\xc5\x84ski image",
+                    "unicode": "the Pawe\xc5\x82 Kami\xc5\x84ski image",
                     "parent": "baseid",
                 },
             ]
@@ -1420,22 +1420,22 @@ class V1RegistryTests(
         # Public
         resp = self.conduct("GET", "/v1/search", params=dict(q="public"))
         data = resp.json()
-        self.assertEquals(1, data["num_results"])
-        self.assertEquals(1, len(data["results"]))
+        self.assertEqual(1, data["num_results"])
+        self.assertEqual(1, len(data["results"]))
 
         # Simple (not logged in, no results)
         resp = self.conduct("GET", "/v1/search", params=dict(q="simple"))
         data = resp.json()
-        self.assertEquals(0, data["num_results"])
-        self.assertEquals(0, len(data["results"]))
+        self.assertEqual(0, data["num_results"])
+        self.assertEqual(0, len(data["results"]))
 
         # Simple (logged in)
         resp = self.conduct(
             "GET", "/v1/search", params=dict(q="simple"), auth=("devtable", "password")
         )
         data = resp.json()
-        self.assertEquals(1, data["num_results"])
-        self.assertEquals(1, len(data["results"]))
+        self.assertEqual(1, data["num_results"])
+        self.assertEqual(1, len(data["results"]))
 
     def test_search_pagination(self):
         # Check for the first page.
@@ -1443,12 +1443,12 @@ class V1RegistryTests(
             "GET", "/v1/search", params=dict(q="s", n="1"), auth=("devtable", "password")
         )
         data = resp.json()
-        self.assertEquals("s", data["query"])
+        self.assertEqual("s", data["query"])
 
-        self.assertEquals(1, data["num_results"])
-        self.assertEquals(1, len(data["results"]))
+        self.assertEqual(1, data["num_results"])
+        self.assertEqual(1, len(data["results"]))
 
-        self.assertEquals(1, data["page"])
+        self.assertEqual(1, data["page"])
         self.assertTrue(data["num_pages"] > 1)
 
         # Check for the followup page.
@@ -1456,12 +1456,12 @@ class V1RegistryTests(
             "GET", "/v1/search", params=dict(q="s", n="1", page=2), auth=("devtable", "password")
         )
         data = resp.json()
-        self.assertEquals("s", data["query"])
+        self.assertEqual("s", data["query"])
 
-        self.assertEquals(1, data["num_results"])
-        self.assertEquals(1, len(data["results"]))
+        self.assertEqual(1, data["num_results"])
+        self.assertEqual(1, len(data["results"]))
 
-        self.assertEquals(2, data["page"])
+        self.assertEqual(2, data["page"])
 
     def test_users(self):
         # Not logged in, should 404.
@@ -1477,7 +1477,7 @@ class V1RegistryTests(
         )
 
         # Because Docker
-        self.assertEquals('"Username or email already exists"', resp.text)
+        self.assertEqual('"Username or email already exists"', resp.text)
 
     def test_push_reponame_with_slashes(self):
         # Attempt to add a repository name with slashes. This should fail as we do not support it.
@@ -1601,7 +1601,7 @@ class V2RegistryTests(
             encountered.update(set(result_json["tags"]))
 
         # Ensure we found all the results.
-        self.assertEquals(encountered, set(tag_names))
+        self.assertEqual(encountered, set(tag_names))
 
     def test_numeric_tag(self):
         # Push a new repository.
@@ -1635,15 +1635,15 @@ class V2RegistryTests(
         labels = self.conduct(
             "GET", "/api/v1/repository/devtable/newrepo/manifest/" + digest + "/labels"
         ).json()
-        self.assertEquals(3, len(labels["labels"]))
+        self.assertEqual(3, len(labels["labels"]))
 
-        self.assertEquals("manifest", labels["labels"][0]["source_type"])
-        self.assertEquals("manifest", labels["labels"][1]["source_type"])
-        self.assertEquals("manifest", labels["labels"][2]["source_type"])
+        self.assertEqual("manifest", labels["labels"][0]["source_type"])
+        self.assertEqual("manifest", labels["labels"][1]["source_type"])
+        self.assertEqual("manifest", labels["labels"][2]["source_type"])
 
-        self.assertEquals("text/plain", labels["labels"][0]["media_type"])
-        self.assertEquals("text/plain", labels["labels"][1]["media_type"])
-        self.assertEquals("text/plain", labels["labels"][2]["media_type"])
+        self.assertEqual("text/plain", labels["labels"][0]["media_type"])
+        self.assertEqual("text/plain", labels["labels"][1]["media_type"])
+        self.assertEqual("text/plain", labels["labels"][2]["media_type"])
 
     def test_json_labels(self):
         # Push a new repo with the latest tag.
@@ -1662,7 +1662,7 @@ class V2RegistryTests(
         labels = self.conduct(
             "GET", "/api/v1/repository/devtable/newrepo/manifest/" + digest + "/labels"
         ).json()
-        self.assertEquals(2, len(labels["labels"]))
+        self.assertEqual(2, len(labels["labels"]))
 
         media_types = set([label["media_type"] for label in labels["labels"]])
 
@@ -1686,7 +1686,7 @@ class V2RegistryTests(
         labels = self.conduct(
             "GET", "/api/v1/repository/devtable/newrepo/manifest/" + digest + "/labels"
         ).json()
-        self.assertEquals(2, len(labels["labels"]))
+        self.assertEqual(2, len(labels["labels"]))
 
         media_types = set([label["media_type"] for label in labels["labels"]])
 
@@ -1828,7 +1828,7 @@ class V2RegistryTests(
             headers={"Content-Type": "application/json"},
             auth="jwt",
         )
-        self.assertEquals("MANIFEST_INVALID", response.json()["errors"][0]["code"])
+        self.assertEqual("MANIFEST_INVALID", response.json()["errors"][0]["code"])
 
     def test_delete_manifest(self):
         # Push a new repo with the latest tag.
@@ -1937,8 +1937,8 @@ class V2RegistryTests(
 
         # Pull the image back and verify the contents.
         blobs, _ = self.do_pull("devtable", "newrepo", "devtable", "password", images=images)
-        self.assertEquals(len(blobs.items()), 1)
-        self.assertEquals(blobs.items()[0][1], contents)
+        self.assertEqual(len(list(blobs.items())), 1)
+        self.assertEqual(list(blobs.items())[0][1], contents)
 
     def test_partial_upload_way_below_5mb(self):
         size = 1024
@@ -1954,8 +1954,8 @@ class V2RegistryTests(
 
         # Pull the image back and verify the contents.
         blobs, _ = self.do_pull("devtable", "newrepo", "devtable", "password", images=images)
-        self.assertEquals(len(blobs.items()), 1)
-        self.assertEquals(blobs.items()[0][1], contents)
+        self.assertEqual(len(list(blobs.items())), 1)
+        self.assertEqual(list(blobs.items())[0][1], contents)
 
     def test_partial_upload_resend_below_5mb(self):
         size = 150
@@ -1972,8 +1972,8 @@ class V2RegistryTests(
 
         # Pull the image back and verify the contents.
         blobs, _ = self.do_pull("devtable", "newrepo", "devtable", "password", images=images)
-        self.assertEquals(len(blobs.items()), 1)
-        self.assertEquals(blobs.items()[0][1], contents)
+        self.assertEqual(len(list(blobs.items())), 1)
+        self.assertEqual(list(blobs.items())[0][1], contents)
 
     def test_partial_upload_try_resend_with_gap(self):
         size = 150
@@ -2048,7 +2048,7 @@ class V2RegistryTests(
             "GET", "/v2/devtable/newrepo/tags/list", auth="jwt", expected_code=200
         )
         data = json.loads(response.text)
-        self.assertEquals(data["name"], "devtable/newrepo")
+        self.assertEqual(data["name"], "devtable/newrepo")
         self.assertIn("latest", data["tags"])
         self.assertIn("foobar", data["tags"])
 
@@ -2058,8 +2058,8 @@ class V2RegistryTests(
         )
 
         data = json.loads(response.text)
-        self.assertEquals(data["name"], "devtable/newrepo")
-        self.assertEquals(len(data["tags"]), 1)
+        self.assertEqual(data["name"], "devtable/newrepo")
+        self.assertEqual(len(data["tags"]), 1)
 
         # Try to get tags before a repo exists.
         response = self.conduct(
@@ -2088,7 +2088,7 @@ class V2RegistryTests(
 
             response = self.conduct("GET", "/v2/_catalog", params=dict(n=2), auth="jwt")
             data = response.json()
-            self.assertEquals(len(data["repositories"]), 2)
+            self.assertEqual(len(data["repositories"]), 2)
 
     def test_public_catalog(self):
         # Look for public repositories and ensure all are public.
@@ -2106,7 +2106,7 @@ class V2RegistryTests(
 
             response = self.conduct("GET", "/v2/_catalog", params=dict(n=2), auth="jwt")
             data = response.json()
-            self.assertEquals(len(data["repositories"]), 2)
+            self.assertEqual(len(data["repositories"]), 2)
             all_repos.extend(data["repositories"])
 
             # Ensure we have a next link.
@@ -2123,7 +2123,7 @@ class V2RegistryTests(
                 all_repos.extend(next_data["repositories"])
 
                 self.assertTrue(len(next_data["repositories"]) <= 2)
-                self.assertNotEquals(next_data["repositories"], data["repositories"])
+                self.assertNotEqual(next_data["repositories"], data["repositories"])
                 response = next_response
 
             # Ensure the authed request has the public repository.
@@ -2202,7 +2202,7 @@ class TorrentTestMixin(V2RegistryPullMixin):
             manifest_id="latest",
             images=initial_images,
         )
-        self.assertEquals(1, len(list(blobs.keys())))
+        self.assertEqual(1, len(list(blobs.keys())))
         blobsum = list(blobs.keys())[0]
 
         # Retrieve the torrent for the tag.
@@ -2210,7 +2210,7 @@ class TorrentTestMixin(V2RegistryPullMixin):
         contents = bencode.bdecode(torrent)
 
         # Ensure that there is a webseed.
-        self.assertEquals(contents["url-list"], "http://somefakeurl?goes=here")
+        self.assertEqual(contents["url-list"], "http://somefakeurl?goes=here")
 
         # Ensure there is an announce and some pieces.
         self.assertIsNotNone(contents.get("info", {}).get("pieces"))
@@ -2222,7 +2222,7 @@ class TorrentTestMixin(V2RegistryPullMixin):
         expected = binascii.hexlify(sha.digest())
         found = binascii.hexlify(contents["info"]["pieces"])
 
-        self.assertEquals(expected, found)
+        self.assertEqual(expected, found)
 
 
 class TorrentV1PushTests(
@@ -2330,8 +2330,8 @@ class SquashingTests(RegistryTestCaseMixin, V1RegistryPushMixin, LiveServerTestC
         ]
 
         tar, _ = self.get_squashed_image()
-        self.assertEquals(expected_names, tar.getnames())
-        self.assertEquals(
+        self.assertEqual(expected_names, tar.getnames())
+        self.assertEqual(
             "1.0", tar.extractfile(tar.getmember("%s/VERSION" % expected_image_id)).read()
         )
 
@@ -2339,14 +2339,14 @@ class SquashingTests(RegistryTestCaseMixin, V1RegistryPushMixin, LiveServerTestC
 
         # Ensure the JSON loads and parses.
         result = json.loads(json_data)
-        self.assertEquals(expected_image_id, result["id"])
+        self.assertEqual(expected_image_id, result["id"])
 
         # Ensure that the "image_name" file refers to the latest image, as it is the top layer.
         layer_tar = tarfile.open(
             fileobj=tar.extractfile(tar.getmember("%s/layer.tar" % expected_image_id))
         )
         image_contents = layer_tar.extractfile(layer_tar.getmember("contents")).read()
-        self.assertEquals("the latest image", image_contents)
+        self.assertEqual("the latest image", image_contents)
 
     def test_squashed_torrent(self):
         initial_images = [
@@ -2389,7 +2389,7 @@ class SquashingTests(RegistryTestCaseMixin, V1RegistryPushMixin, LiveServerTestC
         contents = bencode.bdecode(response.content)
 
         # Ensure that there is a webseed.
-        self.assertEquals(contents["url-list"], "http://somefakeurl?goes=here")
+        self.assertEqual(contents["url-list"], "http://somefakeurl?goes=here")
 
         # Ensure there is an announce and some pieces.
         self.assertIsNotNone(contents.get("info", {}).get("pieces"))
@@ -2402,7 +2402,7 @@ class SquashingTests(RegistryTestCaseMixin, V1RegistryPushMixin, LiveServerTestC
         expected = binascii.hexlify(sha.digest())
         found = binascii.hexlify(contents["info"]["pieces"])
 
-        self.assertEquals(expected, found)
+        self.assertEqual(expected, found)
 
 
 class LoginTests(object):
@@ -2491,10 +2491,10 @@ class V2LoginTests(
         self.assertIsNotNone(payload)
 
         if scope is None:
-            self.assertEquals(0, len(payload["access"]))
+            self.assertEqual(0, len(payload["access"]))
         else:
-            self.assertEquals(1, len(payload["access"]))
-            self.assertEquals(payload["access"][0]["actions"], expected_actions)
+            self.assertEqual(1, len(payload["access"]))
+            self.assertEqual(payload["access"][0]["actions"], expected_actions)
 
     def test_nouser_noscope(self):
         self.do_logincheck("", "", expect_success=False, scope=None)

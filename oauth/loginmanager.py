@@ -19,7 +19,7 @@ class OAuthLoginManager(object):
         self.services = []
 
         # Register the endpoints for each of the OAuth login services.
-        for key in config.keys():
+        for key in list(config.keys()):
             # All keys which end in _LOGIN_CONFIG setup a login service.
             if key.endswith("_LOGIN_CONFIG"):
                 if key in CUSTOM_LOGIN_SERVICES:

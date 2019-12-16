@@ -54,7 +54,7 @@ _VERSIONS = {
     "v0": EncryptionVersion("v0", _encrypt_ccm, _decrypt_ccm),
 }
 
-_RESERVED_FIELD_SPACE = len(_SEPARATOR) + max([len(k) for k in _VERSIONS.keys()])
+_RESERVED_FIELD_SPACE = len(_SEPARATOR) + max([len(k) for k in list(_VERSIONS.keys())])
 
 
 class FieldEncrypter(object):

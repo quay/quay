@@ -12,7 +12,7 @@ from Crypto.PublicKey import RSA
 from flask import Flask, jsonify, request, make_response
 
 from app import app
-from data.users import ExternalJWTAuthN
+from .data.users import ExternalJWTAuthN
 from initdb import setup_database_for_testing, finished_database_for_testing
 from test.helpers import liveserver_app
 
@@ -198,7 +198,7 @@ class JWTAuthTestMixin:
     def test_verify_and_link_user(self):
         with fake_jwt(self.emails) as jwt_auth:
             result, error_message = jwt_auth.verify_and_link_user("invaliduser", "foobar")
-            self.assertEquals("Invalid username or password", error_message)
+            self.assertEqual("Invalid username or password", error_message)
             self.assertIsNone(result)
 
             result, _ = jwt_auth.verify_and_link_user("cool.user", "invalidpassword")
@@ -206,11 +206,11 @@ class JWTAuthTestMixin:
 
             result, _ = jwt_auth.verify_and_link_user("cool.user", "password")
             self.assertIsNotNone(result)
-            self.assertEquals("cool_user", result.username)
+            self.assertEqual("cool_user", result.username)
 
             result, _ = jwt_auth.verify_and_link_user("some.neat.user", "foobar")
             self.assertIsNotNone(result)
-            self.assertEquals("some_neat_user", result.username)
+            self.assertEqual("some_neat_user", result.username)
 
     def test_confirm_existing_user(self):
         with fake_jwt(self.emails) as jwt_auth:
@@ -227,7 +227,7 @@ class JWTAuthTestMixin:
 
             result, _ = jwt_auth.confirm_existing_user("cool_user", "password")
             self.assertIsNotNone(result)
-            self.assertEquals("cool_user", result.username)
+            self.assertEqual("cool_user", result.username)
 
             # Fail to confirm the *external* username, which should return nothing.
             result, _ = jwt_auth.confirm_existing_user("some.neat.user", "password")
@@ -236,39 +236,39 @@ class JWTAuthTestMixin:
             # Now confirm the internal username.
             result, _ = jwt_auth.confirm_existing_user("some_neat_user", "foobar")
             self.assertIsNotNone(result)
-            self.assertEquals("some_neat_user", result.username)
+            self.assertEqual("some_neat_user", result.username)
 
     def test_disabled_user_custom_error(self):
         with fake_jwt(self.emails) as jwt_auth:
             result, error_message = jwt_auth.verify_and_link_user("disabled", "password")
             self.assertIsNone(result)
-            self.assertEquals("User is currently disabled", error_message)
+            self.assertEqual("User is currently disabled", error_message)
 
     def test_query(self):
         with fake_jwt(self.emails) as jwt_auth:
             # Lookup `cool`.
             results, identifier, error_message = jwt_auth.query_users("cool")
             self.assertIsNone(error_message)
-            self.assertEquals("jwtauthn", identifier)
-            self.assertEquals(1, len(results))
+            self.assertEqual("jwtauthn", identifier)
+            self.assertEqual(1, len(results))
 
-            self.assertEquals("cool.user", results[0].username)
-            self.assertEquals("user@domain.com" if self.emails else None, results[0].email)
+            self.assertEqual("cool.user", results[0].username)
+            self.assertEqual("user@domain.com" if self.emails else None, results[0].email)
 
             # Lookup `some`.
             results, identifier, error_message = jwt_auth.query_users("some")
             self.assertIsNone(error_message)
-            self.assertEquals("jwtauthn", identifier)
-            self.assertEquals(1, len(results))
+            self.assertEqual("jwtauthn", identifier)
+            self.assertEqual(1, len(results))
 
-            self.assertEquals("some.neat.user", results[0].username)
-            self.assertEquals("neat@domain.com" if self.emails else None, results[0].email)
+            self.assertEqual("some.neat.user", results[0].username)
+            self.assertEqual("neat@domain.com" if self.emails else None, results[0].email)
 
             # Lookup `unknown`.
             results, identifier, error_message = jwt_auth.query_users("unknown")
             self.assertIsNone(error_message)
-            self.assertEquals("jwtauthn", identifier)
-            self.assertEquals(0, len(results))
+            self.assertEqual("jwtauthn", identifier)
+            self.assertEqual(0, len(results))
 
     def test_get_user(self):
         with fake_jwt(self.emails) as jwt_auth:
@@ -277,16 +277,16 @@ class JWTAuthTestMixin:
             self.assertIsNone(error_message)
             self.assertIsNotNone(result)
 
-            self.assertEquals("cool.user", result.username)
-            self.assertEquals("user@domain.com", result.email)
+            self.assertEqual("cool.user", result.username)
+            self.assertEqual("user@domain.com", result.email)
 
             # Lookup some.neat.user.
             result, error_message = jwt_auth.get_user("some.neat.user")
             self.assertIsNone(error_message)
             self.assertIsNotNone(result)
 
-            self.assertEquals("some.neat.user", result.username)
-            self.assertEquals("neat@domain.com", result.email)
+            self.assertEqual("some.neat.user", result.username)
+            self.assertEqual("neat@domain.com", result.email)
 
             # Lookup unknown user.
             result, error_message = jwt_auth.get_user("unknownuser")
@@ -298,16 +298,16 @@ class JWTAuthTestMixin:
             user, error_message = jwt_auth.link_user("cool.user")
             self.assertIsNone(error_message)
             self.assertIsNotNone(user)
-            self.assertEquals("cool_user", user.username)
+            self.assertEqual("cool_user", user.username)
 
             # Link again. Should return the same user record.
             user_again, _ = jwt_auth.link_user("cool.user")
-            self.assertEquals(user_again.id, user.id)
+            self.assertEqual(user_again.id, user.id)
 
             # Confirm cool.user.
             result, _ = jwt_auth.confirm_existing_user("cool_user", "password")
             self.assertIsNotNone(result)
-            self.assertEquals("cool_user", result.username)
+            self.assertEqual("cool_user", result.username)
 
     def test_link_invalid_user(self):
         with fake_jwt(self.emails) as jwt_auth:

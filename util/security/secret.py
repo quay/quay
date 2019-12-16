@@ -23,7 +23,7 @@ def convert_secret_key(config_secret_key):
             pass
 
     if secret_key is None:
-        secret_key = str(bytearray(map(ord, config_secret_key)))
+        secret_key = str(bytearray(list(map(ord, config_secret_key))))
 
     # Otherwise, use the bytes directly.
     assert len(secret_key)

@@ -9,11 +9,11 @@ from threading import Thread
 
 from termcolor import colored
 
-from client import DockerClient, PodmanClient, Command, FileCopy
+from .client import DockerClient, PodmanClient, Command, FileCopy
 
 
 def remove_control_characters(s):
-    return "".join(ch for ch in unicode(s, "utf-8") if unicodedata.category(ch)[0] != "C")
+    return "".join(ch for ch in str(s, "utf-8") if unicodedata.category(ch)[0] != "C")
 
 
 # These tuples are the box&version and the client to use.
@@ -157,8 +157,8 @@ def _run_and_wait(command, error_allowed=False):
     )
 
     if failed:
-        print colored(">>> Command `%s` Failed:" % command, "red")
-        print output
+        print(colored(">>> Command `%s` Failed:" % command, "red"))
+        print(output)
         raise CommandFailedException()
 
     return output
@@ -176,7 +176,7 @@ def scp_to_vagrant(source, destination):
     config = _run_and_wait(["vagrant", "ssh-config"])
     config_lines = config.split("\n")
     params = ["scp"]
-    for i in xrange(len(config_lines)):
+    for i in range(len(config_lines)):
         if "Host default" in config_lines[i]:
             config_i = i + 1
             while config_i < len(config_lines):
@@ -202,7 +202,7 @@ def _run_commands(commands):
             try:
                 last_result = _run_and_wait(["vagrant", "scp", command.source, command.destination])
             except CommandFailedException as e:
-                print colored(">>> Retry FileCopy command without vagrant scp...", "red")
+                print(colored(">>> Retry FileCopy command without vagrant scp...", "red"))
                 # sometimes the vagrant scp fails because of invalid ssh configuration.
                 last_result = scp_to_vagrant(command.source, command.destination)
 
@@ -224,8 +224,8 @@ def _run_box(box, client, registry, ca_cert):
     username = "devtable"
     password = "password"
 
-    print colored(">>> Box: %s" % box, attrs=["bold"])
-    print colored(">>> Starting box", "yellow")
+    print(colored(">>> Box: %s" % box, attrs=["bold"]))
+    print(colored(">>> Starting box", "yellow"))
     _run_and_wait(["vagrant", "destroy", "-f"], error_allowed=True)
     _run_and_wait(["rm", "Vagrantfile"], error_allowed=True)
     _run_and_wait(["vagrant", "init"] + box.split(" "))
@@ -234,44 +234,44 @@ def _run_box(box, client, registry, ca_cert):
     _run_commands(_init_system(box))
 
     if ca_cert:
-        print colored(">>> Setting up runtime with cert " + ca_cert, "yellow")
+        print(colored(">>> Setting up runtime with cert " + ca_cert, "yellow"))
         _run_commands(_load_ca(box, ca_cert))
         _run_commands(client.setup_client(registry, verify_tls=True))
     else:
-        print colored(">>> Setting up runtime with insecure HTTP(S)", "yellow")
+        print(colored(">>> Setting up runtime with insecure HTTP(S)", "yellow"))
         _run_commands(client.setup_client(registry, verify_tls=False))
 
-    print colored(">>> Client version", "cyan")
+    print(colored(">>> Client version", "cyan"))
     runtime_version = _run_commands(client.print_version())
-    print _indent(runtime_version, 4)
+    print(_indent(runtime_version, 4))
 
-    print colored(">>> Populating test image", "yellow")
+    print(colored(">>> Populating test image", "yellow"))
     _run_commands(client.populate_test_image(registry, namespace, repo_name))
 
-    print colored(">>> Testing login", "cyan")
+    print(colored(">>> Testing login", "cyan"))
     _run_commands(client.login(registry, username, password))
 
-    print colored(">>> Testing push", "cyan")
+    print(colored(">>> Testing push", "cyan"))
     _run_commands(client.push(registry, namespace, repo_name))
 
-    print colored(">>> Removing all images", "yellow")
+    print(colored(">>> Removing all images", "yellow"))
     _run_commands(client.pre_pull_cleanup(registry, namespace, repo_name))
 
-    print colored(">>> Testing pull", "cyan")
+    print(colored(">>> Testing pull", "cyan"))
     _run_commands(client.pull(registry, namespace, repo_name))
 
-    print colored(">>> Verifying", "cyan")
+    print(colored(">>> Verifying", "cyan"))
     _run_commands(client.verify(registry, namespace, repo_name))
 
-    print colored(">>> Tearing down box", "magenta")
+    print(colored(">>> Tearing down box", "magenta"))
     _run_and_wait(["vagrant", "destroy", "-f"], error_allowed=True)
 
-    print colored(">>> Successfully tested box %s" % box, "green")
-    print ""
+    print(colored(">>> Successfully tested box %s" % box, "green"))
+    print("")
 
 
 def test_clients(registry="10.0.2.2:5000", ca_cert=""):
-    print colored(">>> Running against registry ", attrs=["bold"]) + colored(registry, "cyan")
+    print(colored(">>> Running against registry ", attrs=["bold"]) + colored(registry, "cyan"))
     for box, client in BOXES:
         try:
             _run_box(box, client, registry, ca_cert)

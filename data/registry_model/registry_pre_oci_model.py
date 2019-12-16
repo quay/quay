@@ -214,7 +214,7 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
                 for key, value in manifest_interface_instance.layers[
                     -1
-                ].v1_metadata.labels.iteritems():
+                ].v1_metadata.labels.items():
                     # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
                     # such `labels`, as they don't really mean anything.
                     if not key:
@@ -417,7 +417,7 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         Returns the latest, *active* tag found in the repository, with the matching name or None if
         none.
         """
-        assert isinstance(tag_name, basestring)
+        assert isinstance(tag_name, str)
         tag = model.tag.get_active_tag_for_repo(repository_ref._db_id, tag_name)
         if tag is None:
             return None

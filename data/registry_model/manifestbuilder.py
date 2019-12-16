@@ -78,7 +78,7 @@ class _ManifestBuilder(object):
         """
         return [
             registry_model.get_repo_tag(self._repository_ref, tag_name, include_legacy_image=True)
-            for tag_name in self._builder_state.tags.keys()
+            for tag_name in list(self._builder_state.tags.keys())
         ]
 
     def start_layer(

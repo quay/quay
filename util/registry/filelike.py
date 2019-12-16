@@ -78,7 +78,7 @@ class FilelikeStreamConcat(object):
 
     def __init__(self, file_generator):
         self._file_generator = file_generator
-        self._current_file = file_generator.next()
+        self._current_file = next(file_generator)
         self._current_position = 0
         self._closed = False
 
@@ -104,7 +104,7 @@ class FilelikeStreamConcat(object):
                 # That file was out of data, prime a new one
                 self._current_file.close()
                 try:
-                    self._current_file = self._file_generator.next()
+                    self._current_file = next(self._file_generator)
                 except StopIteration:
                     return buf
 

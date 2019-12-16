@@ -147,7 +147,7 @@ class CustomBuildTrigger(BuildTriggerHandler):
         return "custom-git"
 
     def is_active(self):
-        return self.config.has_key("credentials")
+        return "credentials" in self.config
 
     def _metadata_from_payload(self, payload, git_url):
         # Parse the JSON payload.

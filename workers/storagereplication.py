@@ -176,7 +176,7 @@ if __name__ == "__main__":
     has_local_storage = False
 
     if features.STORAGE_REPLICATION:
-        for storage_type, _ in app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values():
+        for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
             if storage_type == "LocalStorage":
                 has_local_storage = True
                 break

@@ -484,7 +484,7 @@ class V2Protocol(RegistryProtocol):
         return PushResult(manifests=manifests, headers=headers)
 
     def _push_blobs(self, blobs, session, namespace, repo_name, headers, options, expected_failure):
-        for blob_digest, blob_bytes in blobs.iteritems():
+        for blob_digest, blob_bytes in blobs.items():
             if not options.skip_head_checks:
                 # Blob data should not yet exist.
                 self.conduct(

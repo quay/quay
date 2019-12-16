@@ -10,7 +10,7 @@ import codecs
 
 from itertools import groupby
 from datetime import datetime, timedelta, date
-from cStringIO import StringIO
+from io import StringIO
 
 from app import billing as stripe
 
@@ -130,8 +130,8 @@ def format_charge(charge):
     # Amount remaining to be accounted for
     remaining_charge_amount = charge.amount
 
-    discount_start = sys.maxint
-    discount_end = sys.maxint
+    discount_start = sys.maxsize
+    discount_end = sys.maxsize
     discount_percent = 0
     try:
         if charge.invoice and charge.invoice.discount:
@@ -139,7 +139,7 @@ def format_charge(charge):
             assert discount_obj.coupon.amount_off is None
 
             discount_start = discount_obj.start
-            discount_end = sys.maxint if not discount_obj.end else discount_obj.end
+            discount_end = sys.maxsize if not discount_obj.end else discount_obj.end
             discount_percent = discount_obj.coupon.percent_off / 100.0
             assert discount_percent > 0
     except AssertionError:
@@ -245,7 +245,7 @@ class _UnicodeWriter(object):
     def _encode_cell(cell):
         if cell is None:
             return cell
-        return unicode(cell).encode("utf-8")
+        return str(cell).encode("utf-8")
 
     def writerow(self, row):
         self.writer.writerow([self._encode_cell(s) for s in row])

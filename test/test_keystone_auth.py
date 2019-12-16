@@ -8,7 +8,7 @@ from flask import Flask, request, abort, make_response
 from contextlib import contextmanager
 
 from test.helpers import liveserver_app
-from data.users.keystone import get_keystone_users
+from .data.users.keystone import get_keystone_users
 from initdb import setup_database_for_testing, finished_database_for_testing
 
 _PORT_NUMBER = 5001
@@ -243,7 +243,7 @@ def _create_app(requires_email=True):
 
     @ks_app.route("/v2.0/auth/tokens", methods=["POST"])
     def tokens():
-        creds = request.json["auth"][u"passwordCredentials"]
+        creds = request.json["auth"]["passwordCredentials"]
         for user in users:
             if creds["username"] == user["username"] and creds["password"] == user["password"]:
                 return json.dumps(
@@ -310,14 +310,14 @@ class KeystoneAuthTestsMixin:
     def test_cooluser(self):
         with self.fake_keystone() as keystone:
             (user, _) = keystone.verify_credentials("cool.user", "password")
-            self.assertEquals(user.username, "cool.user")
-            self.assertEquals(user.email, "cool.user@example.com" if self.emails else None)
+            self.assertEqual(user.username, "cool.user")
+            self.assertEqual(user.email, "cool.user@example.com" if self.emails else None)
 
     def test_neatuser(self):
         with self.fake_keystone() as keystone:
             (user, _) = keystone.verify_credentials("some.neat.user", "foobar")
-            self.assertEquals(user.username, "some.neat.user")
-            self.assertEquals(user.email, "some.neat.user@example.com" if self.emails else None)
+            self.assertEqual(user.username, "some.neat.user")
+            self.assertEqual(user.email, "some.neat.user@example.com" if self.emails else None)
 
 
 class KeystoneV2AuthNoEmailTests(KeystoneAuthTestsMixin, unittest.TestCase):
@@ -359,17 +359,17 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
             # Lookup cool.
             (response, federated_id, error_message) = keystone.query_users("cool")
             self.assertIsNone(error_message)
-            self.assertEquals(1, len(response))
-            self.assertEquals("keystone", federated_id)
+            self.assertEqual(1, len(response))
+            self.assertEqual("keystone", federated_id)
 
             user_info = response[0]
-            self.assertEquals("cool.user", user_info.username)
+            self.assertEqual("cool.user", user_info.username)
 
             # Lookup unknown.
             (response, federated_id, error_message) = keystone.query_users("unknown")
             self.assertIsNone(error_message)
-            self.assertEquals(0, len(response))
-            self.assertEquals("keystone", federated_id)
+            self.assertEqual(0, len(response))
+            self.assertEqual("keystone", federated_id)
 
     def test_link_user(self):
         with self.fake_keystone() as keystone:
@@ -377,27 +377,27 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
             user, error_message = keystone.link_user("cool.user")
             self.assertIsNone(error_message)
             self.assertIsNotNone(user)
-            self.assertEquals("cool_user", user.username)
-            self.assertEquals("cool.user@example.com", user.email)
+            self.assertEqual("cool_user", user.username)
+            self.assertEqual("cool.user@example.com", user.email)
 
             # Link again. Should return the same user record.
             user_again, _ = keystone.link_user("cool.user")
-            self.assertEquals(user_again.id, user.id)
+            self.assertEqual(user_again.id, user.id)
 
             # Confirm someuser.
             result, _ = keystone.confirm_existing_user("cool_user", "password")
             self.assertIsNotNone(result)
-            self.assertEquals("cool_user", result.username)
+            self.assertEqual("cool_user", result.username)
 
     def test_check_group_lookup_args(self):
         with self.fake_keystone() as keystone:
             (status, err) = keystone.check_group_lookup_args({})
             self.assertFalse(status)
-            self.assertEquals("Missing group_id", err)
+            self.assertEqual("Missing group_id", err)
 
             (status, err) = keystone.check_group_lookup_args({"group_id": "unknownid"})
             self.assertFalse(status)
-            self.assertEquals("Group not found", err)
+            self.assertEqual("Group not found", err)
 
             (status, err) = keystone.check_group_lookup_args({"group_id": "somegroupid"})
             self.assertTrue(status)
@@ -411,9 +411,9 @@ class KeystoneV3AuthTests(KeystoneAuthTestsMixin, unittest.TestCase):
             results = list(itt)
             results.sort()
 
-            self.assertEquals(2, len(results))
-            self.assertEquals("adminuser", results[0][0].id)
-            self.assertEquals("cool.user", results[1][0].id)
+            self.assertEqual(2, len(results))
+            self.assertEqual("adminuser", results[0][0].id)
+            self.assertEqual("cool.user", results[1][0].id)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 TYPE_CONVERTER = {
     truthy_bool: "boolean",
     str: "string",
-    basestring: "string",
+    str: "string",
     reqparse.text_type: "string",
     int: "integer",
 }

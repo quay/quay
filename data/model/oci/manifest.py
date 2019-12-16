@@ -275,7 +275,7 @@ def _create_manifest(
 
     # Create the manifest and its blobs.
     media_type = Manifest.media_type.get_id(manifest_interface_instance.media_type)
-    storage_ids = {storage.id for storage in blob_map.values()}
+    storage_ids = {storage.id for storage in list(blob_map.values())}
 
     with db_transaction():
         # Check for the manifest. This is necessary because Postgres doesn't handle IntegrityErrors
@@ -330,7 +330,7 @@ def _create_manifest(
         if child_manifest_rows:
             children_to_insert = [
                 dict(manifest=manifest, child_manifest=child_manifest, repository=repository_id)
-                for child_manifest in child_manifest_rows.values()
+                for child_manifest in list(child_manifest_rows.values())
             ]
             ManifestChild.insert_many(children_to_insert).execute()
 
@@ -347,7 +347,7 @@ def _create_manifest(
     # application to the manifest occur under the transaction.
     labels = manifest_interface_instance.get_manifest_labels(retriever)
     if labels:
-        for key, value in labels.iteritems():
+        for key, value in labels.items():
             # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
             # such `labels`, as they don't really mean anything.
             if not key:
@@ -362,11 +362,11 @@ def _create_manifest(
     # to ensure that any action performed is defined in all manifests.
     labels_to_apply = labels or {}
     if child_manifest_label_dicts:
-        labels_to_apply = child_manifest_label_dicts[0].viewitems()
+        labels_to_apply = child_manifest_label_dicts[0].items()
         for child_manifest_label_dict in child_manifest_label_dicts[1:]:
             # Intersect the key+values of the labels to ensure we get the exact same result
             # for all the child manifests.
-            labels_to_apply = labels_to_apply & child_manifest_label_dict.viewitems()
+            labels_to_apply = labels_to_apply & child_manifest_label_dict.items()
 
         labels_to_apply = dict(labels_to_apply)
 

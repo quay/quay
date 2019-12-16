@@ -17,8 +17,8 @@ from endpoints.api import (
     path_param,
 )
 from endpoints.exception import NotFound
-from permission_models_pre_oci import pre_oci_model as model
-from permission_models_interface import DeleteException, SaveException
+from .permission_models_pre_oci import pre_oci_model as model
+from .permission_models_interface import DeleteException, SaveException
 
 logger = logging.getLogger(__name__)
 

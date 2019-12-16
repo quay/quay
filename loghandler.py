@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
+
 
 import datetime
 import json
@@ -103,7 +103,7 @@ class JsonFormatter(logging.Formatter):
             log_record[self.prefix_key] = {}
             target = log_record[self.prefix_key]
 
-        for field, value in record.__dict__.iteritems():
+        for field, value in record.__dict__.items():
             if field in self._fmt_parameters and field in RESERVED_ATTRS:
                 log_record[field] = value
             elif field not in RESERVED_ATTRS:

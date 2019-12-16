@@ -1,7 +1,7 @@
 import time
 import json
 import logging
-import urlparse
+import urllib.parse
 
 import jwt
 
@@ -100,16 +100,16 @@ class OIDCLoginService(OAuthService):
         if not endpoint:
             return None
 
-        (scheme, netloc, path, query, fragment) = urlparse.urlsplit(endpoint)
+        (scheme, netloc, path, query, fragment) = urllib.parse.urlsplit(endpoint)
 
         # Add the query parameters from the kwargs and the config.
         custom_parameters = self.config.get("OIDC_ENDPOINT_CUSTOM_PARAMS", {}).get(endpoint_key, {})
 
-        query_params = urlparse.parse_qs(query, keep_blank_values=True)
+        query_params = urllib.parse.parse_qs(query, keep_blank_values=True)
         query_params.update(kwargs)
         query_params.update(custom_parameters)
         return OAuthEndpoint(
-            urlparse.urlunsplit((scheme, netloc, path, {}, fragment)), query_params
+            urllib.parse.urlunsplit((scheme, netloc, path, {}, fragment)), query_params
         )
 
     def validate(self):
@@ -249,7 +249,7 @@ class OIDCLoginService(OAuthService):
         if not oidc_server.startswith("https://") and not is_debugging:
             raise DiscoveryFailureException("OIDC server must be accessed over SSL")
 
-        discovery_url = urlparse.urljoin(oidc_server, OIDC_WELLKNOWN)
+        discovery_url = urllib.parse.urljoin(oidc_server, OIDC_WELLKNOWN)
         discovery = self._http_client.get(discovery_url, timeout=5, verify=is_debugging is False)
         if discovery.status_code // 100 != 2:
             logger.debug(

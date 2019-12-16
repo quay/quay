@@ -3,7 +3,7 @@ import tarfile
 
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from cStringIO import StringIO
+from io import StringIO
 from enum import Enum, unique
 from six import add_metaclass
 
@@ -36,7 +36,7 @@ def layer_bytes_for_contents(contents, mode="|gz", other_files=None, empty=False
     add_file("contents", contents)
 
     if other_files is not None:
-        for file_name, file_contents in other_files.iteritems():
+        for file_name, file_contents in other_files.items():
             add_file(file_name, file_contents)
 
     tar_file.close()

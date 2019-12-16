@@ -129,7 +129,7 @@ class KubernetesAccessorSingleton(object):
         extra_ca_dir_path = os.path.join(dir_path, EXTRA_CA_DIRECTORY)
         os.mkdir(extra_ca_dir_path)
 
-        for secret_filename, data in secret_data.iteritems():
+        for secret_filename, data in secret_data.items():
             write_path = os.path.join(dir_path, secret_filename)
 
             if EXTRA_CA_DIRECTORY_PREFIX in secret_filename:

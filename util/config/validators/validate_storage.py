@@ -17,7 +17,7 @@ class StorageValidator(BaseValidator):
 
         replication_enabled = config.get("FEATURE_STORAGE_REPLICATION", False)
 
-        providers = _get_storage_providers(config, ip_resolver, config_provider).items()
+        providers = list(_get_storage_providers(config, ip_resolver, config_provider).items())
         if not providers:
             raise ConfigValidationException("Storage configuration required")
 
@@ -50,7 +50,7 @@ def _get_storage_providers(config, ip_resolver, config_provider):
     drivers = {}
 
     try:
-        for name, parameters in storage_config.items():
+        for name, parameters in list(storage_config.items()):
             driver = get_storage_driver(None, None, config_provider, ip_resolver, parameters)
             drivers[name] = (parameters[0], driver)
     except TypeError:

@@ -37,7 +37,7 @@ def import_yaml(config_obj, config_file):
         if isinstance(c, str):
             raise Exception("Invalid YAML config file: " + str(c))
 
-        for key in c.iterkeys():
+        for key in c.keys():
             if key.isupper():
                 config_obj[key] = c[key]
 

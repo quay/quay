@@ -137,7 +137,7 @@ def render_page_template(name, route_data=None, **kwargs):
     if not features.BILLING:
         version_number = "Quay %s" % __version__
 
-    scopes_set = {scope.scope: scope._asdict() for scope in scopes.app_scopes(app.config).values()}
+    scopes_set = {scope.scope: scope._asdict() for scope in list(scopes.app_scopes(app.config).values())}
 
     contents = render_template(
         name,

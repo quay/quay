@@ -1,4 +1,4 @@
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import re
 
 import anunidecode  # Don't listen to pylint's lies. This import is required for unidecode below.
@@ -58,7 +58,7 @@ def parse_namespace_repository(
         else:
             (repository, tag) = parts
 
-    repository = urllib.quote_plus(repository)
+    repository = urllib.parse.quote_plus(repository)
     if include_tag:
         return (namespace, repository, tag)
     return (namespace, repository)

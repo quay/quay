@@ -74,7 +74,7 @@ def _decrypted(value):
     if value is None:
         return None
 
-    assert isinstance(value, basestring)
+    assert isinstance(value, str)
     return DecryptedValue(value)
 
 

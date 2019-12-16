@@ -76,7 +76,7 @@ def get_parent_images(namespace_name, repository_name, image_obj):
     parents = _get_repository_images_and_storages(
         namespace_name, repository_name, filter_to_parents
     )
-    id_to_image = {unicode(image.id): image for image in parents}
+    id_to_image = {str(image.id): image for image in parents}
     try:
         return [id_to_image[parent_id] for parent_id in reversed(parent_db_ids)]
     except KeyError as ke:

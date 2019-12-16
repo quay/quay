@@ -120,7 +120,7 @@ def upgrade(tables, tester, progress_reporter):
     )
 
     op.add_column(
-        u"repository", sa.Column("state", sa.Integer(), nullable=False, server_default="0")
+        "repository", sa.Column("state", sa.Integer(), nullable=False, server_default="0")
     )
     op.create_index("repository_state", "repository", ["state"], unique=False)
 
@@ -180,7 +180,7 @@ def upgrade(tables, tester, progress_reporter):
 
 def downgrade(tables, tester, progress_reporter):
     op = ProgressWrapper(original_op, progress_reporter)
-    op.drop_column(u"repository", "state")
+    op.drop_column("repository", "state")
 
     op.drop_table("repomirrorconfig")
 
