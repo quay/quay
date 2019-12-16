@@ -13,7 +13,7 @@ def encode_public_private_token(public_code, private_token, allow_public_only=Fa
         assert allow_public_only
         return public_code
 
-    assert isinstance(private_token, basestring)
+    assert isinstance(private_token, str)
     return base64.b64encode("%s%s%s" % (public_code, DELIMITER, private_token))
 
 

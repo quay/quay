@@ -199,7 +199,7 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
                 else:
                     entries[key] = AggregatedLogCount(entry.kind_id, entry.count, synthetic_date)
 
-        return entries.values()
+        return list(entries.values())
 
     def count_repository_actions(self, repository, day):
         return model.repositoryactioncount.count_repository_actions(repository, day)

@@ -38,7 +38,7 @@ class TestSuperUserRegistryStatus(ApiTestCase):
     def test_registry_status_no_config(self):
         with FreshConfigProvider():
             json = self.getJsonResponse(SuperUserRegistryStatus)
-            self.assertEquals("config-db", json["status"])
+            self.assertEqual("config-db", json["status"])
 
     @mock.patch(
         "config_app.config_endpoints.api.suconfig.database_is_valid", mock.Mock(return_value=False)
@@ -47,7 +47,7 @@ class TestSuperUserRegistryStatus(ApiTestCase):
         with FreshConfigProvider():
             config_provider.save_config({"key": "value"})
             json = self.getJsonResponse(SuperUserRegistryStatus)
-            self.assertEquals("setup-db", json["status"])
+            self.assertEqual("setup-db", json["status"])
 
     @mock.patch(
         "config_app.config_endpoints.api.suconfig.database_is_valid", mock.Mock(return_value=True)
@@ -56,7 +56,7 @@ class TestSuperUserRegistryStatus(ApiTestCase):
         with FreshConfigProvider():
             config_provider.save_config({"key": "value"})
             json = self.getJsonResponse(SuperUserRegistryStatus)
-            self.assertEquals("config", json["status"])
+            self.assertEqual("config", json["status"])
 
     @mock.patch(
         "config_app.config_endpoints.api.suconfig.database_is_valid", mock.Mock(return_value=True)
@@ -68,7 +68,7 @@ class TestSuperUserRegistryStatus(ApiTestCase):
         with FreshConfigProvider():
             config_provider.save_config({"key": "value"})
             json = self.getJsonResponse(SuperUserRegistryStatus)
-            self.assertEquals("create-superuser", json["status"])
+            self.assertEqual("create-superuser", json["status"])
 
     @mock.patch(
         "config_app.config_endpoints.api.suconfig.database_is_valid", mock.Mock(return_value=True)
@@ -80,7 +80,7 @@ class TestSuperUserRegistryStatus(ApiTestCase):
         with FreshConfigProvider():
             config_provider.save_config({"key": "value", "SETUP_COMPLETE": True})
             json = self.getJsonResponse(SuperUserRegistryStatus)
-            self.assertEquals("config", json["status"])
+            self.assertEqual("config", json["status"])
 
 
 class TestSuperUserConfigFile(ApiTestCase):
@@ -151,7 +151,7 @@ class TestSuperUserCreateInitialSuperUser(ApiTestCase):
 
             # Verify the superuser was placed into the config.
             result = self.getJsonResponse(SuperUserConfig)
-            self.assertEquals(["cooluser"], result["config"]["SUPER_USERS"])
+            self.assertEqual(["cooluser"], result["config"]["SUPER_USERS"])
 
 
 class TestSuperUserConfigValidate(ApiTestCase):

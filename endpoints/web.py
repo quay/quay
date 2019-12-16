@@ -442,7 +442,7 @@ def buildlogs(build_uuid):
 def exportedlogs(file_id):
     # Only enable this endpoint if local storage is available.
     has_local_storage = False
-    for storage_type, _ in app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values():
+    for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
         if storage_type == "LocalStorage":
             has_local_storage = True
             break

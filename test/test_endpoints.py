@@ -8,8 +8,8 @@ import zlib
 
 from mock import patch
 from io import BytesIO
-from urllib import urlencode
-from urlparse import urlparse, urlunparse, parse_qs
+from urllib.parse import urlencode
+from urllib.parse import urlparse, urlunparse, parse_qs
 from datetime import datetime, timedelta
 
 import jwt
@@ -19,8 +19,8 @@ from flask import url_for
 from jwkest.jwk import RSAKey
 
 from app import app
-from data import model
-from data.database import ServiceKeyApprovalType
+from .data import model
+from .data.database import ServiceKeyApprovalType
 from endpoints import keyserver
 from endpoints.api import api, api_bp
 from endpoints.api.user import Signin
@@ -90,20 +90,20 @@ class EndpointTestCase(unittest.TestCase):
 
     def getResponse(self, resource_name, expected_code=200, **kwargs):
         rv = self.app.get(url_for(resource_name, **kwargs))
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteResponse(self, resource_name, headers=None, expected_code=200, **kwargs):
         headers = headers or {}
         rv = self.app.delete(url_for(resource_name, **kwargs), headers=headers)
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteEmptyResponse(self, resource_name, headers=None, expected_code=204, **kwargs):
         headers = headers or {}
         rv = self.app.delete(url_for(resource_name, **kwargs), headers=headers)
-        self.assertEquals(rv.status_code, expected_code)
-        self.assertEquals(rv.data, "")  # ensure response body empty
+        self.assertEqual(rv.status_code, expected_code)
+        self.assertEqual(rv.data, "")  # ensure response body empty
         return
 
     def putResponse(self, resource_name, headers=None, data=None, expected_code=200, **kwargs):
@@ -112,7 +112,7 @@ class EndpointTestCase(unittest.TestCase):
         rv = self.app.put(
             url_for(resource_name, **kwargs), headers=headers, data=py_json.dumps(data)
         )
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def postResponse(
@@ -139,7 +139,7 @@ class EndpointTestCase(unittest.TestCase):
 
         rv = self.app.post(url, headers=headers, data=post_data)
         if expected_code is not None:
-            self.assertEquals(rv.status_code, expected_code)
+            self.assertEqual(rv.status_code, expected_code)
 
         return rv
 
@@ -149,7 +149,7 @@ class EndpointTestCase(unittest.TestCase):
             data=py_json.dumps(dict(username=username, password=password)),
             headers={"Content-Type": "application/json"},
         )
-        self.assertEquals(rv.status_code, 200)
+        self.assertEqual(rv.status_code, 200)
 
 
 class BuildLogsTestCase(EndpointTestCase):
@@ -176,7 +176,7 @@ class BuildLogsTestCase(EndpointTestCase):
         logs = ["log1", "log2"]
         with patch("endpoints.web.build_logs.get_log_entries", return_value=(None, logs)):
             resp = self.getResponse("web.buildlogs", build_uuid=self.build_uuid, expected_code=200)
-            self.assertEquals({"logs": logs}, py_json.loads(resp))
+            self.assertEqual({"logs": logs}, py_json.loads(resp))
 
 
 class ArchivedLogsTestCase(EndpointTestCase):
@@ -278,13 +278,13 @@ class WebEndpointTestCase(EndpointTestCase):
 
     def test_confirm_email(self):
         user = model.user.get_user("devtable")
-        self.assertNotEquals(user.email, "foo@bar.com")
+        self.assertNotEqual(user.email, "foo@bar.com")
 
         confirmation_code = model.user.create_confirm_email_code(user, "foo@bar.com")
         self.getResponse("web.confirm_email", code=confirmation_code, expected_code=302)
 
         user = model.user.get_user("devtable")
-        self.assertEquals(user.email, "foo@bar.com")
+        self.assertEqual(user.email, "foo@bar.com")
 
     def test_confirm_recovery(self):
         # Try for an invalid code.
@@ -415,7 +415,7 @@ class OAuthTestCase(EndpointTestCase):
         resp = self.postResponse(
             "web.authorize_application", form=form, with_csrf=True, expected_code=302
         )
-        self.assertEquals(
+        self.assertEqual(
             "http://localhost:5000/foobar?error=unauthorized_client", resp.headers["Location"]
         )
 
@@ -431,7 +431,7 @@ class OAuthTestCase(EndpointTestCase):
         resp = self.postResponse(
             "web.authorize_application", form=form, with_csrf=True, expected_code=302
         )
-        self.assertEquals(
+        self.assertEqual(
             "http://localhost:8000/o2c.html?error=invalid_scope", resp.headers["Location"]
         )
 
@@ -568,7 +568,7 @@ class OAuthTestCase(EndpointTestCase):
                 with_csrf=False,
                 expected_code=None,
             )
-            self.assertNotEquals(200, r.status_code)
+            self.assertNotEqual(200, r.status_code)
             counter = counter + 1
             if counter > 5:
                 self.fail("Exponential backoff did not fire")
@@ -606,7 +606,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Make sure the hidden keys are not returned and the visible ones are returned.
         self.assertTrue(len(visible_jwks) > 0)
         self.assertTrue(len(invisible_jwks) > 0)
-        self.assertEquals(len(visible_jwks), len(jwkset["keys"]))
+        self.assertEqual(len(visible_jwks), len(jwkset["keys"]))
 
         for jwk in jwkset["keys"]:
             self.assertIn(jwk, visible_jwks)

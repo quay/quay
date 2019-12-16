@@ -2,7 +2,7 @@ _FEATURES = {}
 
 
 def import_features(config_dict):
-    for feature, feature_val in config_dict.items():
+    for feature, feature_val in list(config_dict.items()):
         if feature.startswith("FEATURE_"):
             feature_name = feature[8:]
             _FEATURES[feature_name] = globals()[feature_name] = FeatureNameValue(
@@ -28,5 +28,5 @@ class FeatureNameValue(object):
     def __cmp__(self, other):
         return self.value.__cmp__(other)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.value.__nonzero__()

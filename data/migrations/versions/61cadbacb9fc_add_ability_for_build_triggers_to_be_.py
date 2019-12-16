@@ -34,10 +34,10 @@ def upgrade(tables, tester, progress_reporter):
     op.bulk_insert(tables.logentrykind, [{"name": "toggle_repo_trigger"},])
 
     op.add_column(
-        u"repositorybuildtrigger", sa.Column("disabled_reason_id", sa.Integer(), nullable=True)
+        "repositorybuildtrigger", sa.Column("disabled_reason_id", sa.Integer(), nullable=True)
     )
     op.add_column(
-        u"repositorybuildtrigger",
+        "repositorybuildtrigger",
         sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.sql.expression.true()),
     )
     op.create_index(
@@ -72,8 +72,8 @@ def downgrade(tables, tester, progress_reporter):
         type_="foreignkey",
     )
     op.drop_index("repositorybuildtrigger_disabled_reason_id", table_name="repositorybuildtrigger")
-    op.drop_column(u"repositorybuildtrigger", "enabled")
-    op.drop_column(u"repositorybuildtrigger", "disabled_reason_id")
+    op.drop_column("repositorybuildtrigger", "enabled")
+    op.drop_column("repositorybuildtrigger", "disabled_reason_id")
     op.drop_table("disablereason")
     # ### end Alembic commands ###
 

@@ -12,17 +12,17 @@ def generate_key_pair(filename, kid=None):
     if kid is None:
         kid = canonical_kid(jwk)
 
-    print("Writing public key to %s.jwk" % filename)
+    print(("Writing public key to %s.jwk" % filename))
     with open("%s.jwk" % filename, mode="w") as f:
         f.truncate(0)
         f.write(json.dumps(jwk))
 
-    print("Writing key ID to %s.kid" % filename)
+    print(("Writing key ID to %s.kid" % filename))
     with open("%s.kid" % filename, mode="w") as f:
         f.truncate(0)
         f.write(kid)
 
-    print("Writing private key to %s.pem" % filename)
+    print(("Writing private key to %s.pem" % filename))
     with open("%s.pem" % filename, mode="w") as f:
         f.truncate(0)
         f.write(private_key.exportKey())

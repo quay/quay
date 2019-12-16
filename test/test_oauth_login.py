@@ -1,7 +1,7 @@
 import json as py_json
 import time
 import unittest
-import urlparse
+import urllib.parse
 
 import jwt
 
@@ -10,7 +10,7 @@ from httmock import urlmatch, HTTMock
 from jwkest.jwk import RSAKey
 
 from app import app, authentication
-from data import model
+from .data import model
 from endpoints.oauth.login import oauthlogin as oauthlogin_bp
 from test.test_endpoints import EndpointTestCase
 from test.test_ldap import mock_ldap
@@ -52,7 +52,7 @@ class OAuthLoginTestCase(EndpointTestCase):
         )
 
         # Delete the created user.
-        self.assertNotEquals(created.username, "devtable")
+        self.assertNotEqual(created.username, "devtable")
         model.user.delete_user(created, [])
 
         # Test attach.
@@ -91,13 +91,13 @@ class OAuthLoginTestCase(EndpointTestCase):
 
         federated_login = model.user.lookup_federated_login(found_user, service_name)
         self.assertIsNotNone(federated_login)
-        self.assertEquals(federated_login.service_ident, service_ident)
+        self.assertEqual(federated_login.service_ident, service_ident)
         return found_user
 
     def test_google_oauth(self):
         @urlmatch(netloc=r"accounts.google.com", path="/o/oauth2/token")
         def account_handler(_, request):
-            parsed = dict(urlparse.parse_qsl(request.body))
+            parsed = dict(urllib.parse.parse_qsl(request.body))
             if parsed["code"] == "somecode":
                 content = {"access_token": "someaccesstoken"}
                 return py_json.dumps(content)
@@ -121,7 +121,7 @@ class OAuthLoginTestCase(EndpointTestCase):
     def test_github_oauth(self):
         @urlmatch(netloc=r"github.com", path="/login/oauth/access_token")
         def account_handler(url, _):
-            parsed = dict(urlparse.parse_qsl(url.query))
+            parsed = dict(urllib.parse.parse_qsl(url.query))
             if parsed["code"] == "somecode":
                 content = {"access_token": "someaccesstoken"}
                 return py_json.dumps(content)

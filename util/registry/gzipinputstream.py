@@ -82,7 +82,7 @@ class GzipInputStream(object):
         self._offset = self._offset + len(data)
         return data
 
-    def next(self):
+    def __next__(self):
         line = self.readline()
         if not line:
             raise StopIteration()

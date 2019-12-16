@@ -39,10 +39,10 @@ def format_money(total_cents):
 
 
 total_monthly_revenue = 0
-for plan_id, (subs, rev) in plan_revenue.items():
+for plan_id, (subs, rev) in list(plan_revenue.items()):
     total_monthly_revenue += rev
     d, c = format_money(rev)
-    print "%s: $%d.%02d(%s)" % (plan_id, d, c, subs)
+    print("%s: $%d.%02d(%s)" % (plan_id, d, c, subs))
 
 d, c = format_money(total_monthly_revenue)
-print "Monthly revenue: $%d.%02d" % (d, c)
+print("Monthly revenue: $%d.%02d" % (d, c))

@@ -6,7 +6,7 @@ import logging
 import os
 
 from flask import request
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 import features
 
