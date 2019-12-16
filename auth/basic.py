@@ -33,7 +33,7 @@ def validate_basic_auth(auth_header):
     logger.debug("Attempt to process basic auth header")
 
     # Parse the basic auth header.
-    assert isinstance(auth_header, basestring)
+    assert isinstance(auth_header, str)
     credentials, err = _parse_basic_auth_header(auth_header)
     if err is not None:
         logger.debug("Got invalid basic auth header: %s", auth_header)

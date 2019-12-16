@@ -37,7 +37,7 @@ if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
     engines = set(
-        [config[0] for config in app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()]
+        [config[0] for config in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values())]
     )
     if "SwiftStorage" not in engines:
         logger.debug("Swift storage not detected; sleeping")

@@ -259,7 +259,7 @@ def get_teams_within_org(organization, has_external_auth=False):
     # Add repository permissions count.
     permission_tuples = (
         RepositoryPermission.select(RepositoryPermission.team, fn.Count(RepositoryPermission.id))
-        .where(RepositoryPermission.team << teams.keys())
+        .where(RepositoryPermission.team << list(teams.keys()))
         .group_by(RepositoryPermission.team)
         .tuples()
     )
@@ -270,7 +270,7 @@ def get_teams_within_org(organization, has_external_auth=False):
     # Add the member count.
     members_tuples = (
         TeamMember.select(TeamMember.team, fn.Count(TeamMember.id))
-        .where(TeamMember.team << teams.keys())
+        .where(TeamMember.team << list(teams.keys()))
         .group_by(TeamMember.team)
         .tuples()
     )
@@ -280,11 +280,11 @@ def get_teams_within_org(organization, has_external_auth=False):
 
     # Add syncing information.
     if has_external_auth:
-        sync_query = TeamSync.select(TeamSync.team).where(TeamSync.team << teams.keys())
+        sync_query = TeamSync.select(TeamSync.team).where(TeamSync.team << list(teams.keys()))
         for team_sync in sync_query:
             teams[team_sync.team_id]["is_synced"] = True
 
-    return [AttrDict(team_info) for team_info in teams.values()]
+    return [AttrDict(team_info) for team_info in list(teams.values())]
 
 
 def get_user_teams_within_org(username, organization):

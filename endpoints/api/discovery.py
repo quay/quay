@@ -34,7 +34,7 @@ PARAM_REGEX = re.compile(r"<([^:>]+:)*([\w]+)>")
 TYPE_CONVERTER = {
     truthy_bool: "boolean",
     str: "string",
-    basestring: "string",
+    str: "string",
     reqparse.text_type: "string",
     int: "integer",
 }
@@ -242,7 +242,7 @@ def swagger_route_data(include_internal=False, compact=False):
                     "404": {"description": "Not found",},
                 }
 
-                for _, body in responses.items():
+                for _, body in list(responses.items()):
                     body["schema"] = {"$ref": "#/definitions/ApiError"}
 
                 if method_name == "DELETE":
@@ -275,7 +275,7 @@ def swagger_route_data(include_internal=False, compact=False):
                 path_swagger[method_name.lower()] = operation_swagger
 
     tags.sort(key=lambda t: t["name"])
-    paths = OrderedDict(sorted(paths.items(), key=lambda p: p[1]["x-tag"]))
+    paths = OrderedDict(sorted(list(paths.items()), key=lambda p: p[1]["x-tag"]))
 
     if compact:
         return {"paths": paths}
@@ -304,7 +304,7 @@ def swagger_route_data(include_internal=False, compact=False):
                 % (PREFERRED_URL_SCHEME, SERVER_HOSTNAME),
                 "scopes": {
                     scope.scope: scope.description
-                    for scope in scopes.app_scopes(app.config).values()
+                    for scope in list(scopes.app_scopes(app.config).values())
                 },
             },
         },

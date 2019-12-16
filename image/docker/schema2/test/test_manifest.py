@@ -374,13 +374,13 @@ def test_unencoded_unicode_manifest():
 
     retriever = ContentRetrieverForTesting.for_config(
         {
-            "config": {"author": u"Sômé guy",},
+            "config": {"author": "Sômé guy",},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
                 {
                     "created": "2018-04-03T18:37:09.284840891Z",
                     "created_by": "base",
-                    "author": u"Sômé guy",
+                    "author": "Sômé guy",
                 },
             ],
         },
@@ -390,19 +390,19 @@ def test_unencoded_unicode_manifest():
     )
 
     layers = list(manifest.get_layers(retriever))
-    assert layers[0].author == u"Sômé guy"
+    assert layers[0].author == "Sômé guy"
 
 
 def test_build_unencoded_unicode_manifest():
     config_json = json.dumps(
         {
-            "config": {"author": u"Sômé guy",},
+            "config": {"author": "Sômé guy",},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
                 {
                     "created": "2018-04-03T18:37:09.284840891Z",
                     "created_by": "base",
-                    "author": u"Sômé guy",
+                    "author": "Sômé guy",
                 },
             ],
         },
@@ -434,4 +434,4 @@ def test_load_unicode_manifest():
     )
 
     layers = list(manifest.get_layers(retriever))
-    assert layers[-1].author == u"Sômé guy"
+    assert layers[-1].author == "Sômé guy"

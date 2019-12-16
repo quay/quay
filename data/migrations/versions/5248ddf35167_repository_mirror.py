@@ -117,7 +117,7 @@ def upgrade(op, tables, tester):
     )
 
     op.add_column(
-        u"repository", sa.Column("state", sa.Integer(), nullable=False, server_default="0")
+        "repository", sa.Column("state", sa.Integer(), nullable=False, server_default="0")
     )
     op.create_index("repository_state", "repository", ["state"], unique=False)
 
@@ -176,7 +176,7 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    op.drop_column(u"repository", "state")
+    op.drop_column("repository", "state")
 
     op.drop_table("repomirrorconfig")
 

@@ -40,8 +40,8 @@ def test_parse_basic_index():
     assert index.digest == "sha256:b1a216e8ed6a267bd3f0234d0d096c04658b28cb08b2b16bf812cf72694d7d04"
     assert index.local_blob_digests == []
     assert index.child_manifest_digests() == [
-        u"sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
-        u"sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270",
+        "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
+        "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270",
     ]
 
 

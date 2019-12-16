@@ -180,7 +180,7 @@ def build_context_and_subject(auth_context=None, tuf_roots=None):
 
     # TODO: remove once Apostille has been upgraded to not use the single root.
     single_root = (
-        tuf_roots.values()[0]
+        list(tuf_roots.values())[0]
         if tuf_roots is not None and len(tuf_roots) == 1
         else DISABLED_TUF_ROOT
     )

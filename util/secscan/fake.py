@@ -1,7 +1,7 @@
 import json
 import copy
 import uuid
-import urlparse
+import urllib.parse
 
 from contextlib import contextmanager
 from httmock import urlmatch, HTTMock, all_requests
@@ -364,7 +364,7 @@ class FakeSecurityScanner(object):
                     "content": json.dumps({"Error": {"Message": "Unknown notification"}}),
                 }
 
-            query_params = urlparse.parse_qs(url.query)
+            query_params = urllib.parse.parse_qs(url.query)
             limit = int(query_params.get("limit", [2])[0])
             page = int(query_params.get("page", [0])[0])
 

@@ -63,7 +63,7 @@ class FakeSwift(object):
     def get_container(self, container, prefix=None, full_listing=None):
         container_entries = self.containers[container]
         objs = []
-        for path, data in list(container_entries.iteritems()):
+        for path, data in list(container_entries.items()):
             if not prefix or path.startswith(prefix):
                 objs.append(
                     {"name": path, "bytes": len(data["content"]),}
@@ -95,7 +95,7 @@ class FakeSwift(object):
         if "X-Object-Manifest" in data["headers"]:
             new_contents = []
             prefix = data["headers"]["X-Object-Manifest"]
-            for key, value in self.containers[container].iteritems():
+            for key, value in self.containers[container].items():
                 if ("container-name/" + key).startswith(prefix):
                     new_contents.append((key, value["content"]))
 

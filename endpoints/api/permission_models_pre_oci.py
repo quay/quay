@@ -1,6 +1,6 @@
 from app import avatar
 from data import model
-from permission_models_interface import (
+from .permission_models_interface import (
     PermissionDataInterface,
     UserPermission,
     TeamPermission,

@@ -142,7 +142,7 @@ class PopulateTestDataTester(MigrationTester):
             "INSERT INTO %s (%s) VALUES (%s)"
             % (table_name, ", ".join(field_names), ", ".join(field_name_vars))
         )
-        logger.info("Executing test query %s with values %s", query, columns.values())
+        logger.info("Executing test query %s with values %s", query, list(columns.values()))
         op.get_bind().execute(query, **columns)
 
     def populate_column(self, table_name, col_name, field_type):

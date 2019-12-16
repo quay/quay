@@ -2,8 +2,8 @@ import logging
 import os.path
 
 from functools import wraps
-from urlparse import urlparse
-from urllib import urlencode
+from urllib.parse import urlparse
+from urllib.parse import urlencode
 
 from flask import Blueprint, make_response, url_for, request, jsonify
 from semantic_version import Spec

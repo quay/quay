@@ -231,7 +231,7 @@ class ElasticsearchLogs(object):
     def list_indices(self):
         self._initialize()
         try:
-            return self._client.indices.get(self._index_prefix + "*").keys()
+            return list(self._client.indices.get(self._index_prefix + "*").keys())
         except NotFoundError as nfe:
             logger.exception("`%s` indices not found: %s", self._index_prefix, nfe.info)
             return []

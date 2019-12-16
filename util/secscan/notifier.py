@@ -50,12 +50,12 @@ class SecurityNotificationHandler(object):
 
         new_vuln = self.vulnerability_info
         new_severity = PRIORITY_LEVELS.get(
-            new_vuln.get("Severity", "Unknown"), {"index": sys.maxint}
+            new_vuln.get("Severity", "Unknown"), {"index": sys.maxsize}
         )
 
         # For each of the tags found, issue a notification.
         with notification_batch() as spawn_notification:
-            for repository_id, tags in self.tags_by_repository_map.iteritems():
+            for repository_id, tags in self.tags_by_repository_map.items():
                 event_data = {
                     "tags": list(tags),
                     "vulnerability": {
@@ -93,10 +93,10 @@ class SecurityNotificationHandler(object):
         old_layer_ids = old_data.get("LayersIntroducingVulnerability", [])
 
         new_severity = PRIORITY_LEVELS.get(
-            new_vuln.get("Severity", "Unknown"), {"index": sys.maxint}
+            new_vuln.get("Severity", "Unknown"), {"index": sys.maxsize}
         )
         old_severity = PRIORITY_LEVELS.get(
-            old_vuln.get("Severity", "Unknown"), {"index": sys.maxint}
+            old_vuln.get("Severity", "Unknown"), {"index": sys.maxsize}
         )
 
         # Check if the severity of the vulnerability has increased. If so, then we report this

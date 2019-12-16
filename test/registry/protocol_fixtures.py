@@ -42,7 +42,7 @@ def unicode_images():
             id="someid",
             bytes=image_bytes,
             parent_id="parentid",
-            config={"comment": u"the Pawe\xc5\x82 Kami\xc5\x84ski image", "author": u"Sômé guy"},
+            config={"comment": "the Pawe\xc5\x82 Kami\xc5\x84ski image", "author": "Sômé guy"},
         ),
     ]
 
@@ -203,7 +203,7 @@ def unicode_emoji_images():
             id="someid",
             bytes=image_bytes,
             parent_id="parentid",
-            config={"comment": u"😱", "author": u"Sômé guy"},
+            config={"comment": "😱", "author": "Sômé guy"},
         ),
     ]
 

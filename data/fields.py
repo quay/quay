@@ -322,7 +322,7 @@ class CredentialField(CharField):
         if value is None:
             return None
 
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             raise Exception(
                 "A string cannot be given to a CredentialField; please wrap in a Credential"
             )

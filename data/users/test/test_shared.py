@@ -28,7 +28,7 @@ from test.fixtures import *
         (True, False, "foo@blacklisted.com", False, False),
         (True, False, "foo@blacklisted.org", False, False),
         (True, False, "foo@BlAcKlIsTeD.CoM", False, False),  # Verify Capitalization
-        (True, False, u"foo@mail.bLacklisted.Com", False, False),  # Verify unicode
+        (True, False, "foo@mail.bLacklisted.Com", False, False),  # Verify unicode
         (True, False, "foo@blacklisted.net", False, True),  # Avoid False Positives
         (True, False, "foo@myblacklisted.com", False, True),  # Avoid partial domain matches
         (True, False, "fooATblacklisted.com", False, True),  # Ignore invalid email addresses

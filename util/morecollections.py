@@ -6,7 +6,7 @@ class AttrDict(dict):
     @classmethod
     def deep_copy(cls, attr_dict):
         copy = AttrDict(attr_dict)
-        for key, value in copy.items():
+        for key, value in list(copy.items()):
             if isinstance(value, AttrDict):
                 copy[key] = cls.deep_copy(value)
         return copy
@@ -199,7 +199,7 @@ class StreamingDiffTracker(object):
         assert counter <= self._reports_per_stream
 
         # Process them all to see if anything has changed.
-        for value in self._new_stream.values():
+        for value in list(self._new_stream.values()):
             old_index = self._old_stream.index(value)
             if old_index is not None:
                 # The item is present, so we cannot report it. However, since we've reached this point,

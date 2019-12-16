@@ -6,7 +6,7 @@ import socketserver
 import time
 
 from contextlib import contextmanager
-from urlparse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin
 
 import pytest
 import requests
@@ -267,7 +267,7 @@ class LiveServerExecutor(object):
                 arg_values = request.get_json()["args"]
                 return fn(*arg_values)
 
-        for fn_name, fn in self.funcs.iteritems():
+        for fn_name, fn in self.funcs.items():
             build_invoker(fn_name, fn)
 
         app.register_blueprint(testbp, url_prefix="/__test")

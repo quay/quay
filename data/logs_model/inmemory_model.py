@@ -177,7 +177,7 @@ class InMemoryModel(ActionLogsDataInterface):
             else:
                 entries[key] = AggregatedLogCount(entry.kind_id, 1, synthetic_date)
 
-        return entries.values()
+        return list(entries.values())
 
     def count_repository_actions(self, repository, day):
         count = 0
