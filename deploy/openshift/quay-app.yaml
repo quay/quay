@@ -136,7 +136,7 @@ objects:
             name: syslog-tcp-port
           env:
           - name: PORT
-            value: ${{SYSLOG_PORT}}
+            value: ${SYSLOG_PORT}
           - name: AWS_REGION
             valueFrom:
               secretKeyRef:
@@ -225,7 +225,7 @@ objects:
           - name: SYSLOG_SERVER
             value: ${{SYSLOG_SERVER}}
           - name: SYSLOG_PORT
-            value: ${{SYSLOG_PORT}}
+            value: ${SYSLOG_PORT}
           - name: SYSLOG_PROTO
             value: ${{SYSLOG_PROTO}}
           - name: QUAY_LOGGING
