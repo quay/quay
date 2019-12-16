@@ -26,7 +26,7 @@ export POSTGRES_DB="quay_ci"
 
 run_black() {
     pip install black
-    black --line-length 100 --target-version py27 --check --diff .
+    black --line-length 100 --check --diff .
 }
 
 
