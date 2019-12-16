@@ -105,7 +105,10 @@ def ask_disable_namespace(username, queue_name):
             count_removed = dockerfile_build_queue.delete_namespaced_items(user.username)
 
     info = (user.username, len(triggers), count_removed, len(mirrors))
-    print("Namespace %s disabled, %s triggers deleted, %s queued builds removed, %s mirrors deleted" % info)
+    print(
+        "Namespace %s disabled, %s triggers deleted, %s queued builds removed, %s mirrors deleted"
+        % info
+    )
     return user
 
 
