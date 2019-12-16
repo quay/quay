@@ -1,4 +1,4 @@
-from StringIO import StringIO
+from io import StringIO
 
 from util.config.validators import BaseValidator, ConfigValidationException
 from util.security.signing import SIGNING_ENGINES

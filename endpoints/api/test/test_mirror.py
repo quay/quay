@@ -21,7 +21,7 @@ def _setup_mirror():
         "is_enabled": True,
         "external_reference": "quay.io/redhat/quay",
         "sync_interval": 5000,
-        "sync_start_date": datetime(2020, 01, 02, 6, 30, 0),
+        "sync_start_date": datetime(2020, 0o1, 0o2, 6, 30, 0),
         "external_registry_username": "fakeUsername",
         "external_registry_password": "fakePassword",
         "external_registry_config": {

@@ -63,7 +63,7 @@ def limit_services(config, enabled_services):
     if enabled_services == []:
         return
 
-    for service in config.keys():
+    for service in list(config.keys()):
         if service in enabled_services:
             config[service]["autostart"] = "true"
         else:
@@ -74,7 +74,7 @@ def override_services(config, override_services):
     if override_services == []:
         return
 
-    for service in config.keys():
+    for service in list(config.keys()):
         if service + "=true" in override_services:
             config[service]["autostart"] = "true"
         elif service + "=false" in override_services:

@@ -22,6 +22,7 @@ from data.database import (
     RepositoryKind,
     db_for_update,
 )
+from functools import reduce
 
 logger = logging.getLogger(__name__)
 

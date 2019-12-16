@@ -100,7 +100,7 @@ class WorkQueue(object):
         def strip_slash(name):
             return name.lstrip("/")
 
-        canonical_name_list = map(strip_slash, canonical_name_list)
+        canonical_name_list = list(map(strip_slash, canonical_name_list))
         canonical_name_query = "/".join([self._queue_name] + canonical_name_list) + "%"
 
         return (
@@ -118,7 +118,7 @@ class WorkQueue(object):
         def strip_slash(name):
             return name.lstrip("/")
 
-        canonical_name_list = map(strip_slash, canonical_name_list)
+        canonical_name_list = list(map(strip_slash, canonical_name_list))
 
         available = self._available_jobs(
             available_max_time, "/".join([self._queue_name] + canonical_name_list) + "%"

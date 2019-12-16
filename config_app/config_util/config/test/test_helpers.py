@@ -11,7 +11,7 @@ from util.config.validator import EXTRA_CA_DIRECTORY
 def _create_temp_file_structure(file_structure):
     temp_dir = TemporaryDirectory()
 
-    for filename, data in file_structure.iteritems():
+    for filename, data in file_structure.items():
         if filename == EXTRA_CA_DIRECTORY:
             extra_ca_dir_path = os.path.join(temp_dir.name, EXTRA_CA_DIRECTORY)
             os.mkdir(extra_ca_dir_path)

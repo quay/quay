@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from datetime import datetime, timedelta
-from urlparse import urlunparse
+from urllib.parse import urlunparse
 
 from jinja2 import Template
 from cachetools.func import lru_cache

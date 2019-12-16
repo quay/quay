@@ -1,6 +1,6 @@
 import json
 import logging
-import urlparse
+import urllib.parse
 
 from functools import wraps
 
@@ -68,7 +68,7 @@ def generate_headers(scope=GrantType.READ_REPOSITORY, add_grant_for_status=None)
             session["repository"] = repo_name
 
             # We run our index and registry on the same hosts for now
-            registry_server = urlparse.urlparse(request.url).netloc
+            registry_server = urllib.parse.urlparse(request.url).netloc
             response.headers["X-Docker-Endpoints"] = registry_server
 
             has_token_request = request.headers.get("X-Docker-Token", "")
