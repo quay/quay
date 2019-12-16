@@ -233,7 +233,7 @@ def __apply_permission_list(repo, proto_query, name_property, create_permission_
         # proto yet, so we can safely assume it applies
         final_protos[name] = (applies_to, proto.role)
 
-    for delegate, role in final_protos.values():
+    for delegate, role in list(final_protos.values()):
         create_permission_func(delegate, repo, role)
 
 

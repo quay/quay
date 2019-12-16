@@ -72,14 +72,14 @@ class BuildComponent(BaseComponent):
     @trollius.coroutine
     def onJoin(self, details):
         logger.debug("Registering methods and listeners for component %s", self.builder_realm)
-        yield From(self.register(self._on_ready, u"io.quay.buildworker.ready"))
+        yield From(self.register(self._on_ready, "io.quay.buildworker.ready"))
         yield From(
-            self.register(self._determine_cache_tag, u"io.quay.buildworker.determinecachetag")
+            self.register(self._determine_cache_tag, "io.quay.buildworker.determinecachetag")
         )
-        yield From(self.register(self._ping, u"io.quay.buildworker.ping"))
-        yield From(self.register(self._on_log_message, u"io.quay.builder.logmessagesynchronously"))
+        yield From(self.register(self._ping, "io.quay.buildworker.ping"))
+        yield From(self.register(self._on_log_message, "io.quay.builder.logmessagesynchronously"))
 
-        yield From(self.subscribe(self._on_heartbeat, u"io.quay.builder.heartbeat"))
+        yield From(self.subscribe(self._on_heartbeat, "io.quay.builder.heartbeat"))
 
         yield From(self._set_status(ComponentStatus.WAITING))
 
@@ -235,9 +235,9 @@ class BuildComponent(BaseComponent):
     @staticmethod
     def _total_completion(statuses, total_images):
         """ Returns the current amount completion relative to the total completion of a build. """
-        percentage_with_sizes = float(len(statuses.values())) / total_images
-        sent_bytes = sum([status["current"] for status in statuses.values()])
-        total_bytes = sum([status["total"] for status in statuses.values()])
+        percentage_with_sizes = float(len(list(statuses.values()))) / total_images
+        sent_bytes = sum([status["current"] for status in list(statuses.values())])
+        total_bytes = sum([status["total"] for status in list(statuses.values())])
         return float(sent_bytes) / total_bytes * percentage_with_sizes
 
     @staticmethod

@@ -11,8 +11,8 @@ from mock import patch
 from calendar import timegm
 from contextlib import contextmanager
 from httmock import urlmatch, HTTMock, all_requests
-from urllib import urlencode
-from urlparse import urlparse, urlunparse, parse_qs
+from urllib.parse import urlencode
+from urllib.parse import urlparse, urlunparse, parse_qs
 
 from playhouse.test_utils import assert_query_count, _QueryLogHandler
 from cryptography.hazmat.primitives import serialization
@@ -32,11 +32,11 @@ from app import (
 )
 from buildtrigger.basehandler import BuildTriggerHandler
 from initdb import setup_database_for_testing, finished_database_for_testing
-from data import database, model, appr_model
-from data.appr_model.models import NEW_MODELS
-from data.database import RepositoryActionCount, Repository as RepositoryTable
-from data.logs_model import logs_model
-from data.registry_model import registry_model
+from .data import database, model, appr_model
+from .data.appr_model.models import NEW_MODELS
+from .data.database import RepositoryActionCount, Repository as RepositoryTable
+from .data.logs_model import logs_model
+from .data.registry_model import registry_model
 from test.helpers import assert_action_logged
 from util.secscan.fake import fake_security_scanner
 
@@ -195,7 +195,7 @@ class AppConfigChange(object):
         self._to_rm = []
 
     def __enter__(self):
-        for key in self._changes.keys():
+        for key in list(self._changes.keys()):
             try:
                 self._originals[key] = app.config[key]
             except KeyError:
@@ -203,7 +203,7 @@ class AppConfigChange(object):
             app.config[key] = self._changes[key]
 
     def __exit__(self, type, value, traceback):
-        for key in self._originals.keys():
+        for key in list(self._originals.keys()):
             app.config[key] = self._originals[key]
 
         for key in self._to_rm:
@@ -259,7 +259,7 @@ class ApiTestCase(unittest.TestCase):
 
     def getJsonResponse(self, resource_name, params={}, expected_code=200):
         rv = self.app.get(api.url_for(resource_name, **params))
-        self.assertEquals(expected_code, rv.status_code)
+        self.assertEqual(expected_code, rv.status_code)
         data = rv.data
         parsed = py_json.loads(data)
         return parsed
@@ -277,12 +277,12 @@ class ApiTestCase(unittest.TestCase):
             headers = None
 
         rv = self.app.post(self.url_for(resource_name, params), data=data, headers=headers)
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def getResponse(self, resource_name, params={}, expected_code=200):
         rv = self.app.get(api.url_for(resource_name, **params))
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def putResponse(self, resource_name, params={}, data={}, expected_code=200):
@@ -291,22 +291,22 @@ class ApiTestCase(unittest.TestCase):
             data=py_json.dumps(data),
             headers={"Content-Type": "application/json"},
         )
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteResponse(self, resource_name, params={}, expected_code=204):
         rv = self.app.delete(self.url_for(resource_name, params))
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data))
 
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteEmptyResponse(self, resource_name, params={}, expected_code=204):
         rv = self.app.delete(self.url_for(resource_name, params))
-        self.assertEquals(rv.status_code, expected_code)
-        self.assertEquals(rv.data, "")  # ensure response body empty
+        self.assertEqual(rv.status_code, expected_code)
+        self.assertEqual(rv.data, "")  # ensure response body empty
         return
 
     def postJsonResponse(self, resource_name, params={}, data={}, expected_code=200):
@@ -317,9 +317,9 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource POST %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource POST %s: %s" % (resource_name, rv.data))
 
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         data = rv.data
         parsed = py_json.loads(data)
         return parsed
@@ -340,9 +340,9 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource PUT %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource PUT %s: %s" % (resource_name, rv.data))
 
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         data = rv.data
         parsed = py_json.loads(data)
         return parsed
@@ -495,7 +495,7 @@ class TestUserNotification(ApiTestCase):
         # Make sure each notification can be retrieved.
         for notification in json["notifications"]:
             njson = self.getJsonResponse(UserNotification, params=dict(uuid=notification["id"]))
-            self.assertEquals(notification["id"], njson["id"])
+            self.assertEqual(notification["id"], njson["id"])
 
         # Update a notification.
         assert json["notifications"]
@@ -506,7 +506,7 @@ class TestUserNotification(ApiTestCase):
             UserNotification, params=dict(uuid=notification["id"]), data=dict(dismissed=True)
         )
 
-        self.assertEquals(True, pjson["dismissed"])
+        self.assertEqual(True, pjson["dismissed"])
 
     def test_org_notifications(self):
         # Create a notification on the organization.
@@ -518,13 +518,13 @@ class TestUserNotification(ApiTestCase):
         json = self.getJsonResponse(UserNotificationList)
         notification = json["notifications"][0]
 
-        self.assertEquals(notification["kind"], "test_notification")
-        self.assertEquals(notification["metadata"], {"org": "notification"})
+        self.assertEqual(notification["kind"], "test_notification")
+        self.assertEqual(notification["metadata"], {"org": "notification"})
 
         # Ensure it is not visible to an org member.
         self.login(READ_ACCESS_USER)
         json = self.getJsonResponse(UserNotificationList)
-        self.assertEquals(0, len(json["notifications"]))
+        self.assertEqual(0, len(json["notifications"]))
 
 
 class TestGetUserPrivateAllowed(ApiTestCase):
@@ -618,8 +618,8 @@ class TestConvertToOrganization(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
         json = self.getJsonResponse(Organization, params=dict(orgname=READ_ACCESS_USER))
 
-        self.assertEquals(READ_ACCESS_USER, json["name"])
-        self.assertEquals(True, json["is_admin"])
+        self.assertEqual(READ_ACCESS_USER, json["name"])
+        self.assertEqual(True, json["is_admin"])
 
         # Verify the now-org has no permissions.
         count = (
@@ -627,7 +627,7 @@ class TestConvertToOrganization(ApiTestCase):
             .where(database.RepositoryPermission.user == organization)
             .count()
         )
-        self.assertEquals(0, count)
+        self.assertEqual(0, count)
 
     def test_convert_via_email(self):
         self.login(READ_ACCESS_USER)
@@ -646,8 +646,8 @@ class TestConvertToOrganization(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
         json = self.getJsonResponse(Organization, params=dict(orgname=READ_ACCESS_USER))
 
-        self.assertEquals(READ_ACCESS_USER, json["name"])
-        self.assertEquals(True, json["is_admin"])
+        self.assertEqual(READ_ACCESS_USER, json["name"])
+        self.assertEqual(True, json["is_admin"])
 
 
 class TestChangeUserDetails(ApiTestCase):
@@ -658,8 +658,8 @@ class TestChangeUserDetails(ApiTestCase):
 
     def test_changepassword_unicode(self):
         self.login(READ_ACCESS_USER)
-        self.putJsonResponse(User, data=dict(password=u"someunicode北京市pass"))
-        self.login(READ_ACCESS_USER, password=u"someunicode北京市pass")
+        self.putJsonResponse(User, data=dict(password="someunicode北京市pass"))
+        self.login(READ_ACCESS_USER, password="someunicode北京市pass")
 
     def test_changeeemail(self):
         self.login(READ_ACCESS_USER)
@@ -670,10 +670,10 @@ class TestChangeUserDetails(ApiTestCase):
         self.login(READ_ACCESS_USER)
 
         json = self.putJsonResponse(User, data=dict(invoice_email=True))
-        self.assertEquals(True, json["invoice_email"])
+        self.assertEqual(True, json["invoice_email"])
 
         json = self.putJsonResponse(User, data=dict(invoice_email=False))
-        self.assertEquals(False, json["invoice_email"])
+        self.assertEqual(False, json["invoice_email"])
 
     def test_changeusername_temp(self):
         self.login(READ_ACCESS_USER)
@@ -688,7 +688,7 @@ class TestChangeUserDetails(ApiTestCase):
         json = self.putJsonResponse(User, data=dict(username="someotherusername"))
 
         # Ensure the username was changed.
-        self.assertEquals("someotherusername", json["username"])
+        self.assertEqual("someotherusername", json["username"])
         self.assertFalse(model.user.has_user_prompt(user, "confirm_username"))
 
         # Ensure the robot was changed.
@@ -704,7 +704,7 @@ class TestChangeUserDetails(ApiTestCase):
         json = self.putJsonResponse(User, data=dict(username=READ_ACCESS_USER))
 
         # Ensure the username was not changed but they are no longer temporarily named.
-        self.assertEquals(READ_ACCESS_USER, json["username"])
+        self.assertEqual(READ_ACCESS_USER, json["username"])
         self.assertFalse(model.user.has_user_prompt(user, "confirm_username"))
 
     def test_changeusername_notallowed(self):
@@ -714,7 +714,7 @@ class TestChangeUserDetails(ApiTestCase):
             self.assertFalse(model.user.has_user_prompt(user, "confirm_username"))
 
             json = self.putJsonResponse(User, data=dict(username="someotherusername"))
-            self.assertEquals(ADMIN_ACCESS_USER, json["username"])
+            self.assertEqual(ADMIN_ACCESS_USER, json["username"])
             self.assertTrue("prompts" in json)
 
             self.assertIsNone(model.user.get_user("someotherusername"))
@@ -727,7 +727,7 @@ class TestChangeUserDetails(ApiTestCase):
             self.assertFalse(model.user.has_user_prompt(user, "confirm_username"))
 
             json = self.putJsonResponse(User, data=dict(username="someotherusername"))
-            self.assertEquals("someotherusername", json["username"])
+            self.assertEqual("someotherusername", json["username"])
             self.assertTrue("prompts" in json)
 
             self.assertIsNotNone(model.user.get_user("someotherusername"))
@@ -754,7 +754,7 @@ class TestCreateNewUser(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals("The username already exists", json["detail"])
+        self.assertEqual("The username already exists", json["detail"])
 
     def test_trycreatetooshort(self):
         json = self.postJsonResponse(
@@ -763,7 +763,7 @@ class TestCreateNewUser(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals(
+        self.assertEqual(
             "Invalid namespace a: Namespace must be between 2 and 255 characters in length",
             json["detail"],
         )
@@ -775,14 +775,14 @@ class TestCreateNewUser(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals(
+        self.assertEqual(
             "Invalid namespace auserName: Namespace must match expression ^([a-z0-9]+(?:[._-][a-z0-9]+)*)$",
             json["detail"],
         )
 
     def test_createuser(self):
         data = self.postJsonResponse(User, data=NEW_USER_DETAILS, expected_code=200)
-        self.assertEquals(True, data["awaiting_verification"])
+        self.assertEqual(True, data["awaiting_verification"])
 
     def test_createuser_captcha(self):
         @urlmatch(netloc=r"(.*\.)?google.com", path="/recaptcha/api/siteverify")
@@ -994,7 +994,7 @@ class TestSignin(ApiTestCase):
     def test_signin_unicode(self):
         self.postResponse(
             Signin,
-            data=dict(username=u"\xe5\x8c\x97\xe4\xba\xac\xe5\xb8\x82", password="password"),
+            data=dict(username="\xe5\x8c\x97\xe4\xba\xac\xe5\xb8\x82", password="password"),
             expected_code=403,
         )
 
@@ -1041,7 +1041,7 @@ class TestSignout(ApiTestCase):
 
         # Make sure the user's UUID has rotated, to ensure sessions are no longer valid.
         read_user_again = model.user.get_user(READ_ACCESS_USER)
-        self.assertNotEquals(read_user.uuid, read_user_again.uuid)
+        self.assertNotEqual(read_user.uuid, read_user_again.uuid)
 
 
 class TestConductSearch(ApiTestCase):
@@ -1050,80 +1050,80 @@ class TestConductSearch(ApiTestCase):
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="read"))
 
-        self.assertEquals(0, len(json["results"]))
+        self.assertEqual(0, len(json["results"]))
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="owners"))
 
-        self.assertEquals(0, len(json["results"]))
+        self.assertEqual(0, len(json["results"]))
 
     def test_nouser(self):
         json = self.getJsonResponse(ConductSearch, params=dict(query="read"))
 
-        self.assertEquals(0, len(json["results"]))
+        self.assertEqual(0, len(json["results"]))
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="public"))
 
-        self.assertEquals(2, len(json["results"]))
-        self.assertEquals(json["results"][0]["kind"], "repository")
-        self.assertEquals(json["results"][0]["name"], "publicrepo")
+        self.assertEqual(2, len(json["results"]))
+        self.assertEqual(json["results"][0]["kind"], "repository")
+        self.assertEqual(json["results"][0]["name"], "publicrepo")
 
-        self.assertEquals(json["results"][1]["kind"], "user")
-        self.assertEquals(json["results"][1]["name"], "public")
+        self.assertEqual(json["results"][1]["kind"], "user")
+        self.assertEqual(json["results"][1]["name"], "public")
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="owners"))
 
-        self.assertEquals(0, len(json["results"]))
+        self.assertEqual(0, len(json["results"]))
 
     def test_orgmember(self):
         self.login(READ_ACCESS_USER)
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="owners"))
 
-        self.assertEquals(0, len(json["results"]))
+        self.assertEqual(0, len(json["results"]))
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="readers"))
 
-        self.assertEquals(1, len(json["results"]))
-        self.assertEquals(json["results"][0]["kind"], "team")
-        self.assertEquals(json["results"][0]["name"], "readers")
+        self.assertEqual(1, len(json["results"]))
+        self.assertEqual(json["results"][0]["kind"], "team")
+        self.assertEqual(json["results"][0]["name"], "readers")
 
     def test_orgadmin(self):
         self.login(ADMIN_ACCESS_USER)
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="owners"))
 
-        self.assertEquals(4, len(json["results"]))
-        self.assertEquals(json["results"][0]["kind"], "team")
-        self.assertEquals(json["results"][0]["name"], "owners")
+        self.assertEqual(4, len(json["results"]))
+        self.assertEqual(json["results"][0]["kind"], "team")
+        self.assertEqual(json["results"][0]["name"], "owners")
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="readers"))
 
-        self.assertEquals(1, len(json["results"]))
-        self.assertEquals(json["results"][0]["kind"], "team")
-        self.assertEquals(json["results"][0]["name"], "readers")
+        self.assertEqual(1, len(json["results"]))
+        self.assertEqual(json["results"][0]["kind"], "team")
+        self.assertEqual(json["results"][0]["name"], "readers")
 
     def test_explicit_permission(self):
         self.login("reader")
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="shared"))
 
-        self.assertEquals(1, len(json["results"]))
-        self.assertEquals(json["results"][0]["kind"], "repository")
-        self.assertEquals(json["results"][0]["name"], "shared")
+        self.assertEqual(1, len(json["results"]))
+        self.assertEqual(json["results"][0]["kind"], "repository")
+        self.assertEqual(json["results"][0]["name"], "shared")
 
     def test_full_text(self):
         self.login(ADMIN_ACCESS_USER)
 
         # Make sure the repository is found via `full` and `text search`.
         json = self.getJsonResponse(ConductSearch, params=dict(query="full"))
-        self.assertEquals(1, len(json["results"]))
-        self.assertEquals(json["results"][0]["kind"], "repository")
-        self.assertEquals(json["results"][0]["name"], "text-full-repo")
+        self.assertEqual(1, len(json["results"]))
+        self.assertEqual(json["results"][0]["kind"], "repository")
+        self.assertEqual(json["results"][0]["name"], "text-full-repo")
 
         json = self.getJsonResponse(ConductSearch, params=dict(query="text search"))
-        self.assertEquals(1, len(json["results"]))
-        self.assertEquals(json["results"][0]["kind"], "repository")
-        self.assertEquals(json["results"][0]["name"], "text-full-repo")
+        self.assertEqual(1, len(json["results"]))
+        self.assertEqual(json["results"][0]["kind"], "repository")
+        self.assertEqual(json["results"][0]["name"], "text-full-repo")
 
 
 class TestGetMatchingEntities(ApiTestCase):
@@ -1134,13 +1134,13 @@ class TestGetMatchingEntities(ApiTestCase):
             EntitySearch,
             params=dict(prefix=ADMIN_ACCESS_USER, namespace=ORGANIZATION, includeTeams="true"),
         )
-        self.assertEquals(1, len(json["results"]))
+        self.assertEqual(1, len(json["results"]))
 
     def test_simple_lookup_noorg(self):
         self.login(ADMIN_ACCESS_USER)
 
         json = self.getJsonResponse(EntitySearch, params=dict(prefix=ADMIN_ACCESS_USER))
-        self.assertEquals(1, len(json["results"]))
+        self.assertEqual(1, len(json["results"]))
 
     def test_unicode_search(self):
         self.login(ADMIN_ACCESS_USER)
@@ -1148,7 +1148,7 @@ class TestGetMatchingEntities(ApiTestCase):
         json = self.getJsonResponse(
             EntitySearch, params=dict(prefix="北京市", namespace=ORGANIZATION, includeTeams="true")
         )
-        self.assertEquals(0, len(json["results"]))
+        self.assertEqual(0, len(json["results"]))
 
     def test_notinorg(self):
         self.login(NO_ACCESS_USER)
@@ -1214,7 +1214,7 @@ class TestCreateOrganization(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals("A user or organization with this name already exists", json["detail"])
+        self.assertEqual("A user or organization with this name already exists", json["detail"])
 
     def test_existingorg(self):
         self.login(ADMIN_ACCESS_USER)
@@ -1225,7 +1225,7 @@ class TestCreateOrganization(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals("A user or organization with this name already exists", json["detail"])
+        self.assertEqual("A user or organization with this name already exists", json["detail"])
 
     def test_createorg(self):
         self.login(ADMIN_ACCESS_USER)
@@ -1236,7 +1236,7 @@ class TestCreateOrganization(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEquals('"Created"', data.strip())
+        self.assertEqual('"Created"', data.strip())
 
         # Ensure the org was created.
         organization = model.organization.get_organization("neworg")
@@ -1244,8 +1244,8 @@ class TestCreateOrganization(ApiTestCase):
 
         # Verify the admin user is the org's admin.
         json = self.getJsonResponse(Organization, params=dict(orgname="neworg"))
-        self.assertEquals("neworg", json["name"])
-        self.assertEquals(True, json["is_admin"])
+        self.assertEqual("neworg", json["name"])
+        self.assertEqual(True, json["is_admin"])
 
     def test_createorg_viaoauth(self):
         # Attempt with no auth.
@@ -1276,7 +1276,7 @@ class TestCreateOrganization(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEquals('"Created"', data.strip())
+        self.assertEqual('"Created"', data.strip())
 
 
 class TestGetOrganization(ApiTestCase):
@@ -1292,15 +1292,15 @@ class TestGetOrganization(ApiTestCase):
         self.login(READ_ACCESS_USER)
         json = self.getJsonResponse(Organization, params=dict(orgname=ORGANIZATION))
 
-        self.assertEquals(ORGANIZATION, json["name"])
-        self.assertEquals(False, json["is_admin"])
+        self.assertEqual(ORGANIZATION, json["name"])
+        self.assertEqual(False, json["is_admin"])
 
     def test_getorganization_asadmin(self):
         self.login(ADMIN_ACCESS_USER)
         json = self.getJsonResponse(Organization, params=dict(orgname=ORGANIZATION))
 
-        self.assertEquals(ORGANIZATION, json["name"])
-        self.assertEquals(True, json["is_admin"])
+        self.assertEqual(ORGANIZATION, json["name"])
+        self.assertEqual(True, json["is_admin"])
 
 
 class TestChangeOrganizationDetails(ApiTestCase):
@@ -1311,12 +1311,12 @@ class TestChangeOrganizationDetails(ApiTestCase):
             Organization, params=dict(orgname=ORGANIZATION), data=dict(invoice_email=True)
         )
 
-        self.assertEquals(True, json["invoice_email"])
+        self.assertEqual(True, json["invoice_email"])
 
         json = self.putJsonResponse(
             Organization, params=dict(orgname=ORGANIZATION), data=dict(invoice_email=False)
         )
-        self.assertEquals(False, json["invoice_email"])
+        self.assertEqual(False, json["invoice_email"])
 
     def test_changemail(self):
         self.login(ADMIN_ACCESS_USER)
@@ -1325,7 +1325,7 @@ class TestChangeOrganizationDetails(ApiTestCase):
             Organization, params=dict(orgname=ORGANIZATION), data=dict(email="newemail@example.com")
         )
 
-        self.assertEquals("newemail@example.com", json["email"])
+        self.assertEqual("newemail@example.com", json["email"])
 
 
 class TestGetOrganizationPrototypes(ApiTestCase):
@@ -1351,7 +1351,7 @@ class TestCreateOrganizationPrototypes(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals("Unknown activating user", json["detail"])
+        self.assertEqual("Unknown activating user", json["detail"])
 
     def test_missingdelegate(self):
         self.login(ADMIN_ACCESS_USER)
@@ -1372,7 +1372,7 @@ class TestCreateOrganizationPrototypes(ApiTestCase):
             data=dict(role="read", delegate={"kind": "team", "name": "readers"}),
         )
 
-        self.assertEquals("read", json["role"])
+        self.assertEqual("read", json["role"])
         pid = json["id"]
 
         # Verify the prototype exists.
@@ -1421,7 +1421,7 @@ class TestUpdateOrganizationPrototypes(ApiTestCase):
             data=dict(role="admin"),
         )
 
-        self.assertEquals("admin", json["role"])
+        self.assertEqual("admin", json["role"])
 
 
 class TestGetOrganizationMembers(ApiTestCase):
@@ -1441,7 +1441,7 @@ class TestGetOrganizationMembers(ApiTestCase):
                 OrganizationMember, params=dict(orgname=ORGANIZATION, membername=membername)
             )
 
-            self.assertEquals(member, response)
+            self.assertEqual(member, response)
 
 
 class TestRemoveOrganizationMember(ApiTestCase):
@@ -1516,7 +1516,7 @@ class TestGetOrganizationPrivateAllowed(ApiTestCase):
 
         json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname=ORGANIZATION))
 
-        self.assertEquals(True, json["privateAllowed"])
+        self.assertEqual(True, json["privateAllowed"])
         assert not "reposAllowed" in json
 
     def test_neworg(self):
@@ -1528,7 +1528,7 @@ class TestGetOrganizationPrivateAllowed(ApiTestCase):
 
         json = self.getJsonResponse(OrgPrivateRepositories, params=dict(orgname="neworg"))
 
-        self.assertEquals(False, json["privateAllowed"])
+        self.assertEqual(False, json["privateAllowed"])
 
 
 class TestUpdateOrganizationTeam(ApiTestCase):
@@ -1541,8 +1541,8 @@ class TestUpdateOrganizationTeam(ApiTestCase):
             data=dict(description="My cool team", role="creator"),
         )
 
-        self.assertEquals("My cool team", data["description"])
-        self.assertEquals("creator", data["role"])
+        self.assertEqual("My cool team", data["description"])
+        self.assertEqual("creator", data["role"])
 
     def test_attemptchangeroleonowners(self):
         self.login(ADMIN_ACCESS_USER)
@@ -1563,8 +1563,8 @@ class TestUpdateOrganizationTeam(ApiTestCase):
             data=dict(description="My cool team", role="member"),
         )
 
-        self.assertEquals("My cool team", data["description"])
-        self.assertEquals("member", data["role"])
+        self.assertEqual("My cool team", data["description"])
+        self.assertEqual("member", data["role"])
 
         # Verify the team was created.
         json = self.getJsonResponse(Organization, params=dict(orgname=ORGANIZATION))
@@ -1596,7 +1596,7 @@ class TestDeleteOrganizationTeam(ApiTestCase):
             "Deleting team 'owners' would remove admin ability for user "
             + "'devtable' in organization 'buynlarge'"
         )
-        self.assertEquals(msg, data["message"])
+        self.assertEqual(msg, data["message"])
 
 
 class TestTeamPermissions(ApiTestCase):
@@ -1607,7 +1607,7 @@ class TestTeamPermissions(ApiTestCase):
             TeamPermissions, params=dict(orgname=ORGANIZATION, teamname="readers")
         )
 
-        self.assertEquals(1, len(resp["permissions"]))
+        self.assertEqual(1, len(resp["permissions"]))
 
 
 class TestGetOrganizationTeamMembers(ApiTestCase):
@@ -1689,7 +1689,7 @@ class TestUpdateOrganizationTeamMember(ApiTestCase):
             TeamMember, params=dict(orgname=ORGANIZATION, teamname="owners", membername=membername)
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Make sure the user is not (yet) part of the team.
         json = self.getJsonResponse(
@@ -1773,7 +1773,7 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
             TeamMember, params=dict(orgname=ORGANIZATION, teamname="owners", membername=membername)
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Login as the user.
         self.login(membername)
@@ -1781,7 +1781,7 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
         # Accept the invite.
         user = model.user.get_user(membername)
         invites = list(model.team.lookup_team_invites(user))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         self.putJsonResponse(TeamMemberInvite, params=dict(code=invites[0].invite_token))
 
@@ -1807,14 +1807,14 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
             params=dict(orgname=ORGANIZATION, teamname="owners", email=member.email),
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Login as the user.
         self.login(member.username)
 
         # Accept the invite.
         invites = list(model.team.lookup_team_invites_by_email(member.email))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         self.putJsonResponse(TeamMemberInvite, params=dict(code=invites[0].invite_token))
 
@@ -1839,7 +1839,7 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
             params=dict(orgname=ORGANIZATION, teamname="owners", membername=NO_ACCESS_USER),
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Login as a different user.
         self.login(PUBLIC_USER)
@@ -1847,7 +1847,7 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
         # Try to accept the invite.
         user = model.user.get_user(NO_ACCESS_USER)
         invites = list(model.team.lookup_team_invites(user))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         self.putResponse(
             TeamMemberInvite, params=dict(code=invites[0].invite_token), expected_code=400
@@ -1856,7 +1856,7 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
         # Ensure the invite is still valid.
         user = model.user.get_user(NO_ACCESS_USER)
         invites = list(model.team.lookup_team_invites(user))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         # Ensure the user is *not* a member of the team.
         self.login(ADMIN_ACCESS_USER)
@@ -1874,14 +1874,14 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
             params=dict(orgname=ORGANIZATION, teamname="owners", email="someemail@example.com"),
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Login as a different user.
         self.login(PUBLIC_USER)
 
         # Try to accept the invite.
         invites = list(model.team.lookup_team_invites_by_email("someemail@example.com"))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         self.putResponse(
             TeamMemberInvite, params=dict(code=invites[0].invite_token), expected_code=400
@@ -1889,7 +1889,7 @@ class TestAcceptTeamMemberInvite(ApiTestCase):
 
         # Ensure the invite is still valid.
         invites = list(model.team.lookup_team_invites_by_email("someemail@example.com"))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         # Ensure the user is *not* a member of the team.
         self.login(ADMIN_ACCESS_USER)
@@ -1909,12 +1909,12 @@ class TestDeclineTeamMemberInvite(ApiTestCase):
             TeamMember, params=dict(orgname=ORGANIZATION, teamname="owners", membername=membername)
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Try to decline the invite.
         user = model.user.get_user(membername)
         invites = list(model.team.lookup_team_invites(user))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         self.deleteResponse(
             TeamMemberInvite, params=dict(code=invites[0].invite_token), expected_code=400
@@ -1929,7 +1929,7 @@ class TestDeclineTeamMemberInvite(ApiTestCase):
             TeamMember, params=dict(orgname=ORGANIZATION, teamname="owners", membername=membername)
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Login as the user.
         self.login(membername)
@@ -1937,7 +1937,7 @@ class TestDeclineTeamMemberInvite(ApiTestCase):
         # Decline the invite.
         user = model.user.get_user(membername)
         invites = list(model.team.lookup_team_invites(user))
-        self.assertEquals(1, len(invites))
+        self.assertEqual(1, len(invites))
 
         self.deleteEmptyResponse(TeamMemberInvite, params=dict(code=invites[0].invite_token))
 
@@ -1957,14 +1957,14 @@ class TestDeleteOrganizationTeamMember(ApiTestCase):
             params=dict(orgname=ORGANIZATION, teamname="readers", includePending=True),
         )
 
-        self.assertEquals(len(json["members"]), 3)
+        self.assertEqual(len(json["members"]), 3)
 
         membername = NO_ACCESS_USER
         response = self.putJsonResponse(
             TeamMember, params=dict(orgname=ORGANIZATION, teamname="readers", membername=membername)
         )
 
-        self.assertEquals(True, response["invited"])
+        self.assertEqual(True, response["invited"])
 
         # Verify the invite was added.
         json = self.getJsonResponse(
@@ -1972,7 +1972,7 @@ class TestDeleteOrganizationTeamMember(ApiTestCase):
             params=dict(orgname=ORGANIZATION, teamname="readers", includePending=True),
         )
 
-        self.assertEquals(len(json["members"]), 4)
+        self.assertEqual(len(json["members"]), 4)
 
         # Delete the invite.
         self.deleteEmptyResponse(
@@ -1985,7 +1985,7 @@ class TestDeleteOrganizationTeamMember(ApiTestCase):
             params=dict(orgname=ORGANIZATION, teamname="readers", includePending=True),
         )
 
-        self.assertEquals(len(json["members"]), 3)
+        self.assertEqual(len(json["members"]), 3)
 
     def test_deletemember(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2000,7 +2000,7 @@ class TestDeleteOrganizationTeamMember(ApiTestCase):
             TeamMemberList, params=dict(orgname=ORGANIZATION, teamname="readers")
         )
 
-        self.assertEquals(len(json["members"]), 1)
+        self.assertEqual(len(json["members"]), 1)
 
 
 class TestCreateRepo(ApiTestCase):
@@ -2013,7 +2013,7 @@ class TestCreateRepo(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals("Invalid repository name", json["detail"])
+        self.assertEqual("Invalid repository name", json["detail"])
 
     def test_duplicaterepo(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2024,7 +2024,7 @@ class TestCreateRepo(ApiTestCase):
             expected_code=400,
         )
 
-        self.assertEquals("Repository already exists", json["detail"])
+        self.assertEqual("Repository already exists", json["detail"])
 
     def test_createrepo(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2035,8 +2035,8 @@ class TestCreateRepo(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEquals(ADMIN_ACCESS_USER, json["namespace"])
-        self.assertEquals("newrepo", json["name"])
+        self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
+        self.assertEqual("newrepo", json["name"])
 
     def test_create_app_repo(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2049,9 +2049,9 @@ class TestCreateRepo(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEquals(ADMIN_ACCESS_USER, json["namespace"])
-        self.assertEquals("newrepo", json["name"])
-        self.assertEquals("application", json["kind"])
+        self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
+        self.assertEqual("newrepo", json["name"])
+        self.assertEqual("application", json["kind"])
 
     def test_createrepo_underorg(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2064,8 +2064,8 @@ class TestCreateRepo(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEquals(ORGANIZATION, json["namespace"])
-        self.assertEquals("newrepo", json["name"])
+        self.assertEqual(ORGANIZATION, json["namespace"])
+        self.assertEqual("newrepo", json["name"])
 
 
 class TestListRepos(ApiTestCase):
@@ -2086,14 +2086,14 @@ class TestListRepos(ApiTestCase):
             params=dict(namespace=ADMIN_ACCESS_USER, public=False, repo_kind="application"),
         )
 
-        self.assertEquals(1, len(json["repositories"]))
-        self.assertEquals("application", json["repositories"][0]["kind"])
+        self.assertEqual(1, len(json["repositories"]))
+        self.assertEqual("application", json["repositories"][0]["kind"])
 
     def test_listrepos_asguest(self):
         # Queries: Base + the list query
         with assert_query_count(BASE_QUERY_COUNT + 1):
             json = self.getJsonResponse(RepositoryList, params=dict(public=True))
-            self.assertEquals(len(json["repositories"]), 1)
+            self.assertEqual(len(json["repositories"]), 1)
 
     def assertPublicRepos(self, has_extras=False):
         public_user = model.user.get_user("public")
@@ -2125,7 +2125,7 @@ class TestListRepos(ApiTestCase):
                     self.assertTrue(has_extras, "Could not find name %s in repos created" % name)
 
             if "next_page" in json:
-                self.assertEquals(len(json["repositories"]), REPOS_PER_PAGE)
+                self.assertEqual(len(json["repositories"]), REPOS_PER_PAGE)
             else:
                 break
 
@@ -2147,7 +2147,7 @@ class TestListRepos(ApiTestCase):
         self.assertGreater(len(json["repositories"]), 0)
 
         for repo in json["repositories"]:
-            self.assertEquals(ORGANIZATION, repo["namespace"])
+            self.assertEqual(ORGANIZATION, repo["namespace"])
 
     def test_listrepos_allparams(self):
         # Add a repository action count entry for one of the org repos.
@@ -2168,7 +2168,7 @@ class TestListRepos(ApiTestCase):
         self.assertGreater(len(json["repositories"]), 0)
 
         for repository in json["repositories"]:
-            self.assertEquals(ORGANIZATION, repository["namespace"])
+            self.assertEqual(ORGANIZATION, repository["namespace"])
             if repository["name"] == ORG_REPO:
                 self.assertGreater(repository["popularity"], 0)
 
@@ -2197,21 +2197,21 @@ class TestListRepos(ApiTestCase):
         )
 
         for repo in json["repositories"]:
-            self.assertEquals(ORGANIZATION, repo["namespace"])
+            self.assertEqual(ORGANIZATION, repo["namespace"])
 
     def assertRepositoryVisible(self, namespace, name):
         json = self.getJsonResponse(RepositoryList, params=dict(namespace=namespace, public=False))
-        self.assertEquals(1, len(json["repositories"]))
-        self.assertEquals(name, json["repositories"][0]["name"])
+        self.assertEqual(1, len(json["repositories"]))
+        self.assertEqual(name, json["repositories"][0]["name"])
 
     def assertRepositoryNotVisible(self, namespace, name):
         json = self.getJsonResponse(RepositoryList, params=dict(namespace=namespace, public=False))
         for repo in json["repositories"]:
-            self.assertNotEquals(name, repo["name"])
+            self.assertNotEqual(name, repo["name"])
 
         json = self.getJsonResponse(RepositoryList, params=dict(starred=True))
         for repo in json["repositories"]:
-            self.assertNotEquals(name, repo["name"])
+            self.assertNotEqual(name, repo["name"])
 
     def test_listrepos_starred_filtered(self):
         admin_user = model.user.get_user(ADMIN_ACCESS_USER)
@@ -2320,7 +2320,7 @@ class TestUpdateRepo(ApiTestCase):
         # Verify the repo description was updated.
         json = self.getJsonResponse(Repository, params=dict(repository=self.SIMPLE_REPO))
 
-        self.assertEquals("Some cool repo", json["description"])
+        self.assertEqual("Some cool repo", json["description"])
 
 
 class TestChangeRepoVisibility(ApiTestCase):
@@ -2339,7 +2339,7 @@ class TestChangeRepoVisibility(ApiTestCase):
         # Verify the visibility.
         json = self.getJsonResponse(Repository, params=dict(repository=self.SIMPLE_REPO))
 
-        self.assertEquals(True, json["is_public"])
+        self.assertEqual(True, json["is_public"])
 
         # Change the subscription of the namespace.
         self.putJsonResponse(UserPlan, data=dict(plan="personal-2018"))
@@ -2355,7 +2355,7 @@ class TestChangeRepoVisibility(ApiTestCase):
         # Verify the visibility.
         json = self.getJsonResponse(Repository, params=dict(repository=self.SIMPLE_REPO))
 
-        self.assertEquals(True, json["is_public"])
+        self.assertEqual(True, json["is_public"])
 
     def test_changevisibility(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2370,7 +2370,7 @@ class TestChangeRepoVisibility(ApiTestCase):
         # Verify the visibility.
         json = self.getJsonResponse(Repository, params=dict(repository=self.SIMPLE_REPO))
 
-        self.assertEquals(True, json["is_public"])
+        self.assertEqual(True, json["is_public"])
 
         # Make private.
         self.postJsonResponse(
@@ -2382,7 +2382,7 @@ class TestChangeRepoVisibility(ApiTestCase):
         # Verify the visibility.
         json = self.getJsonResponse(Repository, params=dict(repository=self.SIMPLE_REPO))
 
-        self.assertEquals(False, json["is_public"])
+        self.assertEqual(False, json["is_public"])
 
 
 class log_queries(object):
@@ -2573,10 +2573,10 @@ class TestGetRepository(ApiTestCase):
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )
 
-        self.assertEquals(ADMIN_ACCESS_USER, json["namespace"])
-        self.assertEquals("gargantuan", json["name"])
+        self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
+        self.assertEqual("gargantuan", json["name"])
 
-        self.assertEquals(False, json["is_public"])
+        self.assertEqual(False, json["is_public"])
 
     def test_getrepo_badnames(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2596,21 +2596,21 @@ class TestGetRepository(ApiTestCase):
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/" + bad_name)
             )
 
-            self.assertEquals(ADMIN_ACCESS_USER, json["namespace"])
-            self.assertEquals(bad_name, json["name"])
-            self.assertEquals(True, json["is_public"])
+            self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
+            self.assertEqual(bad_name, json["name"])
+            self.assertEqual(True, json["is_public"])
 
     def test_getrepo_public_asguest(self):
         json = self.getJsonResponse(Repository, params=dict(repository=self.PUBLIC_REPO))
 
-        self.assertEquals(PUBLIC_USER, json["namespace"])
-        self.assertEquals("publicrepo", json["name"])
+        self.assertEqual(PUBLIC_USER, json["namespace"])
+        self.assertEqual("publicrepo", json["name"])
 
-        self.assertEquals(True, json["is_public"])
-        self.assertEquals(False, json["is_organization"])
+        self.assertEqual(True, json["is_public"])
+        self.assertEqual(False, json["is_organization"])
 
-        self.assertEquals(False, json["can_write"])
-        self.assertEquals(False, json["can_admin"])
+        self.assertEqual(False, json["can_write"])
+        self.assertEqual(False, json["can_admin"])
 
         assert "latest" in json["tags"]
 
@@ -2619,9 +2619,9 @@ class TestGetRepository(ApiTestCase):
 
         json = self.getJsonResponse(Repository, params=dict(repository=self.PUBLIC_REPO))
 
-        self.assertEquals(False, json["is_organization"])
-        self.assertEquals(True, json["can_write"])
-        self.assertEquals(True, json["can_admin"])
+        self.assertEqual(False, json["is_organization"])
+        self.assertEqual(True, json["can_write"])
+        self.assertEqual(True, json["can_admin"])
 
     def test_getrepo_building(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2630,9 +2630,9 @@ class TestGetRepository(ApiTestCase):
             Repository, params=dict(repository=ADMIN_ACCESS_USER + "/building")
         )
 
-        self.assertEquals(True, json["can_write"])
-        self.assertEquals(True, json["can_admin"])
-        self.assertEquals(False, json["is_organization"])
+        self.assertEqual(True, json["can_write"])
+        self.assertEqual(True, json["can_admin"])
+        self.assertEqual(False, json["is_organization"])
 
     def test_getrepo_org_asnonmember(self):
         self.getResponse(
@@ -2646,13 +2646,13 @@ class TestGetRepository(ApiTestCase):
             Repository, params=dict(repository=ORGANIZATION + "/" + ORG_REPO)
         )
 
-        self.assertEquals(ORGANIZATION, json["namespace"])
-        self.assertEquals(ORG_REPO, json["name"])
+        self.assertEqual(ORGANIZATION, json["namespace"])
+        self.assertEqual(ORG_REPO, json["name"])
 
-        self.assertEquals(False, json["can_write"])
-        self.assertEquals(False, json["can_admin"])
+        self.assertEqual(False, json["can_write"])
+        self.assertEqual(False, json["can_admin"])
 
-        self.assertEquals(True, json["is_organization"])
+        self.assertEqual(True, json["is_organization"])
 
     def test_getrepo_org_asadmin(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2661,10 +2661,10 @@ class TestGetRepository(ApiTestCase):
             Repository, params=dict(repository=ORGANIZATION + "/" + ORG_REPO)
         )
 
-        self.assertEquals(True, json["can_write"])
-        self.assertEquals(True, json["can_admin"])
+        self.assertEqual(True, json["can_write"])
+        self.assertEqual(True, json["can_admin"])
 
-        self.assertEquals(True, json["is_organization"])
+        self.assertEqual(True, json["is_organization"])
 
 
 class TestRepositoryBuildResource(ApiTestCase):
@@ -2705,8 +2705,8 @@ class TestRepositoryBuildResource(ApiTestCase):
             RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
         )
 
-        self.assertEquals(1, len(json["builds"]))
-        self.assertEquals(uuid, json["builds"][0]["id"])
+        self.assertEqual(1, len(json["builds"]))
+        self.assertEqual(uuid, json["builds"][0]["id"])
 
         # Find the build's queue item.
         build_ref = database.RepositoryBuild.get(uuid=uuid)
@@ -2727,8 +2727,8 @@ class TestRepositoryBuildResource(ApiTestCase):
             RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
         )
 
-        self.assertEquals(1, len(json["builds"]))
-        self.assertEquals("cancelled", json["builds"][0]["phase"])
+        self.assertEqual(1, len(json["builds"]))
+        self.assertEqual("cancelled", json["builds"][0]["phase"])
 
         # Check for the build's queue item.
         try:
@@ -2755,8 +2755,8 @@ class TestRepositoryBuildResource(ApiTestCase):
             RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
         )
 
-        self.assertEquals(1, len(json["builds"]))
-        self.assertEquals(uuid, json["builds"][0]["id"])
+        self.assertEqual(1, len(json["builds"]))
+        self.assertEqual(uuid, json["builds"][0]["id"])
 
         # Set queue item to be picked up.
         build_ref = database.RepositoryBuild.get(uuid=uuid)
@@ -2789,8 +2789,8 @@ class TestRepositoryBuildResource(ApiTestCase):
             RepositoryBuildList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
         )
 
-        self.assertEquals(1, len(json["builds"]))
-        self.assertEquals(uuid, json["builds"][0]["id"])
+        self.assertEqual(1, len(json["builds"]))
+        self.assertEqual(uuid, json["builds"][0]["id"])
 
         # Set the build to a different phase.
         rb = database.RepositoryBuild.get(uuid=uuid)
@@ -2838,9 +2838,9 @@ class TestRepoBuilds(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/building", build_uuid=build["id"]),
         )
 
-        self.assertEquals(status_json["id"], build["id"])
-        self.assertEquals(status_json["resource_key"], build["resource_key"])
-        self.assertEquals(status_json["trigger"], build["trigger"])
+        self.assertEqual(status_json["id"], build["id"])
+        self.assertEqual(status_json["resource_key"], build["resource_key"])
+        self.assertEqual(status_json["trigger"], build["trigger"])
 
 
 class TestRequestRepoBuild(ApiTestCase):
@@ -2897,7 +2897,7 @@ class TestRequestRepoBuild(ApiTestCase):
         )
 
         assert len(json["builds"]) > 0
-        self.assertEquals("http://quay.io/robots.txt", json["builds"][0]["archive_url"])
+        self.assertEqual("http://quay.io/robots.txt", json["builds"][0]["archive_url"])
 
     def test_requestrepobuild_withfile(self):
         self.login(ADMIN_ACCESS_USER)
@@ -2997,9 +2997,9 @@ class TestRepositoryEmail(ApiTestCase):
             ),
         )
 
-        self.assertEquals(False, json["confirmed"])
-        self.assertEquals(ADMIN_ACCESS_USER, json["namespace"])
-        self.assertEquals("simple", json["repository"])
+        self.assertEqual(False, json["confirmed"])
+        self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
+        self.assertEqual("simple", json["repository"])
 
     def test_emailauthorized(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3010,9 +3010,9 @@ class TestRepositoryEmail(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", email="jschorr@devtable.com"),
         )
 
-        self.assertEquals(True, json["confirmed"])
-        self.assertEquals(ADMIN_ACCESS_USER, json["namespace"])
-        self.assertEquals("simple", json["repository"])
+        self.assertEqual(True, json["confirmed"])
+        self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
+        self.assertEqual("simple", json["repository"])
 
     def test_send_email_authorization(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3023,9 +3023,9 @@ class TestRepositoryEmail(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", email="jschorr+foo@devtable.com"),
         )
 
-        self.assertEquals(False, json["confirmed"])
-        self.assertEquals(ADMIN_ACCESS_USER, json["namespace"])
-        self.assertEquals("simple", json["repository"])
+        self.assertEqual(False, json["confirmed"])
+        self.assertEqual(ADMIN_ACCESS_USER, json["namespace"])
+        self.assertEqual("simple", json["repository"])
 
 
 class TestRepositoryNotifications(ApiTestCase):
@@ -3076,9 +3076,9 @@ class TestRepositoryNotifications(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEquals("repo_push", json["event"])
-        self.assertEquals("webhook", json["method"])
-        self.assertEquals("http://example.com", json["config"]["url"])
+        self.assertEqual("repo_push", json["event"])
+        self.assertEqual("webhook", json["method"])
+        self.assertEqual("http://example.com", json["config"]["url"])
         self.assertIsNone(json["title"])
 
         wid = json["uuid"]
@@ -3088,9 +3088,9 @@ class TestRepositoryNotifications(ApiTestCase):
             RepositoryNotification, params=dict(repository=ADMIN_ACCESS_USER + "/simple", uuid=wid)
         )
 
-        self.assertEquals(wid, json["uuid"])
-        self.assertEquals("repo_push", json["event"])
-        self.assertEquals("webhook", json["method"])
+        self.assertEqual(wid, json["uuid"])
+        self.assertEqual("repo_push", json["event"])
+        self.assertEqual("webhook", json["method"])
         self.assertIsNone(json["title"])
 
         # Verify the notification is listed.
@@ -3129,10 +3129,10 @@ class TestRepositoryNotifications(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEquals("repo_push", json["event"])
-        self.assertEquals("webhook", json["method"])
-        self.assertEquals("http://example.com", json["config"]["url"])
-        self.assertEquals("Some Notification", json["title"])
+        self.assertEqual("repo_push", json["event"])
+        self.assertEqual("webhook", json["method"])
+        self.assertEqual("http://example.com", json["config"]["url"])
+        self.assertEqual("Some Notification", json["title"])
 
         wid = json["uuid"]
 
@@ -3141,10 +3141,10 @@ class TestRepositoryNotifications(ApiTestCase):
             RepositoryNotification, params=dict(repository=ADMIN_ACCESS_USER + "/simple", uuid=wid)
         )
 
-        self.assertEquals(wid, json["uuid"])
-        self.assertEquals("repo_push", json["event"])
-        self.assertEquals("webhook", json["method"])
-        self.assertEquals("Some Notification", json["title"])
+        self.assertEqual(wid, json["uuid"])
+        self.assertEqual("repo_push", json["event"])
+        self.assertEqual("webhook", json["method"])
+        self.assertEqual("Some Notification", json["title"])
 
 
 class TestListAndGetImage(ApiTestCase):
@@ -3171,7 +3171,7 @@ class TestListAndGetImage(ApiTestCase):
                 params=dict(repository=ADMIN_ACCESS_USER + "/simple", image_id=image["id"]),
             )
 
-            self.assertEquals(image["id"], ijson["id"])
+            self.assertEqual(image["id"], ijson["id"])
 
 
 class TestGetImageChanges(ApiTestCase):
@@ -3230,7 +3230,7 @@ class TestRestoreTag(ApiTestCase):
             ListRepositoryTags, params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="latest")
         )
 
-        self.assertEquals(2, len(json["tags"]))
+        self.assertEqual(2, len(json["tags"]))
         self.assertFalse("end_ts" in json["tags"][0])
 
         previous_image_id = json["tags"][1]["docker_image_id"]
@@ -3244,9 +3244,9 @@ class TestRestoreTag(ApiTestCase):
         json = self.getJsonResponse(
             ListRepositoryTags, params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="latest")
         )
-        self.assertEquals(3, len(json["tags"]))
+        self.assertEqual(3, len(json["tags"]))
         self.assertFalse("end_ts" in json["tags"][0])
-        self.assertEquals(previous_image_id, json["tags"][0]["docker_image_id"])
+        self.assertEqual(previous_image_id, json["tags"][0]["docker_image_id"])
 
     def test_restoretag_to_digest(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3255,7 +3255,7 @@ class TestRestoreTag(ApiTestCase):
             ListRepositoryTags, params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="latest")
         )
 
-        self.assertEquals(2, len(json["tags"]))
+        self.assertEqual(2, len(json["tags"]))
         self.assertFalse("end_ts" in json["tags"][0])
 
         previous_manifest = json["tags"][1]["manifest_digest"]
@@ -3269,9 +3269,9 @@ class TestRestoreTag(ApiTestCase):
         json = self.getJsonResponse(
             ListRepositoryTags, params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="latest")
         )
-        self.assertEquals(3, len(json["tags"]))
+        self.assertEqual(3, len(json["tags"]))
         self.assertFalse("end_ts" in json["tags"][0])
-        self.assertEquals(previous_manifest, json["tags"][0]["manifest_digest"])
+        self.assertEqual(previous_manifest, json["tags"][0]["manifest_digest"])
 
 
 class TestListAndDeleteTag(ApiTestCase):
@@ -3341,7 +3341,7 @@ class TestListAndDeleteTag(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="staging"),
         )
 
-        self.assertEquals(staging_images, json["images"])
+        self.assertEqual(staging_images, json["images"])
 
         # Require a valid tag name.
         self.putResponse(
@@ -3366,7 +3366,7 @@ class TestListAndDeleteTag(ApiTestCase):
         )
 
         sometag_images = json["images"]
-        self.assertEquals(sometag_images, staging_images)
+        self.assertEqual(sometag_images, staging_images)
 
         # Move the tag.
         self.putResponse(
@@ -3383,8 +3383,8 @@ class TestListAndDeleteTag(ApiTestCase):
         )
 
         sometag_new_images = json["images"]
-        self.assertEquals(1, len(sometag_new_images))
-        self.assertEquals(staging_images[-1], sometag_new_images[0])
+        self.assertEqual(1, len(sometag_new_images))
+        self.assertEqual(staging_images[-1], sometag_new_images[0])
 
     def test_deletesubtag(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3409,7 +3409,7 @@ class TestListAndDeleteTag(ApiTestCase):
             RepositoryTagImages, params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="prod")
         )
 
-        self.assertEquals(prod_images, json["images"])
+        self.assertEqual(prod_images, json["images"])
 
     def test_listtag_digest(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3427,7 +3427,7 @@ class TestListAndDeleteTag(ApiTestCase):
 
         # Create 8 tags in the simple repo.
         remaining_tags = {"latest", "prod"}
-        for i in xrange(1, 9):
+        for i in range(1, 9):
             tag_name = "tag" + str(i)
             remaining_tags.add(tag_name)
             assert registry_model.retarget_tag(
@@ -3439,34 +3439,34 @@ class TestListAndDeleteTag(ApiTestCase):
             ListRepositoryTags,
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", page=1, limit=5),
         )
-        self.assertEquals(1, json["page"])
-        self.assertEquals(5, len(json["tags"]))
+        self.assertEqual(1, json["page"])
+        self.assertEqual(5, len(json["tags"]))
         self.assertTrue(json["has_additional"])
 
         names = {tag["name"] for tag in json["tags"]}
         remaining_tags = remaining_tags - names
-        self.assertEquals(5, len(remaining_tags))
+        self.assertEqual(5, len(remaining_tags))
 
         json = self.getJsonResponse(
             ListRepositoryTags,
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", page=2, limit=5),
         )
 
-        self.assertEquals(2, json["page"])
-        self.assertEquals(5, len(json["tags"]))
+        self.assertEqual(2, json["page"])
+        self.assertEqual(5, len(json["tags"]))
         self.assertFalse(json["has_additional"])
 
         names = {tag["name"] for tag in json["tags"]}
         remaining_tags = remaining_tags - names
-        self.assertEquals(0, len(remaining_tags))
+        self.assertEqual(0, len(remaining_tags))
 
         json = self.getJsonResponse(
             ListRepositoryTags,
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", page=3, limit=5),
         )
 
-        self.assertEquals(3, json["page"])
-        self.assertEquals(0, len(json["tags"]))
+        self.assertEqual(3, json["page"])
+        self.assertEqual(0, len(json["tags"]))
         self.assertFalse(json["has_additional"])
 
 
@@ -3487,10 +3487,10 @@ class TestRepoPermissions(ApiTestCase):
 
         permissions = self.listUserPermissions(namespace=ORGANIZATION, repo=ORG_REPO)
 
-        self.assertEquals(1, len(permissions))
+        self.assertEqual(1, len(permissions))
         assert "outsideorg" in permissions
-        self.assertEquals("read", permissions["outsideorg"]["role"])
-        self.assertEquals(False, permissions["outsideorg"]["is_org_member"])
+        self.assertEqual("read", permissions["outsideorg"]["role"])
+        self.assertEqual(False, permissions["outsideorg"]["is_org_member"])
 
         # Add another user.
         self.putJsonResponse(
@@ -3502,10 +3502,10 @@ class TestRepoPermissions(ApiTestCase):
         # Verify the user is present.
         permissions = self.listUserPermissions(namespace=ORGANIZATION, repo=ORG_REPO)
 
-        self.assertEquals(2, len(permissions))
+        self.assertEqual(2, len(permissions))
         assert ADMIN_ACCESS_USER in permissions
-        self.assertEquals("admin", permissions[ADMIN_ACCESS_USER]["role"])
-        self.assertEquals(True, permissions[ADMIN_ACCESS_USER]["is_org_member"])
+        self.assertEqual("admin", permissions[ADMIN_ACCESS_USER]["role"])
+        self.assertEqual(True, permissions[ADMIN_ACCESS_USER]["is_org_member"])
 
     def test_userpermissions(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3513,9 +3513,9 @@ class TestRepoPermissions(ApiTestCase):
         # The repo should start with just the admin as a user perm.
         permissions = self.listUserPermissions()
 
-        self.assertEquals(1, len(permissions))
+        self.assertEqual(1, len(permissions))
         assert ADMIN_ACCESS_USER in permissions
-        self.assertEquals("admin", permissions[ADMIN_ACCESS_USER]["role"])
+        self.assertEqual("admin", permissions[ADMIN_ACCESS_USER]["role"])
         self.assertFalse("is_org_member" in permissions[ADMIN_ACCESS_USER])
 
         # Add another user.
@@ -3528,16 +3528,16 @@ class TestRepoPermissions(ApiTestCase):
         # Verify the user is present.
         permissions = self.listUserPermissions()
 
-        self.assertEquals(2, len(permissions))
+        self.assertEqual(2, len(permissions))
         assert NO_ACCESS_USER in permissions
-        self.assertEquals("read", permissions[NO_ACCESS_USER]["role"])
+        self.assertEqual("read", permissions[NO_ACCESS_USER]["role"])
         self.assertFalse("is_org_member" in permissions[NO_ACCESS_USER])
 
         json = self.getJsonResponse(
             RepositoryUserPermission,
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", username=NO_ACCESS_USER),
         )
-        self.assertEquals("read", json["role"])
+        self.assertEqual("read", json["role"])
 
         # Change the user's permissions.
         self.putJsonResponse(
@@ -3549,9 +3549,9 @@ class TestRepoPermissions(ApiTestCase):
         # Verify.
         permissions = self.listUserPermissions()
 
-        self.assertEquals(2, len(permissions))
+        self.assertEqual(2, len(permissions))
         assert NO_ACCESS_USER in permissions
-        self.assertEquals("admin", permissions[NO_ACCESS_USER]["role"])
+        self.assertEqual("admin", permissions[NO_ACCESS_USER]["role"])
 
         # Delete the user's permission.
         self.deleteEmptyResponse(
@@ -3562,7 +3562,7 @@ class TestRepoPermissions(ApiTestCase):
         # Verify.
         permissions = self.listUserPermissions()
 
-        self.assertEquals(1, len(permissions))
+        self.assertEqual(1, len(permissions))
         assert not NO_ACCESS_USER in permissions
 
     def test_teampermissions(self):
@@ -3571,9 +3571,9 @@ class TestRepoPermissions(ApiTestCase):
         # The repo should start with just the readers as a team perm.
         permissions = self.listTeamPermissions()
 
-        self.assertEquals(1, len(permissions))
+        self.assertEqual(1, len(permissions))
         assert "readers" in permissions
-        self.assertEquals("read", permissions["readers"]["role"])
+        self.assertEqual("read", permissions["readers"]["role"])
 
         # Add another team.
         self.putJsonResponse(
@@ -3585,15 +3585,15 @@ class TestRepoPermissions(ApiTestCase):
         # Verify the team is present.
         permissions = self.listTeamPermissions()
 
-        self.assertEquals(2, len(permissions))
+        self.assertEqual(2, len(permissions))
         assert "owners" in permissions
-        self.assertEquals("write", permissions["owners"]["role"])
+        self.assertEqual("write", permissions["owners"]["role"])
 
         json = self.getJsonResponse(
             RepositoryTeamPermission,
             params=dict(repository=ORGANIZATION + "/" + ORG_REPO, teamname="owners"),
         )
-        self.assertEquals("write", json["role"])
+        self.assertEqual("write", json["role"])
 
         # Change the team's permissions.
         self.putJsonResponse(
@@ -3605,9 +3605,9 @@ class TestRepoPermissions(ApiTestCase):
         # Verify.
         permissions = self.listTeamPermissions()
 
-        self.assertEquals(2, len(permissions))
+        self.assertEqual(2, len(permissions))
         assert "owners" in permissions
-        self.assertEquals("admin", permissions["owners"]["role"])
+        self.assertEqual("admin", permissions["owners"]["role"])
 
         # Delete the team's permission.
         self.deleteEmptyResponse(
@@ -3618,7 +3618,7 @@ class TestRepoPermissions(ApiTestCase):
         # Verify.
         permissions = self.listTeamPermissions()
 
-        self.assertEquals(1, len(permissions))
+        self.assertEqual(1, len(permissions))
         assert not "owners" in permissions
 
 
@@ -3634,8 +3634,8 @@ class TestUserCard(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
         json = self.getJsonResponse(UserCard)
 
-        self.assertEquals("4242", json["card"]["last4"])
-        self.assertEquals("Visa", json["card"]["type"])
+        self.assertEqual("4242", json["card"]["last4"])
+        self.assertEqual("Visa", json["card"]["type"])
 
     def test_setusercard_error(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3648,8 +3648,8 @@ class TestOrgCard(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
         json = self.getJsonResponse(OrganizationCard, params=dict(orgname=ORGANIZATION))
 
-        self.assertEquals("4242", json["card"]["last4"])
-        self.assertEquals("Visa", json["card"]["type"])
+        self.assertEqual("4242", json["card"]["last4"])
+        self.assertEqual("Visa", json["card"]["type"])
 
 
 class TestUserSubscription(ApiTestCase):
@@ -3664,14 +3664,14 @@ class TestUserSubscription(ApiTestCase):
 
         # Verify
         sub = self.getSubscription()
-        self.assertEquals("free", sub["plan"])
+        self.assertEqual("free", sub["plan"])
 
         # Change the plan.
         self.putJsonResponse(UserPlan, data=dict(plan="bus-large-2018"))
 
         # Verify
         sub = self.getSubscription()
-        self.assertEquals("bus-large-2018", sub["plan"])
+        self.assertEqual("bus-large-2018", sub["plan"])
 
 
 class TestOrgSubscription(ApiTestCase):
@@ -3688,7 +3688,7 @@ class TestOrgSubscription(ApiTestCase):
 
         # Verify
         sub = self.getSubscription()
-        self.assertEquals("free", sub["plan"])
+        self.assertEqual("free", sub["plan"])
 
         # Change the plan.
         self.putJsonResponse(
@@ -3697,7 +3697,7 @@ class TestOrgSubscription(ApiTestCase):
 
         # Verify
         sub = self.getSubscription()
-        self.assertEquals("bus-large-2018", sub["plan"])
+        self.assertEqual("bus-large-2018", sub["plan"])
 
 
 class TestUserRobots(ApiTestCase):
@@ -3730,7 +3730,7 @@ class TestUserRobots(ApiTestCase):
             UserRobot, params=dict(robot_shortname="bender"), expected_code=201
         )
 
-        self.assertEquals(NO_ACCESS_USER + "+bender", json["name"])
+        self.assertEqual(NO_ACCESS_USER + "+bender", json["name"])
 
         # Verify.
         robots = self.getRobotNames()
@@ -3759,13 +3759,13 @@ class TestUserRobots(ApiTestCase):
         )
 
         # Verify the token changed.
-        self.assertNotEquals(token, json["token"])
+        self.assertNotEqual(token, json["token"])
 
         json2 = self.getJsonResponse(
             UserRobot, params=dict(robot_shortname="bender"), expected_code=200
         )
 
-        self.assertEquals(json["token"], json2["token"])
+        self.assertEqual(json["token"], json2["token"])
 
 
 class TestOrgRobots(ApiTestCase):
@@ -3890,7 +3890,7 @@ class TestOrgRobots(ApiTestCase):
             OrgRobot, params=dict(orgname=ORGANIZATION, robot_shortname="bender"), expected_code=201
         )
 
-        self.assertEquals(ORGANIZATION + "+bender", json["name"])
+        self.assertEqual(ORGANIZATION + "+bender", json["name"])
 
         # Verify.
         robots = self.getRobotNames()
@@ -3923,13 +3923,13 @@ class TestOrgRobots(ApiTestCase):
         )
 
         # Verify the token changed.
-        self.assertNotEquals(token, json["token"])
+        self.assertNotEqual(token, json["token"])
 
         json2 = self.getJsonResponse(
             OrgRobot, params=dict(orgname=ORGANIZATION, robot_shortname="bender"), expected_code=200
         )
 
-        self.assertEquals(json["token"], json2["token"])
+        self.assertEqual(json["token"], json2["token"])
 
 
 class TestLogs(ApiTestCase):
@@ -3948,8 +3948,8 @@ class TestLogs(ApiTestCase):
             RepositoryLogs,
             params=dict(repository="devtable/simple", starttime="12/01/2016", endtime="1/09/2017"),
         )
-        self.assertEquals("Thu, 01 Dec 2016 00:00:00 -0000", json["start_time"])
-        self.assertEquals("Tue, 10 Jan 2017 00:00:00 -0000", json["end_time"])
+        self.assertEqual("Thu, 01 Dec 2016 00:00:00 -0000", json["start_time"])
+        self.assertEqual("Tue, 10 Jan 2017 00:00:00 -0000", json["end_time"])
 
     def test_repo_aggregate_logs(self):
         self.login(ADMIN_ACCESS_USER)
@@ -4000,7 +4000,7 @@ class TestLogs(ApiTestCase):
 
         assert len(json["logs"]) < len(all_logs)
         for log in json["logs"]:
-            self.assertEquals(READ_ACCESS_USER, log["performer"]["name"])
+            self.assertEqual(READ_ACCESS_USER, log["performer"]["name"])
 
 
 class TestApplicationInformation(ApiTestCase):
@@ -4024,7 +4024,7 @@ class TestOrganizationApplications(ApiTestCase):
 
         json = self.getJsonResponse(OrganizationApplications, params=dict(orgname=ORGANIZATION))
 
-        self.assertEquals(2, len(json["applications"]))
+        self.assertEqual(2, len(json["applications"]))
 
         found = False
         for application in json["applications"]:
@@ -4041,14 +4041,14 @@ class TestOrganizationApplications(ApiTestCase):
             data=dict(name="Some cool app", description="foo"),
         )
 
-        self.assertEquals("Some cool app", json["name"])
-        self.assertEquals("foo", json["description"])
+        self.assertEqual("Some cool app", json["name"])
+        self.assertEqual("foo", json["description"])
 
         # Retrieve the apps list again
         list_json = self.getJsonResponse(
             OrganizationApplications, params=dict(orgname=ORGANIZATION)
         )
-        self.assertEquals(3, len(list_json["applications"]))
+        self.assertEqual(3, len(list_json["applications"]))
 
 
 class TestOrganizationApplicationResource(ApiTestCase):
@@ -4061,7 +4061,7 @@ class TestOrganizationApplicationResource(ApiTestCase):
             params=dict(orgname=ORGANIZATION, client_id=FAKE_APPLICATION_CLIENT_ID),
         )
 
-        self.assertEquals(FAKE_APPLICATION_CLIENT_ID, json["client_id"])
+        self.assertEqual(FAKE_APPLICATION_CLIENT_ID, json["client_id"])
 
         # Edit the application.
         edit_json = self.putJsonResponse(
@@ -4076,12 +4076,12 @@ class TestOrganizationApplicationResource(ApiTestCase):
             ),
         )
 
-        self.assertEquals(FAKE_APPLICATION_CLIENT_ID, edit_json["client_id"])
-        self.assertEquals("Some App", edit_json["name"])
-        self.assertEquals("foo", edit_json["description"])
-        self.assertEquals("bar", edit_json["application_uri"])
-        self.assertEquals("baz", edit_json["redirect_uri"])
-        self.assertEquals("meh", edit_json["avatar_email"])
+        self.assertEqual(FAKE_APPLICATION_CLIENT_ID, edit_json["client_id"])
+        self.assertEqual("Some App", edit_json["name"])
+        self.assertEqual("foo", edit_json["description"])
+        self.assertEqual("bar", edit_json["application_uri"])
+        self.assertEqual("baz", edit_json["redirect_uri"])
+        self.assertEqual("meh", edit_json["avatar_email"])
 
         # Retrieve the application again.
         json = self.getJsonResponse(
@@ -4089,7 +4089,7 @@ class TestOrganizationApplicationResource(ApiTestCase):
             params=dict(orgname=ORGANIZATION, client_id=FAKE_APPLICATION_CLIENT_ID),
         )
 
-        self.assertEquals(json, edit_json)
+        self.assertEqual(json, edit_json)
 
         # Delete the application.
         self.deleteEmptyResponse(
@@ -4125,7 +4125,7 @@ class TestOrganizationApplicationResetClientSecret(ApiTestCase):
             params=dict(orgname=ORGANIZATION, client_id=FAKE_APPLICATION_CLIENT_ID),
         )
 
-        self.assertEquals(FAKE_APPLICATION_CLIENT_ID, json["client_id"])
+        self.assertEqual(FAKE_APPLICATION_CLIENT_ID, json["client_id"])
 
         # Reset the client secret.
         reset_json = self.postJsonResponse(
@@ -4133,15 +4133,15 @@ class TestOrganizationApplicationResetClientSecret(ApiTestCase):
             params=dict(orgname=ORGANIZATION, client_id=FAKE_APPLICATION_CLIENT_ID),
         )
 
-        self.assertEquals(FAKE_APPLICATION_CLIENT_ID, reset_json["client_id"])
-        self.assertNotEquals(reset_json["client_secret"], json["client_secret"])
+        self.assertEqual(FAKE_APPLICATION_CLIENT_ID, reset_json["client_id"])
+        self.assertNotEqual(reset_json["client_secret"], json["client_secret"])
 
         # Verify it was changed in the DB.
         json = self.getJsonResponse(
             OrganizationApplicationResource,
             params=dict(orgname=ORGANIZATION, client_id=FAKE_APPLICATION_CLIENT_ID),
         )
-        self.assertEquals(reset_json["client_secret"], json["client_secret"])
+        self.assertEqual(reset_json["client_secret"], json["client_secret"])
 
 
 class FakeBuildTrigger(BuildTriggerHandler):
@@ -4222,13 +4222,13 @@ class TestBuildTriggers(ApiTestCase):
         json = self.getJsonResponse(
             BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
         )
-        self.assertEquals(0, len(json["triggers"]))
+        self.assertEqual(0, len(json["triggers"]))
 
         # Check a repo with one known trigger.
         json = self.getJsonResponse(
             BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
         )
-        self.assertEquals(1, len(json["triggers"]))
+        self.assertEqual(1, len(json["triggers"]))
 
         trigger = json["triggers"][0]
 
@@ -4243,7 +4243,7 @@ class TestBuildTriggers(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/building", trigger_uuid=trigger["id"]),
         )
 
-        self.assertEquals(trigger, trigger_json)
+        self.assertEqual(trigger, trigger_json)
 
         # Check the recent builds for the trigger.
         builds_json = self.getJsonResponse(
@@ -4259,7 +4259,7 @@ class TestBuildTriggers(ApiTestCase):
         json = self.getJsonResponse(
             BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
         )
-        self.assertEquals(1, len(json["triggers"]))
+        self.assertEqual(1, len(json["triggers"]))
         trigger = json["triggers"][0]
 
         # Delete the trigger.
@@ -4272,7 +4272,7 @@ class TestBuildTriggers(ApiTestCase):
         json = self.getJsonResponse(
             BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/building")
         )
-        self.assertEquals(0, len(json["triggers"]))
+        self.assertEqual(0, len(json["triggers"]))
 
     def test_analyze_fake_trigger(self):
         self.login(ADMIN_ACCESS_USER)
@@ -4292,8 +4292,8 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals("warning", analyze_json["status"])
-        self.assertEquals(
+        self.assertEqual("warning", analyze_json["status"])
+        self.assertEqual(
             "Specified Dockerfile path for the trigger was not "
             + "found on the main branch. This trigger may fail.",
             analyze_json["message"],
@@ -4307,8 +4307,8 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals("warning", analyze_json["status"])
-        self.assertEquals("No FROM line found in the Dockerfile", analyze_json["message"])
+        self.assertEqual("warning", analyze_json["status"])
+        self.assertEqual("No FROM line found in the Dockerfile", analyze_json["message"])
 
         # Analyze the trigger's dockerfile: Third, dockerfile with public repo.
         trigger_config = {"dockerfile": "FROM somerepo"}
@@ -4318,7 +4318,7 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals("publicbase", analyze_json["status"])
+        self.assertEqual("publicbase", analyze_json["status"])
 
         # Analyze the trigger's dockerfile: Fourth, dockerfile with private repo with an invalid path.
         trigger_config = {"dockerfile": "FROM localhost:5000/somepath"}
@@ -4328,8 +4328,8 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals("warning", analyze_json["status"])
-        self.assertEquals(
+        self.assertEqual("warning", analyze_json["status"])
+        self.assertEqual(
             '"localhost:5000/somepath" is not a valid Quay repository path', analyze_json["message"]
         )
 
@@ -4341,11 +4341,11 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals("error", analyze_json["status"])
+        self.assertEqual("error", analyze_json["status"])
         nofound = (
             'Repository "localhost:5000/%s/randomrepo" referenced by the Dockerfile was not found'
         )
-        self.assertEquals(nofound % "nothere", analyze_json["message"])
+        self.assertEqual(nofound % "nothere", analyze_json["message"])
 
         # Analyze the trigger's dockerfile: Sixth, dockerfile with private repo that the user cannot see
         trigger_config = {"dockerfile": "FROM localhost:5000/randomuser/randomrepo"}
@@ -4355,8 +4355,8 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals("error", analyze_json["status"])
-        self.assertEquals(nofound % "randomuser", analyze_json["message"])
+        self.assertEqual("error", analyze_json["status"])
+        self.assertEqual(nofound % "randomuser", analyze_json["message"])
 
         # Analyze the trigger's dockerfile: Seventh, dockerfile with private repo that the user see.
         trigger_config = {"dockerfile": "FROM localhost:5000/devtable/complex"}
@@ -4366,10 +4366,10 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals("requiresrobot", analyze_json["status"])
-        self.assertEquals("devtable", analyze_json["namespace"])
-        self.assertEquals("complex", analyze_json["name"])
-        self.assertEquals(ADMIN_ACCESS_USER + "+dtrobot", analyze_json["robots"][0]["name"])
+        self.assertEqual("requiresrobot", analyze_json["status"])
+        self.assertEqual("devtable", analyze_json["namespace"])
+        self.assertEqual("complex", analyze_json["name"])
+        self.assertEqual(ADMIN_ACCESS_USER + "+dtrobot", analyze_json["robots"][0]["name"])
 
     def test_fake_trigger(self):
         self.login(ADMIN_ACCESS_USER)
@@ -4385,17 +4385,17 @@ class TestBuildTriggers(ApiTestCase):
         json = self.getJsonResponse(
             BuildTriggerList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
         )
-        self.assertEquals(1, len(json["triggers"]))
-        self.assertEquals(trigger.uuid, json["triggers"][0]["id"])
-        self.assertEquals(trigger.service.name, json["triggers"][0]["service"])
-        self.assertEquals(False, json["triggers"][0]["is_active"])
+        self.assertEqual(1, len(json["triggers"]))
+        self.assertEqual(trigger.uuid, json["triggers"][0]["id"])
+        self.assertEqual(trigger.service.name, json["triggers"][0]["service"])
+        self.assertEqual(False, json["triggers"][0]["is_active"])
 
         # List the trigger's source namespaces.
         namespace_json = self.getJsonResponse(
             BuildTriggerSourceNamespaces,
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", trigger_uuid=trigger.uuid),
         )
-        self.assertEquals(
+        self.assertEqual(
             [{"id": "first", "name": "first"}, {"id": "second", "name": "second"}],
             namespace_json["namespaces"],
         )
@@ -4405,7 +4405,7 @@ class TestBuildTriggers(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/simple", trigger_uuid=trigger.uuid),
             data=dict(namespace="first"),
         )
-        self.assertEquals([{"name": "source"}], source_json["sources"])
+        self.assertEqual([{"name": "source"}], source_json["sources"])
 
         # List the trigger's subdirs.
         subdir_json = self.postJsonResponse(
@@ -4414,7 +4414,7 @@ class TestBuildTriggers(ApiTestCase):
             data={"somevalue": "meh"},
         )
 
-        self.assertEquals(
+        self.assertEqual(
             {
                 "status": "success",
                 "dockerfile_paths": ["/sometoken", "/foo", "/bar", "/meh"],
@@ -4431,12 +4431,12 @@ class TestBuildTriggers(ApiTestCase):
             data={"config": trigger_config},
         )
 
-        self.assertEquals(True, activate_json["is_active"])
+        self.assertEqual(True, activate_json["is_active"])
 
         # Make sure the trigger has a write token.
         trigger = model.build.get_build_trigger(trigger.uuid)
-        self.assertNotEquals(None, trigger.write_token)
-        self.assertEquals(True, py_json.loads(trigger.config)["active"])
+        self.assertNotEqual(None, trigger.write_token)
+        self.assertEqual(True, py_json.loads(trigger.config)["active"])
 
         # Make sure we cannot activate again.
         self.postResponse(
@@ -4456,7 +4456,7 @@ class TestBuildTriggers(ApiTestCase):
             ),
         )
 
-        self.assertEquals(result["values"], [1, 2, 3])
+        self.assertEqual(result["values"], [1, 2, 3])
 
         self.postResponse(
             BuildTriggerFieldValues,
@@ -4477,14 +4477,14 @@ class TestBuildTriggers(ApiTestCase):
         )
 
         assert "id" in start_json
-        self.assertEquals("build-name", start_json["display_name"])
-        self.assertEquals(["bar"], start_json["tags"])
-        self.assertEquals("subdir", start_json["subdirectory"])
-        self.assertEquals("somesource", start_json["trigger"]["build_source"])
+        self.assertEqual("build-name", start_json["display_name"])
+        self.assertEqual(["bar"], start_json["tags"])
+        self.assertEqual("subdir", start_json["subdirectory"])
+        self.assertEqual("somesource", start_json["trigger"]["build_source"])
 
         # Verify the metadata was added.
         build_obj = database.RepositoryBuild.get(database.RepositoryBuild.uuid == start_json["id"])
-        self.assertEquals("bar", py_json.loads(build_obj.job_config)["trigger_metadata"]["foo"])
+        self.assertEqual("bar", py_json.loads(build_obj.job_config)["trigger_metadata"]["foo"])
 
         # Start another manual build, with a ref.
         self.postJsonResponse(
@@ -4559,8 +4559,8 @@ class TestBuildTriggers(ApiTestCase):
         )
 
         # Verify that the robot was saved.
-        self.assertEquals(True, activate_json["is_active"])
-        self.assertEquals(ADMIN_ACCESS_USER + "+dtrobot", activate_json["pull_robot"]["name"])
+        self.assertEqual(True, activate_json["is_active"])
+        self.assertEqual(ADMIN_ACCESS_USER + "+dtrobot", activate_json["pull_robot"]["name"])
 
         # Start a manual build.
         start_json = self.postJsonResponse(
@@ -4571,8 +4571,8 @@ class TestBuildTriggers(ApiTestCase):
         )
 
         assert "id" in start_json
-        self.assertEquals("build-name", start_json["display_name"])
-        self.assertEquals(["bar"], start_json["tags"])
+        self.assertEqual("build-name", start_json["display_name"])
+        self.assertEqual(["bar"], start_json["tags"])
 
 
 class TestUserAuthorizations(ApiTestCase):
@@ -4581,7 +4581,7 @@ class TestUserAuthorizations(ApiTestCase):
 
         json = self.getJsonResponse(UserAuthorizationList)
 
-        self.assertEquals(1, len(json["authorizations"]))
+        self.assertEqual(1, len(json["authorizations"]))
 
         authorization = json["authorizations"][0]
 
@@ -4593,7 +4593,7 @@ class TestUserAuthorizations(ApiTestCase):
         get_json = self.getJsonResponse(
             UserAuthorization, params=dict(access_token_uuid=authorization["uuid"])
         )
-        self.assertEquals(authorization, get_json)
+        self.assertEqual(authorization, get_json)
 
         # Delete the authorization.
         self.deleteEmptyResponse(
@@ -4697,7 +4697,7 @@ class TestSuperUserKeyManagement(ApiTestCase):
 
             # Ensure the key's name has been changed.
             json = self.getJsonResponse(SuperUserServiceKey, params=dict(kid=key["kid"]))
-            self.assertEquals("somenewname", json["name"])
+            self.assertEqual("somenewname", json["name"])
 
         with assert_action_logged("service_key_modify"):
             # Update the key's metadata.
@@ -4709,7 +4709,7 @@ class TestSuperUserKeyManagement(ApiTestCase):
 
             # Ensure the key's metadata has been changed.
             json = self.getJsonResponse(SuperUserServiceKey, params=dict(kid=key["kid"]))
-            self.assertEquals("bar", json["metadata"]["foo"])
+            self.assertEqual("bar", json["metadata"]["foo"])
 
         with assert_action_logged("service_key_extend"):
             # Change the key's expiration.
@@ -4729,14 +4729,14 @@ class TestSuperUserKeyManagement(ApiTestCase):
             self.getResponse(SuperUserServiceKey, params=dict(kid=key["kid"]), expected_code=404)
 
             json = self.getJsonResponse(SuperUserServiceKeyManagement)
-            self.assertEquals(key_count - 1, len(json["keys"]))
+            self.assertEqual(key_count - 1, len(json["keys"]))
 
     def test_approve_key(self):
         self.login(ADMIN_ACCESS_USER)
 
         # Ensure the key is not yet approved.
         json = self.getJsonResponse(SuperUserServiceKey, params=dict(kid="kid3"))
-        self.assertEquals("unapprovedkey", json["name"])
+        self.assertEqual("unapprovedkey", json["name"])
         self.assertIsNone(json["approval"])
 
         # Approve the key.
@@ -4750,11 +4750,11 @@ class TestSuperUserKeyManagement(ApiTestCase):
 
             # Ensure the key is approved.
             json = self.getJsonResponse(SuperUserServiceKey, params=dict(kid="kid3"))
-            self.assertEquals("unapprovedkey", json["name"])
+            self.assertEqual("unapprovedkey", json["name"])
             self.assertIsNotNone(json["approval"])
-            self.assertEquals("ServiceKeyApprovalType.SUPERUSER", json["approval"]["approval_type"])
-            self.assertEquals(ADMIN_ACCESS_USER, json["approval"]["approver"]["username"])
-            self.assertEquals("testapprove", json["approval"]["notes"])
+            self.assertEqual("ServiceKeyApprovalType.SUPERUSER", json["approval"]["approval_type"])
+            self.assertEqual(ADMIN_ACCESS_USER, json["approval"]["approver"]["username"])
+            self.assertEqual("testapprove", json["approval"]["notes"])
 
     def test_approve_preapproved(self):
         self.login(ADMIN_ACCESS_USER)
@@ -4793,7 +4793,7 @@ class TestSuperUserKeyManagement(ApiTestCase):
         with assert_action_logged("service_key_create"):
             # Create the key.
             json = self.postJsonResponse(SuperUserServiceKeyManagement, data=new_key)
-            self.assertEquals("mynewkey", json["name"])
+            self.assertEqual("mynewkey", json["name"])
             self.assertTrue("kid" in json)
             self.assertTrue("public_key" in json)
             self.assertTrue("private_key" in json)
@@ -4807,15 +4807,15 @@ class TestSuperUserKeyManagement(ApiTestCase):
             kid = json["kid"]
 
             json = self.getJsonResponse(SuperUserServiceKey, params=dict(kid=kid))
-            self.assertEquals("mynewkey", json["name"])
-            self.assertEquals("coolservice", json["service"])
-            self.assertEquals("baz", json["metadata"]["foo"])
-            self.assertEquals(kid, json["kid"])
+            self.assertEqual("mynewkey", json["name"])
+            self.assertEqual("coolservice", json["service"])
+            self.assertEqual("baz", json["metadata"]["foo"])
+            self.assertEqual(kid, json["kid"])
 
             self.assertIsNotNone(json["approval"])
-            self.assertEquals("ServiceKeyApprovalType.SUPERUSER", json["approval"]["approval_type"])
-            self.assertEquals(ADMIN_ACCESS_USER, json["approval"]["approver"]["username"])
-            self.assertEquals("whazzup!?", json["approval"]["notes"])
+            self.assertEqual("ServiceKeyApprovalType.SUPERUSER", json["approval"]["approval_type"])
+            self.assertEqual(ADMIN_ACCESS_USER, json["approval"]["approver"]["username"])
+            self.assertEqual("whazzup!?", json["approval"]["notes"])
 
 
 class TestRepositoryManifestLabels(ApiTestCase):
@@ -4832,7 +4832,7 @@ class TestRepositoryManifestLabels(ApiTestCase):
             params=dict(repository=repository, manifestref=tag.manifest_digest),
         )
 
-        self.assertEquals(0, len(json["labels"]))
+        self.assertEqual(0, len(json["labels"]))
 
         self.postJsonResponse(
             RepositoryManifestLabels,
@@ -4879,15 +4879,15 @@ class TestRepositoryManifestLabels(ApiTestCase):
             params=dict(repository=repository, manifestref=tag.manifest_digest),
         )
 
-        self.assertEquals(3, len(json["labels"]))
+        self.assertEqual(3, len(json["labels"]))
 
-        self.assertNotEquals(label2["label"]["id"], label1["label"]["id"])
-        self.assertNotEquals(label3["label"]["id"], label1["label"]["id"])
-        self.assertNotEquals(label2["label"]["id"], label3["label"]["id"])
+        self.assertNotEqual(label2["label"]["id"], label1["label"]["id"])
+        self.assertNotEqual(label3["label"]["id"], label1["label"]["id"])
+        self.assertNotEqual(label2["label"]["id"], label3["label"]["id"])
 
-        self.assertEquals("text/plain", label1["label"]["media_type"])
-        self.assertEquals("text/plain", label2["label"]["media_type"])
-        self.assertEquals("application/json", label3["label"]["media_type"])
+        self.assertEqual("text/plain", label1["label"]["media_type"])
+        self.assertEqual("text/plain", label2["label"]["media_type"])
+        self.assertEqual("application/json", label3["label"]["media_type"])
 
         # Ensure we can retrieve each of the labels.
         for label in json["labels"]:
@@ -4897,7 +4897,7 @@ class TestRepositoryManifestLabels(ApiTestCase):
                     repository=repository, manifestref=tag.manifest_digest, labelid=label["id"]
                 ),
             )
-            self.assertEquals(label["id"], label_json["id"])
+            self.assertEqual(label["id"], label_json["id"])
 
         # Delete a label.
         with assert_action_logged("manifest_label_delete"):
@@ -4916,7 +4916,7 @@ class TestRepositoryManifestLabels(ApiTestCase):
             params=dict(repository=repository, manifestref=tag.manifest_digest),
         )
 
-        self.assertEquals(2, len(json["labels"]))
+        self.assertEqual(2, len(json["labels"]))
 
         # Check filtering.
         json = self.getJsonResponse(
@@ -4924,7 +4924,7 @@ class TestRepositoryManifestLabels(ApiTestCase):
             params=dict(repository=repository, manifestref=tag.manifest_digest, filter="hello"),
         )
 
-        self.assertEquals(1, len(json["labels"]))
+        self.assertEqual(1, len(json["labels"]))
 
     def test_prefixed_labels(self):
         self.login(ADMIN_ACCESS_USER)
@@ -4998,16 +4998,16 @@ class TestSuperUserManagement(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         json = self.getJsonResponse(SuperUserManagement, params=dict(username="freshuser"))
-        self.assertEquals("freshuser", json["username"])
-        self.assertEquals("jschorr+test@devtable.com", json["email"])
-        self.assertEquals(False, json["super_user"])
+        self.assertEqual("freshuser", json["username"])
+        self.assertEqual("jschorr+test@devtable.com", json["email"])
+        self.assertEqual(False, json["super_user"])
 
     def test_delete_user(self):
         self.login(ADMIN_ACCESS_USER)
 
         # Verify the user exists.
         json = self.getJsonResponse(SuperUserManagement, params=dict(username="freshuser"))
-        self.assertEquals("freshuser", json["username"])
+        self.assertEqual("freshuser", json["username"])
 
         # Delete the user.
         self.deleteEmptyResponse(
@@ -5022,8 +5022,8 @@ class TestSuperUserManagement(ApiTestCase):
 
         # Verify the user exists.
         json = self.getJsonResponse(SuperUserManagement, params=dict(username="freshuser"))
-        self.assertEquals("freshuser", json["username"])
-        self.assertEquals("jschorr+test@devtable.com", json["email"])
+        self.assertEqual("freshuser", json["username"])
+        self.assertEqual("jschorr+test@devtable.com", json["email"])
 
         # Update the user.
         json = self.putJsonResponse(
@@ -5038,8 +5038,8 @@ class TestSuperUserManagement(ApiTestCase):
 
         # Verify the user exists.
         json = self.getJsonResponse(SuperUserManagement, params=dict(username="freshuser"))
-        self.assertEquals("freshuser", json["username"])
-        self.assertEquals("jschorr+test@devtable.com", json["email"])
+        self.assertEqual("freshuser", json["username"])
+        self.assertEqual("jschorr+test@devtable.com", json["email"])
 
         # Update the user.
         json = self.putJsonResponse(
@@ -5049,8 +5049,8 @@ class TestSuperUserManagement(ApiTestCase):
 
         # Verify the user was updated.
         json = self.getJsonResponse(SuperUserManagement, params=dict(username="freshuser"))
-        self.assertEquals("freshuser", json["username"])
-        self.assertEquals("foo@bar.com", json["email"])
+        self.assertEqual("freshuser", json["username"])
+        self.assertEqual("foo@bar.com", json["email"])
 
     def test_set_message(self):
         self.login(ADMIN_ACCESS_USER)
@@ -5060,7 +5060,7 @@ class TestSuperUserManagement(ApiTestCase):
         self.postResponse(GlobalUserMessages, data=dict(message=message), expected_code=201)
 
         json = self.getJsonResponse(GlobalUserMessages)
-        self.assertEquals(len(json["messages"]), 3)
+        self.assertEqual(len(json["messages"]), 3)
 
         has_matching_message = False
         for message in json["messages"]:
@@ -5084,7 +5084,7 @@ class TestSuperUserManagement(ApiTestCase):
 
         json = self.getJsonResponse(GlobalUserMessages)
 
-        self.assertEquals(len(json["messages"]), 1)
+        self.assertEqual(len(json["messages"]), 1)
 
 
 if __name__ == "__main__":

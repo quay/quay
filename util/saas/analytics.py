@@ -1,7 +1,7 @@
 import json
 import logging
 
-from Queue import Queue
+from queue import Queue
 from threading import Thread
 from mixpanel import BufferedConsumer, Mixpanel
 

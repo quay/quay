@@ -100,7 +100,7 @@ class RobotPreOCIModel(RobotInterface):
                     robot_dict["description"],
                 )
 
-        return robots.values()
+        return list(robots.values())
 
     def regenerate_user_robot_token(self, robot_shortname, owning_user):
         robot, password, metadata = model.user.regenerate_robot_token(robot_shortname, owning_user)

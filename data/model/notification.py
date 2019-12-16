@@ -132,7 +132,7 @@ def delete_matching_notifications(target, kind_name, **kwargs):
         except:
             continue
 
-        for (key, value) in kwargs.iteritems():
+        for (key, value) in kwargs.items():
             if not key in metadata or metadata[key] != value:
                 matches = False
                 break
