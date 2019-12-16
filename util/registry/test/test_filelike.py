@@ -1,4 +1,4 @@
-from StringIO import StringIO
+from io import StringIO
 from util.registry.filelike import FilelikeStreamConcat, LimitingStream, StreamSlice
 
 

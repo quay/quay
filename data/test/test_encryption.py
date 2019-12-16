@@ -20,14 +20,14 @@ from data.encryption import FieldEncrypter, _VERSIONS, DecryptionFailureExceptio
         "a" * 32,
         "a" * 33,
         "a" * 150,
-        u"😇",
+        "😇",
     ],
 )
-@pytest.mark.parametrize("version", _VERSIONS.keys())
+@pytest.mark.parametrize("version", list(_VERSIONS.keys()))
 @pytest.mark.parametrize(
     "secret_key",
     [
-        u"test1234",
+        "test1234",
         "test1234",
         "thisisanothercoolsecretkeyhere",
         "107383705745765174750346070528443780244192102846031525796571939503548634055845",

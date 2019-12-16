@@ -228,7 +228,7 @@ def test_mixing_keys_e2e(initialized_db):
         _parse_token(deleted_key_token)
 
 
-@pytest.mark.parametrize("token", [u"someunicodetoken✡", u"\xc9\xad\xbd",])
+@pytest.mark.parametrize("token", ["someunicodetoken✡", "\xc9\xad\xbd",])
 def test_unicode_token(token):
     with pytest.raises(InvalidJWTException):
         _parse_token(token)

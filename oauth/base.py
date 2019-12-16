@@ -1,7 +1,7 @@
 import copy
 import logging
-import urllib
-import urlparse
+import urllib.request, urllib.parse, urllib.error
+import urllib.parse
 
 from abc import ABCMeta, abstractmethod
 from six import add_metaclass
@@ -27,9 +27,9 @@ class OAuthEndpoint(object):
         return OAuthEndpoint(self.base_url, params_copy)
 
     def to_url(self):
-        (scheme, netloc, path, _, fragment) = urlparse.urlsplit(self.base_url)
-        updated_query = urllib.urlencode(self.params)
-        return urlparse.urlunsplit((scheme, netloc, path, updated_query, fragment))
+        (scheme, netloc, path, _, fragment) = urllib.parse.urlsplit(self.base_url)
+        updated_query = urllib.parse.urlencode(self.params)
+        return urllib.parse.urlunsplit((scheme, netloc, path, updated_query, fragment))
 
 
 class OAuthExchangeCodeException(Exception):
