@@ -1,4 +1,4 @@
-import cStringIO as StringIO
+import io as StringIO
 import os
 import logging
 import copy
@@ -113,10 +113,10 @@ class _CloudStorage(BaseStorageV2):
         orig_meth = key.bucket.connection.make_request
 
         def new_meth(*args, **kwargs):
-            print "#" * 16
-            print args
-            print kwargs
-            print "#" * 16
+            print("#" * 16)
+            print(args)
+            print(kwargs)
+            print("#" * 16)
             return orig_meth(*args, **kwargs)
 
         key.bucket.connection.make_request = new_meth

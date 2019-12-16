@@ -207,7 +207,7 @@ def get_matching_tags_for_images(
         for tag in tag_query:
             tags[tag.id] = tag
 
-    return tags.values()
+    return list(tags.values())
 
 
 def get_matching_tags(docker_image_id, storage_uuid, *args):

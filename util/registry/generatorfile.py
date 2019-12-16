@@ -1,6 +1,6 @@
 def _complain_ifclosed(closed):
     if closed:
-        raise ValueError, "I/O operation on closed file"
+        raise ValueError("I/O operation on closed file")
 
 
 class GeneratorFile(object):
@@ -26,7 +26,7 @@ class GeneratorFile(object):
         _complain_ifclosed(self._closed)
         return self._position
 
-    def next(self):
+    def __next__(self):
         """
         A file object is its own iterator, for example iter(f) returns f (unless f is closed).
 
@@ -67,7 +67,7 @@ class GeneratorFile(object):
         buf = self._buf
         while size < 0 or len(buf) < size:
             try:
-                buf = buf + self._generator.next()
+                buf = buf + next(self._generator)
             except StopIteration:
                 break
 

@@ -3,8 +3,8 @@ import time
 import unittest
 
 from app import app, storage, notification_queue, url_scheme_and_hostname
-from data import model
-from data.database import Image, IMAGE_NOT_SCANNED_ENGINE_VERSION
+from .data import model
+from .data.database import Image, IMAGE_NOT_SCANNED_ENGINE_VERSION
 from endpoints.v2 import v2_bp
 from initdb import setup_database_for_testing, finished_database_for_testing
 from notifications.notificationevent import VulnerabilityFoundEvent
@@ -64,8 +64,8 @@ class TestSecurityScanner(unittest.TestCase):
         self.ctx.__exit__(True, None, None)
 
     def assertAnalyzed(self, layer, security_scanner, isAnalyzed, engineVersion):
-        self.assertEquals(isAnalyzed, layer.security_indexed)
-        self.assertEquals(engineVersion, layer.security_indexed_engine)
+        self.assertEqual(isAnalyzed, layer.security_indexed)
+        self.assertEqual(engineVersion, layer.security_indexed_engine)
 
         if isAnalyzed:
             self.assertTrue(security_scanner.has_layer(security_scanner.layer_id(layer)))
@@ -74,7 +74,7 @@ class TestSecurityScanner(unittest.TestCase):
             parents = model.image.get_parent_images(ADMIN_ACCESS_USER, SIMPLE_REPO, layer)
             for parent in parents:
                 self.assertTrue(parent.security_indexed)
-                self.assertEquals(engineVersion, parent.security_indexed_engine)
+                self.assertEqual(engineVersion, parent.security_indexed_engine)
                 self.assertTrue(security_scanner.has_layer(security_scanner.layer_id(parent)))
 
     def test_get_layer(self):
@@ -96,7 +96,7 @@ class TestSecurityScanner(unittest.TestCase):
             # Retrieve the results.
             result = self.api.get_layer_data(layer, include_vulnerabilities=True)
             self.assertIsNotNone(result)
-            self.assertEquals(result["Layer"]["Name"], security_scanner.layer_id(layer))
+            self.assertEqual(result["Layer"]["Name"], security_scanner.layer_id(layer))
 
     def test_analyze_layer_nodirectdownload_success(self):
         """
@@ -116,7 +116,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         # Ensure that the download is a registry+JWT download.
         uri, auth_header = self.api._get_image_url_and_auth(layer)
@@ -125,12 +125,12 @@ class TestSecurityScanner(unittest.TestCase):
 
         # Ensure the download doesn't work without the header.
         rv = self.app.head(uri)
-        self.assertEquals(rv.status_code, 401)
+        self.assertEqual(rv.status_code, 401)
 
         # Ensure the download works with the header. Note we use a HEAD here, as GET causes DB
         # access which messes with the test runner's rollback.
         rv = self.app.head(uri, headers=[("authorization", auth_header)])
-        self.assertEquals(rv.status_code, 200)
+        self.assertEqual(rv.status_code, 200)
 
         # Ensure the code works when called via analyze.
         with fake_security_scanner() as security_scanner:
@@ -149,7 +149,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             analyzer = LayerAnalyzer(app.config, self.api)
@@ -167,7 +167,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             security_scanner.set_fail_layer_id(security_scanner.layer_id(layer))
@@ -187,7 +187,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             security_scanner.set_internal_error_layer_id(security_scanner.layer_id(layer))
@@ -208,7 +208,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             # Make is so trying to analyze the parent will fail with an error.
@@ -231,7 +231,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             # Make is so trying to analyze the parent will fail with an error.
@@ -255,7 +255,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             # Analyze the layer and its parents.
@@ -290,7 +290,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             # Analyze the layer and its parents.
@@ -328,7 +328,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         with fake_security_scanner() as security_scanner:
             # Make is so trying to analyze the parent will fail.
@@ -350,7 +350,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         # Delete the storage for the layer.
         path = model.storage.get_layer_path(layer.storage)
@@ -372,7 +372,7 @@ class TestSecurityScanner(unittest.TestCase):
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
         self.assertFalse(layer.security_indexed)
-        self.assertEquals(-1, layer.security_indexed_engine)
+        self.assertEqual(-1, layer.security_indexed_engine)
 
         # Ensure there are no existing events.
         self.assertIsNone(notification_queue.get())
@@ -425,25 +425,25 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertIsNotNone(queue_item)
 
             body = json.loads(queue_item.body)
-            self.assertEquals(set(["latest", "prod"]), set(body["event_data"]["tags"]))
-            self.assertEquals("CVE-2014-9471", body["event_data"]["vulnerability"]["id"])
-            self.assertEquals("Low", body["event_data"]["vulnerability"]["priority"])
+            self.assertEqual(set(["latest", "prod"]), set(body["event_data"]["tags"]))
+            self.assertEqual("CVE-2014-9471", body["event_data"]["vulnerability"]["id"])
+            self.assertEqual("Low", body["event_data"]["vulnerability"]["priority"])
             self.assertTrue(body["event_data"]["vulnerability"]["has_fix"])
 
-            self.assertEquals("CVE-2014-9471", body["event_data"]["vulnerabilities"][0]["id"])
-            self.assertEquals(2, len(body["event_data"]["vulnerabilities"]))
+            self.assertEqual("CVE-2014-9471", body["event_data"]["vulnerabilities"][0]["id"])
+            self.assertEqual(2, len(body["event_data"]["vulnerabilities"]))
 
             # Ensure we get the correct event message out as well.
             event = VulnerabilityFoundEvent()
             msg = "1 Low and 1 more vulnerabilities were detected in repository devtable/simple in 2 tags"
-            self.assertEquals(msg, event.get_summary(body["event_data"], {}))
-            self.assertEquals("info", event.get_level(body["event_data"], {}))
+            self.assertEqual(msg, event.get_summary(body["event_data"], {}))
+            self.assertEqual("info", event.get_level(body["event_data"], {}))
         else:
             self.assertIsNone(queue_item)
 
         # Ensure its security indexed engine was updated.
         updated_layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
-        self.assertEquals(updated_layer.id, layer.id)
+        self.assertEqual(updated_layer.id, layer.id)
         self.assertTrue(updated_layer.security_indexed_engine > 0)
 
     def test_analyze_layer_success_events(self):
@@ -569,9 +569,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertIsNotNone(queue_item)
 
             item_body = json.loads(queue_item.body)
-            self.assertEquals(sorted(["prod", "latest"]), sorted(item_body["event_data"]["tags"]))
-            self.assertEquals("CVE-TEST", item_body["event_data"]["vulnerability"]["id"])
-            self.assertEquals("Low", item_body["event_data"]["vulnerability"]["priority"])
+            self.assertEqual(sorted(["prod", "latest"]), sorted(item_body["event_data"]["tags"]))
+            self.assertEqual("CVE-TEST", item_body["event_data"]["vulnerability"]["id"])
+            self.assertEqual("Low", item_body["event_data"]["vulnerability"]["priority"])
             self.assertTrue(item_body["event_data"]["vulnerability"]["has_fix"])
 
     def test_notification_no_new_layers(self):
@@ -671,9 +671,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertIsNotNone(queue_item)
 
             item_body = json.loads(queue_item.body)
-            self.assertEquals(sorted(["prod", "latest"]), sorted(item_body["event_data"]["tags"]))
-            self.assertEquals("CVE-TEST", item_body["event_data"]["vulnerability"]["id"])
-            self.assertEquals("Critical", item_body["event_data"]["vulnerability"]["priority"])
+            self.assertEqual(sorted(["prod", "latest"]), sorted(item_body["event_data"]["tags"]))
+            self.assertEqual("CVE-TEST", item_body["event_data"]["vulnerability"]["id"])
+            self.assertEqual("Critical", item_body["event_data"]["vulnerability"]["priority"])
             self.assertTrue(item_body["event_data"]["vulnerability"]["has_fix"])
 
             # Verify that an event would be raised.

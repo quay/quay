@@ -269,7 +269,7 @@ def tags_to_mirror(skopeo, mirror):
 
     matching_tags = []
     for pattern in mirror.root_rule.rule_value:
-        matching_tags = matching_tags + filter(lambda tag: fnmatch.fnmatch(tag, pattern), all_tags)
+        matching_tags = matching_tags + [tag for tag in all_tags if fnmatch.fnmatch(tag, pattern)]
     matching_tags = list(set(matching_tags))
     matching_tags.sort()
     return matching_tags
@@ -343,13 +343,13 @@ def rollback(mirror, since_ms):
         if tag.lifetime_end_ms:
             #  If a future entry exists with a start time equal to the end time for this tag,
             # then the action was a move, rather than a delete and a create.
-            newer_tag = filter(
+            newer_tag = list(filter(
                 lambda t: tag != t
                 and tag.name == t.name
                 and tag.lifetime_end_ms
                 and t.lifetime_start_ms == tag.lifetime_end_ms,
                 tags,
-            )[0]
+            ))[0]
             if newer_tag:
                 logger.debug("Repo mirroring rollback revert tag '%s'" % tag)
                 retarget_tag(tag.name, tag.manifest._db_id, is_reversion=True)
@@ -365,7 +365,7 @@ def rollback(mirror, since_ms):
 
 def delete_obsolete_tags(mirror, tags):
     existing_tags = lookup_alive_tags_shallow(mirror.repository.id)
-    obsolete_tags = list(filter(lambda tag: tag.name not in tags, existing_tags))
+    obsolete_tags = list([tag for tag in existing_tags if tag.name not in tags])
 
     for tag in obsolete_tags:
         delete_tag(mirror.repository, tag.name)

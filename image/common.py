@@ -84,5 +84,5 @@ class TarImageFormatter(object):
             info.mtime = mtime
 
         # allow the directory to be readable by non-root users
-        info.mode = 0755
+        info.mode = 0o755
         return info.tobuf()

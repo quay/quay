@@ -30,7 +30,7 @@ def _merge_aggregated_log_counts(*args):
             matching_keys[kind_date_key] = (kind_id, dt, count)
 
     return [
-        AggregatedLogCount(kind_id, count, dt) for (kind_id, dt, count) in matching_keys.values()
+        AggregatedLogCount(kind_id, count, dt) for (kind_id, dt, count) in list(matching_keys.values())
     ]
 
 

@@ -354,7 +354,7 @@ def test_get_most_recent_tag_lifetime_start(repositories, expected_tag_count, re
     )
 
     assert len(last_modified_map) == expected_tag_count
-    for repo_id, last_modified in last_modified_map.items():
+    for repo_id, last_modified in list(last_modified_map.items()):
         tag = registry_model.get_most_recent_tag(RepositoryReference.for_id(repo_id))
         assert last_modified == tag.lifetime_start_ms / 1000
 
@@ -1086,7 +1086,7 @@ def test_known_issue_schema1(registry_model):
 def test_unicode_emoji(registry_model):
     builder = DockerSchema1ManifestBuilder("devtable", "simple", "latest")
     builder.add_layer(
-        "sha256:abcde", json.dumps({"id": "someid", "author": u"😱",}, ensure_ascii=False)
+        "sha256:abcde", json.dumps({"id": "someid", "author": "😱",}, ensure_ascii=False)
     )
 
     manifest = builder.build(ensure_ascii=False)

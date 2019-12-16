@@ -2,7 +2,7 @@ import logging
 import random
 
 from collections import namedtuple
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from flask import request
 

@@ -22,7 +22,7 @@ class DynamicRegistrationComponent(BaseComponent):
 
     def onJoin(self, details):
         logger.debug("Registering registration method")
-        yield From(self.register(self._worker_register, u"io.quay.buildworker.register"))
+        yield From(self.register(self._worker_register, "io.quay.buildworker.register"))
 
     def _worker_register(self):
         realm = self.parent_manager.add_build_component()

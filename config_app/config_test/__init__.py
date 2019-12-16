@@ -1,8 +1,8 @@
 import json as py_json
 import unittest
 from contextlib import contextmanager
-from urllib import urlencode
-from urlparse import urlparse, parse_qs, urlunparse
+from urllib.parse import urlencode
+from urllib.parse import urlparse, parse_qs, urlunparse
 
 from config_app.c_app import app, config_provider
 from config_app.config_endpoints.api import api
@@ -64,7 +64,7 @@ class ApiTestCase(unittest.TestCase):
 
     def getJsonResponse(self, resource_name, params={}, expected_code=200):
         rv = self.app.get(api.url_for(resource_name, **params))
-        self.assertEquals(expected_code, rv.status_code)
+        self.assertEqual(expected_code, rv.status_code)
         data = rv.data
         parsed = py_json.loads(data)
         return parsed
@@ -82,12 +82,12 @@ class ApiTestCase(unittest.TestCase):
             headers = None
 
         rv = self.app.post(self.url_for(resource_name, params), data=data, headers=headers)
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def getResponse(self, resource_name, params={}, expected_code=200):
         rv = self.app.get(api.url_for(resource_name, **params))
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def putResponse(self, resource_name, params={}, data={}, expected_code=200):
@@ -96,22 +96,22 @@ class ApiTestCase(unittest.TestCase):
             data=py_json.dumps(data),
             headers={"Content-Type": "application/json"},
         )
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteResponse(self, resource_name, params={}, expected_code=204):
         rv = self.app.delete(self.url_for(resource_name, params))
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data))
 
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteEmptyResponse(self, resource_name, params={}, expected_code=204):
         rv = self.app.delete(self.url_for(resource_name, params))
-        self.assertEquals(rv.status_code, expected_code)
-        self.assertEquals(rv.data, "")  # ensure response body empty
+        self.assertEqual(rv.status_code, expected_code)
+        self.assertEqual(rv.data, "")  # ensure response body empty
         return
 
     def postJsonResponse(self, resource_name, params={}, data={}, expected_code=200):
@@ -122,9 +122,9 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource POST %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource POST %s: %s" % (resource_name, rv.data))
 
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         data = rv.data
         parsed = py_json.loads(data)
         return parsed
@@ -139,9 +139,9 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource PUT %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource PUT %s: %s" % (resource_name, rv.data))
 
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         data = rv.data
         parsed = py_json.loads(data)
         return parsed

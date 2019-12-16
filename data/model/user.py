@@ -65,7 +65,7 @@ from util.validation import (
 )
 from util.backoff import exponential_backoff
 from util.timedeltastring import convert_to_timedelta
-from util.unicode import remove_unicode
+from util.str import remove_unicode
 from util.security.token import decode_public_private_token, encode_public_private_token
 
 
@@ -1345,4 +1345,4 @@ class LoginWrappedDBUser(UserMixin):
         return self.db_user() and self.db_user().verified
 
     def get_id(self):
-        return unicode(self._uuid)
+        return str(self._uuid)

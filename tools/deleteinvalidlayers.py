@@ -13,7 +13,7 @@ from tqdm import tqdm
 def find_broken_storages():
     broken_storages = set()
 
-    print "Checking storages..."
+    print("Checking storages...")
     placement_count = ImageStoragePlacement.select().count()
     placements = (
         ImageStoragePlacement.select()
@@ -31,22 +31,22 @@ def find_broken_storages():
 
 
 def delete_broken_layers():
-    result = raw_input('Please make sure your registry is not running and enter "GO" to continue: ')
+    result = input('Please make sure your registry is not running and enter "GO" to continue: ')
     if result != "GO":
-        print "Declined to run"
+        print("Declined to run")
         return
 
     broken_storages = find_broken_storages()
     if not broken_storages:
-        print "No broken layers found"
+        print("No broken layers found")
         return
 
     # Find all the images referencing the broken layers.
-    print "Finding broken images..."
+    print("Finding broken images...")
     IMAGE_BATCH_SIZE = 100
 
     all_images = []
-    for i in tqdm(range(0, len(broken_storages) / IMAGE_BATCH_SIZE)):
+    for i in tqdm(list(range(0, len(broken_storages) / IMAGE_BATCH_SIZE))):
         start = i * IMAGE_BATCH_SIZE
         end = (i + 1) * IMAGE_BATCH_SIZE
 
@@ -56,11 +56,11 @@ def delete_broken_layers():
         all_images.extend(images)
 
     if not all_images:
-        print "No broken layers found"
+        print("No broken layers found")
         return
 
     # Find all the tags containing the images.
-    print "Finding associated tags for %s images..." % len(all_images)
+    print("Finding associated tags for %s images..." % len(all_images))
     all_tags = {}
     for image in tqdm(all_images):
         query = model.tag.get_matching_tags(
@@ -70,33 +70,33 @@ def delete_broken_layers():
             all_tags[tag.id] = tag
 
     # Ask to delete them.
-    print ""
-    print "The following tags were found to reference invalid images:"
-    for tag in all_tags.values():
-        print "%s/%s: %s" % (tag.repository.namespace_user.username, tag.repository.name, tag.name)
+    print("")
+    print("The following tags were found to reference invalid images:")
+    for tag in list(all_tags.values()):
+        print("%s/%s: %s" % (tag.repository.namespace_user.username, tag.repository.name, tag.name))
 
     if not all_tags:
-        print "(Tags in time machine)"
+        print("(Tags in time machine)")
 
-    print ""
-    result = raw_input(
+    print("")
+    result = input(
         'Enter "DELETENOW" to delete these tags and ALL associated images (THIS IS PERMANENT): '
     )
     if result != "DELETENOW":
-        print "Declined to delete"
+        print("Declined to delete")
         return
 
-    print ""
-    print "Marking tags to be GCed..."
-    for tag in tqdm(all_tags.values()):
+    print("")
+    print("Marking tags to be GCed...")
+    for tag in tqdm(list(all_tags.values())):
         tag.lifetime_end_ts = 0
         tag.save()
 
-    print "GCing all repositories..."
-    for tag in tqdm(all_tags.values()):
+    print("GCing all repositories...")
+    for tag in tqdm(list(all_tags.values())):
         model.repository.garbage_collect_repo(tag.repository)
 
-    print "All done! You may now restart your registry."
+    print("All done! You may now restart your registry.")
 
 
 delete_broken_layers()

@@ -352,7 +352,7 @@ class GithubBuildTrigger(BuildTriggerHandler):
                 elem.path
                 for elem in commit_tree.tree
                 if (
-                    elem.type == u"blob"
+                    elem.type == "blob"
                     and self.filename_is_dockerfile(os.path.basename(elem.path))
                 )
             ]

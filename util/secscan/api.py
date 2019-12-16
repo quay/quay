@@ -3,7 +3,7 @@ import logging
 
 from abc import ABCMeta, abstractmethod
 from six import add_metaclass
-from urlparse import urljoin
+from urllib.parse import urljoin
 
 import requests
 

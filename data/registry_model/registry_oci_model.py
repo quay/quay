@@ -339,14 +339,14 @@ class OCIModel(SharedModel, RegistryDataInterface):
         toSeconds = lambda ms: ms / 1000 if ms is not None else None
         last_modified = oci.tag.get_most_recent_tag_lifetime_start([r.id for r in repository_refs])
 
-        return {repo_id: toSeconds(ms) for repo_id, ms in last_modified.items()}
+        return {repo_id: toSeconds(ms) for repo_id, ms in list(last_modified.items())}
 
     def get_repo_tag(self, repository_ref, tag_name, include_legacy_image=False):
         """
         Returns the latest, *active* tag found in the repository, with the matching name or None if
         none.
         """
-        assert isinstance(tag_name, basestring)
+        assert isinstance(tag_name, str)
 
         tag = oci.tag.get_tag(repository_ref._db_id, tag_name)
         if tag is None:
@@ -399,7 +399,7 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
         # Apply any labels that should modify the created tag.
         if created_manifest.labels_to_apply:
-            for key, value in created_manifest.labels_to_apply.iteritems():
+            for key, value in created_manifest.labels_to_apply.items():
                 apply_label_to_manifest(dict(key=key, value=value), wrapped_manifest, self)
 
             # Reload the tag in case any updates were applied.

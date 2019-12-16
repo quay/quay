@@ -1,8 +1,8 @@
 import logging
 import base64
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 from flask import abort, request
 from jsonschema import validate, ValidationError
 
