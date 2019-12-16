@@ -12,7 +12,7 @@ from buildman.manager.enterprise import EnterpriseManager
 from buildman.manager.ephemeral import EphemeralBuilderManager
 from buildman.server import BuilderServer
 
-from trollius import SSLContext
+from ssl import SSLContext
 from raven.handlers.logging import SentryHandler
 from raven.conf import setup_logging
 
