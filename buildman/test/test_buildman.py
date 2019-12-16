@@ -4,7 +4,7 @@ import uuid
 
 from mock import Mock, ANY
 from six import iteritems
-from trollius import coroutine, get_event_loop, From, Future, Return
+from asyncio import coroutine, get_event_loop, From, Future, Return
 
 from buildman.asyncutil import AsyncWrapper
 from buildman.component.buildcomponent import BuildComponent
