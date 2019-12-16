@@ -52,7 +52,7 @@ class DocsModel:
 
     def __parse_object(self, parsed_item, schema, required, level):
         """ Parses schema of type object """
-        for key, value in schema.get("properties", {}).items():
+        for key, value in list(schema.get("properties", {}).items()):
             self.__parse_schema(value, key, key in required, level + 1)
 
     def __parse_array(self, parsed_item, schema, required, level):

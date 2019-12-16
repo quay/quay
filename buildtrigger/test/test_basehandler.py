@@ -8,10 +8,10 @@ from buildtrigger.basehandler import BuildTriggerHandler
     [
         ("Dockerfile", True),
         ("server.Dockerfile", True),
-        (u"Dockerfile", True),
-        (u"server.Dockerfile", True),
+        ("Dockerfile", True),
+        ("server.Dockerfile", True),
         ("bad file name", False),
-        (u"bad file name", False),
+        ("bad file name", False),
     ],
 )
 def test_path_is_dockerfile(input, output):
