@@ -9,7 +9,7 @@ import time
 
 from enum import IntEnum, unique
 from six import add_metaclass, iteritems
-from trollius import async, coroutine, From, Return
+from asyncio import async, coroutine, From, Return
 from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
 import etcd
@@ -187,7 +187,7 @@ class Orchestrator(object):
     @abstractmethod
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-    set_key, but without trollius coroutines.
+    set_key, but without asyncio coroutines.
     """
         pass
 
@@ -225,7 +225,7 @@ class Orchestrator(object):
 
 def _sleep_orchestrator():
     """
-  This function blocks the trollius event loop by sleeping in order to backoff if a failure
+  This function blocks the asyncio event loop by sleeping in order to backoff if a failure
   such as a ConnectionError has occurred.
   """
     logger.exception(
@@ -511,7 +511,7 @@ class MemoryOrchestrator(Orchestrator):
 
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-    set_key, but without trollius coroutines.
+    set_key, but without asyncio coroutines.
     """
         preexisting_key = "key" in self.state
         if preexisting_key and not overwrite:
