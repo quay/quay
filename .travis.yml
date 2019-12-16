@@ -1,7 +1,6 @@
 ---
 language: python
 python:
-- 2.7
 - 3.7
 
 services:
@@ -35,81 +34,64 @@ jobs:
   include:
     - stage: lint
       name: Lint python
-      python: '3.7'
       script: scripts/ci lint
 
     - stage: build
       name: Build
-      python: '2.7'
       script: scripts/ci build
 
     # To further shard, change the script to shard_X_of_XS and add new steps
     - stage: test
       name: Unit tests (shard 1)
-      python: '2.7'
       script: scripts/ci unit shard_1_of_2
     - stage: test
       name: Unit tests (shard 2)
-      python: '2.7'
       script: scripts/ci unit shard_2_of_2
 
     - stage: test
       name: Registry tests (shard 1)
-      python: '2.7'
       script: scripts/ci registry shard_1_of_5
     - stage: test
       name: Registry tests (shard 2)
-      python: '2.7'
       script: scripts/ci registry shard_2_of_5
     - stage: test
       name: Registry tests (shard 3)
-      python: '2.7'
       script: scripts/ci registry shard_3_of_5
     - stage: test
       name: Registry tests (shard 4)
-      python: '2.7'
       script: scripts/ci registry shard_4_of_5
     - stage: test
       name: Registry tests (shard 5)
-      python: '2.7'
       script: scripts/ci registry shard_5_of_5
 
     - stage: test
       name: Legacy registry tests
-      python: '2.7'
       script: scripts/ci registry_old
 
     - stage: test
       name: Custom TLS certs test
-      python: '2.7'
       script: scripts/ci certs_test
 
     - stage: test
       name: Gunicorn worker test
-      python: '2.7'
       script: scripts/ci gunicorn_test
 
     - stage: test
       name: MySQL unit tests (shard 1)
-      python: '2.7'
       script: scripts/ci mysql shard_1_of_2
     - stage: test
       name: MySQL unit tests (shard 2)
-      python: '2.7'
       script: scripts/ci mysql shard_2_of_2
 
     - stage: test
       name: Postgres unit tests (shard 1)
-      python: '2.7'
       script: scripts/ci postgres shard_1_of_2
     - stage: test
       name: Postgres unit tests (shard 2)
-      python: '2.7'
       script: scripts/ci postgres shard_2_of_2
 
     - stage: clean
       name: Cleanup
-      python: '2.7'
       script: scripts/ci clean
 
 notifications:
