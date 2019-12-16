@@ -53,12 +53,8 @@ def upgrade(tables, tester, progress_reporter):
         "emailconfirmation", sa.Column("verification_code", sa.String(length=255), nullable=True)
     )
 
-    op.add_column(
-        "oauthaccesstoken", sa.Column("token_code", sa.String(length=255), nullable=True)
-    )
-    op.add_column(
-        "oauthaccesstoken", sa.Column("token_name", sa.String(length=255), nullable=True)
-    )
+    op.add_column("oauthaccesstoken", sa.Column("token_code", sa.String(length=255), nullable=True))
+    op.add_column("oauthaccesstoken", sa.Column("token_name", sa.String(length=255), nullable=True))
     op.create_index("oauthaccesstoken_token_name", "oauthaccesstoken", ["token_name"], unique=True)
 
     op.add_column(

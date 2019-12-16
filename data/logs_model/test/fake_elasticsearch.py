@@ -364,10 +364,7 @@ def fake_elasticsearch(allow_wildcard=True):
 
     @urlmatch(netloc=FAKE_ES_HOST)
     def catchall_handler(url, request):
-        print("Unsupported URL: %s %s" % (
-            request.method,
-            url,
-        ))
+        print("Unsupported URL: %s %s" % (request.method, url,))
         return {"status_code": 501}
 
     handlers = [
