@@ -16,7 +16,7 @@ import requests
 
 from container_cloud_config import CloudConfigContext
 from jinja2 import FileSystemLoader, Environment
-from trollius import coroutine, sleep, From, Return, get_event_loop
+from asyncio import coroutine, sleep, From, Return, get_event_loop
 from prometheus_client import Histogram
 
 import release

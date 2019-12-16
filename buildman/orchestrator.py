@@ -9,7 +9,7 @@ import time
 
 from enum import IntEnum, unique
 from six import add_metaclass, iteritems
-from trollius import async, coroutine, From, Return
+from asyncio import async, coroutine, From, Return
 from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
 import etcd
@@ -69,10 +69,10 @@ def orchestrator_from_config(manager_config, canceller_only=False):
 
     def _dict_key_prefix(d):
         """
-    :param d: the dict that has keys prefixed with underscore
-    :type d: {str: any}
-    :rtype: str
-    """
+        :param d: the dict that has keys prefixed with underscore
+        :type d: {str: any}
+        :rtype: str
+        """
         return list(d.keys())[0].split("_", 1)[0].lower()
 
     orchestrator_name = _dict_key_prefix(manager_config["ORCHESTRATOR"])
@@ -153,40 +153,37 @@ class Orchestrator(object):
     @abstractmethod
     def get_prefixed_keys(self, prefix):
         """
-
-    :returns: a dict of key value pairs beginning with prefix
-    :rtype: {str: str}
-    """
+        :returns: a dict of key value pairs beginning with prefix
+        :rtype: {str: str}
+        """
         pass
 
     @abstractmethod
     def get_key(self, key):
         """
-
-    :returns: the value stored at the provided key
-    :rtype: str
-    """
+        :returns: the value stored at the provided key
+        :rtype: str
+        """
         pass
 
     @abstractmethod
     def set_key(self, key, value, overwrite=False, expiration=None):
         """
-
-    :param key: the identifier for the value
-    :type key: str
-    :param value: the value being stored
-    :type value: str
-    :param overwrite: whether or not a KeyError is thrown if the key already exists
-    :type overwrite: bool
-    :param expiration: the duration in seconds that a key should be available
-    :type expiration: int
-    """
+        :param key: the identifier for the value
+        :type key: str
+        :param value: the value being stored
+        :type value: str
+        :param overwrite: whether or not a KeyError is thrown if the key already exists
+        :type overwrite: bool
+        :param expiration: the duration in seconds that a key should be available
+        :type expiration: int
+        """
         pass
 
     @abstractmethod
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-        set_key, but without trollius coroutines.
+        set_key, but without asyncio coroutines.
         """
         pass
 
@@ -224,8 +221,8 @@ class Orchestrator(object):
 
 def _sleep_orchestrator():
     """
-    This function blocks the trollius event loop by sleeping in order to backoff if a failure such
-    as a ConnectionError has occurred.
+    This function blocks the asyncio event loop by sleeping in order to backoff if a failure
+    such as a ConnectionError has occurred.
     """
     logger.exception(
         "Connecting to etcd failed; sleeping for %s and then trying again",
@@ -513,7 +510,7 @@ class MemoryOrchestrator(Orchestrator):
 
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-        set_key, but without trollius coroutines.
+        set_key, but without asyncio coroutines.
         """
         preexisting_key = "key" in self.state
         if preexisting_key and not overwrite:

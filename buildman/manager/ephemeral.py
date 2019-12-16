@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from six import iteritems
 
 from prometheus_client import Counter, Histogram
-from trollius import From, coroutine, Return, async, sleep
+from asyncio import From, coroutine, Return, async, sleep
 
 from buildman.orchestrator import (
     orchestrator_from_config,
