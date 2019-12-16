@@ -1,6 +1,14 @@
 ### v3.2.0
 
-- TODO
+	- TODO
+- Added: New required manual config.yaml entry “DATABASE_SECRET_KEY” will be used to encrypt all robot tokens in the database (CVE-2019-10205)
+- Added: Support for OpenShift Container Storage 4 leveraging NooBaa Multi-Cloud Gateway.
+- Added: Improved repository mirror logging.
+- Added: Notifications enabled for repository mirror start, finish, and error.
+- Fixed: Remove validation from repository mirror proxy config.
+- Fixed: Broken scrollbars in UI on pages such as repository tags.
+- Fixed: Inability to star a repository
+
 
 ### v3.1.2
 
