@@ -59,4 +59,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     generated, _ = generate_key(args.service, args.name, args.expiration, args.notes)
-    print generated.exportKey("PEM")
+    print(generated.exportKey("PEM"))

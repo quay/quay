@@ -2,7 +2,7 @@ import tarfile
 
 import pytest
 
-from StringIO import StringIO
+from io import StringIO
 from util.registry.streamlayerformat import StreamLayerMerger
 from util.registry.aufs import AUFS_WHITEOUT
 from util.registry.tarlayerformat import TarLayerReadException
