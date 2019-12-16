@@ -35,18 +35,18 @@ def get_users(all_users=False, users_list=None):
     if all_users:
         return get_active_users(disabled=False)
 
-    return map(get_nonrobot_user, users_list)
+    return list(map(get_nonrobot_user, users_list))
 
 
 def ensure_admin(user, repos, dry_run=False):
     repos = [repo for repo in repos if not has_admin(user, repo)]
 
     for repo in repos:
-        print("User {} missing admin on: {}".format(user.username, repo.name))
+        print(("User {} missing admin on: {}".format(user.username, repo.name)))
 
         if not dry_run:
             RepositoryPermission.create(user=user, repository=repo, role=ADMIN)
-            print("Granted {} admin on: {}".format(user.username, repo.name))
+            print(("Granted {} admin on: {}".format(user.username, repo.name)))
 
     return len(repos)
 
@@ -63,7 +63,7 @@ def main():
             repos = repos_for_namespace(user.username)
             found += ensure_admin(user, repos, dry_run=args.dry_run)
 
-    print("\nFound {} user repos missing admin" " permissions for owner.".format(found))
+    print(("\nFound {} user repos missing admin" " permissions for owner.".format(found)))
 
 
 if __name__ == "__main__":

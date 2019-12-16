@@ -26,4 +26,4 @@ usage = [
 
 for username, used, allowed in usage:
     if used > allowed:
-        print("Violation: %s %s > %s" % (username, used, allowed))
+        print(("Violation: %s %s > %s" % (username, used, allowed)))

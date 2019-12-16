@@ -196,7 +196,7 @@ def generate_route_data():
                     "404": {"description": "Not found",},
                 }
 
-                for _, body in responses.items():
+                for _, body in list(responses.items()):
                     body["schema"] = {"$ref": "#/definitions/ApiError"}
 
                 if method_name == "DELETE":
@@ -229,7 +229,7 @@ def generate_route_data():
                 path_swagger[method_name.lower()] = operation_swagger
 
     tags.sort(key=lambda t: t["name"])
-    paths = OrderedDict(sorted(paths.items(), key=lambda p: p[1]["x-tag"]))
+    paths = OrderedDict(sorted(list(paths.items()), key=lambda p: p[1]["x-tag"]))
 
     if compact:
         return {"paths": paths}

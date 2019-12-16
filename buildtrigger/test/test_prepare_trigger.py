@@ -38,25 +38,25 @@ def assertSchema(filename, expected, processor, *args, **kwargs):
 
 def test_custom_custom():
     expected = {
-        u"commit": u"1c002dd",
-        u"commit_info": {
-            u"url": u"gitsoftware.com/repository/commits/1234567",
-            u"date": u"timestamp",
-            u"message": u"initial commit",
-            u"committer": {
-                u"username": u"user",
-                u"url": u"gitsoftware.com/users/user",
-                u"avatar_url": u"gravatar.com/user.png",
+        "commit": "1c002dd",
+        "commit_info": {
+            "url": "gitsoftware.com/repository/commits/1234567",
+            "date": "timestamp",
+            "message": "initial commit",
+            "committer": {
+                "username": "user",
+                "url": "gitsoftware.com/users/user",
+                "avatar_url": "gravatar.com/user.png",
             },
-            u"author": {
-                u"username": u"user",
-                u"url": u"gitsoftware.com/users/user",
-                u"avatar_url": u"gravatar.com/user.png",
+            "author": {
+                "username": "user",
+                "url": "gitsoftware.com/users/user",
+                "avatar_url": "gravatar.com/user.png",
             },
         },
-        u"ref": u"refs/heads/master",
-        u"default_branch": u"master",
-        u"git_url": u"foobar",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "foobar",
     }
 
     assertSchema("custom_webhook", expected, custom_trigger_payload, git_url="foobar")
@@ -64,13 +64,13 @@ def test_custom_custom():
 
 def test_custom_gitlab():
     expected = {
-        "commit": u"fb88379ee45de28a0a4590fddcbd8eff8b36026e",
-        "ref": u"refs/heads/master",
-        "git_url": u"git@gitlab.com:jsmith/somerepo.git",
+        "commit": "fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+        "ref": "refs/heads/master",
+        "git_url": "git@gitlab.com:jsmith/somerepo.git",
         "commit_info": {
-            "url": u"https://gitlab.com/jsmith/somerepo/commit/fb88379ee45de28a0a4590fddcbd8eff8b36026e",
-            "date": u"2015-08-13T19:33:18+00:00",
-            "message": u"Fix link\n",
+            "url": "https://gitlab.com/jsmith/somerepo/commit/fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+            "date": "2015-08-13T19:33:18+00:00",
+            "message": "Fix link\n",
         },
     }
 
@@ -84,16 +84,16 @@ def test_custom_gitlab():
 
 def test_custom_github():
     expected = {
-        "commit": u"410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-        "ref": u"refs/heads/master",
-        "default_branch": u"master",
-        "git_url": u"git@github.com:jsmith/anothertest.git",
+        "commit": "410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "git@github.com:jsmith/anothertest.git",
         "commit_info": {
-            "url": u"https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-            "date": u"2015-09-11T14:26:16-04:00",
-            "message": u"Update Dockerfile",
-            "committer": {"username": u"jsmith",},
-            "author": {"username": u"jsmith",},
+            "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+            "date": "2015-09-11T14:26:16-04:00",
+            "message": "Update Dockerfile",
+            "committer": {"username": "jsmith",},
+            "author": {"username": "jsmith",},
         },
     }
 
@@ -107,20 +107,20 @@ def test_custom_github():
 
 def test_custom_bitbucket():
     expected = {
-        "commit": u"af64ae7188685f8424040b4735ad12941b980d75",
-        "ref": u"refs/heads/master",
-        "git_url": u"git@bitbucket.org:jsmith/another-repo.git",
+        "commit": "af64ae7188685f8424040b4735ad12941b980d75",
+        "ref": "refs/heads/master",
+        "git_url": "git@bitbucket.org:jsmith/another-repo.git",
         "commit_info": {
-            "url": u"https://bitbucket.org/jsmith/another-repo/commits/af64ae7188685f8424040b4735ad12941b980d75",
-            "date": u"2015-09-10T20:40:54+00:00",
-            "message": u"Dockerfile edited online with Bitbucket",
+            "url": "https://bitbucket.org/jsmith/another-repo/commits/af64ae7188685f8424040b4735ad12941b980d75",
+            "date": "2015-09-10T20:40:54+00:00",
+            "message": "Dockerfile edited online with Bitbucket",
             "author": {
-                "username": u"John Smith",
-                "avatar_url": u"https://bitbucket.org/account/jsmith/avatar/32/",
+                "username": "John Smith",
+                "avatar_url": "https://bitbucket.org/account/jsmith/avatar/32/",
             },
             "committer": {
-                "username": u"John Smith",
-                "avatar_url": u"https://bitbucket.org/account/jsmith/avatar/32/",
+                "username": "John Smith",
+                "avatar_url": "https://bitbucket.org/account/jsmith/avatar/32/",
             },
         },
     }
@@ -180,15 +180,15 @@ def test_bitbucket_commit():
         return {"user": {"display_name": "cooluser", "avatar": "http://some/avatar/url"}}
 
     expected = {
-        "commit": u"abdeaf1b2b4a6b9ddf742c1e1754236380435a62",
-        "ref": u"refs/heads/somebranch",
-        "git_url": u"git@bitbucket.org:foo/bar.git",
-        "default_branch": u"somebranch",
+        "commit": "abdeaf1b2b4a6b9ddf742c1e1754236380435a62",
+        "ref": "refs/heads/somebranch",
+        "git_url": "git@bitbucket.org:foo/bar.git",
+        "default_branch": "somebranch",
         "commit_info": {
-            "url": u"https://bitbucket.org/foo/bar/commits/abdeaf1b2b4a6b9ddf742c1e1754236380435a62",
-            "date": u"2012-07-24 00:26:36",
-            "message": u"making some changes\n",
-            "author": {"avatar_url": u"http://some/avatar/url", "username": u"cooluser",},
+            "url": "https://bitbucket.org/foo/bar/commits/abdeaf1b2b4a6b9ddf742c1e1754236380435a62",
+            "date": "2012-07-24 00:26:36",
+            "message": "making some changes\n",
+            "author": {"avatar_url": "http://some/avatar/url", "username": "cooluser",},
         },
     }
 
@@ -199,20 +199,20 @@ def test_bitbucket_commit():
 
 def test_bitbucket_webhook_payload():
     expected = {
-        "commit": u"af64ae7188685f8424040b4735ad12941b980d75",
-        "ref": u"refs/heads/master",
-        "git_url": u"git@bitbucket.org:jsmith/another-repo.git",
+        "commit": "af64ae7188685f8424040b4735ad12941b980d75",
+        "ref": "refs/heads/master",
+        "git_url": "git@bitbucket.org:jsmith/another-repo.git",
         "commit_info": {
-            "url": u"https://bitbucket.org/jsmith/another-repo/commits/af64ae7188685f8424040b4735ad12941b980d75",
-            "date": u"2015-09-10T20:40:54+00:00",
-            "message": u"Dockerfile edited online with Bitbucket",
+            "url": "https://bitbucket.org/jsmith/another-repo/commits/af64ae7188685f8424040b4735ad12941b980d75",
+            "date": "2015-09-10T20:40:54+00:00",
+            "message": "Dockerfile edited online with Bitbucket",
             "author": {
-                "username": u"John Smith",
-                "avatar_url": u"https://bitbucket.org/account/jsmith/avatar/32/",
+                "username": "John Smith",
+                "avatar_url": "https://bitbucket.org/account/jsmith/avatar/32/",
             },
             "committer": {
-                "username": u"John Smith",
-                "avatar_url": u"https://bitbucket.org/account/jsmith/avatar/32/",
+                "username": "John Smith",
+                "avatar_url": "https://bitbucket.org/account/jsmith/avatar/32/",
             },
         },
     }
@@ -222,16 +222,16 @@ def test_bitbucket_webhook_payload():
 
 def test_github_webhook_payload_slash_branch():
     expected = {
-        "commit": u"410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-        "ref": u"refs/heads/slash/branch",
-        "default_branch": u"master",
-        "git_url": u"git@github.com:jsmith/anothertest.git",
+        "commit": "410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+        "ref": "refs/heads/slash/branch",
+        "default_branch": "master",
+        "git_url": "git@github.com:jsmith/anothertest.git",
         "commit_info": {
-            "url": u"https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-            "date": u"2015-09-11T14:26:16-04:00",
-            "message": u"Update Dockerfile",
-            "committer": {"username": u"jsmith",},
-            "author": {"username": u"jsmith",},
+            "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+            "date": "2015-09-11T14:26:16-04:00",
+            "message": "Update Dockerfile",
+            "committer": {"username": "jsmith",},
+            "author": {"username": "jsmith",},
         },
     }
 
@@ -240,16 +240,16 @@ def test_github_webhook_payload_slash_branch():
 
 def test_github_webhook_payload():
     expected = {
-        "commit": u"410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-        "ref": u"refs/heads/master",
-        "default_branch": u"master",
-        "git_url": u"git@github.com:jsmith/anothertest.git",
+        "commit": "410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "git@github.com:jsmith/anothertest.git",
         "commit_info": {
-            "url": u"https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-            "date": u"2015-09-11T14:26:16-04:00",
-            "message": u"Update Dockerfile",
-            "committer": {"username": u"jsmith",},
-            "author": {"username": u"jsmith",},
+            "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+            "date": "2015-09-11T14:26:16-04:00",
+            "message": "Update Dockerfile",
+            "committer": {"username": "jsmith",},
+            "author": {"username": "jsmith",},
         },
     }
 
@@ -258,23 +258,23 @@ def test_github_webhook_payload():
 
 def test_github_webhook_payload_with_lookup():
     expected = {
-        "commit": u"410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-        "ref": u"refs/heads/master",
-        "default_branch": u"master",
-        "git_url": u"git@github.com:jsmith/anothertest.git",
+        "commit": "410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "git@github.com:jsmith/anothertest.git",
         "commit_info": {
-            "url": u"https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-            "date": u"2015-09-11T14:26:16-04:00",
-            "message": u"Update Dockerfile",
+            "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+            "date": "2015-09-11T14:26:16-04:00",
+            "message": "Update Dockerfile",
             "committer": {
-                "username": u"jsmith",
-                "url": u"http://github.com/jsmith",
-                "avatar_url": u"http://some/avatar/url",
+                "username": "jsmith",
+                "url": "http://github.com/jsmith",
+                "avatar_url": "http://some/avatar/url",
             },
             "author": {
-                "username": u"jsmith",
-                "url": u"http://github.com/jsmith",
-                "avatar_url": u"http://some/avatar/url",
+                "username": "jsmith",
+                "url": "http://github.com/jsmith",
+                "avatar_url": "http://some/avatar/url",
             },
         },
     }
@@ -287,14 +287,14 @@ def test_github_webhook_payload_with_lookup():
 
 def test_github_webhook_payload_missing_fields_with_lookup():
     expected = {
-        "commit": u"410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-        "ref": u"refs/heads/master",
-        "default_branch": u"master",
-        "git_url": u"git@github.com:jsmith/anothertest.git",
+        "commit": "410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "git@github.com:jsmith/anothertest.git",
         "commit_info": {
-            "url": u"https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-            "date": u"2015-09-11T14:26:16-04:00",
-            "message": u"Update Dockerfile",
+            "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+            "date": "2015-09-11T14:26:16-04:00",
+            "message": "Update Dockerfile",
         },
     }
 
@@ -309,13 +309,13 @@ def test_github_webhook_payload_missing_fields_with_lookup():
 
 def test_gitlab_webhook_payload():
     expected = {
-        "commit": u"fb88379ee45de28a0a4590fddcbd8eff8b36026e",
-        "ref": u"refs/heads/master",
-        "git_url": u"git@gitlab.com:jsmith/somerepo.git",
+        "commit": "fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+        "ref": "refs/heads/master",
+        "git_url": "git@gitlab.com:jsmith/somerepo.git",
         "commit_info": {
-            "url": u"https://gitlab.com/jsmith/somerepo/commit/fb88379ee45de28a0a4590fddcbd8eff8b36026e",
-            "date": u"2015-08-13T19:33:18+00:00",
-            "message": u"Fix link\n",
+            "url": "https://gitlab.com/jsmith/somerepo/commit/fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+            "date": "2015-08-13T19:33:18+00:00",
+            "message": "Fix link\n",
         },
     }
 
@@ -340,14 +340,14 @@ def test_github_webhook_payload_known_issue():
 
 def test_github_webhook_payload_missing_fields():
     expected = {
-        "commit": u"410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-        "ref": u"refs/heads/master",
-        "default_branch": u"master",
-        "git_url": u"git@github.com:jsmith/anothertest.git",
+        "commit": "410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
+        "git_url": "git@github.com:jsmith/anothertest.git",
         "commit_info": {
-            "url": u"https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
-            "date": u"2015-09-11T14:26:16-04:00",
-            "message": u"Update Dockerfile",
+            "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
+            "date": "2015-09-11T14:26:16-04:00",
+            "message": "Update Dockerfile",
         },
     }
 
@@ -360,13 +360,13 @@ def test_gitlab_webhook_nocommit_payload():
 
 def test_gitlab_webhook_multiple_commits():
     expected = {
-        "commit": u"9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
-        "ref": u"refs/heads/master",
-        "git_url": u"git@gitlab.com:jsmith/some-test-project.git",
+        "commit": "9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
+        "ref": "refs/heads/master",
+        "git_url": "git@gitlab.com:jsmith/some-test-project.git",
         "commit_info": {
-            "url": u"https://gitlab.com/jsmith/some-test-project/commit/9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
-            "date": u"2016-09-29T15:02:41+00:00",
-            "message": u"Merge branch 'foobar' into 'master'\r\n\r\nAdd changelog\r\n\r\nSome merge thing\r\n\r\nSee merge request !1",
+            "url": "https://gitlab.com/jsmith/some-test-project/commit/9a052a0b2fbe01d4a1a88638dd9fe31c1c56ef53",
+            "date": "2016-09-29T15:02:41+00:00",
+            "message": "Merge branch 'foobar' into 'master'\r\n\r\nAdd changelog\r\n\r\nSome merge thing\r\n\r\nSee merge request !1",
             "author": {
                 "username": "jsmith",
                 "url": "http://gitlab.com/jsmith",
@@ -387,7 +387,7 @@ def test_gitlab_webhook_multiple_commits():
 
 def test_gitlab_webhook_for_tag():
     expected = {
-        "commit": u"82b3d5ae55f7080f1e6022629cdb57bfae7cccc7",
+        "commit": "82b3d5ae55f7080f1e6022629cdb57bfae7cccc7",
         "commit_info": {
             "author": {
                 "avatar_url": "http://some/avatar/url",
@@ -398,8 +398,8 @@ def test_gitlab_webhook_for_tag():
             "message": "Fix link\n",
             "url": "https://some/url",
         },
-        "git_url": u"git@example.com:jsmith/example.git",
-        "ref": u"refs/tags/v1.0.0",
+        "git_url": "git@example.com:jsmith/example.git",
+        "ref": "refs/tags/v1.0.0",
     }
 
     def lookup_user(_):
@@ -441,13 +441,13 @@ def test_gitlab_webhook_for_tag_commit_sha_null():
 
 def test_gitlab_webhook_for_tag_known_issue():
     expected = {
-        "commit": u"770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
-        "ref": u"refs/tags/thirdtag",
-        "git_url": u"git@gitlab.com:someuser/some-test-project.git",
+        "commit": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
+        "ref": "refs/tags/thirdtag",
+        "git_url": "git@gitlab.com:someuser/some-test-project.git",
         "commit_info": {
-            "url": u"https://gitlab.com/someuser/some-test-project/commit/770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
-            "date": u"2019-10-17T18:07:48Z",
-            "message": u"Update Dockerfile",
+            "url": "https://gitlab.com/someuser/some-test-project/commit/770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
+            "date": "2019-10-17T18:07:48Z",
+            "message": "Update Dockerfile",
             "author": {
                 "username": "someuser",
                 "url": "http://gitlab.com/someuser",
@@ -468,13 +468,13 @@ def test_gitlab_webhook_for_tag_known_issue():
 
 def test_gitlab_webhook_payload_known_issue():
     expected = {
-        "commit": u"770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
-        "ref": u"refs/tags/fourthtag",
-        "git_url": u"git@gitlab.com:someuser/some-test-project.git",
+        "commit": "770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
+        "ref": "refs/tags/fourthtag",
+        "git_url": "git@gitlab.com:someuser/some-test-project.git",
         "commit_info": {
-            "url": u"https://gitlab.com/someuser/some-test-project/commit/770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
-            "date": u"2019-10-17T18:07:48Z",
-            "message": u"Update Dockerfile",
+            "url": "https://gitlab.com/someuser/some-test-project/commit/770830e7ca132856991e6db4f7fc0f4dbe20bd5f",
+            "date": "2019-10-17T18:07:48Z",
+            "message": "Update Dockerfile",
         },
     }
 
@@ -501,13 +501,13 @@ def test_gitlab_webhook_for_other():
 
 def test_gitlab_webhook_payload_with_lookup():
     expected = {
-        "commit": u"fb88379ee45de28a0a4590fddcbd8eff8b36026e",
-        "ref": u"refs/heads/master",
-        "git_url": u"git@gitlab.com:jsmith/somerepo.git",
+        "commit": "fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+        "ref": "refs/heads/master",
+        "git_url": "git@gitlab.com:jsmith/somerepo.git",
         "commit_info": {
-            "url": u"https://gitlab.com/jsmith/somerepo/commit/fb88379ee45de28a0a4590fddcbd8eff8b36026e",
-            "date": u"2015-08-13T19:33:18+00:00",
-            "message": u"Fix link\n",
+            "url": "https://gitlab.com/jsmith/somerepo/commit/fb88379ee45de28a0a4590fddcbd8eff8b36026e",
+            "date": "2015-08-13T19:33:18+00:00",
+            "message": "Fix link\n",
             "author": {
                 "username": "jsmith",
                 "url": "http://gitlab.com/jsmith",
@@ -528,20 +528,20 @@ def test_gitlab_webhook_payload_with_lookup():
 
 def test_github_webhook_payload_deleted_commit():
     expected = {
-        "commit": u"456806b662cb903a0febbaed8344f3ed42f27bab",
+        "commit": "456806b662cb903a0febbaed8344f3ed42f27bab",
         "commit_info": {
-            "author": {"username": u"jsmith"},
-            "committer": {"username": u"jsmith"},
-            "date": u"2015-12-08T18:07:03-05:00",
+            "author": {"username": "jsmith"},
+            "committer": {"username": "jsmith"},
+            "date": "2015-12-08T18:07:03-05:00",
             "message": (
-                u"Merge pull request #1044 from jsmith/errerror\n\n"
+                "Merge pull request #1044 from jsmith/errerror\n\n"
                 + "Assign the exception to a variable to log it"
             ),
-            "url": u"https://github.com/jsmith/somerepo/commit/456806b662cb903a0febbaed8344f3ed42f27bab",
+            "url": "https://github.com/jsmith/somerepo/commit/456806b662cb903a0febbaed8344f3ed42f27bab",
         },
-        "git_url": u"git@github.com:jsmith/somerepo.git",
-        "ref": u"refs/heads/master",
-        "default_branch": u"master",
+        "git_url": "git@github.com:jsmith/somerepo.git",
+        "ref": "refs/heads/master",
+        "default_branch": "master",
     }
 
     def lookup_user(_):

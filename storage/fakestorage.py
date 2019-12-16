@@ -1,4 +1,4 @@
-import cStringIO as StringIO
+import io as StringIO
 import hashlib
 
 from collections import defaultdict
@@ -33,7 +33,7 @@ class FakeStorage(BaseStorageV2):
     def get_content(self, path):
         if not path in self._fake_storage_map:
             raise IOError(
-                "Fake file %s not found. Exist: %s" % (path, self._fake_storage_map.keys())
+                "Fake file %s not found. Exist: %s" % (path, list(self._fake_storage_map.keys()))
             )
 
         self._fake_storage_map.get(path).seek(0)

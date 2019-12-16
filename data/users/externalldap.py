@@ -146,7 +146,7 @@ class LDAPUsers(FederatedUsers):
         return referral_dn
 
     def _ldap_user_search_with_rdn(self, conn, username_or_email, user_search_dn, suffix=""):
-        query = u"(|({0}={2}{3})({1}={2}{3}))".format(
+        query = "(|({0}={2}{3})({1}={2}{3}))".format(
             self._uid_attr, self._email_attr, escape_filter_chars(username_or_email), suffix
         )
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
@@ -158,7 +158,7 @@ class LDAPUsers(FederatedUsers):
                 return (None, "Failed to follow referral when looking up username")
 
             try:
-                subquery = u"(%s=%s)" % (self._uid_attr, username_or_email)
+                subquery = "(%s=%s)" % (self._uid_attr, username_or_email)
                 return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery), None)
             except ldap.LDAPError:
                 logger.debug("LDAP referral search exception")
