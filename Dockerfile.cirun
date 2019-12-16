@@ -2,6 +2,6 @@ FROM quay-ci-base
 RUN mkdir -p conf/stack
 RUN rm -rf test/data/test.db
 ADD cirun.config.yaml conf/stack/config.yaml
-RUN /usr/bin/scl enable python27 rh-nginx112 "LOGGING_LEVEL=INFO python initdb.py"
+RUN /usr/bin/scl enable python36 rh-nginx112 "LOGGING_LEVEL=INFO python initdb.py"
 ENTRYPOINT ["/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]
