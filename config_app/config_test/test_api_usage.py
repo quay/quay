@@ -1,4 +1,4 @@
-from StringIO import StringIO
+from io import StringIO
 from mockldap import MockLdap
 
 from data import database, model
@@ -56,7 +56,7 @@ class TestSuperUserCreateInitialSuperUser(ApiTestCase):
 
         # Ensure that the current user is a superuser in the config.
         json = self.getJsonResponse(SuperUserConfig)
-        self.assertEquals(["newsuper"], json["config"]["SUPER_USERS"])
+        self.assertEqual(["newsuper"], json["config"]["SUPER_USERS"])
 
         # Ensure that the current user is a superuser in memory by trying to call an API
         # that will fail otherwise.
@@ -67,7 +67,7 @@ class TestSuperUserConfig(ApiTestCase):
     def test_get_status_update_config(self):
         # With no config the status should be 'config-db'.
         json = self.getJsonResponse(SuperUserRegistryStatus)
-        self.assertEquals("config-db", json["status"])
+        self.assertEqual("config-db", json["status"])
 
         # Add some fake config.
         fake_config = {
@@ -78,9 +78,9 @@ class TestSuperUserConfig(ApiTestCase):
         json = self.putJsonResponse(
             SuperUserConfig, data=dict(config=fake_config, hostname="fakehost")
         )
-        self.assertEquals("fakekey", json["config"]["SECRET_KEY"])
-        self.assertEquals("fakehost", json["config"]["SERVER_HOSTNAME"])
-        self.assertEquals("Database", json["config"]["AUTHENTICATION_TYPE"])
+        self.assertEqual("fakekey", json["config"]["SECRET_KEY"])
+        self.assertEqual("fakehost", json["config"]["SERVER_HOSTNAME"])
+        self.assertEqual("Database", json["config"]["AUTHENTICATION_TYPE"])
 
         # With config the status should be 'setup-db'.
         # TODO: fix this test
@@ -167,12 +167,12 @@ class TestSuperUserCustomCertificates(ApiTestCase):
 
         # Make sure it is present.
         json = self.getJsonResponse(SuperUserCustomCertificates)
-        self.assertEquals(1, len(json["certs"]))
+        self.assertEqual(1, len(json["certs"]))
 
         cert_info = json["certs"][0]
-        self.assertEquals("testcert.crt", cert_info["path"])
+        self.assertEqual("testcert.crt", cert_info["path"])
 
-        self.assertEquals(set(["somecoolhost", "bar", "baz"]), set(cert_info["names"]))
+        self.assertEqual(set(["somecoolhost", "bar", "baz"]), set(cert_info["names"]))
         self.assertFalse(cert_info["expired"])
 
         # Remove the certificate.
@@ -180,7 +180,7 @@ class TestSuperUserCustomCertificates(ApiTestCase):
 
         # Make sure it is gone.
         json = self.getJsonResponse(SuperUserCustomCertificates)
-        self.assertEquals(0, len(json["certs"]))
+        self.assertEqual(0, len(json["certs"]))
 
     def test_expired_custom_certificate(self):
         # Upload a certificate.
@@ -194,12 +194,12 @@ class TestSuperUserCustomCertificates(ApiTestCase):
 
         # Make sure it is present.
         json = self.getJsonResponse(SuperUserCustomCertificates)
-        self.assertEquals(1, len(json["certs"]))
+        self.assertEqual(1, len(json["certs"]))
 
         cert_info = json["certs"][0]
-        self.assertEquals("testcert.crt", cert_info["path"])
+        self.assertEqual("testcert.crt", cert_info["path"])
 
-        self.assertEquals(set(["somecoolhost"]), set(cert_info["names"]))
+        self.assertEqual(set(["somecoolhost"]), set(cert_info["names"]))
         self.assertTrue(cert_info["expired"])
 
     def test_invalid_custom_certificate(self):
@@ -213,11 +213,11 @@ class TestSuperUserCustomCertificates(ApiTestCase):
 
         # Make sure it is present but invalid.
         json = self.getJsonResponse(SuperUserCustomCertificates)
-        self.assertEquals(1, len(json["certs"]))
+        self.assertEqual(1, len(json["certs"]))
 
         cert_info = json["certs"][0]
-        self.assertEquals("testcert.crt", cert_info["path"])
-        self.assertEquals("no start line", cert_info["error"])
+        self.assertEqual("testcert.crt", cert_info["path"])
+        self.assertEqual("no start line", cert_info["error"])
 
     def test_path_sanitization(self):
         # Upload a certificate.
@@ -231,7 +231,7 @@ class TestSuperUserCustomCertificates(ApiTestCase):
 
         # Make sure it is present.
         json = self.getJsonResponse(SuperUserCustomCertificates)
-        self.assertEquals(1, len(json["certs"]))
+        self.assertEqual(1, len(json["certs"]))
 
         cert_info = json["certs"][0]
-        self.assertEquals("foobar.crt", cert_info["path"])
+        self.assertEqual("foobar.crt", cert_info["path"])

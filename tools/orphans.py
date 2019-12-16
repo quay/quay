@@ -13,4 +13,4 @@ orphaned = (
 counter = 0
 for orphan in orphaned:
     counter += 1
-    print orphan.uuid
+    print(orphan.uuid)

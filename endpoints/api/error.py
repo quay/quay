@@ -48,7 +48,7 @@ class Error(ApiResource):
     @nickname("getErrorDescription")
     def get(self, error_type):
         """ Get a detailed description of the error """
-        if error_type in ERROR_DESCRIPTION.keys():
+        if error_type in list(ERROR_DESCRIPTION.keys()):
             return error_view(error_type)
 
         raise NotFound()
