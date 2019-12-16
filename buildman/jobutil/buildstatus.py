@@ -2,7 +2,7 @@ import datetime
 import logging
 
 from redis import RedisError
-from trollius import From, Return, coroutine
+from asyncio import From, Return, coroutine
 
 from data.database import BUILD_PHASE
 from data import model
