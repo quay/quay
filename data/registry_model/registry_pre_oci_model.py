@@ -200,9 +200,7 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
                 if add_label is None:
                     return None, None
 
-                for key, value in manifest_interface_instance.layers[
-                    -1
-                ].v1_metadata.labels.items():
+                for key, value in manifest_interface_instance.layers[-1].v1_metadata.labels.items():
                     media_type = "application/json" if is_json(value) else "text/plain"
                     add_label(key, value, "manifest", media_type)
                     has_labels = True
