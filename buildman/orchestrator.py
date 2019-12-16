@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
+import asyncio
 import datetime
 import json
 import logging
@@ -9,7 +10,6 @@ import time
 
 from enum import IntEnum, unique
 from six import add_metaclass, iteritems
-from trollius import async, coroutine, From, Return
 from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
 import etcd
@@ -69,10 +69,10 @@ def orchestrator_from_config(manager_config, canceller_only=False):
 
     def _dict_key_prefix(d):
         """
-    :param d: the dict that has keys prefixed with underscore
-    :type d: {str: any}
-    :rtype: str
-    """
+        :param d: the dict that has keys prefixed with underscore
+        :type d: {str: any}
+        :rtype: str
+        """
         return list(d.keys())[0].split("_", 1)[0].lower()
 
     orchestrator_name = _dict_key_prefix(manager_config["ORCHESTRATOR"])
@@ -153,40 +153,37 @@ class Orchestrator(object):
     @abstractmethod
     def get_prefixed_keys(self, prefix):
         """
-
-    :returns: a dict of key value pairs beginning with prefix
-    :rtype: {str: str}
-    """
+        :returns: a dict of key value pairs beginning with prefix
+        :rtype: {str: str}
+        """
         pass
 
     @abstractmethod
     def get_key(self, key):
         """
-
-    :returns: the value stored at the provided key
-    :rtype: str
-    """
+        :returns: the value stored at the provided key
+        :rtype: str
+        """
         pass
 
     @abstractmethod
     def set_key(self, key, value, overwrite=False, expiration=None):
         """
-
-    :param key: the identifier for the value
-    :type key: str
-    :param value: the value being stored
-    :type value: str
-    :param overwrite: whether or not a KeyError is thrown if the key already exists
-    :type overwrite: bool
-    :param expiration: the duration in seconds that a key should be available
-    :type expiration: int
-    """
+        :param key: the identifier for the value
+        :type key: str
+        :param value: the value being stored
+        :type value: str
+        :param overwrite: whether or not a KeyError is thrown if the key already exists
+        :type overwrite: bool
+        :param expiration: the duration in seconds that a key should be available
+        :type expiration: int
+        """
         pass
 
     @abstractmethod
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-        set_key, but without trollius coroutines.
+        set_key, but without asyncio coroutines.
         """
         pass
 
@@ -224,8 +221,8 @@ class Orchestrator(object):
 
 def _sleep_orchestrator():
     """
-    This function blocks the trollius event loop by sleeping in order to backoff if a failure such
-    as a ConnectionError has occurred.
+    This function blocks the asyncio event loop by sleeping in order to backoff if a failure
+    such as a ConnectionError has occurred.
     """
     logger.exception(
         "Connecting to etcd failed; sleeping for %s and then trying again",
@@ -262,7 +259,7 @@ class Etcd2Orchestrator(Orchestrator):
         ca_cert=None,
         client_threads=5,
         canceller_only=False,
-        **kwargs
+        **kwargs,
     ):
         self.is_canceller_only = canceller_only
 
@@ -322,7 +319,7 @@ class Etcd2Orchestrator(Orchestrator):
                     logger.debug("Etcd moved forward too quickly. Restarting watch cycle.")
                     new_index = None
                     if restarter is not None:
-                        async(restarter())
+                        asyncio.create_task(restarter())
 
                 except (KeyError, etcd.EtcdKeyError):
                     logger.debug("Etcd key already cleared: %s", key)
@@ -346,7 +343,7 @@ class Etcd2Orchestrator(Orchestrator):
                 self._watch_etcd(key, callback, start_index=new_index, restarter=restarter)
 
             if etcd_result and etcd_result.value is not None:
-                async(callback(self._etcd_result_to_keychange(etcd_result)))
+                asyncio.create_task(callback(self._etcd_result_to_keychange(etcd_result)))
 
         if not self._shutting_down:
             logger.debug("Scheduling watch of key: %s at start index %s", key, start_index)
@@ -355,7 +352,7 @@ class Etcd2Orchestrator(Orchestrator):
             )
             watch_future.add_done_callback(callback_wrapper)
 
-            self._watch_tasks[key] = async(watch_future)
+            self._watch_tasks[key] = asyncio.create_task(watch_future)
 
     @staticmethod
     def _etcd_result_to_keychange(etcd_result):
@@ -384,13 +381,12 @@ class Etcd2Orchestrator(Orchestrator):
         logger.debug("creating watch on %s", key)
         self._watch_etcd(key, callback, restarter=restarter)
 
-    @coroutine
-    def get_prefixed_keys(self, prefix):
+    async def get_prefixed_keys(self, prefix):
         assert not self.is_canceller_only
 
         try:
-            etcd_result = yield From(self._etcd_client.read(prefix, recursive=True))
-            raise Return({leaf.key: leaf.value for leaf in etcd_result.leaves})
+            etcd_result = await self._etcd_client.read(prefix, recursive=True)
+            return {leaf.key: leaf.value for leaf in etcd_result.leaves}
         except etcd.EtcdKeyError:
             raise KeyError
         except etcd.EtcdConnectionFailed as ex:
@@ -398,14 +394,13 @@ class Etcd2Orchestrator(Orchestrator):
         except etcd.EtcdException as ex:
             raise OrchestratorError(ex)
 
-    @coroutine
-    def get_key(self, key):
+    async def get_key(self, key):
         assert not self.is_canceller_only
 
         try:
             # Ignore pylint: the value property on EtcdResult is added dynamically using setattr.
-            etcd_result = yield From(self._etcd_client.read(key))
-            raise Return(etcd_result.value)
+            etcd_result = await self._etcd_client.read(key)
+            return etcd_result.value
         except etcd.EtcdKeyError:
             raise KeyError
         except etcd.EtcdConnectionFailed as ex:
@@ -413,11 +408,10 @@ class Etcd2Orchestrator(Orchestrator):
         except etcd.EtcdException as ex:
             raise OrchestratorError(ex)
 
-    @coroutine
-    def set_key(self, key, value, overwrite=False, expiration=None):
+    async def set_key(self, key, value, overwrite=False, expiration=None):
         assert not self.is_canceller_only
 
-        yield From(
+        await (
             self._etcd_client.write(
                 key, value, prevExists=overwrite, ttl=self._sanity_check_ttl(expiration)
             )
@@ -428,12 +422,11 @@ class Etcd2Orchestrator(Orchestrator):
             key, value, prevExists=overwrite, ttl=self._sanity_check_ttl(expiration)
         )
 
-    @coroutine
-    def delete_key(self, key):
+    async def delete_key(self, key):
         assert not self.is_canceller_only
 
         try:
-            yield From(self._etcd_client.delete(key))
+            await self._etcd_client.delete(key)
         except etcd.EtcdKeyError:
             raise KeyError
         except etcd.EtcdConnectionFailed as ex:
@@ -441,22 +434,21 @@ class Etcd2Orchestrator(Orchestrator):
         except etcd.EtcdException as ex:
             raise OrchestratorError(ex)
 
-    @coroutine
-    def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
+    async def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
         assert not self.is_canceller_only
 
         try:
-            yield From(
+            await (
                 self._etcd_client.write(
                     key, {}, prevExist=False, ttl=self._sanity_check_ttl(expiration)
                 )
             )
-            raise Return(True)
+            return True
         except (KeyError, etcd.EtcdKeyError):
-            raise Return(False)
+            return False
         except etcd.EtcdConnectionFailed:
             logger.exception("Could not get etcd atomic lock as etcd is down")
-            raise Return(False)
+            return False
         except etcd.EtcdException as ex:
             raise OrchestratorError(ex)
 
@@ -487,16 +479,13 @@ class MemoryOrchestrator(Orchestrator):
     def on_key_change(self, key, callback, restarter=None):
         self.callbacks[key] = callback
 
-    @coroutine
-    def get_prefixed_keys(self, prefix):
-        raise Return({k: value for (k, value) in list(self.state.items()) if k.startswith(prefix)})
+    async def get_prefixed_keys(self, prefix):
+        return {k: value for (k, value) in list(self.state.items()) if k.startswith(prefix)}
 
-    @coroutine
-    def get_key(self, key):
-        raise Return(self.state[key])
+    async def get_key(self, key):
+        return self.state[key]
 
-    @coroutine
-    def set_key(self, key, value, overwrite=False, expiration=None):
+    async def set_key(self, key, value, overwrite=False, expiration=None):
         preexisting_key = "key" in self.state
         if preexisting_key and not overwrite:
             raise KeyError
@@ -509,11 +498,11 @@ class MemoryOrchestrator(Orchestrator):
 
         event = KeyEvent.CREATE if not preexisting_key else KeyEvent.SET
         for callback in self._callbacks_prefixed(key):
-            yield From(callback(KeyChange(event, key, value)))
+            await callback(KeyChange(event, key, value))
 
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-        set_key, but without trollius coroutines.
+        set_key, but without asyncio coroutines.
         """
         preexisting_key = "key" in self.state
         if preexisting_key and not overwrite:
@@ -529,20 +518,18 @@ class MemoryOrchestrator(Orchestrator):
         for callback in self._callbacks_prefixed(key):
             callback(KeyChange(event, key, value))
 
-    @coroutine
-    def delete_key(self, key):
+    async def delete_key(self, key):
         value = self.state[key]
         del self.state[key]
 
         for callback in self._callbacks_prefixed(key):
-            yield From(callback(KeyChange(KeyEvent.DELETE, key, value)))
+            await callback(KeyChange(KeyEvent.DELETE, key, value))
 
-    @coroutine
-    def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
+    async def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
         if key in self.state:
-            raise Return(False)
+            return False
         self.state.set(key, None, expires=expiration)
-        raise Return(True)
+        return True
 
     def shutdown(self):
         self.state = None
@@ -562,7 +549,7 @@ class RedisOrchestrator(Orchestrator):
         ssl=False,
         skip_keyspace_event_setup=False,
         canceller_only=False,
-        **kwargs
+        **kwargs,
     ):
         self.is_canceller_only = canceller_only
         (cert, key) = tuple(cert_and_key) if cert_and_key is not None else (None, None)
@@ -632,16 +619,16 @@ class RedisOrchestrator(Orchestrator):
                 keychange = self._publish_to_keychange(event_value)
                 for watched_key, callback in iteritems(self._watched_keys):
                     if keychange.key.startswith(watched_key):
-                        async(callback(keychange))
+                        asyncio.create_task(callback(keychange))
 
         if not self._shutting_down:
             logger.debug("Scheduling watch of publish stream")
             watch_future = self._pubsub.parse_response()
             watch_future.add_done_callback(published_callback_wrapper)
-            self._tasks["pub"] = async(watch_future)
+            self._tasks["pub"] = asyncio.create_task(watch_future)
 
     def _watch_expiring_key(self):
-        def expiring_callback_wrapper(event_future):
+        async def expiring_callback_wrapper(event_future):
             logger.debug("expiring callback called")
             event_result = None
 
@@ -651,11 +638,11 @@ class RedisOrchestrator(Orchestrator):
                     if self._is_expired_keyspace_event(event_result):
                         # Get the value of the original key before the expiration happened.
                         key = self._key_from_expiration(event_future)
-                        expired_value = yield From(self._client.get(key))
+                        expired_value = await self._client.get(key)
 
                         # $KEY/expiring is gone, but the original key still remains, set an expiration for it
                         # so that other managers have time to get the event and still read the expired value.
-                        yield From(self._client.expire(key, ONE_DAY))
+                        await self._client.expire(key, ONE_DAY)
                 except redis.ConnectionError:
                     _sleep_orchestrator()
                 except redis.RedisError:
@@ -668,13 +655,15 @@ class RedisOrchestrator(Orchestrator):
             if self._is_expired_keyspace_event(event_result) and expired_value is not None:
                 for watched_key, callback in iteritems(self._watched_keys):
                     if key.startswith(watched_key):
-                        async(callback(KeyChange(KeyEvent.EXPIRE, key, expired_value)))
+                        asyncio.create_task(
+                            callback(KeyChange(KeyEvent.EXPIRE, key, expired_value))
+                        )
 
         if not self._shutting_down:
             logger.debug("Scheduling watch of expiration")
             watch_future = self._pubsub_expiring.parse_response()
             watch_future.add_done_callback(expiring_callback_wrapper)
-            self._tasks["expire"] = async(watch_future)
+            self._tasks["expire"] = asyncio.create_task(watch_future)
 
     def on_key_change(self, key, callback, restarter=None):
         assert not self.is_canceller_only
@@ -709,49 +698,46 @@ class RedisOrchestrator(Orchestrator):
         e = json.loads(event_value)
         return KeyChange(KeyEvent(e["event"]), e["key"], e["value"])
 
-    @coroutine
-    def get_prefixed_keys(self, prefix):
+    async def get_prefixed_keys(self, prefix):
         assert not self.is_canceller_only
 
         # TODO: This can probably be done with redis pipelines to make it transactional.
-        keys = yield From(self._client.keys(prefix + "*"))
+        keys = await self._client.keys(prefix + "*")
 
         # Yielding to the event loop is required, thus this cannot be written as a dict comprehension.
         results = {}
         for key in keys:
             if key.endswith(REDIS_EXPIRING_SUFFIX):
                 continue
-            ttl = yield From(self._client.ttl(key))
+            ttl = await self._client.ttl(key)
             if ttl != REDIS_NONEXPIRING_KEY:
                 # Only redis keys without expirations are live build manager keys.
-                value = yield From(self._client.get(key))
+                value = await self._client.get(key)
                 results.update({key: value})
 
-        raise Return(results)
+        return results
 
-    @coroutine
-    def get_key(self, key):
+    async def get_key(self, key):
         assert not self.is_canceller_only
 
-        value = yield From(self._client.get(key))
-        raise Return(value)
+        value = await self._client.get(key)
+        return value
 
-    @coroutine
-    def set_key(self, key, value, overwrite=False, expiration=None):
+    async def set_key(self, key, value, overwrite=False, expiration=None):
         assert not self.is_canceller_only
 
-        already_exists = yield From(self._client.exists(key))
+        already_exists = await self._client.exists(key)
 
-        yield From(self._client.set(key, value, xx=overwrite))
+        await self._client.set(key, value, xx=overwrite)
         if expiration is not None:
-            yield From(
+            await (
                 self._client.set(
                     slash_join(key, REDIS_EXPIRING_SUFFIX), value, xx=overwrite, ex=expiration
                 )
             )
 
         key_event = KeyEvent.SET if already_exists else KeyEvent.CREATE
-        yield From(self._publish(event=key_event, key=key, value=value))
+        await self._publish(event=key_event, key=key, value=value)
 
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         already_exists = self._sync_client.exists(key)
@@ -773,31 +759,27 @@ class RedisOrchestrator(Orchestrator):
             ),
         )
 
-    @coroutine
-    def _publish(self, **kwargs):
+    async def _publish(self, **kwargs):
         kwargs["event"] = int(kwargs["event"])
         event_json = json.dumps(kwargs)
         logger.debug("publishing event: %s", event_json)
-        yield From(self._client.publish(self._pubsub_key, event_json))
+        await self._client.publish(self._pubsub_key, event_json)
 
-    @coroutine
-    def delete_key(self, key):
+    async def delete_key(self, key):
         assert not self.is_canceller_only
 
-        value = yield From(self._client.get(key))
-        yield From(self._client.delete(key))
-        yield From(self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX)))
-        yield From(self._publish(event=KeyEvent.DELETE, key=key, value=value))
+        value = await self._client.get(key)
+        await self._client.delete(key)
+        await self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX))
+        await self._publish(event=KeyEvent.DELETE, key=key, value=value)
 
-    @coroutine
-    def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
+    async def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
         assert not self.is_canceller_only
 
-        yield From(self.set_key(key, "", ex=expiration))
-        raise Return(True)
+        await self.set_key(key, "", ex=expiration)
+        return True
 
-    @coroutine
-    def shutdown(self):
+    async def shutdown(self):
         logger.debug("Shutting down redis client.")
 
         self._shutting_down = True
