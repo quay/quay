@@ -82,7 +82,6 @@ supervisor-stdout
 supervisor-logging
 tldextract
 toposort
-trollius
 tzlocal
 xhtml2pdf
 recaptcha2
