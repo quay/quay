@@ -5,7 +5,7 @@ from buildman.component.basecomponent import BaseComponent
 from buildman.component.buildcomponent import BuildComponent
 from buildman.manager.basemanager import BaseManager
 
-from trollius import From, Return, coroutine
+from asyncio import From, Return, coroutine
 
 REGISTRATION_REALM = "registration"
 RETRY_TIMEOUT = 5
