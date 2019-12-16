@@ -47,7 +47,7 @@ export DB_CONNECTION_POOLING_REGISTRY=${DB_CONNECTION_POOLING:-"true"}
 case "$QUAYENTRY" in
     "shell")
         echo "Entering shell mode"
-        exec /usr/bin/scl enable python27 rh-nginx112 /bin/bash
+        exec /usr/bin/scl enable python36 rh-nginx112 /bin/bash
         ;;
     "config")
         echo "Entering config mode, only copying config-app entrypoints"
@@ -64,8 +64,8 @@ case "$QUAYENTRY" in
             openssl passwd -apr1 "$2" >> $QUAYDIR/config_app/conf/htpasswd
         fi
 
-        /usr/bin/scl enable python27 rh-nginx112 "${QUAYPATH}/config_app/init/certs_create.sh"
-        /usr/bin/scl enable python27 rh-nginx112 "supervisord -c ${QUAYPATH}/config_app/conf/supervisord.conf 2>&1"
+        /usr/bin/scl enable python36 rh-nginx112 "${QUAYPATH}/config_app/init/certs_create.sh"
+        /usr/bin/scl enable python36 rh-nginx112 "supervisord -c ${QUAYPATH}/config_app/conf/supervisord.conf 2>&1"
         ;;
     "migrate")
         echo "Entering migration mode to version: ${2}"
@@ -89,13 +89,13 @@ case "$QUAYENTRY" in
         fi
         for f in $(ls ${QUAYCONF}/init/*.sh); do
             echo "Running init script '$f'"
-            /usr/bin/scl enable python27 rh-nginx112 "$f" || exit -1;
+            /usr/bin/scl enable python36 rh-nginx112 "$f" || exit -1;
         done
-        /usr/bin/scl enable python27 rh-nginx112 "supervisord -c ${QUAYCONF}/supervisord.conf 2>&1"
+        /usr/bin/scl enable python36 rh-nginx112 "supervisord -c ${QUAYCONF}/supervisord.conf 2>&1"
         ;;
     *)
         echo "Running '$QUAYENTRY'"
-        /usr/bin/scl enable python27 rh-nginx112 "$QUAYENTRY" || exit -1;
+        /usr/bin/scl enable python36 rh-nginx112 "$QUAYENTRY" || exit -1;
         ;;
 esac
 
