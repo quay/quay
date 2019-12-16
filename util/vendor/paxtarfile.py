@@ -2149,21 +2149,23 @@ class TarFile(object):
 
         for tarinfo in self:
             if verbose:
-                print(filemode(tarinfo.mode), end=' ')
-                print("%s/%s" % (tarinfo.uname or tarinfo.uid, tarinfo.gname or tarinfo.gid), end=' ')
+                print(filemode(tarinfo.mode), end=" ")
+                print(
+                    "%s/%s" % (tarinfo.uname or tarinfo.uid, tarinfo.gname or tarinfo.gid), end=" "
+                )
                 if tarinfo.ischr() or tarinfo.isblk():
-                    print("%10s" % ("%d,%d" % (tarinfo.devmajor, tarinfo.devminor)), end=' ')
+                    print("%10s" % ("%d,%d" % (tarinfo.devmajor, tarinfo.devminor)), end=" ")
                 else:
-                    print("%10d" % tarinfo.size, end=' ')
-                print("%d-%02d-%02d %02d:%02d:%02d" % time.localtime(tarinfo.mtime)[:6], end=' ')
+                    print("%10d" % tarinfo.size, end=" ")
+                print("%d-%02d-%02d %02d:%02d:%02d" % time.localtime(tarinfo.mtime)[:6], end=" ")
 
-            print(tarinfo.name + ("/" if tarinfo.isdir() else ""), end=' ')
+            print(tarinfo.name + ("/" if tarinfo.isdir() else ""), end=" ")
 
             if verbose:
                 if tarinfo.issym():
-                    print("->", tarinfo.linkname, end=' ')
+                    print("->", tarinfo.linkname, end=" ")
                 if tarinfo.islnk():
-                    print("link to", tarinfo.linkname, end=' ')
+                    print("link to", tarinfo.linkname, end=" ")
             print()
 
     def add(self, name, arcname=None, recursive=True, exclude=None, filter=None):
@@ -2647,7 +2649,9 @@ class TarFile(object):
         """
         if tarinfo.issym():
             # Always search the entire archive.
-            linkname = "/".join([_f for _f in (os.path.dirname(tarinfo.name), tarinfo.linkname) if _f])
+            linkname = "/".join(
+                [_f for _f in (os.path.dirname(tarinfo.name), tarinfo.linkname) if _f]
+            )
             limit = None
         else:
             # Search the archive before the link, because a hard link is

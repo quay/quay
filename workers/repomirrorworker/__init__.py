@@ -343,13 +343,15 @@ def rollback(mirror, since_ms):
         if tag.lifetime_end_ms:
             #  If a future entry exists with a start time equal to the end time for this tag,
             # then the action was a move, rather than a delete and a create.
-            newer_tag = list(filter(
-                lambda t: tag != t
-                and tag.name == t.name
-                and tag.lifetime_end_ms
-                and t.lifetime_start_ms == tag.lifetime_end_ms,
-                tags,
-            ))[0]
+            newer_tag = list(
+                filter(
+                    lambda t: tag != t
+                    and tag.name == t.name
+                    and tag.lifetime_end_ms
+                    and t.lifetime_start_ms == tag.lifetime_end_ms,
+                    tags,
+                )
+            )[0]
             if newer_tag:
                 logger.debug("Repo mirroring rollback revert tag '%s'" % tag)
                 retarget_tag(tag.name, tag.manifest._db_id, is_reversion=True)
