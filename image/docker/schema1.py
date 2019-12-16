@@ -413,9 +413,12 @@ class DockerSchema1Manifest(ManifestInterface):
         starting from the base image and working toward the leaf node.
         """
         for blob_sum_obj, history_obj in reversed(
-            list(zip(
-                self._parsed[DOCKER_SCHEMA1_FS_LAYERS_KEY], self._parsed[DOCKER_SCHEMA1_HISTORY_KEY]
-            ))
+            list(
+                zip(
+                    self._parsed[DOCKER_SCHEMA1_FS_LAYERS_KEY],
+                    self._parsed[DOCKER_SCHEMA1_HISTORY_KEY],
+                )
+            )
         ):
 
             try:
@@ -697,7 +700,9 @@ class DockerSchema1ManifestBuilder(object):
 
         public_members = set(json_web_key.public_members)
         public_key = {
-            comp: value for comp, value in list(json_web_key.to_dict().items()) if comp in public_members
+            comp: value
+            for comp, value in list(json_web_key.to_dict().items())
+            if comp in public_members
         }
 
         signature_block = {

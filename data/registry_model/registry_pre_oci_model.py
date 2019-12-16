@@ -212,9 +212,7 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
                 if add_label is None:
                     return None, None
 
-                for key, value in manifest_interface_instance.layers[
-                    -1
-                ].v1_metadata.labels.items():
+                for key, value in manifest_interface_instance.layers[-1].v1_metadata.labels.items():
                     # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
                     # such `labels`, as they don't really mean anything.
                     if not key:

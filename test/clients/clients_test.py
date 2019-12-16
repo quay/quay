@@ -212,11 +212,11 @@ def _run_commands(commands):
 def _run_box(box, client, registry, ca_cert):
     vagrant, vagrant_scp = _check_vagrant()
     if not vagrant:
-        print ("vagrant command not found")
+        print("vagrant command not found")
         return
 
     if not vagrant_scp:
-        print ("vagrant-scp plugin not installed")
+        print("vagrant-scp plugin not installed")
         return
 
     namespace = "devtable"
