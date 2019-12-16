@@ -28,7 +28,7 @@ run_black() {
     # https://issues.redhat.com/browse/PROJQUAY-92
     # https://github.com/psf/black/issues/1207#issuecomment-566249522
     pip install black --no-binary=regex
-    black --line-length 100 --target-version py27 --check --diff .
+    black --line-length 100 --target-version py36 --check --diff .
 }
 
 
