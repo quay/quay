@@ -3,10 +3,10 @@ import os
 import time
 import logging
 import json
-import trollius
+import asyncio
 
 from autobahn.wamp.exception import ApplicationError
-from trollius import From, Return
+from asyncio import From, Return
 
 from buildman.server import BuildJobResult
 from buildman.component.basecomponent import BaseComponent
@@ -69,7 +69,7 @@ class BuildComponent(BaseComponent):
     def onConnect(self):
         self.join(self.builder_realm)
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def onJoin(self, details):
         logger.debug("Registering methods and listeners for component %s", self.builder_realm)
         yield From(self.register(self._on_ready, "io.quay.buildworker.ready"))
@@ -83,7 +83,7 @@ class BuildComponent(BaseComponent):
 
         yield From(self._set_status(ComponentStatus.WAITING))
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def start_build(self, build_job):
         """ Starts a build. """
         if self._component_status not in (ComponentStatus.WAITING, ComponentStatus.RUNNING):
@@ -192,7 +192,7 @@ class BuildComponent(BaseComponent):
 
         def build_complete_callback(result):
             """ This function is used to execute a coroutine as the callback. """
-            trollius.ensure_future(self._build_complete(result))
+            asyncio.ensure_future(self._build_complete(result))
 
         self.call("io.quay.builder.build", **build_arguments).add_done_callback(
             build_complete_callback
@@ -269,7 +269,7 @@ class BuildComponent(BaseComponent):
                     images, max(len(images), num_images)
                 )
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _on_log_message(self, phase, json_data):
         """ Tails log messages and updates the build status. """
         # Update the heartbeat.
@@ -335,7 +335,7 @@ class BuildComponent(BaseComponent):
             yield From(self._build_status.append_log(current_status_string))
         raise Return(True)
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _determine_cache_tag(
         self, command_comments, base_image_name, base_image_tag, base_image_id
     ):
@@ -353,7 +353,7 @@ class BuildComponent(BaseComponent):
         tag_found = self._current_job.determine_cached_tag(base_image_id, command_comments)
         raise Return(tag_found or "")
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _build_failure(self, error_message, exception=None):
         """ Handles and logs a failed build. """
         yield From(
@@ -368,7 +368,7 @@ class BuildComponent(BaseComponent):
         # Mark that the build has finished (in an error state)
         yield From(self._build_finished(BuildJobResult.ERROR))
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _build_complete(self, result):
         """ Wraps up a completed build. Handles any errors and calls self._build_finished. """
         build_id = self._current_job.repo_build.uuid
@@ -449,7 +449,7 @@ class BuildComponent(BaseComponent):
         # Remove the current job.
         self._current_job = None
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _build_finished(self, job_status):
         """ Alerts the parent that a build has completed and sets the status back to running. """
         yield From(self.parent_manager.job_completed(self._current_job, job_status, self))
@@ -462,7 +462,7 @@ class BuildComponent(BaseComponent):
         """ Ping pong. """
         return "pong"
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _on_ready(self, token, version):
         logger.debug('On ready called (token "%s")', token)
         self._worker_version = version
@@ -486,12 +486,12 @@ class BuildComponent(BaseComponent):
         yield From(self._set_status(ComponentStatus.RUNNING))
 
         # Start the heartbeat check and updating loop.
-        loop = trollius.get_event_loop()
+        loop = asyncio.get_event_loop()
         loop.create_task(self._heartbeat())
         logger.debug("Build worker %s is connected and ready", self.builder_realm)
         raise Return(True)
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _set_status(self, phase):
         if phase == ComponentStatus.RUNNING:
             yield From(self.parent_manager.build_component_ready(self))
@@ -506,13 +506,13 @@ class BuildComponent(BaseComponent):
         logger.debug("Got heartbeat on realm %s", self.builder_realm)
         self._last_heartbeat = datetime.datetime.utcnow()
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _heartbeat(self):
         """ Coroutine that runs every HEARTBEAT_TIMEOUT seconds, both checking the worker's heartbeat
         and updating the heartbeat in the build status dictionary (if applicable). This allows
         the build system to catch crashes from either end.
     """
-        yield From(trollius.sleep(INITIAL_TIMEOUT))
+        yield From(asyncio.sleep(INITIAL_TIMEOUT))
 
         while True:
             # If the component is no longer running or actively building, nothing more to do.
@@ -554,9 +554,9 @@ class BuildComponent(BaseComponent):
                 self._component_status,
             )
 
-            yield From(trollius.sleep(HEARTBEAT_TIMEOUT))
+            yield From(asyncio.sleep(HEARTBEAT_TIMEOUT))
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def _timeout(self):
         if self._component_status == ComponentStatus.TIMED_OUT:
             raise Return()
@@ -589,7 +589,7 @@ class BuildComponent(BaseComponent):
         # Remove the job reference.
         self._current_job = None
 
-    @trollius.coroutine
+    @asyncio.coroutine
     def cancel_build(self):
         self.parent_manager.build_component_disposed(self, True)
         self._current_job = None

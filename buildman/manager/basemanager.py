@@ -1,4 +1,4 @@
-from trollius import coroutine
+from asyncio import coroutine
 
 
 class BaseManager(object):
