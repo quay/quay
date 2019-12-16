@@ -67,6 +67,19 @@ objects:
 - apiVersion: v1
   kind: Service
   metadata:
+    name: prometheus-proxy-loadbalancer
+  spec:
+    type: LoadBalancer
+    ports:
+    - name: prometheus-proxy-loadbalancer
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
+    selector:
+      app: prometheus
+- apiVersion: v1
+  kind: Service
+  metadata:
     name: quay-loadbalancer-service
   spec:
     ports:
