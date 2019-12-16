@@ -45,7 +45,7 @@ EOF
 export DB_CONNECTION_POOLING_REGISTRY=${DB_CONNECTION_POOLING:-"true"}
 
 # Forcibly export the scl environment
-eval "$(scl enable python27 rh-nginx112 'export -p')"
+eval "$(scl enable python37 rh-nginx112 'export -p')"
 
 case "$QUAYENTRY" in
     "shell")
