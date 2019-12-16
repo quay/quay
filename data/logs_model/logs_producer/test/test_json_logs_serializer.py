@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 TEST_DATETIME = datetime.utcnow()
 
 TEST_JSON_STRING = '{"a": "b", "c": "d"}'
-TEST_JSON_STRING_WITH_UNICODE = u'{"éëê": "îôû"}'
+TEST_JSON_STRING_WITH_UNICODE = '{"éëê": "îôû"}'
 
 VALID_LOGENTRY = LogEntry(
     random_id="123-45", ip="0.0.0.0", metadata_json=TEST_JSON_STRING, datetime=TEST_DATETIME

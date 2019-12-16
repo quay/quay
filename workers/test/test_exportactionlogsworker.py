@@ -83,8 +83,8 @@ def test_export_logs_failure(initialized_db):
     test_storage.remove("local_us", "except_upload")
 
     assert called[0]
-    assert called[0][u"export_id"] == "someid"
-    assert called[0][u"status"] == "failed"
+    assert called[0]["export_id"] == "someid"
+    assert called[0]["status"] == "failed"
 
 
 @pytest.mark.parametrize("has_logs", [True, False,])
@@ -137,10 +137,10 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
         )
 
     assert called[0]
-    assert called[0][u"export_id"] == "someid"
-    assert called[0][u"status"] == "success"
+    assert called[0]["export_id"] == "someid"
+    assert called[0]["status"] == "success"
 
-    url = called[0][u"exported_data_url"]
+    url = called[0]["exported_data_url"]
 
     if url.find("http://localhost:5000/exportedlogs/") == 0:
         storage_id = url[len("http://localhost:5000/exportedlogs/") :]

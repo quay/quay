@@ -21,7 +21,7 @@ def ask_disable_namespace(username, queue_name):
         raise Exception("Unknown user or organization %s" % username)
 
     if not user.enabled:
-        print "NOTE: Namespace %s is already disabled" % username
+        print("NOTE: Namespace %s is already disabled" % username)
 
     queue_prefix = "%s/%s/%%" % (queue_name, username)
     existing_queue_item_count = (
@@ -42,23 +42,23 @@ def ask_disable_namespace(username, queue_name):
         .count()
     )
 
-    print "============================================="
-    print "For namespace %s" % username
-    print "============================================="
+    print("=============================================")
+    print("For namespace %s" % username)
+    print("=============================================")
 
-    print "User %s has email address %s" % (username, user.email)
-    print "User %s has %s queued builds in their namespace" % (username, existing_queue_item_count)
-    print "User %s has %s build triggers in their namespace" % (username, repository_trigger_count)
+    print("User %s has email address %s" % (username, user.email))
+    print("User %s has %s queued builds in their namespace" % (username, existing_queue_item_count))
+    print("User %s has %s build triggers in their namespace" % (username, repository_trigger_count))
 
     confirm_msg = (
         "Would you like to disable this user and delete their triggers and builds? [y/N]> "
     )
-    letter = str(raw_input(confirm_msg))
+    letter = str(input(confirm_msg))
     if letter.lower() != "y":
-        print "Action canceled"
+        print("Action canceled")
         return
 
-    print "============================================="
+    print("=============================================")
 
     triggers = []
     count_removed = 0
@@ -105,7 +105,7 @@ def ask_disable_namespace(username, queue_name):
             count_removed = dockerfile_build_queue.delete_namespaced_items(user.username)
 
     info = (user.username, len(triggers), count_removed, len(mirrors))
-    print "Namespace %s disabled, %s triggers deleted, %s queued builds removed, %s mirrors deleted" % info
+    print("Namespace %s disabled, %s triggers deleted, %s queued builds removed, %s mirrors deleted" % info)
     return user
 
 

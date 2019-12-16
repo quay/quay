@@ -5,7 +5,7 @@ import json
 from app import app
 from util.names import parse_namespace_repository
 from initdb import setup_database_for_testing, finished_database_for_testing
-from specs import build_v1_index_specs
+from .specs import build_v1_index_specs
 
 from endpoints.v1 import v1_bp
 
@@ -89,36 +89,31 @@ class _SpecTestBuilder(type):
         return type(name, bases, attrs)
 
 
-class TestAnonymousAccess(EndpointTestCase):
-    __metaclass__ = _SpecTestBuilder
+class TestAnonymousAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
     spec_func = build_v1_index_specs
     result_attr = "anon_code"
     auth_username = None
 
 
-class TestNoAccess(EndpointTestCase):
-    __metaclass__ = _SpecTestBuilder
+class TestNoAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
     spec_func = build_v1_index_specs
     result_attr = "no_access_code"
     auth_username = NO_ACCESS_USER
 
 
-class TestReadAccess(EndpointTestCase):
-    __metaclass__ = _SpecTestBuilder
+class TestReadAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
     spec_func = build_v1_index_specs
     result_attr = "read_code"
     auth_username = READ_ACCESS_USER
 
 
-class TestCreatorAccess(EndpointTestCase):
-    __metaclass__ = _SpecTestBuilder
+class TestCreatorAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
     spec_func = build_v1_index_specs
     result_attr = "creator_code"
     auth_username = CREATOR_ACCESS_USER
 
 
-class TestAdminAccess(EndpointTestCase):
-    __metaclass__ = _SpecTestBuilder
+class TestAdminAccess(EndpointTestCase, metaclass=_SpecTestBuilder):
     spec_func = build_v1_index_specs
     result_attr = "admin_code"
     auth_username = ADMIN_ACCESS_USER

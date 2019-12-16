@@ -41,7 +41,7 @@ from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
 from util.pagination import encrypt_page_token, decrypt_page_token
 from util.request import get_request_ip
-from __init__models_pre_oci import pre_oci_model as model
+from .__init__models_pre_oci import pre_oci_model as model
 
 
 logger = logging.getLogger(__name__)
