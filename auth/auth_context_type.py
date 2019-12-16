@@ -150,7 +150,7 @@ class ValidatedAuthContext(AuthContext):
         self.signed_data = signed_data
 
     def tuple(self):
-        return vars(self).values()
+        return list(vars(self).values())
 
     def __eq__(self, other):
         return self.tuple() == other.tuple()

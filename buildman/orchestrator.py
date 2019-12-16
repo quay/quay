@@ -62,7 +62,7 @@ def orchestrator_from_config(manager_config, canceller_only=False):
         }
 
     # Sanity check that legacy prefixes are no longer being used.
-    for key in manager_config["ORCHESTRATOR"].keys():
+    for key in list(manager_config["ORCHESTRATOR"].keys()):
         words = key.split("_")
         if len(words) > 1 and words[-1].lower() == "prefix":
             raise AssertionError("legacy prefix used, use ORCHESTRATOR_PREFIX instead")
@@ -73,7 +73,7 @@ def orchestrator_from_config(manager_config, canceller_only=False):
     :type d: {str: any}
     :rtype: str
     """
-        return d.keys()[0].split("_", 1)[0].lower()
+        return list(d.keys())[0].split("_", 1)[0].lower()
 
     orchestrator_name = _dict_key_prefix(manager_config["ORCHESTRATOR"])
 
@@ -467,7 +467,7 @@ class Etcd2Orchestrator(Orchestrator):
         if self.is_canceller_only:
             return
 
-        for (key, _), task in self._watch_tasks.items():
+        for (key, _), task in list(self._watch_tasks.items()):
             if not task.done():
                 logger.debug("Canceling watch task for %s", key)
                 task.cancel()
@@ -489,7 +489,7 @@ class MemoryOrchestrator(Orchestrator):
 
     @coroutine
     def get_prefixed_keys(self, prefix):
-        raise Return({k: value for (k, value) in self.state.items() if k.startswith(prefix)})
+        raise Return({k: value for (k, value) in list(self.state.items()) if k.startswith(prefix)})
 
     @coroutine
     def get_key(self, key):

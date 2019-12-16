@@ -18,7 +18,7 @@ from endpoints.api import (
     require_scope,
     show_if,
 )
-from globalmessages_models_pre_oci import pre_oci_model as model
+from .globalmessages_models_pre_oci import pre_oci_model as model
 
 
 @resource("/v1/messages")

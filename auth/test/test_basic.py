@@ -17,8 +17,8 @@ from test.fixtures import *
 
 
 def _token(username, password):
-    assert isinstance(username, basestring)
-    assert isinstance(password, basestring)
+    assert isinstance(username, str)
+    assert isinstance(password, str)
     return "basic " + b64encode("%s:%s" % (username, password))
 
 

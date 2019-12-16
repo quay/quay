@@ -1,6 +1,6 @@
 import logging
 
-from urlparse import urljoin
+from urllib.parse import urljoin
 from posixpath import join
 
 from abc import ABCMeta, abstractmethod

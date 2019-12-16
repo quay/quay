@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from StringIO import StringIO
+from io import StringIO
 
 
 class GPG2Signer(object):

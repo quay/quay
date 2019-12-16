@@ -3,7 +3,7 @@ Create, list and manage build triggers.
 """
 
 import logging
-from urlparse import urlunparse
+from urllib.parse import urlunparse
 
 from flask import request, url_for
 

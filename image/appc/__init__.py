@@ -102,7 +102,7 @@ class DockerV1ToACIManifestTranslator(object):
 
         exposed_ports = docker_config["ExposedPorts"]
         if exposed_ports is not None:
-            port_list = exposed_ports.keys()
+            port_list = list(exposed_ports.keys())
         else:
             port_list = docker_config["Ports"] or docker_config["ports"] or []
 
@@ -144,7 +144,7 @@ class DockerV1ToACIManifestTranslator(object):
             return "volume-%s" % volume_name
 
         volume_list = docker_config["Volumes"] or docker_config["volumes"] or {}
-        for docker_volume_path in volume_list.iterkeys():
+        for docker_volume_path in volume_list.keys():
             if not docker_volume_path:
                 continue
 

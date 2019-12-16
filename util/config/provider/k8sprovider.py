@@ -4,7 +4,7 @@ import json
 import base64
 import time
 
-from cStringIO import StringIO
+from io import StringIO
 from requests import Request, Session
 
 from util.config.provider.baseprovider import CannotWriteConfigException, get_yaml
@@ -168,7 +168,7 @@ class KubernetesConfigProvider(BaseFileProvider):
         # consistency.
         while True:
             matching_files = set()
-            for secret_filename, encoded_value in secret["data"].iteritems():
+            for secret_filename, encoded_value in secret["data"].items():
                 expected_value = base64.b64decode(encoded_value)
                 try:
                     with self.get_volume_file(secret_filename) as f:
