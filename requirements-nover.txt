@@ -71,7 +71,7 @@ pyyaml
 raven
 redis
 redlock
-reportlab==2.7
+reportlab
 requests-aws4auth
 semantic-version
 sqlalchemy
@@ -82,7 +82,6 @@ supervisor-stdout
 supervisor-logging
 tldextract
 toposort
-trollius
 tzlocal
 xhtml2pdf
 recaptcha2

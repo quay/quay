@@ -196,16 +196,6 @@
     }, 
     {
         "format": "Python", 
-        "license": "MIT License", 
-        "project": "future"
-    }, 
-    {
-        "format": "Python", 
-        "license": "PSF License", 
-        "project": "futures"
-    }, 
-    {
-        "format": "Python", 
         "license": "Apache Software License 2.0", 
         "project": "geoip2"
     }, 
@@ -628,11 +618,6 @@
         "format": "Python", 
         "license": "Apache Software License 2.0", 
         "project": "toposort"
-    }, 
-    {
-        "format": "Python", 
-        "license": "Apache Software License 2.0", 
-        "project": "trollius"
     }, 
     {
         "format": "Python", 

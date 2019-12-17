@@ -9,7 +9,7 @@ import time
 
 from enum import IntEnum, unique
 from six import add_metaclass, iteritems
-from trollius import async, coroutine, From, Return
+from asyncio import async, coroutine, From, Return
 from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
 import etcd
@@ -62,7 +62,7 @@ def orchestrator_from_config(manager_config, canceller_only=False):
         }
 
     # Sanity check that legacy prefixes are no longer being used.
-    for key in manager_config["ORCHESTRATOR"].keys():
+    for key in list(manager_config["ORCHESTRATOR"].keys()):
         words = key.split("_")
         if len(words) > 1 and words[-1].lower() == "prefix":
             raise AssertionError("legacy prefix used, use ORCHESTRATOR_PREFIX instead")
@@ -73,7 +73,7 @@ def orchestrator_from_config(manager_config, canceller_only=False):
     :type d: {str: any}
     :rtype: str
     """
-        return d.keys()[0].split("_", 1)[0].lower()
+        return list(d.keys())[0].split("_", 1)[0].lower()
 
     orchestrator_name = _dict_key_prefix(manager_config["ORCHESTRATOR"])
 
@@ -187,7 +187,7 @@ class Orchestrator(object):
     @abstractmethod
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-    set_key, but without trollius coroutines.
+    set_key, but without asyncio coroutines.
     """
         pass
 
@@ -225,7 +225,7 @@ class Orchestrator(object):
 
 def _sleep_orchestrator():
     """
-  This function blocks the trollius event loop by sleeping in order to backoff if a failure
+  This function blocks the asyncio event loop by sleeping in order to backoff if a failure
   such as a ConnectionError has occurred.
   """
     logger.exception(
@@ -465,7 +465,7 @@ class Etcd2Orchestrator(Orchestrator):
         if self.is_canceller_only:
             return
 
-        for (key, _), task in self._watch_tasks.items():
+        for (key, _), task in list(self._watch_tasks.items()):
             if not task.done():
                 logger.debug("Canceling watch task for %s", key)
                 task.cancel()
@@ -487,7 +487,7 @@ class MemoryOrchestrator(Orchestrator):
 
     @coroutine
     def get_prefixed_keys(self, prefix):
-        raise Return({k: value for (k, value) in self.state.items() if k.startswith(prefix)})
+        raise Return({k: value for (k, value) in list(self.state.items()) if k.startswith(prefix)})
 
     @coroutine
     def get_key(self, key):
@@ -511,7 +511,7 @@ class MemoryOrchestrator(Orchestrator):
 
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-    set_key, but without trollius coroutines.
+    set_key, but without asyncio coroutines.
     """
         preexisting_key = "key" in self.state
         if preexisting_key and not overwrite:

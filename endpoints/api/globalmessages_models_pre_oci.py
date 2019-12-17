@@ -1,4 +1,4 @@
-from globalmessages_models_interface import GlobalMessageDataInterface, GlobalMessage
+from .globalmessages_models_interface import GlobalMessageDataInterface, GlobalMessage
 from data import model
 
 

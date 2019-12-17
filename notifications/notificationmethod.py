@@ -339,7 +339,7 @@ class HipchatMethod(NotificationMethod):
             raise NotificationMethodPerformException(ex.message)
 
 
-from HTMLParser import HTMLParser
+from html.parser import HTMLParser
 
 
 class SlackAdjuster(HTMLParser):

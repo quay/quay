@@ -5,7 +5,7 @@ from buildman.component.basecomponent import BaseComponent
 from buildman.component.buildcomponent import BuildComponent
 from buildman.manager.basemanager import BaseManager
 
-from trollius import From, Return, coroutine
+from asyncio import From, Return, coroutine
 
 REGISTRATION_REALM = "registration"
 RETRY_TIMEOUT = 5
@@ -20,7 +20,7 @@ class DynamicRegistrationComponent(BaseComponent):
 
     def onJoin(self, details):
         logger.debug("Registering registration method")
-        yield From(self.register(self._worker_register, u"io.quay.buildworker.register"))
+        yield From(self.register(self._worker_register, "io.quay.buildworker.register"))
 
     def _worker_register(self):
         realm = self.parent_manager.add_build_component()

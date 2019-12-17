@@ -6,7 +6,7 @@ from functools import wraps, partial
 from copy import deepcopy
 from jinja2.utils import generate_lorem_ipsum
 
-from data.buildlogs import RedisBuildLogs
+from .data.buildlogs import RedisBuildLogs
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class TestBuildLogs(RedisBuildLogs):
             (phase, status) = status_wrapper
 
             if not is_get_status:
-                from data import model
+                from .data import model
 
                 build_obj = model.build.get_repository_build(self.test_build_id)
                 build_obj.phase = phase
@@ -177,9 +177,9 @@ class TestBuildLogs(RedisBuildLogs):
 
     @staticmethod
     def _compute_total_completion(statuses, total_images):
-        percentage_with_sizes = float(len(statuses.values())) / total_images
-        sent_bytes = sum([status[u"current"] for status in statuses.values()])
-        total_bytes = sum([status[u"total"] for status in statuses.values()])
+        percentage_with_sizes = float(len(list(statuses.values()))) / total_images
+        sent_bytes = sum([status["current"] for status in list(statuses.values())])
+        total_bytes = sum([status["total"] for status in list(statuses.values())])
         return float(sent_bytes) / total_bytes * percentage_with_sizes
 
     @staticmethod
