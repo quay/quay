@@ -780,7 +780,7 @@ class EphemeralBuilderManager(BaseManager):
             start_time = parsed_metric_data["start_time"]
             executor = parsed_metric_data.get("executor_name", "unknown")
             if job_status is not None:
-                metric.labels(executor, job_status).observe(time.time() - start_time)
+                metric.labels(executor, str(job_status)).observe(time.time() - start_time)
             else:
                 metric.labels(executor).observe(time.time() - start_time)
         except Exception:
