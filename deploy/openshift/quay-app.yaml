@@ -121,9 +121,6 @@ objects:
         - name: configvolume
           secret:
             secretName: ${{QUAY_APP_CONFIG_SECRET}}
-        - name: extracacerts
-          secret:
-            secretName: ${{QUAY_EXTRA_CA_CERTS_SECRET}}
         containers:
         - name: syslog-cloudwatch-bridge
           image:  ${SYSLOG_IMAGE}:${SYSLOG_IMAGE_TAG}
@@ -185,9 +182,6 @@ objects:
           - name: configvolume
             readOnly: false
             mountPath: /conf/stack
-          - name: extracacerts
-            readOnly: false
-            mountPath: /conf/kube_extra_certs
           livenessProbe:
             exec:
               command:
@@ -270,9 +264,6 @@ parameters:
   - name: QUAY_APP_CONFIG_SECRET
     value: "quay-config-secret"
     displayName: quay app config secret
-  - name: QUAY_EXTRA_CA_CERTS_SECRET
-    value: "quay-extra-ca-certs"
-    displayName: quay extra ca certs secret
   - name: QUAY_APP_DEPLOYMENT_REPLICAS
     value: "1"
     displayName: quay app deployment replicas
