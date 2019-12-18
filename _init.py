@@ -30,7 +30,7 @@ config_provider = get_config_provider(
 
 def _get_version_number_changelog():
     try:
-        with open(os.path.join(ROOT_DIR, "CHANGELOG.md")) as f:
+        with open(os.path.join(ROOT_DIR, "CHANGELOG.md"), "r", encoding="UTF-8") as f:
             return re.search(r"(v[0-9]+\.[0-9]+\.[0-9]+)", f.readline()).group(0)
     except IOError:
         return ""
