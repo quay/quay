@@ -41,6 +41,8 @@ from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
 from util.pagination import encrypt_page_token, decrypt_page_token
 from util.request import get_request_ip
+from util.timedeltastring import convert_to_timedelta
+
 from __init__models_pre_oci import pre_oci_model as model
 
 
@@ -49,6 +51,7 @@ api_bp = timed_blueprint(Blueprint("api", __name__))
 
 
 CROSS_DOMAIN_HEADERS = ["Authorization", "Content-Type", "X-Requested-With"]
+FRESH_LOGIN_TIMEOUT = convert_to_timedelta(app.config.get("FRESH_LOGIN_TIMEOUT", "10m"))
 
 
 class ApiExceptionHandlingApi(Api):
@@ -346,21 +349,22 @@ def require_fresh_login(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         user = get_authenticated_user()
-        if not user:
+        if not user or user.robot:
             raise Unauthorized()
 
         if get_validated_oauth_token():
             return func(*args, **kwargs)
 
-        logger.debug("Checking fresh login for user %s", user.username)
-
         last_login = session.get("login_time", datetime.datetime.min)
-        valid_span = datetime.datetime.now() - datetime.timedelta(minutes=10)
+        valid_span = datetime.datetime.now() - FRESH_LOGIN_TIMEOUT
+        logger.debug(
+            "Checking fresh login for user %s: Last login at %s", user.username, last_login
+        )
 
         if (
-            not user.password_hash
-            or last_login >= valid_span
+            last_login >= valid_span
             or not authentication.supports_fresh_login
+            or not authentication.has_password_set(user.username)
         ):
             return func(*args, **kwargs)
 
