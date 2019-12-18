@@ -155,7 +155,7 @@ class PreOCIModel(RepositoryDataInterface):
                 RepositoryBaseElement(
                     repo.namespace_user.username,
                     repo.name,
-                    repo.id in star_set,
+                    repo.rid in star_set,
                     repo.visibility_id == model.repository.get_public_repo_visibility().id,
                     repo_kind,
                     repo.description,
