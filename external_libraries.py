@@ -98,7 +98,7 @@ def format_local_name(url):
     filename = url.split("/")[-1]
     filename = re.sub(r"[+,?@=:]", "", filename)
 
-    url_hash = hashlib.sha256(url).hexdigest()[0:12]
+    url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()[0:12]
     filename += "-" + url_hash
 
     if not filename.endswith(".css") and not filename.endswith(".js"):
