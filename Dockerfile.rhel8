@@ -1,5 +1,4 @@
-FROM centos:8
-#FROM registry.access.redhat.com/ubi8:8.1
+FROM registry.access.redhat.com/ubi8:8.1
 LABEL maintainer "thomasmckay@redhat.com"
 
 ENV OS=linux \
@@ -25,6 +24,7 @@ RUN INSTALL_PKGS="\
         openldap \
         gcc-c++ git \
         openldap-devel \
+        gpgme-devel \
         python3-devel \
         dnsmasq \
         memcached \
@@ -49,7 +49,8 @@ RUN alternatives --set python /usr/bin/python3 && \
     cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
     cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
 
-RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
+
+RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
     yum install -y nodejs && \
     curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
     rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
