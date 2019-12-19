@@ -123,7 +123,7 @@ class EndpointTestCase(unittest.TestCase):
         form=None,
         with_csrf=True,
         expected_code=200,
-        **kwargs
+        **kwargs,
     ):
         headers = headers or {}
         form = form or {}
