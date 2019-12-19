@@ -1125,5 +1125,10 @@ CONFIG_SCHEMA = {
             "description": "The array of email-address domains that is used if FEATURE_BLACKLISTED_EMAILS is set to true.",
             "x-example": ["example.com", "example.org"],
         },
+        "FRESH_LOGIN_TIMEOUT": {
+            "type": "string",
+            "description": "The time after which a fresh login requires users to reenter their password",
+            "x-example": "5m",
+        },
     },
 }

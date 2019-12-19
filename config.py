@@ -695,3 +695,6 @@ class DefaultConfig(ImmutableConfig):
 
     # When enabled, sets a tracing callback to report greenlet metrics.
     GREENLET_TRACING = True
+
+    # The timeout after which a fresh login check is required for sensitive operations.
+    FRESH_LOGIN_TIMEOUT = "10m"
