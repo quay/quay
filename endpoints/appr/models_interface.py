@@ -200,7 +200,7 @@ class AppRegistryDataInterface(object):
         repo_name=None,
         analytics_name=None,
         analytics_sample=1,
-        **kwargs
+        **kwargs,
     ):
         """ Logs an action to the audit log. """
         pass
