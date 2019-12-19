@@ -81,6 +81,8 @@ objects:
   kind: Service
   metadata:
     name: quay-loadbalancer-service
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
   spec:
     ports:
     - name: loadbalancer
@@ -386,3 +388,8 @@ parameters:
     value: "latest"
     displayName: syslog-cloudwatch-bridge version
     description: syslog-cloudwatch-bridge version
+  - name: AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT
+    value: "3600"
+    displayName: syslog-cloudwatch-bridge version
+    description: syslog-cloudwatch-bridge version
+
