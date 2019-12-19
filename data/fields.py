@@ -18,18 +18,19 @@ def random_string(length=16):
 
 
 class _ResumableSHAField(TextField):
-    '''
+    """
     Base Class used to store the state of an in-progress hash in the database. This is particularly
     useful for working with large byte streams and allows the hashing to be paused and resumed
     as needed.
-    '''
+    """
+
     def _create_sha(self):
         raise NotImplementedError
 
     def db_value(self, value):
-        '''
+        """
         Serialize the Hasher's state for storage in the database as plain-text.
-        '''
+        """
         if value is None:
             return None
 
@@ -37,9 +38,9 @@ class _ResumableSHAField(TextField):
         return serialized_state
 
     def python_value(self, value):
-        '''
+        """
         Restore the Hasher from its state stored in the database.
-        '''
+        """
         if value is None:
             return None
 
