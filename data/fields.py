@@ -1,11 +1,12 @@
 import base64
+import pickle
 import string
 import json
 
 from random import SystemRandom
 
 import bcrypt
-import resumablehashlib
+import rehash
 
 from peewee import TextField, CharField, SmallIntegerField
 from data.text import prefix_search
@@ -17,42 +18,43 @@ def random_string(length=16):
 
 
 class _ResumableSHAField(TextField):
+    '''
+    Base Class used to store the state of an in-progress hash in the database. This is particularly
+    useful for working with large byte streams and allows the hashing to be paused and resumed
+    as needed.
+    '''
     def _create_sha(self):
         raise NotImplementedError
 
     def db_value(self, value):
+        '''
+        Serialize the Hasher's state for storage in the database as plain-text.
+        '''
         if value is None:
             return None
 
-        sha_state = value.state()
-
-        # One of the fields is a byte string, let's base64 encode it to make sure
-        # we can store and fetch it regardless of default collocation.
-        sha_state[3] = base64.b64encode(sha_state[3])
-
-        return json.dumps(sha_state)
+        serialized_tate = pickle.dumps(value)
+        return serialized_state
 
     def python_value(self, value):
+        '''
+        Restore the Hasher from its state stored in the database.
+        '''
         if value is None:
             return None
 
-        sha_state = json.loads(value)
-
-        # We need to base64 decode the data bytestring.
-        sha_state[3] = base64.b64decode(sha_state[3])
-        to_resume = self._create_sha()
-        to_resume.set_state(sha_state)
-        return to_resume
+        hasher = pickle.loads(value)
+        return hasher
 
 
 class ResumableSHA256Field(_ResumableSHAField):
     def _create_sha(self):
-        return resumablehashlib.sha256()
+        return rehash.sha256()
 
 
 class ResumableSHA1Field(_ResumableSHAField):
     def _create_sha(self):
-        return resumablehashlib.sha1()
+        return rehash.sha1()
 
 
 class JSONField(TextField):
