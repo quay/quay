@@ -94,7 +94,7 @@ class CNRAppModel(AppRegistryDataInterface):
             repo,
             analytics_name=analytics_name,
             analytics_sample=analytics_sample,
-            **metadata
+            **metadata,
         )
 
     def list_applications(
