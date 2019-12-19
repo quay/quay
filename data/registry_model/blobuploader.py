@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from collections import namedtuple
 
 import bitmath
-import resumablehashlib
+import rehash
 
 from prometheus_client import Counter, Histogram
 
@@ -217,7 +217,7 @@ class _BlobUploadManager(object):
             # already calculated hash data for the previous chunk(s).
             piece_hasher = None
             if self.blob_upload.chunk_count == 0 or self.blob_upload.piece_sha_state:
-                initial_sha1_value = self.blob_upload.piece_sha_state or resumablehashlib.sha1()
+                initial_sha1_value = self.blob_upload.piece_sha_state or rehash.sha1()
                 initial_sha1_pieces_value = self.blob_upload.piece_hashes or ""
 
                 piece_hasher = PieceHasher(

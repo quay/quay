@@ -20,7 +20,7 @@ from tempfile import NamedTemporaryFile
 import bencode
 import gpgme
 import requests
-import resumablehashlib
+import rehash
 
 from Crypto import Random
 from Crypto.PublicKey import RSA
@@ -2216,7 +2216,7 @@ class TorrentTestMixin(V2RegistryPullMixin):
         self.assertIsNotNone(contents.get("info", {}).get("pieces"))
         self.assertIsNotNone(contents.get("announce"))
 
-        sha = resumablehashlib.sha1()
+        sha = rehash.sha1()
         sha.update(blobs[blobsum])
 
         expected = binascii.hexlify(sha.digest())
@@ -2396,7 +2396,7 @@ class SquashingTests(RegistryTestCaseMixin, V1RegistryPushMixin, LiveServerTestC
         self.assertIsNotNone(contents.get("announce"))
 
         # Ensure the SHA1 matches the generated tar.
-        sha = resumablehashlib.sha1()
+        sha = rehash.sha1()
         sha.update(squashed)
 
         expected = binascii.hexlify(sha.digest())
