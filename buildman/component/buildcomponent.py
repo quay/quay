@@ -6,7 +6,6 @@ import json
 import asyncio
 
 from autobahn.wamp.exception import ApplicationError
-from asyncio import From, Return
 
 from buildman.server import BuildJobResult
 from buildman.component.basecomponent import BaseComponent
@@ -76,16 +75,16 @@ class BuildComponent(BaseComponent):
     @asyncio.coroutine
     def onJoin(self, details):
         logger.debug("Registering methods and listeners for component %s", self.builder_realm)
-        yield From(self.register(self._on_ready, "io.quay.buildworker.ready"))
-        yield From(
+        yield from self.register(self._on_ready, "io.quay.buildworker.ready")
+        yield from (
             self.register(self._determine_cache_tag, "io.quay.buildworker.determinecachetag")
         )
-        yield From(self.register(self._ping, "io.quay.buildworker.ping"))
-        yield From(self.register(self._on_log_message, "io.quay.builder.logmessagesynchronously"))
+        yield from self.register(self._ping, "io.quay.buildworker.ping")
+        yield from self.register(self._on_log_message, "io.quay.builder.logmessagesynchronously")
 
-        yield From(self.subscribe(self._on_heartbeat, "io.quay.builder.heartbeat"))
+        yield from self.subscribe(self._on_heartbeat, "io.quay.builder.heartbeat")
 
-        yield From(self._set_status(ComponentStatus.WAITING))
+        yield from self._set_status(ComponentStatus.WAITING)
 
     @asyncio.coroutine
     def start_build(self, build_job):
@@ -100,7 +99,7 @@ class BuildComponent(BaseComponent):
                 self._worker_version,
                 self._component_status,
             )
-            raise Return()
+            return
 
         logger.debug(
             "Starting build for component %s (build %s, worker version: %s)",
@@ -113,7 +112,7 @@ class BuildComponent(BaseComponent):
         self._build_status = StatusHandler(self.build_logs, build_job.repo_build.uuid)
         self._image_info = {}
 
-        yield From(self._set_status(ComponentStatus.BUILDING))
+        yield from self._set_status(ComponentStatus.BUILDING)
 
         # Send the notification that the build has started.
         build_job.send_notification("build_start")
@@ -122,8 +121,8 @@ class BuildComponent(BaseComponent):
         try:
             build_config = build_job.build_config
         except BuildJobLoadException as irbe:
-            yield From(self._build_failure("Could not load build job information", irbe))
-            raise Return()
+            yield from self._build_failure("Could not load build job information", irbe)
+            return
 
         base_image_information = {}
 
@@ -189,8 +188,8 @@ class BuildComponent(BaseComponent):
                 self._current_job.repo_build.uuid,
                 build_arguments,
             )
-            yield From(self._build_failure("Insufficient build arguments. No buildpack available."))
-            raise Return()
+            yield from self._build_failure("Insufficient build arguments. No buildpack available.")
+            return
 
         # Invoke the build.
         logger.debug("Invoking build: %s", self.builder_realm)
@@ -320,7 +319,7 @@ class BuildComponent(BaseComponent):
         # the pull/push progress, as well as the current step index.
         with self._build_status as status_dict:
             try:
-                changed_phase = yield From(
+                changed_phase = yield from (
                     self._build_status.set_phase(phase, log_data.get("status_data"))
                 )
                 if changed_phase:
@@ -330,11 +329,11 @@ class BuildComponent(BaseComponent):
                     logger.debug(
                         "Trying to move cancelled build into phase: %s with id: %s", phase, build_id
                     )
-                    raise Return(False)
+                    return False
             except InvalidRepositoryBuildException:
                 build_id = self._current_job.repo_build.uuid
                 logger.warning("Build %s was not found; repo was probably deleted", build_id)
-                raise Return(False)
+                return False
 
             BuildComponent._process_pushpull_status(status_dict, phase, log_data, self._image_info)
 
@@ -345,13 +344,13 @@ class BuildComponent(BaseComponent):
 
             # If the json data contains an error, then something went wrong with a push or pull.
             if "error" in log_data:
-                yield From(self._build_status.set_error(log_data["error"]))
+                yield from self._build_status.set_error(log_data["error"])
 
         if current_step is not None:
-            yield From(self._build_status.set_command(current_status_string))
+            yield from self._build_status.set_command(current_status_string)
         elif phase == BUILD_PHASE.BUILDING:
-            yield From(self._build_status.append_log(current_status_string))
-        raise Return(True)
+            yield from self._build_status.append_log(current_status_string)
+        return True
 
     @asyncio.coroutine
     def _determine_cache_tag(
@@ -369,14 +368,14 @@ class BuildComponent(BaseComponent):
         )
 
         tag_found = self._current_job.determine_cached_tag(base_image_id, command_comments)
-        raise Return(tag_found or "")
+        return tag_found or ""
 
     @asyncio.coroutine
     def _build_failure(self, error_message, exception=None):
         """
         Handles and logs a failed build.
         """
-        yield From(
+        yield from (
             self._build_status.set_error(
                 error_message, {"internal_error": str(exception) if exception else None}
             )
@@ -386,7 +385,7 @@ class BuildComponent(BaseComponent):
         logger.warning("Build %s failed with message: %s", build_id, error_message)
 
         # Mark that the build has finished (in an error state)
-        yield From(self._build_finished(BuildJobResult.ERROR))
+        yield from self._build_finished(BuildJobResult.ERROR)
 
     @asyncio.coroutine
     def _build_complete(self, result):
@@ -411,12 +410,12 @@ class BuildComponent(BaseComponent):
                 pass
 
             try:
-                yield From(self._build_status.set_phase(BUILD_PHASE.COMPLETE))
+                yield from self._build_status.set_phase(BUILD_PHASE.COMPLETE)
             except InvalidRepositoryBuildException:
                 logger.warning("Build %s was not found; repo was probably deleted", build_id)
-                raise Return()
+                return
 
-            yield From(self._build_finished(BuildJobResult.COMPLETE))
+            yield from self._build_finished(BuildJobResult.COMPLETE)
 
             # Label the pushed manifests with the build metadata.
             manifest_digests = kwargs.get("digests") or []
@@ -444,7 +443,7 @@ class BuildComponent(BaseComponent):
             worker_error = WorkerError(aex.error, aex.kwargs.get("base_error"))
 
             # Write the error to the log.
-            yield From(
+            yield from (
                 self._build_status.set_error(
                     worker_error.public_message(),
                     worker_error.extra_data(),
@@ -465,10 +464,10 @@ class BuildComponent(BaseComponent):
                     build_id,
                     worker_error.public_message(),
                 )
-                yield From(self._build_finished(BuildJobResult.INCOMPLETE))
+                yield from self._build_finished(BuildJobResult.INCOMPLETE)
             else:
                 logger.debug("Got remote failure exception for build %s: %s", build_id, aex)
-                yield From(self._build_finished(BuildJobResult.ERROR))
+                yield from self._build_finished(BuildJobResult.ERROR)
 
         # Remove the current job.
         self._current_job = None
@@ -478,10 +477,10 @@ class BuildComponent(BaseComponent):
         """
         Alerts the parent that a build has completed and sets the status back to running.
         """
-        yield From(self.parent_manager.job_completed(self._current_job, job_status, self))
-
+        yield from self.parent_manager.job_completed(self._current_job, job_status, self)
+        
         # Set the component back to a running state.
-        yield From(self._set_status(ComponentStatus.RUNNING))
+        yield from self._set_status(ComponentStatus.RUNNING)
 
     @staticmethod
     def _ping():
@@ -499,30 +498,30 @@ class BuildComponent(BaseComponent):
             logger.warning(
                 'Build component (token "%s") is running an out-of-date version: %s', token, version
             )
-            raise Return(False)
+            return False
 
         if self._component_status != ComponentStatus.WAITING:
             logger.warning('Build component (token "%s") is already connected', self.expected_token)
-            raise Return(False)
+            return False
 
         if token != self.expected_token:
             logger.warning(
                 'Builder token mismatch. Expected: "%s". Found: "%s"', self.expected_token, token
             )
-            raise Return(False)
+            return False
 
-        yield From(self._set_status(ComponentStatus.RUNNING))
+        yield from self._set_status(ComponentStatus.RUNNING)
 
         # Start the heartbeat check and updating loop.
         loop = asyncio.get_event_loop()
         loop.create_task(self._heartbeat())
         logger.debug("Build worker %s is connected and ready", self.builder_realm)
-        raise Return(True)
+        return True
 
     @asyncio.coroutine
     def _set_status(self, phase):
         if phase == ComponentStatus.RUNNING:
-            yield From(self.parent_manager.build_component_ready(self))
+            yield from self.parent_manager.build_component_ready(self)
 
         self._component_status = phase
 
@@ -544,7 +543,7 @@ class BuildComponent(BaseComponent):
 
         This allows the build system to catch crashes from either end.
         """
-        yield From(asyncio.sleep(INITIAL_TIMEOUT))
+        yield from asyncio.sleep(INITIAL_TIMEOUT)
 
         while True:
             # If the component is no longer running or actively building, nothing more to do.
@@ -552,7 +551,7 @@ class BuildComponent(BaseComponent):
                 self._component_status != ComponentStatus.RUNNING
                 and self._component_status != ComponentStatus.BUILDING
             ):
-                raise Return()
+                return
 
             # If there is an active build, write the heartbeat to its status.
             if self._build_status is not None:
@@ -562,7 +561,7 @@ class BuildComponent(BaseComponent):
             # Mark the build item.
             current_job = self._current_job
             if current_job is not None:
-                yield From(self.parent_manager.job_heartbeat(current_job))
+                yield from self.parent_manager.job_heartbeat(current_job)
 
             # Check the heartbeat from the worker.
             logger.debug("Checking heartbeat on realm %s", self.builder_realm)
@@ -576,8 +575,8 @@ class BuildComponent(BaseComponent):
                     self._last_heartbeat,
                 )
 
-                yield From(self._timeout())
-                raise Return()
+                yield from self._timeout()
+                return
 
             logger.debug(
                 "Heartbeat on realm %s is valid: %s (%s).",
@@ -586,20 +585,20 @@ class BuildComponent(BaseComponent):
                 self._component_status,
             )
 
-            yield From(asyncio.sleep(HEARTBEAT_TIMEOUT))
+            yield from asyncio.sleep(HEARTBEAT_TIMEOUT)
 
     @asyncio.coroutine
     def _timeout(self):
         if self._component_status == ComponentStatus.TIMED_OUT:
-            raise Return()
+            return
 
-        yield From(self._set_status(ComponentStatus.TIMED_OUT))
+        yield from self._set_status(ComponentStatus.TIMED_OUT)
         logger.warning("Build component with realm %s has timed out", self.builder_realm)
 
         # If we still have a running job, then it has not completed and we need to tell the parent
         # manager.
         if self._current_job is not None:
-            yield From(
+            yield from (
                 self._build_status.set_error(
                     "Build worker timed out",
                     internal_error=True,
@@ -609,7 +608,7 @@ class BuildComponent(BaseComponent):
 
             build_id = self._current_job.build_uuid
             logger.error("[BUILD INTERNAL ERROR: Timeout] Build ID: %s", build_id)
-            yield From(
+            yield from (
                 self.parent_manager.job_completed(
                     self._current_job, BuildJobResult.INCOMPLETE, self
                 )
@@ -625,4 +624,4 @@ class BuildComponent(BaseComponent):
     def cancel_build(self):
         self.parent_manager.build_component_disposed(self, True)
         self._current_job = None
-        yield From(self._set_status(ComponentStatus.RUNNING))
+        yield from self._set_status(ComponentStatus.RUNNING)

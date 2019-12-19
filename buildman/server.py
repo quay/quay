@@ -11,7 +11,6 @@ from autobahn.asyncio.wamp import RouterFactory, RouterSessionFactory
 from autobahn.asyncio.websocket import WampWebSocketServerFactory
 from autobahn.wamp import types
 from flask import Flask
-from asyncio.coroutines import From
 
 from app import app
 from buildman.enums import BuildJobResult, BuildServerStatus, RESULT_PHASES
@@ -194,7 +193,7 @@ class BuilderServer(object):
 
         if update_phase:
             status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
-            yield From(status_handler.set_phase(RESULT_PHASES[job_status]))
+            yield from status_handler.set_phase(RESULT_PHASES[job_status])
 
         self._job_count = self._job_count - 1
 
@@ -206,7 +205,7 @@ class BuilderServer(object):
         logger.debug("Initializing work checker")
         while self._current_status == BuildServerStatus.RUNNING:
             with database.CloseForLongOperation(app.config):
-                yield From(asyncio.sleep(WORK_CHECK_TIMEOUT))
+                yield from asyncio.sleep(WORK_CHECK_TIMEOUT)
 
             logger.debug(
                 "Checking for more work for %d active workers",
@@ -237,8 +236,8 @@ class BuilderServer(object):
             )
 
             try:
-                schedule_success, retry_timeout = yield From(
-                    self._lifecycle_manager.schedule(build_job)
+                schedule_success, retry_timeout = yield from self._lifecycle_manager.schedule(
+                    build_job
                 )
             except:
                 logger.warning(
@@ -253,7 +252,7 @@ class BuilderServer(object):
             if schedule_success:
                 logger.debug("Marking build %s as scheduled", build_job.repo_build.uuid)
                 status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
-                yield From(status_handler.set_phase(database.BUILD_PHASE.BUILD_SCHEDULED))
+                yield from status_handler.set_phase(database.BUILD_PHASE.BUILD_SCHEDULED)
 
                 self._job_count = self._job_count + 1
                 logger.debug(
@@ -281,7 +280,7 @@ class BuilderServer(object):
             self._queue.update_metrics()
 
             logger.debug("Metrics going to sleep for 30 seconds")
-            yield From(asyncio.sleep(30))
+            yield from asyncio.sleep(30)
 
     @asyncio.coroutine
     def _initialize(self, loop, host, websocket_port, controller_port, ssl=None):
@@ -295,10 +294,10 @@ class BuilderServer(object):
         create_wsgi_server(
             self._controller_app, loop=loop, host=host, port=controller_port, ssl=ssl
         )
-        yield From(loop.create_server(transport_factory, host, websocket_port, ssl=ssl))
+        yield from loop.create_server(transport_factory, host, websocket_port, ssl=ssl)
 
         # Initialize the metrics updater
-        asyncio.async(self._queue_metrics_updater())
+        asyncio.ensure_future(self._queue_metrics_updater())
 
         # Initialize the work queue checker.
-        yield From(self._work_checker())
+        yield from self._work_checker()

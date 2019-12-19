@@ -775,7 +775,7 @@ class CloudFrontedS3Storage(S3Storage):
         storage_path,
         s3_bucket,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super(CloudFrontedS3Storage, self).__init__(
             context, storage_path, s3_bucket, *args, **kwargs

@@ -171,7 +171,7 @@ def render_page_template(name, route_data=None, **kwargs):
         version_number=version_number,
         current_year=datetime.datetime.now().year,
         kubernetes_namespace=IS_KUBERNETES and QE_NAMESPACE,
-        **kwargs
+        **kwargs,
     )
 
     resp = make_response(contents)
