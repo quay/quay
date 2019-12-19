@@ -5,7 +5,7 @@ from buildman.component.basecomponent import BaseComponent
 from buildman.component.buildcomponent import BuildComponent
 from buildman.manager.basemanager import BaseManager
 
-from asyncio import From, Return, coroutine
+from asyncio import coroutine
 
 REGISTRATION_REALM = "registration"
 RETRY_TIMEOUT = 5
@@ -22,7 +22,7 @@ class DynamicRegistrationComponent(BaseComponent):
 
     def onJoin(self, details):
         logger.debug("Registering registration method")
-        yield From(self.register(self._worker_register, "io.quay.buildworker.register"))
+        yield from self.register(self._worker_register, "io.quay.buildworker.register")
 
     def _worker_register(self):
         realm = self.parent_manager.add_build_component()
@@ -71,13 +71,13 @@ class EnterpriseManager(BaseManager):
         Schedules a build for an Enterprise Registry.
         """
         if self.shutting_down or not self.ready_components:
-            raise Return(False, RETRY_TIMEOUT)
+            return False, RETRY_TIMEOUT
 
         component = self.ready_components.pop()
 
-        yield From(component.start_build(build_job))
+        yield from component.start_build(build_job)
 
-        raise Return(True, None)
+        return True, None
 
     @coroutine
     def build_component_ready(self, build_component):
@@ -88,7 +88,7 @@ class EnterpriseManager(BaseManager):
 
     @coroutine
     def job_completed(self, build_job, job_status, build_component):
-        yield From(self.job_complete_callback(build_job, job_status))
+        yield from self.job_complete_callback(build_job, job_status)
 
     def build_component_disposed(self, build_component, timed_out):
         self.all_components.remove(build_component)

@@ -4,7 +4,7 @@ import uuid
 
 from mock import Mock, ANY
 from six import iteritems
-from asyncio import coroutine, get_event_loop, From, Future, Return
+from asyncio import coroutine, get_event_loop, Future
 
 from buildman.asyncutil import AsyncWrapper
 from buildman.component.buildcomponent import BuildComponent
@@ -36,7 +36,7 @@ class TestExecutor(BuilderExecutor):
     @coroutine
     def start_builder(self, realm, token, build_uuid):
         self.job_started = str(uuid.uuid4())
-        raise Return(self.job_started)
+        return self.job_started
 
     @coroutine
     def stop_builder(self, execution_id):
@@ -71,7 +71,7 @@ class EphemeralBuilderTestCase(unittest.TestCase):
 
     @coroutine
     def _register_component(self, realm_spec, build_component, token):
-        raise Return("hello")
+        return "hello"
 
     def _create_build_job(self, namespace="namespace", retries=3):
         mock_job = Mock()
@@ -156,7 +156,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         test_component.start_build = Mock(side_effect=self._create_completed_future())
         self.register_component_callback.return_value = test_component
 
-        is_scheduled = yield From(self.manager.schedule(self.mock_job))
+        is_scheduled = yield from self.manager.schedule(self.mock_job)
         self.assertTrue(is_scheduled)
         self.assertEqual(self.test_executor.start_builder.call_count, 1)
 
@@ -168,7 +168,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
         realm_for_build = self._find_realm_key(self.manager._orchestrator, BUILD_UUID)
 
-        raw_realm_data = yield From(
+        raw_realm_data = yield from (
             self.manager._orchestrator.get_key(slash_join("realm", realm_for_build))
         )
         realm_data = json.loads(raw_realm_data)
@@ -178,7 +178,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertEqual(self.register_component_callback.call_count, 0)
 
         # Fire off a realm changed with the same data.
-        yield From(
+        yield from (
             self.manager._realm_callback(
                 KeyChange(
                     KeyEvent.CREATE, slash_join(REALM_PREFIX, REALM_ID), json.dumps(realm_data)
@@ -193,7 +193,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         # Ensure that the build info exists.
         self.assertIsNotNone(self.manager._build_uuid_to_info.get(BUILD_UUID))
 
-        raise Return(test_component)
+        return test_component
 
     @staticmethod
     def _find_realm_key(orchestrator, build_uuid):
@@ -209,15 +209,15 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
     @async_test
     def test_schedule_and_complete(self):
         # Test that a job is properly registered with all of the managers
-        test_component = yield From(self._setup_job_for_managers())
+        test_component = yield from self._setup_job_for_managers()
 
         # Take the job ourselves
-        yield From(self.manager.build_component_ready(test_component))
+        yield from self.manager.build_component_ready(test_component)
 
         self.assertIsNotNone(self.manager._build_uuid_to_info.get(BUILD_UUID))
 
         # Finish the job
-        yield From(
+        yield from (
             self.manager.job_completed(self.mock_job, BuildJobResult.COMPLETE, test_component)
         )
 
@@ -231,9 +231,9 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
     @async_test
     def test_another_manager_takes_job(self):
         # Prepare a job to be taken by another manager
-        test_component = yield From(self._setup_job_for_managers())
+        test_component = yield from self._setup_job_for_managers()
 
-        yield From(
+        yield from (
             self.manager._realm_callback(
                 KeyChange(
                     KeyEvent.DELETE,
@@ -260,7 +260,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIsNotNone(self.manager._build_uuid_to_info.get(BUILD_UUID))
 
         # Delete the job once it has "completed".
-        yield From(
+        yield from (
             self.manager._job_callback(
                 KeyChange(
                     KeyEvent.DELETE,
@@ -281,7 +281,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that the job has been created.
-        yield From(
+        yield from (
             self.manager._job_callback(
                 KeyChange(
                     KeyEvent.CREATE,
@@ -301,7 +301,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that a worker has expired
-        yield From(
+        yield from (
             self.manager._job_callback(
                 KeyChange(
                     KeyEvent.EXPIRE,
@@ -316,13 +316,13 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
     @async_test
     def test_expiring_worker_started(self):
-        test_component = yield From(self._setup_job_for_managers())
+        test_component = yield from self._setup_job_for_managers()
 
         # Ensure that that the building callbacks have been registered
         callback_keys = [key for key in self.manager._orchestrator.callbacks]
         self.assertIn(JOB_PREFIX, callback_keys)
 
-        yield From(
+        yield from (
             self.manager._job_callback(
                 KeyChange(
                     KeyEvent.EXPIRE,
@@ -337,14 +337,14 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
     @async_test
     def test_buildjob_deleted(self):
-        test_component = yield From(self._setup_job_for_managers())
+        test_component = yield from self._setup_job_for_managers()
 
         # Ensure that that the building callbacks have been registered
         callback_keys = [key for key in self.manager._orchestrator.callbacks]
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that a worker has expired
-        yield From(
+        yield from (
             self.manager._job_callback(
                 KeyChange(
                     KeyEvent.DELETE,
@@ -360,14 +360,14 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
     @async_test
     def test_builder_never_starts(self):
-        test_component = yield From(self._setup_job_for_managers())
+        test_component = yield from self._setup_job_for_managers()
 
         # Ensure that that the building callbacks have been registered
         callback_keys = [key for key in self.manager._orchestrator.callbacks]
         self.assertIn(JOB_PREFIX, callback_keys)
 
         # Send a signal to the callback that a worker has expired
-        yield From(
+        yield from (
             self.manager._job_callback(
                 KeyChange(
                     KeyEvent.EXPIRE,
@@ -382,7 +382,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
         # Ensure the job was marked as incomplete, with an update_phase to True (so the DB record and
         # logs are updated as well)
-        yield From(
+        yield from (
             self.job_complete_callback.assert_called_once_with(
                 ANY, BuildJobResult.INCOMPLETE, "MockExecutor", update_phase=True
             )
@@ -396,10 +396,10 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
     @async_test
     def test_realm_expired(self):
-        test_component = yield From(self._setup_job_for_managers())
+        test_component = yield from self._setup_job_for_managers()
 
         # Send a signal to the callback that a realm has expired
-        yield From(
+        yield from (
             self.manager._realm_callback(
                 KeyChange(
                     KeyEvent.EXPIRE,
@@ -435,7 +435,7 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         @coroutine
         def job_complete_callback(*args, **kwargs):
-            raise Return()
+            return
 
         self.manager = EphemeralBuilderManager(
             self._register_component,
@@ -542,12 +542,12 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         # Try with a build job in an invalid namespace.
         build_job = self._create_build_job(namespace="somethingelse")
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertFalse(result[0])
 
         # Try with a valid namespace.
         build_job = self._create_build_job(namespace="something")
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
     @async_test
@@ -562,12 +562,12 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         # Try with a build job that has too few retries.
         build_job = self._create_build_job(retries=1)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertFalse(result[0])
 
         # Try with a valid job.
         build_job = self._create_build_job(retries=2)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
     @async_test
@@ -593,7 +593,7 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         # Try a job not matching the primary's namespace filter. Should schedule on secondary.
         build_job = self._create_build_job(namespace="somethingelse")
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
         self.assertIsNone(self.manager.registered_executors[0].job_started)
@@ -604,7 +604,7 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         # Try a job not matching the primary's retry minimum. Should schedule on secondary.
         build_job = self._create_build_job(namespace="something", retries=2)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
         self.assertIsNone(self.manager.registered_executors[0].job_started)
@@ -615,7 +615,7 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         # Try a job matching the primary. Should schedule on the primary.
         build_job = self._create_build_job(namespace="something", retries=3)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
         self.assertIsNotNone(self.manager.registered_executors[0].job_started)
@@ -626,7 +626,7 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         # Try a job not matching either's restrictions.
         build_job = self._create_build_job(namespace="somethingelse", retries=1)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertFalse(result[0])
 
         self.assertIsNone(self.manager.registered_executors[0].job_started)
@@ -649,14 +649,14 @@ class TestEphemeral(EphemeralBuilderTestCase):
         )
 
         build_job = self._create_build_job(namespace="something", retries=3)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
         self.assertIsNotNone(self.manager.registered_executors[0].job_started)
         self.manager.registered_executors[0].job_started = None
 
         build_job = self._create_build_job(namespace="something", retries=0)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
         self.assertIsNotNone(self.manager.registered_executors[0].job_started)
@@ -671,7 +671,7 @@ class TestEphemeral(EphemeralBuilderTestCase):
         )
 
         build_job = self._create_build_job(namespace="something", retries=3)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertFalse(result[0])
 
     @async_test
@@ -684,14 +684,14 @@ class TestEphemeral(EphemeralBuilderTestCase):
 
         # Start the build job.
         build_job = self._create_build_job(namespace="something", retries=3)
-        result = yield From(self.manager.schedule(build_job))
+        result = yield from self.manager.schedule(build_job)
         self.assertTrue(result[0])
 
         executor = self.manager.registered_executors[0]
         self.assertIsNotNone(executor.job_started)
 
         # Register the realm so the build information is added.
-        yield From(
+        yield from (
             self.manager._register_realm(
                 {
                     "realm": str(uuid.uuid4()),
@@ -705,7 +705,7 @@ class TestEphemeral(EphemeralBuilderTestCase):
         )
 
         # Stop the build job.
-        yield From(self.manager.kill_builder_executor(build_job.build_uuid))
+        yield from self.manager.kill_builder_executor(build_job.build_uuid)
         self.assertEqual(executor.job_stopped, executor.job_started)
 
 

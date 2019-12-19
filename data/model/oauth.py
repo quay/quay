@@ -281,7 +281,7 @@ def create_application(org, name, application_uri, redirect_uri, **kwargs):
         application_uri=application_uri,
         redirect_uri=redirect_uri,
         secure_client_secret=DecryptedValue(client_secret),
-        **kwargs
+        **kwargs,
     )
 
 
