@@ -1,7 +1,6 @@
 -e git+https://github.com/app-registry/appr-server.git@c2ef3b88afe926a92ef5f2e11e7d4a259e286a17#egg=cnr_server
 -e git+https://github.com/coreos/mockldap.git@59a46efbe8c7cd8146a87a7c4f2b09746b953e11#egg=mockldap
 -e git+https://github.com/coreos/py-bitbucket.git@55a1ada645f2fb6369147996ec71edd7828d91c8#egg=py_bitbucket
-#-e git+https://github.com/coreos/resumablehashlib.git@b1b631249589b07adf40e0ee545b323a501340b4#egg=resumablehashlib
 -e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
 -e git+https://github.com/DevTable/anunidecode.git@d59236a822e578ba3a0e5e5abbd3855873fa7a88#egg=anunidecode
 -e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
@@ -147,6 +146,7 @@ raven==6.10.0
 recaptcha2==0.1
 redis==3.3.8
 redlock==1.2.0
+rehash==1.0.0
 reportlab #==3.1.44
 requests-aws4auth==0.9
 requests-file==1.4.3
