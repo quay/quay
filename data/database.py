@@ -22,7 +22,7 @@ from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase, Pooled
 
 from sqlalchemy.engine.url import make_url
 
-import resumablehashlib
+import rehash
 from cachetools.func import lru_cache
 
 from data.fields import (
@@ -1389,7 +1389,7 @@ class BlobUpload(BaseModel):
     repository = ForeignKeyField(Repository)
     uuid = CharField(index=True, unique=True)
     byte_count = BigIntegerField(default=0)
-    sha_state = ResumableSHA256Field(null=True, default=resumablehashlib.sha256)
+    sha_state = ResumableSHA256Field(null=True, default=rehash.sha256)
     location = ForeignKeyField(ImageStorageLocation)
     storage_metadata = JSONField(null=True, default={})
     chunk_count = IntegerField(default=0)

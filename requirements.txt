@@ -141,6 +141,7 @@ raven==6.10.0
 recaptcha2==0.1
 redis==3.3.8
 redlock==1.2.0
+rehash==1.0.0
 reportlab #==3.1.44
 requests-aws4auth==0.9
 requests-file==1.4.3

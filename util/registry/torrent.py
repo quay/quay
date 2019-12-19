@@ -5,7 +5,7 @@ from binascii import hexlify
 
 import bencode
 import jwt
-import resumablehashlib
+import rehash
 
 
 class TorrentConfiguration(object):
@@ -120,7 +120,7 @@ class PieceHasher(object):
         self._piece_hashes = bytearray(starting_piece_hash_bytes)
 
         if hash_fragment_to_resume is None:
-            self._hash_fragment = resumablehashlib.sha1()
+            self._hash_fragment = rehash.sha1()
         else:
             self._hash_fragment = hash_fragment_to_resume
 
@@ -133,7 +133,7 @@ class PieceHasher(object):
             if self._piece_offset() == 0 and to_hash_len > 0 and self._current_offset > 0:
                 # We are opening a new piece
                 self._piece_hashes.extend(self._hash_fragment.digest())
-                self._hash_fragment = resumablehashlib.sha1()
+                self._hash_fragment = rehash.sha1()
 
             self._hash_fragment.update(buf_bytes_to_hash)
             self._current_offset += to_hash_len
