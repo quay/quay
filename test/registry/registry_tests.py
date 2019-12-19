@@ -6,7 +6,7 @@ from io import StringIO
 
 import binascii
 import bencode
-import resumablehashlib
+import rehash
 
 from werkzeug.datastructures import Accept
 
@@ -1663,7 +1663,7 @@ def test_pull_torrent(
         assert torrent_info.get("announce") is not None
 
         # Check the pieces.
-        sha = resumablehashlib.sha1()
+        sha = rehash.sha1()
         sha.update(image.bytes)
 
         expected = binascii.hexlify(sha.digest())
