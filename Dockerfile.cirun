@@ -3,6 +3,7 @@ RUN mkdir -p conf/stack
 RUN rm -rf test/data/test.db
 ENV ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE remove-old-fields
 ADD cirun.config.yaml conf/stack/config.yaml
-RUN /usr/bin/scl enable python36 rh-nginx112 "LOGGING_LEVEL=INFO python initdb.py"
+RUN LOGGING_LEVEL=INFO python initdb.py && \
+    yum install -y make
 ENTRYPOINT ["/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]
