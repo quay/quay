@@ -42,6 +42,29 @@ export QUAY_INTERNAL_USERNAME=<Username>
 export QUAY_INTERNAL_PASSWORD=<Password>
 ```
 
+### Hacking Integration Tests
+
+To see what the tests are actually doing, it is posible to run in none `headless` mode by setting the `NO_HEADLESS` environment variable:
+
+```
+$ NO_HEADLESS=true yarn run test-suite --suite <test suite>
+```
+
+To avoid skipping remaining portion of tests upon encountering the first failure, `NO_FAILFAST` environment variable can be used:
+
+```
+$ NO_FAILFAST=true yarn run test-suite --suite <test suite>
+```
+
+### Debugging Integration Tests
+
+1. Add `debugger;` statements to any test suite
+2. `yarn run debug-test-suite --suite <suite-to-debug>`
+3. Chrome browser URL: 'chrome://inspect/#devices', click on the 'inspect' link in **Target (v10...)** section.
+4. Launches chrome-dev tools, click Resume button to continue
+5. Will break on any `debugger;` statements
+6. Pauses browser when not using `--headless` argument!
+
 ## Supported Browsers
 
 Support the latest versions of the following browsers:

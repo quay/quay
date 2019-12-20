@@ -12,14 +12,16 @@ const tap = !!process.env.TAP;
 
 export const BROWSER_TIMEOUT = 15000;
 export const appHost = `${process.env.QUAY_APP_ADDRESS}${(process.env.QUAY_BASE_PATH || '/').replace(/\/$/, '')}`;
+export const registryHost = `${appHost.replace(/(https?\:\/\/)/, '')}`;
+export const userName = `${process.env.QUAY_INTERNAL_USERNAME}`
+export const userPasswd = `${process.env.QUAY_INTERNAL_PASSWORD}`
 export const testName = `test-${Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)}`;
 
 const htmlReporter = new HtmlScreenshotReporter({ dest: './gui_test_screenshots', inlineImages: true, captureOnlyFailedSpecs: true, filename: 'test-gui-report.html' });
 const junitReporter = new JUnitXmlReporter({ savePath: './gui_test_screenshots', consolidateAll: true });
 const browserLogs: logging.Entry[] = [];
 
-//const suite = (tests: string[]) => (!_.isNil(process.env.BRIDGE_KUBEADMIN_PASSWORD) ? ['tests/login.scenario.ts'] : []).concat(['tests/base.scenario.ts', ...tests]);
-const suite = (tests: string[]) => (['tests/base.scenario.ts', ...tests]);
+const suite = (tests: string[]) => ([]).concat(['tests/base.scenario.ts', ...tests]);
 
 
 export const config: Config = {
@@ -31,14 +33,14 @@ export const config: Config = {
     defaultTimeoutInterval: 40000,
   },
   logLevel: tap ? 'ERROR' : 'INFO',
-  plugins: [failFast.init()],
+  plugins: process.env.NO_FAILFAST ? [] : [failFast.init()],
   capabilities: {
     browserName: 'chrome',
     acceptInsecureCerts: true,
     chromeOptions: {
       args: [
         '--disable-gpu',
-//        '--headless',
+        ...(process.env.NO_HEADLESS ? [] : ['--headless']),
         '--no-sandbox',
         '--window-size=1920,1200',
         '--disable-background-timer-throttling',
@@ -54,12 +56,12 @@ export const config: Config = {
         'password_manager_enabled': false,
       },
     },
-/**
- * 'browserName': 'firefox',
- * 'moz:firefoxOptions': {
- *   'args': ['--safe-mode']
- *   }
- */
+/*
+  'browserName': 'firefox',
+  'moz:firefoxOptions': {
+    'args': ['--safe-mode']
+    }
+*/
   },
   beforeLaunch: () => new Promise(resolve => htmlReporter.beforeLaunch(resolve)),
   onPrepare: () => {
@@ -87,7 +89,6 @@ export const config: Config = {
 
     // should add a step to clean up organizations and repos created during
     // testing
-//    execSync(`if kubectl get ${resource} ${testName} 2> /dev/null; then kubectl delete ${resource} ${testName}; fi`);
   },
   onCleanUp: (exitCode) => {
     return console.log('Cleaning up completed');
@@ -97,13 +98,14 @@ export const config: Config = {
     return new Promise(resolve => htmlReporter.afterLaunch(resolve.bind(this, exitCode)));
   },
   suites: {
-    filter: suite([
-      'tests/filter.scenario.ts',
+    all: suite([
+      'tests/quay-login.scenario.ts',
+      'tests/image-repository.scenario.ts',
+    ]),
+    imagerepo: suite([
+      'tests/image-repository.scenario.ts',
     ]),
     login: [
-      'tests/login.scenario.ts',
-    ],
-    quaylogin: [
       'tests/quay-login.scenario.ts',
     ],
   },
