@@ -766,11 +766,14 @@ class RepositoryState(IntEnum):
   NORMAL:    Regular repo where all actions are possible
   READ_ONLY: Only read actions, such as pull, are allowed regardless of specific user permissions
   MIRROR:    Equivalent to READ_ONLY except that mirror robot has write permission
+  MARKED_FOR_DELETION: Indicates the repository has been marked for deletion and should be hidden
+                       and un-usable.
   """
 
     NORMAL = 0
     READ_ONLY = 1
     MIRROR = 2
+    MARKED_FOR_DELETION = 3
 
 
 class Repository(BaseModel):
@@ -791,9 +794,11 @@ class Repository(BaseModel):
             (("namespace_user", "name"), True),
         )
 
-    def delete_instance(self, recursive=False, delete_nullable=False):
+    def delete_instance(self, recursive=False, delete_nullable=False, force=False):
         if not recursive:
             raise RuntimeError("Non-recursive delete on repository.")
+
+        assert force or self.state == RepositoryState.MARKED_FOR_DELETION
 
         # These models don't need to use transitive deletes, because the referenced objects
         # are cleaned up directly
@@ -811,6 +816,7 @@ class Repository(BaseModel):
                 RepositorySearchScore,
                 RepoMirrorConfig,
                 RepoMirrorRule,
+                DeletedRepository,
             }
             | appr_classes
             | v22_classes
@@ -824,6 +830,13 @@ class RepositorySearchScore(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     score = BigIntegerField(index=True, default=0)
     last_updated = DateTimeField(null=True)
+
+
+class DeletedRepository(BaseModel):
+    repository = ForeignKeyField(Repository, unique=True)
+    marked = DateTimeField(default=datetime.now)
+    original_name = CharField(index=True)
+    queue_id = CharField(null=True, index=True)
 
 
 class Star(BaseModel):

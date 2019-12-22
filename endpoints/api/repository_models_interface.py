@@ -298,9 +298,9 @@ class RepositoryDataInterface(object):
     """
 
     @abstractmethod
-    def purge_repository(self, namespace_name, repository_name):
+    def mark_repository_for_deletion(self, namespace_name, repository_name, repository_gc_queue):
         """
-    Removes a repository
+    Marks a repository for deletion.
     """
 
     @abstractmethod

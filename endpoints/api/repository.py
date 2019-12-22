@@ -9,7 +9,7 @@ from datetime import timedelta, datetime
 
 from flask import request, abort
 
-from app import dockerfile_build_queue, tuf_metadata_api
+from app import dockerfile_build_queue, tuf_metadata_api, repository_gc_queue
 from data.database import RepositoryState
 from endpoints.api import (
     format_date,
@@ -311,7 +311,7 @@ class Repository(RepositoryParamResource):
     @nickname("deleteRepository")
     def delete(self, namespace, repository):
         """ Delete a repository. """
-        username = model.purge_repository(namespace, repository)
+        username = model.mark_repository_for_deletion(namespace, repository, repository_gc_queue)
 
         if features.BILLING:
             plan = get_namespace_plan(namespace)

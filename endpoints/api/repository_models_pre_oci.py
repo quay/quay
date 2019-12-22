@@ -51,8 +51,10 @@ class PreOCIModel(RepositoryDataInterface):
         else:
             model.notification.delete_notifications_by_kind(user_or_org, "over_private_usage")
 
-    def purge_repository(self, namespace_name, repository_name):
-        model.gc.purge_repository(namespace_name, repository_name)
+    def mark_repository_for_deletion(self, namespace_name, repository_name, repository_gc_queue):
+        model.repository.mark_repository_for_deletion(
+            namespace_name, repository_name, repository_gc_queue
+        )
         user = model.user.get_namespace_user(namespace_name)
         return user.username
 
@@ -89,6 +91,7 @@ class PreOCIModel(RepositoryDataInterface):
         if starred:
             # Return the full list of repos starred by the current user that are still visible to them.
             def can_view_repo(repo):
+                assert repo.state != RepositoryState.MARKED_FOR_DELETION
                 can_view = ReadRepositoryPermission(repo.namespace_user.username, repo.name).can()
                 return can_view or model.repository.is_repository_public(repo)
 

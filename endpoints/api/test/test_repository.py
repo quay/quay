@@ -188,3 +188,26 @@ def test_get_repo_state_can_write(state, can_write, client, initialized_db):
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["can_write"] == can_write
+
+
+def test_delete_repo(client, initialized_db):
+    with client_with_identity("devtable", client) as cl:
+        resp = conduct_api_call(cl, RepositoryList, "GET", {"namespace": "devtable"}).json
+        repos = {repo["name"] for repo in resp["repositories"]}
+        assert "simple" in repos
+
+        # Delete the repository.
+        params = {"repository": "devtable/simple"}
+        conduct_api_call(cl, Repository, "DELETE", params, expected_code=204)
+
+        # Ensure it isn't visible anymore.
+        conduct_api_call(cl, Repository, "GET", params, expected_code=404)
+
+        resp = conduct_api_call(cl, RepositoryList, "GET", {"namespace": "devtable"}).json
+        repos = {repo["name"] for repo in resp["repositories"]}
+        assert "simple" not in repos
+
+        # Check that the repository is enqueued for deletion.
+        marker = database.DeletedRepository.get()
+        assert marker.original_name == "simple"
+        assert marker.queue_id

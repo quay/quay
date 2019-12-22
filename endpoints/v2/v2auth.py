@@ -203,6 +203,10 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
             "This repository is for managing %s " + "and not container images."
         ) % repository_ref.kind
 
+    # Ensure the repository is not marked for deletion.
+    if repository_ref is not None and repository_ref.state == RepositoryState.MARKED_FOR_DELETION:
+        raise Unknown(message="Unknown repository")
+
     if "push" in requested_actions:
         # Check if there is a valid user or token, as otherwise the repository cannot be
         # accessed.

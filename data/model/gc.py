@@ -7,12 +7,14 @@ from data.database import ApprTag
 from data.database import (
     Tag,
     Manifest,
+    DeletedRepository,
     ManifestBlob,
     ManifestChild,
     ManifestLegacyImage,
     ManifestLabel,
     Label,
     TagManifestLabel,
+    RepositoryState,
 )
 from data.database import RepositoryTag, TagManifest, Image, DerivedStorageForImage
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
@@ -53,18 +55,13 @@ class _GarbageCollectorContext(object):
         self.blob_ids.remove(blob_id)
 
 
-def purge_repository(namespace_name, repository_name):
+def purge_repository(repo, force=False):
     """ Completely delete all traces of the repository. Will return True upon
       complete success, and False upon partial or total failure. Garbage
       collection is incremental and repeatable, so this return value does
       not need to be checked or responded to.
       """
-    try:
-        repo = _basequery.get_existing_repository(namespace_name, repository_name)
-    except Repository.DoesNotExist:
-        return False
-
-    assert repo.name == repository_name
+    assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
 
     # Delete the repository of all Appr-referenced entries.
     # Note that new-model Tag's must be deleted in *two* passes, as they can reference parent tags,
@@ -84,19 +81,17 @@ def purge_repository(namespace_name, repository_name):
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
     assert Image.select().where(Image.repository == repo).count() == 0
 
+    # Delete any marker rows for the repository.
+    DeletedRepository.delete().where(DeletedRepository.repository == repo).execute()
+
     # Delete the rest of the repository metadata.
     try:
         # Make sure the repository still exists.
-        fetched = _basequery.get_existing_repository(namespace_name, repository_name)
+        fetched = Repository.get(id=repo.id)
     except Repository.DoesNotExist:
         return False
 
-    fetched.delete_instance(recursive=True, delete_nullable=False)
-
-    # Run callbacks
-    for callback in config.repo_cleanup_callbacks:
-        callback(namespace_name, repository_name)
-
+    fetched.delete_instance(recursive=True, delete_nullable=False, force=force)
     return True
 
 

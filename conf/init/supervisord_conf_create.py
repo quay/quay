@@ -26,6 +26,7 @@ def default_services():
         "labelbackfillworker": {"autostart": "true"},
         "logrotateworker": {"autostart": "true"},
         "namespacegcworker": {"autostart": "true"},
+        "repositorygcworker": {"autostart": "true"},
         "notificationworker": {"autostart": "true"},
         "queuecleanupworker": {"autostart": "true"},
         "repositoryactioncounter": {"autostart": "true"},

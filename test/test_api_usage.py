@@ -2102,7 +2102,7 @@ class TestListRepos(ApiTestCase):
         for repo in list(
             RepositoryTable.select().where(RepositoryTable.namespace_user == public_user)
         ):
-            model.gc.purge_repository(public_user.username, repo.name)
+            model.gc.purge_repository(repo, force=True)
 
         # Add public repos until we have enough for a few pages.
         required = set()

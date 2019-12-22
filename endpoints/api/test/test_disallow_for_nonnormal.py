@@ -61,4 +61,4 @@ def test_disallowed_for_nonnormal(state, resource, method, params, client):
     params["repository"] = "%s/%s" % (namespace, repository)
 
     with client_with_identity("devtable", client) as cl:
-        conduct_api_call(cl, resource, method, params, None, 503)
+        conduct_api_call(cl, resource, method, params, {}, 503)
