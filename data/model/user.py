@@ -65,7 +65,7 @@ from util.validation import (
 )
 from util.backoff import exponential_backoff
 from util.timedeltastring import convert_to_timedelta
-from util.str import remove_unicode
+from util.unicode import remove_unicode
 from util.security.token import decode_public_private_token, encode_public_private_token
 
 
