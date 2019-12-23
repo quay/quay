@@ -9,7 +9,7 @@ from peewee import OperationalError
 INVALID_PASSWORD_MESSAGE = (
     "Invalid password, password must be at least " + "8 characters and contain no whitespace."
 )
-VALID_CHARACTERS = string.digits + string.lowercase
+VALID_CHARACTERS = string.digits + string.ascii_lowercase
 
 MIN_USERNAME_LENGTH = 2
 MAX_USERNAME_LENGTH = 255
