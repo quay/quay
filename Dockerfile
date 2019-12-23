@@ -39,6 +39,8 @@ RUN INSTALL_PKGS="\
 
 COPY . .
 
+# Remove requirements-tests.txt and change CI Makefiles to only include them
+# in a CI image derived from this base image.
 RUN alternatives --set python /usr/bin/python3 && \
     python -m pip install --upgrade setuptools pip && \
     python -m pip install -r requirements.txt --no-cache && \
