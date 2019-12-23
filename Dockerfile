@@ -31,6 +31,7 @@ RUN INSTALL_PKGS="\
         memcached \
         openssl \
         skopeo \
+	make \
         " && \
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
