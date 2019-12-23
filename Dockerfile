@@ -42,6 +42,7 @@ COPY . .
 RUN alternatives --set python /usr/bin/python3 && \
     python -m pip install --upgrade setuptools pip && \
     python -m pip install -r requirements.txt --no-cache && \
+    python -m pip install -r requirements-tests.txt --no-cache && \
     python -m pip freeze && \
     mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
