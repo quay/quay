@@ -323,14 +323,17 @@ class _BlobUploadManager(object):
 
     def _validate_digest(self, expected_digest):
         """ Verifies that the digest's SHA matches that of the uploaded data. """
-        computed_digest = digest_tools.sha256_digest_from_hashlib(self.blob_upload.sha_state)
-        if not digest_tools.digests_equal(computed_digest, expected_digest):
-            logger.error(
-                "Digest mismatch for upload %s: Expected digest %s, found digest %s",
-                self.blob_upload.upload_id,
-                expected_digest,
-                computed_digest,
-            )
+        try:
+            computed_digest = digest_tools.sha256_digest_from_hashlib(self.blob_upload.sha_state)
+            if not digest_tools.digests_equal(computed_digest, expected_digest):
+                logger.error(
+                    "Digest mismatch for upload %s: Expected digest %s, found digest %s",
+                    self.blob_upload.upload_id,
+                    expected_digest,
+                    computed_digest,
+                )
+                raise BlobDigestMismatchException()
+        except digest_tools.InvalidDigestException:
             raise BlobDigestMismatchException()
 
     def _finalize_blob_storage(self, app_config):
