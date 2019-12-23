@@ -399,7 +399,7 @@ def cancel_upload(namespace_name, repo_name, upload_uuid):
 @require_repo_write
 @anon_protect
 @check_readonly
-def delete_digest(namespace_name, repo_name, upload_uuid):
+def delete_digest(namespace_name, repo_name, digest):
     # We do not support deleting arbitrary digests, as they break repo images.
     raise Unsupported()
 
