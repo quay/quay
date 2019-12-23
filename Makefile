@@ -22,7 +22,7 @@ pkgs: requirements.txt requirements-dev.txt requirements-tests.txt
 
 requirements.txt: requirements-nover.txt
 	# Create a new virtualenv and activate it
-	pyenv virtualenv 2.7.12 quay-deps
+	pyenv virtualenv 3.6 quay-deps
 	pyenv activate quay-deps
 
 	# Install unversioned dependencies with your changes
@@ -43,25 +43,25 @@ conf/stack/license: $(QUAY_CONFIG)/local/license
 	ln -s $(QUAY_CONFIG)/local/license conf/stack/license
 
 unit-test:
-	ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields TEST=true PYTHONPATH="." py.test \
+	ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields TEST=true PYTHONPATH="." python -m pytest \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose -x \
 	./
 
 registry-test:
-	TEST=true ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields PYTHONPATH="." py.test  \
+	TEST=true ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields PYTHONPATH="." python -m pytest  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	test/registry/registry_tests.py
 
 registry-test-old:
-	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields py.test  \
+	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields python -m pytest  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	./test/registry_tests.py
 
 buildman-test:
-	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields py.test \
+	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields python -m pytest \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	./buildman/
@@ -73,7 +73,7 @@ full-db-test: ensure-test-db
 	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
 	ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields alembic upgrade head
 	TEST=true PYTHONPATH=. ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields \
-	SKIP_DB_SCHEMA=true py.test --timeout=7200 \
+	SKIP_DB_SCHEMA=true python -m pytest --timeout=7200 \
 	--verbose --show-count -x --ignore=endpoints/appr/test/ \
 	./
 
@@ -102,7 +102,7 @@ test_postgres:
 		-p 5432:5432 -d postgres:9.2
 	until pg_isready -d $(PG_HOST); do sleep 1; echo "Waiting for postgres"; done
 	$(TEST_ENV) alembic upgrade head
-	$(TEST_ENV) py.test --timeout=7200 --verbose --show-count ./ --color=no \
+	$(TEST_ENV) python -m pytest --timeout=7200 --verbose --show-count ./ --color=no \
 		--ignore=endpoints/appr/test/ -x
 	docker rm -f postgres-testrunner-postgres || true
 
