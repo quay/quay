@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 import os
 
@@ -123,7 +124,7 @@ def run_migrations_online():
         and not "GENMIGRATE" in os.environ
         and not "DB_URI" in os.environ
     ):
-        print "Skipping Sqlite migration!"
+        print("Skipping Sqlite migration!")
         return
 
     progress_reporter = get_progress_reporter()

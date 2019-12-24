@@ -1,3 +1,4 @@
+from __future__ import print_function
 from app import app
 from data import model
 
@@ -16,9 +17,9 @@ def renameUser(username, new_name):
     if existing is None:
         raise Exception("Username %s does not exist" % username)
 
-    print "Renaming user..."
+    print("Renaming user...")
     model.user.change_username(existing.id, new_name)
-    print "Rename complete"
+    print("Rename complete")
 
 
 parser = argparse.ArgumentParser(description="Rename a user")

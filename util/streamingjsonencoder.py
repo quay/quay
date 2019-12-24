@@ -30,8 +30,15 @@
 
 import collections
 import json
-from json.encoder import encode_basestring, encode_basestring_ascii, FLOAT_REPR, INFINITY
+from json.encoder import encode_string_types, encode_string_types_ascii, FLOAT_REPR, INFINITY
 from types import GeneratorType
+
+from six import string_types
+
+try:
+    long
+except NameError:  # Python 3
+    long = int
 
 
 class StreamingJSONEncoder(json.JSONEncoder):
@@ -54,9 +61,9 @@ class StreamingJSONEncoder(json.JSONEncoder):
         else:
             markers = None
         if self.ensure_ascii:
-            _encoder = encode_basestring_ascii
+            _encoder = encode_string_types_ascii
         else:
-            _encoder = encode_basestring
+            _encoder = encode_string_types
         if self.encoding != "utf-8":
 
             def _encoder(o, _orig_encoder=_encoder, _encoding=self.encoding):
@@ -110,10 +117,8 @@ def _make_iterencode(
     _sort_keys,
     _skipkeys,
     _one_shot,
-    False=False,
-    True=True,
     ValueError=ValueError,
-    basestring=basestring,
+    string_types=string_types,
     dict=dict,
     float=float,
     GeneratorType=GeneratorType,
@@ -156,7 +161,7 @@ def _make_iterencode(
                 first = False
             else:
                 buf = separator
-            if isinstance(value, basestring):
+            if isinstance(value, string_types):
                 yield buf + _encoder(value)
             elif value is None:
                 yield buf + "null"
@@ -213,7 +218,7 @@ def _make_iterencode(
         else:
             items = dct.iteritems()
         for key, value in items:
-            if isinstance(key, basestring):
+            if isinstance(key, string_types):
                 pass
             # JavaScript is weakly typed for these, so it makes sense to
             # also allow them.  Many encoders seem to do something like this.
@@ -237,7 +242,7 @@ def _make_iterencode(
                 yield item_separator
             yield _encoder(key)
             yield _key_separator
-            if isinstance(value, basestring):
+            if isinstance(value, string_types):
                 yield _encoder(value)
             elif value is None:
                 yield "null"
@@ -266,7 +271,7 @@ def _make_iterencode(
             del markers[markerid]
 
     def _iterencode(o, _current_indent_level):
-        if isinstance(o, basestring):
+        if isinstance(o, string_types):
             yield _encoder(o)
         elif o is None:
             yield "null"

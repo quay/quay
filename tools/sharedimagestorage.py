@@ -1,3 +1,4 @@
+from __future__ import print_function
 from data.database import Image, ImageStorage
 
 query = ImageStorage.select().annotate(Image)
@@ -10,5 +11,5 @@ for storage in query:
         saved_bytes += (storage.count - 1) * storage.image_size
         total_bytes += storage.count * storage.image_size
 
-print "Saved: %s" % saved_bytes
-print "Total: %s" % total_bytes
+print("Saved: %s" % saved_bytes)
+print("Total: %s" % total_bytes)

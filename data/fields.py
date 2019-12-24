@@ -4,6 +4,8 @@ import json
 
 from random import SystemRandom
 
+from six import string_types
+
 import bcrypt
 import resumablehashlib
 
@@ -291,7 +293,7 @@ class CredentialField(CharField):
         if value is None:
             return None
 
-        if isinstance(value, basestring):
+        if isinstance(value, string_types):
             raise Exception(
                 "A string cannot be given to a CredentialField; please wrap in a Credential"
             )

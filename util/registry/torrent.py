@@ -3,6 +3,8 @@ import time
 
 from binascii import hexlify
 
+from six import integer_types
+
 import bencode
 import jwt
 import resumablehashlib
@@ -101,9 +103,9 @@ class PieceHasher(object):
         starting_piece_hash_bytes="",
         hash_fragment_to_resume=None,
     ):
-        if not isinstance(starting_offset, (int, long)):
+        if not isinstance(starting_offset, integer_types):
             raise TypeError("starting_offset must be an integer")
-        elif not isinstance(piece_size, (int, long)):
+        elif not isinstance(piece_size, integer_types):
             raise TypeError("piece_size must be an integer")
 
         self._current_offset = starting_offset

@@ -1,5 +1,7 @@
 import pytest
 
+from six.moves import xrange
+
 from util.failover import failover, FailoverException
 
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 import logging.config
 import urllib2
@@ -141,7 +142,7 @@ if __name__ == "__main__":
                 filename = os.path.basename(url).split("?")[0]
 
             path = os.path.join(local_directory, filename)
-            print "Downloading %s to %s" % (url, path)
+            print("Downloading %s to %s" % (url, path))
             contents = _download_url("https://" + url)
 
             with open(path, "wb") as local_file:

@@ -7,6 +7,7 @@ from datetime import datetime
 import dateutil.parser
 
 from peewee import JOIN, IntegrityError, fn
+from six import text_type
 
 from data.model import (
     DataModelException,
@@ -72,7 +73,7 @@ def get_parent_images(namespace_name, repository_name, image_obj):
     parents = _get_repository_images_and_storages(
         namespace_name, repository_name, filter_to_parents
     )
-    id_to_image = {unicode(image.id): image for image in parents}
+    id_to_image = {text_type(image.id): image for image in parents}
     try:
         return [id_to_image[parent_id] for parent_id in reversed(parent_db_ids)]
     except KeyError as ke:

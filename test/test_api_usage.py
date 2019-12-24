@@ -1,5 +1,6 @@
 # coding=utf-8
 
+from __future__ import print_function
 import unittest
 import datetime
 import logging
@@ -13,6 +14,8 @@ from contextlib import contextmanager
 from httmock import urlmatch, HTTMock, all_requests
 from urllib import urlencode
 from urlparse import urlparse, urlunparse, parse_qs
+
+from six.moves import xrange
 
 from playhouse.test_utils import assert_query_count, _QueryLogHandler
 from cryptography.hazmat.primitives import serialization
@@ -298,7 +301,7 @@ class ApiTestCase(unittest.TestCase):
         rv = self.app.delete(self.url_for(resource_name, params))
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data))
 
         self.assertEquals(rv.status_code, expected_code)
         return rv.data
@@ -317,7 +320,7 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource POST %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource POST %s: %s" % (resource_name, rv.data))
 
         self.assertEquals(rv.status_code, expected_code)
         data = rv.data
@@ -340,7 +343,7 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource PUT %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource PUT %s: %s" % (resource_name, rv.data))
 
         self.assertEquals(rv.status_code, expected_code)
         data = rv.data

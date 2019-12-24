@@ -1,6 +1,6 @@
 def _complain_ifclosed(closed):
     if closed:
-        raise ValueError, "I/O operation on closed file"
+        raise ValueError("I/O operation on closed file")
 
 
 class GeneratorFile(object):

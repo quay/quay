@@ -1,3 +1,4 @@
+from __future__ import print_function
 from app import app
 
 from util.useremails import send_recovery_email
@@ -13,13 +14,13 @@ from flask_mail import Mail
 def sendReset(username):
     user = model.user.get_nonrobot_user(username)
     if not user:
-        print "No user found"
+        print("No user found")
         return
 
     with app.app_context():
         confirmation_code = model.user.create_reset_password_email_code(user.email)
         send_recovery_email(user.email, confirmation_code)
-        print "Email sent to %s" % (user.email)
+        print("Email sent to %s" % (user.email))
 
 
 parser = argparse.ArgumentParser(description="Sends a reset email")

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import json as py_json
 import unittest
 from contextlib import contextmanager
@@ -103,7 +104,7 @@ class ApiTestCase(unittest.TestCase):
         rv = self.app.delete(self.url_for(resource_name, params))
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource DELETE %s: %s" % (resource_name, rv.data))
 
         self.assertEquals(rv.status_code, expected_code)
         return rv.data
@@ -122,7 +123,7 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource POST %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource POST %s: %s" % (resource_name, rv.data))
 
         self.assertEquals(rv.status_code, expected_code)
         data = rv.data
@@ -139,7 +140,7 @@ class ApiTestCase(unittest.TestCase):
         )
 
         if rv.status_code != expected_code:
-            print "Mismatch data for resource PUT %s: %s" % (resource_name, rv.data)
+            print("Mismatch data for resource PUT %s: %s" % (resource_name, rv.data))
 
         self.assertEquals(rv.status_code, expected_code)
         data = rv.data

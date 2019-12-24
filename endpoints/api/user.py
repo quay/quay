@@ -432,7 +432,7 @@ class User(ApiResource):
                 elif confirm_username:
                     model.user.remove_user_prompt(user, "confirm_username")
 
-        except model.user.InvalidPasswordException, ex:
+        except model.user.InvalidPasswordException as ex:
             raise request_error(exception=ex)
 
         return user_view(user, previous_username=previous_username), 200, headers

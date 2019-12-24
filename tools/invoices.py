@@ -10,7 +10,7 @@ import codecs
 
 from itertools import groupby
 from datetime import datetime, timedelta, date
-from cStringIO import StringIO
+from six import StringIO, text_type
 
 from app import billing as stripe
 
@@ -243,7 +243,7 @@ class _UnicodeWriter(object):
     def _encode_cell(cell):
         if cell is None:
             return cell
-        return unicode(cell).encode("utf-8")
+        return text_type(cell).encode("utf-8")
 
     def writerow(self, row):
         self.writer.writerow([self._encode_cell(s) for s in row])

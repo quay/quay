@@ -1,3 +1,4 @@
+from __future__ import print_function
 import binascii
 import copy
 import hashlib
@@ -404,7 +405,7 @@ class BaseRegistryMixin(object):
             return response
 
         if response.status_code != expected_code:
-            print response.text
+            print(response.text)
 
         if "www-authenticate" in response.headers:
             self.signature = response.headers["www-authenticate"]

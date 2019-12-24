@@ -14,6 +14,8 @@ import uuid
 
 from datetime import datetime
 
+from six import string_types
+
 from peewee import (
     JOIN,
     IntegrityError,
@@ -74,7 +76,7 @@ def _decrypted(value):
     if value is None:
         return None
 
-    assert isinstance(value, basestring)
+    assert isinstance(value, string_types)
     return DecryptedValue(value)
 
 

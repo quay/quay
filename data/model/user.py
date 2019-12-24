@@ -7,6 +7,7 @@ from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 from uuid import uuid4
 from datetime import datetime, timedelta
+from six import text_type
 
 from active_migration import ActiveDataMigration, ERTMigrationFlags
 from data.database import (
@@ -1344,4 +1345,4 @@ class LoginWrappedDBUser(UserMixin):
         return self.db_user() and self.db_user().verified
 
     def get_id(self):
-        return unicode(self._uuid)
+        return text_type(self._uuid)

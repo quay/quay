@@ -1,4 +1,6 @@
+import logging
 from config_app.c_app import app as application
+from util.log import logfile_path
 
 # Bind all of the blueprints
 import config_web

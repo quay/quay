@@ -4,6 +4,7 @@ import logging
 from contextlib import contextmanager
 
 from peewee import IntegrityError, fn
+from six import string_types
 
 from data import database
 from data import model
@@ -384,7 +385,7 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
     Returns the latest, *active* tag found in the repository, with the matching name
     or None if none.
     """
-        assert isinstance(tag_name, basestring)
+        assert isinstance(tag_name, string_types)
         tag = model.tag.get_active_tag_for_repo(repository_ref._db_id, tag_name)
         if tag is None:
             return None

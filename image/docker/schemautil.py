@@ -1,6 +1,7 @@
 import json
 
 from image.docker.interfaces import ContentRetriever
+from six import string_types
 
 
 class ContentRetrieverForTesting(ContentRetriever):
@@ -28,7 +29,7 @@ class ContentRetrieverForTesting(ContentRetriever):
 class _CustomEncoder(json.JSONEncoder):
     def encode(self, o):
         encoded = super(_CustomEncoder, self).encode(o)
-        if isinstance(o, basestring):
+        if isinstance(o, string_types):
             encoded = encoded.replace("<", "\\u003c")
             encoded = encoded.replace(">", "\\u003e")
             encoded = encoded.replace("&", "\\u0026")

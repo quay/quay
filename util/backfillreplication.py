@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 import features
 
@@ -41,7 +42,7 @@ def backfill_replication():
         existing_locations = set([p.location.name for p in query])
         locations_missing = locations_required - existing_locations
         if locations_missing:
-            print "Enqueueing image storage %s to be replicated" % (image.storage.uuid)
+            print("Enqueueing image storage %s to be replicated" % (image.storage.uuid))
             encountered.add(image.storage.uuid)
 
             if not image_replication_queue.alive([image.storage.uuid]):
@@ -51,6 +52,6 @@ def backfill_replication():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     if not features.STORAGE_REPLICATION:
-        print "Storage replication is not enabled"
+        print("Storage replication is not enabled")
     else:
         backfill_replication()

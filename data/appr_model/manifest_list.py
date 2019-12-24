@@ -2,6 +2,8 @@ import logging
 import hashlib
 import json
 
+from six.moves import xrange
+
 from data.database import db_transaction
 
 

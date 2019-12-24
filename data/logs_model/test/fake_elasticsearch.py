@@ -1,3 +1,4 @@
+from __future__ import print_function
 import json
 import uuid
 import fnmatch
@@ -7,6 +8,8 @@ from contextlib import contextmanager
 from datetime import datetime
 
 import dateutil.parser
+
+from six import text_type
 
 from httmock import urlmatch, HTTMock
 
@@ -258,7 +261,7 @@ def fake_elasticsearch(allow_wildcard=True):
         if search_after:
             sort_fields = []
             for sort_config in sort:
-                if isinstance(sort_config, unicode):
+                if isinstance(sort_config, text_type):
                     sort_fields.append(sort_config)
                     continue
 
@@ -364,10 +367,10 @@ def fake_elasticsearch(allow_wildcard=True):
 
     @urlmatch(netloc=FAKE_ES_HOST)
     def catchall_handler(url, request):
-        print "Unsupported URL: %s %s" % (
+        print("Unsupported URL: %s %s" % (
             request.method,
             url,
-        )
+        ))
         return {"status_code": 501}
 
     handlers = [

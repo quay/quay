@@ -3,6 +3,8 @@ import logging
 from base64 import b64decode
 from flask import request
 
+from six import string_types
+
 from auth.credentials import validate_credentials
 from auth.validateresult import ValidateResult, AuthKind
 
@@ -29,7 +31,7 @@ def validate_basic_auth(auth_header):
     logger.debug("Attempt to process basic auth header")
 
     # Parse the basic auth header.
-    assert isinstance(auth_header, basestring)
+    assert isinstance(auth_header, string_types)
     credentials, err = _parse_basic_auth_header(auth_header)
     if err is not None:
         logger.debug("Got invalid basic auth header: %s", auth_header)

@@ -5,6 +5,8 @@ import re
 from flask import make_response, render_template
 from flask_restful import reqparse
 
+from six import string_types
+
 from config import frontend_visible_config
 from external_libraries import get_external_javascript, get_external_css
 
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 TYPE_CONVERTER = {
     truthy_bool: "boolean",
     str: "string",
-    basestring: "string",
+    string_types: "string",
     reqparse.text_type: "string",
     int: "integer",
 }

@@ -1,3 +1,4 @@
+from __future__ import print_function
 from data.database import Image, ImageStorage
 from peewee import JOIN, fn
 from app import app
@@ -13,4 +14,4 @@ orphaned = (
 counter = 0
 for orphan in orphaned:
     counter += 1
-    print orphan.uuid
+    print(orphan.uuid)

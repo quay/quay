@@ -1,3 +1,4 @@
+from __future__ import print_function
 import json
 import os
 import base64
@@ -71,7 +72,7 @@ def main():
 
         cert_value = base64.b64decode(secret_data[cert_key])
         cert_filename = cert_key.replace(EXTRA_CA_DIRECTORY_PREFIX, "")
-        print "Found an extra cert %s in config-secret, copying to kube ca dir"
+        print("Found an extra cert %s in config-secret, copying to kube ca dir")
 
         with open(os.path.join(KUBE_EXTRA_CA_CERTDIR, cert_filename), "w") as f:
             f.write(cert_value)

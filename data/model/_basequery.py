@@ -1,4 +1,5 @@
 import logging
+from functools import reduce
 
 from peewee import fn, PeeweeException
 from cachetools.func import lru_cache

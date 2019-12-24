@@ -4,6 +4,8 @@ import pytest
 
 from base64 import b64encode
 
+from six import string_types
+
 from auth.basic import validate_basic_auth
 from auth.credentials import (
     ACCESS_TOKEN_USERNAME,
@@ -17,8 +19,8 @@ from test.fixtures import *
 
 
 def _token(username, password):
-    assert isinstance(username, basestring)
-    assert isinstance(password, basestring)
+    assert isinstance(username, string_types)
+    assert isinstance(password, string_types)
     return "basic " + b64encode("%s:%s" % (username, password))
 
 

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from jsonschema import ValidationError
 from flask import request
+from six import string_types
 
 import features
 
@@ -511,7 +512,7 @@ class RepoMirrorResource(RepositoryParamResource):
     dt = datetime.fromtimestamp(ts, pytz.UTC)
     return dt
     """
-        assert isinstance(string, (str, unicode))
+        assert isinstance(string, string_types)
         dt = datetime.strptime(string, "%Y-%m-%dT%H:%M:%SZ")
         return dt
 

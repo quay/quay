@@ -2,6 +2,7 @@ import os
 import tarfile
 
 import marisa_trie
+from six import text_type
 
 from util.registry.aufs import is_aufs_metadata, get_deleted_prefix
 from util.registry.tarlayerformat import TarLayerFormat
@@ -31,7 +32,7 @@ class StreamLayerMerger(TarLayerFormat):
         return os.path.relpath(path.decode("utf-8"), "./")
 
     def _check_deleted(self, absolute):
-        ubsolute = unicode(absolute)
+        ubsolute = text_type(absolute)
         for prefix in self.deleted_prefix_trie.iter_prefixes(ubsolute):
             if not os.path.relpath(ubsolute, prefix).startswith(".."):
                 return True
@@ -51,7 +52,7 @@ class StreamLayerMerger(TarLayerFormat):
 
         # Check if this file has already been encountered somewhere. If so,
         # skip it.
-        ubsolute = unicode(absolute)
+        ubsolute = text_type(absolute)
         if ubsolute in self.path_trie:
             return True
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 from app import app
 
 from util.useremails import send_confirmation_email
@@ -13,13 +14,13 @@ from flask_mail import Mail
 def sendConfirmation(username):
     user = model.user.get_nonrobot_user(username)
     if not user:
-        print "No user found"
+        print("No user found")
         return
 
     with app.app_context():
         confirmation_code = model.user.create_confirm_email_code(user)
         send_confirmation_email(user.username, user.email, confirmation_code)
-        print "Email sent to %s" % (user.email)
+        print("Email sent to %s" % (user.email))
 
 
 parser = argparse.ArgumentParser(description="Sends a confirmation email")

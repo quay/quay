@@ -8,6 +8,7 @@ import sys
 from collections import OrderedDict
 
 from flask_restful import reqparse
+from six import string_types
 
 from app import app
 from auth import scopes
@@ -32,7 +33,7 @@ PARAM_REGEX = re.compile(r"<([^:>]+:)*([\w]+)>")
 TYPE_CONVERTER = {
     truthy_bool: "boolean",
     str: "string",
-    basestring: "string",
+    string_types: "string",
     reqparse.text_type: "string",
     int: "integer",
 }

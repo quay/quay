@@ -1,3 +1,4 @@
+from __future__ import print_function
 import base64
 import os
 import json
@@ -81,7 +82,7 @@ def fake_kubernetes_api(tmpdir_factory, files=None):
 
     @urlmatch(netloc=hostname)
     def catch_all(url, _):
-        print url
+        print(url)
         return {"status_code": 404, "content": "{}"}
 
     with HTTMock(get_secret, put_secret, get_namespace, catch_all):
