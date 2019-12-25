@@ -146,9 +146,7 @@ def fake_elasticsearch(allow_wildcard=True):
                             doc_value = transform(doc[field_name], field_name)
                             return doc_value in filter_props
                         elif filter_type == "bool":
-                            assert (
-                                not "should" in filter_params
-                            ), "should is unsupported"
+                            assert not "should" in filter_params, "should is unsupported"
 
                             must = filter_params.get("must")
                             must_not = filter_params.get("must_not")
@@ -169,9 +167,7 @@ def fake_elasticsearch(allow_wildcard=True):
                                     if not _is_match(doc, check):
                                         return False
                         else:
-                            raise Exception(
-                                "Unimplemented query %s: %s" % (filter_type, query)
-                            )
+                            raise Exception("Unimplemented query %s: %s" % (filter_type, query))
 
                 return True
 
@@ -277,16 +273,10 @@ def fake_elasticsearch(allow_wildcard=True):
                 field_name = sort_fields[index]
                 value = transform(search_after_value, field_name)
                 if field_name == "_doc":
-                    found = [
-                        f
-                        for f in found
-                        if transform(f["_source"]["_id"], field_name) > value
-                    ]
+                    found = [f for f in found if transform(f["_source"]["_id"], field_name) > value]
                 else:
                     found = [
-                        f
-                        for f in found
-                        if transform(f["_source"][field_name], field_name) < value
+                        f for f in found if transform(f["_source"][field_name], field_name) < value
                     ]
                 if len(found) < 2:
                     break

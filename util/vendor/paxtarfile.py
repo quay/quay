@@ -875,10 +875,7 @@ class ExFileObject(object):
 
     def __init__(self, tarfile, tarinfo):
         self.fileobj = _FileInFile(
-            tarfile.fileobj,
-            tarinfo.offset_data,
-            tarinfo.size,
-            getattr(tarinfo, "sparse", None),
+            tarfile.fileobj, tarinfo.offset_data, tarinfo.size, getattr(tarinfo, "sparse", None),
         )
         self.name = tarinfo.name
         self.mode = "r"
@@ -2077,20 +2074,16 @@ class TarFile(object):
             if verbose:
                 print(filemode(tarinfo.mode), end=" ")
                 print(
-                    "%s/%s"
-                    % (tarinfo.uname or tarinfo.uid, tarinfo.gname or tarinfo.gid),
-                    end=" ",
+                    "%s/%s" % (tarinfo.uname or tarinfo.uid, tarinfo.gname or tarinfo.gid), end=" ",
                 )
                 if tarinfo.ischr() or tarinfo.isblk():
                     print(
-                        "%10s" % ("%d,%d" % (tarinfo.devmajor, tarinfo.devminor)),
-                        end=" ",
+                        "%10s" % ("%d,%d" % (tarinfo.devmajor, tarinfo.devminor)), end=" ",
                     )
                 else:
                     print("%10d" % tarinfo.size, end=" ")
                 print(
-                    "%d-%02d-%02d %02d:%02d:%02d" % time.localtime(tarinfo.mtime)[:6],
-                    end=" ",
+                    "%d-%02d-%02d %02d:%02d:%02d" % time.localtime(tarinfo.mtime)[:6], end=" ",
                 )
 
             print(tarinfo.name + ("/" if tarinfo.isdir() else ""), end=" ")
@@ -2158,11 +2151,7 @@ class TarFile(object):
             if recursive:
                 for f in os.listdir(name):
                     self.add(
-                        os.path.join(name, f),
-                        os.path.join(arcname, f),
-                        recursive,
-                        exclude,
-                        filter,
+                        os.path.join(name, f), os.path.join(arcname, f), recursive, exclude, filter,
                     )
 
         else:
@@ -2376,9 +2365,7 @@ class TarFile(object):
         """
         self.makefile(tarinfo, targetpath)
         self._dbg(
-            1,
-            "tarfile: Unknown file type %r, "
-            "extracted as regular file." % tarinfo.type,
+            1, "tarfile: Unknown file type %r, " "extracted as regular file." % tarinfo.type,
         )
 
     def makefifo(self, tarinfo, targetpath):
@@ -2572,9 +2559,7 @@ class TarFile(object):
         """
         if tarinfo.issym():
             # Always search the entire archive.
-            linkname = "/".join(
-                filter(None, (os.path.dirname(tarinfo.name), tarinfo.linkname))
-            )
+            linkname = "/".join(filter(None, (os.path.dirname(tarinfo.name), tarinfo.linkname)))
             limit = None
         else:
             # Search the archive before the link, because a hard link is
