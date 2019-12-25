@@ -30,7 +30,7 @@
 
 import collections
 import json
-from json.encoder import encode_string_types, encode_string_types_ascii, FLOAT_REPR, INFINITY
+from json.encoder import encode_basestring, encode_basestring_ascii, FLOAT_REPR, INFINITY
 from types import GeneratorType
 
 from six import string_types
@@ -61,9 +61,9 @@ class StreamingJSONEncoder(json.JSONEncoder):
         else:
             markers = None
         if self.ensure_ascii:
-            _encoder = encode_string_types_ascii
+            _encoder = encode_basestring_ascii
         else:
-            _encoder = encode_string_types
+            _encoder = encode_basestring
         if self.encoding != "utf-8":
 
             def _encoder(o, _orig_encoder=_encoder, _encoding=self.encoding):
@@ -118,7 +118,7 @@ def _make_iterencode(
     _skipkeys,
     _one_shot,
     ValueError=ValueError,
-    string_types=string_types,
+    basestring=string_types,
     dict=dict,
     float=float,
     GeneratorType=GeneratorType,
