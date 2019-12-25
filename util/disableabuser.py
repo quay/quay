@@ -50,12 +50,16 @@ def ask_disable_namespace(username, queue_name):
     print("=============================================")
 
     print("User %s has email address %s" % (username, user.email))
-    print("User %s has %s queued builds in their namespace" % (username, existing_queue_item_count))
-    print("User %s has %s build triggers in their namespace" % (username, repository_trigger_count))
-
-    confirm_msg = (
-        "Would you like to disable this user and delete their triggers and builds? [y/N]> "
+    print(
+        "User %s has %s queued builds in their namespace"
+        % (username, existing_queue_item_count)
     )
+    print(
+        "User %s has %s build triggers in their namespace"
+        % (username, repository_trigger_count)
+    )
+
+    confirm_msg = "Would you like to disable this user and delete their triggers and builds? [y/N]> "
     letter = input(confirm_msg)
     if letter.lower() != "y":
         print("Action canceled")
@@ -69,7 +73,9 @@ def ask_disable_namespace(username, queue_name):
         user.enabled = False
         user.save()
 
-        repositories_query = Repository.select().where(Repository.namespace_user == user)
+        repositories_query = Repository.select().where(
+            Repository.namespace_user == user
+        )
         if len(repositories_query.clone()):
             builds = list(
                 RepositoryBuild.select().where(
@@ -101,14 +107,21 @@ def ask_disable_namespace(username, queue_name):
 
             # Delete all mirrors for the user's repositories.
             if mirrors:
-                RepoMirrorConfig.delete().where(RepoMirrorConfig.id << mirrors).execute()
+                RepoMirrorConfig.delete().where(
+                    RepoMirrorConfig.id << mirrors
+                ).execute()
 
             # Delete all queue items for the user's namespace.
             dockerfile_build_queue = WorkQueue(queue_name, tf, has_namespace=True)
-            count_removed = dockerfile_build_queue.delete_namespaced_items(user.username)
+            count_removed = dockerfile_build_queue.delete_namespaced_items(
+                user.username
+            )
 
     info = (user.username, len(triggers), count_removed, len(mirrors))
-    print("Namespace %s disabled, %s triggers deleted, %s queued builds removed, %s mirrors deleted" % info)
+    print(
+        "Namespace %s disabled, %s triggers deleted, %s queued builds removed, %s mirrors deleted"
+        % info
+    )
     return user
 
 

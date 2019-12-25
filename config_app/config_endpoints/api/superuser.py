@@ -19,7 +19,10 @@ from config_app.config_endpoints.api import (
     log_action,
     validate_json_request,
 )
-from config_app.config_endpoints.api.superuser_models_pre_oci import pre_oci_model, ServiceKeyAlreadyApproved
+from config_app.config_endpoints.api.superuser_models_pre_oci import (
+    pre_oci_model,
+    ServiceKeyAlreadyApproved,
+)
 from config_app.config_util.ssl import load_certificate, CertInvalidException
 from config_app.c_app import app, config_provider, INIT_SCRIPTS_LOCATION
 
@@ -61,7 +64,9 @@ class SuperUserCustomCertificate(ApiResource):
 
         # Call the update script with config dir location to install the certificate immediately.
         if not app.config["TESTING"]:
-            cert_dir = os.path.join(config_provider.get_config_dir_path(), EXTRA_CA_DIRECTORY)
+            cert_dir = os.path.join(
+                config_provider.get_config_dir_path(), EXTRA_CA_DIRECTORY
+            )
             if (
                 subprocess.call(
                     [os.path.join(INIT_SCRIPTS_LOCATION, "certs_install.sh")],
@@ -138,7 +143,10 @@ class SuperUserServiceKeyManagement(ApiResource):
                     "type": "string",
                     "description": "The service authenticating with this key",
                 },
-                "name": {"type": "string", "description": "The friendly name of a service key",},
+                "name": {
+                    "type": "string",
+                    "description": "The friendly name of a service key",
+                },
                 "metadata": {
                     "type": "object",
                     "description": "The key/value pairs of this key's metadata",
@@ -185,7 +193,10 @@ class SuperUserServiceKeyManagement(ApiResource):
 
         # Generate a key with a private key that we *never save*.
         (private_key, key_id) = pre_oci_model.generate_service_key(
-            body["service"], expiration_date, metadata=metadata, name=body.get("name", "")
+            body["service"],
+            expiration_date,
+            metadata=metadata,
+            name=body.get("name", ""),
         )
         # Auto-approve the service key.
         pre_oci_model.approve_service_key(
@@ -225,7 +236,9 @@ class SuperUserServiceKeyApproval(ApiResource):
             "id": "ApproveServiceKey",
             "type": "object",
             "description": "Information for approving service keys",
-            "properties": {"notes": {"type": "string", "description": "Optional approval notes",},},
+            "properties": {
+                "notes": {"type": "string", "description": "Optional approval notes",},
+            },
         },
     }
 

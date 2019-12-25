@@ -137,7 +137,17 @@ REGULAR_TYPES = (REGTYPE, AREGTYPE, CONTTYPE, GNUTYPE_SPARSE)
 GNU_TYPES = (GNUTYPE_LONGNAME, GNUTYPE_LONGLINK, GNUTYPE_SPARSE)
 
 # Fields from a pax header that override a TarInfo attribute.
-PAX_FIELDS = ("path", "linkpath", "size", "mtime", "uid", "gid", "uname", "gname", "SCHILY.xattr.")
+PAX_FIELDS = (
+    "path",
+    "linkpath",
+    "size",
+    "mtime",
+    "uid",
+    "gid",
+    "uname",
+    "gname",
+    "SCHILY.xattr.",
+)
 
 # Fields in a pax header that are numbers, all other fields
 # are treated as strings.
@@ -865,7 +875,10 @@ class ExFileObject(object):
 
     def __init__(self, tarfile, tarinfo):
         self.fileobj = _FileInFile(
-            tarfile.fileobj, tarinfo.offset_data, tarinfo.size, getattr(tarinfo, "sparse", None)
+            tarfile.fileobj,
+            tarinfo.offset_data,
+            tarinfo.size,
+            getattr(tarinfo, "sparse", None),
         )
         self.name = tarinfo.name
         self.mode = "r"
@@ -2062,21 +2075,31 @@ class TarFile(object):
 
         for tarinfo in self:
             if verbose:
-                print(filemode(tarinfo.mode), end=' ')
-                print("%s/%s" % (tarinfo.uname or tarinfo.uid, tarinfo.gname or tarinfo.gid), end=' ')
+                print(filemode(tarinfo.mode), end=" ")
+                print(
+                    "%s/%s"
+                    % (tarinfo.uname or tarinfo.uid, tarinfo.gname or tarinfo.gid),
+                    end=" ",
+                )
                 if tarinfo.ischr() or tarinfo.isblk():
-                    print("%10s" % ("%d,%d" % (tarinfo.devmajor, tarinfo.devminor)), end=' ')
+                    print(
+                        "%10s" % ("%d,%d" % (tarinfo.devmajor, tarinfo.devminor)),
+                        end=" ",
+                    )
                 else:
-                    print("%10d" % tarinfo.size, end=' ')
-                print("%d-%02d-%02d %02d:%02d:%02d" % time.localtime(tarinfo.mtime)[:6], end=' ')
+                    print("%10d" % tarinfo.size, end=" ")
+                print(
+                    "%d-%02d-%02d %02d:%02d:%02d" % time.localtime(tarinfo.mtime)[:6],
+                    end=" ",
+                )
 
-            print(tarinfo.name + ("/" if tarinfo.isdir() else ""), end=' ')
+            print(tarinfo.name + ("/" if tarinfo.isdir() else ""), end=" ")
 
             if verbose:
                 if tarinfo.issym():
-                    print("->", tarinfo.linkname, end=' ')
+                    print("->", tarinfo.linkname, end=" ")
                 if tarinfo.islnk():
-                    print("link to", tarinfo.linkname, end=' ')
+                    print("link to", tarinfo.linkname, end=" ")
             print()
 
     def add(self, name, arcname=None, recursive=True, exclude=None, filter=None):
@@ -2135,7 +2158,11 @@ class TarFile(object):
             if recursive:
                 for f in os.listdir(name):
                     self.add(
-                        os.path.join(name, f), os.path.join(arcname, f), recursive, exclude, filter
+                        os.path.join(name, f),
+                        os.path.join(arcname, f),
+                        recursive,
+                        exclude,
+                        filter,
                     )
 
         else:
@@ -2348,7 +2375,11 @@ class TarFile(object):
            at targetpath.
         """
         self.makefile(tarinfo, targetpath)
-        self._dbg(1, "tarfile: Unknown file type %r, " "extracted as regular file." % tarinfo.type)
+        self._dbg(
+            1,
+            "tarfile: Unknown file type %r, "
+            "extracted as regular file." % tarinfo.type,
+        )
 
     def makefifo(self, tarinfo, targetpath):
         """Make a fifo called targetpath.
@@ -2541,7 +2572,9 @@ class TarFile(object):
         """
         if tarinfo.issym():
             # Always search the entire archive.
-            linkname = "/".join(filter(None, (os.path.dirname(tarinfo.name), tarinfo.linkname)))
+            linkname = "/".join(
+                filter(None, (os.path.dirname(tarinfo.name), tarinfo.linkname))
+            )
             limit = None
         else:
             # Search the archive before the link, because a hard link is

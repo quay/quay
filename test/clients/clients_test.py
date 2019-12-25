@@ -17,7 +17,9 @@ from client import DockerClient, PodmanClient, Command, FileCopy
 
 
 def remove_control_characters(s):
-    return "".join(ch for ch in text_type(s, "utf-8") if unicodedata.category(ch)[0] != "C")
+    return "".join(
+        ch for ch in text_type(s, "utf-8") if unicodedata.category(ch)[0] != "C"
+    )
 
 
 # These tuples are the box&version and the client to use.
@@ -31,20 +33,62 @@ BOXES = [
     ("kleesc/coreos --box-version=1520.9.0", DockerClient()),  # docker 1.12.6
     ("kleesc/coreos --box-version=1235.6.0", DockerClient()),  # docker 1.12.3
     ("kleesc/coreos --box-version=1185.5.0", DockerClient()),  # docker 1.11.2
-    ("kleesc/coreos --box-version=1122.3.0", DockerClient(requires_email=True)),  # docker 1.10.3
-    ("kleesc/coreos --box-version=899.17.0", DockerClient(requires_email=True)),  # docker 1.9.1
-    ("kleesc/coreos --box-version=835.13.0", DockerClient(requires_email=True)),  # docker 1.8.3
-    ("kleesc/coreos --box-version=766.5.0", DockerClient(requires_email=True)),  # docker 1.7.1
-    ("kleesc/coreos --box-version=717.3.0", DockerClient(requires_email=True)),  # docker 1.6.2
-    ("kleesc/coreos --box-version=647.2.0", DockerClient(requires_email=True)),  # docker 1.5.0
-    ("kleesc/coreos --box-version=557.2.0", DockerClient(requires_email=True)),  # docker 1.4.1
-    ("kleesc/coreos --box-version=522.6.0", DockerClient(requires_email=True)),  # docker 1.3.3
-    ("yungsang/coreos --box-version=1.3.7", DockerClient(requires_email=True)),  # docker 1.3.2
-    ("yungsang/coreos --box-version=1.2.9", DockerClient(requires_email=True)),  # docker 1.2.0
-    ("yungsang/coreos --box-version=1.1.5", DockerClient(requires_email=True)),  # docker 1.1.2
-    ("yungsang/coreos --box-version=1.0.0", DockerClient(requires_email=True)),  # docker 1.0.1
-    ("yungsang/coreos --box-version=0.9.10", DockerClient(requires_email=True)),  # docker 1.0.0
-    ("yungsang/coreos --box-version=0.9.6", DockerClient(requires_email=True)),  # docker 0.11.1
+    (
+        "kleesc/coreos --box-version=1122.3.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.10.3
+    (
+        "kleesc/coreos --box-version=899.17.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.9.1
+    (
+        "kleesc/coreos --box-version=835.13.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.8.3
+    (
+        "kleesc/coreos --box-version=766.5.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.7.1
+    (
+        "kleesc/coreos --box-version=717.3.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.6.2
+    (
+        "kleesc/coreos --box-version=647.2.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.5.0
+    (
+        "kleesc/coreos --box-version=557.2.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.4.1
+    (
+        "kleesc/coreos --box-version=522.6.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.3.3
+    (
+        "yungsang/coreos --box-version=1.3.7",
+        DockerClient(requires_email=True),
+    ),  # docker 1.3.2
+    (
+        "yungsang/coreos --box-version=1.2.9",
+        DockerClient(requires_email=True),
+    ),  # docker 1.2.0
+    (
+        "yungsang/coreos --box-version=1.1.5",
+        DockerClient(requires_email=True),
+    ),  # docker 1.1.2
+    (
+        "yungsang/coreos --box-version=1.0.0",
+        DockerClient(requires_email=True),
+    ),  # docker 1.0.1
+    (
+        "yungsang/coreos --box-version=0.9.10",
+        DockerClient(requires_email=True),
+    ),  # docker 1.0.0
+    (
+        "yungsang/coreos --box-version=0.9.6",
+        DockerClient(requires_email=True),
+    ),  # docker 0.11.1
     (
         "yungsang/coreos --box-version=0.9.1",
         DockerClient(requires_v1=True, requires_email=True),
@@ -146,7 +190,9 @@ def _run_and_wait(command, error_allowed=False):
     outputter.start()
 
     output = ""
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
     for line in iter(process.stdout.readline, ""):
         output += line
         outputter.set_next(line)
@@ -203,9 +249,13 @@ def _run_commands(commands):
             last_result = _run_and_wait(["vagrant", "ssh", "-c", command.command])
         else:
             try:
-                last_result = _run_and_wait(["vagrant", "scp", command.source, command.destination])
+                last_result = _run_and_wait(
+                    ["vagrant", "scp", command.source, command.destination]
+                )
             except CommandFailedException as e:
-                print(colored(">>> Retry FileCopy command without vagrant scp...", "red"))
+                print(
+                    colored(">>> Retry FileCopy command without vagrant scp...", "red")
+                )
                 # sometimes the vagrant scp fails because of invalid ssh configuration.
                 last_result = scp_to_vagrant(command.source, command.destination)
 
@@ -215,11 +265,11 @@ def _run_commands(commands):
 def _run_box(box, client, registry, ca_cert):
     vagrant, vagrant_scp = _check_vagrant()
     if not vagrant:
-        print ("vagrant command not found")
+        print("vagrant command not found")
         return
 
     if not vagrant_scp:
-        print ("vagrant-scp plugin not installed")
+        print("vagrant-scp plugin not installed")
         return
 
     namespace = "devtable"
@@ -274,7 +324,10 @@ def _run_box(box, client, registry, ca_cert):
 
 
 def test_clients(registry="10.0.2.2:5000", ca_cert=""):
-    print(colored(">>> Running against registry ", attrs=["bold"]) + colored(registry, "cyan"))
+    print(
+        colored(">>> Running against registry ", attrs=["bold"])
+        + colored(registry, "cyan")
+    )
     for box, client in BOXES:
         try:
             _run_box(box, client, registry, ca_cert)
