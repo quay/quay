@@ -1,3 +1,10 @@
+{% macro supervisordstdout() -%} # Redirect child process stdout to supervisord's
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stdout
+stderr_logfile_maxbytes=0
+{%- endmacro %}
+
 [supervisord]
 nodaemon=true
 
@@ -11,17 +18,15 @@ serverurl=unix:///%(ENV_QUAYCONF)s/supervisord.sock
 [rpcinterface:supervisor]
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 
+
+{% if logdriver != "syslog" %}
 [eventlistener:stdout]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-{%- if logdriver == "syslog" %}
 command = supervisor_logging
-{% else %}
-command = supervisor_stdout
-result_handler = supervisor_stdout:event_handler
-{% endif -%}
 buffer_size = 1024
 events = PROCESS_LOG
+{% endif -%}
 
 ;;; Run batch scripts
 [program:blobuploadcleanupworker]
@@ -31,6 +36,9 @@ command=python -m workers.blobuploadcleanupworker.blobuploadcleanupworker
 autostart = {{ config['blobuploadcleanupworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:buildlogsarchiver]
 environment=
@@ -39,6 +47,9 @@ command=python -m workers.buildlogsarchiver.buildlogsarchiver
 autostart = {{ config['buildlogsarchiver']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:builder]
 environment=
@@ -47,6 +58,9 @@ command=python -m buildman.builder
 autostart = {{ config['builder']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:chunkcleanupworker]
 environment=
@@ -55,6 +69,9 @@ command=python -m workers.chunkcleanupworker
 autostart = {{ config['chunkcleanupworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:expiredappspecifictokenworker]
 environment=
@@ -63,6 +80,9 @@ command=python -m workers.expiredappspecifictokenworker
 autostart = {{ config['expiredappspecifictokenworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:exportactionlogsworker]
 environment=
@@ -71,6 +91,9 @@ command=python -m workers.exportactionlogsworker
 autostart = {{ config['exportactionlogsworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:gcworker]
 environment=
@@ -79,6 +102,9 @@ command=python -m workers.gc.gcworker
 autostart = {{ config['gcworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:globalpromstats]
 environment=
@@ -87,6 +113,9 @@ command=python -m workers.globalpromstats.globalpromstats
 autostart = {{ config['globalpromstats']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:labelbackfillworker]
 environment=
@@ -95,6 +124,9 @@ command=python -m workers.labelbackfillworker
 autostart = {{ config['labelbackfillworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:logrotateworker]
 environment=
@@ -103,6 +135,9 @@ command=python -m workers.logrotateworker
 autostart = {{ config['logrotateworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:namespacegcworker]
 environment=
@@ -111,6 +146,9 @@ command=python -m workers.namespacegcworker
 autostart = {{ config['namespacegcworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:notificationworker]
 environment=
@@ -119,6 +157,9 @@ command=python -m workers.notificationworker.notificationworker
 autostart = {{ config['notificationworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:queuecleanupworker]
 environment=
@@ -127,6 +168,9 @@ command=python -m workers.queuecleanupworker
 autostart = {{ config['queuecleanupworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:repositoryactioncounter]
 environment=
@@ -135,6 +179,9 @@ command=python -m workers.repositoryactioncounter
 autostart = {{ config['repositoryactioncounter']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:security_notification_worker]
 environment=
@@ -143,6 +190,9 @@ command=python -m workers.security_notification_worker
 autostart = {{ config['security_notification_worker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:securityworker]
 environment=
@@ -151,6 +201,9 @@ command=python -m workers.securityworker.securityworker
 autostart = {{ config['securityworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:storagereplication]
 environment=
@@ -159,6 +212,9 @@ command=python -m workers.storagereplication
 autostart = {{ config['storagereplication']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:tagbackfillworker]
 environment=
@@ -167,6 +223,9 @@ command=python -m workers.tagbackfillworker
 autostart = {{ config['tagbackfillworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:teamsyncworker]
 environment=
@@ -175,6 +234,9 @@ command=python -m workers.teamsyncworker.teamsyncworker
 autostart = {{ config['teamsyncworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 ;;; Run interactive scripts
 [program:dnsmasq]
@@ -182,6 +244,9 @@ command=/usr/sbin/dnsmasq --no-daemon --user=root --listen-address=127.0.0.1 --p
 autostart = {{ config['dnsmasq']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:gunicorn-registry]
 environment=
@@ -191,6 +256,9 @@ command=nice -n 10 gunicorn -c %(ENV_QUAYCONF)s/gunicorn_registry.py registry:ap
 autostart = {{ config['gunicorn-registry']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:gunicorn-secscan]
 environment=
@@ -199,6 +267,9 @@ command=gunicorn -c %(ENV_QUAYCONF)s/gunicorn_secscan.py secscan:application
 autostart = {{ config['gunicorn-secscan']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:gunicorn-verbs]
 environment=
@@ -207,6 +278,9 @@ command=nice -n 10 gunicorn -c %(ENV_QUAYCONF)s/gunicorn_verbs.py verbs:applicat
 autostart = {{ config['gunicorn-verbs']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:gunicorn-web]
 environment=
@@ -215,18 +289,27 @@ command=gunicorn -c %(ENV_QUAYCONF)s/gunicorn_web.py web:application
 autostart = {{ config['gunicorn-web']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:jwtproxy]
 command=/usr/local/bin/jwtproxy --config %(ENV_QUAYCONF)s/jwtproxy_conf.yaml
 autostart = {{ config['jwtproxy']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:memcache]
 command=memcached -u memcached -m 64 -l 127.0.0.1 -p 18080
 autostart = {{ config['memcache']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:nginx]
 environment=
@@ -235,12 +318,18 @@ command=nginx -c %(ENV_QUAYCONF)s/nginx/nginx.conf
 autostart = {{ config['nginx']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:pushgateway]
 command=/usr/local/bin/pushgateway
 autostart = {{ config['pushgateway']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:servicekey]
 environment=
@@ -249,6 +338,9 @@ command=python -m workers.servicekeyworker.servicekeyworker
 autostart = {{ config['servicekey']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}
 
 [program:repomirrorworker]
 environment=
@@ -257,4 +349,6 @@ command=python -m workers.repomirrorworker.repomirrorworker
 autostart = {{ config['repomirrorworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
-# EOF NO NEWLINE
+{% if logdriver != "syslog" %}
+{{ supervisordstdout() }}
+{% endif -%}

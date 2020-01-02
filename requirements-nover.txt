@@ -78,7 +78,6 @@ sqlalchemy
 stringscore
 stripe
 supervisor
-supervisor-stdout
 supervisor-logging
 tldextract
 toposort
