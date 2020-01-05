@@ -233,7 +233,8 @@ class DockerSchema2Config(object):
     def history(self):
         """ Returns the history of the image, started at the base layer. """
         for history_entry in self._parsed[DOCKER_SCHEMA2_CONFIG_HISTORY_KEY]:
-            created_datetime = parse_date(history_entry[DOCKER_SCHEMA2_CONFIG_CREATED_KEY])
+            created_datetime_str = history_entry.get(DOCKER_SCHEMA2_CONFIG_CREATED_KEY)
+            created_datetime = parse_date(created_datetime_str) if created_datetime_str else None
             yield LayerHistory(
                 created_datetime=created_datetime,
                 created=history_entry.get(DOCKER_SCHEMA2_CONFIG_CREATED_KEY),
