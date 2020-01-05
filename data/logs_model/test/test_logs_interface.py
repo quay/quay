@@ -460,6 +460,18 @@ def test_yield_logs_for_export(logs_model):
     # Ensure we found all added logs.
     assert len(logs_found) == len(kinds) * 10
 
+    # Yield the logs via namespace.
+    logs_found = []
+    for logs in logs_model.yield_logs_for_export(
+        start_timestamp,
+        timestamp + timedelta(minutes=10),
+        namespace_id=simple_repo.namespace_user.id,
+    ):
+        logs_found.extend(logs)
+
+    # Ensure we found all added logs.
+    assert len(logs_found) == len(kinds) * 10
+
 
 def test_yield_logs_for_export_timeout(logs_model):
     # Add some logs.
