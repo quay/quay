@@ -8,6 +8,7 @@ from flask_mail import Message
 from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
 from data import model
 from util.config.validator import SSL_FILENAMES
+from util.jsontemplate import JSONTemplate, JSONTemplateParseException
 from workers.queueworker import JobException
 
 logger = logging.getLogger(__name__)
@@ -181,9 +182,19 @@ class WebhookMethod(NotificationMethod):
         return "webhook"
 
     def validate(self, namespace_name, repo_name, config_data):
+        # Validate the URL.
         url = config_data.get("url", "")
         if not url:
             raise CannotValidateNotificationMethodException("Missing webhook URL")
+
+        # If a template was specified, ensure it is a valid template.
+        template = config_data.get("template")
+        if template:
+            # Validate template.
+            try:
+                JSONTemplate(template)
+            except JSONTemplateParseException as jtpe:
+                raise CannotValidateNotificationMethodException(str(jtpe))
 
     def perform(self, notification_obj, event_handler, notification_data):
         config_data = notification_obj.method_config_dict
@@ -192,6 +203,15 @@ class WebhookMethod(NotificationMethod):
             return
 
         payload = notification_data["event_data"]
+        template = config_data.get("template")
+        if template:
+            try:
+                jt = JSONTemplate(template)
+                payload = jt.apply(payload)
+            except JSONTemplateParseException as jtpe:
+                logger.exception("Got exception when trying to process template `%s`", template)
+                raise NotificationMethodPerformException(str(jtpe))
+
         headers = {"Content-type": "application/json"}
 
         try:

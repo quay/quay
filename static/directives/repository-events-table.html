@@ -70,6 +70,26 @@
                     <i class="fa fa-lg" ng-class="getMethodInfo(notification).icon"></i>
                     {{ getMethodInfo(notification).title }}
                   </span>
+                  <ul class="notification-event-fields" ng-if="getMethodInfo(notification).fields.length">
+                    <li ng-repeat="field in getMethodInfo(notification).fields" ng-if="notification.config[field.name]">
+                      {{ field.title }}:
+                      <span ng-switch on="field.type">
+                        <span ng-switch-when="enum">
+                          {{ findEnumValue(field.values, notification.config[field.name]).title }}
+                        </span>
+                        <code ng-switch-when="regex">
+                          {{ notification.config[field.name] }}
+                        </code>
+                        <code ng-switch-when="url">
+                          {{ notification.config[field.name] }}
+                        </code>
+                        <textarea class="form-control" ng-switch-when="template" rows="3" readonly>{{ notification.config[field.name] }}</textarea>
+                        <span ng-switch-default>
+                        {{ notification.config[field.name] }}
+                        </span>
+                      </span>
+                    </li>
+                  </ul>
                 </td>
 
                 <td>
