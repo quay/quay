@@ -20,6 +20,10 @@ angular.module('quay').directive('labelView', function () {
         return '';
       };
 
+      $scope.isUrl = function(value) {
+        return value && value.indexOf('https:') == 0;
+      };
+
       $scope.viewLabelValue = function() {
         bootbox.alert({
           size: "small",
