@@ -71,3 +71,113 @@ def test_subdir_path_map(new_path, original_dictionary, output):
         output[key] = value.sort()
 
     assert actual_mapping == output
+
+
+@pytest.mark.parametrize(
+    "config, metadata, expected_tags",
+    [
+        pytest.param(
+            {}, {"commit": "hellothereiamacommit"}, ["helloth"], id="no ref and default options",
+        ),
+        pytest.param(
+            {},
+            {"commit": "hellothereiamacommit", "ref": "refs/heads/somebranch"},
+            ["somebranch"],
+            id="ref and default options",
+        ),
+        pytest.param(
+            {"default_tag_from_ref": False},
+            {"commit": "hellothereiamacommit", "ref": "refs/heads/somebranch"},
+            ["helloth"],
+            id="ref and default turned off",
+        ),
+        pytest.param(
+            {
+                "default_tag_from_ref": False,
+                "tag_templates": [
+                    "${commit_info.short_sha}",
+                    "author-${commit_info.author.username}",
+                ],
+            },
+            {
+                "commit": "hellothereiamacommit",
+                "ref": "refs/heads/somebranch",
+                "commit_info": {"author": {"username": "someguy"},},
+            },
+            ["author-someguy", "helloth"],
+            id="template test",
+        ),
+        pytest.param(
+            {
+                "default_tag_from_ref": False,
+                "tag_templates": [
+                    "${commit_info.short_sha}",
+                    "author-${commit_info.author.username}",
+                ],
+            },
+            {
+                "commit": "hellothereiamacommit",
+                "ref": "refs/heads/somebranch",
+                "default_branch": "somebranch",
+                "commit_info": {"author": {"username": "someguy"},},
+            },
+            ["author-someguy", "helloth", "latest"],
+            id="template test with default branch",
+        ),
+        pytest.param(
+            {
+                "default_tag_from_ref": False,
+                "tag_templates": [
+                    "${commit_info.short_sha}",
+                    "author-${commit_info.author.username}",
+                ],
+            },
+            {
+                "commit": "hellothereiamacommit",
+                "ref": "refs/heads/somebranch",
+                "default_branch": "somebranch",
+            },
+            ["helloth", "latest"],
+            id="missing info template test",
+        ),
+        pytest.param(
+            {"default_tag_from_ref": False},
+            {
+                "commit": "hellothereiamacommit",
+                "ref": "refs/heads/somebranch",
+                "default_branch": "somebranch",
+            },
+            ["latest"],
+            id="default branch",
+        ),
+        pytest.param(
+            {"default_tag_from_ref": False, "latest_for_default_branch": False},
+            {
+                "commit": "hellothereiamacommit",
+                "ref": "refs/heads/somebranch",
+                "default_branch": "somebranch",
+            },
+            ["helloth"],
+            id="default branch turned off",
+        ),
+        pytest.param(
+            {
+                "tag_templates": [
+                    "${commit_info.short_sha}",
+                    "author-${commit_info.author.username}",
+                ]
+            },
+            {
+                "commit": "hellothereiamacommit",
+                "ref": "refs/heads/somebranch",
+                "default_branch": "somebranch",
+                "commit_info": {"author": {"username": "someguy"},},
+            },
+            ["author-someguy", "helloth", "latest", "somebranch"],
+            id="everything test",
+        ),
+    ],
+)
+def test_determine_tags(config, metadata, expected_tags):
+    tags = BuildTriggerHandler._determine_tags(config, metadata)
+    assert tags == set(expected_tags)

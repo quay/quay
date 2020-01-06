@@ -128,6 +128,7 @@
             <td>Context Location</td>
             <td>Branches/Tags</td>
             <td>Pull Robot</td>
+            <td>Tagging Options</td>
             <td class="options-col"></td>
           </thead>
 
@@ -147,6 +148,19 @@
               <td>
                 <span class="entity-reference" entity="trigger.pull_robot" ng-if="trigger.pull_robot"></span>
                 <span class="empty" ng-if="!trigger.pull_robot">(None)</span>
+              </td>
+              <td>
+                <ul class="trigger-tagging">
+                  <li ng-if="trigger.config.default_tag_from_ref === true || trigger.config.default_tag_from_ref == null">
+                    <span class="tag-info">Branch/tag name</span>
+                  </li>
+                  <li ng-if="trigger.config.latest_for_default_branch === true || trigger.config.latest_for_default_branch == null">
+                    <span class="tag-info"><code>latest</code> if default branch</span>
+                  </li>
+                  <li ng-repeat="template in trigger.config.tag_templates || []">
+                    <span class="tag-info"><code title="{{ template }}">{{ template }}</code></span>
+                  </span>
+                </ul>
               </td>
               <td>
                 <span class="cor-options-menu" ng-show="!inReadOnlyMode">
@@ -169,19 +183,19 @@
               </td>
             </tr>
             <tr class="trigger-disabled-message" ng-if="!trigger.enabled">
-              <td colspan="5" style="text-align: center"
+              <td colspan="6" style="text-align: center"
                   ng-if="trigger.disabled_reason == 'user_toggled'">
                 <i class="fa fa-exclamation-triangle"></i>
                 This build trigger is user disabled and will not build.
                 <a ng-click="askToggleTrigger(trigger)" ng-show="!inReadOnlyMode">Re-enable this trigger</a>
               </td>
-              <td colspan="5" style="text-align: center"
+              <td colspan="6" style="text-align: center"
                   ng-if="trigger.disabled_reason == 'successive_build_failures'">
                 <i class="fa fa-exclamation-triangle"></i>
                 This build trigger was automatically disabled due to successive failures.
                 <a ng-click="askToggleTrigger(trigger)" ng-show="!inReadOnlyMode">Re-enable this trigger</a>
               </td>
-              <td colspan="5" style="text-align: center"
+              <td colspan="6" style="text-align: center"
                   ng-if="trigger.disabled_reason == 'successive_build_internal_errors'">
                 <i class="fa fa-exclamation-triangle"></i>
                 This build trigger was automatically disabled due to successive internal errors.

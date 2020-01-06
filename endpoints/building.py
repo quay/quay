@@ -148,7 +148,8 @@ def start_build(repository, prepared_build, pull_robot_name=None):
 
 class PreparedBuild(object):
     """ Class which holds all the information about a prepared build. The build queuing service
-      will use this result to actually invoke the build. """
+      will use this result to actually invoke the build.
+  """
 
     def __init__(self, trigger=None):
         self._dockerfile_id = None
@@ -164,15 +165,6 @@ class PreparedBuild(object):
     @staticmethod
     def get_display_name(sha):
         return sha[0:7]
-
-    def tags_from_ref(self, ref, default_branch=None):
-        branch = ref.split("/", 2)[-1]
-        tags = {branch}
-
-        if branch == default_branch:
-            tags.add("latest")
-
-        self.tags = tags
 
     def name_from_sha(self, sha):
         self.build_name = PreparedBuild.get_display_name(sha)

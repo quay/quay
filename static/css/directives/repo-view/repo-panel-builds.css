@@ -32,3 +32,22 @@
   color: #f5c77d;
   margin-right: 4px;
 }
+
+.repo-panel-builds .trigger-tagging {
+  padding: 0px;
+  margin: 0px;
+  font-size: 12px;
+}
+
+.repo-panel-builds .trigger-tagging li {
+  padding: 0px;
+  margin: 0px;
+}
+
+.repo-panel-builds .trigger-tagging li .tag-info {
+  display: block;
+  max-width: 175px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
