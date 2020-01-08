@@ -261,7 +261,7 @@ def get_or_create_shared_blob(digest, byte_data, storage):
     special empty gzipped tar layer that Docker no longer pushes to us.
     """
     assert digest
-    assert byte_data is not None
+    assert byte_data is not None and isinstance(byte_data, bytes)
     assert storage
 
     try:

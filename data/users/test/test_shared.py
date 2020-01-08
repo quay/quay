@@ -2,7 +2,7 @@ import pytest
 
 from mock import patch
 
-from data.database import model
+from data import model
 from data.users.shared import can_create_user
 
 from test.fixtures import *

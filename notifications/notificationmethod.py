@@ -4,7 +4,7 @@ import json
 
 import requests
 from flask_mail import Message
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
 from data import model
@@ -388,6 +388,7 @@ from html.parser import HTMLParser
 
 class SlackAdjuster(HTMLParser):
     def __init__(self):
+        super().__init__()
         self.reset()
         self.result = []
 

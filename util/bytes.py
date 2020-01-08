@@ -5,7 +5,7 @@ class Bytes(object):
     """
 
     def __init__(self, data):
-        assert isinstance(data, str)
+        assert isinstance(data, bytes)
         self._encoded_data = data
 
     @classmethod

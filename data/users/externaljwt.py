@@ -47,7 +47,7 @@ class ExternalJWTAuthN(FederatedUsers):
 
         self.public_key_path = public_key_path
 
-        with open(public_key_path) as public_key_file:
+        with open(public_key_path, mode="rb") as public_key_file:
             self.public_key = public_key_file.read()
 
     def has_password_set(self, username):

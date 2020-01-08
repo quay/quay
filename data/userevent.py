@@ -124,7 +124,7 @@ class UserEventListener(object):
         while True:
             pubsub = self._pubsub
             if pubsub is None:
-                raise StopIteration
+                return
 
             try:
                 item = pubsub.get_message(ignore_subscribe_messages=True, timeout=5)

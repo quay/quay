@@ -42,6 +42,9 @@ def datatype(name, static_fields):
         def __repr__(self):
             return "<%s> #%s" % (name, self._db_id)
 
+        def __hash__(self):
+            return hash((self.__name__, self._db_id))
+
         @classmethod
         def from_dict(cls, dict_data):
             try:

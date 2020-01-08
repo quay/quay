@@ -195,7 +195,7 @@ def mock_elasticsearch():
             window_size = query["scroll"]
             maximum_result_size = int(query["size"])
             return mock.search_scroll_create(window_size, maximum_result_size, json.loads(req.body))
-        elif "aggs" in req.body:
+        elif b"aggs" in req.body:
             return mock.search_aggs(json.loads(req.body))
         else:
             return mock.search_after(json.loads(req.body))

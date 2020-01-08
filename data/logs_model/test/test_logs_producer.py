@@ -65,7 +65,7 @@ def test_kafka_logs_producers(
     producer_config = kafka_logs_producer_config
     with patch("kafka.client_async.KafkaClient.check_version"), patch(
         "kafka.KafkaProducer.send"
-    ) as mock_send:
+    ) as mock_send, patch("kafka.KafkaProducer._max_usable_produce_magic"):
         configure(producer_config)
         logs_model.log_action(
             "pull_repo",
