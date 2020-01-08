@@ -155,7 +155,7 @@ def process_registry_jwt_auth(scopes=None):
 
                     abort(
                         401,
-                        message=ije.message,
+                        message=str(ije),
                         headers=get_auth_headers(repository=repository, scopes=scopes),
                     )
             else:

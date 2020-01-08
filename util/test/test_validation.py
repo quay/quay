@@ -108,7 +108,8 @@ def test_validate_label_key(key, is_valid):
         ("\u0d2e\u0d32\u0d2f\u0d3e\u0d32\u0d2e\u0d4d", "mlyaalm"),
         ("\ue000", "00"),
         ("\u03ff", "00"),
-        ("\u0d2e\u0d32\u03ff\u03ff\u0d2e\u0d32", "mlml"),
+        ("\u0d2e\u0d32\u03ff\u03ff\u0d2e\u0d32", "ml_ml"),
+        ("\u0d2e\u0d32\u0d2e\u0d32", "mlml"),
     ],
 )
 def test_generate_valid_usernames(input_username, expected_output):

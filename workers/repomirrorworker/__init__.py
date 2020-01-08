@@ -116,7 +116,7 @@ def perform_mirror(skopeo, mirror):
             "repo_mirror_sync_failed",
             "end",
             "'%s' with tag pattern '%s': %s"
-            % (mirror.external_reference, ",".join(mirror.root_rule.rule_value), e.message),
+            % (mirror.external_reference, ",".join(mirror.root_rule.rule_value), str(e)),
             tags=", ".join(tags),
             stdout=e.stdout,
             stderr=e.stderr,

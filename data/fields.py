@@ -10,6 +10,7 @@ import rehash
 
 from peewee import TextField, CharField, SmallIntegerField
 from data.text import prefix_search
+from util.bytes import Bytes
 
 
 def random_string(length=16):
@@ -330,10 +331,10 @@ class CredentialField(CharField):
                 "A string cannot be given to a CredentialField; please wrap in a Credential"
             )
 
-        return value.hashed
+        return Bytes.for_string_or_unicode(value.hashed).as_unicode()
 
     def python_value(self, value):
         if value is None:
             return None
 
-        return Credential(value)
+        return Credential(Bytes.for_string_or_unicode(value).as_encoded_str())

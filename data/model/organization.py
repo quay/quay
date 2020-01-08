@@ -38,7 +38,7 @@ def create_organization(name, email, creating_user, email_required=True, is_poss
 
             return new_org
         except InvalidUsernameException as iue:
-            raise InvalidOrganizationException(iue.message)
+            raise InvalidOrganizationException(str(iue))
 
 
 def get_organization(name):

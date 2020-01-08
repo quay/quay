@@ -65,6 +65,7 @@ from util.validation import (
 )
 from util.backoff import exponential_backoff
 from util.timedeltastring import convert_to_timedelta
+from util.bytes import Bytes
 from util.unicode import remove_unicode
 from util.security.token import decode_public_private_token, encode_public_private_token
 
@@ -77,6 +78,7 @@ EXPONENTIAL_BACKOFF_SCALE = timedelta(seconds=1)
 
 def hash_password(password, salt=None):
     salt = salt or bcrypt.gensalt()
+    salt = Bytes.for_string_or_unicode(salt).as_encoded_str()
     return bcrypt.hashpw(password.encode("utf-8"), salt)
 
 
@@ -102,7 +104,7 @@ def create_user(
         prompts=prompts,
         is_possible_abuser=is_possible_abuser,
     )
-    created.password_hash = hash_password(password)
+    created.password_hash = hash_password(password).decode("ascii")
     created.verified = auto_verify
     created.save()
 
@@ -196,7 +198,7 @@ def change_password(user, new_password):
 
     pw_hash = hash_password(new_password)
     user.invalid_login_attempts = 0
-    user.password_hash = pw_hash
+    user.password_hash = pw_hash.decode("ascii")
     invalidate_all_sessions(user)
 
     # Remove any password required notifications for the user.
@@ -426,7 +428,7 @@ def get_matching_robots(name_prefix, username, limit=10):
 
 def verify_robot(robot_username, password):
     try:
-        password = remove_unicode(password)
+        password.encode("ascii")
     except UnicodeEncodeError:
         msg = "Could not find robot with username: %s and supplied password." % robot_username
         raise InvalidRobotException(msg)
@@ -955,8 +957,8 @@ def verify_user(username_or_email, password):
 
     # Make sure we didn't get any unicode for the username.
     try:
-        str(username_or_email)
-    except ValueError:
+        username_or_email.encode("ascii")
+    except UnicodeEncodeError:
         return None
 
     # Fetch the user with the matching username or e-mail address.
@@ -983,9 +985,8 @@ def verify_user(username_or_email, password):
     # Hash the given password and compare it to the specified password.
     if (
         fetched.password_hash
-        and hash_password(password, fetched.password_hash) == fetched.password_hash
+        and hash_password(password, fetched.password_hash).decode("ascii") == fetched.password_hash
     ):
-
         # If the user previously had any invalid login attempts, clear them out now.
         if fetched.invalid_login_attempts > 0:
             try:

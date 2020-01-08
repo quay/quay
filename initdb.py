@@ -131,7 +131,7 @@ def __generate_service_key(
 
 def _populate_blob(repo, content):
     assert isinstance(repo, Repository)
-    assert isinstance(content, basestring)
+    assert isinstance(content, bytes)
     digest = str(sha256_digest(content))
     location = ImageStorageLocation.get(name="local_us")
     blob = model.blob.store_blob_record_and_temp_link_in_repo(
@@ -166,7 +166,7 @@ def __create_manifest_and_tags(
     leaf_id = None
     for layer_index in range(0, num_layers):
         content = "layer-%s-%s-%s" % (layer_index, current_level, get_epoch_timestamp_ms())
-        _, digest = _populate_blob(repo, content)
+        _, digest = _populate_blob(repo, content.encode("ascii"))
         current_id = "abcdef%s%s%s" % (layer_index, current_level, get_epoch_timestamp_ms())
 
         if layer_index == num_layers - 1:

@@ -117,7 +117,7 @@ def define_json_response(schema_name):
                 try:
                     validate(resp, schema)
                 except ValidationError as ex:
-                    raise InvalidResponse(ex.message)
+                    raise InvalidResponse(str(ex))
 
             return resp
 
@@ -141,7 +141,7 @@ def validate_json_request(schema_name, optional=False):
                     validate(json_data, schema)
                 return func(self, *args, **kwargs)
             except ValidationError as ex:
-                raise InvalidRequest(ex.message)
+                raise InvalidRequest(str(ex))
 
         return wrapped
 

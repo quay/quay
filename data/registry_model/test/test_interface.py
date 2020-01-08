@@ -481,7 +481,7 @@ def test_manifest_remote_layers(oci_model):
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
-        upload.upload_chunk(app_config, BytesIO(config_json))
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
 
     # Create the manifest in the repo.
@@ -602,7 +602,7 @@ def test_derived_image_for_manifest_list(manifest_builder, list_builder, oci_mod
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
-        upload.upload_chunk(app_config, BytesIO(config_json))
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
 
     # Create the manifest in the repo.
@@ -682,7 +682,7 @@ def test_commit_blob_upload(registry_model):
     )
 
     # Commit the blob upload and make sure it is written as a blob.
-    digest = "sha256:" + hashlib.sha256("hello").hexdigest()
+    digest = "sha256:" + hashlib.sha256(b"hello").hexdigest()
     blob = registry_model.commit_blob_upload(blob_upload, digest, 60)
     assert blob.digest == digest
 

@@ -4,7 +4,7 @@ import json
 
 import requests
 from flask_mail import Message
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
 from data import model
@@ -177,7 +177,7 @@ class EmailMethod(NotificationMethod):
                 mail.send(msg)
             except Exception as ex:
                 logger.exception("Email was unable to be sent")
-                raise NotificationMethodPerformException(ex.message)
+                raise NotificationMethodPerformException(str(ex))
 
 
 class WebhookMethod(NotificationMethod):
@@ -250,7 +250,7 @@ class WebhookMethod(NotificationMethod):
 
         except requests.exceptions.RequestException as ex:
             logger.exception("Webhook was unable to be sent")
-            raise NotificationMethodPerformException(ex.message)
+            raise NotificationMethodPerformException(str(ex))
 
 
 class FlowdockMethod(NotificationMethod):
@@ -311,7 +311,7 @@ class FlowdockMethod(NotificationMethod):
 
         except requests.exceptions.RequestException as ex:
             logger.exception("Flowdock method was unable to be sent")
-            raise NotificationMethodPerformException(ex.message)
+            raise NotificationMethodPerformException(str(ex))
 
 
 class HipchatMethod(NotificationMethod):
@@ -380,7 +380,7 @@ class HipchatMethod(NotificationMethod):
 
         except requests.exceptions.RequestException as ex:
             logger.exception("Hipchat method was unable to be sent")
-            raise NotificationMethodPerformException(ex.message)
+            raise NotificationMethodPerformException(str(ex))
 
 
 from html.parser import HTMLParser
@@ -388,6 +388,7 @@ from html.parser import HTMLParser
 
 class SlackAdjuster(HTMLParser):
     def __init__(self):
+        super().__init__()
         self.reset()
         self.result = []
 
@@ -503,5 +504,5 @@ class SlackMethod(NotificationMethod):
                 raise NotificationMethodPerformException(error_message)
 
         except requests.exceptions.RequestException as ex:
-            logger.exception("Slack method was unable to be sent: %s", ex.message)
-            raise NotificationMethodPerformException(ex.message)
+            logger.exception("Slack method was unable to be sent: %s", str(ex))
+            raise NotificationMethodPerformException(str(ex))

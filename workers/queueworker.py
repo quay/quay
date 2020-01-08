@@ -94,7 +94,7 @@ class QueueWorker(Worker):
             logger.error(
                 "The worker has encountered an error via watchdog and will not take new jobs"
             )
-            logger.error(exc.message)
+            logger.error(str(exc))
             self.mark_current_incomplete(restore_retry=True)
             self._stop.set()
 
@@ -131,7 +131,7 @@ class QueueWorker(Worker):
                 logger.error(
                     "The worker has encountered an error via the job and will not take new jobs"
                 )
-                logger.error(exc.message)
+                logger.error(str(exc))
                 self.mark_current_incomplete(restore_retry=True)
                 self._stop.set()
 

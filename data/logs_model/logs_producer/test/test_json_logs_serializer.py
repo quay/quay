@@ -30,11 +30,11 @@ VALID_LOGENTRY_WITH_UNICODE = LogEntry(
 VALID_LOGENTRY_EXPECTED_OUTPUT = (
     '{"datetime": "%s", "ip": "0.0.0.0", "metadata_json": "{\\"a\\": \\"b\\", \\"c\\": \\"d\\"}", "random_id": "123-45"}'
     % TEST_DATETIME.isoformat()
-)
+).encode("ascii")
 VALID_LOGENTRY_WITH_UNICODE_EXPECTED_OUTPUT = (
     '{"datetime": "%s", "ip": "0.0.0.0", "metadata_json": "{\\"\\u00e9\\u00eb\\u00ea\\": \\"\\u00ee\\u00f4\\u00fb\\"}", "random_id": "123-45"}'
     % TEST_DATETIME.isoformat()
-)
+).encode("ascii")
 
 
 @pytest.mark.parametrize(

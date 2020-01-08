@@ -44,7 +44,9 @@ def fake_kubernetes_api(tmpdir_factory, files=None):
         for filepath, value in files.items():
             normalized_path = normalize_path(filepath)
             write_file(config_dir, filepath, value)
-            secret["data"][normalized_path] = base64.b64encode(value)
+            secret["data"][normalized_path] = base64.b64encode(value.encode("utf-8")).decode(
+                "ascii"
+            )
 
     @urlmatch(
         netloc=hostname,
@@ -64,7 +66,9 @@ def fake_kubernetes_api(tmpdir_factory, files=None):
         for filepath, value in updated_secret["data"].items():
             if filepath not in secret["data"]:
                 # Add
-                write_file(config_dir, filepath, base64.b64decode(value))
+                write_file(
+                    config_dir, filepath, base64.b64decode(value.encode("utf-8")).decode("ascii")
+                )
 
         for filepath in secret["data"]:
             if filepath not in updated_secret["data"]:

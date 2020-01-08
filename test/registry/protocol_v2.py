@@ -340,7 +340,7 @@ class V2Protocol(RegistryProtocol):
 
             # If invalid blob references were requested, just make it up.
             if options.manifest_invalid_blob_references:
-                checksum = "sha256:" + hashlib.sha256("notarealthing").hexdigest()
+                checksum = "sha256:" + hashlib.sha256(b"notarealthing").hexdigest()
 
             if not image.is_empty:
                 builder.add_layer(checksum, len(image.bytes), urls=image.urls)

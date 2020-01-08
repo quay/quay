@@ -8,6 +8,7 @@ from data.model._basequery import update_last_accessed
 from data.fields import DecryptedValue
 from util.timedeltastring import convert_to_timedelta
 from util.unicode import remove_unicode
+from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ def access_valid_token(token_code):
     If found, the token's last_accessed field is set to now and the token is returned. If not found,
     returns None.
     """
-    token_code = remove_unicode(token_code)
+    token_code = remove_unicode(Bytes.for_string_or_unicode(token_code).as_encoded_str())
 
     prefix = token_code[:TOKEN_NAME_PREFIX_LENGTH]
     if len(prefix) != TOKEN_NAME_PREFIX_LENGTH:

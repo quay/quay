@@ -167,7 +167,7 @@ class LDAPUsers(FederatedUsers):
 
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
         try:
-            return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query.encode("utf-8")), None)
+            return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query), None)
         except ldap.REFERRAL as re:
             referral_dn = self._get_ldap_referral_dn(re)
             if not referral_dn:
@@ -242,7 +242,7 @@ class LDAPUsers(FederatedUsers):
         if self._requires_email and not response.get(self._email_attr):
             return (None, 'Missing mail field "%s" in user record' % self._email_attr)
 
-        username = response[self._uid_attr][0].decode("utf-8")
+        username = response[self._uid_attr][0]
         email = response.get(self._email_attr, [None])[0]
         return (UserInformation(username=username, email=email, id=username), None)
 
@@ -254,7 +254,7 @@ class LDAPUsers(FederatedUsers):
             return (False, "LDAP Admin dn or password is invalid")
         except ldap.LDAPError as lde:
             logger.exception("Exception when trying to health check LDAP")
-            return (False, lde.message)
+            return (False, str(lde))
 
         return (True, None)
 
@@ -289,7 +289,7 @@ class LDAPUsers(FederatedUsers):
                         return (True, None)
 
                 except ldap.LDAPError as lde:
-                    return (False, lde.message or "Could not find DN %s" % user_search_dn)
+                    return (False, str(lde) or "Could not find DN %s" % user_search_dn)
 
         return (False, None)
 
@@ -347,9 +347,7 @@ class LDAPUsers(FederatedUsers):
 
         # First validate the password by binding as the user
         try:
-            with LDAPConnection(
-                self._ldap_uri, found_dn, password.encode("utf-8"), self._allow_tls_fallback
-            ):
+            with LDAPConnection(self._ldap_uri, found_dn, password, self._allow_tls_fallback):
                 pass
         except ldap.REFERRAL as re:
             referral_dn = self._get_ldap_referral_dn(re)
@@ -358,7 +356,7 @@ class LDAPUsers(FederatedUsers):
 
             try:
                 with LDAPConnection(
-                    self._ldap_uri, referral_dn, password.encode("utf-8"), self._allow_tls_fallback
+                    self._ldap_uri, referral_dn, password, self._allow_tls_fallback
                 ):
                     pass
             except ldap.INVALID_CREDENTIALS:
@@ -437,7 +435,7 @@ class LDAPUsers(FederatedUsers):
                         "Got error when trying to search %s with filter %s: %s",
                         user_search_dn,
                         search_flt,
-                        lde.message,
+                        str(lde),
                     )
                     break
 
@@ -465,14 +463,14 @@ class LDAPUsers(FederatedUsers):
                             "NSO when trying to lookup results of search %s with filter %s: %s",
                             user_search_dn,
                             search_flt,
-                            nsoe.message,
+                            str(nsoe),
                         )
                     except ldap.LDAPError as lde:
                         logger.exception(
                             "Error when trying to lookup results of search %s with filter %s: %s",
                             user_search_dn,
                             search_flt,
-                            lde.message,
+                            str(lde),
                         )
                         break
 

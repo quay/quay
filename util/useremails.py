@@ -70,7 +70,7 @@ def send_email(recipient, subject, template_file, parameters, action=None):
         mail.send(msg)
     except Exception as ex:
         logger.exception("Error while trying to send email to %s", recipient)
-        raise CannotSendEmailException(ex.message)
+        raise CannotSendEmailException(str(ex))
 
 
 def render_email(app_title, app_url, recipient, subject, template_file, parameters, action=None):

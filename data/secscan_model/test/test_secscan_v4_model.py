@@ -372,19 +372,24 @@ def test_features_for():
     with open(vuln_report_filename) as vuln_report_file:
         vuln_report = json.load(vuln_report_file)
 
-        with open(security_info_filename) as security_info_file:
-            security_info = json.load(security_info_file)
+    with open(security_info_filename) as security_info_file:
+        security_info = json.load(security_info_file)
 
-        features_for_sec_info = SecurityInformation(
-            Layer(
-                "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
-                "",
-                "",
-                4,
-                features_for(vuln_report),
-            )
-        ).to_dict()
+    expected = security_info["data"]
+    expected["Layer"]["Features"].sort(key=lambda d: d["Name"])
+    generated = SecurityInformation(
+        Layer(
+            "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
+            "",
+            "",
+            4,
+            features_for(vuln_report),
+        )
+    ).to_dict()
 
-        assert json.dumps(
-            canonicalize(features_for_sec_info, preserve_sequence_order=False)
-        ) == json.dumps(canonicalize(security_info["data"], preserve_sequence_order=False))
+    # Sort the Features' list so that the following assertion holds even if they are out of order
+    # (Ordering of the dicts' key iteration is different from Python 2 to 3)
+    expected["Layer"]["Features"].sort(key=lambda d: d["Name"])
+    generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
+
+    assert generated == expected

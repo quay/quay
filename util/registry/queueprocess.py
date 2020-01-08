@@ -62,7 +62,7 @@ def _run(get_producer, queues, chunk_size, args):
         try:
             result = QueueResult(producer(chunk_size) or None, None)
         except Exception as ex:
-            message = "%s\n%s" % (ex.message, "".join(traceback.format_exception(*sys.exc_info())))
+            message = "%s\n%s" % (str(ex), "".join(traceback.format_exception(*sys.exc_info())))
             result = QueueResult(None, Exception(message))
 
         for queue in queues:

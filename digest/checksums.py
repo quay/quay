@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def sha256_file(fp, data=None):
-    h = hashlib.sha256(data or "")
+    h = hashlib.sha256(data.encode("utf-8") if data else "".encode("utf-8"))
     if not fp:
         return h.hexdigest()
     while True:
@@ -20,7 +20,7 @@ def sha256_file(fp, data=None):
 
 
 def sha256_string(s):
-    return hashlib.sha256(s).hexdigest()
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
 def compute_tarsum(fp, json_data):
@@ -90,7 +90,7 @@ def content_checksum_handler():
     h = hashlib.sha256()
 
     def fn(buf):
-        h.update(buf)
+        h.update(buf.encode("utf-8"))
 
     return h, fn
 

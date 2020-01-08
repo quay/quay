@@ -30,7 +30,7 @@ def check_repository_usage(user_or_org, plan_found):
 
 
 def carderror_response(exc):
-    return {"carderror": exc.message}, 402
+    return {"carderror": str(exc)}, 402
 
 
 def connection_response(exc):

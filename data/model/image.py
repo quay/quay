@@ -560,7 +560,7 @@ def _get_uniqueness_hash(varying_metadata):
     if not varying_metadata:
         return None
 
-    return hashlib.sha256(json.dumps(canonicalize(varying_metadata))).hexdigest()
+    return hashlib.sha256(json.dumps(canonicalize(varying_metadata)).encode("utf-8")).hexdigest()
 
 
 def find_or_create_derived_storage(

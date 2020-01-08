@@ -223,7 +223,7 @@ class BuildTriggerSubdirs(RepositoryParamResource):
             except TriggerException as exc:
                 return {
                     "status": "error",
-                    "message": exc.message,
+                    "message": str(exc),
                 }
         else:
             raise Unauthorized()
@@ -313,7 +313,7 @@ class BuildTriggerActivate(RepositoryParamResource):
 
             except TriggerException as exc:
                 write_token.delete_instance()
-                raise request_error(message=exc.message)
+                raise request_error(message=str(exc))
 
             # Save the updated config.
             update_build_trigger(trigger, final_config, write_token=write_token)

@@ -77,7 +77,7 @@ class RepositoryNotificationList(RepositoryParamResource):
         try:
             method_handler.validate(namespace_name, repository_name, parsed["config"])
         except CannotValidateNotificationMethodException as ex:
-            raise request_error(message=ex.message)
+            raise request_error(message=str(ex))
 
         new_notification = model.create_repo_notification(
             namespace_name,

@@ -108,7 +108,7 @@ class QEDeploymentRollback(ApiResource):
                 kube_accessor.rollback_deployment(name)
         except K8sApiException as e:
             logger.exception("Failed to rollback deployment.")
-            return make_response(e.message, 503)
+            return make_response(str(e), 503)
 
         return make_response("Ok", 204)
 
@@ -127,7 +127,7 @@ class SuperUserKubernetesConfiguration(ApiResource):
             KubernetesAccessorSingleton.get_instance().replace_qe_secret(new_secret)
         except K8sApiException as e:
             logger.exception("Failed to deploy qe config secret to kubernetes.")
-            return make_response(e.message, 503)
+            return make_response(str(e), 503)
 
         return make_response("Ok", 201)
 

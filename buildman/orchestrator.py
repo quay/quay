@@ -334,7 +334,7 @@ class Etcd2Orchestrator(Orchestrator):
                 except etcd.EtcdException as eex:
                     # TODO: This is a quick and dirty hack and should be replaced with a proper
                     # exception check.
-                    if str(eex.message).find("Read timed out") >= 0:
+                    if str(eex).find("Read timed out") >= 0:
                         logger.debug("Read-timeout on etcd watch %s, rescheduling", key)
                     else:
                         logger.exception("Exception on etcd watch: %s", key)

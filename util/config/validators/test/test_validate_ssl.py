@@ -7,6 +7,7 @@ from util.config.validator import ValidatorContext
 from util.config.validators import ConfigValidationException
 from util.config.validators.validate_ssl import SSLValidator, SSL_FILENAMES
 from util.security.test.test_ssl_util import generate_test_cert
+from util.bytes import Bytes
 
 from test.fixtures import *
 from app import config_provider
@@ -29,7 +30,7 @@ def test_skip_validate_ssl(unvalidated_config, app):
     "cert, server_hostname, expected_error, error_message",
     [
         (
-            "invalidcert",
+            ("invalidcert", "invalidkey"),
             "someserver",
             ConfigValidationException,
             "Could not load SSL certificate: no start line",
@@ -60,22 +61,22 @@ def test_skip_validate_ssl(unvalidated_config, app):
 )
 def test_validate_ssl(cert, server_hostname, expected_error, error_message, app):
     with NamedTemporaryFile(delete=False) as cert_file:
-        cert_file.write(cert[0])
+        cert_file.write(Bytes.for_string_or_unicode(cert[0]).as_encoded_str())
         cert_file.seek(0)
 
         with NamedTemporaryFile(delete=False) as key_file:
-            key_file.write(cert[1])
+            key_file.write(Bytes.for_string_or_unicode(cert[1]).as_encoded_str())
             key_file.seek(0)
 
         def return_true(filename):
             return True
 
-        def get_volume_file(filename):
+        def get_volume_file(filename, mode="r"):
             if filename == SSL_FILENAMES[0]:
-                return open(cert_file.name)
+                return open(cert_file.name, mode=mode)
 
             if filename == SSL_FILENAMES[1]:
-                return open(key_file.name)
+                return open(key_file.name, mode=mode)
 
             return None
 
