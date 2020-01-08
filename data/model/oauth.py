@@ -3,8 +3,8 @@ import json
 
 from flask import url_for
 from datetime import datetime, timedelta
-from oauth2lib.provider import AuthorizationProvider
-from oauth2lib import utils
+from oauth.provider import AuthorizationProvider
+from oauth import utils
 
 from data.database import (
     OAuthApplication,
