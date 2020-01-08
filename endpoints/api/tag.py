@@ -34,10 +34,10 @@ def _tag_dict(tag):
         "reversion": tag.reversion,
     }
 
-    if tag.lifetime_start_ts > 0:
+    if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         tag_info["start_ts"] = tag.lifetime_start_ts
 
-    if tag.lifetime_end_ts > 0:
+    if tag.lifetime_end_ts and tag.lifetime_end_ts > 0:
         tag_info["end_ts"] = tag.lifetime_end_ts
 
     # TODO: Remove this once fully on OCI data model.
@@ -53,7 +53,7 @@ def _tag_dict(tag):
         if tag.manifest:
             tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
 
-    if tag.lifetime_start_ts > 0:
+    if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         last_modified = format_date(datetime.utcfromtimestamp(tag.lifetime_start_ts))
         tag_info["last_modified"] = last_modified
 

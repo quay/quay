@@ -48,6 +48,9 @@ class BaseStreamFilelike(object):
         self._cursor_position += bytes_forward
         return bytes_forward
 
+    def readable(self):
+        return self._fileobj.readable()
+
 
 class SocketReader(BaseStreamFilelike):
     def __init__(self, fileobj):

@@ -8,7 +8,7 @@ from enum import Enum
 
 from abc import ABCMeta, abstractmethod
 from six import add_metaclass
-from urlparse import urljoin
+from urllib.parse import urljoin
 from jsonschema import validate, RefResolver
 
 from data.registry_model.datatypes import Manifest as ManifestDataType
@@ -100,7 +100,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         try:
             resp = self._perform(actions["IndexState"]())
         except (Non200ResponseException, IncompatibleAPIResponse) as ex:
-            raise APIRequestFailure(ex.message)
+            raise APIRequestFailure(ex)
 
         return resp.json()
 
@@ -126,7 +126,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         try:
             resp = self._perform(actions["Index"](body))
         except (Non200ResponseException, IncompatibleAPIResponse) as ex:
-            raise APIRequestFailure(ex.message)
+            raise APIRequestFailure(ex)
 
         return (resp.json(), resp.headers["etag"])
 
@@ -134,11 +134,11 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         try:
             resp = self._perform(actions["GetIndexReport"](manifest_hash))
         except IncompatibleAPIResponse as ex:
-            raise APIRequestFailure(ex.message)
+            raise APIRequestFailure(ex)
         except Non200ResponseException as ex:
             if ex.response.status_code == 404:
                 return None
-            raise APIRequestFailure(ex.message)
+            raise APIRequestFailure(ex)
 
         return resp.json()
 
@@ -146,11 +146,11 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         try:
             resp = self._perform(actions["GetVulnerabilityReport"](manifest_hash))
         except IncompatibleAPIResponse as ex:
-            raise APIRequestFailure(ex.message)
+            raise APIRequestFailure(ex)
         except Non200ResponseException as ex:
             if ex.response.status_code == 404:
                 return None
-            raise APIRequestFailure(ex.message)
+            raise APIRequestFailure(ex)
 
         return resp.json()
 
@@ -163,9 +163,8 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             resp = self._client.request(method, url, json=body)
         except requests.exceptions.ConnectionError as ce:
             logger.exception("Connection error when trying to connect to security scanner endpoint")
-            msg = (
-                "Connection error when trying to connect to security scanner endpoint: %s"
-                % ce.message
+            msg = "Connection error when trying to connect to security scanner endpoint: %s" % str(
+                ce
             )
             raise APIRequestFailure(msg)
 

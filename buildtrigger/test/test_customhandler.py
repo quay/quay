@@ -18,7 +18,7 @@ from util.morecollections import AttrDict
         (
             '{"commit": "foo", "ref": "refs/heads/something", "default_branch": "baz"}',
             InvalidPayloadException,
-            "u'foo' does not match '^([A-Fa-f0-9]{7,})$'",
+            "'foo' does not match '^([A-Fa-f0-9]{7,})$'",
         ),
         (
             '{"commit": "11d6fbc", "ref": "refs/heads/something", "default_branch": "baz"}',
@@ -48,6 +48,7 @@ def test_handle_trigger_request(payload, expected_error, expected_message):
     if expected_error is not None:
         with pytest.raises(expected_error) as ipe:
             trigger.handle_trigger_request(request)
+
         assert str(ipe.value) == expected_message
     else:
         assert isinstance(trigger.handle_trigger_request(request), PreparedBuild)

@@ -86,7 +86,7 @@ def _create_app(emails=True):
     jwt_app.config["SERVER_HOSTNAME"] = "localhost:%s" % _PORT_NUMBER
 
     def _get_basic_auth():
-        data = base64.b64decode(request.headers["Authorization"][len("Basic ") :])
+        data = base64.b64decode(request.headers["Authorization"][len("Basic ") :]).decode("utf-8")
         return data.split(":", 1)
 
     @jwt_app.route("/user/query", methods=["GET"])
@@ -164,7 +164,7 @@ def _create_app(emails=True):
                 }
 
                 encoded = jwt.encode(token_data, private_key_data, "RS256")
-                return jsonify({"token": encoded})
+                return jsonify({"token": encoded.decode("ascii")})
 
         return make_response("Invalid username or password", 404)
 

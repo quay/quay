@@ -65,6 +65,7 @@ from util.validation import (
 )
 from util.backoff import exponential_backoff
 from util.timedeltastring import convert_to_timedelta
+from util.bytes import Bytes
 from util.unicode import remove_unicode
 from util.security.token import decode_public_private_token, encode_public_private_token
 
@@ -77,6 +78,7 @@ EXPONENTIAL_BACKOFF_SCALE = timedelta(seconds=1)
 
 def hash_password(password, salt=None):
     salt = salt or bcrypt.gensalt()
+    salt = Bytes.for_string_or_unicode(salt).as_encoded_str()
     return bcrypt.hashpw(password.encode("utf-8"), salt)
 
 
@@ -425,9 +427,7 @@ def get_matching_robots(name_prefix, username, limit=10):
 
 
 def verify_robot(robot_username, password):
-    try:
-        password = remove_unicode(password)
-    except UnicodeEncodeError:
+    if not password.isascii():
         msg = "Could not find robot with username: %s and supplied password." % robot_username
         raise InvalidRobotException(msg)
 
@@ -981,11 +981,9 @@ def verify_user(username_or_email, password):
             )
 
     # Hash the given password and compare it to the specified password.
-    if (
-        fetched.password_hash
-        and hash_password(password, fetched.password_hash) == fetched.password_hash
-    ):
-
+    if fetched.password_hash and hash_password(
+        password, fetched.password_hash
+    ) == fetched.password_hash:
         # If the user previously had any invalid login attempts, clear them out now.
         if fetched.invalid_login_attempts > 0:
             try:

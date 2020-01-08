@@ -136,7 +136,7 @@ if features.EXPERIMENTAL_HELM_OCI_SUPPORT:
     HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]
     register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
 
-CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str)).hexdigest()[0:8]
+CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str).encode("utf-8")).hexdigest()[0:8]
 
 logger.debug("Loaded config", extra={"config": app.config})
 

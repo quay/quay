@@ -1083,7 +1083,7 @@ class Image(BaseModel):
         """
         Returns an integer list of ancestor ids, ordered chronologically from root to direct parent.
         """
-        return map(int, self.ancestors.split("/")[1:-1])
+        return list(map(int, self.ancestors.split("/")[1:-1]))
 
 
 class DerivedStorageForImage(BaseModel):

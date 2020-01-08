@@ -32,12 +32,12 @@ class JSONTemplate(object):
 
 
 def apply_data_to_obj(obj, data, missing="(none)"):
-    if isinstance(obj, basestring):
+    if isinstance(obj, str):
         return _process_string(obj, data, missing)
     elif isinstance(obj, dict):
         return {
             _process_string(key, data, missing): apply_data_to_obj(value, data, missing)
-            for key, value in obj.iteritems()
+            for key, value in obj.items()
         }
     elif isinstance(obj, list):
         return [apply_data_to_obj(item, data, missing) for item in obj]

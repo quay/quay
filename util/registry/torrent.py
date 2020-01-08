@@ -47,7 +47,7 @@ def jwt_from_infohash(torrent_config, infohash_digest):
     token_data = {
         "iss": torrent_config.instance_keys.service_name,
         "aud": torrent_config.announce_url,
-        "infohash": hexlify(infohash_digest),
+        "infohash": hexlify(infohash_digest).decode("ascii"),
     }
     return jwt.encode(
         token_data,
@@ -83,7 +83,7 @@ def public_torrent_filename(blob_uuid):
     """
     Returns the filename for the given blob UUID in a public image.
     """
-    return hashlib.sha256(blob_uuid).hexdigest()
+    return hashlib.sha256(blob_uuid.encode("utf-8")).hexdigest()
 
 
 def per_user_torrent_filename(torrent_config, user_uuid, blob_uuid):
@@ -91,7 +91,7 @@ def per_user_torrent_filename(torrent_config, user_uuid, blob_uuid):
     Returns the filename for the given blob UUID for a private image.
     """
     joined = torrent_config.filename_pepper + "||" + blob_uuid + "||" + user_uuid
-    return hashlib.sha256(joined).hexdigest()
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
 
 class PieceHasher(object):
@@ -107,7 +107,7 @@ class PieceHasher(object):
         self,
         piece_size,
         starting_offset=0,
-        starting_piece_hash_bytes="",
+        starting_piece_hash_bytes=b"",
         hash_fragment_to_resume=None,
     ):
         if not isinstance(starting_offset, int):
