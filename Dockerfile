@@ -26,6 +26,7 @@ RUN INSTALL_PKGS="\
         gcc-c++ git \
         openldap-devel \
         python3-devel \
+        python3-gpg \
         dnsmasq \
         memcached \
         openssl \
