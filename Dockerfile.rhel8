@@ -26,6 +26,7 @@ RUN INSTALL_PKGS="\
         openldap-devel \
         gpgme-devel \
         python3-devel \
+        python3-gpg \
         dnsmasq \
         memcached \
         openssl \

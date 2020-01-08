@@ -1,5 +1,4 @@
-import gpgme
-import os
+import gpg
 import features
 import logging
 
@@ -23,7 +22,7 @@ class GPG2Signer(object):
         if not config.get("GPG2_PUBLIC_KEY_FILENAME"):
             raise Exception("Missing configuration key GPG2_PUBLIC_KEY_FILENAME")
 
-        self._ctx = gpgme.Context()
+        self._ctx = gpg.Context()
         self._ctx.armor = True
         self._private_key_name = config["GPG2_PRIVATE_KEY_NAME"]
         self._public_key_filename = config["GPG2_PUBLIC_KEY_FILENAME"]
@@ -33,7 +32,7 @@ class GPG2Signer(object):
             raise Exception("Missing key file %s" % config["GPG2_PRIVATE_KEY_FILENAME"])
 
         with config_provider.get_volume_file(config["GPG2_PRIVATE_KEY_FILENAME"], mode="rb") as fp:
-            self._ctx.import_(fp)
+            self._ctx.op_import(fp)
 
     @property
     def name(self):
@@ -48,12 +47,14 @@ class GPG2Signer(object):
         """
         ctx = self._ctx
         try:
-            ctx.signers = [ctx.get_key(self._private_key_name)]
+            ctx.signers = [ctx.get_key(self._private_key_name, 0)]
         except:
             raise Exception("Invalid private key name")
 
         signature = StringIO()
-        new_sigs = ctx.sign(stream, signature, gpgme.SIG_MODE_DETACH)
+        indata = gpg.core.Data(file=stream)
+        outdata = gpg.core.Data(file=signature)
+        ctx.op_sign(indata, outdata, gpg.constants.sig.DETACH)
         signature.seek(0)
         return signature.getvalue()
 
