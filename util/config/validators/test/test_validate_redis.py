@@ -3,7 +3,7 @@ import redis
 
 from mock import patch
 
-from mockredis import mock_strict_redis_client
+from fakeredis import FakeStrictRedis
 
 from util.config.validator import ValidatorContext
 from util.config.validators import ConfigValidationException
@@ -23,7 +23,7 @@ from util.morecollections import AttrDict
     ],
 )
 def test_validate_redis(unvalidated_config, user, user_password, use_mock, expected, app):
-    with patch("redis.StrictRedis" if use_mock else "redis.None", mock_strict_redis_client):
+    with patch("redis.StrictRedis" if use_mock else "redis.None", FakeStrictRedis):
         validator = RedisValidator()
         unvalidated_config = ValidatorContext(unvalidated_config)
 
