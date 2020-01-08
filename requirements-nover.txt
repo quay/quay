@@ -56,7 +56,7 @@ pyasn1
 py-bcrypt
 pyOpenSSL
 pycryptodome
-pygpgme
+gpg
 pyjwkest
 pyjwt
 pymemcache
