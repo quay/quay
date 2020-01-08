@@ -93,6 +93,23 @@ objects:
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-load-balancer-proxy-protocol-service
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
+      service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: '*'
+  spec:
+    ports:
+    - name: https
+      protocol: TCP
+      port: ${{LOADBALANCER_SERVICE_PORT}}
+      targetPort: ${{LOADBALANCER_SERVICE_PROXY_TARGET_PORT}}
+    loadBalancerIP:
+    type: LoadBalancer
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -263,6 +280,9 @@ parameters:
   - name: LOADBALANCER_SERVICE_TARGET_PORT
     value: "8443"
     displayName: loadbalancer service target port
+  - name: LOADBALANCER_SERVICE_PROXY_TARGET_PORT
+    value: "7443"
+    displayName: loadbalancer service proxy target port
   - name: QUAY_APP_CONFIG_SECRET
     value: "quay-config-secret"
     displayName: quay app config secret
