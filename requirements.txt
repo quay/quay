@@ -123,6 +123,7 @@ pycparser==2.19
 pycryptodome==3.9.0
 pycryptodomex==3.9.0
 PyGithub==1.45
+gpg==1.10.0
 pyjwkest==1.4.2
 PyJWT==1.7.1
 pymemcache==2.2.2
