@@ -1,7 +1,6 @@
+from config_app import config_web
 from config_app.c_app import app as application
 
-# Bind all of the blueprints
-from . import config_web
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=True), disable_existing_loggers=False)
