@@ -9,7 +9,6 @@
 -e git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
 -e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
 -e git+https://github.com/jepcastelein/marketo-rest-python.git@d151205aaa70fa69c14cf3ed5d8f3162e99b8236#egg=marketorestpython
--e git+https://github.com/NateFerrero/oauth2lib.git@d161b010f8a596826050a09e5e94d59443cc12d9#egg=oauth2lib
 aiowsgi==0.7
 alembic==1.1.0
 APScheduler==3.6.1
