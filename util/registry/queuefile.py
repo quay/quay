@@ -1,9 +1,12 @@
+from multiprocessing.queues import Empty, Queue
+
+
 class QueueFile(object):
     """ Class which implements a file-like interface and reads QueueResult's from a blocking
       multiprocessing queue.
   """
 
-    def __init__(self, queue, name=None):
+    def __init__(self, queue, name=None, timeout=None):
         self._queue = queue
         self._closed = False
         self._done = False
@@ -12,6 +15,7 @@ class QueueFile(object):
         self._name = name
         self.raised_exception = False
         self._exception_handlers = []
+        self._timeout = timeout
 
     def add_exception_handler(self, handler):
         self._exception_handlers.append(handler)
@@ -30,10 +34,15 @@ class QueueFile(object):
 
         # Loop until we reach the requested data size (or forever if all data was requested).
         while (len(self._buffer) < size) or (size == -1):
-            result = self._queue.get(block=True)
+            exception = None
+            try:
+                result = self._queue.get(block=True, timeout=self._timeout)
+                exception = result.exception
+            except Empty as em:
+                exception = em
 
             # Check for any exceptions raised by the queue process.
-            if result.exception is not None:
+            if exception is not None:
                 self._closed = True
                 self.raised_exception = True
 
@@ -41,13 +50,13 @@ class QueueFile(object):
                 # then raise the exception locally.
                 handled = False
                 for handler in self._exception_handlers:
-                    handler(result.exception)
+                    handler(exception)
                     handled = True
 
                 if handled:
                     return ""
                 else:
-                    raise result.exception
+                    raise exception
 
             # Check for no further data. If the QueueProcess has finished producing data, then break
             # out of the loop to return the data already acquired.
