@@ -202,6 +202,8 @@ class GitLabBuildTrigger(BuildTriggerHandler):
             client.auth()
         except gitlab.GitlabGetError as ex:
             raise TriggerAuthException(ex.message)
+        except gitlab.GitlabAuthenticationError as ex:
+            raise TriggerAuthException(ex.message)
 
         return client
 
