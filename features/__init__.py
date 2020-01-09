@@ -29,4 +29,7 @@ class FeatureNameValue(object):
         return self.value.__cmp__(other)
 
     def __bool__(self):
-        return self.value.__nonzero__()
+        if isinstance(self.value, str):
+            return self.value == 'True'
+
+        return bool(self.value)
