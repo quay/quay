@@ -23,3 +23,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.label-view-element-link.is-link .key {
+  text-transform: uppercase;
+  font-size: 8px;
+  margin-right: 2px;
+  position: relative;
+  top: -1px;
+}
