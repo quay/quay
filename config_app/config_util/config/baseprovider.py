@@ -54,7 +54,7 @@ def import_yaml(config_obj, config_file):
 
 
 def get_yaml(config_obj):
-    return yaml.safe_dump(config_obj, encoding="utf-8", allow_unicode=True)
+    return yaml.safe_dump(config_obj, allow_unicode=True)
 
 
 def export_yaml(config_obj, config_file):
