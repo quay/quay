@@ -6,7 +6,7 @@ QUAYCONFIG=${QUAYCONFIG:-"$QUAYCONF/stack"}
 CERTDIR=${CERTDIR:-"$QUAYCONFIG/extra_ca_certs"}
 SYSTEM_CERTDIR=${SYSTEM_CERTDIR:-"/etc/pki/ca-trust/source/anchors"}
 
-PYTHON_ROOT=${PYTHON_ROOT:-"/opt/rh/python27/root/usr/lib/python2.7"}
+PYTHON_ROOT=${PYTHON_ROOT:-"/usr/local/lib/python3.6"}
 
 # If we're running under kube, the previous script (02_get_kube_certs.sh) will put the certs in a different location
 if [[ "$KUBERNETES_SERVICE_HOST" != "" ]];then
