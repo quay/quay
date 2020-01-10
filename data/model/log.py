@@ -25,8 +25,15 @@ def _logs_query(
     ignore=None,
     model=LogEntry3,
     id_range=None,
+    namespace_id=None,
 ):
     """ Returns a query for selecting logs from the table, with various options and filters. """
+    if namespace is not None:
+        assert namespace_id is None
+
+    if namespace_id is not None:
+        assert namespace is None
+
     assert (start_time is not None and end_time is not None) or (id_range is not None)
     joined = model.select(*selections).switch(model)
 
@@ -44,9 +51,12 @@ def _logs_query(
     if namespace and not repository:
         namespace_user = user.get_user_or_org(namespace)
         if namespace_user is None:
-            raise DataModelException("Invalid namespace requested")
+            raise DataModelException("Invalid namespace requested: %s" % namespace)
 
         joined = joined.where(model.account == namespace_user.id)
+
+    if namespace_id is not None and not repository:
+        joined = joined.where(model.account == namespace_id)
 
     if ignore:
         kind_map = get_log_entry_kinds()
@@ -134,6 +144,7 @@ def get_logs_query(
     performer=None,
     repository=None,
     namespace=None,
+    namespace_id=None,
     ignore=None,
     model=LogEntry3,
     id_range=None,
@@ -143,7 +154,7 @@ def get_logs_query(
     Account = User.alias()
     selections = [model, Performer]
 
-    if namespace is None and repository is None:
+    if namespace is None and repository is None and namespace_id is None:
         selections.append(Account)
 
     query = _logs_query(
@@ -156,12 +167,13 @@ def get_logs_query(
         ignore,
         model=model,
         id_range=id_range,
+        namespace_id=namespace_id,
     )
     query = query.switch(model).join(
         Performer, JOIN.LEFT_OUTER, on=(model.performer == Performer.id).alias("performer")
     )
 
-    if namespace is None and repository is None:
+    if namespace is None and repository is None and namespace_id is None:
         query = query.switch(model).join(
             Account, JOIN.LEFT_OUTER, on=(model.account == Account.id).alias("account")
         )

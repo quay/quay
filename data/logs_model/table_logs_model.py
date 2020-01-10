@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 
 from data import model
 from data.model import config
-from data.database import LogEntry, LogEntry2, LogEntry3, UseThenDisconnect
+from data.database import LogEntry, LogEntry2, LogEntry3, BaseModel, UseThenDisconnect
 from data.logs_model.interface import (
     ActionLogsDataInterface,
     LogsIterationTimeout,
@@ -244,6 +244,9 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
         namespace_id=None,
         max_query_time=None,
     ):
+        assert namespace_id is None or isinstance(namespace_id, int)
+        assert repository_id is None or isinstance(repository_id, int)
+
         # Using an adjusting scale, start downloading log rows in batches, starting at
         # MINIMUM_RANGE_SIZE and doubling until we've reached EXPECTED_ITERATION_LOG_COUNT or
         # the lookup range has reached MAXIMUM_RANGE_SIZE. If at any point this operation takes
@@ -279,15 +282,19 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
                 )
 
                 logs_query = model.log.get_logs_query(
-                    namespace=namespace_id,
+                    namespace_id=namespace_id,
                     repository=repository_id,
                     start_time=current_start_datetime,
                     end_time=current_end_datetime,
                 )
                 logs = list(logs_query)
                 for log in logs:
+                    assert isinstance(log, BaseModel)
                     if namespace_id is not None:
-                        assert log.account_id == namespace_id
+                        assert log.account_id == namespace_id, "Expected %s, Found: %s" % (
+                            namespace_id,
+                            log.account.id,
+                        )
 
                     if repository_id is not None:
                         assert log.repository_id == repository_id
