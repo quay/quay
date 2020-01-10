@@ -183,27 +183,6 @@ def _add_encryption(field_class, requires_length_check=True):
 
             return LazyEncryptedValue(value, self)
 
-        def __eq__(self, _):
-            raise Exception("Disallowed operation; use `matches`")
-
-        def __mod__(self, _):
-            raise Exception("Disallowed operation; use `matches`")
-
-        def __pow__(self, _):
-            raise Exception("Disallowed operation; use `matches`")
-
-        def __contains__(self, _):
-            raise Exception("Disallowed operation; use `matches`")
-
-        def contains(self, _):
-            raise Exception("Disallowed operation; use `matches`")
-
-        def startswith(self, _):
-            raise Exception("Disallowed operation; use `matches`")
-
-        def endswith(self, _):
-            raise Exception("Disallowed operation; use `matches`")
-
     return indexed_class
 
 
