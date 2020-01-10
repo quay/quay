@@ -15,13 +15,13 @@ class SuperUserManager(object):
 
         self._max_length = len(usernames_str) + MAX_USERNAME_LENGTH + 1
         self._array = Array("c", self._max_length, lock=True)
-        self._array.value = usernames_str.encode('utf8')
+        self._array.value = usernames_str.encode("utf8")
 
     def is_superuser(self, username):
         """
         Returns if the given username represents a super user.
         """
-        usernames = self._array.value.decode('utf8').split(",")
+        usernames = self._array.value.decode("utf8").split(",")
         return username in usernames
 
     def register_superuser(self, username):
@@ -30,12 +30,12 @@ class SuperUserManager(object):
 
         Note that this does *not* change any underlying config files.
         """
-        usernames = self._array.value.decode('utf8').split(",")
+        usernames = self._array.value.decode("utf8").split(",")
         usernames.append(username)
         new_string = ",".join(usernames)
 
         if len(new_string) <= self._max_length:
-            self._array.value = new_string.encode('utf8')
+            self._array.value = new_string.encode("utf8")
         else:
             raise Exception("Maximum superuser count reached. Please report this to support.")
 
