@@ -57,6 +57,7 @@ verb_stream_passes = Counter(
 
 
 LAYER_MIMETYPE = "binary/octet-stream"
+QUEUE_FILE_TIMEOUT = 15  # seconds
 
 
 class VerbReporter(TarLayerFormatterReporter):
@@ -128,13 +129,23 @@ def _sign_derived_image(verb, derived_image, queue_file):
             registry_model.set_derived_image_signature(derived_image, signer.name, signature)
 
 
-def _write_derived_image_to_storage(verb, derived_image, queue_file):
+def _write_derived_image_to_storage(
+    verb, derived_image, queue_file, namespace, repository, tag_name
+):
     """ Read from the generated stream and write it back to the storage engine. This method runs in a
       separate process.
   """
 
     def handle_exception(ex):
-        logger.debug("Exception when building %s derived image %s: %s", verb, derived_image, ex)
+        logger.debug(
+            "Exception when building %s derived image %s (%s/%s:%s): %s",
+            verb,
+            derived_image,
+            namespace,
+            repository,
+            tag_name,
+            ex,
+        )
 
         with database.UseThenDisconnect(app.config):
             registry_model.delete_derived_image(derived_image)
@@ -149,7 +160,15 @@ def _write_derived_image_to_storage(verb, derived_image, queue_file):
             derived_image.blob.placements, derived_image.blob.storage_path, queue_file
         )
     except IOError as ex:
-        logger.debug("Exception when writing %s derived image %s: %s", verb, derived_image, ex)
+        logger.error(
+            "Exception when writing %s derived image %s (%s/%s:%s): %s",
+            verb,
+            derived_image,
+            namespace,
+            repository,
+            tag_name,
+            ex,
+        )
 
         with database.UseThenDisconnect(app.config):
             registry_model.delete_derived_image(derived_image)
@@ -453,22 +472,28 @@ def _repo_verb(
         finished=_store_metadata_and_cleanup,
     )
 
-    client_queue_file = QueueFile(queue_process.create_queue(), "client")
+    client_queue_file = QueueFile(
+        queue_process.create_queue(), "client", timeout=QUEUE_FILE_TIMEOUT
+    )
 
     if not is_readonly:
-        storage_queue_file = QueueFile(queue_process.create_queue(), "storage")
+        storage_queue_file = QueueFile(
+            queue_process.create_queue(), "storage", timeout=QUEUE_FILE_TIMEOUT
+        )
 
         # If signing is required, add a QueueFile for signing the image as we stream it out.
         signing_queue_file = None
         if sign and signer.name:
-            signing_queue_file = QueueFile(queue_process.create_queue(), "signing")
+            signing_queue_file = QueueFile(
+                queue_process.create_queue(), "signing", timeout=QUEUE_FILE_TIMEOUT
+            )
 
     # Start building.
     queue_process.run()
 
     # Start the storage saving.
     if not is_readonly:
-        storage_args = (verb, derived_image, storage_queue_file)
+        storage_args = (verb, derived_image, storage_queue_file, namespace, repository, tag_name)
         QueueProcess.run_process(_write_derived_image_to_storage, storage_args, finished=_cleanup)
 
         if sign and signer.name:

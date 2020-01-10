@@ -10,7 +10,7 @@ class FakeQueue(object):
     def __init__(self):
         self.items = []
 
-    def get(self, block):
+    def get(self, block, timeout=None):
         return self.items.pop(0)
 
     def put(self, data):
