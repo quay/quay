@@ -156,7 +156,7 @@ if app.config["PREFERRED_URL_SCHEME"] == "https" and not app.config.get(
 # Load features from config.
 features.import_features(app.config)
 
-CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str).encode('utf-8')).hexdigest()[0:8]
+CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str).encode("utf-8")).hexdigest()[0:8]
 
 logger.debug("Loaded config", extra={"config": app.config})
 
