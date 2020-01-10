@@ -26,7 +26,7 @@ chunk_upload_duration = Histogram(
     labelnames=["region"],
 )
 pushed_bytes_total = Counter(
-    "quay_registry_pushed_bytes_total", "number of bytes pushed to the registry"
+    "quay_registry_image_pushed_bytes_total", "number of bytes pushed to the registry"
 )
 
 

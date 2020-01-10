@@ -13,7 +13,7 @@ image_pushes = Counter(
 )
 
 image_pulled_bytes = Counter(
-    "quay_registry_image_pulled_bytes_total",
+    "quay_registry_image_pulled_estimated_bytes_total",
     "number of bytes that have been downloaded via the registry",
     labelnames=["protocol"],
 )
