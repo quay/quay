@@ -3,6 +3,13 @@ RUN mkdir -p conf/stack
 RUN rm -rf test/data/test.db
 ENV ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE new-installation
 ADD cirun.config.yaml conf/stack/config.yaml
+
+ADD util/security/token.py util/security/token.py
+ADD data/model/user.py data/model/user.py
+ADD data/encryption.py data/encryption.py
+ADD data/fields.py data/fields.py
+ADD initdb.py initdb.py
+
 RUN LOGGING_LEVEL=INFO python initdb.py && \
     yum install -y make && \
     python -m pip install -r requirements-tests.txt

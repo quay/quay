@@ -72,12 +72,12 @@ class Base64BinaryField(TextField):
     def db_value(self, value):
         if value is None:
             return None
-        return base64.b64encode(value)
+        return base64.b64encode(value.encode("utf-8"))
 
     def python_value(self, value):
         if value is None:
             return None
-        return base64.b64decode(value)
+        return base64.b64decode(value.encode("utf-8"))
 
 
 class DecryptedValue(object):

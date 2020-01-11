@@ -336,7 +336,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
         with db_transaction():
             created = User.create(username=username, email=str(uuid.uuid4()), robot=True)
             token = random_string_generator(length=64)()
-            RobotAccountToken.create(robot_account=created, token=token)
+            RobotAccountToken.create(robot_account=created, token=token.encode("utf-8"))
             FederatedLogin.create(
                 user=created, service=service, service_ident="robot:%s" % created.id
             )

@@ -22,9 +22,9 @@ AES_CCM_NONCE_LENGTH = 13
 
 
 def _encrypt_ccm(secret_key, value, field_max_length=None):
-    aesccm = AESCCM(secret_key)
+    aesccm = AESCCM(secret_key.encode("utf-8"))
     nonce = os.urandom(AES_CCM_NONCE_LENGTH)
-    ct = aesccm.encrypt(nonce, value.encode("utf-8"), None)
+    ct = aesccm.encrypt(nonce, value, None)
     encrypted = base64.b64encode(nonce + ct)
     if field_max_length:
         msg = "Tried to encode a value too large for this field"
@@ -34,7 +34,7 @@ def _encrypt_ccm(secret_key, value, field_max_length=None):
 
 
 def _decrypt_ccm(secret_key, value):
-    aesccm = AESCCM(secret_key)
+    aesccm = AESCCM(secret_key.encode("utf-8"))
     try:
         decoded = base64.b64decode(value)
         nonce = decoded[:AES_CCM_NONCE_LENGTH]

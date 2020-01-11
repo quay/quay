@@ -89,21 +89,21 @@ IS_TESTING_REAL_DATABASE = bool(os.environ.get("TEST_DATABASE_URI"))
 
 
 def __gen_checksum(image_id):
-    csum = hashlib.md5(image_id)
+    csum = hashlib.md5(image_id.encode("utf-8"))
     return "tarsum+sha256:" + csum.hexdigest() + csum.hexdigest()
 
 
 def __gen_image_id(repo, image_num):
     str_to_hash = "%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)
 
-    img_id = hashlib.md5(str_to_hash)
+    img_id = hashlib.md5(str_to_hash.encode("utf-8"))
     return img_id.hexdigest() + img_id.hexdigest()
 
 
 def __gen_image_uuid(repo, image_num):
     str_to_hash = "%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)
 
-    img_uuid = hashlib.md5(str_to_hash)
+    img_uuid = hashlib.md5(str_to_hash.encode("utf-8"))
     return UUID(bytes=img_uuid.digest())
 
 
