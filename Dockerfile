@@ -32,7 +32,7 @@ RUN INSTALL_PKGS="\
         openssl \
         skopeo \
         " && \
-    yum -y --enabledrepo=PowerTools --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
+    yum -y --enablerepo=PowerTools --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
 
