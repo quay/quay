@@ -1,9 +1,10 @@
 FROM quay-ci-base
 RUN mkdir -p conf/stack
 RUN rm -rf test/data/test.db
-ENV ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE remove-old-fields
+ENV ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE new-installation
 ADD cirun.config.yaml conf/stack/config.yaml
 RUN LOGGING_LEVEL=INFO python initdb.py && \
-    yum install -y make
+    yum install -y make && \
+    python -m pip install -r requirements-tests.txt
 ENTRYPOINT ["/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]

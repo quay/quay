@@ -24,6 +24,7 @@ RUN INSTALL_PKGS="\
         nginx \
         openldap \
         gcc-c++ git \
+        gpgme-devel \
         openldap-devel \
         python3-devel \
         dnsmasq \
@@ -31,7 +32,7 @@ RUN INSTALL_PKGS="\
         openssl \
         skopeo \
         " && \
-    yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
+    yum -y --enabledrepo=PowerTools --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
 
