@@ -34,9 +34,9 @@ run_black() {
 
 build_image() {
     # Build the image and save it to the shared cache.
-    # docker build -t "${IMAGE}:${IMAGE_TAG}" .
+    docker build -t "${IMAGE}:${IMAGE_TAG}" .
 
-    # docker tag "${IMAGE}:${IMAGE_TAG}" quay-ci-base
+    docker tag "${IMAGE}:${IMAGE_TAG}" quay-ci-base
 
     echo "Building CI run image"
     docker build -t "${IMAGE}:${IMAGE_TAG}-ci-run" -f Dockerfile.cirun .
