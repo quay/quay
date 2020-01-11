@@ -36,6 +36,11 @@ build_image() {
     # Build the image and save it to the shared cache.
     docker build -t "${IMAGE}:${IMAGE_TAG}" .
 
+    docker tag "${IMAGE}:${IMAGE_TAG}" quay-ci-base
+
+    echo "Building CI run image"
+    docker build -t "${IMAGE}:${IMAGE_TAG}-ci-run" -f Dockerfile.cirun .
+
     echo "Exporting Docker image to cache..."
     time (docker save "${IMAGE}:${IMAGE_TAG}" | gzip -2 > "${IMAGE_TAR}")
 }
@@ -87,10 +92,10 @@ quay_ping() {
 
 gunicorn_test() {
     load_image
-    docker tag "${IMAGE}:${IMAGE_TAG}" quay-ci-base
+    # docker tag "${IMAGE}:${IMAGE_TAG}" quay-ci-base
 
-    echo "Building CI run image"
-    docker build -t "${IMAGE}:${IMAGE_TAG}-ci-run" -f Dockerfile.cirun .
+    # echo "Building CI run image"
+    # docker build -t "${IMAGE}:${IMAGE_TAG}-ci-run" -f Dockerfile.cirun .
 
     echo "Running CI run image"
     docker run -d --name=quay-gunicorn-test --net=host -ti "${IMAGE}:${IMAGE_TAG}-ci-run"
