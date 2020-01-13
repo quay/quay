@@ -1,6 +1,6 @@
 import logging
 
-from cnr.models.package_base import manifest_media_type
+from appr.models.package_base import manifest_media_type
 from peewee import IntegrityError
 
 from data.model import db_transaction, TagAlreadyCreatedException
