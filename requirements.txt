@@ -1,10 +1,11 @@
--e git+https://github.com/app-registry/appr-server.git@c2ef3b88afe926a92ef5f2e11e7d4a259e286a17#egg=cnr_server
+-e git+https://github.com/quay/appr.git@ced40805230e0fb1e3efd3d515a360145262e455#egg=cnr_server
+-e git+https://github.com/coderanger/supervisor-stdout.git@87632a7e522bf1888587c39e7fd61535b7a43cd7#egg=supervisor_stdout
 -e git+https://github.com/coreos/mockldap.git@59a46efbe8c7cd8146a87a7c4f2b09746b953e11#egg=mockldap
 -e git+https://github.com/coreos/py-bitbucket.git@55a1ada645f2fb6369147996ec71edd7828d91c8#egg=py_bitbucket
 -e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
 -e git+https://github.com/DevTable/anunidecode.git@d59236a822e578ba3a0e5e5abbd3855873fa7a88#egg=anunidecode
 -e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
--e git+https://github.com/DevTable/container-cloud-config.git@44e06879a710661f01054b300dc78a12a268b6b5#egg=container_cloud_config
+-e git+https://github.com/DevTable/container-cloud-config.git@7d6c1545554b81ac65edd6d1bd1ab9f8c462209a#egg=container_cloud_config
 -e git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
 -e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
 -e git+https://github.com/jepcastelein/marketo-rest-python.git@d151205aaa70fa69c14cf3ed5d8f3162e99b8236#egg=marketorestpython
@@ -166,7 +167,6 @@ stevedore==1.31.0
 stringscore==0.1.0
 stripe==2.36.2
 supervisor-logging==0.0.9
-supervisor-stdout==0.1.1
 supervisor==4.0.4
 tldextract==2.2.1
 toposort==1.5
