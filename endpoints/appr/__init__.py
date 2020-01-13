@@ -2,7 +2,7 @@ import logging
 
 from functools import wraps
 
-from cnr.exception import Forbidden
+from appr.exception import Forbidden
 from flask import Blueprint
 
 from auth.permissions import (
