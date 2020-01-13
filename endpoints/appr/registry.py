@@ -1,12 +1,12 @@
 import logging
 from base64 import b64encode
 
-import cnr
-from cnr.api.impl import registry as cnr_registry
-from cnr.api.registry import _pull, repo_name
-from cnr.exception import (
+import appr
+from appr.api.impl import registry as cnr_registry
+from appr.api.registry import _pull, repo_name
+from appr.exception import (
     ChannelNotFound,
-    CnrException,
+    ApprException,
     Forbidden,
     InvalidParams,
     InvalidRelease,
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 @appr_bp.errorhandler(UnauthorizedAccess)
 @appr_bp.errorhandler(PackageNotFound)
 @appr_bp.errorhandler(PackageReleaseNotFound)
-@appr_bp.errorhandler(CnrException)
+@appr_bp.errorhandler(ApprException)
 @appr_bp.errorhandler(InvalidUsage)
 @appr_bp.errorhandler(InvalidParams)
 @appr_bp.errorhandler(ChannelNotFound)
@@ -56,7 +56,7 @@ def render_error(error):
 @appr_bp.route("/version")
 @anon_allowed
 def version():
-    return jsonify({"cnr-api": cnr.__version__})
+    return jsonify({"cnr-api": appr.__version__})
 
 
 @appr_bp.route("/api/v1/users/login", methods=["POST"])

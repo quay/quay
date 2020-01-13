@@ -2,9 +2,9 @@ import uuid
 
 import pytest
 
-from cnr.tests.conftest import *
-from cnr.tests.test_apiserver import BaseTestServer
-from cnr.tests.test_models import CnrTestModels
+from appr.tests.conftest import *
+from appr.tests.test_apiserver import BaseTestServer
+from appr.tests.test_models import CnrTestModels
 
 import data.appr_model.blob as appr_blob
 
