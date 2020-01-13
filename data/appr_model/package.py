@@ -1,4 +1,4 @@
-from cnr.models.package_base import get_media_type, manifest_media_type
+from appr.models.package_base import get_media_type, manifest_media_type
 from peewee import prefetch
 
 
