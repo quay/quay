@@ -1,7 +1,7 @@
 import bisect
 
-from cnr.exception import PackageAlreadyExists
-from cnr.models.package_base import manifest_media_type
+from appr.exception import PackageAlreadyExists
+from appr.models.package_base import manifest_media_type
 
 from data.database import db_transaction, get_epoch_timestamp
 from data.appr_model import (
