@@ -80,6 +80,9 @@
                         <code ng-switch-when="regex">
                           {{ notification.config[field.name] }}
                         </code>
+                        <code ng-switch-when="entity">
+                          {{ notification.config[field.name].name }}
+                        </code>
                         <code ng-switch-when="url">
                           {{ notification.config[field.name] }}
                         </code>
