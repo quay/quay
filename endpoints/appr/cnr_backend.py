@@ -1,10 +1,10 @@
 import base64
 
-from cnr.exception import raise_package_not_found
-from cnr.models.blob_base import BlobBase
-from cnr.models.channel_base import ChannelBase
-from cnr.models.db_base import CnrDB
-from cnr.models.package_base import PackageBase, manifest_media_type
+from appr.exception import raise_package_not_found
+from appr.models.blob_base import BlobBase
+from appr.models.channel_base import ChannelBase
+from appr.models.db_base import ApprDB
+from appr.models.package_base import PackageBase, manifest_media_type
 
 from flask import request
 from app import storage
@@ -177,7 +177,7 @@ class Package(PackageBase):
         raise NotImplementedError
 
 
-class QuayDB(CnrDB):
+class QuayDB(ApprDB):
     """
     Wrapper Class to embed all CNR Models.
     """

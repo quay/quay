@@ -2,7 +2,7 @@ import logging
 import hashlib
 import json
 
-from cnr.models.package_base import get_media_type
+from appr.models.package_base import get_media_type
 
 from data.database import db_transaction, MediaType
 from data.appr_model import tag as tag_model
@@ -19,7 +19,7 @@ def _ensure_sha256_header(digest):
 
 def _digest(manifestjson):
     return _ensure_sha256_header(
-        hashlib.sha256(json.dumps(manifestjson, sort_keys=True)).hexdigest()
+        hashlib.sha256(json.dumps(manifestjson, sort_keys=True).encode("utf-8")).hexdigest()
     )
 
 

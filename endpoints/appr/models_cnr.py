@@ -1,8 +1,8 @@
 from datetime import datetime
 
-import cnr.semver
+import appr.semver
 
-from cnr.exception import raise_package_not_found, raise_channel_not_found, CnrException
+from appr.exception import raise_package_not_found, raise_channel_not_found, ApprException
 
 import features
 import data.model
@@ -25,7 +25,7 @@ from util.morecollections import AttrDict
 from util.names import parse_robot_username
 
 
-class ReadOnlyException(CnrException):
+class ReadOnlyException(ApprException):
     status_code = 405
     errorcode = "read-only"
 
@@ -118,7 +118,7 @@ class CNRAppModel(AppRegistryDataInterface):
             if not releases:
                 continue
             available_releases = [
-                str(x) for x in sorted(cnr.semver.versions(releases, False), reverse=True)
+                str(x) for x in sorted(appr.semver.versions(releases, False), reverse=True)
             ]
             channels = None
             if with_channels:
