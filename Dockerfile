@@ -39,7 +39,7 @@ RUN INSTALL_PKGS="\
 COPY . .
 
 RUN scl enable python27 "\
-    pip install --upgrade setuptools pip && \
+    pip install --upgrade setuptools==44 pip && \
     pip install -r requirements.txt --no-cache && \
     pip install -r requirements-tests.txt --no-cache && \
     pip freeze && \
