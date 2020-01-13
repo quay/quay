@@ -16,7 +16,7 @@ def _ensure_sha256_header(digest):
 
 def _digest(manifestjson):
     return _ensure_sha256_header(
-        hashlib.sha256(json.dumps(manifestjson, sort_keys=True)).hexdigest()
+        hashlib.sha256(json.dumps(manifestjson, sort_keys=True).encode("utf-8")).hexdigest()
     )
 
 
