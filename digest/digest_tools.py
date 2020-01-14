@@ -78,7 +78,7 @@ def sha256_digest_from_generator(content_generator):
     """
     digest = hashlib.sha256()
     for chunk in content_generator:
-        digest.update(chunk)
+        digest.update(chunk.encode("utf-8"))
     return "sha256:{0}".format(digest.hexdigest())
 
 

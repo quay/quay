@@ -540,10 +540,10 @@ class DockerSchema1Manifest(ManifestInterface):
             working_image_id = extracted_v1_metadata.image_id
 
             # Update our digest_history hash for the new layer data.
-            digest_history.update(digest_str)
-            digest_history.update("@")
+            digest_history.update(digest_str.encode("utf-8"))
+            digest_history.update("@".encode("utf-8"))
             digest_history.update(layer.raw_v1_metadata.encode("utf-8"))
-            digest_history.update("|")
+            digest_history.update("|".encode("utf-8"))
 
             # Ensure that the v1 image's storage matches the V2 blob. If not, we've
             # found a data inconsistency and need to create a new layer ID for the V1
