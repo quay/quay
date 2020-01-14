@@ -519,7 +519,7 @@ class DerivedImage(datatype("DerivedImage", ["verb", "varying_metadata", "blob"]
         """ Returns a unique ID for this derived image. This call will consistently produce the same
         unique ID across calls in the same code base.
     """
-        return hashlib.sha256("%s:%s" % (self.verb, self._db_id)).hexdigest()
+        return hashlib.sha256(("%s:%s" % (self.verb, self._db_id)).encode("utf-8")).hexdigest()
 
 
 class TorrentInfo(datatype("TorrentInfo", ["pieces", "piece_length"])):
