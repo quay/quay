@@ -192,7 +192,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
     @property
     def digest(self):
-        return digest_tools.sha256_digest(self._payload.as_encoded_str())
+        return digest_tools.sha256_digest(self._payload.as_encoded_str().encode("utf-8"))
 
     @property
     def config(self):
@@ -297,12 +297,12 @@ class DockerSchema2Manifest(ManifestInterface):
 
             # Create a new synthesized V1 ID for the history layer by hashing its content and
             # the blob associated with it.
-            digest_history.update(json.dumps(history_entry.raw_entry))
-            digest_history.update("|")
-            digest_history.update(str(history_index))
-            digest_history.update("|")
-            digest_history.update(blob_digest)
-            digest_history.update("||")
+            digest_history.update(json.dumps(history_entry.raw_entry).encode("utf-8"))
+            digest_history.update("|".encode("utf-8"))
+            digest_history.update(str(history_index).encode("utf-8"))
+            digest_history.update("|".encode("utf-8"))
+            digest_history.update(blob_digest.encode("utf-8"))
+            digest_history.update("||".encode("utf-8"))
 
             v1_layer_id = digest_history.hexdigest()
             yield DockerV2ManifestImageLayer(

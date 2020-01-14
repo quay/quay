@@ -470,7 +470,7 @@ def _repo_verb(
     unique_id = (
         derived_image.unique_id
         if derived_image is not None
-        else hashlib.sha256("%s:%s" % (verb, uuid.uuid4())).hexdigest()
+        else hashlib.sha256(("%s:%s" % (verb, uuid.uuid4())).encode("utf-8")).hexdigest()
     )
     handlers = [hasher.update]
     reporter = VerbReporter(verb)

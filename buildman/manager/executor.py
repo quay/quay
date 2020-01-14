@@ -129,7 +129,7 @@ class BuilderExecutor(object):
         # in the first X% of the character space, we allow this executor to be used.
         staged_rollout = self.executor_config.get("STAGED_ROLLOUT")
         if staged_rollout is not None:
-            bucket = int(hashlib.sha256(namespace).hexdigest()[-2:], 16)
+            bucket = int(hashlib.sha256(namespace.encode("utf-8")).hexdigest()[-2:], 16)
             return bucket < (256 * staged_rollout)
 
         # If there are no restrictions in place, we are free to use this executor.
