@@ -69,7 +69,7 @@ class FakeStorage(BaseStorageV2):
         return path in self._fake_storage_map
 
     def get_checksum(self, path):
-        return hashlib.sha256(self._fake_storage_map[path].read()).hexdigest()[:7]
+        return hashlib.sha256(self._fake_storage_map[path].read().encode("utf-8")).hexdigest()[:7]
 
     def initiate_chunked_upload(self):
         new_uuid = str(uuid4())
