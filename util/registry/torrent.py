@@ -79,13 +79,13 @@ def make_torrent(torrent_config, name, webseed, length, piece_length, pieces):
 
 def public_torrent_filename(blob_uuid):
     """ Returns the filename for the given blob UUID in a public image. """
-    return hashlib.sha256(blob_uuid).hexdigest()
+    return hashlib.sha256(blob_uuid.encode("utf-8")).hexdigest()
 
 
 def per_user_torrent_filename(torrent_config, user_uuid, blob_uuid):
     """ Returns the filename for the given blob UUID for a private image. """
     joined = torrent_config.filename_pepper + "||" + blob_uuid + "||" + user_uuid
-    return hashlib.sha256(joined).hexdigest()
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
 
 class PieceHasher(object):
