@@ -30,8 +30,11 @@
 
 import collections
 import json
-from json.encoder import encode_basestring, encode_basestring_ascii, FLOAT_REPR, INFINITY
+from json.encoder import encode_basestring, encode_basestring_ascii, INFINITY
 from types import GeneratorType
+
+
+FLOAT_REPR = str
 
 
 class StreamingJSONEncoder(json.JSONEncoder):
@@ -110,10 +113,7 @@ def _make_iterencode(
     _sort_keys,
     _skipkeys,
     _one_shot,
-    False=False,
-    True=True,
     ValueError=ValueError,
-    str=str,
     dict=dict,
     float=float,
     GeneratorType=GeneratorType,
