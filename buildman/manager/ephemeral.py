@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from six import iteritems
 
 from prometheus_client import Counter, Histogram
-from asyncio import coroutine, async, sleep
+from asyncio import coroutine, ensure_future, sleep
 
 from buildman.orchestrator import (
     orchestrator_from_config,
@@ -396,7 +396,7 @@ class EphemeralBuilderManager(BaseManager):
         )
 
         # Load components for all realms currently known to the cluster
-        async(self._register_existing_realms())
+        ensure_future(self._register_existing_realms())
 
     def shutdown(self):
         logger.debug("Shutting down worker.")
