@@ -30,6 +30,6 @@ class FeatureNameValue(object):
 
     def __bool__(self):
         if isinstance(self.value, str):
-            return self.value.lower() == 'true'
+            return self.value.lower() == "true"
 
         return bool(self.value)
