@@ -30,9 +30,13 @@ def _partition_key(number_of_shards=None):
     key = None
     if number_of_shards is not None:
         shard_number = random.randrange(0, number_of_shards)
-        key = hashlib.sha1((KINESIS_PARTITION_KEY_PREFIX + str(shard_number)).encode("utf-8")).hexdigest()
+        key = hashlib.sha1(
+            (KINESIS_PARTITION_KEY_PREFIX + str(shard_number)).encode("utf-8")
+        ).hexdigest()
     else:
-        key = hashlib.sha1((KINESIS_PARTITION_KEY_PREFIX + str(random.getrandbits(256))).encode("utf-8")).hexdigest()
+        key = hashlib.sha1(
+            (KINESIS_PARTITION_KEY_PREFIX + str(random.getrandbits(256))).encode("utf-8")
+        ).hexdigest()
 
     return key
 
