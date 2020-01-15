@@ -1,8 +1,3 @@
-# NOTE: Must be before we import or call anything that may be synchronous.
-from gevent import monkey
-
-monkey.patch_all()
-
 import endpoints.decorated  # Note: We need to import this module to make sure the decorators are registered.
 import features
 
