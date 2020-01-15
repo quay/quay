@@ -1,8 +1,3 @@
-# NOTE: Must be before we import or call anything that may be synchronous.
-from gevent import monkey
-
-monkey.patch_all()
-
 from app import app as application
 from endpoints.api import api_bp
 from endpoints.bitbuckettrigger import bitbuckettrigger
