@@ -25,7 +25,7 @@ ActiveDataMigration = DefinedDataMigration(
         MigrationPhase(
             "change-column-types", "49e1138ed12d", [ERTMigrationFlags.WRITE_OLD_FIELDS],
         ),
-        MigrationPhase("stop-writing-both", "703298a825c2", []),
+        MigrationPhase("stop-writing-both", "49e1138ed12d", []),
         MigrationPhase("remove-old-fields", "c059b952ed76", []),
     ],
 )
