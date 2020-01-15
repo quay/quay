@@ -32,11 +32,11 @@ from app import (
 )
 from buildtrigger.basehandler import BuildTriggerHandler
 from initdb import setup_database_for_testing, finished_database_for_testing
-from .data import database, model, appr_model
-from .data.appr_model.models import NEW_MODELS
-from .data.database import RepositoryActionCount, Repository as RepositoryTable
-from .data.logs_model import logs_model
-from .data.registry_model import registry_model
+from data import database, model, appr_model
+from data.appr_model.models import NEW_MODELS
+from data.database import RepositoryActionCount, Repository as RepositoryTable
+from data.logs_model import logs_model
+from data.registry_model import registry_model
 from test.helpers import assert_action_logged
 from util.secscan.fake import fake_security_scanner
 

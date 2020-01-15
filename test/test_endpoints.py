@@ -19,8 +19,8 @@ from flask import url_for
 from jwkest.jwk import RSAKey
 
 from app import app
-from .data import model
-from .data.database import ServiceKeyApprovalType
+from data import model
+from data.database import ServiceKeyApprovalType
 from endpoints import keyserver
 from endpoints.api import api, api_bp
 from endpoints.api.user import Signin
