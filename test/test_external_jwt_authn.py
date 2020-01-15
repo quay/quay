@@ -12,7 +12,7 @@ from Crypto.PublicKey import RSA
 from flask import Flask, jsonify, request, make_response
 
 from app import app
-from .data.users import ExternalJWTAuthN
+from data.users import ExternalJWTAuthN
 from initdb import setup_database_for_testing, finished_database_for_testing
 from test.helpers import liveserver_app
 

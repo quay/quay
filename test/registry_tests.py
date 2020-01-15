@@ -32,8 +32,8 @@ from jwkest.jwk import RSAKey
 import endpoints.decorated  # required for side effect
 
 from app import app, storage, instance_keys, get_app_url
-from .data.database import close_db_filter, configure, DerivedStorageForImage, QueueItem, Image
-from .data import model
+from data.database import close_db_filter, configure, DerivedStorageForImage, QueueItem, Image
+from data import model
 from digest.checksums import compute_simple
 from endpoints.api import api_bp
 from endpoints.csrf import generate_csrf_token

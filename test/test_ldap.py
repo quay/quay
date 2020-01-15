@@ -4,8 +4,8 @@ import ldap
 
 from app import app
 from initdb import setup_database_for_testing, finished_database_for_testing
-from .data.users import LDAPUsers
-from .data import model
+from data.users import LDAPUsers
+from data import model
 from mockldap import MockLdap
 from mock import patch
 from contextlib import contextmanager

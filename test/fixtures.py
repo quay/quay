@@ -17,12 +17,10 @@ from mock import patch
 
 from app import app as application
 from auth.permissions import on_identity_loaded
-from .data import model
-from .data.database import close_db_filter, db, configure
-from .data.model.user import LoginWrappedDBUser, create_robot, lookup_robot, create_user_noverify
-from .data.model.repository import create_repository
-from .data.model.repo_mirror import enable_mirroring_for_repository
-from .data.userfiles import Userfiles
+from data import model
+from data.database import close_db_filter, db, configure
+from data.model.user import LoginWrappedDBUser, create_robot, lookup_robot, create_user_noverify
+from data.userfiles import Userfiles
 from endpoints.api import api_bp
 from endpoints.appr import appr_bp
 from endpoints.web import web
