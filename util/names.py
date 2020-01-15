@@ -1,7 +1,7 @@
 import urllib.request, urllib.parse, urllib.error
 import re
 
-import anunidecode  # Don't listen to pylint's lies. This import is required for unidecode below.
+from text_unidecode import unidecode
 
 from uuid import uuid4
 
@@ -40,7 +40,7 @@ def escape_tag(tag, default="latest"):
 def parse_namespace_repository(
     repository, library_namespace, include_tag=False, allow_library=True
 ):
-    repository = repository.encode("unidecode", "ignore")
+    repository = unidecode(repository)
 
     parts = repository.rstrip("/").split("/", 1)
     if len(parts) < 2:
