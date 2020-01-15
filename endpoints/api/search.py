@@ -36,7 +36,7 @@ from operator import itemgetter
 from stringscore import liquidmetal
 from util.names import parse_robot_username
 
-import anunidecode  # Don't listen to pylint's lies. This import is required.
+from text_unidecode import unidecode
 import math
 
 
@@ -97,7 +97,7 @@ class EntitySearch(ApiResource):
 
         # Ensure we don't have any unicode characters in the search, as it breaks the search. Nothing
         # being searched can have unicode in it anyway, so this is a safe operation.
-        prefix = prefix.encode("unidecode", "ignore").replace(" ", "").lower()
+        prefix = unidecode(prefix).replace(" ", "").lower()
 
         teams = []
         org_data = []
