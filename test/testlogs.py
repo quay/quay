@@ -6,7 +6,7 @@ from functools import wraps, partial
 from copy import deepcopy
 from jinja2.utils import generate_lorem_ipsum
 
-from .data.buildlogs import RedisBuildLogs
+from data.buildlogs import RedisBuildLogs
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ class TestBuildLogs(RedisBuildLogs):
             (phase, status) = status_wrapper
 
             if not is_get_status:
-                from .data import model
+                from data import model
 
                 build_obj = model.build.get_repository_build(self.test_build_id)
                 build_obj.phase = phase
