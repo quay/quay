@@ -10,7 +10,7 @@ from httmock import urlmatch, HTTMock
 from jwkest.jwk import RSAKey
 
 from app import app, authentication
-from .data import model
+from data import model
 from endpoints.oauth.login import oauthlogin as oauthlogin_bp
 from test.test_endpoints import EndpointTestCase
 from test.test_ldap import mock_ldap
