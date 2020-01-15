@@ -3,8 +3,8 @@ import time
 import unittest
 
 from app import app, storage, notification_queue, url_scheme_and_hostname
-from .data import model
-from .data.database import Image, IMAGE_NOT_SCANNED_ENGINE_VERSION
+from data import model
+from data.database import Image, IMAGE_NOT_SCANNED_ENGINE_VERSION
 from endpoints.v2 import v2_bp
 from initdb import setup_database_for_testing, finished_database_for_testing
 from notifications.notificationevent import VulnerabilityFoundEvent
