@@ -8,14 +8,18 @@ from data.appr_model import tag as tag_model
 
 
 def list_packages_query(
-    models_ref, namespace=None, media_type=None, search_query=None, username=None
+    models_ref, namespace=None, media_type=None, search_query=None, username=None, limit=50,
 ):
     """ List and filter repository by search query. """
     Tag = models_ref.Tag
 
     if username and not search_query:
         repositories = model.repository.get_visible_repositories(
-            username, kind_filter="application", include_public=True, namespace=namespace, limit=50
+            username,
+            kind_filter="application",
+            include_public=True,
+            namespace=namespace,
+            limit=limit,
         )
         if not repositories:
             return []
@@ -32,7 +36,7 @@ def list_packages_query(
         if search_query is not None:
             fields = [model.repository.SEARCH_FIELDS.name.name]
             repositories = model.repository.get_app_search(
-                search_query, username=username, search_fields=fields, limit=50
+                search_query, username=username, search_fields=fields, limit=limit
             )
             if not repositories:
                 return []
