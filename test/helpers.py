@@ -3,7 +3,7 @@ import time
 import socket
 
 from contextlib import contextmanager
-from .data.database import LogEntryKind, LogEntry3
+from data.database import LogEntryKind, LogEntry3
 
 
 class assert_action_logged(object):

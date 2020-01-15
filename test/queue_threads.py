@@ -6,7 +6,7 @@ from functools import wraps
 from threading import Thread, Lock
 
 from app import app
-from .data.queue import WorkQueue
+from data.queue import WorkQueue
 from initdb import wipe_database, initialize_database, populate_database
 
 
