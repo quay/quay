@@ -8,7 +8,7 @@ from flask import Flask, request, abort, make_response
 from contextlib import contextmanager
 
 from test.helpers import liveserver_app
-from .data.users.keystone import get_keystone_users
+from data.users.keystone import get_keystone_users
 from initdb import setup_database_for_testing, finished_database_for_testing
 
 _PORT_NUMBER = 5001
