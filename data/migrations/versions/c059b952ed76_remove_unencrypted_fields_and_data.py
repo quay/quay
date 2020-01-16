@@ -10,6 +10,7 @@ Create Date: 2019-08-19 16:31:00.952773
 revision = "c059b952ed76"
 down_revision = "49e1138ed12d"
 
+import logging
 import uuid
 
 from alembic import op as original_op
@@ -17,6 +18,9 @@ from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 
 from data.database import FederatedLogin, User, RobotAccountToken
+
+
+logger = logging.getLogger(__name__)
 
 
 def upgrade(tables, tester, progress_reporter):
@@ -45,10 +49,21 @@ def upgrade(tables, tester, progress_reporter):
         while True:
             try:
                 robot_account_token = RobotAccountToken.get(fully_migrated=False)
-                robot_account = robot_account_token.robot_account
+                logger.debug("Found robot account token %s migrate", robot_account_token.id)
 
-                robot_account.email = str(uuid.uuid4())
-                robot_account.save()
+                robot_account = robot_account_token.robot_account
+                assert robot_account.robot
+
+                result = (
+                    User.update(email=str(uuid.uuid4()))
+                    .where(
+                        User.id == robot_account.id,
+                        User.robot == True,
+                        User.uuid == robot_account.uuid,
+                    )
+                    .execute()
+                )
+                assert result == 1
 
                 federated_login = FederatedLogin.get(user=robot_account)
                 federated_login.service_ident = "robot:%s" % robot_account.id
@@ -56,6 +71,8 @@ def upgrade(tables, tester, progress_reporter):
 
                 robot_account_token.fully_migrated = True
                 robot_account_token.save()
+
+                logger.debug("Finished migrating robot account token %s", robot_account_token.id)
             except RobotAccountToken.DoesNotExist:
                 break
 
