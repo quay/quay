@@ -4,7 +4,6 @@ import sys
 from collections import defaultdict
 from enum import Enum
 
-from app import secscan_api
 from data.registry_model import registry_model
 from notifications import notification_batch
 from util.secscan import PRIORITY_LEVELS
@@ -27,13 +26,16 @@ class SecurityNotificationHandler(object):
       initialize, call process_notification_page_data for each page until it returns
       FINISHED_PROCESSING or FAILED and, if succeeded, then call send_notifications
       to send out the notifications queued.
+
+      NOTE: This is legacy code and should be removed once we're fully moved to Clair V4.
   """
 
-    def __init__(self, results_per_stream):
+    def __init__(self, legacy_secscan_api, results_per_stream):
         self.tags_by_repository_map = defaultdict(set)
         self.repository_map = {}
         self.check_map = {}
         self.layer_ids = set()
+        self.legacy_secscan_api = legacy_secscan_api
 
         self.stream_tracker = None
         self.results_per_stream = results_per_stream
@@ -177,9 +179,9 @@ class SecurityNotificationHandler(object):
                 if not tag.layer_id in self.check_map:
                     logger.debug("Checking if layer %s is vulnerable to %s", tag.layer_id, cve_id)
                     try:
-                        self.check_map[tag.layer_id] = secscan_api.check_layer_vulnerable(
-                            tag.layer_id, cve_id
-                        )
+                        self.check_map[
+                            tag.layer_id
+                        ] = self.legacy_secscan_api.check_layer_vulnerable(tag.layer_id, cve_id)
                     except APIRequestFailure:
                         return False
 

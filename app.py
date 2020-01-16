@@ -40,6 +40,7 @@ from data.userevent import UserEventsBuilderModule
 from data.userfiles import Userfiles
 from data.users import UserAuthentication
 from data.registry_model import registry_model
+from data.secscan_model import secscan_model
 from path_converters import (
     RegexConverter,
     RepositoryPathConverter,
@@ -49,7 +50,6 @@ from oauth.services.github import GithubOAuthService
 from oauth.services.gitlab import GitLabOAuthService
 from oauth.loginmanager import OAuthLoginManager
 from storage import Storage
-from util.config import URLSchemeAndHostname
 from util.log import filter_logs
 from util import get_app_url
 from util.secscan.secscan_util import get_blob_download_uri_getter
@@ -58,11 +58,11 @@ from util.saas.analytics import Analytics
 from util.saas.useranalytics import UserAnalytics
 from util.saas.exceptionlog import Sentry
 from util.names import urn_generator
+from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
 from util.config.superusermanager import SuperUserManager
 from util.label_validator import LabelValidator
 from util.metrics.prometheus import PrometheusPlugin
-from util.secscan.api import SecurityScannerAPI
 from util.repomirror.api import RepoMirrorAPI
 from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
@@ -304,16 +304,6 @@ all_queues = [
 url_scheme_and_hostname = URLSchemeAndHostname(
     app.config["PREFERRED_URL_SCHEME"], app.config["SERVER_HOSTNAME"]
 )
-secscan_api = SecurityScannerAPI(
-    app.config,
-    storage,
-    app.config["SERVER_HOSTNAME"],
-    app.config["HTTPCLIENT"],
-    uri_creator=get_blob_download_uri_getter(
-        app.test_request_context("/"), url_scheme_and_hostname
-    ),
-    instance_keys=instance_keys,
-)
 
 repo_mirror_api = RepoMirrorAPI(
     app.config,
@@ -340,8 +330,12 @@ database.configure(app.config)
 
 model.config.app_config = app.config
 model.config.store = storage
-model.config.register_image_cleanup_callback(secscan_api.cleanup_layers)
 model.config.register_repo_cleanup_callback(tuf_metadata_api.delete_metadata)
+
+secscan_model.configure(app, instance_keys, storage)
+secscan_model.register_model_cleanup_callbacks(model.config)
+
+logs_model.configure(app.config)
 
 
 @login_manager.user_loader
@@ -349,7 +343,5 @@ def load_user(user_uuid):
     logger.debug("User loader loading deferred user with uuid: %s", user_uuid)
     return LoginWrappedDBUser(user_uuid)
 
-
-logs_model.configure(app.config)
 
 get_app_url = partial(get_app_url, app.config)

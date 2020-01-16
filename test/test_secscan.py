@@ -23,8 +23,8 @@ SIMPLE_REPO = "simple"
 COMPLEX_REPO = "complex"
 
 
-def process_notification_data(notification_data):
-    handler = SecurityNotificationHandler(100)
+def process_notification_data(legacy_api, notification_data):
+    handler = SecurityNotificationHandler(legacy_api, 100)
     result = handler.process_notification_page_data(notification_data)
     handler.send_notifications()
     return result == ProcessNotificationPageResult.FINISHED_PROCESSING
@@ -465,7 +465,7 @@ class TestSecurityScanner(unittest.TestCase):
             notification_data = security_scanner.add_notification([layer_id], [], {}, {})
 
             # Process the notification.
-            self.assertTrue(process_notification_data(notification_data))
+            self.assertTrue(process_notification_data(self.api, notification_data))
 
             # Ensure that there are no event queue items for the layer.
             self.assertIsNone(notification_queue.get())
@@ -497,7 +497,7 @@ class TestSecurityScanner(unittest.TestCase):
             notification_data = security_scanner.add_notification([layer_id], None, {}, None)
 
             # Process the notification.
-            self.assertTrue(process_notification_data(notification_data))
+            self.assertTrue(process_notification_data(self.api, notification_data))
 
             # Ensure that there are no event queue items for the layer.
             self.assertIsNone(notification_queue.get())
@@ -541,7 +541,7 @@ class TestSecurityScanner(unittest.TestCase):
             )
 
             # Process the notification.
-            self.assertTrue(process_notification_data(notification_data))
+            self.assertTrue(process_notification_data(self.api, notification_data))
 
             # Ensure an event was written for the tag.
             time.sleep(1)
@@ -580,7 +580,7 @@ class TestSecurityScanner(unittest.TestCase):
             notification_data = security_scanner.add_notification([], [], {}, {})
 
             # Process the notification.
-            self.assertTrue(process_notification_data(notification_data))
+            self.assertTrue(process_notification_data(self.api, notification_data))
 
             # Ensure that there are no event queue items for the layer.
             self.assertIsNone(notification_queue.get())
@@ -643,7 +643,7 @@ class TestSecurityScanner(unittest.TestCase):
             )
 
             # Process the notification.
-            self.assertTrue(process_notification_data(notification_data))
+            self.assertTrue(process_notification_data(self.api, notification_data))
 
             # Ensure an event was written for the tag.
             time.sleep(1)
