@@ -7,7 +7,7 @@ from cnr.exception import raise_package_not_found, raise_channel_not_found, CnrE
 import features
 import data.model
 
-from app import storage, authentication
+from app import app, storage, authentication
 from data import appr_model
 from data.database import Repository, MediaType, db_transaction
 from data.appr_model.models import NEW_MODELS
@@ -103,10 +103,10 @@ class CNRAppModel(AppRegistryDataInterface):
         """ Lists all repositories that contain applications, with optional filtering to a specific
         namespace and view a specific user.
     """
-
+        limit = app.config.get("APP_REGISTRY_RESULTS_LIMIT", 50)
         views = []
         for repo in appr_model.package.list_packages_query(
-            self.models_ref, namespace, media_type, search, username=username
+            self.models_ref, namespace, media_type, search, username=username, limit=limit
         ):
             tag_set_prefetch = getattr(repo, self.models_ref.tag_set_prefetch_name)
             releases = [t.name for t in tag_set_prefetch]
@@ -167,9 +167,12 @@ class CNRAppModel(AppRegistryDataInterface):
         Todo:
           * Filter results with readeable reposistory for the user (including visibilitys)
     """
+        limit = app.config.get("APP_REGISTRY_RESULTS_LIMIT", 50)
         return [
             _join_package_name(r.namespace_user.username, r.name)
-            for r in data.model.repository.get_app_search(lookup=query, username=username, limit=50)
+            for r in data.model.repository.get_app_search(
+                lookup=query, username=username, limit=limit
+            )
         ]
 
     def list_releases(self, package_name, media_type=None):

@@ -698,3 +698,6 @@ class DefaultConfig(ImmutableConfig):
 
     # The timeout after which a fresh login check is required for sensitive operations.
     FRESH_LOGIN_TIMEOUT = "10m"
+
+    # The limit on the number of results returned by app registry listing operations.
+    APP_REGISTRY_RESULTS_LIMIT = 100
