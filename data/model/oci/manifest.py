@@ -147,7 +147,7 @@ def _create_manifest(
     except (ManifestException, MalformedSchema2ManifestList, BlobDoesNotExist, IOError) as ex:
         logger.exception("Could not validate manifest `%s`", manifest_interface_instance.digest)
         if raise_on_error:
-            raise CreateManifestException(ex)
+            raise CreateManifestException(str(ex))
 
         return None
 
@@ -172,7 +172,7 @@ def _create_manifest(
                     manifest_interface_instance.digest,
                 )
                 if raise_on_error:
-                    raise CreateManifestException(ex)
+                    raise CreateManifestException(str(ex))
 
                 return None
 
