@@ -1,4 +1,4 @@
--e git+https://github.com/quay/appr.git@ced40805230e0fb1e3efd3d515a360145262e455#egg=cnr_server
+-e git+https://github.com/quay/appr.git@9f4a8fbb3be6a19f4843c37c2a928ecc95e7ab5d#egg=cnr_server
 -e git+https://github.com/coderanger/supervisor-stdout.git@87632a7e522bf1888587c39e7fd61535b7a43cd7#egg=supervisor_stdout
 -e git+https://github.com/coreos/mockldap.git@59a46efbe8c7cd8146a87a7c4f2b09746b953e11#egg=mockldap
 -e git+https://github.com/coreos/py-bitbucket.git@55a1ada645f2fb6369147996ec71edd7828d91c8#egg=py_bitbucket
