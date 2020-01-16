@@ -1,5 +1,4 @@
 -e git+https://github.com/DevTable/aniso8601-fake.git#egg=aniso8610
--e git+https://github.com/DevTable/anunidecode.git#egg=anunidecode
 -e git+https://github.com/DevTable/container-cloud-config.git#egg=container-cloud-config
 -e git+https://github.com/DevTable/python-etcd.git@sslfix#egg=python-etcd
 -e git+https://github.com/NateFerrero/oauth2lib.git#egg=oauth2lib
@@ -80,6 +79,7 @@ stripe
 supervisor
 supervisor-stdout
 supervisor-logging
+text_unidecode
 tldextract
 toposort
 tzlocal
