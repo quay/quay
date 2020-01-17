@@ -102,6 +102,10 @@ objects:
       service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: '*'
   spec:
     ports:
+    - name: http
+      protocol: TCP
+      port: ${{LOADBALANCER_SERVICE_HTTP_PORT}}
+      targetPort: ${{LOADBALANCER_SERVICE_PROXY_TARGET_HTTP_PORT}}
     - name: https
       protocol: TCP
       port: ${{LOADBALANCER_SERVICE_PORT}}
@@ -283,6 +287,12 @@ parameters:
   - name: LOADBALANCER_SERVICE_PROXY_TARGET_PORT
     value: "7443"
     displayName: loadbalancer service proxy target port
+  - name: LOADBALANCER_SERVICE_HTTP_PORT
+    value: "80"
+    displayName: loadbalancer service http port
+  - name: LOADBALANCER_SERVICE_PROXY_TARGET_HTTP_PORT
+    value: "8080"
+    displayName: loadbalancer service proxy target http port
   - name: QUAY_APP_CONFIG_SECRET
     value: "quay-config-secret"
     displayName: quay app config secret
