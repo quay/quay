@@ -32,6 +32,14 @@ run_black() {
 }
 
 
+run_flake8() {
+    # https://issues.redhat.com/browse/PROJQUAY-92
+    # https://github.com/psf/black/issues/1207#issuecomment-566249522
+    pip install flake8
+    flake8 . --count --max-line-length=100 --select=E9,F63,F7,F82 --show-source --statistics
+}
+
+
 build_image() {
     # Build the image and save it to the shared cache.
     docker build -t "${IMAGE}:${IMAGE_TAG}" .
@@ -189,6 +197,7 @@ postgres() {
 case "$1" in
     lint)
         run_black
+        run_flake8
         ;;
 
     build)
