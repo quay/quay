@@ -4,6 +4,11 @@ import re
 from jsonpath_rw import parse as parse_json_path
 from jsonpath_rw.lexer import JsonPathLexerError
 
+try:
+    basestring
+except NameError:
+    basestring = (str, )
+
 INLINE_PATH_PATTERN = r"\$\{([^}]*)\}"
 
 
