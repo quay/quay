@@ -107,7 +107,7 @@ class PieceHasher(object):
         self,
         piece_size,
         starting_offset=0,
-        starting_piece_hash_bytes="",
+        starting_piece_hash_bytes=b"",
         hash_fragment_to_resume=None,
     ):
         if not isinstance(starting_offset, int):

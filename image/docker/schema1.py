@@ -197,8 +197,9 @@ class DockerSchema1Manifest(ManifestInterface):
 
         payload_str = self._payload
         for signature in self._signatures:
-            bytes_to_verify = "{0}.{1}".format(
-                signature["protected"], base64url_encode(payload_str)
+            bytes_to_verify = b"%s.%s" %  (
+                Bytes.for_string_or_unicode(signature["protected"]).as_encoded_str(),
+                base64url_encode(payload_str)
             )
             signer = SIGNER_ALGS[signature["header"]["alg"]]
             key = keyrep(signature["header"]["jwk"])
@@ -682,17 +683,19 @@ class DockerSchema1ManifestBuilder(object):
             return DockerSchema1Manifest(Bytes.for_string_or_unicode(payload_str))
 
         payload_str = Bytes.for_string_or_unicode(payload_str).as_encoded_str()
-        split_point = payload_str.rfind("\n}")
+        split_point = payload_str.rfind(b"\n}")
 
         protected_payload = {
-            "formatTail": base64url_encode(payload_str[split_point:]),
+            "formatTail": base64url_encode(payload_str[split_point:]).decode('ascii'),
             "formatLength": split_point,
             "time": datetime.utcnow().strftime(_ISO_DATETIME_FORMAT_ZULU),
         }
-        protected = base64url_encode(json.dumps(protected_payload, ensure_ascii=ensure_ascii))
+        protected = base64url_encode(
+            json.dumps(protected_payload, ensure_ascii=ensure_ascii).encode('utf-8')
+        )
         logger.debug("Generated protected block: %s", protected)
 
-        bytes_to_sign = "{0}.{1}".format(protected, base64url_encode(payload_str))
+        bytes_to_sign = b"%s.%s" % (protected, base64url_encode(payload_str))
 
         signer = SIGNER_ALGS[_JWS_SIGNING_ALGORITHM]
         signature = base64url_encode(signer.sign(bytes_to_sign, json_web_key.get_key()))
@@ -707,8 +710,8 @@ class DockerSchema1ManifestBuilder(object):
 
         signature_block = {
             DOCKER_SCHEMA1_HEADER_KEY: {"jwk": public_key, "alg": _JWS_SIGNING_ALGORITHM},
-            DOCKER_SCHEMA1_SIGNATURE_KEY: signature,
-            DOCKER_SCHEMA1_PROTECTED_KEY: protected,
+            DOCKER_SCHEMA1_SIGNATURE_KEY: signature.decode('ascii'),
+            DOCKER_SCHEMA1_PROTECTED_KEY: protected.decode('ascii'),
         }
 
         logger.debug("Encoded signature block: %s", json.dumps(signature_block))

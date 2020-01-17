@@ -30,7 +30,7 @@ def generate_csrf_token(session_token_name=_QUAY_CSRF_TOKEN_NAME, force=False):
     Returns the generated token.
     """
     if session_token_name not in session or force:
-        session[session_token_name] = base64.b64encode(os.urandom(48))
+        session[session_token_name] = base64.b64encode(os.urandom(48)).decode('ascii')
 
     return session[session_token_name]
 
