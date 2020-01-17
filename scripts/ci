@@ -28,6 +28,7 @@ run_black() {
     # https://issues.redhat.com/browse/PROJQUAY-92
     # https://github.com/psf/black/issues/1207#issuecomment-566249522
     pip install black --no-binary=regex
+    echo "Running 'black' to verify Python formatting."
     black --line-length 100 --target-version py36 --check --diff .
 }
 
@@ -40,8 +41,14 @@ run_flake8() {
 
 
 build_image() {
+
+    # Build the base image
+    echo "Building Base Image"
+    docker build -t "quay-ci-base" .
+
     # Build the image and save it to the shared cache.
-    docker build -t "${IMAGE}:${IMAGE_TAG}" .
+    echo "Building CI Image"
+    docker build -t "${IMAGE}:${IMAGE_TAG}" -f Dockerfile.cirun .
 
     echo "Exporting Docker image to cache..."
     time (docker save "${IMAGE}:${IMAGE_TAG}" | gzip -2 > "${IMAGE_TAR}")
@@ -67,7 +74,7 @@ fail_clean() {
 }
 
 quay_run() {
-    docker run --net=host -e TEST_DATABASE_URI -ti "${IMAGE}:${IMAGE_TAG}" "$@"
+    docker run --net=host -e TEST_DATABASE_URI -ti "${IMAGE}:${IMAGE_TAG}-ci-run" "$@"
 }
 
 
