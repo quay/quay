@@ -53,7 +53,7 @@ def _parse_basic_auth_header(auth):
         return None, "Invalid basic auth header"
 
     try:
-        credentials = [part.decode("utf-8") for part in b64decode(normalized[1]).split(":", 1)]
+        credentials = [part.decode("utf-8") for part in b64decode(normalized[1]).split(b":", 1)]
     except (TypeError, UnicodeDecodeError, ValueError):
         logger.exception("Exception when parsing basic auth header: %s", auth)
         return None, "Could not parse basic auth header"

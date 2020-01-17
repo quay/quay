@@ -218,7 +218,7 @@ class _BlobUploadManager(object):
             piece_hasher = None
             if self.blob_upload.chunk_count == 0 or self.blob_upload.piece_sha_state:
                 initial_sha1_value = self.blob_upload.piece_sha_state or rehash.sha1()
-                initial_sha1_pieces_value = self.blob_upload.piece_hashes or ""
+                initial_sha1_pieces_value = self.blob_upload.piece_hashes or b""
 
                 piece_hasher = PieceHasher(
                     self.settings.bittorrent_piece_size,

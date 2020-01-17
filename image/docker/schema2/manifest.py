@@ -192,7 +192,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
     @property
     def digest(self):
-        return digest_tools.sha256_digest(self._payload.as_encoded_str().encode("utf-8"))
+        return digest_tools.sha256_digest(self._payload.as_encoded_str())
 
     @property
     def config(self):
