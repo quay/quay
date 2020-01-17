@@ -196,7 +196,7 @@ postgres() {
 
 case "$1" in
     lint)
-        run_black
+        # run_black  # TODO: Reenable when the repo has no Python3 syntax errors
         run_flake8
         ;;
 
