@@ -33,8 +33,6 @@ run_black() {
 
 
 run_flake8() {
-    # https://issues.redhat.com/browse/PROJQUAY-92
-    # https://github.com/psf/black/issues/1207#issuecomment-566249522
     pip install flake8
     flake8 . --count --max-line-length=100 --select=E9,F63,F7,F82 --show-source --statistics
 }
