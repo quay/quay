@@ -56,7 +56,7 @@ MANIFESTLIST_BYTES = json.dumps(
             },
         ],
     }
-)
+).encode('utf-8')
 
 NO_AMD_MANIFESTLIST_BYTES = json.dumps(
     {
@@ -71,7 +71,7 @@ NO_AMD_MANIFESTLIST_BYTES = json.dumps(
             },
         ],
     }
-)
+).encode('utf-8')
 
 retriever = ContentRetrieverForTesting({"sha256:e6": v22_bytes, "sha256:5b": v21_bytes,})
 
