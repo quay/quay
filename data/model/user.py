@@ -8,7 +8,6 @@ from peewee import JOIN, IntegrityError, fn
 from uuid import uuid4
 from datetime import datetime, timedelta
 
-from active_migration import ActiveDataMigration, ERTMigrationFlags
 from data.database import (
     User,
     LoginService,
@@ -367,15 +366,7 @@ def update_robot_metadata(robot, description="", unstructured_json=None):
 
 def retrieve_robot_token(robot):
     """ Returns the decrypted token for the given robot. """
-    try:
-        token = RobotAccountToken.get(robot_account=robot).token.decrypt()
-    except RobotAccountToken.DoesNotExist:
-        if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-            # For legacy only.
-            token = robot.email
-        else:
-            raise
-
+    token = RobotAccountToken.get(robot_account=robot).token.decrypt()
     return token
 
 
@@ -440,30 +431,8 @@ def verify_robot(robot_username, password):
             msg = "Could not find robot with username: %s and supplied password." % robot_username
             raise InvalidRobotException(msg)
     except RobotAccountToken.DoesNotExist:
-        # TODO(remove-unenc): Remove once migrated.
-        if not ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-            raise InvalidRobotException(msg)
-
-        if password.find("robot:") >= 0:
-            # Just to be sure.
-            raise InvalidRobotException(msg)
-
-        query = (
-            User.select()
-            .join(FederatedLogin)
-            .join(LoginService)
-            .where(
-                FederatedLogin.service_ident == password,
-                LoginService.name == "quayrobot",
-                User.username == robot_username,
-            )
-        )
-
-        try:
-            robot = query.get()
-        except User.DoesNotExist:
-            msg = "Could not find robot with username: %s and supplied password." % robot_username
-            raise InvalidRobotException(msg)
+        msg = "Could not find robot with username: %s and supplied password." % robot_username
+        raise InvalidRobotException(msg)
 
     # Find the owner user and ensure it is not disabled.
     try:
@@ -527,16 +496,12 @@ def _list_entity_robots(entity_name, include_metadata=True, include_token=True):
     """ Return the list of robots for the specified entity. This MUST return a query, not a
       materialized list so that callers can use db_for_update.
   """
-    # TODO(remove-unenc): Remove FederatedLogin and LEFT_OUTER on RobotAccountToken once migration
-    # is complete.
     if include_metadata or include_token:
         query = (
-            User.select(User, RobotAccountToken, FederatedLogin, RobotAccountMetadata)
-            .join(FederatedLogin)
-            .switch(User)
+            User.select(User, RobotAccountToken, RobotAccountMetadata)
             .join(RobotAccountMetadata, JOIN.LEFT_OUTER)
             .switch(User)
-            .join(RobotAccountToken, JOIN.LEFT_OUTER)
+            .join(RobotAccountToken)
             .where(User.robot == True, User.username ** (entity_name + "+%"))
         )
     else:
@@ -548,13 +513,11 @@ def _list_entity_robots(entity_name, include_metadata=True, include_token=True):
 def list_entity_robot_permission_teams(entity_name, limit=None, include_permissions=False):
     query = _list_entity_robots(entity_name)
 
-    # TODO(remove-unenc): Remove FederatedLogin once migration is complete.
     fields = [
         User.username,
         User.creation_date,
         User.last_accessed,
         RobotAccountToken.token,
-        FederatedLogin.service_ident,
         RobotAccountMetadata.description,
         RobotAccountMetadata.unstructured_json,
     ]
@@ -563,7 +526,7 @@ def list_entity_robot_permission_teams(entity_name, limit=None, include_permissi
             query.join(
                 RepositoryPermission,
                 JOIN.LEFT_OUTER,
-                on=(RepositoryPermission.user == FederatedLogin.user),
+                on=(RepositoryPermission.user == RobotAccountToken.robot_account),
             )
             .join(Repository, JOIN.LEFT_OUTER)
             .switch(User)
@@ -700,9 +663,7 @@ def create_confirm_email_code(user, new_email=None):
 
 
 def confirm_user_email(token):
-    # TODO(remove-unenc): Remove allow_public_only once migrated.
-    allow_public_only = ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS)
-    result = decode_public_private_token(token, allow_public_only=allow_public_only)
+    result = decode_public_private_token(token)
     if not result:
         raise DataModelException("Invalid email confirmation code")
 
@@ -750,9 +711,7 @@ def create_reset_password_email_code(email):
 
 
 def validate_reset_code(token):
-    # TODO(remove-unenc): Remove allow_public_only once migrated.
-    allow_public_only = ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS)
-    result = decode_public_private_token(token, allow_public_only=allow_public_only)
+    result = decode_public_private_token(token)
     if not result:
         return None
 

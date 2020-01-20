@@ -4,7 +4,6 @@ from datetime import timedelta, datetime
 
 from peewee import JOIN
 
-from active_migration import ActiveDataMigration, ERTMigrationFlags
 from data.database import (
     BuildTriggerService,
     RepositoryBuildTrigger,
@@ -41,11 +40,7 @@ ARCHIVABLE_BUILD_PHASES = [BUILD_PHASE.COMPLETE, BUILD_PHASE.ERROR, BUILD_PHASE.
 def update_build_trigger(trigger, config, auth_token=None, write_token=None):
     trigger.config = json.dumps(config or {})
 
-    # TODO(remove-unenc): Remove legacy field.
     if auth_token is not None:
-        if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
-            trigger.auth_token = auth_token
-
         trigger.secure_auth_token = DecryptedValue(auth_token)
 
     if write_token is not None:
@@ -56,17 +51,10 @@ def update_build_trigger(trigger, config, auth_token=None, write_token=None):
 
 def create_build_trigger(repo, service_name, auth_token, user, pull_robot=None, config=None):
     service = BuildTriggerService.get(name=service_name)
-
-    # TODO(remove-unenc): Remove legacy field.
-    old_auth_token = None
-    if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
-        old_auth_token = auth_token
-
     secure_auth_token = DecryptedValue(auth_token) if auth_token else None
     trigger = RepositoryBuildTrigger.create(
         repository=repo,
         service=service,
-        auth_token=old_auth_token,
         secure_auth_token=secure_auth_token,
         connected_user=user,
         pull_robot=pull_robot,
