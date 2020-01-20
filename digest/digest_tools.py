@@ -25,6 +25,9 @@ class Digest(object):
     def __eq__(self, rhs):
         return isinstance(rhs, Digest) and str(self) == str(rhs)
 
+    def __hash__(self):
+        return hash((self._hash_alg, self._hash_bytes))
+
     @staticmethod
     def parse_digest(digest):
         """
