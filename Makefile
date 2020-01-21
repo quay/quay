@@ -43,25 +43,25 @@ conf/stack/license: $(QUAY_CONFIG)/local/license
 	ln -s $(QUAY_CONFIG)/local/license conf/stack/license
 
 unit-test:
-	TEST=true PYTHONPATH="." py.test \
+	ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose -x \
 	./
 
 registry-test:
-	TEST=true PYTHONPATH="." py.test  \
+	TEST=true ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	test/registry/registry_tests.py
 
 registry-test-old:
-	TEST=true PYTHONPATH="." py.test  \
+	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	./test/registry_tests.py
 
 buildman-test:
-	TEST=true PYTHONPATH="." py.test \
+	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	./buildman/
@@ -71,8 +71,8 @@ certs-test:
 
 full-db-test: ensure-test-db
 	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
-	alembic upgrade head
-	TEST=true PYTHONPATH=. \
+	ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields alembic upgrade head
+	TEST=true PYTHONPATH=. ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields \
 	SKIP_DB_SCHEMA=true py.test --timeout=7200 \
 	--verbose --show-count -x --ignore=endpoints/appr/test/ \
 	./

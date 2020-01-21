@@ -25,6 +25,7 @@ from sqlalchemy.engine.url import make_url
 import resumablehashlib
 from cachetools.func import lru_cache
 
+from active_migration import ERTMigrationFlags, ActiveDataMigration
 from data.fields import (
     ResumableSHA256Field,
     ResumableSHA1Field,
@@ -882,6 +883,12 @@ class AccessTokenKind(BaseModel):
 class AccessToken(BaseModel):
     friendly_name = CharField(null=True)
 
+    # TODO(remove-unenc): This field is deprecated and should be removed soon.
+    code = deprecated_field(
+        CharField(default=random_string_generator(length=64), unique=True, index=True, null=True),
+        ERTMigrationFlags.WRITE_OLD_FIELDS,
+    )
+
     token_name = CharField(default=random_string_generator(length=32), unique=True, index=True)
     token_code = EncryptedCharField(default_token_length=32)
 
@@ -892,7 +899,10 @@ class AccessToken(BaseModel):
     kind = ForeignKeyField(AccessTokenKind, null=True)
 
     def get_code(self):
-        return self.token_name + self.token_code.decrypt()
+        if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
+            return self.code
+        else:
+            return self.token_name + self.token_code.decrypt()
 
 
 class BuildTriggerService(BaseModel):
@@ -908,6 +918,10 @@ class RepositoryBuildTrigger(BaseModel):
     service = ForeignKeyField(BuildTriggerService)
     repository = ForeignKeyField(Repository)
     connected_user = QuayUserField()
+
+    # TODO(remove-unenc): These fields are deprecated and should be removed soon.
+    auth_token = deprecated_field(CharField(null=True), ERTMigrationFlags.WRITE_OLD_FIELDS)
+    private_key = deprecated_field(TextField(null=True), ERTMigrationFlags.WRITE_OLD_FIELDS)
 
     secure_auth_token = EncryptedCharField(null=True)
     secure_private_key = EncryptedTextField(null=True)
@@ -1242,6 +1256,12 @@ class OAuthApplication(BaseModel):
     secure_client_secret = EncryptedCharField(default_token_length=40, null=True)
     fully_migrated = BooleanField(default=False)
 
+    # TODO(remove-unenc): This field is deprecated and should be removed soon.
+    client_secret = deprecated_field(
+        CharField(default=random_string_generator(length=40), null=True),
+        ERTMigrationFlags.WRITE_OLD_FIELDS,
+    )
+
     redirect_uri = CharField()
     application_uri = CharField()
     organization = QuayUserField()
@@ -1253,6 +1273,11 @@ class OAuthApplication(BaseModel):
 
 class OAuthAuthorizationCode(BaseModel):
     application = ForeignKeyField(OAuthApplication)
+
+    # TODO(remove-unenc): This field is deprecated and should be removed soon.
+    code = deprecated_field(
+        CharField(index=True, unique=True, null=True), ERTMigrationFlags.WRITE_OLD_FIELDS
+    )
 
     code_name = CharField(index=True, unique=True)
     code_credential = CredentialField()
@@ -1268,6 +1293,11 @@ class OAuthAccessToken(BaseModel):
     scope = CharField()
     token_name = CharField(index=True, unique=True)
     token_code = CredentialField()
+
+    # TODO(remove-unenc): This field is deprecated and should be removed soon.
+    access_token = deprecated_field(
+        CharField(index=True, null=True), ERTMigrationFlags.WRITE_OLD_FIELDS
+    )
 
     token_type = CharField(default="Bearer")
     expires_at = DateTimeField()
@@ -1569,6 +1599,12 @@ class AppSpecificAuthToken(BaseModel):
     title = CharField()
     token_name = CharField(index=True, unique=True, default=random_string_generator(60))
     token_secret = EncryptedCharField(default_token_length=60)
+
+    # TODO(remove-unenc): This field is deprecated and should be removed soon.
+    token_code = deprecated_field(
+        CharField(default=random_string_generator(length=120), unique=True, index=True, null=True),
+        ERTMigrationFlags.WRITE_OLD_FIELDS,
+    )
 
     created = DateTimeField(default=datetime.now)
     expiration = DateTimeField(null=True)

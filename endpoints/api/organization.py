@@ -7,6 +7,7 @@ from flask import request
 
 import features
 
+from active_migration import ActiveDataMigration, ERTMigrationFlags
 from app import (
     billing as stripe,
     avatar,
@@ -507,8 +508,16 @@ def app_view(application):
     is_admin = AdministerOrganizationPermission(application.organization.username).can()
     client_secret = None
     if is_admin:
+        # TODO(remove-unenc): Remove legacy lookup.
+        client_secret = None
         if application.secure_client_secret is not None:
             client_secret = application.secure_client_secret.decrypt()
+
+        if (
+            ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS)
+            and client_secret is None
+        ):
+            client_secret = application.client_secret
 
     assert (client_secret is not None) == is_admin
     return {
