@@ -420,7 +420,7 @@ class AuthorizationProvider(Provider):
                 return self._make_redirect_error_response(u, err)
             else:
                 return self._invalid_redirect_uri_response()
-        except StandardError as exc:
+        except Exception as exc:
             self._handle_exception(exc)
 
             # Catch all other server errors
