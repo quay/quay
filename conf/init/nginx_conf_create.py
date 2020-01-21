@@ -123,6 +123,7 @@ def generate_rate_limiting_config(config):
         static_dir=STATIC_DIR,
     )
 
+
 def generate_hosted_http_base_config(config):
     """
   Generates hosted http base config from the app config
@@ -134,6 +135,7 @@ def generate_hosted_http_base_config(config):
         os.path.join(QUAYCONF_DIR, "nginx/hosted-http-base.conf"),
         feature_proxy_protocol=feature_proxy_protocol,
     )
+
 
 if __name__ == "__main__":
     if os.path.exists(os.path.join(QUAYCONF_DIR, "stack/config.yaml")):
