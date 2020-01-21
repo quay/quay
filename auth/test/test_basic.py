@@ -19,8 +19,8 @@ from test.fixtures import *
 def _token(username, password):
     assert isinstance(username, str)
     assert isinstance(password, str)
-    token_bytes = b"%s:%s" % (username.encode('ascii'), password.encode('ascii'))
-    return "basic " + b64encode(token_bytes).decode('ascii')
+    token_bytes = b"%s:%s" % (username.encode("ascii"), password.encode("ascii"))
+    return "basic " + b64encode(token_bytes).decode("ascii")
 
 
 @pytest.mark.parametrize(
