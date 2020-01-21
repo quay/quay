@@ -238,7 +238,7 @@ objects:
           - name: ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE
             value: ${{ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE}}
           - name: DEBUGLOG
-            value: ${{DEBUGLOG}}
+            value: ${DEBUGLOG}
           - name: SYSLOG_SERVER
             value: ${{SYSLOG_SERVER}}
           - name: SYSLOG_PORT
