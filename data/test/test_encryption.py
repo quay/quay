@@ -55,7 +55,7 @@ def test_encryption(test_data, version, secret_key, use_valid_key):
 @pytest.mark.parametrize(
     "secret_key, encrypted_value, expected_decrypted_value",
     [
-        (u"test1234", "v0$$iE+87Qefu/2i+5zC87nlUtOskypk8MUUDS/QZPs=", ""),
+        ("test1234", "v0$$iE+87Qefu/2i+5zC87nlUtOskypk8MUUDS/QZPs=", ""),
         ("test1234", "v0$$XTxqlz/Kw8s9WKw+GaSvXFEKgpO/a2cGNhvnozzkaUh4C+FgHqZqnA==", "hello world"),
         (
             bytes("test1234"),
