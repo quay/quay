@@ -106,7 +106,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: {0} json_file layer_file".format(sys.argv[0]))
         sys.exit(1)
-    json_data = file(sys.argv[1]).read()
+    json_data = open(sys.argv[1]).read()
     fp = open(sys.argv[2])
     print(compute_simple(fp, json_data))
     print(compute_tarsum(fp, json_data))
