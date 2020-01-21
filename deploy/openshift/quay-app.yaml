@@ -235,8 +235,6 @@ objects:
             value: ${{QUAY_APP_DEPLOYMENT_NAMESPACE}}
           - name: QE_K8S_CONFIG_SECRET
             value: ${{QUAY_APP_CONFIG_SECRET}}
-          - name: ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE
-            value: ${{ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE}}
           - name: DEBUGLOG
             value: ${{DEBUGLOG}}
           - name: SYSLOG_SERVER
@@ -350,9 +348,6 @@ parameters:
   - name: QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS
     value: "10"
     displayName: quay app readiness probe timeout
-  - name: ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE
-    value: ""
-    displayName: encrypted robot token migration phase
   - name: DEBUGLOG
     value: "false"
     displayName: debug log

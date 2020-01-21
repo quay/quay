@@ -2,7 +2,6 @@ import logging
 
 from datetime import datetime
 
-from active_migration import ActiveDataMigration, ERTMigrationFlags
 from data.database import AppSpecificAuthToken, User, random_string_generator
 from data.model import config
 from data.model._basequery import update_last_accessed
@@ -40,17 +39,12 @@ def create_token(user, title, expiration=_default_expiration_duration_opt):
     assert token_name
     assert token_secret
 
-    # TODO(remove-unenc): Remove legacy handling.
-    old_token_code = (
-        token_code if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS) else None
-    )
     return AppSpecificAuthToken.create(
         user=user,
         title=title,
         expiration=expiration,
         token_name=token_name,
         token_secret=DecryptedValue(token_secret),
-        token_code=old_token_code,
     )
 
 
@@ -154,35 +148,9 @@ def access_valid_token(token_code):
     except AppSpecificAuthToken.DoesNotExist:
         pass
 
-    # TODO(remove-unenc): Remove legacy handling.
-    if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-        try:
-            token = (
-                AppSpecificAuthToken.select(AppSpecificAuthToken, User)
-                .join(User)
-                .where(
-                    AppSpecificAuthToken.token_code == token_code,
-                    (
-                        (AppSpecificAuthToken.expiration > datetime.now())
-                        | (AppSpecificAuthToken.expiration >> None)
-                    ),
-                )
-                .get()
-            )
-
-            update_last_accessed(token)
-            return token
-        except AppSpecificAuthToken.DoesNotExist:
-            return None
-
     return None
 
 
 def get_full_token_string(token):
-    # TODO(remove-unenc): Remove legacy handling.
-    if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-        if not token.token_name:
-            return token.token_code
-
     assert token.token_name
     return "%s%s" % (token.token_name, token.token_secret.decrypt())

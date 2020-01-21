@@ -5,7 +5,6 @@ from urlparse import urlunparse
 
 from flask import request, url_for
 
-from active_migration import ActiveDataMigration, ERTMigrationFlags
 from app import app
 from auth.permissions import (
     UserAdminPermission,
@@ -290,10 +289,6 @@ class BuildTriggerActivate(RepositoryParamResource):
 
                 if "private_key" in private_config:
                     trigger.secure_private_key = DecryptedValue(private_config["private_key"])
-
-                    # TODO(remove-unenc): Remove legacy field.
-                    if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
-                        trigger.private_key = private_config["private_key"]
 
             except TriggerException as exc:
                 write_token.delete_instance()
