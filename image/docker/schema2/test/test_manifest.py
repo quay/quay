@@ -71,7 +71,7 @@ MANIFEST_BYTES = json.dumps(
             },
         ],
     }
-).encode('utf-8')
+).encode("utf-8")
 
 REMOTE_MANIFEST_BYTES = json.dumps(
     {
@@ -106,7 +106,7 @@ REMOTE_MANIFEST_BYTES = json.dumps(
             },
         ],
     }
-).encode('utf-8')
+).encode("utf-8")
 
 
 def test_valid_manifest():

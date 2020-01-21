@@ -104,7 +104,7 @@ class BaseAvatar(object):
         # Note: email_or_id may be None if gotten from external auth when email is disabled,
         # so use the username in that case.
         username_email_or_id = email_or_id or name
-        hash_value = hashlib.md5(username_email_or_id.strip().lower().encode('utf-8')).hexdigest()
+        hash_value = hashlib.md5(username_email_or_id.strip().lower().encode("utf-8")).hexdigest()
 
         byte_count = int(math.ceil(math.log(len(colors), 16)))
         byte_data = hash_value[0:byte_count]
