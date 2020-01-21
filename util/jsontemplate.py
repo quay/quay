@@ -1,6 +1,8 @@
 import json
 import re
 
+from six import string_types
+
 from jsonpath_rw import parse as parse_json_path
 from jsonpath_rw.lexer import JsonPathLexerError
 
@@ -27,7 +29,7 @@ class JSONTemplate(object):
         return self._apply(self._parsed, data)
 
     def _apply(self, obj, data):
-        if isinstance(obj, basestring):
+        if isinstance(obj, string_types):
             return self._process_string(obj, data)
         elif isinstance(obj, dict):
             return {
