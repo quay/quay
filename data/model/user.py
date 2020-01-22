@@ -425,9 +425,7 @@ def get_matching_robots(name_prefix, username, limit=10):
 
 
 def verify_robot(robot_username, password):
-    try:
-        password = remove_unicode(password)
-    except UnicodeEncodeError:
+    if not password.isascii():
         msg = "Could not find robot with username: %s and supplied password." % robot_username
         raise InvalidRobotException(msg)
 
