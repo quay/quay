@@ -111,15 +111,15 @@ def test_valid_app_specific_token(app):
 
 
 def test_invalid_unicode(app):
-    token = "\xebOH"
-    header = "basic " + b64encode(token)
+    token = b"\xebOH"
+    header = "basic " + b64encode(token).decode('ascii')
     result = validate_basic_auth(header)
     assert result == ValidateResult(AuthKind.basic, missing=True)
 
 
 def test_invalid_unicode_2(app):
-    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”"
-    header = "basic " + b64encode("devtable+somerobot:%s" % token)
+    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”".encode('utf-8')
+    header = "basic " + b64encode(b"devtable+somerobot:%s" % token).decode('ascii')
     result = validate_basic_auth(header)
     assert result == ValidateResult(
         AuthKind.basic,
