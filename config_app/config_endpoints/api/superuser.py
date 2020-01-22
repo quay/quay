@@ -21,7 +21,7 @@ from config_app.config_endpoints.api import (
 )
 from config_app.config_endpoints.api.superuser_models_pre_oci import (
     pre_oci_model,
-    ServiceKeyAlreadyApproved
+    ServiceKeyAlreadyApproved,
 )
 from config_app.config_util.ssl import load_certificate, CertInvalidException
 from config_app.c_app import app, config_provider, INIT_SCRIPTS_LOCATION
