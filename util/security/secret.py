@@ -22,8 +22,9 @@ def convert_secret_key(config_secret_key):
             pass
 
     if secret_key is None:
-        secret_key = str(bytearray(list(map(ord, config_secret_key))))
+        secret_key = bytearray(list(map(ord, config_secret_key)))
 
     # Otherwise, use the bytes directly.
-    assert len(secret_key)
-    return "".join(itertools.islice(itertools.cycle(secret_key), 32))
+    assert len(secret_key) > 0
+
+    return b"".join(itertools.islice(itertools.cycle([bytes([b]) for b in secret_key]), 32))

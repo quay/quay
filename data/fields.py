@@ -34,7 +34,7 @@ class _ResumableSHAField(TextField):
         if value is None:
             return None
 
-        serialized_state = base64.b64encode(pickle.dumps(value)).decode('ascii')
+        serialized_state = base64.b64encode(pickle.dumps(value)).decode("ascii")
         return serialized_state
 
     def python_value(self, value):
@@ -44,7 +44,7 @@ class _ResumableSHAField(TextField):
         if value is None:
             return None
 
-        hasher = pickle.loads(base64.b64decode(value.encode('ascii')))
+        hasher = pickle.loads(base64.b64decode(value.encode("ascii")))
         return hasher
 
 
@@ -72,12 +72,12 @@ class Base64BinaryField(TextField):
     def db_value(self, value):
         if value is None:
             return None
-        return base64.b64encode(value).decode('ascii')
+        return base64.b64encode(value).decode("ascii")
 
     def python_value(self, value):
         if value is None:
             return None
-        return base64.b64decode(value.encode('ascii'))
+        return base64.b64decode(value.encode("ascii"))
 
 
 class DecryptedValue(object):
