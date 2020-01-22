@@ -8,6 +8,7 @@ import trollius
 from autobahn.wamp.exception import ApplicationError
 from trollius import From, Return
 
+from active_migration import ActiveDataMigration, ERTMigrationFlags
 from buildman.server import BuildJobResult
 from buildman.component.basecomponent import BaseComponent
 from buildman.component.buildparse import extract_current_step
@@ -161,12 +162,20 @@ class BuildComponent(BaseComponent):
         #  sha: the sha1 identifier of the commit to check out
         #  private_key: the key used to get read access to the git repository
 
+        # TODO(remove-unenc): Remove legacy field.
         private_key = None
         if (
             build_job.repo_build.trigger is not None
             and build_job.repo_build.trigger.secure_private_key is not None
         ):
             private_key = build_job.repo_build.trigger.secure_private_key.decrypt()
+
+        if (
+            ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS)
+            and private_key is None
+            and build_job.repo_build.trigger is not None
+        ):
+            private_key = build_job.repo_build.trigger.private_key
 
         if private_key is not None:
             build_arguments["git"] = {

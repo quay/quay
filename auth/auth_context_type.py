@@ -260,7 +260,7 @@ class ValidatedAuthContext(AuthContext):
         # TODO: Remove this all once the new code is fully deployed.
         if self.token:
             dict_data.update(
-                {"kind": "token", "token": self.token.get_code(),}
+                {"kind": "token", "token": self.token.code,}
             )
 
         if self.oauthtoken:

@@ -2,6 +2,7 @@ import logging
 
 from peewee import JOIN
 
+from active_migration import ActiveDataMigration, ERTMigrationFlags
 from data.database import (
     AccessToken,
     AccessTokenKind,
@@ -30,6 +31,10 @@ def create_access_token(repo, role, kind=None, friendly_name=None):
         repository=repo, temporary=True, role=role, kind=kind_ref, friendly_name=friendly_name
     )
 
+    if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
+        new_token.code = new_token.token_name + new_token.token_code.decrypt()
+        new_token.save()
+
     return new_token
 
 
@@ -39,6 +44,10 @@ def create_delegate_token(namespace_name, repository_name, friendly_name, role="
     new_token = AccessToken.create(
         repository=repo, role=read_only, friendly_name=friendly_name, temporary=False
     )
+
+    if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
+        new_token.code = new_token.token_name + new_token.token_code.decrypt()
+        new_token.save()
 
     return new_token
 
@@ -73,11 +82,31 @@ def load_token_data(code):
     except AccessToken.DoesNotExist:
         pass
 
+    # Legacy: Try loading the full code directly.
+    # TODO(remove-unenc): Remove this once migrated.
+    if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
+        try:
+            return (
+                AccessToken.select(AccessToken, Repository, Namespace, Role)
+                .join(Role)
+                .switch(AccessToken)
+                .join(Repository)
+                .join(Namespace, on=(Repository.namespace_user == Namespace.id))
+                .where(AccessToken.code == code)
+                .get()
+            )
+        except AccessToken.DoesNotExist:
+            raise InvalidTokenException("Invalid delegate token code: %s" % code)
+
     raise InvalidTokenException("Invalid delegate token code: %s" % code)
 
 
 def get_full_token_string(token):
     """ Returns the full string to use for this token to login. """
+    if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
+        if token.token_name is None:
+            return token.code
+
     assert token.token_name
     token_code = token.token_code.decrypt()
     assert len(token.token_name) == ACCESS_TOKEN_NAME_PREFIX_LENGTH

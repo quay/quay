@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from jsonschema import validate
 from six import add_metaclass
 
+from active_migration import ActiveDataMigration, ERTMigrationFlags
 from endpoints.building import PreparedBuild
 from data import model
 from buildtrigger.triggerutil import get_trigger_config, InvalidServiceException
@@ -146,11 +147,15 @@ class BuildTriggerHandler(object):
     def auth_token(self):
         """ Returns the auth token for the trigger. """
         # NOTE: This check is for testing.
-        if hasattr(self.trigger, "auth_token"):
+        if isinstance(self.trigger.auth_token, str):
             return self.trigger.auth_token
 
+        # TODO(remove-unenc): Remove legacy field.
         if self.trigger.secure_auth_token is not None:
             return self.trigger.secure_auth_token.decrypt()
+
+        if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
+            return self.trigger.auth_token
 
         return None
 
