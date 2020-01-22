@@ -34,7 +34,7 @@ class _ResumableSHAField(TextField):
         if value is None:
             return None
 
-        serialized_tate = pickle.dumps(value)
+        serialized_state = pickle.dumps(value)
         return serialized_state
 
     def python_value(self, value):
