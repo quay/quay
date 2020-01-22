@@ -155,7 +155,7 @@ class DockerSchema2Config(object):
                         DOCKER_SCHEMA2_CONFIG_CREATED_BY_KEY: {
                             "type": "string",
                             "description": "The command used to create the layer",
-                            "x-example": "\/bin\/sh -c #(nop) ADD file:somesha in /",
+                            "x-example": r"\/bin\/sh -c #(nop) ADD file:somesha in /",
                         },
                         DOCKER_SCHEMA2_CONFIG_COMMENT_KEY: {
                             "type": "string",
