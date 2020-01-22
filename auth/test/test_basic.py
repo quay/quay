@@ -19,7 +19,7 @@ from test.fixtures import *
 def _token(username, password):
     assert isinstance(username, str)
     assert isinstance(password, str)
-    token_bytes = b"%s:%s" % (username.encode("ascii"), password.encode("ascii"))
+    token_bytes = b"%s:%s" % (username.encode("utf-8"), password.encode("utf-8"))
     return "basic " + b64encode(token_bytes).decode("ascii")
 
 
@@ -63,6 +63,10 @@ def _token(username, password):
                 error_message="This user has been disabled. Please contact your administrator.",
             ),
         ),
+        (
+            _token("usér", "passwôrd"),
+            ValidateResult(AuthKind.basic, error_message="Invalid Username or Password")
+        )
     ],
 )
 def test_validate_basic_auth_token(token, expected_result, app):
