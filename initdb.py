@@ -90,21 +90,21 @@ IS_TESTING_REAL_DATABASE = bool(os.environ.get("TEST_DATABASE_URI"))
 
 
 def __gen_checksum(image_id):
-    csum = hashlib.md5(image_id)
+    csum = hashlib.md5(image_id.encode('utf-8'))
     return "tarsum+sha256:" + csum.hexdigest() + csum.hexdigest()
 
 
 def __gen_image_id(repo, image_num):
-    str_to_hash = "%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)
+    bytes_to_hash = ("%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)).encode("utf-8")
 
-    img_id = hashlib.md5(str_to_hash)
+    img_id = hashlib.md5(bytes_to_hash)
     return img_id.hexdigest() + img_id.hexdigest()
 
 
 def __gen_image_uuid(repo, image_num):
-    str_to_hash = "%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)
+    bytes_to_hash = ("%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)).encode("utf-8")
 
-    img_uuid = hashlib.md5(str_to_hash)
+    img_uuid = hashlib.md5(bytes_to_hash)
     return UUID(bytes=img_uuid.digest())
 
 
@@ -129,7 +129,7 @@ def __create_subtree(with_storage, repo, structure, creator_username, parent, ta
         new_image.storage.save()
 
         # Write out a fake torrentinfo
-        model.storage.save_torrent_info(new_image.storage, 1, "deadbeef")
+        model.storage.save_torrent_info(new_image.storage, 1, b"deadbeef")
 
         # Write some data for the storage.
         if with_storage or os.environ.get("WRITE_STORAGE_FILES"):
