@@ -1,4 +1,4 @@
-"""
+r"""
 Implements validation and conversion for the Schema2 config JSON.
 
 Example:
