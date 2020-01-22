@@ -26,5 +26,10 @@ def convert_secret_key(config_secret_key):
         secret_key = str(bytearray(list(map(ord, config_secret_key))))
 
     # Otherwise, use the bytes directly.
-    assert len(secret_key)
-    return "".join(itertools.islice(itertools.cycle(secret_key), 32))
+    assert len(secret_key) > 0
+    print(secret_key)
+
+    # FIXME(alecmerdler): Testing
+    secret_key = b'\xa3l\x9d}%\xa90\xf4\xa5\x86=/\x8d\xc4\n\x83'
+
+    return b"".join(itertools.islice(itertools.cycle([bytes([b]) for b in secret_key]), 32))
