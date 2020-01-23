@@ -4,6 +4,8 @@ import logging
 
 from requests.exceptions import RequestException
 
+from util.bytes import Bytes
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,6 +106,7 @@ class BaseAvatar(object):
         # Note: email_or_id may be None if gotten from external auth when email is disabled,
         # so use the username in that case.
         username_email_or_id = email_or_id or name
+        username_email_or_id = Bytes.for_string_or_unicode(username_email_or_id).as_unicode()
         hash_value = hashlib.md5(username_email_or_id.strip().lower().encode("utf-8")).hexdigest()
 
         byte_count = int(math.ceil(math.log(len(colors), 16)))
