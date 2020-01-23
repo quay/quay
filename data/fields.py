@@ -87,7 +87,6 @@ class DecryptedValue(object):
 
     def __init__(self, decrypted_value):
         assert decrypted_value is not None
-        assert isinstance(decrypted_value, basestring)
         self.value = decrypted_value
 
     def decrypt(self):
