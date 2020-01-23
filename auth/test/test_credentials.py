@@ -156,7 +156,7 @@ def test_invalid_unicode_robot(app):
     result, kind = validate_credentials("devtable+somerobot", token)
     assert kind == CredentialKind.robot
     assert not result.auth_valid
-    msg = "Could not find robot with username: devtable+somerobot"
+    msg = "Could not find robot with username: devtable+somerobot and supplied password."
     assert result == ValidateResult(AuthKind.credentials, error_message=msg)
 
 
