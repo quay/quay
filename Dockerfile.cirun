@@ -3,7 +3,8 @@ FROM quay-ci-base
 ENV ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE remove-old-fields
 
 # Install Test Dependencies
-RUN yum install -y make
+RUN yum install -y make git
+RUN python -m pip install -r requirements-tests.txt
 
 RUN mkdir -p conf/stack
 RUN rm -rf test/data/test.db
