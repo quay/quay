@@ -24,4 +24,3 @@ def test_to_canonical_json(input, expected_output):
 
     # Ensure the result is utf-8.
     assert isinstance(result, str)
-    result.decode("utf-8")

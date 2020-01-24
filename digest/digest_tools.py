@@ -25,6 +25,9 @@ class Digest(object):
     def __eq__(self, rhs):
         return isinstance(rhs, Digest) and str(self) == str(rhs)
 
+    def __hash__(self):
+        return hash((self._hash_alg, self._hash_bytes))
+
     @staticmethod
     def parse_digest(digest):
         """ Returns the digest parsed out to its components. """
@@ -71,7 +74,7 @@ def sha256_digest_from_generator(content_generator):
   """
     digest = hashlib.sha256()
     for chunk in content_generator:
-        digest.update(chunk.encode("utf-8"))
+        digest.update(chunk)
     return "sha256:{0}".format(digest.hexdigest())
 
 
