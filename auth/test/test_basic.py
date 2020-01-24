@@ -65,8 +65,8 @@ def _token(username, password):
         ),
         (
             _token("usér", "passwôrd"),
-            ValidateResult(AuthKind.basic, error_message="Invalid Username or Password")
-        )
+            ValidateResult(AuthKind.basic, error_message="Invalid Username or Password"),
+        ),
     ],
 )
 def test_validate_basic_auth_token(token, expected_result, app):
@@ -116,14 +116,14 @@ def test_valid_app_specific_token(app):
 
 def test_invalid_unicode(app):
     token = b"\xebOH"
-    header = "basic " + b64encode(token).decode('ascii')
+    header = "basic " + b64encode(token).decode("ascii")
     result = validate_basic_auth(header)
     assert result == ValidateResult(AuthKind.basic, missing=True)
 
 
 def test_invalid_unicode_2(app):
-    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”".encode('utf-8')
-    header = "basic " + b64encode(b"devtable+somerobot:%s" % token).decode('ascii')
+    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”".encode("utf-8")
+    header = "basic " + b64encode(b"devtable+somerobot:%s" % token).decode("ascii")
     result = validate_basic_auth(header)
     assert result == ValidateResult(
         AuthKind.basic,
