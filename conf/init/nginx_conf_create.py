@@ -124,6 +124,19 @@ def generate_rate_limiting_config(config):
     )
 
 
+def generate_hosted_http_base_config(config):
+    """
+  Generates hosted http base config from the app config
+  """
+    config = config or {}
+    feature_proxy_protocol = config.get("FEATURE_PROXY_PROTOCOL", False)
+
+    write_config(
+        os.path.join(QUAYCONF_DIR, "nginx/hosted-http-base.conf"),
+        feature_proxy_protocol=feature_proxy_protocol,
+    )
+
+
 if __name__ == "__main__":
     if os.path.exists(os.path.join(QUAYCONF_DIR, "stack/config.yaml")):
         with open(os.path.join(QUAYCONF_DIR, "stack/config.yaml"), "r") as f:
@@ -131,6 +144,7 @@ if __name__ == "__main__":
     else:
         config = None
 
+    generate_hosted_http_base_config(config)
     generate_rate_limiting_config(config)
     generate_server_config(config)
     generate_nginx_config(config)

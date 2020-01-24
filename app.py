@@ -315,20 +315,6 @@ secscan_api = SecurityScannerAPI(
     instance_keys=instance_keys,
 )
 
-url_scheme_and_hostname = URLSchemeAndHostname(
-    app.config["PREFERRED_URL_SCHEME"], app.config["SERVER_HOSTNAME"]
-)
-secscan_api = SecurityScannerAPI(
-    app.config,
-    storage,
-    app.config["SERVER_HOSTNAME"],
-    app.config["HTTPCLIENT"],
-    uri_creator=get_blob_download_uri_getter(
-        app.test_request_context("/"), url_scheme_and_hostname
-    ),
-    instance_keys=instance_keys,
-)
-
 repo_mirror_api = RepoMirrorAPI(
     app.config,
     app.config["SERVER_HOSTNAME"],

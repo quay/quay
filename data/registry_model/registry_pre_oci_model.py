@@ -201,6 +201,11 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
                     return None, None
 
                 for key, value in manifest_interface_instance.layers[-1].v1_metadata.labels.items():
+                    # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
+                    # such `labels`, as they don't really mean anything.
+                    if not key:
+                        continue
+
                     media_type = "application/json" if is_json(value) else "text/plain"
                     add_label(key, value, "manifest", media_type)
                     has_labels = True

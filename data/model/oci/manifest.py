@@ -147,7 +147,7 @@ def _create_manifest(
     except (ManifestException, MalformedSchema2ManifestList, BlobDoesNotExist, IOError) as ex:
         logger.exception("Could not validate manifest `%s`", manifest_interface_instance.digest)
         if raise_on_error:
-            raise CreateManifestException(ex)
+            raise CreateManifestException(str(ex))
 
         return None
 
@@ -172,7 +172,7 @@ def _create_manifest(
                     manifest_interface_instance.digest,
                 )
                 if raise_on_error:
-                    raise CreateManifestException(ex)
+                    raise CreateManifestException(str(ex))
 
                 return None
 
@@ -310,9 +310,16 @@ def _create_manifest(
             create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
 
     # Define the labels for the manifest (if any).
+    # TODO: Once the old data model is gone, turn this into a batch operation and make the label
+    # application to the manifest occur under the transaction.
     labels = manifest_interface_instance.get_manifest_labels(retriever)
     if labels:
         for key, value in labels.items():
+            # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
+            # such `labels`, as they don't really mean anything.
+            if not key:
+                continue
+
             media_type = "application/json" if is_json(value) else "text/plain"
             create_manifest_label(manifest, key, value, "manifest", media_type)
 

@@ -164,7 +164,7 @@ def create_user_noverify(
 
         return new_user
     except Exception as ex:
-        raise DataModelException(ex.message)
+        raise DataModelException(ex)
 
 
 def increase_maximum_build_count(user, maximum_queued_builds_count):
@@ -347,7 +347,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
             )
             return created, token
     except Exception as ex:
-        raise DataModelException(ex.message)
+        raise DataModelException(ex)
 
 
 def get_or_create_robot_metadata(robot):
@@ -420,9 +420,7 @@ def get_matching_robots(name_prefix, username, limit=10):
 
 
 def verify_robot(robot_username, password):
-    try:
-        password = remove_unicode(password)
-    except UnicodeEncodeError:
+    if not password.isascii():
         msg = "Could not find robot with username: %s and supplied password." % robot_username
         raise InvalidRobotException(msg)
 

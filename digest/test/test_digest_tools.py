@@ -28,6 +28,7 @@ def test_parse_good(digest, output_args):
         "sha256123123",
         "tarsum.v1+",
         "tarsum.v1123+sha1:",
+        "sha256:👌",
     ],
 )
 def test_parse_fail(bad_digest):

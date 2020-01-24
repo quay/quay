@@ -979,6 +979,8 @@ def test_wrong_image_order(legacy_pusher, liveserver_session, app_reloader):
         [("somejson", '{"some": "json"}', "application/json"), ("plain", "", "text/plain")],
         # JSON-esque (but not valid JSON) labels.
         [("foo", "[hello world]", "text/plain"), ("bar", "{wassup?!}", "text/plain")],
+        # Empty key label.
+        [("", "somevalue", "text/plain")],
     ],
 )
 def test_labels(labels, manifest_protocol, liveserver_session, api_caller, app_reloader):
@@ -1004,14 +1006,15 @@ def test_labels(labels, manifest_protocol, liveserver_session, api_caller, app_r
 
     data = api_caller.get("/api/v1/repository/devtable/newrepo/manifest/%s/labels" % digest).json()
     labels_found = data["labels"]
-    assert len(labels_found) == len(labels)
+    assert len(labels_found) == len([label for label in labels if label[0]])
 
     labels_found_map = {l["key"]: l for l in labels_found}
-    assert set(images[0].config["Labels"].keys()) == set(labels_found_map.keys())
+    assert set([k for k in images[0].config["Labels"].keys() if k]) == set(labels_found_map.keys())
 
     for key, _, media_type in labels:
-        assert labels_found_map[key]["source_type"] == "manifest"
-        assert labels_found_map[key]["media_type"] == media_type
+        if key:
+            assert labels_found_map[key]["source_type"] == "manifest"
+            assert labels_found_map[key]["media_type"] == media_type
 
 
 @pytest.mark.parametrize(

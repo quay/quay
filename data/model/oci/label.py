@@ -61,12 +61,12 @@ def create_manifest_label(
 ):
     """ Creates a new manifest label on a specific tag manifest. """
     if not key:
-        raise InvalidLabelKeyException()
+        raise InvalidLabelKeyException("Missing key on label")
 
     # Note that we don't prevent invalid label names coming from the manifest to be stored, as Docker
     # does not currently prevent them from being put into said manifests.
-    if not validate_label_key(key) and source_type_name != "manifest":
-        raise InvalidLabelKeyException("Key `%s` is invalid" % key)
+    if source_type_name != "manifest" and not validate_label_key(key):
+        raise InvalidLabelKeyException("Key `%s` is invalid or reserved" % key)
 
     # Find the matching media type. If none specified, we infer.
     if media_type_name is None:

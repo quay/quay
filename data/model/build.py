@@ -46,7 +46,7 @@ def update_build_trigger(trigger, config, auth_token=None, write_token=None):
         if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
             trigger.auth_token = auth_token
 
-        trigger.secure_auth_token = auth_token
+        trigger.secure_auth_token = DecryptedValue(auth_token)
 
     if write_token is not None:
         trigger.write_token = write_token
