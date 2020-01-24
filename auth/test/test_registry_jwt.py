@@ -73,7 +73,7 @@ def _token(token_data, key_id=None, private_key=None, skip_header=False, alg=Non
         token_headers = {}
 
     token_data = jwt.encode(token_data, private_key, alg or "RS256", headers=token_headers)
-    return "Bearer {0}".format(token_data.decode('ascii'))
+    return "Bearer {0}".format(token_data.decode("ascii"))
 
 
 def _parse_token(token):
