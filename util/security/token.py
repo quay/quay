@@ -21,7 +21,7 @@ def encode_public_private_token(public_code, private_token, allow_public_only=Fa
 
 def decode_public_private_token(encoded, allow_public_only=False):
     try:
-        decoded = base64.b64decode(encoded).decode('utf-8')
+        decoded = base64.b64decode(encoded).decode("utf-8")
     except (ValueError, TypeError):
         if not allow_public_only:
             return None
