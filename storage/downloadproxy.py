@@ -103,7 +103,7 @@ class DownloadProxy(object):
         proxy_url = "%s://%s/_storage_proxy/%s/%s/%s/%s" % (
             url_scheme,
             server_hostname,
-            encoded_token,
+            encoded_token.decode('ascii'),
             parsed.scheme,
             parsed.netloc,
             path,
@@ -134,7 +134,7 @@ class DownloadProxy(object):
         encoded_token, scheme, host, uri = parts
 
         try:
-            token = base64.urlsafe_b64decode(str(encoded_token))
+            token = base64.urlsafe_b64decode(encoded_token)
         except ValueError:
             logger.exception("Could not decode proxy token")
             abort(401)
