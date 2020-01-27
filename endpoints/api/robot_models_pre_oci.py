@@ -2,7 +2,6 @@ import features
 
 from app import avatar
 from data import model
-from active_migration import ActiveDataMigration, ERTMigrationFlags
 from data.database import (
     User,
     FederatedLogin,
@@ -46,15 +45,8 @@ class RobotPreOCIModel(RobotInterface):
             if robot_name not in robots:
                 token = None
                 if include_token:
-                    # TODO(remove-unenc): Remove branches once migrated.
                     if robot_tuple.get(RobotAccountToken.token):
                         token = robot_tuple.get(RobotAccountToken.token).decrypt()
-
-                    if token is None and ActiveDataMigration.has_flag(
-                        ERTMigrationFlags.READ_OLD_FIELDS
-                    ):
-                        token = robot_tuple.get(FederatedLogin.service_ident)
-                        assert not token.startswith("robot:")
 
                 robot_dict = {
                     "name": robot_name,

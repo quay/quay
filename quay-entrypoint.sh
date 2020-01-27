@@ -69,7 +69,7 @@ case "$QUAYENTRY" in
         ;;
     "migrate")
         echo "Entering migration mode to version: ${2}"
-        exec /usr/bin/scl enable python27 rh-nginx112 "PYTHONPATH=${QUAYPATH} ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields alembic upgrade ${2}"
+        exec /usr/bin/scl enable python27 rh-nginx112 "PYTHONPATH=${QUAYPATH} alembic upgrade ${2}"
         ;;
     "repomirror")
         echo "Entering repository mirroring mode"
