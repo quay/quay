@@ -65,9 +65,14 @@ def upgrade(tables, tester, progress_reporter):
                 )
                 assert result == 1
 
-                federated_login = FederatedLogin.get(user=robot_account)
-                federated_login.service_ident = "robot:%s" % robot_account.id
-                federated_login.save()
+                try:
+                    federated_login = FederatedLogin.get(user=robot_account)
+                    assert federated_login.service.name == "quayrobot"
+
+                    federated_login.service_ident = "robot:%s" % robot_account.id
+                    federated_login.save()
+                except FederatedLogin.DoesNotExist:
+                    pass
 
                 robot_account_token.fully_migrated = True
                 robot_account_token.save()
