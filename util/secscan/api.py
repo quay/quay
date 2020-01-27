@@ -283,7 +283,7 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             auth_token = generate_bearer_token(
                 audience, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, self._instance_keys
             )
-            auth_header = "Bearer " + auth_token
+            auth_header = "Bearer " + auth_token.decode('ascii')
 
             uri = self._uri_creator(repository_and_namespace, image.storage.content_checksum)
 

@@ -26,7 +26,7 @@ ORG_OWNERS = "owners"
 ORG_READERS = "readers"
 
 FAKE_MANIFEST = "unknown_tag"
-FAKE_DIGEST = "sha256:" + hashlib.sha256("fake").hexdigest()
+FAKE_DIGEST = "sha256:" + hashlib.sha256(b"fake").hexdigest()
 FAKE_IMAGE_ID = "fake-image"
 FAKE_UPLOAD_ID = "fake-upload"
 FAKE_TAG_NAME = "fake-tag"
@@ -108,8 +108,8 @@ class IndexV1TestSpec(object):
         self.admin_code = admin_code
 
     def gen_basic_auth(self, username, password):
-        encoded = b64encode("%s:%s" % (username, password))
-        return "basic %s" % encoded
+        encoded = b64encode(b"%s:%s" % (username.encode('ascii'), password.encode('ascii')))
+        return "basic %s" % encoded.decode('ascii')
 
     def set_data_from_obj(self, json_serializable):
         self._data = json.dumps(json_serializable)
@@ -597,8 +597,8 @@ class IndexV2TestSpec(object):
         return url_for(self.index_name, repository=self.repo_name, **self.kwargs)
 
     def gen_basic_auth(self, username, password):
-        encoded = b64encode("%s:%s" % (username, password))
-        return "basic %s" % encoded
+        encoded = b64encode(b"%s:%s" % (username.encode('ascii'), password.encode('ascii')))
+        return "basic %s" % encoded.decode('ascii')
 
     def get_scope_string(self):
         return "repository:%s:%s" % (self.repo_name, self.scope)
