@@ -19,7 +19,7 @@ from test.fixtures import *
     "method, endpoint", [("GET", "download_blob"), ("HEAD", "check_blob_exists"),]
 )
 def test_blob_caching(method, endpoint, client, app):
-    digest = "sha256:" + hashlib.sha256("a").hexdigest()
+    digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
     location = ImageStorageLocation.get(name="local_us")
     model.blob.store_blob_record_and_temp_link("devtable", "simple", digest, location, 1, 10000000)
 
@@ -37,7 +37,7 @@ def test_blob_caching(method, endpoint, client, app):
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token,
+        "Authorization": "Bearer %s" % token.decode('ascii'),
     }
 
     # Run without caching to make sure the request works. This also preloads some of
@@ -71,26 +71,26 @@ def test_blob_caching(method, endpoint, client, app):
         # Unknown blob.
         ("sha256:unknown", "devtable/simple", "devtable", False),
         # Blob not in repo.
-        ("sha256:" + hashlib.sha256("a").hexdigest(), "devtable/complex", "devtable", False),
+        ("sha256:" + hashlib.sha256(b"a").hexdigest(), "devtable/complex", "devtable", False),
         # Blob in repo.
-        ("sha256:" + hashlib.sha256("b").hexdigest(), "devtable/complex", "devtable", True),
+        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "devtable", True),
         # No access to repo.
-        ("sha256:" + hashlib.sha256("b").hexdigest(), "devtable/complex", "public", False),
+        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "public", False),
         # Public repo.
-        ("sha256:" + hashlib.sha256("c").hexdigest(), "public/publicrepo", "devtable", True),
+        ("sha256:" + hashlib.sha256(b"c").hexdigest(), "public/publicrepo", "devtable", True),
     ],
 )
 def test_blob_mounting(mount_digest, source_repo, username, expect_success, client, app):
     location = ImageStorageLocation.get(name="local_us")
 
     # Store and link some blobs.
-    digest = "sha256:" + hashlib.sha256("a").hexdigest()
+    digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
     model.blob.store_blob_record_and_temp_link("devtable", "simple", digest, location, 1, 10000000)
 
-    digest = "sha256:" + hashlib.sha256("b").hexdigest()
+    digest = "sha256:" + hashlib.sha256(b"b").hexdigest()
     model.blob.store_blob_record_and_temp_link("devtable", "complex", digest, location, 1, 10000000)
 
-    digest = "sha256:" + hashlib.sha256("c").hexdigest()
+    digest = "sha256:" + hashlib.sha256(b"c").hexdigest()
     model.blob.store_blob_record_and_temp_link(
         "public", "publicrepo", digest, location, 1, 10000000
     )
@@ -115,7 +115,7 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token,
+        "Authorization": "Bearer %s" % token.decode('ascii'),
     }
 
     expected_code = 201 if expect_success else 202
