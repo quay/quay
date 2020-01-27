@@ -32,7 +32,7 @@ def test_lookup_userfile(app, client):
 
     def _stream_read_file(locations, path):
         if path.find(uuid) > 0 or path.find(upper_uuid) > 0:
-            return BytesIO("hello world")
+            return BytesIO(b"hello world")
 
         raise IOError("Not found!")
 
