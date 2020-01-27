@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from oauth2lib.provider import AuthorizationProvider
 from oauth2lib import utils
 
-from active_migration import ActiveDataMigration, ERTMigrationFlags
 from data.database import (
     OAuthApplication,
     OAuthAuthorizationCode,
@@ -52,12 +51,6 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
     def validate_client_secret(self, client_id, client_secret):
         try:
             application = OAuthApplication.get(client_id=client_id)
-
-            # TODO(remove-unenc): Remove legacy check.
-            if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-                if application.secure_client_secret is None:
-                    return application.client_secret == client_secret
-
             assert application.secure_client_secret is not None
             return application.secure_client_secret.matches(client_secret)
         except OAuthApplication.DoesNotExist:
@@ -135,26 +128,7 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
             logger.debug("Returning data: %s", found.data)
             return found.data
         except OAuthAuthorizationCode.DoesNotExist:
-            # Fallback to the legacy lookup of the full code.
-            # TODO(remove-unenc): Remove legacy fallback.
-            if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-                try:
-                    found = (
-                        OAuthAuthorizationCode.select()
-                        .join(OAuthApplication)
-                        .where(
-                            OAuthApplication.client_id == client_id,
-                            OAuthAuthorizationCode.code == full_code,
-                            OAuthAuthorizationCode.scope == scope,
-                        )
-                        .get()
-                    )
-                    logger.debug("Returning data: %s", found.data)
-                    return found.data
-                except OAuthAuthorizationCode.DoesNotExist:
-                    return None
-            else:
-                return None
+            return None
 
     def persist_authorization_code(self, client_id, full_code, scope):
         oauth_app = OAuthApplication.get(client_id=client_id)
@@ -164,14 +138,8 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         code_name = full_code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
         code_credential = full_code[AUTHORIZATION_CODE_PREFIX_LENGTH:]
 
-        # TODO(remove-unenc): Remove legacy fallback.
-        full_code = None
-        if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
-            full_code = code_name + code_credential
-
         OAuthAuthorizationCode.create(
             application=oauth_app,
-            code=full_code,
             scope=scope,
             code_name=code_name,
             code_credential=Credential.from_string(code_credential),
@@ -300,41 +268,17 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         except OAuthAuthorizationCode.DoesNotExist:
             pass
 
-        # Legacy: full code.
-        # TODO(remove-unenc): Remove legacy fallback.
-        if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-            try:
-                found = (
-                    OAuthAuthorizationCode.select()
-                    .join(OAuthApplication)
-                    .where(
-                        OAuthApplication.client_id == client_id,
-                        OAuthAuthorizationCode.code == full_code,
-                    )
-                    .get()
-                )
-                found.delete_instance()
-            except OAuthAuthorizationCode.DoesNotExist:
-                pass
-
     def discard_refresh_token(self, client_id, refresh_token):
         raise NotImplementedError()
 
 
 def create_application(org, name, application_uri, redirect_uri, **kwargs):
     client_secret = kwargs.pop("client_secret", random_string_generator(length=40)())
-
-    # TODO(remove-unenc): Remove legacy field.
-    old_client_secret = None
-    if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
-        old_client_secret = client_secret
-
     return OAuthApplication.create(
         organization=org,
         name=name,
         application_uri=application_uri,
         redirect_uri=redirect_uri,
-        client_secret=old_client_secret,
         secure_client_secret=DecryptedValue(client_secret),
         **kwargs
     )
@@ -365,21 +309,6 @@ def validate_access_token(access_token):
     except OAuthAccessToken.DoesNotExist:
         pass
 
-    # Legacy lookup.
-    # TODO(remove-unenc): Remove this once migrated.
-    if ActiveDataMigration.has_flag(ERTMigrationFlags.READ_OLD_FIELDS):
-        try:
-            assert access_token
-            found = (
-                OAuthAccessToken.select(OAuthAccessToken, User)
-                .join(User)
-                .where(OAuthAccessToken.access_token == access_token)
-                .get()
-            )
-            return found
-        except OAuthAccessToken.DoesNotExist:
-            return None
-
     return None
 
 
@@ -392,11 +321,6 @@ def get_application_for_client_id(client_id):
 
 def reset_client_secret(application):
     client_secret = random_string_generator(length=40)()
-
-    # TODO(remove-unenc): Remove legacy field.
-    if ActiveDataMigration.has_flag(ERTMigrationFlags.WRITE_OLD_FIELDS):
-        application.client_secret = client_secret
-
     application.secure_client_secret = DecryptedValue(client_secret)
     application.save()
     return application
