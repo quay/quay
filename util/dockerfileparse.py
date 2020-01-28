@@ -88,11 +88,8 @@ def join_continued_lines(contents):
 
 def parse_dockerfile(contents):
     # If we receive ASCII, translate into unicode.
-    try:
+    if isinstance(contents, bytes):
         contents = contents.decode("utf-8")
-    except ValueError:
-        # Already unicode or unable to convert.
-        pass
 
     contents = join_continued_lines(strip_comments(contents))
     lines = [line.strip() for line in contents.split("\n") if len(line) > 0]
