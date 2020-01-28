@@ -1,3 +1,7 @@
+### v3.2.1
+
+- Rebuild: Updated base image and installed dependencies
+
 ### v3.2.0
 
 **NOTE** A new required config.yaml entry “DATABASE_SECRET_KEY” must be manually added to existing installs. See documentation.
