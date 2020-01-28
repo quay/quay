@@ -1,5 +1,7 @@
 import logging
 import random
+import json
+import uuid
 
 from enum import Enum
 from datetime import timedelta, datetime
@@ -17,6 +19,8 @@ from data.model import (
 )
 from data.database import (
     Repository,
+    RepositoryState,
+    DeletedRepository,
     Namespace,
     RepositoryTag,
     Star,
@@ -210,6 +214,7 @@ def get_user_starred_repositories(user, kind_filter="image"):
         .switch(Repository)
         .join(Visibility)
         .where(Star.user == user, Repository.kind == repo_kind)
+        .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
     )
 
     return query
@@ -266,6 +271,7 @@ def get_visible_repositories(
         )
         .switch(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
+        .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
     )
 
     user_id = None
@@ -419,6 +425,7 @@ def _get_sorted_matching_repositories(
         query = (
             Repository.select(*select_fields)
             .join(RepositorySearchScore)
+            .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
             .order_by(RepositorySearchScore.score.desc())
         )
     else:
@@ -443,6 +450,7 @@ def _get_sorted_matching_repositories(
             Repository.select(*select_fields)
             .join(RepositorySearchScore)
             .where(clause)
+            .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
             .order_by(SQL("score").desc())
         )
 
@@ -483,6 +491,7 @@ def repository_is_public(namespace_name, repository_name):
                 Repository.name == repository_name,
                 Visibility.name == "public",
             )
+            .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
             .get()
         )
         return True
@@ -510,6 +519,7 @@ def get_email_authorized_for_repo(namespace, repository, email):
                 Repository.name == repository,
                 RepositoryAuthorizedEmail.email == email,
             )
+            .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
             .get()
         )
     except RepositoryAuthorizedEmail.DoesNotExist:
@@ -532,6 +542,7 @@ def confirm_email_authorization_for_repo(code):
             .join(Repository)
             .join(Namespace, on=(Repository.namespace_user == Namespace.id))
             .where(RepositoryAuthorizedEmail.code == code)
+            .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
             .get()
         )
     except RepositoryAuthorizedEmail.DoesNotExist:
@@ -566,3 +577,37 @@ def get_repository_state(namespace_name, repository_name):
 def set_repository_state(repo, state):
     repo.state = state
     repo.save()
+
+
+def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_queue):
+    """ Marks a repository for future deletion in the background. The repository will be
+        renamed and hidden, and then deleted later by a worker.
+    """
+    repo = get_repository(namespace_name, repository_name)
+    if not repo:
+        return None
+
+    with db_transaction():
+        # Delete any stars for the repository.
+        Star.delete().where(Star.repository == repo).execute()
+
+        # Change the name and state of the repository.
+        repo.name = str(uuid.uuid4())
+        repo.state = RepositoryState.MARKED_FOR_DELETION
+        repo.save()
+
+        # Create a tracking row and a queueitem to delete the repository.
+        marker = DeletedRepository.create(repository=repo, original_name=repository_name)
+
+        # Add a queueitem to delete the repository.
+        marker.queue_id = repository_gc_queue.put(
+            [namespace_name, str(repo.id)],
+            json.dumps({"marker_id": marker.id, "original_name": repository_name,}),
+        )
+        marker.save()
+
+    # Run callbacks for the deleted repo.
+    for callback in config.repo_cleanup_callbacks:
+        callback(namespace_name, repository_name)
+
+    return marker.id

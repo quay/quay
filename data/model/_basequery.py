@@ -9,6 +9,7 @@ from data.model import DataModelException, config
 from data.readreplica import ReadOnlyModeException
 from data.database import (
     Repository,
+    RepositoryState,
     User,
     Team,
     TeamMember,
@@ -54,6 +55,7 @@ def get_existing_repository(namespace_name, repository_name, for_update=False, k
         Repository.select(Repository, Namespace)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
         .where(Namespace.username == namespace_name, Repository.name == repository_name)
+        .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
     )
 
     if kind_filter:

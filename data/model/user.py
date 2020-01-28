@@ -16,6 +16,7 @@ from data.database import (
     TeamMember,
     Team,
     Repository,
+    RepositoryState,
     TupleSelector,
     TeamRole,
     Namespace,
@@ -1042,6 +1043,7 @@ def get_private_repo_count(username):
         .switch(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
         .where(Namespace.username == username, Visibility.name == "private")
+        .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
         .count()
     )
 
@@ -1190,7 +1192,7 @@ def delete_user(user, queues):
 
     # Delete any repositories under the user's namespace.
     for repo in list(Repository.select().where(Repository.namespace_user == user)):
-        gc.purge_repository(user.username, repo.name)
+        gc.purge_repository(repo, force=True)
 
     # Delete non-repository related items.
     _delete_user_linked_data(user)

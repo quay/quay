@@ -230,6 +230,7 @@ def check_repository_state(f):
     NORMAL    -> Pass
     READ_ONLY -> Block all POST/PUT/DELETE
     MIRROR    -> Same as READ_ONLY, except treat the Mirroring Robot User as Normal
+    MARKED_FOR_DELETION -> Block everything as a 404
     """
         user = get_authenticated_user()
         if user is None:
@@ -239,6 +240,9 @@ def check_repository_state(f):
         repository = get_repository(namespace_name, repo_name)
         if not repository:
             return f(namespace_name, repo_name, *args, **kwargs)
+
+        if repository.state == RepositoryState.MARKED_FOR_DELETION:
+            abort(404)
 
         if repository.state == RepositoryState.READ_ONLY:
             abort(405, "%s/%s is in read-only mode." % (namespace_name, repo_name))

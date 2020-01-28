@@ -104,6 +104,14 @@ autostart = {{ config['logrotateworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:repositorygcworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command=python -m workers.repositorygcworker
+autostart = {{ config['repositorygcworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:namespacegcworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s

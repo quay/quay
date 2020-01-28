@@ -282,7 +282,7 @@ def test_has_garbage(default_tag_policy, initialized_db):
   """
     # Delete all existing repos.
     for repo in database.Repository.select().order_by(database.Repository.id):
-        assert model.gc.purge_repository(repo.namespace_user.username, repo.name)
+        assert model.gc.purge_repository(repo, force=True)
 
     # Change the time machine expiration on the namespace.
     (
@@ -730,14 +730,6 @@ def test_images_shared_cas_with_new_blob_table(default_tag_policy, initialized_d
 
         # Ensure the CAS path still exists, as it is referenced by the Blob table
         assert storage.exists({preferred}, storage.blob_path(digest))
-
-
-def test_purge_repo(app):
-    """ Test that app registers delete_metadata function on repository deletions """
-    with assert_gc_integrity():
-        with patch("app.tuf_metadata_api") as mock_tuf:
-            model.gc.purge_repository("ns", "repo")
-            assert mock_tuf.delete_metadata.called_with("ns", "repo")
 
 
 def test_super_long_image_chain_gc(app, default_tag_policy):

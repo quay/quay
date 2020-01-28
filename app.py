@@ -288,6 +288,8 @@ export_action_logs_queue = WorkQueue(
     app.config["EXPORT_ACTION_LOGS_QUEUE_NAME"], tf, has_namespace=True
 )
 
+repository_gc_queue = WorkQueue(app.config["REPOSITORY_GC_QUEUE_NAME"], tf, has_namespace=True)
+
 # Note: We set `has_namespace` to `False` here, as we explicitly want this queue to not be emptied
 # when a namespace is marked for deletion.
 namespace_gc_queue = WorkQueue(app.config["NAMESPACE_GC_QUEUE_NAME"], tf, has_namespace=False)
@@ -298,6 +300,7 @@ all_queues = [
     notification_queue,
     secscan_notification_queue,
     chunk_cleanup_queue,
+    repository_gc_queue,
     namespace_gc_queue,
 ]
 

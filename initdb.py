@@ -41,6 +41,7 @@ from data.database import (
     User,
     DisableReason,
     DeletedNamespace,
+    DeletedRepository,
     appr_classes,
     ApprTagKind,
     ApprBlobPlacementLocation,
@@ -1303,6 +1304,7 @@ def populate_database(minimal=False, with_storage=False):
 
 WHITELISTED_EMPTY_MODELS = [
     "DeletedNamespace",
+    "DeletedRepository",
     "LogEntry",
     "LogEntry2",
     "ManifestChild",

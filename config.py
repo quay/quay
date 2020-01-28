@@ -261,6 +261,7 @@ class DefaultConfig(ImmutableConfig):
     SECSCAN_NOTIFICATION_QUEUE_NAME = "security_notification"
     CHUNK_CLEANUP_QUEUE_NAME = "chunk_cleanup"
     NAMESPACE_GC_QUEUE_NAME = "namespacegc"
+    REPOSITORY_GC_QUEUE_NAME = "repositorygc"
     EXPORT_ACTION_LOGS_QUEUE_NAME = "exportactionlogs"
 
     # Super user config. Note: This MUST BE an empty list for the default config.

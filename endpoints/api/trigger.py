@@ -514,7 +514,9 @@ class BuildTriggerSources(RepositoryParamResource):
     @validate_json_request("BuildTriggerSourcesRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
         """ List the build sources for the trigger configuration thus far. """
-        namespace = request.get_json()["namespace"]
+        namespace = request.get_json().get("namespace")
+        if namespace is None:
+            raise InvalidRequest()
 
         trigger = get_trigger(trigger_uuid)
 
