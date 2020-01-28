@@ -38,7 +38,7 @@ class JSONTemplate(object):
         elif isinstance(obj, dict):
             return {
                 self._process_string(key, data): self._apply(value, data)
-                for key, value in obj.iteritems()
+                for key, value in obj.items()
             }
         elif isinstance(obj, list):
             return [self._apply(item, data) for item in obj]
