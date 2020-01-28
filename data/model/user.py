@@ -65,6 +65,7 @@ from util.validation import (
 )
 from util.backoff import exponential_backoff
 from util.timedeltastring import convert_to_timedelta
+from util.bytes import Bytes
 from util.unicode import remove_unicode
 from util.security.token import decode_public_private_token, encode_public_private_token
 
@@ -77,6 +78,7 @@ EXPONENTIAL_BACKOFF_SCALE = timedelta(seconds=1)
 
 def hash_password(password, salt=None):
     salt = salt or bcrypt.gensalt()
+    salt = Bytes.for_string_or_unicode(salt).as_encoded_str()
     return bcrypt.hashpw(password.encode("utf-8"), salt)
 
 
@@ -981,7 +983,7 @@ def verify_user(username_or_email, password):
     # Hash the given password and compare it to the specified password.
     if (
         fetched.password_hash
-        and hash_password(password, fetched.password_hash) == fetched.password_hash
+        and hash_password(password, fetched.password_hash.encode('utf-8')) == fetched.password_hash.encode('utf-8')
     ):
 
         # If the user previously had any invalid login attempts, clear them out now.
