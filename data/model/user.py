@@ -981,10 +981,9 @@ def verify_user(username_or_email, password):
             )
 
     # Hash the given password and compare it to the specified password.
-    if (
-        fetched.password_hash
-        and hash_password(password, fetched.password_hash.encode('utf-8')) == fetched.password_hash.encode('utf-8')
-    ):
+    if fetched.password_hash and hash_password(
+        password, fetched.password_hash.encode("utf-8")
+    ) == fetched.password_hash.encode("utf-8"):
 
         # If the user previously had any invalid login attempts, clear them out now.
         if fetched.invalid_login_attempts > 0:
