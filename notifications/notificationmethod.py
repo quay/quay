@@ -369,6 +369,7 @@ from html.parser import HTMLParser
 
 class SlackAdjuster(HTMLParser):
     def __init__(self):
+        super().__init__()
         self.reset()
         self.result = []
 
