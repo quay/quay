@@ -27,8 +27,8 @@ def test_list_build_subdirs(gitlab_trigger):
 @pytest.mark.parametrize(
     "dockerfile_path, contents",
     [
-        ("/Dockerfile", "hello world"),
-        ("somesubdir/Dockerfile", "hi universe"),
+        ("/Dockerfile", b"hello world"),
+        ("somesubdir/Dockerfile", b"hi universe"),
         ("unknownpath", None),
     ],
 )

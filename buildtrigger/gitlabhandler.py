@@ -231,7 +231,7 @@ class GitLabBuildTrigger(BuildTriggerHandler):
         ]
 
         key = gl_project.keys.create(
-            {"title": "%s Builder" % app.config["REGISTRY_TITLE"], "key": public_key,}
+            {"title": "%s Builder" % app.config["REGISTRY_TITLE"], "key": public_key.decode("ascii"),}
         )
 
         if not key:
