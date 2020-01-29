@@ -4,7 +4,8 @@ import json
 
 import features
 
-from app import secscan_notification_queue, secscan_api
+from app import secscan_notification_queue
+from data.secscan_model import secscan_model
 from workers.queueworker import QueueWorker, JobException
 from util.secscan.notifier import SecurityNotificationHandler, ProcessNotificationPageResult
 
@@ -17,6 +18,10 @@ _LAYER_LIMIT = 1000  # The number of layers to request on each page.
 
 
 class SecurityNotificationWorker(QueueWorker):
+    """ NOTE: This worker is legacy code and should be removed after we've fully moved to Clair V4
+        API.
+    """
+
     def process_queue_item(self, data):
         self.perform_notification_work(data)
 
@@ -25,10 +30,11 @@ class SecurityNotificationWorker(QueueWorker):
         object. Returns True on successful handling, False on non-retryable failure and raises
         a JobException on retryable failure.
     """
+        secscan_api = secscan_model.legacy_api_handler
 
         notification_name = data["Name"]
         current_page = data.get("page", None)
-        handler = SecurityNotificationHandler(layer_limit)
+        handler = SecurityNotificationHandler(secscan_api, layer_limit)
 
         while True:
             # Retrieve the current page of notification data from the security scanner.
@@ -79,7 +85,11 @@ class SecurityNotificationWorker(QueueWorker):
 
 
 if __name__ == "__main__":
-    if not features.SECURITY_SCANNER or not features.SECURITY_NOTIFICATIONS:
+    if (
+        not features.SECURITY_SCANNER
+        or not features.SECURITY_NOTIFICATIONS
+        or not secscan_model.legacy_api_handler
+    ):
         logger.debug("Security scanner disabled; skipping SecurityNotificationWorker")
         while True:
             time.sleep(100000)

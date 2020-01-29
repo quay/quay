@@ -3,10 +3,12 @@
 import logging
 import features
 
-from app import app, secscan_api
+from enum import Enum, unique
+
 from auth.decorators import process_basic_auth_no_pass
 from data.registry_model import registry_model
-from data.registry_model.datatypes import SecurityScanStatus
+from data.secscan_model import secscan_model
+from data.secscan_model.datatypes import ScanLookupStatus
 from endpoints.api import (
     require_repo_read,
     path_param,
@@ -21,7 +23,23 @@ from endpoints.api import (
 )
 from endpoints.exception import NotFound, DownstreamIssue
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
-from util.secscan.api import APIRequestFailure
+
+
+@unique
+class SecurityScanStatus(Enum):
+    """ Security scan status enum """
+
+    SCANNED = "scanned"
+    FAILED = "failed"
+    QUEUED = "queued"
+    UNSUPPORTED = "unsupported"
+
+
+MAPPED_STATUSES = {}
+MAPPED_STATUSES[ScanLookupStatus.FAILED_TO_INDEX] = SecurityScanStatus.FAILED
+MAPPED_STATUSES[ScanLookupStatus.SUCCESS] = SecurityScanStatus.SCANNED
+MAPPED_STATUSES[ScanLookupStatus.NOT_YET_INDEXED] = SecurityScanStatus.QUEUED
+MAPPED_STATUSES[ScanLookupStatus.UNSUPPORTED_FOR_INDEXING] = SecurityScanStatus.UNSUPPORTED
 
 
 logger = logging.getLogger(__name__)
@@ -31,39 +49,19 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     """ Returns a dict representing the result of a call to the security status API for the given
       manifest or image.
   """
-    status = registry_model.get_security_status(manifest_or_legacy_image)
-    if status is None:
+    result = secscan_model.load_security_information(
+        manifest_or_legacy_image, include_vulnerabilities=include_vulnerabilities
+    )
+    if result.status == ScanLookupStatus.UNKNOWN_MANIFEST_OR_IMAGE:
         raise NotFound()
 
-    if status != SecurityScanStatus.SCANNED:
-        return {
-            "status": status.value,
-        }
+    if result.status == ScanLookupStatus.COULD_NOT_LOAD:
+        raise DownstreamIssue(result.scanner_request_error)
 
-    try:
-        if include_vulnerabilities:
-            data = secscan_api.get_layer_data(
-                manifest_or_legacy_image, include_vulnerabilities=True
-            )
-        else:
-            data = secscan_api.get_layer_data(manifest_or_legacy_image, include_features=True)
-    except APIRequestFailure as arf:
-        raise DownstreamIssue(arf.message)
-
-    if data is None:
-        # If no data was found but we reached this point, then it indicates we have incorrect security
-        # status for the manifest or legacy image. Mark the manifest or legacy image as unindexed
-        # so it automatically gets re-indexed.
-        if app.config.get("REGISTRY_STATE", "normal") == "normal":
-            registry_model.reset_security_status(manifest_or_legacy_image)
-
-        return {
-            "status": SecurityScanStatus.QUEUED.value,
-        }
-
+    assert result.status in MAPPED_STATUSES
     return {
-        "status": status.value,
-        "data": data,
+        "status": MAPPED_STATUSES[result.status].value,
+        "data": result.security_information,
     }
 
 
@@ -72,7 +70,8 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("imageid", "The image ID")
 class RepositoryImageSecurity(RepositoryParamResource):
-    """ Operations for managing the vulnerabilities in a repository image. """
+    """ Operations for managing the vulnerabilities in a repository image.
+        DEPRECATED: Please retrieve security by manifest . """
 
     @process_basic_auth_no_pass
     @require_repo_read
@@ -80,7 +79,7 @@ class RepositoryImageSecurity(RepositoryParamResource):
     @disallow_for_app_repositories
     @parse_args()
     @query_param(
-        "vulnerabilities", "Include vulnerabilities informations", type=truthy_bool, default=False
+        "vulnerabilities", "Include vulnerabilities information", type=truthy_bool, default=False
     )
     def get(self, namespace, repository, imageid, parsed_args):
         """ Fetches the features and vulnerabilities (if any) for a repository image. """

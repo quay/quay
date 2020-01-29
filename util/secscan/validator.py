@@ -8,9 +8,6 @@ class SecurityConfigValidator(object):
     """ Helper class for validating the security scanner configuration. """
 
     def __init__(self, feature_sec_scan, sec_scan_endpoint):
-        if not feature_sec_scan:
-            return
-
         self._feature_sec_scan = feature_sec_scan
         self._sec_scan_endpoint = sec_scan_endpoint
 
