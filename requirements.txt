@@ -5,7 +5,7 @@
 -e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
 -e git+https://github.com/jepcastelein/marketo-rest-python.git@d151205aaa70fa69c14cf3ed5d8f3162e99b8236#egg=marketorestpython
 -e git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
--e git+https://github.com/coreos/py-bitbucket.git@55a1ada645f2fb6369147996ec71edd7828d91c8#egg=py_bitbucket
+-e git+https://github.com/quay/py-bitbucket.git@85301693ce3682f8e1244e90bd8a903181844bde#egg=py_bitbucket
 -e git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
 -e git+https://github.com/coderanger/supervisor-stdout.git@87632a7e522bf1888587c39e7fd61535b7a43cd7#egg=supervisor_stdout
 aiowsgi==0.7
