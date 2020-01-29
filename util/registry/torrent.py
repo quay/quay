@@ -47,7 +47,7 @@ def jwt_from_infohash(torrent_config, infohash_digest):
     token_data = {
         "iss": torrent_config.instance_keys.service_name,
         "aud": torrent_config.announce_url,
-        "infohash": hexlify(infohash_digest),
+        "infohash": hexlify(infohash_digest).decode('ascii'),
     }
     return jwt.encode(
         token_data,

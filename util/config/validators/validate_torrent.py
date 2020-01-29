@@ -25,7 +25,7 @@ class BittorrentValidator(BaseValidator):
 
         # Ensure that the tracker is reachable and accepts requests signed with a registry key.
         params = {
-            "info_hash": sha1("test").digest(),
+            "info_hash": sha1(b"test").digest(),
             "peer_id": "-QUAY00-6wfG2wk6wWLc",
             "uploaded": 0,
             "downloaded": 0,
