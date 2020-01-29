@@ -23,7 +23,7 @@ def generate_test_cert(hostname="somehostname", san_list=None, expires=1000000):
 
     # Add the subjectAltNames (if necessary).
     if san_list is not None:
-        cert.add_extensions([crypto.X509Extension("subjectAltName", False, ", ".join(san_list))])
+        cert.add_extensions([crypto.X509Extension(b"subjectAltName", False, b", ".join(san_list))])
 
     cert.set_serial_number(1000)
     cert.gmtime_adj_notBefore(0)
@@ -62,7 +62,7 @@ def test_expired_certificate():
 
 
 def test_hostnames():
-    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=["DNS:bar", "DNS:baz"])
+    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=[b"DNS:bar", b"DNS:baz"])
     cert = load_certificate(public_key_data)
     assert cert.names == set(["foo", "bar", "baz"])
 
@@ -71,7 +71,7 @@ def test_hostnames():
 
 
 def test_wildcard_hostnames():
-    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=["DNS:*.bar"])
+    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=[b"DNS:*.bar"])
     cert = load_certificate(public_key_data)
     assert cert.names == set(["foo", "*.bar"])
 
@@ -85,7 +85,7 @@ def test_wildcard_hostnames():
 
 
 def test_nondns_hostnames():
-    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=["URI:yarg"])
+    (public_key_data, _) = generate_test_cert(hostname="foo", san_list=[b"URI:yarg"])
     cert = load_certificate(public_key_data)
     assert cert.names == set(["foo"])
 
@@ -105,7 +105,7 @@ def test_invalid_private_key():
     (public_key_data, _) = generate_test_cert()
 
     private_key = NamedTemporaryFile(delete=True)
-    private_key.write("somerandomdata")
+    private_key.write(b"somerandomdata")
     private_key.seek(0)
 
     cert = load_certificate(public_key_data)
