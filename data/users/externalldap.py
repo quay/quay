@@ -327,9 +327,7 @@ class LDAPUsers(FederatedUsers):
 
         # First validate the password by binding as the user
         try:
-            with LDAPConnection(
-                self._ldap_uri, found_dn, password, self._allow_tls_fallback
-            ):
+            with LDAPConnection(self._ldap_uri, found_dn, password, self._allow_tls_fallback):
                 pass
         except ldap.REFERRAL as re:
             referral_dn = self._get_ldap_referral_dn(re)
