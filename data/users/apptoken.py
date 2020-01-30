@@ -3,7 +3,6 @@ import logging
 from data import model
 from oauth.loginmanager import OAuthLoginManager
 from oauth.oidc import PublicKeyLoadException
-from util.security.jwtutil import InvalidTokenError
 
 
 logger = logging.getLogger(__name__)
