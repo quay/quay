@@ -228,7 +228,14 @@ def _create_manifest(
     # blob map. This is necessary because Docker decided to elide sending of this special
     # empty layer in schema version 2, but we need to have it referenced for GC and schema version 1.
     if EMPTY_LAYER_BLOB_DIGEST not in blob_map:
-        if manifest_interface_instance.get_requires_empty_layer_blob(retriever):
+        requires_empty_layer = manifest_interface_instance.get_requires_empty_layer_blob(retriever)
+        if requires_empty_layer is None:
+            if raise_on_error:
+                raise CreateManifestException("Could not load configuration blob")
+
+            return None
+
+        if requires_empty_layer:
             shared_blob = get_or_create_shared_blob(
                 EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES, storage
             )
@@ -273,10 +280,20 @@ def _create_manifest(
                 media_type=media_type,
                 manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
             )
-        except IntegrityError:
-            manifest = Manifest.get(
-                repository=repository_id, digest=manifest_interface_instance.digest
-            )
+        except IntegrityError as ie:
+            try:
+                manifest = Manifest.get(
+                    repository=repository_id, digest=manifest_interface_instance.digest
+                )
+            except Manifest.DoesNotExist:
+                logger.error("Got integrity error when trying to create manifest: %s", ie)
+                if raise_on_error:
+                    raise CreateManifestException(
+                        "Attempt to create an invalid manifest. Please report this issue."
+                    )
+
+                return None
+
             return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
 
         # Insert the blobs.
