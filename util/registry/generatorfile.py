@@ -13,7 +13,7 @@ class GeneratorFile(object):
     def __init__(self, generator):
         self._generator = generator
         self._closed = False
-        self._buf = ""
+        self._buf = b""
         self._position = 0
 
     def __iter__(self):
@@ -48,8 +48,8 @@ class GeneratorFile(object):
         while True:
             c = self.read(size=1)
             buf.append(c)
-            if c == "\n" or c == "":
-                return "".join(buf)
+            if c == b"\n" or c == b"":
+                return b"".join(buf)
 
     def flush(self):
         _complain_ifclosed(self._closed)
@@ -71,12 +71,12 @@ class GeneratorFile(object):
             except StopIteration:
                 break
 
-        returned = ""
+        returned = b""
         if size >= 1:
             self._buf = buf[size:]
             returned = buf[:size]
         else:
-            self._buf = ""
+            self._buf = b""
             returned = buf
 
         self._position = self._position + len(returned)
