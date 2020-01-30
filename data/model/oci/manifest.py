@@ -273,10 +273,18 @@ def _create_manifest(
                 media_type=media_type,
                 manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
             )
-        except IntegrityError:
-            manifest = Manifest.get(
-                repository=repository_id, digest=manifest_interface_instance.digest
-            )
+        except IntegrityError as ie:
+            try:
+                manifest = Manifest.get(
+                    repository=repository_id, digest=manifest_interface_instance.digest
+                )
+            except Manifest.DoesNotExist:
+                logger.error('Got integrity error when trying to create manifest: %s', ie)
+                if raise_on_error:
+                    raise CreateManifestException("Attempt to create an invalid manifest. Please report this issue.")
+
+                return None
+
             return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
 
         # Insert the blobs.
