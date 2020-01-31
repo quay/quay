@@ -108,7 +108,7 @@ class V2SecurityScanner(SecurityScannerInterface):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.FAILED_TO_INDEX)
 
         if status == SecurityScanStatus.UNSUPPORTED:
-            return SecurityInformationLookupResult.with_status(ScanLookupStatus.UNSUPPORTED)
+            return SecurityInformationLookupResult.with_status(ScanLookupStatus.UNSUPPORTED_FOR_INDEXING)
 
         if status == SecurityScanStatus.QUEUED:
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
