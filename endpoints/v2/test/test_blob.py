@@ -37,7 +37,7 @@ def test_blob_caching(method, endpoint, client, app):
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token.decode('ascii'),
+        "Authorization": "Bearer %s" % token.decode("ascii"),
     }
 
     # Run without caching to make sure the request works. This also preloads some of
@@ -115,7 +115,7 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token.decode('ascii'),
+        "Authorization": "Bearer %s" % token.decode("ascii"),
     }
 
     expected_code = 201 if expect_success else 202
