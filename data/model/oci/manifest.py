@@ -101,6 +101,7 @@ def get_or_create_manifest(
     temp_tag_expiration_sec=TEMP_TAG_EXPIRATION_SEC,
     for_tagging=False,
     raise_on_error=False,
+    retriever=None,
 ):
     """ Returns a CreatedManifest for the manifest in the specified repository with the matching
       digest (if it already exists) or, if not yet created, creates and returns the manifest.
@@ -129,6 +130,7 @@ def get_or_create_manifest(
         temp_tag_expiration_sec,
         for_tagging=for_tagging,
         raise_on_error=raise_on_error,
+        retriever=retriever,
     )
 
 
@@ -139,9 +141,10 @@ def _create_manifest(
     temp_tag_expiration_sec=TEMP_TAG_EXPIRATION_SEC,
     for_tagging=False,
     raise_on_error=False,
+    retriever=None,
 ):
     # Validate the manifest.
-    retriever = RepositoryContentRetriever.for_repository(repository_id, storage)
+    retriever = retriever or RepositoryContentRetriever.for_repository(repository_id, storage)
     try:
         manifest_interface_instance.validate(retriever)
     except (ManifestException, MalformedSchema2ManifestList, BlobDoesNotExist, IOError) as ex:
@@ -228,7 +231,16 @@ def _create_manifest(
     # blob map. This is necessary because Docker decided to elide sending of this special
     # empty layer in schema version 2, but we need to have it referenced for GC and schema version 1.
     if EMPTY_LAYER_BLOB_DIGEST not in blob_map:
-        requires_empty_layer = manifest_interface_instance.get_requires_empty_layer_blob(retriever)
+        try:
+            requires_empty_layer = manifest_interface_instance.get_requires_empty_layer_blob(
+                retriever
+            )
+        except ManifestException as ex:
+            if raise_on_error:
+                raise CreateManifestException(str(ex))
+
+            return None
+
         if requires_empty_layer is None:
             if raise_on_error:
                 raise CreateManifestException("Could not load configuration blob")

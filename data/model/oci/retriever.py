@@ -5,8 +5,8 @@ from data.database import Manifest
 from data.model.oci.blob import get_repository_blob_by_digest
 from data.model.storage import get_layer_path
 
-RETRY_COUNT = 2
-RETRY_DELAY = 0.25  # seconds
+RETRY_COUNT = 5
+RETRY_DELAY = 0.3  # seconds
 
 
 class RepositoryContentRetriever(ContentRetriever):
