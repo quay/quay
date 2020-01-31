@@ -15,7 +15,7 @@ from data.database import (
     RepositoryTag,
     get_epoch_timestamp_ms,
 )
-from data.model.oci.manifest import lookup_manifest, get_or_create_manifest
+from data.model.oci.manifest import lookup_manifest, get_or_create_manifest, CreateManifestException
 from data.model.oci.tag import filter_to_alive_tags, get_tag
 from data.model.oci.shared import get_legacy_image_for_manifest
 from data.model.oci.label import list_manifest_labels
@@ -24,6 +24,7 @@ from data.model.repository import get_repository, create_repository
 from data.model.image import find_create_or_link_image
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.storage import get_layer_path
+from image.docker.interfaces import ContentRetriever
 from image.docker.schema1 import DockerSchema1ManifestBuilder, DockerSchema1Manifest
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
@@ -539,3 +540,47 @@ def test_retriever(initialized_db):
 
     for blob_digest in blob_digests:
         assert retriever.get_blob_bytes_with_digest(blob_digest) is not None
+
+
+class BrokenRetriever(ContentRetriever):
+    def get_manifest_bytes_with_digest(self, digest):
+        return None
+
+    def get_blob_bytes_with_digest(self, digest):
+        return None
+
+
+def test_create_manifest_cannot_load_config_blob(initialized_db):
+    repository = create_repository("devtable", "newrepo", None)
+
+    layer_json = json.dumps(
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+            ],
+        }
+    )
+
+    # Add a blob containing the config.
+    _, config_digest = _populate_blob(layer_json)
+
+    # Add a blob of random data.
+    random_data = "hello world"
+    _, random_digest = _populate_blob(random_data)
+
+    remote_digest = sha256_digest("something")
+
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(config_digest, len(layer_json))
+    builder.add_layer(random_digest, len(random_data))
+    manifest = builder.build()
+
+    broken_retriever = BrokenRetriever()
+
+    # Write the manifest.
+    with pytest.raises(CreateManifestException):
+        get_or_create_manifest(
+            repository, manifest, storage, retriever=broken_retriever, raise_on_error=True
+        )
