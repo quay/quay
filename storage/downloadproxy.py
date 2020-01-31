@@ -103,7 +103,7 @@ class DownloadProxy(object):
         proxy_url = "%s://%s/_storage_proxy/%s/%s/%s/%s" % (
             url_scheme,
             server_hostname,
-            encoded_token.decode('ascii'),
+            encoded_token.decode("ascii"),
             parsed.scheme,
             parsed.netloc,
             path,
