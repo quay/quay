@@ -28,10 +28,12 @@ from data.database import (
     ManifestBlob,
 )
 
-
 logger = logging.getLogger(__name__)
 
 _Location = namedtuple("location", ["id", "name"])
+
+EMPTY_LAYER_BLOB_DIGEST = "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
+SPECIAL_BLOB_DIGESTS = set([EMPTY_LAYER_BLOB_DIGEST])
 
 
 @lru_cache(maxsize=1)
@@ -165,6 +167,7 @@ def garbage_collect_storage(storage_id_whitelist):
                 (
                     get_image_location_for_id(placement.location_id).name,
                     get_layer_path(placement.storage),
+                    placement.storage.content_checksum,
                 )
                 for placement in placements_list
                 if not placement.storage.cas_path
@@ -224,7 +227,19 @@ def garbage_collect_storage(storage_id_whitelist):
     # We are going to make the conscious decision to not delete image storage blobs inside
     # transactions.
     # This may end up producing garbage in s3, trading off for higher availability in the database.
-    for location_name, image_path in paths_to_remove:
+    for location_name, image_path, storage_checksum in paths_to_remove:
+        if storage_checksum:
+            # Skip any specialized blob digests that we know we should keep around.
+            if storage_checksum in SPECIAL_BLOB_DIGESTS:
+                continue
+
+            # Perform one final check to ensure the blob is not needed.
+            try:
+                ImageStorage.select().where(ImageStorage.content_checksum == storage_checksum).get()
+                continue
+            except ImageStorage.DoesNotExist:
+                pass
+
         logger.debug("Removing %s from %s", image_path, location_name)
         config.store.remove({location_name}, image_path)
 
