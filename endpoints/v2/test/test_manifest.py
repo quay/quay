@@ -32,7 +32,7 @@ def test_e2e_query_count_manifest_norewrite(client, app):
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token.decode('ascii'),
+        "Authorization": "Bearer %s" % token.decode("ascii"),
     }
 
     # Conduct a call to prime the instance key and other caches.

@@ -8,6 +8,7 @@ IMAGE="quay-ci"
 CACHE_DIR="${HOME}/docker"
 SHORT_SHA="${TRAVIS_COMMIT:0:7}"
 IMAGE_TAG="${SHORT_SHA}-${TRAVIS_BUILD_NUMBER}"
+BASE_IMAGE_TAR="${CACHE_DIR}/${IMAGE}-${IMAGE_TAG}-base.tar.gz"
 IMAGE_TAR="${CACHE_DIR}/${IMAGE}-${IMAGE_TAG}.tar.gz"
 
 MYSQL_IMAGE="mysql:5.7"
@@ -48,15 +49,21 @@ build_image() {
 
     # Build the image and save it to the shared cache.
     echo "Building CI Image"
-    docker build -t "${IMAGE}:${IMAGE_TAG}" -f Dockerfile.cirun .
+    docker build -t "${IMAGE}:${IMAGE_TAG}-ci-run" -f Dockerfile.cirun .
 
-    echo "Exporting Docker image to cache..."
-    time (docker save "${IMAGE}:${IMAGE_TAG}" | gzip -2 > "${IMAGE_TAR}")
+    echo "Exporting Docker images to cache..."
+    time (docker save "quay-ci-base" | gzip -2 > "${BASE_IMAGE_TAR}")
+    time (docker save "${IMAGE}:${IMAGE_TAG}-ci-run" | gzip -2 > "${IMAGE_TAR}")
+
 }
 
 
 load_image() {
-    # Load our cached Docker image.
+    # Load our cached Base Docker Image
+    echo "Loading Base image from cache..."
+    time (zcat "${BASE_IMAGE_TAR}" | docker load)
+
+    # Load our cached CI Docker image.
     echo "Loading Docker image from cache..."
     time (zcat "${IMAGE_TAR}" | docker load)
 }
@@ -67,10 +74,11 @@ clean_cache() {
 }
 
 fail_clean() {
-    if [[ $TRAVIS_TEST_RESULT -ne 0 ]]; then
-        echo "Job failed. Cleaning cache..."
-        clean_cache
-    fi
+    #if [[ $TRAVIS_TEST_RESULT -ne 0 ]]; then
+    #    echo "Job failed. Cleaning cache..."
+    #    clean_cache
+    #fi
+    echo "Not running fail_clean(); TravisCI should clean up after all jobs are ran."
 }
 
 quay_run() {
