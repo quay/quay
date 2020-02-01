@@ -167,7 +167,9 @@ def _reject_manifest2_schema2(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         namespace_name = kwargs["namespace_name"]
-        if registry_model.supports_schema2(namespace_name):
+        if registry_model.supports_schema2(namespace_name) and namespace_name not in app.config.get(
+            "V22_NAMESPACE_BLACKLIST", []
+        ):
             return func(*args, **kwargs)
 
         if (
