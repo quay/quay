@@ -14,6 +14,7 @@ from data.database import (
     ManifestChild,
     ManifestLegacyImage,
     ManifestLabel,
+    ManifestSecurityStatus,
     Label,
     TagManifestLabel,
     RepositoryState,
@@ -97,6 +98,10 @@ def purge_repository(repo, force=False):
     assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+    assert (
+        ManifestSecurityStatus.select().where(ManifestSecurityStatus.repository == repo).count()
+        == 0
+    )
     assert Image.select().where(Image.repository == repo).count() == 0
 
     # Delete any repository build triggers, builds, and any other large-ish reference tables for
@@ -448,6 +453,12 @@ def _garbage_collect_manifest(manifest_id, context):
         # Delete the manifest blobs for the manifest.
         ManifestBlob.delete().where(
             ManifestBlob.manifest == manifest_id, ManifestBlob.repository == context.repository
+        ).execute()
+
+        # Delete the security status for the manifest
+        ManifestSecurityStatus.delete().where(
+            ManifestSecurityStatus.manifest == manifest_id,
+            ManifestSecurityStatus.repository == context.repository,
         ).execute()
 
         # Delete the manifest legacy image row.

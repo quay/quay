@@ -1,5 +1,6 @@
 from data.secscan_model.datatypes import ScanLookupStatus
 from data.secscan_model.secscan_v2_model import V2SecurityScanner
+from data.secscan_model.secscan_v4_model import V4SecurityScanner
 from data.registry_model import registry_model
 
 from test.fixtures import *
@@ -7,9 +8,7 @@ from test.fixtures import *
 from app import app, instance_keys, storage
 
 
-@pytest.fixture(
-    params=[V2SecurityScanner,]
-)
+@pytest.fixture(params=[V2SecurityScanner, V4SecurityScanner])
 def secscan_model(request, initialized_db):
     return request.param(app, instance_keys, storage)
 

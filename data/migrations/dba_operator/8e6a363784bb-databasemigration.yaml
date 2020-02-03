@@ -1,0 +1,144 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 8e6a363784bb
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 8e6a363784bb
+    image: quay.io/quay/quay
+    name: 8e6a363784bb
+  previous: !!python/tuple
+  - 4fd6b8463eb2
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: index_status
+      nullable: false
+    - name: error_json
+      nullable: false
+    - name: last_indexed
+      nullable: false
+    - name: indexer_hash
+      nullable: false
+    - name: indexer_version
+      nullable: false
+    - name: metadata_json
+      nullable: false
+    operation: createTable
+    table: manifestsecuritystatus
+  - columns:
+    - name: index_status
+      nullable: false
+    indexName: manifestsecuritystatus_index_status
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns:
+    - name: indexer_hash
+      nullable: false
+    indexName: manifestsecuritystatus_indexer_hash
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns:
+    - name: indexer_version
+      nullable: false
+    indexName: manifestsecuritystatus_indexer_version
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns:
+    - name: last_indexed
+      nullable: false
+    indexName: manifestsecuritystatus_last_indexed
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns:
+    - name: manifest_id
+      nullable: false
+    indexName: manifestsecuritystatus_manifest_id
+    indexType: unique
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns:
+    - name: repository_id
+      nullable: false
+    indexName: manifestsecuritystatus_repository_id
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - indexName: apprmanifestlistmanifest_manifest_list_id_operating_system_arch
+    operation: dropIndex
+    table: apprmanifestlistmanifest
+  - columns:
+    - name: source_image_id
+      nullable: false
+    - name: transformation_id
+      nullable: false
+    - name: uniqueness_hash
+      nullable: true
+    indexName: derivedstorageforimage_source_image_id_transformation_id_uniqueness_hash
+    indexType: unique
+    operation: createIndex
+    table: derivedstorageforimage
+  - indexName: uniqueness_index
+    operation: dropIndex
+    table: derivedstorageforimage
+  - columns:
+    - name: processing_expires
+      nullable: true
+    - name: available_after
+      nullable: false
+    - name: queue_name
+      nullable: false
+    - name: retries_remaining
+      nullable: false
+    - name: available
+      nullable: false
+    indexName: queueitem_processing_expires_available_after_queue_name_retries_remaining_available
+    indexType: index
+    operation: createIndex
+    table: queueitem
+  - columns:
+    - name: processing_expires
+      nullable: true
+    - name: available_after
+      nullable: false
+    - name: retries_remaining
+      nullable: false
+    - name: available
+      nullable: false
+    indexName: queueitem_processing_expires_available_after_retries_remaining_available
+    indexType: index
+    operation: createIndex
+    table: queueitem
+  - indexName: queueitem_pe_aafter_qname_rremaining_available
+    operation: dropIndex
+    table: queueitem
+  - indexName: queueitem_pexpires_aafter_rremaining_available
+    operation: dropIndex
+    table: queueitem
+  - indexName: repomirrorconfig_sync_transaction_id
+    operation: dropIndex
+    table: repomirrorconfig
+  - indexName: repomirrorrule_uuid
+    operation: dropIndex
+    table: repomirrorrule
+  - columns:
+    - name: uuid
+      nullable: false
+    indexName: repomirrorrule_uuid
+    indexType: index
+    operation: createIndex
+    table: repomirrorrule

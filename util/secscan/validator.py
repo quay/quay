@@ -4,9 +4,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class SecurityConfigValidator(object):
+class V2SecurityConfigValidator(object):
     """
-    Helper class for validating the security scanner configuration.
+    Helper class for validating the V2 security scanner configuration.
     """
 
     def __init__(self, feature_sec_scan, sec_scan_endpoint):
@@ -27,3 +27,16 @@ class SecurityConfigValidator(object):
             return False
 
         return True
+
+
+class V4SecurityConfigValidator(object):
+    """
+    Helper class for validating the V4 security scanner configuration.
+    """
+
+    def __init__(self, feature_sec_scan, sec_scan_endpoint):
+        self._feature_sec_scan = feature_sec_scan
+        self._sec_scan_endpoint = sec_scan_endpoint
+
+    def valid(self):
+        return False

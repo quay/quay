@@ -1238,6 +1238,7 @@ WHITELISTED_EMPTY_MODELS = [
     "TorrentInfo",
     "LogEntry",
     "LogEntry2",
+    "ManifestSecurityStatus",
 ]
 
 

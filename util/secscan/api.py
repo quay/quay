@@ -14,7 +14,7 @@ from data.model.image import get_image_with_storage
 from data.registry_model.datatypes import Manifest as ManifestDataType, LegacyImage
 from util.abchelpers import nooper
 from util.failover import failover, FailoverException
-from util.secscan.validator import SecurityConfigValidator
+from util.secscan.validator import V2SecurityConfigValidator
 from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
 
 from _init import CONF_DIR
@@ -120,7 +120,7 @@ class SecurityScannerAPI(object):
         has_valid_config = skip_validation
 
         if not skip_validation and feature_enabled:
-            config_validator = SecurityConfigValidator(
+            config_validator = V2SecurityConfigValidator(
                 feature_enabled, config.get("SECURITY_SCANNER_ENDPOINT")
             )
             has_valid_config = config_validator.valid()
