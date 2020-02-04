@@ -1,4 +1,6 @@
+import logging
 import os
+
 from abc import ABCMeta, abstractmethod
 from jsonschema import validate
 from six import add_metaclass
@@ -6,6 +8,10 @@ from six import add_metaclass
 from endpoints.building import PreparedBuild
 from data import model
 from buildtrigger.triggerutil import get_trigger_config, InvalidServiceException
+from util.jsontemplate import apply_data_to_obj, JSONTemplateParseException
+
+logger = logging.getLogger(__name__)
+
 
 NAMESPACES_SCHEMA = {
     "type": "array",
@@ -65,6 +71,7 @@ BUILD_SOURCES_SCHEMA = {
             "full_name",
             "description",
             "last_updated",
+            "url",
             "has_admin_permissions",
             "private",
         ],
@@ -78,6 +85,15 @@ METADATA_SCHEMA = {
             "type": "string",
             "description": "first 7 characters of the SHA-1 identifier for a git commit",
             "pattern": "^([A-Fa-f0-9]{7,})$",
+        },
+        "parsed_ref": {
+            "type": "object",
+            "description": "The parsed information about the ref, if any",
+            "properties": {
+                "branch": {"type": "string", "description": "The branch name",},
+                "tag": {"type": "string", "description": "The tag name",},
+                "remote": {"type": "string", "description": "The remote name",},
+            },
         },
         "git_url": {"type": "string", "description": "The GIT url to use for the checkout",},
         "ref": {
@@ -93,6 +109,10 @@ METADATA_SCHEMA = {
             "type": "object",
             "description": "metadata about a git commit",
             "properties": {
+                "short_sha": {
+                    "type": "string",
+                    "description": "The short SHA for this git commit",
+                },
                 "url": {"type": "string", "description": "URL to view a git commit",},
                 "message": {"type": "string", "description": "git commit message",},
                 "date": {"type": "string", "description": "timestamp for a git commit"},
@@ -281,22 +301,86 @@ class BuildTriggerHandler(object):
         validate(metadata, METADATA_SCHEMA)
 
         config = self.config
-        ref = metadata.get("ref", None)
         commit_sha = metadata["commit"]
-        default_branch = metadata.get("default_branch", None)
+
+        # Create the prepared build.
         prepared = PreparedBuild(self.trigger)
         prepared.name_from_sha(commit_sha)
+
         prepared.subdirectory = config.get("dockerfile_path", None)
         prepared.context = config.get("context", None)
         prepared.is_manual = is_manual
         prepared.metadata = metadata
-
-        if ref is not None:
-            prepared.tags_from_ref(ref, default_branch)
-        else:
-            prepared.tags = [commit_sha[:7]]
-
+        prepared.tags = BuildTriggerHandler._determine_tags(config, metadata)
         return prepared
+
+    @classmethod
+    def _add_tag_from_ref(cls, tags, ref):
+        if not ref:
+            return
+
+        branch = ref.split("/", 2)[-1]
+        tags.add(branch)
+
+    @classmethod
+    def _add_latest_tag_if_default(cls, tags, ref, default_branch=None):
+        if not ref:
+            return
+
+        branch = ref.split("/", 2)[-1]
+        if default_branch is not None and branch == default_branch:
+            tags.add("latest")
+
+    @classmethod
+    def _determine_tags(cls, config, metadata):
+        tags = set()
+
+        ref = metadata.get("ref", None)
+        commit_sha = metadata["commit"]
+        default_branch = metadata.get("default_branch", None)
+
+        # Handle tagging. If there are defined tagging templates, use them.
+        tag_templates = config.get("tag_templates")
+        if tag_templates:
+            updated_metadata = dict(metadata)
+            updated_metadata["commit_info"] = updated_metadata.get("commit_info", {})
+            updated_metadata["commit_info"]["short_sha"] = commit_sha[:7]
+
+            if ref:
+                _, kind, name = ref.split("/", 2)
+
+                updated_metadata["parsed_ref"] = {}
+                if kind == "heads":
+                    updated_metadata["parsed_ref"]["branch"] = name
+                elif kind == "tags":
+                    updated_metadata["parsed_ref"]["tag"] = name
+                elif kind == "remotes":
+                    updated_metadata["parsed_ref"]["remote"] = name
+
+            for tag_template in tag_templates:
+                try:
+                    result = apply_data_to_obj(tag_template, updated_metadata, missing="$MISSING$")
+                    if "$MISSING$" in result:
+                        result = None
+                except JSONTemplateParseException:
+                    logger.exception("Got except when parsing tag template `%s`", tag_template)
+                    continue
+
+                if result:
+                    tags.add(result)
+
+        # If allowed, tag from the ref.
+        if ref is not None:
+            if config.get("default_tag_from_ref", True):
+                cls._add_tag_from_ref(tags, ref)
+
+            if config.get("latest_for_default_branch", True):
+                cls._add_latest_tag_if_default(tags, ref, default_branch)
+
+        if not tags:
+            tags = {commit_sha[:7]}
+
+        return tags
 
     @classmethod
     def build_sources_response(cls, sources):

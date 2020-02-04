@@ -26,10 +26,13 @@ export class ManageTriggerComponent implements OnChanges {
     selectedRepository: {name: ''},
     hasValidDockerfilePath: false,
     dockerfileLocations: [],
-    triggerOptions: {},
+    triggerOptions: {
+      'tag_templates': []
+    },
     namespaceOptions: {filter: '', predicate: 'score', reverse: false, page: 0},
     repositoryOptions: {filter: '', predicate: 'score', reverse: false, page: 0, hideStale: true},
     robotOptions: {filter: '', predicate: 'score', reverse: false, page: 0},
+    currentTagTemplate: null
   };
 
   private namespacesPerPage: number = 10;
@@ -164,6 +167,10 @@ export class ManageTriggerComponent implements OnChanges {
       config.branchtag_regex = this.local.triggerOptions['branchTagFilter'];
     }
 
+    config.default_tag_from_ref = this.local.triggerOptions['default_tag_from_ref'];
+    config.latest_for_default_branch = this.local.triggerOptions['latest_for_default_branch'];
+    config.tag_templates = this.local.triggerOptions['tag_templates'] || null;
+
     const activate = () => {
       this.activateTrigger.emit({config: config, pull_robot: Object.assign({}, this.local.robotAccount)});
     };
@@ -251,7 +258,10 @@ export class ManageTriggerComponent implements OnChanges {
     this.local.selectedRepository = null;
     this.local.repositoryRefs = null;
     this.local.triggerOptions = {
-      'hasBranchTagFilter': false
+      'hasBranchTagFilter': false,
+      'default_tag_from_ref': true,
+      'latest_for_default_branch': true,
+      'tag_templates': []
     };
 
     this.local.orderedRepositories = null;
@@ -273,10 +283,29 @@ export class ManageTriggerComponent implements OnChanges {
     }, this.apiService.errorDisplay('Could not retrieve repositories'));
   }
 
+  private addTagTemplate(): void {
+    if (!this.local.currentTagTemplate) {
+      return;
+    }
+
+    this.local.triggerOptions['tag_templates'].push(this.local.currentTagTemplate);
+    this.local.currentTagTemplate = null;
+  }
+
+  private removeTagTemplate(template: string): void {
+    var opts = this.local.triggerOptions;
+    opts['tag_templates'] = opts['tag_templates'].filter(function(item) {
+      return item != template;
+    });
+  }
+
   private loadRepositoryRefs(repository: any): void {
     this.local.repositoryRefs = null;
     this.local.triggerOptions = {
-      'hasBranchTagFilter': false
+      'hasBranchTagFilter': false,
+      'default_tag_from_ref': true,
+      'latest_for_default_branch': true,
+      'tag_templates': []
     };
 
     const params = {

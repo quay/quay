@@ -50,24 +50,6 @@ def test_start_build_disabled_trigger(app):
 
 
 @pytest.mark.parametrize(
-    "ref, expected_tags",
-    [
-        ("ref/heads/somebranch", ["somebranch"]),
-        ("ref/heads/master", ["master", "latest"]),
-        ("ref/tags/somebranch", ["somebranch"]),
-        ("ref/tags/master", ["master", "latest"]),
-        ("ref/heads/slash/branch", ["slash_branch"]),
-        ("ref/tags/slash/tag", ["slash_tag"]),
-        ("ref/heads/foobar#2", ["foobar_2"]),
-    ],
-)
-def test_tags_for_ref(ref, expected_tags):
-    prepared = PreparedBuild()
-    prepared.tags_from_ref(ref, default_branch="master")
-    assert set(prepared._tags) == set(expected_tags)
-
-
-@pytest.mark.parametrize(
     "metadata, config",
     [
         ({}, {}),
