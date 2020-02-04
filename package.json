@@ -19,9 +19,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/coreos-inc/quay.git"
+    "url": "https://github.com/quay/quay.git"
   },
-  "homepage": "https://github.com/coreos-inc/quay#readme",
+  "homepage": "https://github.com/quay/quay#readme",
   "dependencies": {
     "angular": "1.6.2",
     "angular-animate": "1.6.2",
@@ -36,6 +36,8 @@
     "core-js": "^2.4.1",
     "d3": "^3.3.3",
     "eonasdan-bootstrap-datetimepicker": "^4.17.43",
+	"moment": "^2.10",
+	"moment-timezone": "^0.4.0",
     "file-saver": "^1.3.3",
     "highlight.js": "^9.12.0",
     "jquery": "1.12.4",
