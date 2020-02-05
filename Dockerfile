@@ -67,7 +67,7 @@ RUN rm -Rf /opt/rh/python27/root/usr/lib/python2.7/site-packages/docutils && \
     rm -f piplist.txt pipinfo.txt
 
 # # Front-end
-RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
+RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
     yum install -y nodejs && \
     curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
     rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
