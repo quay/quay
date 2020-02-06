@@ -36,14 +36,14 @@ def _create_temp_file_structure(file_structure):
         ),
         pytest.param(
             {"config.yaml": "test:true", "otherfile.ext": "im a file"},
-            {"config.yaml": "dGVzdDp0cnVl", "otherfile.ext": base64.b64encode("im a file")},
+            {"config.yaml": "dGVzdDp0cnVl", "otherfile.ext": base64.b64encode(b"im a file")},
             id="config and another file",
         ),
         pytest.param(
             {"config.yaml": "test:true", "extra_ca_certs": [("cert.crt", "im a cert!"),]},
             {
                 "config.yaml": "dGVzdDp0cnVl",
-                "extra_ca_certs_cert.crt": base64.b64encode("im a cert!"),
+                "extra_ca_certs_cert.crt": base64.b64encode(b"im a cert!"),
             },
             id="config and an extra cert",
         ),
@@ -58,11 +58,16 @@ def _create_temp_file_structure(file_structure):
             },
             {
                 "config.yaml": "dGVzdDp0cnVl",
-                "otherfile.ext": base64.b64encode("im a file"),
-                "extra_ca_certs_cert.crt": base64.b64encode("im a cert!"),
-                "extra_ca_certs_another.crt": base64.b64encode("im a different cert!"),
+                "otherfile.ext": base64.b64encode(b"im a file"),
+                "extra_ca_certs_cert.crt": base64.b64encode(b"im a cert!"),
+                "extra_ca_certs_another.crt": base64.b64encode(b"im a different cert!"),
             },
             id="config, files, and extra certs!",
+        ),
+        pytest.param(
+            {"config.yaml": "First line\nSecond line"},
+            {"config.yaml": "Rmlyc3QgbGluZQpTZWNvbmQgbGluZQo="},
+            id="certificate includes newline characters",
         ),
     ],
 )
