@@ -110,20 +110,13 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         image_pulls.labels("v2_1", "manifest", 404).inc()
         raise ManifestUnknown()
 
-    manifest_bytes, manifest_digest, manifest_media_type = _rewrite_schema_if_necessary(
-        namespace_name, repo_name, "$digest", manifest
-    )
-    if manifest_digest is None:
-        image_pulls.labels("v2_1", "manifest", 404).inc()
-        raise ManifestUnknown()
-
     track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
     image_pulls.labels("v2_1", "manifest", 200).inc()
 
     return Response(
-        manifest_bytes.as_unicode(),
+        manifest.internal_manifest_bytes.as_unicode(),
         status=200,
-        headers={"Content-Type": manifest_media_type, "Docker-Content-Digest": manifest_digest,},
+        headers={"Content-Type": manifest.media_type, "Docker-Content-Digest": manifest.digest,},
     )
 
 
