@@ -1,5 +1,7 @@
 import logging
 
+from peewee import fn
+
 from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag
 from data.model.oci import tag as oci_tag
 from data.database import Repository, db_for_update
@@ -15,6 +17,15 @@ from data.database import (
     Label,
     TagManifestLabel,
     RepositoryState,
+    RepositoryBuild,
+    RepositoryBuildTrigger,
+    RepositoryActionCount,
+    Star,
+    AccessToken,
+    RepositoryNotification,
+    BlobUpload,
+    RepoMirrorConfig,
+    RepositoryPermission,
 )
 from data.database import RepositoryTag, TagManifest, Image, DerivedStorageForImage
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
@@ -81,6 +92,18 @@ def purge_repository(repo, force=False):
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
     assert Image.select().where(Image.repository == repo).count() == 0
 
+    # Delete any repository build triggers, builds, and any other large-ish reference tables for
+    # the repository.
+    _chunk_delete_all(repo, RepositoryPermission, force=force)
+    _chunk_delete_all(repo, RepositoryBuild, force=force)
+    _chunk_delete_all(repo, RepositoryBuildTrigger, force=force)
+    _chunk_delete_all(repo, RepositoryActionCount, force=force)
+    _chunk_delete_all(repo, Star, force=force)
+    _chunk_delete_all(repo, AccessToken, force=force)
+    _chunk_delete_all(repo, RepositoryNotification, force=force)
+    _chunk_delete_all(repo, BlobUpload, force=force)
+    _chunk_delete_all(repo, RepoMirrorConfig, force=force)
+
     # Delete any marker rows for the repository.
     DeletedRepository.delete().where(DeletedRepository.repository == repo).execute()
 
@@ -93,6 +116,28 @@ def purge_repository(repo, force=False):
 
     fetched.delete_instance(recursive=True, delete_nullable=False, force=force)
     return True
+
+
+def _chunk_delete_all(repo, model, force=False, chunk_size=500):
+    """ Deletes all rows referencing the given repository in the given model. """
+    assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
+
+    while True:
+        min_id = model.select(fn.Min(model.id)).where(model.repository == repo).scalar()
+        if min_id is None:
+            return
+
+        max_id = (
+            model.select(fn.Max(model.id))
+            .where(model.repository == repo, model.id <= (min_id + chunk_size))
+            .scalar()
+        )
+        if min_id is None or max_id is None or min_id > max_id:
+            return
+
+        model.delete().where(
+            model.repository == repo, model.id >= min_id, model.id <= max_id
+        ).execute()
 
 
 def _chunk_iterate_for_deletion(query, chunk_size=10):
