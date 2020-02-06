@@ -9,7 +9,9 @@ CANCELLERS = {"ephemeral": OrchestratorCanceller}
 
 
 class BuildCanceller(object):
-    """ A class to manage cancelling a build """
+    """
+    A class to manage cancelling a build.
+    """
 
     def __init__(self, app=None):
         self.build_manager_config = app.config.get("BUILD_MANAGER")
@@ -19,7 +21,9 @@ class BuildCanceller(object):
             self.handler = None
 
     def try_cancel_build(self, uuid):
-        """ A method to kill a running build """
+        """
+        A method to kill a running build.
+        """
         if self.handler is None:
             canceller = CANCELLERS.get(self.build_manager_config[0], NoopCanceller)
             self.handler = canceller(self.build_manager_config[1])

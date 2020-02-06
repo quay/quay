@@ -170,7 +170,9 @@ def test_manifestbackfillworker_broken_manifest(clear_rows, initialized_db):
 
 
 def test_manifestbackfillworker_mislinked_manifest(clear_rows, initialized_db):
-    """ Tests that a manifest whose image is mislinked will have its storages relinked properly. """
+    """
+    Tests that a manifest whose image is mislinked will have its storages relinked properly.
+    """
     # Delete existing tag manifest so we can reuse the tag.
     TagManifestLabel.delete().execute()
     TagManifest.delete().execute()
@@ -205,8 +207,10 @@ def test_manifestbackfillworker_mislinked_manifest(clear_rows, initialized_db):
 
 
 def test_manifestbackfillworker_mislinked_invalid_manifest(clear_rows, initialized_db):
-    """ Tests that a manifest whose image is mislinked will attempt to have its storages relinked
-      properly. """
+    """
+    Tests that a manifest whose image is mislinked will attempt to have its storages relinked
+    properly.
+    """
     # Delete existing tag manifest so we can reuse the tag.
     TagManifestLabel.delete().execute()
     TagManifest.delete().execute()
@@ -239,7 +243,9 @@ def test_manifestbackfillworker_mislinked_invalid_manifest(clear_rows, initializ
 
 
 def test_manifestbackfillworker_repeat_digest(clear_rows, initialized_db):
-    """ Tests that a manifest with a shared digest will be properly linked. """
+    """
+    Tests that a manifest with a shared digest will be properly linked.
+    """
     # Delete existing tag manifest so we can reuse the tag.
     TagManifestLabel.delete().execute()
     TagManifest.delete().execute()
@@ -271,7 +277,9 @@ def test_manifestbackfillworker_repeat_digest(clear_rows, initialized_db):
 
 
 def test_manifest_backfill_broken_tag(clear_rows, initialized_db):
-    """ Tests backfilling a broken tag. """
+    """
+    Tests backfilling a broken tag.
+    """
     # Delete existing tag manifest so we can reuse the tag.
     TagManifestLabel.delete().execute()
     TagManifest.delete().execute()

@@ -21,9 +21,10 @@ def _is_team_member(team, user):
 def _get_visible_repositories_for_user(
     user, repo_kind="image", include_public=False, namespace=None
 ):
-    """ Returns all repositories directly visible to the given user, by either repo permission,
-      or the user being the admin of a namespace.
-  """
+    """
+    Returns all repositories directly visible to the given user, by either repo permission, or the
+    user being the admin of a namespace.
+    """
     for repo in Repository.select():
         if repo_kind is not None and repo.kind.name != repo_kind:
             continue

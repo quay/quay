@@ -3,8 +3,8 @@ from util.config.validator import EXTRA_CA_DIRECTORY
 
 def strip_absolute_path_and_add_trailing_dir(path):
     """
-  Removes the initial trailing / from the prefix path, and add the last dir one
-  """
+    Removes the initial trailing / from the prefix path, and add the last dir one.
+    """
     return path[1:] + "/"
 
 

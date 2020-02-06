@@ -282,9 +282,10 @@ testcases = {}
 
 
 def finished_database_for_testing(testcase):
-    """ Called when a testcase has finished using the database, indicating that
-      any changes should be discarded.
-  """
+    """
+    Called when a testcase has finished using the database, indicating that any changes should be
+    discarded.
+    """
     testcases[testcase]["savepoint"].rollback()
     testcases[testcase]["savepoint"].__exit__(True, None, None)
 
@@ -292,9 +293,10 @@ def finished_database_for_testing(testcase):
 
 
 def setup_database_for_testing(testcase, with_storage=False, force_rebuild=False):
-    """ Called when a testcase has started using the database, indicating that
-      the database should be setup (if not already) and a savepoint created.
-  """
+    """
+    Called when a testcase has started using the database, indicating that the database should be
+    setup (if not already) and a savepoint created.
+    """
 
     # Sanity check to make sure we're not killing our prod db
     if not IS_TESTING_REAL_DATABASE and not isinstance(db.obj, SqliteDatabase):

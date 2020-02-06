@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticsearchLogsProducer(LogProducerInterface):
-    """ Log producer writing log entries to Elasticsearch.
+    """
+    Log producer writing log entries to Elasticsearch.
 
-  This implementation writes directly to Elasticsearch without a streaming/queueing service.
-  """
+    This implementation writes directly to Elasticsearch without a streaming/queueing service.
+    """
 
     def send(self, logentry):
         try:

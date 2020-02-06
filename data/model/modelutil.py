@@ -15,11 +15,12 @@ def paginate(
     max_page=None,
     sort_field_name=None,
 ):
-    """ Paginates the given query using an field range, starting at the optional page_token.
-      Returns a *list* of matching results along with an unencrypted page_token for the
-      next page, if any. If descending is set to True, orders by the field descending rather
-      than ascending.
-  """
+    """
+    Paginates the given query using an field range, starting at the optional page_token.
+
+    Returns a *list* of matching results along with an unencrypted page_token for the next page, if
+    any. If descending is set to True, orders by the field descending rather than ascending.
+    """
     # Note: We use the sort_field_alias for the order_by, but not the where below. The alias is
     # necessary for certain queries that use unions in MySQL, as it gets confused on which field
     # to order by. The where clause, on the other hand, cannot use the alias because Postgres does
@@ -55,7 +56,11 @@ def paginate(
 
 
 def pagination_start(page_token=None):
-    """ Returns the start index for pagination for the given page token. Will return None if None. """
+    """
+    Returns the start index for pagination for the given page token.
+
+    Will return None if None.
+    """
     if page_token is not None:
         start_index = page_token.get("start_index")
         if page_token.get("is_datetime"):
@@ -65,9 +70,10 @@ def pagination_start(page_token=None):
 
 
 def paginate_query(query, limit=50, sort_field_name=None, page_number=None):
-    """ Executes the given query and returns a page's worth of results, as well as the page token
-      for the next page (if any).
-  """
+    """
+    Executes the given query and returns a page's worth of results, as well as the page token for
+    the next page (if any).
+    """
     results = list(query)
     page_token = None
     if len(results) > limit:

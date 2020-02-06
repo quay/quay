@@ -26,18 +26,24 @@ logger = logging.getLogger(__name__)
 
 
 def database_is_valid():
-    """ Returns whether the database, as configured, is valid. """
+    """
+    Returns whether the database, as configured, is valid.
+    """
     return model.is_valid()
 
 
 def database_has_users():
-    """ Returns whether the database has any users defined. """
+    """
+    Returns whether the database has any users defined.
+    """
     return model.has_users()
 
 
 @resource("/v1/superuser/config")
 class SuperUserConfig(ApiResource):
-    """ Resource for fetching and updating the current configuration, if any. """
+    """
+    Resource for fetching and updating the current configuration, if any.
+    """
 
     schemas = {
         "UpdateConfig": {
@@ -50,14 +56,18 @@ class SuperUserConfig(ApiResource):
 
     @nickname("scGetConfig")
     def get(self):
-        """ Returns the currently defined configuration, if any. """
+        """
+        Returns the currently defined configuration, if any.
+        """
         config_object = config_provider.get_config()
         return {"config": config_object}
 
     @nickname("scUpdateConfig")
     @validate_json_request("UpdateConfig")
     def put(self):
-        """ Updates the config override file. """
+        """
+        Updates the config override file.
+        """
         # Note: This method is called to set the database configuration before super users exists,
         # so we also allow it to be called if there is no valid registry configuration setup.
         config_object = request.get_json()["config"]
@@ -78,13 +88,16 @@ class SuperUserConfig(ApiResource):
 
 @resource("/v1/superuser/registrystatus")
 class SuperUserRegistryStatus(ApiResource):
-    """ Resource for determining the status of the registry, such as if config exists,
-      if a database is configured, and if it has any defined users.
-  """
+    """
+    Resource for determining the status of the registry, such as if config exists, if a database is
+    configured, and if it has any defined users.
+    """
 
     @nickname("scRegistryStatus")
     def get(self):
-        """ Returns the status of the registry. """
+        """
+        Returns the status of the registry.
+        """
         # If there is no config file, we need to setup the database.
         if not config_provider.config_exists():
             return {"status": "config-db"}
@@ -118,11 +131,15 @@ def _reload_config():
 
 @resource("/v1/superuser/setupdb")
 class SuperUserSetupDatabase(ApiResource):
-    """ Resource for invoking alembic to setup the database. """
+    """
+    Resource for invoking alembic to setup the database.
+    """
 
     @nickname("scSetupDatabase")
     def get(self):
-        """ Invokes the alembic upgrade process. """
+        """
+        Invokes the alembic upgrade process.
+        """
         # Note: This method is called after the database configured is saved, but before the
         # database has any tables. Therefore, we only allow it to be run in that unique case.
         if config_provider.config_exists() and not database_is_valid():
@@ -146,7 +163,9 @@ class SuperUserSetupDatabase(ApiResource):
 
 @resource("/v1/superuser/config/createsuperuser")
 class SuperUserCreateInitialSuperUser(ApiResource):
-    """ Resource for creating the initial super user. """
+    """
+    Resource for creating the initial super user.
+    """
 
     schemas = {
         "CreateSuperUser": {
@@ -164,8 +183,10 @@ class SuperUserCreateInitialSuperUser(ApiResource):
     @nickname("scCreateInitialSuperuser")
     @validate_json_request("CreateSuperUser")
     def post(self):
-        """ Creates the initial super user, updates the underlying configuration and
-        sets the current session to have that super user. """
+        """
+        Creates the initial super user, updates the underlying configuration and sets the current
+        session to have that super user.
+        """
 
         _reload_config()
 
@@ -199,7 +220,9 @@ class SuperUserCreateInitialSuperUser(ApiResource):
 
 @resource("/v1/superuser/config/validate/<service>")
 class SuperUserConfigValidate(ApiResource):
-    """ Resource for validating a block of configuration against an external service. """
+    """
+    Resource for validating a block of configuration against an external service.
+    """
 
     schemas = {
         "ValidateConfig": {
@@ -219,7 +242,9 @@ class SuperUserConfigValidate(ApiResource):
     @nickname("scValidateConfig")
     @validate_json_request("ValidateConfig")
     def post(self, service):
-        """ Validates the given config for the given service. """
+        """
+        Validates the given config for the given service.
+        """
         # Note: This method is called to validate the database configuration before super users exists,
         # so we also allow it to be called if there is no valid registry configuration setup. Note that
         # this is also safe since this method does not access any information not given in the request.
@@ -239,11 +264,15 @@ class SuperUserConfigValidate(ApiResource):
 
 @resource("/v1/superuser/config/file/<filename>")
 class SuperUserConfigFile(ApiResource):
-    """ Resource for fetching the status of config files and overriding them. """
+    """
+    Resource for fetching the status of config files and overriding them.
+    """
 
     @nickname("scConfigFileExists")
     def get(self, filename):
-        """ Returns whether the configuration file with the given name exists. """
+        """
+        Returns whether the configuration file with the given name exists.
+        """
         if not is_valid_config_upload_filename(filename):
             abort(404)
 
@@ -251,7 +280,9 @@ class SuperUserConfigFile(ApiResource):
 
     @nickname("scUpdateConfigFile")
     def post(self, filename):
-        """ Updates the configuration file with the given name. """
+        """
+        Updates the configuration file with the given name.
+        """
         if not is_valid_config_upload_filename(filename):
             abort(404)
 

@@ -26,6 +26,7 @@ class DockerV1Metadata(
     )
 ):
     """
-  DockerV1Metadata represents all of the metadata for a given Docker v1 Image.
-  The original form of the metadata is stored in the compat_json field.
-  """
+    DockerV1Metadata represents all of the metadata for a given Docker v1 Image.
+
+    The original form of the metadata is stored in the compat_json field.
+    """

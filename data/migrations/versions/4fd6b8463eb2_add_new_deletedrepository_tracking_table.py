@@ -1,9 +1,9 @@
-"""Add new DeletedRepository tracking table
+"""
+Add new DeletedRepository tracking table.
 
 Revision ID: 4fd6b8463eb2
 Revises: 34c8ef052ec9
 Create Date: 2019-12-22 14:58:34.375692
-
 """
 
 # revision identifiers, used by Alembic.

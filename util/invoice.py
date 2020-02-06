@@ -14,7 +14,9 @@ env = Environment(**jinja_options)
 
 
 def renderInvoiceToPdf(invoice, user):
-    """ Renders a nice PDF display for the given invoice. """
+    """
+    Renders a nice PDF display for the given invoice.
+    """
     sourceHtml = renderInvoiceToHtml(invoice, user)
     output = StringIO.StringIO()
     pisaStatus = pisa.CreatePDF(sourceHtml, dest=output)
@@ -27,7 +29,9 @@ def renderInvoiceToPdf(invoice, user):
 
 
 def renderInvoiceToHtml(invoice, user):
-    """ Renders a nice HTML display for the given invoice. """
+    """
+    Renders a nice HTML display for the given invoice.
+    """
     from endpoints.api.billing import get_invoice_fields
 
     def get_price(price):

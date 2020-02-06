@@ -1,9 +1,9 @@
-"""Create new notification type
+"""
+Create new notification type.
 
 Revision ID: 94836b099894
 Revises: faf752bd2e0a
 Create Date: 2016-11-30 10:29:51.519278
-
 """
 
 # revision identifiers, used by Alembic.

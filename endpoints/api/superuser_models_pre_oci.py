@@ -65,9 +65,9 @@ class InvalidRepositoryBuildException(Exception):
 
 class PreOCIModel(SuperuserDataInterface):
     """
-  PreOCIModel implements the data model for the SuperUser using a database schema
-  before it was changed to support the OCI specification.
-  """
+    PreOCIModel implements the data model for the SuperUser using a database schema before it was
+    changed to support the OCI specification.
+    """
 
     def get_repository_build(self, uuid):
         try:

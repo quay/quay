@@ -9,7 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 def validate_session_cookie(auth_header_unusued=None):
-    """ Attempts to load a user from a session cookie. """
+    """
+    Attempts to load a user from a session cookie.
+    """
     if current_user.is_anonymous:
         return ValidateResult(AuthKind.cookie, missing=True)
 

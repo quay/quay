@@ -32,8 +32,10 @@ HEARTBEAT_PERIOD_SEC = 30
 
 
 class BuilderServer(object):
-    """ Server which handles both HTTP and WAMP requests, managing the full state of the build
-      controller. """
+    """
+    Server which handles both HTTP and WAMP requests, managing the full state of the build
+    controller.
+    """
 
     def __init__(
         self,
@@ -131,8 +133,11 @@ class BuilderServer(object):
         logger.debug("Shutting down server")
 
     def _register_component(self, realm, component_klass, **kwargs):
-        """ Registers a component with the server. The component_klass must derive from
-        BaseComponent. """
+        """
+        Registers a component with the server.
+
+        The component_klass must derive from BaseComponent.
+        """
         logger.debug("Registering component with realm %s", realm)
         if realm in self._realm_map:
             logger.debug("Component with realm %s already registered", realm)

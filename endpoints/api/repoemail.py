@@ -1,4 +1,6 @@
-""" Authorize repository to send e-mail notifications. """
+"""
+Authorize repository to send e-mail notifications.
+"""
 
 import logging
 
@@ -32,12 +34,16 @@ logger = logging.getLogger(__name__)
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("email", "The e-mail address")
 class RepositoryAuthorizedEmail(RepositoryParamResource):
-    """ Resource for checking and authorizing e-mail addresses to receive repo notifications. """
+    """
+    Resource for checking and authorizing e-mail addresses to receive repo notifications.
+    """
 
     @require_repo_admin
     @nickname("checkRepoEmailAuthorized")
     def get(self, namespace, repository, email):
-        """ Checks to see if the given e-mail address is authorized on this repository. """
+        """
+        Checks to see if the given e-mail address is authorized on this repository.
+        """
         record = model.get_email_authorized_for_repo(namespace, repository, email)
         if not record:
             abort(404)
@@ -47,7 +53,9 @@ class RepositoryAuthorizedEmail(RepositoryParamResource):
     @require_repo_admin
     @nickname("sendAuthorizeRepoEmail")
     def post(self, namespace, repository, email):
-        """ Starts the authorization process for an e-mail address on a repository. """
+        """
+        Starts the authorization process for an e-mail address on a repository.
+        """
 
         with tf(db):
             record = model.get_email_authorized_for_repo(namespace, repository, email)

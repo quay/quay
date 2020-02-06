@@ -59,8 +59,10 @@ def _get_response(result):
 def _conduct_oauth_login(
     auth_system, login_service, lid, lusername, lemail, metadata=None, captcha_verified=False
 ):
-    """ Conducts login from the result of an OAuth service's login flow and returns
-      the status of the login, as well as the followup step. """
+    """
+    Conducts login from the result of an OAuth service's login flow and returns the status of the
+    login, as well as the followup step.
+    """
     service_id = login_service.service_id()
     service_name = login_service.service_name()
 
@@ -159,7 +161,9 @@ def _conduct_oauth_login(
 
 
 def _render_ologin_error(service_name, error_message=None, register_redirect=False):
-    """ Returns a Flask response indicating an OAuth error. """
+    """
+    Returns a Flask response indicating an OAuth error.
+    """
 
     user_creation = bool(
         features.USER_CREATION and features.DIRECT_LOGIN and not features.INVITE_ONLY_USER_CREATION
@@ -179,8 +183,9 @@ def _render_ologin_error(service_name, error_message=None, register_redirect=Fal
 
 
 def _perform_login(user_obj, service_name):
-    """ Attempts to login the given user, returning the Flask result of whether the login succeeded.
-  """
+    """
+    Attempts to login the given user, returning the Flask result of whether the login succeeded.
+    """
     success, _ = common_login(user_obj.uuid)
     if success:
         if model.user.has_user_prompts(user_obj):
@@ -192,9 +197,10 @@ def _perform_login(user_obj, service_name):
 
 
 def _attach_service(login_service, user_obj, lid, lusername):
-    """ Attaches the given user account to the given service, with the given service user ID and
-      service username.
-  """
+    """
+    Attaches the given user account to the given service, with the given service user ID and service
+    username.
+    """
     metadata = {
         "service_username": lusername,
     }
@@ -214,7 +220,9 @@ def _attach_service(login_service, user_obj, lid, lusername):
 
 
 def _register_service(login_service):
-    """ Registers the given login service, adding its callback and attach routes to the blueprint. """
+    """
+    Registers the given login service, adding its callback and attach routes to the blueprint.
+    """
 
     @oauthlogin_csrf_protect
     def callback_func():

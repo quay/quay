@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class AppTokenInternalAuth(object):
-    """ Forces all internal credential login to go through an app token, by disabling all other
-      access.
-  """
+    """
+    Forces all internal credential login to go through an app token, by disabling all other access.
+    """
 
     @property
     def supports_fresh_login(self):
@@ -65,5 +65,9 @@ class AppTokenInternalAuth(object):
         return {}
 
     def ping(self):
-        """ Always assumed to be working. If the DB is broken, other checks will handle it. """
+        """
+        Always assumed to be working.
+
+        If the DB is broken, other checks will handle it.
+        """
         return (True, None)

@@ -78,7 +78,9 @@ class TestSecurityScanner(unittest.TestCase):
                 self.assertTrue(security_scanner.has_layer(security_scanner.layer_id(parent)))
 
     def test_get_layer(self):
-        """ Test for basic retrieval of layers from the security scanner. """
+        """
+        Test for basic retrieval of layers from the security scanner.
+        """
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
         )
@@ -97,7 +99,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertEquals(result["Layer"]["Name"], security_scanner.layer_id(layer))
 
     def test_analyze_layer_nodirectdownload_success(self):
-        """ Tests analyzing a layer when direct download is disabled. """
+        """
+        Tests analyzing a layer when direct download is disabled.
+        """
 
         # Disable direct download in fake storage.
         storage.put_content(["local_us"], "supports_direct_download", "false")
@@ -137,7 +141,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
     def test_analyze_layer_success(self):
-        """ Tests that analyzing a layer successfully marks it as analyzed. """
+        """
+        Tests that analyzing a layer successfully marks it as analyzed.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -153,7 +159,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
     def test_analyze_layer_failure(self):
-        """ Tests that failing to analyze a layer (because it 422s) marks it as analyzed but failed. """
+        """
+        Tests that failing to analyze a layer (because it 422s) marks it as analyzed but failed.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -171,7 +179,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_internal_error(self):
-        """ Tests that failing to analyze a layer (because it 500s) marks it as not analyzed. """
+        """
+        Tests that failing to analyze a layer (because it 500s) marks it as not analyzed.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -190,7 +200,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, False, -1)
 
     def test_analyze_layer_error(self):
-        """ Tests that failing to analyze a layer (because it 400s) marks it as analyzed but failed. """
+        """
+        Tests that failing to analyze a layer (because it 400s) marks it as analyzed but failed.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -211,7 +223,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_unexpected_status(self):
-        """ Tests that a response from a scanner with an unexpected status code fails correctly. """
+        """
+        Tests that a response from a scanner with an unexpected status code fails correctly.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -233,7 +247,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, False, -1)
 
     def test_analyze_layer_missing_parent_handled(self):
-        """ Tests that a missing parent causes an automatic reanalysis, which succeeds. """
+        """
+        Tests that a missing parent causes an automatic reanalysis, which succeeds.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -265,9 +281,10 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
     def test_analyze_layer_invalid_parent(self):
-        """ Tests that trying to reanalyze a parent that is invalid causes the layer to be marked
-        as analyzed, but failed.
-    """
+        """
+        Tests that trying to reanalyze a parent that is invalid causes the layer to be marked as
+        analyzed, but failed.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -302,9 +319,10 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_unsupported_parent(self):
-        """ Tests that attempting to analyze a layer whose parent is unanalyzable, results in the layer
+        """
+        Tests that attempting to analyze a layer whose parent is unanalyzable, results in the layer
         being marked as analyzed, but failed.
-    """
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
@@ -324,7 +342,9 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_missing_storage(self):
-        """ Tests trying to analyze a layer with missing storage. """
+        """
+        Tests trying to analyze a layer with missing storage.
+        """
 
         layer = model.tag.get_tag_image(
             ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True

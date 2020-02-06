@@ -1,9 +1,9 @@
-"""Add user metadata fields
+"""
+Add user metadata fields.
 
 Revision ID: faf752bd2e0a
 Revises: 6c7014e84a5e
 Create Date: 2016-11-14 17:29:03.984665
-
 """
 
 # revision identifiers, used by Alembic.

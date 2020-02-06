@@ -31,19 +31,22 @@ logger = logging.getLogger(__name__)
 
 class PreOCIModel(SharedModel, RegistryDataInterface):
     """
-  PreOCIModel implements the data model for the registry API using a database schema
-  before it was changed to support the OCI specification.
-  """
+    PreOCIModel implements the data model for the registry API using a database schema before it was
+    changed to support the OCI specification.
+    """
 
     def supports_schema2(self, namespace_name):
-        """ Returns whether the implementation of the data interface supports schema 2 format
-        manifests. """
+        """
+        Returns whether the implementation of the data interface supports schema 2 format manifests.
+        """
         return False
 
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
-        """ Returns the legacy image ID for the tag with a legacy images in
-        the repository. Returns None if None.
-    """
+        """
+        Returns the legacy image ID for the tag with a legacy images in the repository.
+
+        Returns None if None.
+        """
         tag = self.get_repo_tag(repository_ref, tag_name, include_legacy_image=True)
         if tag is None:
             return None
@@ -51,30 +54,36 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         return tag.legacy_image.docker_image_id
 
     def get_legacy_tags_map(self, repository_ref, storage):
-        """ Returns a map from tag name to its legacy image, for all tags with legacy images in
-        the repository.
-    """
+        """
+        Returns a map from tag name to its legacy image, for all tags with legacy images in the
+        repository.
+        """
         tags = self.list_all_active_repository_tags(repository_ref, include_legacy_images=True)
         return {tag.name: tag.legacy_image.docker_image_id for tag in tags}
 
     def find_matching_tag(self, repository_ref, tag_names):
-        """ Finds an alive tag in the repository matching one of the given tag names and returns it
-        or None if none.
-    """
+        """
+        Finds an alive tag in the repository matching one of the given tag names and returns it or
+        None if none.
+        """
         found_tag = model.tag.find_matching_tag(repository_ref._db_id, tag_names)
         assert found_tag is None or not found_tag.hidden
         return Tag.for_repository_tag(found_tag)
 
     def get_most_recent_tag(self, repository_ref):
-        """ Returns the most recently pushed alive tag in the repository, if any. If none, returns
-        None.
-    """
+        """
+        Returns the most recently pushed alive tag in the repository, if any.
+
+        If none, returns None.
+        """
         found_tag = model.tag.get_most_recent_tag(repository_ref._db_id)
         assert found_tag is None or not found_tag.hidden
         return Tag.for_repository_tag(found_tag)
 
     def get_manifest_for_tag(self, tag, backfill_if_necessary=False, include_legacy_image=False):
-        """ Returns the manifest associated with the given tag. """
+        """
+        Returns the manifest associated with the given tag.
+        """
         try:
             tag_manifest = database.TagManifest.get(tag_id=tag._db_id)
         except database.TagManifest.DoesNotExist:
@@ -93,8 +102,10 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         include_legacy_image=False,
         require_available=False,
     ):
-        """ Looks up the manifest with the given digest under the given repository and returns it
-        or None if none. """
+        """
+        Looks up the manifest with the given digest under the given repository and returns it or
+        None if none.
+        """
         repo = model.repository.lookup_repository(repository_ref._db_id)
         if repo is None:
             return None
@@ -117,7 +128,8 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
     def create_manifest_and_retarget_tag(
         self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
     ):
-        """ Creates a manifest in a repository, adding all of the necessary data in the model.
+        """
+        Creates a manifest in a repository, adding all of the necessary data in the model.
 
         The `manifest_interface_instance` parameter must be an instance of the manifest
         interface as returned by the image/docker package.
@@ -126,7 +138,7 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         method will fail and return None.
 
         Returns a reference to the (created manifest, tag) or (None, None) on error.
-    """
+        """
         # NOTE: Only Schema1 is supported by the pre_oci_model.
         assert isinstance(manifest_interface_instance, DockerSchema1Manifest)
         if not manifest_interface_instance.layers:
@@ -219,7 +231,9 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         return manifest, Tag.for_repository_tag(repo_tag)
 
     def create_manifest_label(self, manifest, key, value, source_type_name, media_type_name=None):
-        """ Creates a label on the manifest with the given key and value. """
+        """
+        Creates a label on the manifest with the given key and value.
+        """
         try:
             tag_manifest = database.TagManifest.get(id=manifest._db_id)
         except database.TagManifest.DoesNotExist:
@@ -242,11 +256,12 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
     @contextmanager
     def batch_create_manifest_labels(self, manifest):
-        """ Returns a context manager for batch creation of labels on a manifest.
+        """
+        Returns a context manager for batch creation of labels on a manifest.
 
-        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending
-        on the validation errors.
-    """
+        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending on the validation
+        errors.
+        """
         try:
             tag_manifest = database.TagManifest.get(id=manifest._db_id)
         except database.TagManifest.DoesNotExist:
@@ -278,27 +293,36 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
                 apply_label_to_manifest(label, manifest, self)
 
     def list_manifest_labels(self, manifest, key_prefix=None):
-        """ Returns all labels found on the manifest. If specified, the key_prefix will filter the
-        labels returned to those keys that start with the given prefix.
-    """
+        """
+        Returns all labels found on the manifest.
+
+        If specified, the key_prefix will filter the labels returned to those keys that start with
+        the given prefix.
+        """
         labels = model.label.list_manifest_labels(manifest._db_id, prefix_filter=key_prefix)
         return [Label.for_label(l) for l in labels]
 
     def get_manifest_label(self, manifest, label_uuid):
-        """ Returns the label with the specified UUID on the manifest or None if none. """
+        """
+        Returns the label with the specified UUID on the manifest or None if none.
+        """
         return Label.for_label(model.label.get_manifest_label(label_uuid, manifest._db_id))
 
     def delete_manifest_label(self, manifest, label_uuid):
-        """ Delete the label with the specified UUID on the manifest. Returns the label deleted
-        or None if none.
-    """
+        """
+        Delete the label with the specified UUID on the manifest.
+
+        Returns the label deleted or None if none.
+        """
         return Label.for_label(model.label.delete_manifest_label(label_uuid, manifest._db_id))
 
     def lookup_active_repository_tags(self, repository_ref, start_pagination_id, limit):
         """
-    Returns a page of actvie tags in a repository. Note that the tags returned by this method
-    are ShallowTag objects, which only contain the tag name.
-    """
+        Returns a page of actvie tags in a repository.
+
+        Note that the tags returned by this method are ShallowTag objects, which only contain the
+        tag name.
+        """
         tags = model.tag.list_active_repo_tags(
             repository_ref._db_id, include_images=False, start_id=start_pagination_id, limit=limit
         )
@@ -306,10 +330,11 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
     def list_all_active_repository_tags(self, repository_ref, include_legacy_images=False):
         """
-    Returns a list of all the active tags in the repository. Note that this is a *HEAVY*
-    operation on repositories with a lot of tags, and should only be used for testing or
-    where other more specific operations are not possible.
-    """
+        Returns a list of all the active tags in the repository.
+
+        Note that this is a *HEAVY* operation on repositories with a lot of tags, and should only be
+        used for testing or where other more specific operations are not possible.
+        """
         if not include_legacy_images:
             tags = model.tag.list_active_repo_tags(repository_ref._db_id, include_images=False)
             return [Tag.for_repository_tag(tag) for tag in tags]
@@ -334,9 +359,11 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         since_time_ms=None,
     ):
         """
-    Returns the history of all tags in the repository (unless filtered). This includes tags that
-    have been made in-active due to newer versions of those tags coming into service.
-    """
+        Returns the history of all tags in the repository (unless filtered).
+
+        This includes tags that have been made in-active due to newer versions of those tags coming
+        into service.
+        """
 
         # Only available on OCI model
         if since_time_ms is not None:
@@ -357,8 +384,9 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
     def has_expired_tag(self, repository_ref, tag_name):
         """
-    Returns true if and only if the repository contains a tag with the given name that is expired.
-    """
+        Returns true if and only if the repository contains a tag with the given name that is
+        expired.
+        """
         try:
             model.tag.get_expired_tag_in_repo(repository_ref._db_id, tag_name)
             return True
@@ -366,10 +394,10 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
             return False
 
     def get_most_recent_tag_lifetime_start(self, repository_refs):
-        """ 
-    Returns a map from repository ID to the last modified time (in s) for each repository in the
-    given repository reference list.
-    """
+        """
+        Returns a map from repository ID to the last modified time (in s) for each repository in the
+        given repository reference list.
+        """
         if not repository_refs:
             return {}
 
@@ -386,9 +414,9 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
     def get_repo_tag(self, repository_ref, tag_name, include_legacy_image=False):
         """
-    Returns the latest, *active* tag found in the repository, with the matching name
-    or None if none.
-    """
+        Returns the latest, *active* tag found in the repository, with the matching name or None if
+        none.
+        """
         assert isinstance(tag_name, basestring)
         tag = model.tag.get_active_tag_for_repo(repository_ref._db_id, tag_name)
         if tag is None:
@@ -411,10 +439,12 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         is_reversion=False,
     ):
         """
-    Creates, updates or moves a tag to a new entry in history, pointing to the manifest or
-    legacy image specified. If is_reversion is set to True, this operation is considered a
-    reversion over a previous tag move operation. Returns the updated Tag or None on error.
-    """
+        Creates, updates or moves a tag to a new entry in history, pointing to the manifest or
+        legacy image specified.
+
+        If is_reversion is set to True, this operation is considered a reversion over a previous tag
+        move operation. Returns the updated Tag or None on error.
+        """
         # TODO: unify this.
         assert legacy_manifest_key is not None
         if not is_reversion:
@@ -444,8 +474,8 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
     def delete_tag(self, repository_ref, tag_name):
         """
-    Deletes the latest, *active* tag with the given name in the repository.
-    """
+        Deletes the latest, *active* tag with the given name in the repository.
+        """
         repo = model.repository.lookup_repository(repository_ref._db_id)
         if repo is None:
             return None
@@ -455,9 +485,11 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
     def delete_tags_for_manifest(self, manifest):
         """
-    Deletes all tags pointing to the given manifest, making the manifest inaccessible for pulling.
-    Returns the tags deleted, if any. Returns None on error.
-    """
+        Deletes all tags pointing to the given manifest, making the manifest inaccessible for
+        pulling.
+
+        Returns the tags deleted, if any. Returns None on error.
+        """
         try:
             tagmanifest = database.TagManifest.get(id=manifest._db_id)
         except database.TagManifest.DoesNotExist:
@@ -469,10 +501,12 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         return [Tag.for_repository_tag(tag) for tag in tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):
-        """ Sets the expiration date of the tag under the matching repository to that given. If the
-        expiration date is None, then the tag will not expire. Returns a tuple of the previous
-        expiration timestamp in seconds (if any), and whether the operation succeeded.
-    """
+        """
+        Sets the expiration date of the tag under the matching repository to that given.
+
+        If the expiration date is None, then the tag will not expire. Returns a tuple of the
+        previous expiration timestamp in seconds (if any), and whether the operation succeeded.
+        """
         try:
             tag_obj = database.RepositoryTag.get(id=tag._db_id)
         except database.RepositoryTag.DoesNotExist:
@@ -481,7 +515,9 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         return model.tag.change_tag_expiration(tag_obj, expiration_date)
 
     def get_legacy_images_owned_by_tag(self, tag):
-        """ Returns all legacy images *solely owned and used* by the given tag. """
+        """
+        Returns all legacy images *solely owned and used* by the given tag.
+        """
         try:
             tag_obj = database.RepositoryTag.get(id=tag._db_id)
         except database.RepositoryTag.DoesNotExist:
@@ -521,7 +557,9 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         return [LegacyImage.for_image(image, images_map=images_map) for image in images]
 
     def get_security_status(self, manifest_or_legacy_image):
-        """ Returns the security status for the given manifest or legacy image or None if none. """
+        """
+        Returns the security status for the given manifest or legacy image or None if none.
+        """
         image = None
 
         if isinstance(manifest_or_legacy_image, Manifest):
@@ -544,9 +582,10 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         return SecurityScanStatus.QUEUED
 
     def reset_security_status(self, manifest_or_legacy_image):
-        """ Resets the security status for the given manifest or legacy image, ensuring that it will
-        get re-indexed.
-    """
+        """
+        Resets the security status for the given manifest or legacy image, ensuring that it will get
+        re-indexed.
+        """
         image = None
 
         if isinstance(manifest_or_legacy_image, Manifest):
@@ -567,12 +606,13 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         image.save()
 
     def backfill_manifest_for_tag(self, tag):
-        """ Backfills a manifest for the V1 tag specified.
-        If a manifest already exists for the tag, returns that manifest.
+        """
+        Backfills a manifest for the V1 tag specified. If a manifest already exists for the tag,
+        returns that manifest.
 
         NOTE: This method will only be necessary until we've completed the backfill, at which point
         it should be removed.
-    """
+        """
         # Ensure that there isn't already a manifest for the tag.
         tag_manifest = model.tag.get_tag_manifest(tag._db_id)
         if tag_manifest is not None:
@@ -625,9 +665,9 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         self, manifest, verb, storage, varying_metadata=None, include_placements=False
     ):
         """
-    Looks up the derived image for the given manifest, verb and optional varying metadata and
-    returns it or None if none.
-    """
+        Looks up the derived image for the given manifest, verb and optional varying metadata and
+        returns it or None if none.
+        """
         try:
             tag_manifest = database.TagManifest.get(id=manifest._db_id)
         except database.TagManifest.DoesNotExist:
@@ -648,9 +688,11 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         include_placements=False,
     ):
         """
-    Looks up the derived image for the given maniest, verb and optional varying metadata
-    and returns it. If none exists, a new derived image is created.
-    """
+        Looks up the derived image for the given maniest, verb and optional varying metadata and
+        returns it.
+
+        If none exists, a new derived image is created.
+        """
         try:
             tag_manifest = database.TagManifest.get(id=manifest._db_id)
         except database.TagManifest.DoesNotExist:
@@ -665,8 +707,8 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
 
     def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
         """
-    Sets the expiration on all tags that point to the given manifest to that specified.
-    """
+        Sets the expiration on all tags that point to the given manifest to that specified.
+        """
         try:
             tag_manifest = database.TagManifest.get(id=manifest._db_id)
         except database.TagManifest.DoesNotExist:
@@ -675,7 +717,9 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         model.tag.set_tag_expiration_for_manifest(tag_manifest, expiration_sec)
 
     def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
-        """ Returns the schema 1 version of this manifest, or None if none. """
+        """
+        Returns the schema 1 version of this manifest, or None if none.
+        """
         try:
             return manifest.get_parsed_manifest()
         except ManifestException:
@@ -699,17 +743,20 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
     def create_manifest_with_temp_tag(
         self, repository_ref, manifest_interface_instance, expiration_sec, storage
     ):
-        """ Creates a manifest under the repository and sets a temporary tag to point to it.
+        """
+        Creates a manifest under the repository and sets a temporary tag to point to it.
+
         Returns the manifest object created or None on error.
-    """
+        """
         raise NotImplementedError("Unsupported in pre OCI model")
 
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
-    Returns the blob in the repository with the given digest, if any or None if none. Note that
-    there may be multiple records in the same repository for the same blob digest, so the return
-    value of this function may change.
-    """
+        Returns the blob in the repository with the given digest, if any or None if none.
+
+        Note that there may be multiple records in the same repository for the same blob digest, so
+        the return value of this function may change.
+        """
         image_storage = self._get_shared_storage(blob_digest)
         if image_storage is None:
             try:
@@ -734,16 +781,19 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
     def list_parsed_manifest_layers(
         self, repository_ref, parsed_manifest, storage, include_placements=False
     ):
-        """ Returns an *ordered list* of the layers found in the parsed manifest, starting at the base
-        and working towards the leaf, including the associated Blob and its placements
-        (if specified).
-    """
+        """
+        Returns an *ordered list* of the layers found in the parsed manifest, starting at the base
+        and working towards the leaf, including the associated Blob and its placements (if
+        specified).
+        """
         return self._list_manifest_layers(
             repository_ref._db_id, parsed_manifest, storage, include_placements=include_placements
         )
 
     def get_manifest_local_blobs(self, manifest, include_placements=False):
-        """ Returns the set of local blobs for the given manifest or None if none. """
+        """
+        Returns the set of local blobs for the given manifest or None if none.
+        """
         try:
             tag_manifest = database.TagManifest.get(id=manifest._db_id)
         except database.TagManifest.DoesNotExist:
@@ -754,10 +804,12 @@ class PreOCIModel(SharedModel, RegistryDataInterface):
         )
 
     def yield_tags_for_vulnerability_notification(self, layer_id_pairs):
-        """ Yields tags that contain one (or more) of the given layer ID pairs, in repositories
-        which have been registered for vulnerability_found notifications. Returns an iterator
-        of LikelyVulnerableTag instances.
-    """
+        """
+        Yields tags that contain one (or more) of the given layer ID pairs, in repositories which
+        have been registered for vulnerability_found notifications.
+
+        Returns an iterator of LikelyVulnerableTag instances.
+        """
         event = database.ExternalNotificationEvent.get(name="vulnerability_found")
 
         def filter_notifying_repos(query):

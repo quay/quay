@@ -16,7 +16,9 @@ from util.bytes import Bytes
 
 
 class RepositoryReference(datatype("Repository", [])):
-    """ RepositoryReference is a reference to a repository, passed to registry interface methods. """
+    """
+    RepositoryReference is a reference to a repository, passed to registry interface methods.
+    """
 
     @classmethod
     def for_repo_obj(
@@ -61,13 +63,17 @@ class RepositoryReference(datatype("Repository", [])):
     @property
     @optionalinput("kind")
     def kind(self, kind):
-        """ Returns the kind of the repository. """
+        """
+        Returns the kind of the repository.
+        """
         return kind or model.repository.get_repo_kind_name(self._repositry_obj)
 
     @property
     @optionalinput("is_public")
     def is_public(self, is_public):
-        """ Returns whether the repository is public. """
+        """
+        Returns whether the repository is public.
+        """
         if is_public is not None:
             return is_public
 
@@ -75,7 +81,9 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property
     def trust_enabled(self):
-        """ Returns whether trust is enabled in this repository. """
+        """
+        Returns whether trust is enabled in this repository.
+        """
         repository = self._repository_obj
         if repository is None:
             return None
@@ -84,14 +92,17 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property
     def id(self):
-        """ Returns the database ID of the repository. """
+        """
+        Returns the database ID of the repository.
+        """
         return self._db_id
 
     @property
     @optionalinput("namespace_name")
     def namespace_name(self, namespace_name=None):
-        """ Returns the namespace name of this repository.
-    """
+        """
+        Returns the namespace name of this repository.
+        """
         if namespace_name is not None:
             return namespace_name
 
@@ -104,8 +115,9 @@ class RepositoryReference(datatype("Repository", [])):
     @property
     @optionalinput("is_free_namespace")
     def is_free_namespace(self, is_free_namespace=None):
-        """ Returns whether the namespace of the repository is on a free plan.
-    """
+        """
+        Returns whether the namespace of the repository is on a free plan.
+        """
         if is_free_namespace is not None:
             return is_free_namespace
 
@@ -118,8 +130,9 @@ class RepositoryReference(datatype("Repository", [])):
     @property
     @optionalinput("repo_name")
     def name(self, repo_name=None):
-        """ Returns the name of this repository.
-    """
+        """
+        Returns the name of this repository.
+        """
         if repo_name is not None:
             return repo_name
 
@@ -132,7 +145,9 @@ class RepositoryReference(datatype("Repository", [])):
     @property
     @optionalinput("state")
     def state(self, state=None):
-        """ Return the state of the Repository. """
+        """
+        Return the state of the Repository.
+        """
         if state is not None:
             return state
 
@@ -144,7 +159,9 @@ class RepositoryReference(datatype("Repository", [])):
 
 
 class Label(datatype("Label", ["key", "value", "uuid", "source_type_name", "media_type_name"])):
-    """ Label represents a label on a manifest. """
+    """
+    Label represents a label on a manifest.
+    """
 
     @classmethod
     def for_label(cls, label):
@@ -162,7 +179,9 @@ class Label(datatype("Label", ["key", "value", "uuid", "source_type_name", "medi
 
 
 class ShallowTag(datatype("ShallowTag", ["name"])):
-    """ ShallowTag represents a tag in a repository, but only contains basic information. """
+    """
+    ShallowTag represents a tag in a repository, but only contains basic information.
+    """
 
     @classmethod
     def for_tag(cls, tag):
@@ -180,7 +199,9 @@ class ShallowTag(datatype("ShallowTag", ["name"])):
 
     @property
     def id(self):
-        """ The ID of this tag for pagination purposes only. """
+        """
+        The ID of this tag for pagination purposes only.
+        """
         return self._db_id
 
 
@@ -198,7 +219,9 @@ class Tag(
         ],
     )
 ):
-    """ Tag represents a tag in a repository, which points to a manifest or image. """
+    """
+    Tag represents a tag in a repository, which points to a manifest or image.
+    """
 
     @classmethod
     def for_tag(cls, tag, legacy_image=None):
@@ -246,47 +269,65 @@ class Tag(
     @property
     @requiresinput("manifest")
     def _manifest(self, manifest):
-        """ Returns the manifest for this tag. Will only apply to new-style OCI tags. """
+        """
+        Returns the manifest for this tag.
+
+        Will only apply to new-style OCI tags.
+        """
         return manifest
 
     @property
     @optionalinput("manifest")
     def manifest(self, manifest):
-        """ Returns the manifest for this tag or None if none. Will only apply to new-style OCI tags.
-    """
+        """
+        Returns the manifest for this tag or None if none.
+
+        Will only apply to new-style OCI tags.
+        """
         return Manifest.for_manifest(manifest, self.legacy_image_if_present)
 
     @property
     @requiresinput("repository")
     def repository(self, repository):
-        """ Returns the repository under which this tag lives.
-    """
+        """
+        Returns the repository under which this tag lives.
+        """
         return repository
 
     @property
     @requiresinput("legacy_image")
     def legacy_image(self, legacy_image):
-        """ Returns the legacy Docker V1-style image for this tag. Note that this
-        will be None for tags whose manifests point to other manifests instead of images.
-    """
+        """
+        Returns the legacy Docker V1-style image for this tag.
+
+        Note that this will be None for tags whose manifests point to other manifests instead of
+        images.
+        """
         return legacy_image
 
     @property
     @optionalinput("legacy_image")
     def legacy_image_if_present(self, legacy_image):
-        """ Returns the legacy Docker V1-style image for this tag. Note that this
-        will be None for tags whose manifests point to other manifests instead of images.
-    """
+        """
+        Returns the legacy Docker V1-style image for this tag.
+
+        Note that this will be None for tags whose manifests point to other manifests instead of
+        images.
+        """
         return legacy_image
 
     @property
     def id(self):
-        """ The ID of this tag for pagination purposes only. """
+        """
+        The ID of this tag for pagination purposes only.
+        """
         return self._db_id
 
 
 class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_bytes"])):
-    """ Manifest represents a manifest in a repository. """
+    """
+    Manifest represents a manifest in a repository.
+    """
 
     @classmethod
     def for_tag_manifest(cls, tag_manifest, legacy_image=None):
@@ -328,20 +369,25 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
     @property
     @requiresinput("legacy_image")
     def legacy_image(self, legacy_image):
-        """ Returns the legacy Docker V1-style image for this manifest.
-    """
+        """
+        Returns the legacy Docker V1-style image for this manifest.
+        """
         return legacy_image
 
     @property
     @optionalinput("legacy_image")
     def legacy_image_if_present(self, legacy_image):
-        """ Returns the legacy Docker V1-style image for this manifest.  Note that this
-        will be None for manifests that point to other manifests instead of images.
-    """
+        """
+        Returns the legacy Docker V1-style image for this manifest.
+
+        Note that this will be None for manifests that point to other manifests instead of images.
+        """
         return legacy_image
 
     def get_parsed_manifest(self, validate=True):
-        """ Returns the parsed manifest for this manifest. """
+        """
+        Returns the parsed manifest for this manifest.
+        """
         assert self.internal_manifest_bytes
         return parse_manifest_from_bytes(
             self.internal_manifest_bytes, self.media_type, validate=validate
@@ -349,9 +395,10 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
 
     @property
     def layers_compressed_size(self):
-        """ Returns the total compressed size of the layers in the manifest or None if this could not
-        be computed.
-    """
+        """
+        Returns the total compressed size of the layers in the manifest or None if this could not be
+        computed.
+        """
         try:
             return self.get_parsed_manifest().layers_compressed_size
         except ManifestException:
@@ -359,7 +406,9 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
 
     @property
     def is_manifest_list(self):
-        """ Returns True if this manifest points to a list (instead of an image). """
+        """
+        Returns True if this manifest points to a list (instead of an image).
+        """
         return self.media_type == DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
 
 
@@ -378,7 +427,9 @@ class LegacyImage(
         ],
     )
 ):
-    """ LegacyImage represents a Docker V1-style image found in a repository. """
+    """
+    LegacyImage represents a Docker V1-style image found in a repository.
+    """
 
     @classmethod
     def for_image(cls, image, images_map=None, tags_map=None, blob=None):
@@ -405,17 +456,21 @@ class LegacyImage(
 
     @property
     def id(self):
-        """ Returns the database ID of the legacy image. """
+        """
+        Returns the database ID of the legacy image.
+        """
         return self._db_id
 
     @property
     @requiresinput("images_map")
     @requiresinput("ancestor_id_list")
     def parents(self, images_map, ancestor_id_list):
-        """ Returns the parent images for this image. Raises an exception if the parents have
-        not been loaded before this property is invoked. Parents are returned starting at the
-        leaf image.
-    """
+        """
+        Returns the parent images for this image.
+
+        Raises an exception if the parents have not been loaded before this property is invoked.
+        Parents are returned starting at the leaf image.
+        """
         return [
             LegacyImage.for_image(images_map[ancestor_id], images_map=images_map)
             for ancestor_id in reversed(ancestor_id_list)
@@ -425,17 +480,21 @@ class LegacyImage(
     @property
     @requiresinput("blob")
     def blob(self, blob):
-        """ Returns the blob for this image. Raises an exception if the blob has
-        not been loaded before this property is invoked.
-    """
+        """
+        Returns the blob for this image.
+
+        Raises an exception if the blob has not been loaded before this property is invoked.
+        """
         return blob
 
     @property
     @requiresinput("tags_map")
     def tags(self, tags_map):
-        """ Returns the tags pointing to this image. Raises an exception if the tags have
-        not been loaded before this property is invoked.
-    """
+        """
+        Returns the tags pointing to this image.
+
+        Raises an exception if the tags have not been loaded before this property is invoked.
+        """
         tags = tags_map.get(self._db_id)
         if not tags:
             return []
@@ -445,7 +504,9 @@ class LegacyImage(
 
 @unique
 class SecurityScanStatus(Enum):
-    """ Security scan status enum """
+    """
+    Security scan status enum.
+    """
 
     SCANNED = "scanned"
     FAILED = "failed"
@@ -454,17 +515,21 @@ class SecurityScanStatus(Enum):
 
 
 class ManifestLayer(namedtuple("ManifestLayer", ["layer_info", "blob"])):
-    """ Represents a single layer in a manifest. The `layer_info` data will be manifest-type specific,
-      but will have a few expected fields (such as `digest`). The `blob` represents the associated
-      blob for this layer, optionally with placements. If the layer is a remote layer, the blob will
-      be None.
-  """
+    """
+    Represents a single layer in a manifest.
+
+    The `layer_info` data will be manifest-type specific, but will have a few expected fields (such
+    as `digest`). The `blob` represents the associated blob for this layer, optionally with
+    placements. If the layer is a remote layer, the blob will be None.
+    """
 
     def estimated_size(self, estimate_multiplier):
-        """ Returns the estimated size of this layer. If the layers' blob has an uncompressed size,
-        it is used. Otherwise, the compressed_size field in the layer is multiplied by the
-        multiplier.
-    """
+        """
+        Returns the estimated size of this layer.
+
+        If the layers' blob has an uncompressed size, it is used. Otherwise, the compressed_size
+        field in the layer is multiplied by the multiplier.
+        """
         if self.blob.uncompressed_size:
             return self.blob.uncompressed_size
 
@@ -474,7 +539,9 @@ class ManifestLayer(namedtuple("ManifestLayer", ["layer_info", "blob"])):
 class Blob(
     datatype("Blob", ["uuid", "digest", "compressed_size", "uncompressed_size", "uploading"])
 ):
-    """ Blob represents a content-addressable piece of storage. """
+    """
+    Blob represents a content-addressable piece of storage.
+    """
 
     @classmethod
     def for_image_storage(cls, image_storage, storage_path, placements=None):
@@ -494,19 +561,25 @@ class Blob(
     @property
     @requiresinput("storage_path")
     def storage_path(self, storage_path):
-        """ Returns the path of this blob in storage. """
+        """
+        Returns the path of this blob in storage.
+        """
         # TODO: change this to take in the storage engine?
         return storage_path
 
     @property
     @requiresinput("placements")
     def placements(self, placements):
-        """ Returns all the storage placements at which the Blob can be found. """
+        """
+        Returns all the storage placements at which the Blob can be found.
+        """
         return placements
 
 
 class DerivedImage(datatype("DerivedImage", ["verb", "varying_metadata", "blob"])):
-    """ DerivedImage represents an image derived from a manifest via some form of verb. """
+    """
+    DerivedImage represents an image derived from a manifest via some form of verb.
+    """
 
     @classmethod
     def for_derived_storage(cls, derived, verb, varying_metadata, blob):
@@ -516,14 +589,18 @@ class DerivedImage(datatype("DerivedImage", ["verb", "varying_metadata", "blob"]
 
     @property
     def unique_id(self):
-        """ Returns a unique ID for this derived image. This call will consistently produce the same
-        unique ID across calls in the same code base.
-    """
+        """
+        Returns a unique ID for this derived image.
+
+        This call will consistently produce the same unique ID across calls in the same code base.
+        """
         return hashlib.sha256("%s:%s" % (self.verb, self._db_id)).hexdigest()
 
 
 class TorrentInfo(datatype("TorrentInfo", ["pieces", "piece_length"])):
-    """ TorrentInfo represents information to pull a blob via torrent. """
+    """
+    TorrentInfo represents information to pull a blob via torrent.
+    """
 
     @classmethod
     def for_torrent_info(cls, torrent_info):
@@ -550,7 +627,9 @@ class BlobUpload(
         ],
     )
 ):
-    """ BlobUpload represents information about an in-progress upload to create a blob. """
+    """
+    BlobUpload represents information about an in-progress upload to create a blob.
+    """
 
     @classmethod
     def for_upload(cls, blob_upload, location_name=None):
@@ -569,9 +648,10 @@ class BlobUpload(
 
 
 class LikelyVulnerableTag(datatype("LikelyVulnerableTag", ["layer_id", "name"])):
-    """ LikelyVulnerableTag represents a tag in a repository that is likely vulnerable to a notified
-      vulnerability.
-  """
+    """
+    LikelyVulnerableTag represents a tag in a repository that is likely vulnerable to a notified
+    vulnerability.
+    """
 
     # TODO: Remove all of this once we're on the new security model exclusively.
     @classmethod

@@ -42,14 +42,18 @@ class Blob(BlobBase):
 
 
 class Channel(ChannelBase):
-    """ CNR Channel model implemented against the Quay data model. """
+    """
+    CNR Channel model implemented against the Quay data model.
+    """
 
     def __init__(self, name, package, current=None):
         super(Channel, self).__init__(name, package, current=current)
         self._channel_data = None
 
     def _exists(self):
-        """ Check if the channel is saved already """
+        """
+        Check if the channel is saved already.
+        """
         return model.channel_exists(self.package, self.name)
 
     @classmethod
@@ -74,7 +78,9 @@ class Channel(ChannelBase):
         return self._channel_data
 
     def releases(self):
-        """ Returns the list of versions """
+        """
+        Returns the list of versions.
+        """
         return self._channel.releases
 
     def _add_release(self, release):
@@ -85,16 +91,22 @@ class Channel(ChannelBase):
 
 
 class User(object):
-    """ User in CNR models """
+    """
+    User in CNR models.
+    """
 
     @classmethod
     def get_user(cls, username, password):
-        """ Returns True if user creds is valid """
+        """
+        Returns True if user creds is valid.
+        """
         return model.get_user(username, password)
 
 
 class Package(PackageBase):
-    """ CNR Package model implemented against the Quay data model. """
+    """
+    CNR Package model implemented against the Quay data model.
+    """
 
     @classmethod
     def _apptuple_to_dict(cls, apptuple):
@@ -166,7 +178,9 @@ class Package(PackageBase):
 
 
 class QuayDB(CnrDB):
-    """ Wrapper Class to embed all CNR Models """
+    """
+    Wrapper Class to embed all CNR Models.
+    """
 
     Channel = Channel
     Package = Package

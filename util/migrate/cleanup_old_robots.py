@@ -9,7 +9,9 @@ logger.setLevel(logging.INFO)
 
 
 def cleanup_old_robots(page_size=50, force=False):
-    """ Deletes any robots that live under namespaces that no longer exist. """
+    """
+    Deletes any robots that live under namespaces that no longer exist.
+    """
     if not force and not app.config.get("SETUP_COMPLETE", False):
         return
 

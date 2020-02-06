@@ -4,8 +4,8 @@ from util.registry.gzipwrap import GzipWrap
 
 class TarImageFormatter(object):
     """
-  Base class for classes which produce a tar containing image and layer data.
-  """
+    Base class for classes which produce a tar containing image and layer data.
+    """
 
     def build_stream(
         self,
@@ -17,9 +17,9 @@ class TarImageFormatter(object):
         reporter=None,
     ):
         """
-    Builds and streams a synthetic .tar.gz that represents the formatted tar created by this class's
-    implementation.
-    """
+        Builds and streams a synthetic .tar.gz that represents the formatted tar created by this
+        class's implementation.
+        """
         return GzipWrap(
             self.stream_generator(
                 tag,
@@ -44,8 +44,8 @@ class TarImageFormatter(object):
 
     def tar_file(self, name, contents, mtime=None):
         """
-    Returns the tar binary representation for a file with the given name and file contents.
-    """
+        Returns the tar binary representation for a file with the given name and file contents.
+        """
         length = len(contents)
         tar_data = self.tar_file_header(name, length, mtime=mtime)
         tar_data += contents
@@ -54,8 +54,8 @@ class TarImageFormatter(object):
 
     def tar_file_padding(self, length):
         """
-    Returns tar file padding for file data of the given length.
-    """
+        Returns tar file padding for file data of the given length.
+        """
         if length % 512 != 0:
             return "\0" * (512 - (length % 512))
 
@@ -63,8 +63,8 @@ class TarImageFormatter(object):
 
     def tar_file_header(self, name, file_size, mtime=None):
         """
-    Returns tar file header data for a file with the given name and size.
-    """
+        Returns tar file header data for a file with the given name and size.
+        """
         info = tarfile.TarInfo(name=name)
         info.type = tarfile.REGTYPE
         info.size = file_size
@@ -75,8 +75,8 @@ class TarImageFormatter(object):
 
     def tar_folder(self, name, mtime=None):
         """
-    Returns tar file header data for a folder with the given name.
-    """
+        Returns tar file header data for a folder with the given name.
+        """
         info = tarfile.TarInfo(name=name)
         info.type = tarfile.DIRTYPE
 

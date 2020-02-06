@@ -10,26 +10,26 @@ class ApiErrorType(Enum):
 
 class ApiException(HTTPException):
     """
-  Represents an error in the application/problem+json format.
+    Represents an error in the application/problem+json format.
 
-  See: https://tools.ietf.org/html/rfc7807
+    See: https://tools.ietf.org/html/rfc7807
 
-   -  "type" (string) - A URI reference that identifies the
-      problem type.
+     -  "type" (string) - A URI reference that identifies the
+        problem type.
 
-   -  "title" (string) - A short, human-readable summary of the problem
-      type.  It SHOULD NOT change from occurrence to occurrence of the
-      problem, except for purposes of localization
+     -  "title" (string) - A short, human-readable summary of the problem
+        type.  It SHOULD NOT change from occurrence to occurrence of the
+        problem, except for purposes of localization
 
-   -  "status" (number) - The HTTP status code
+     -  "status" (number) - The HTTP status code
 
-   -  "detail" (string) - A human-readable explanation specific to this
-      occurrence of the problem.
+     -  "detail" (string) - A human-readable explanation specific to this
+        occurrence of the problem.
 
-   -  "instance" (string) - A URI reference that identifies the specific
-      occurrence of the problem.  It may or may not yield further
-      information if dereferenced.
-  """
+     -  "instance" (string) - A URI reference that identifies the specific
+        occurrence of the problem.  It may or may not yield further
+        information if dereferenced.
+    """
 
     def __init__(self, error_type, status_code, error_description, payload=None):
         Exception.__init__(self)

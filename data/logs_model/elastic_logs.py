@@ -58,8 +58,8 @@ class LogEntry(Document):
     @classmethod
     def init(cls, index_prefix, index_settings=None, skip_template_init=False):
         """
-    Create the index template, and populate LogEntry's mapping and index settings.
-    """
+        Create the index template, and populate LogEntry's mapping and index settings.
+        """
         wildcard_index = Index(name=index_prefix + "*")
         wildcard_index.settings(**(index_settings or {}))
         wildcard_index.document(cls)
@@ -93,8 +93,8 @@ class LogEntry(Document):
 
 class ElasticsearchLogs(object):
     """
-  Model for logs operations stored in an Elasticsearch cluster.
-  """
+    Model for logs operations stored in an Elasticsearch cluster.
+    """
 
     def __init__(
         self,
@@ -125,9 +125,8 @@ class ElasticsearchLogs(object):
 
     def _initialize(self):
         """
-    Initialize a connection to an ES cluster and
-    creates an index template if it does not exist.
-    """
+        Initialize a connection to an ES cluster and creates an index template if it does not exist.
+        """
         if not self._initialized:
             http_auth = None
             if self._access_key and self._secret_key and self._aws_region:
@@ -183,7 +182,9 @@ class ElasticsearchLogs(object):
             self._initialized = True
 
     def index_name(self, day):
-        """ Return an index name for the given day. """
+        """
+        Return an index name for the given day.
+        """
         return self._index_prefix + day.strftime(INDEX_DATE_FORMAT)
 
     def index_exists(self, index):
@@ -194,15 +195,17 @@ class ElasticsearchLogs(object):
 
     @staticmethod
     def _valid_index_prefix(prefix):
-        """ Check that the given index prefix is valid with the set of
-    indices used by this class.
-    """
+        """
+        Check that the given index prefix is valid with the set of indices used by this class.
+        """
         return re.match(VALID_INDEX_PATTERN, prefix) is not None
 
     def _valid_index_name(self, index):
-        """ Check that the given index name is valid and follows the format:
-    <index_prefix>YYYY-MM-DD
-    """
+        """
+        Check that the given index name is valid and follows the format:
+
+        <index_prefix>YYYY-MM-DD
+        """
         if not ElasticsearchLogs._valid_index_prefix(index):
             return False
 
@@ -218,7 +221,9 @@ class ElasticsearchLogs(object):
             return False
 
     def can_delete_index(self, index, cutoff_date):
-        """ Check if the given index can be deleted based on the given index's date and cutoff date. """
+        """
+        Check if the given index can be deleted based on the given index's date and cutoff date.
+        """
         assert self._valid_index_name(index)
         index_dt = datetime.strptime(index[len(self._index_prefix) :], INDEX_DATE_FORMAT)
         return index_dt < cutoff_date and cutoff_date - index_dt >= timedelta(days=1)
@@ -260,11 +265,12 @@ def configure_es(
     index_settings=None,
 ):
     """
-  For options in index_settings, refer to:
-  https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_settings.html
-  some index settings are set at index creation time, and therefore, you should NOT
-  change those settings once the index is set.
-  """
+    For options in index_settings, refer to:
+
+    https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_settings.html
+    some index settings are set at index creation time, and therefore, you should NOT
+    change those settings once the index is set.
+    """
     es_client = ElasticsearchLogs(
         host=host,
         port=port,

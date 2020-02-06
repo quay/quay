@@ -36,11 +36,12 @@ class _CustomEncoder(json.JSONEncoder):
 
 
 def to_canonical_json(value, ensure_ascii=True, indent=None):
-    """ Returns the canonical JSON string form of the given value,
-      as per the guidelines in https://github.com/docker/distribution/blob/master/docs/spec/json.md.
+    """
+    Returns the canonical JSON string form of the given value, as per the guidelines in
+    https://github.com/docker/distribution/blob/master/docs/spec/json.md.
 
-      `indent` is allowed only for the purposes of indenting for debugging.
-  """
+    `indent` is allowed only for the purposes of indenting for debugging.
+    """
     return json.dumps(
         value,
         ensure_ascii=ensure_ascii,

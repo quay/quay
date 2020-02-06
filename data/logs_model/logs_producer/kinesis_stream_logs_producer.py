@@ -21,10 +21,12 @@ DEFAULT_MAX_POOL_CONNECTIONS = 10
 
 
 def _partition_key(number_of_shards=None):
-    """ Generate a partition key for AWS Kinesis stream.
-  If the number of shards is specified, generate keys where the size of the key space is
-  the number of shards.
-  """
+    """
+    Generate a partition key for AWS Kinesis stream.
+
+    If the number of shards is specified, generate keys where the size of the key space is the
+    number of shards.
+    """
     key = None
     if number_of_shards is not None:
         shard_number = random.randrange(0, number_of_shards)
@@ -36,7 +38,9 @@ def _partition_key(number_of_shards=None):
 
 
 class KinesisStreamLogsProducer(LogProducerInterface):
-    """ Log producer writing log entries to an Amazon Kinesis Data Stream. """
+    """
+    Log producer writing log entries to an Amazon Kinesis Data Stream.
+    """
 
     def __init__(
         self,

@@ -44,7 +44,9 @@ def create_delegate_token(namespace_name, repository_name, friendly_name, role="
 
 
 def load_token_data(code):
-    """ Load the permissions for any token by code. """
+    """
+    Load the permissions for any token by code.
+    """
     token_name = code[:ACCESS_TOKEN_NAME_PREFIX_LENGTH]
     token_code = code[ACCESS_TOKEN_NAME_PREFIX_LENGTH:]
 
@@ -77,7 +79,9 @@ def load_token_data(code):
 
 
 def get_full_token_string(token):
-    """ Returns the full string to use for this token to login. """
+    """
+    Returns the full string to use for this token to login.
+    """
     assert token.token_name
     token_code = token.token_code.decrypt()
     assert len(token.token_name) == ACCESS_TOKEN_NAME_PREFIX_LENGTH

@@ -1,9 +1,9 @@
-"""Add OCI/App models
+"""
+Add OCI/App models.
 
 Revision ID: 7a525c68eb13
 Revises: e2894a3a3c19
 Create Date: 2017-01-24 16:25:52.170277
-
 """
 
 # revision identifiers, used by Alembic.

@@ -5,12 +5,13 @@ from config_app._init_config import CONF_DIR
 def logfile_path(jsonfmt=False, debug=False):
     """
     Returns the a logfileconf path following this rules:
+
       - conf/logging_debug_json.conf # jsonfmt=true,  debug=true
       - conf/logging_json.conf       # jsonfmt=true,  debug=false
       - conf/logging_debug.conf      # jsonfmt=false, debug=true
       - conf/logging.conf            # jsonfmt=false, debug=false
     Can be parametrized via envvars: JSONLOG=true, DEBUGLOG=true
-  """
+    """
     _json = ""
     _debug = ""
 

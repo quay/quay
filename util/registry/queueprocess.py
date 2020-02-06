@@ -13,9 +13,9 @@ logger.setLevel(logging.INFO)
 
 
 class QueueProcess(object):
-    """ Helper class which invokes a worker in a process to produce
-      data for one (or more) queues.
-  """
+    """
+    Helper class which invokes a worker in a process to produce data for one (or more) queues.
+    """
 
     def __init__(self, get_producer, chunk_size, max_size, args, finished=None):
         self._get_producer = get_producer
@@ -26,9 +26,11 @@ class QueueProcess(object):
         self._finished = finished
 
     def create_queue(self):
-        """ Adds a multiprocessing queue to the list of queues. Any queues added
-        will have the data produced appended.
-    """
+        """
+        Adds a multiprocessing queue to the list of queues.
+
+        Any queues added will have the data produced appended.
+        """
         queue = Queue(self._max_size / self._chunk_size)
         self._queues.append(queue)
         return queue

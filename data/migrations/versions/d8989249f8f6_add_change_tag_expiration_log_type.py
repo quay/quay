@@ -1,9 +1,9 @@
-"""Add change_tag_expiration log type
+"""
+Add change_tag_expiration log type.
 
 Revision ID: d8989249f8f6
 Revises: dc4af11a5f90
 Create Date: 2017-06-21 21:18:25.948689
-
 """
 
 # revision identifiers, used by Alembic.

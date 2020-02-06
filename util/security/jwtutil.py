@@ -30,7 +30,9 @@ ALGORITHM_WHITELIST = ["rs256"]
 
 
 class _StrictJWT(PyJWT):
-    """ _StrictJWT defines a JWT decoder with extra checks. """
+    """
+    _StrictJWT defines a JWT decoder with extra checks.
+    """
 
     @staticmethod
     def _get_default_options():
@@ -84,7 +86,9 @@ class _StrictJWT(PyJWT):
 
 
 def decode(jwt, key="", verify=True, algorithms=None, options=None, **kwargs):
-    """ Decodes a JWT. """
+    """
+    Decodes a JWT.
+    """
     if not algorithms:
         raise InvalidAlgorithmError("algorithms must be specified")
 
@@ -101,14 +105,18 @@ def decode(jwt, key="", verify=True, algorithms=None, options=None, **kwargs):
 
 
 def exp_max_s_option(max_exp_s):
-    """ Returns an options dictionary that sets the maximum expiration seconds for a JWT. """
+    """
+    Returns an options dictionary that sets the maximum expiration seconds for a JWT.
+    """
     return {
         "exp_max_s": max_exp_s,
     }
 
 
 def jwk_dict_to_public_key(jwk):
-    """ Converts the specified JWK into a public key. """
+    """
+    Converts the specified JWK into a public key.
+    """
     jwkest_key = keyrep(jwk)
     if isinstance(jwkest_key, RSAKey):
         pycrypto_key = jwkest_key.key

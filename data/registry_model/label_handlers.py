@@ -6,7 +6,9 @@ logger = logging.getLogger(__name__)
 
 
 def _expires_after(label_dict, manifest, model):
-    """ Sets the expiration of a manifest based on the quay.expires-in label. """
+    """
+    Sets the expiration of a manifest based on the quay.expires-in label.
+    """
     try:
         timedelta = convert_to_timedelta(label_dict["value"])
     except ValueError:
@@ -24,7 +26,9 @@ _LABEL_HANDLERS = {
 
 
 def apply_label_to_manifest(label_dict, manifest, model):
-    """ Runs the handler defined, if any, for the given label. """
+    """
+    Runs the handler defined, if any, for the given label.
+    """
     handler = _LABEL_HANDLERS.get(label_dict["key"])
     if handler is not None:
         handler(label_dict, manifest, model)

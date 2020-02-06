@@ -1,9 +1,9 @@
-"""add notification number of failures column
+"""
+add notification number of failures column.
 
 Revision ID: dc4af11a5f90
 Revises: 53e2ac668296
 Create Date: 2017-05-16 17:24:02.630365
-
 """
 
 # revision identifiers, used by Alembic.

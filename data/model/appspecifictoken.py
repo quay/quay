@@ -26,8 +26,11 @@ _default_expiration_duration_opt = "__deo"
 
 
 def create_token(user, title, expiration=_default_expiration_duration_opt):
-    """ Creates and returns an app specific token for the given user. If no expiration is specified
-      (including `None`), then the default from config is used. """
+    """
+    Creates and returns an app specific token for the given user.
+
+    If no expiration is specified (including `None`), then the default from config is used.
+    """
     if expiration == _default_expiration_duration_opt:
         duration = _default_expiration_duration()
         expiration = duration + datetime.now() if duration else None
@@ -49,17 +52,23 @@ def create_token(user, title, expiration=_default_expiration_duration_opt):
 
 
 def list_tokens(user):
-    """ Lists all tokens for the given user. """
+    """
+    Lists all tokens for the given user.
+    """
     return AppSpecificAuthToken.select().where(AppSpecificAuthToken.user == user)
 
 
 def revoke_token(token):
-    """ Revokes an app specific token by deleting it. """
+    """
+    Revokes an app specific token by deleting it.
+    """
     token.delete_instance()
 
 
 def revoke_token_by_uuid(uuid, owner):
-    """ Revokes an app specific token by deleting it. """
+    """
+    Revokes an app specific token by deleting it.
+    """
     try:
         token = AppSpecificAuthToken.get(uuid=uuid, user=owner)
     except AppSpecificAuthToken.DoesNotExist:
@@ -70,9 +79,10 @@ def revoke_token_by_uuid(uuid, owner):
 
 
 def get_expiring_tokens(user, soon):
-    """ Returns all tokens owned by the given user that will be expiring "soon", where soon is defined
-      by the soon parameter (a timedelta from now).
-  """
+    """
+    Returns all tokens owned by the given user that will be expiring "soon", where soon is defined
+    by the soon parameter (a timedelta from now).
+    """
     soon_datetime = datetime.now() + soon
     return AppSpecificAuthToken.select().where(
         AppSpecificAuthToken.user == user,
@@ -82,7 +92,9 @@ def get_expiring_tokens(user, soon):
 
 
 def gc_expired_tokens(expiration_window):
-    """ Deletes all expired tokens outside of the expiration window. """
+    """
+    Deletes all expired tokens outside of the expiration window.
+    """
     (
         AppSpecificAuthToken.delete()
         .where(AppSpecificAuthToken.expiration < (datetime.now() - expiration_window))
@@ -91,10 +103,12 @@ def gc_expired_tokens(expiration_window):
 
 
 def get_token_by_uuid(uuid, owner=None):
-    """ Looks up an unexpired app specific token with the given uuid. Returns it if found or
-      None if none. If owner is specified, only tokens owned by the owner user will be
-      returned.
-  """
+    """
+    Looks up an unexpired app specific token with the given uuid.
+
+    Returns it if found or None if none. If owner is specified, only tokens owned by the owner user
+    will be returned.
+    """
     try:
         query = AppSpecificAuthToken.select().where(
             AppSpecificAuthToken.uuid == uuid,
@@ -112,9 +126,12 @@ def get_token_by_uuid(uuid, owner=None):
 
 
 def access_valid_token(token_code):
-    """ Looks up an unexpired app specific token with the given token code. If found, the token's
-      last_accessed field is set to now and the token is returned. If not found, returns None.
-  """
+    """
+    Looks up an unexpired app specific token with the given token code.
+
+    If found, the token's last_accessed field is set to now and the token is returned. If not found,
+    returns None.
+    """
     token_code = remove_unicode(token_code)
 
     prefix = token_code[:TOKEN_NAME_PREFIX_LENGTH]

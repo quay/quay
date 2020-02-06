@@ -11,18 +11,22 @@ from util.secscan.api import UNKNOWN_PARENT_LAYER_ERROR_MSG, compute_layer_id
 
 @contextmanager
 def fake_security_scanner(hostname="fakesecurityscanner"):
-    """ Context manager which yields a fake security scanner. All requests made to the given
-      hostname (default: fakesecurityscanner) will be handled by the fake.
-  """
+    """
+    Context manager which yields a fake security scanner.
+
+    All requests made to the given hostname (default: fakesecurityscanner) will be handled by the
+    fake.
+    """
     scanner = FakeSecurityScanner(hostname)
     with HTTMock(*(scanner.get_endpoints())):
         yield scanner
 
 
 class FakeSecurityScanner(object):
-    """ Implements a fake security scanner (with somewhat real responses) for testing API calls and
-      responses.
-  """
+    """
+    Implements a fake security scanner (with somewhat real responses) for testing API calls and
+    responses.
+    """
 
     def __init__(self, hostname, index_version=1):
         self.hostname = hostname
@@ -38,41 +42,52 @@ class FakeSecurityScanner(object):
         self.unexpected_status_layer_id = None
 
     def set_ok_layer_id(self, ok_layer_id):
-        """ Sets a layer ID that, if encountered when the analyze call is made, causes a 200
-        to be immediately returned.
-    """
+        """
+        Sets a layer ID that, if encountered when the analyze call is made, causes a 200 to be
+        immediately returned.
+        """
         self.ok_layer_id = ok_layer_id
 
     def set_fail_layer_id(self, fail_layer_id):
-        """ Sets a layer ID that, if encountered when the analyze call is made, causes a 422
-        to be raised.
-    """
+        """
+        Sets a layer ID that, if encountered when the analyze call is made, causes a 422 to be
+        raised.
+        """
         self.fail_layer_id = fail_layer_id
 
     def set_internal_error_layer_id(self, internal_error_layer_id):
-        """ Sets a layer ID that, if encountered when the analyze call is made, causes a 500
-        to be raised.
-    """
+        """
+        Sets a layer ID that, if encountered when the analyze call is made, causes a 500 to be
+        raised.
+        """
         self.internal_error_layer_id = internal_error_layer_id
 
     def set_error_layer_id(self, error_layer_id):
-        """ Sets a layer ID that, if encountered when the analyze call is made, causes a 400
-        to be raised.
-    """
+        """
+        Sets a layer ID that, if encountered when the analyze call is made, causes a 400 to be
+        raised.
+        """
         self.error_layer_id = error_layer_id
 
     def set_unexpected_status_layer_id(self, layer_id):
-        """ Sets a layer ID that, if encountered when the analyze call is made, causes an HTTP 600
-        to be raised. This is useful in testing the robustness of the to unknown status codes.
-    """
+        """
+        Sets a layer ID that, if encountered when the analyze call is made, causes an HTTP 600 to be
+        raised.
+
+        This is useful in testing the robustness of the to unknown status codes.
+        """
         self.unexpected_status_layer_id = layer_id
 
     def has_layer(self, layer_id):
-        """ Returns true if the layer with the given ID has been analyzed. """
+        """
+        Returns true if the layer with the given ID has been analyzed.
+        """
         return layer_id in self.layers
 
     def has_notification(self, notification_id):
-        """ Returns whether a notification with the given ID is found in the scanner. """
+        """
+        Returns whether a notification with the given ID is found in the scanner.
+        """
         return notification_id in self.notifications
 
     def add_notification(
@@ -85,9 +100,10 @@ class FakeSecurityScanner(object):
         indexed_old_layer_ids=None,
         indexed_new_layer_ids=None,
     ):
-        """ Adds a new notification over the given sets of layer IDs and vulnerability information,
+        """
+        Adds a new notification over the given sets of layer IDs and vulnerability information,
         returning the structural data of the notification created.
-    """
+        """
         notification_id = str(uuid.uuid4())
         if old_vuln is None:
             old_vuln = dict(new_vuln)
@@ -105,11 +121,15 @@ class FakeSecurityScanner(object):
         return self._get_notification_data(notification_id, 0, 100)
 
     def layer_id(self, layer):
-        """ Returns the Quay Security Scanner layer ID for the given layer (Image row). """
+        """
+        Returns the Quay Security Scanner layer ID for the given layer (Image row).
+        """
         return compute_layer_id(layer)
 
     def add_layer(self, layer_id):
-        """ Adds a layer to the security scanner, with no features or vulnerabilities. """
+        """
+        Adds a layer to the security scanner, with no features or vulnerabilities.
+        """
         self.layers[layer_id] = {
             "Name": layer_id,
             "Format": "Docker",
@@ -117,11 +137,15 @@ class FakeSecurityScanner(object):
         }
 
     def remove_layer(self, layer_id):
-        """ Removes a layer from the security scanner. """
+        """
+        Removes a layer from the security scanner.
+        """
         self.layers.pop(layer_id, None)
 
     def set_vulns(self, layer_id, vulns):
-        """ Sets the vulnerabilities for the layer with the given ID to those given. """
+        """
+        Sets the vulnerabilities for the layer with the given ID to those given.
+        """
         self.layer_vulns[layer_id] = vulns
 
         # Since this call may occur before the layer is "anaylzed", we only add the data
@@ -139,8 +163,10 @@ class FakeSecurityScanner(object):
             )
 
     def _get_notification_data(self, notification_id, page, limit):
-        """ Returns the structural data for the notification with the given ID, paginated using
-        the given page and limit. """
+        """
+        Returns the structural data for the notification with the given ID, paginated using the
+        given page and limit.
+        """
         notification = self.notifications[notification_id]
         limit = min(limit, notification["max_per_page"])
 
@@ -193,7 +219,9 @@ class FakeSecurityScanner(object):
         return notification_data
 
     def get_endpoints(self):
-        """ Returns the HTTMock endpoint definitions for the fake security scanner. """
+        """
+        Returns the HTTMock endpoint definitions for the fake security scanner.
+        """
 
         @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/v1/layers/(.+)", method="GET")
         def get_layer_mock(url, request):

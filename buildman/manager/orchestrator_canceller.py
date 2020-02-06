@@ -11,7 +11,9 @@ CANCEL_PREFIX = "cancel/"
 
 
 class OrchestratorCanceller(object):
-    """ An asynchronous way to cancel a build with any Orchestrator. """
+    """
+    An asynchronous way to cancel a build with any Orchestrator.
+    """
 
     def __init__(self, config):
         self._orchestrator = orchestrator_from_config(config, canceller_only=True)

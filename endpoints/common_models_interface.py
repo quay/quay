@@ -9,24 +9,24 @@ USER_FIELDS = ["uuid", "username", "email", "given_name", "family_name", "compan
 
 class User(namedtuple("User", USER_FIELDS)):
     """
-  User represents a user.
-  """
+    User represents a user.
+    """
 
 
 @add_metaclass(ABCMeta)
 class EndpointsCommonDataInterface(object):
     """
-  Interface that represents all data store interactions required by the common endpoints lib.
-  """
+    Interface that represents all data store interactions required by the common endpoints lib.
+    """
 
     @abstractmethod
     def get_user(self, user_uuid):
         """
-    Returns the User matching the given uuid, if any or None if none.
-    """
+        Returns the User matching the given uuid, if any or None if none.
+        """
 
     @abstractmethod
     def get_namespace_uuid(self, namespace_name):
         """
-    Returns the uuid of the Namespace with the given name, if any.
-    """
+        Returns the uuid of the Namespace with the given name, if any.
+        """

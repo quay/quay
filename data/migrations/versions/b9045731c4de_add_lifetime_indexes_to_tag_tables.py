@@ -1,9 +1,9 @@
-"""Add lifetime end indexes to tag tables
+"""
+Add lifetime end indexes to tag tables.
 
 Revision ID: b9045731c4de
 Revises: e184af42242d
 Create Date: 2019-02-14 17:18:40.474310
-
 """
 
 # revision identifiers, used by Alembic.

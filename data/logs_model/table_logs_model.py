@@ -31,9 +31,9 @@ LOG_MODELS = [LogEntry3, LogEntry2, LogEntry]
 
 class TableLogsModel(SharedModel, ActionLogsDataInterface):
     """
-  TableLogsModel implements the data model for the logs API backed by a single table
-  in the database.
-  """
+    TableLogsModel implements the data model for the logs API backed by a single table in the
+    database.
+    """
 
     def __init__(self, should_skip_logging=None, **kwargs):
         self._should_skip_logging = should_skip_logging
@@ -325,7 +325,9 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
                 current_batch_size = timedelta(seconds=seconds)
 
     def yield_log_rotation_context(self, cutoff_date, min_logs_per_rotation):
-        """ Yield a context manager for a group of outdated logs. """
+        """
+        Yield a context manager for a group of outdated logs.
+        """
         for log_model in LOG_MODELS:
             while True:
                 with UseThenDisconnect(config.app_config):
@@ -362,12 +364,12 @@ table_logs_model = TableLogsModel()
 
 class DatabaseLogRotationContext(LogRotationContextInterface):
     """
-  DatabaseLogRotationContext represents a batch of logs to be archived together.
-  i.e A set of logs to be archived in the same file (based on the number of logs per rotation).
+    DatabaseLogRotationContext represents a batch of logs to be archived together. i.e A set of logs
+    to be archived in the same file (based on the number of logs per rotation).
 
-  When completed without exceptions, this context will delete the stale logs
-  from rows `start_id` to `end_id`.
-  """
+    When completed without exceptions, this context will delete the stale logs from rows `start_id`
+    to `end_id`.
+    """
 
     def __init__(self, logs, log_model, start_id, end_id):
         self.logs = logs
@@ -385,6 +387,8 @@ class DatabaseLogRotationContext(LogRotationContextInterface):
                 delete_stale_logs(self.start_id, self.end_id, self.log_model)
 
     def yield_logs_batch(self):
-        """ Yield a batch of logs and a filename for that batch. """
+        """
+        Yield a batch of logs and a filename for that batch.
+        """
         filename = "%d-%d-%s.txt.gz" % (self.start_id, self.end_id, self.log_model.__name__.lower())
         yield self.logs, filename

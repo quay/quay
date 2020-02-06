@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigValidationException(Exception):
-    """ Exception raised when the configuration fails to validate for a known reason. """
+    """
+    Exception raised when the configuration fails to validate for a known reason.
+    """
 
     pass
 
@@ -71,7 +73,9 @@ VALIDATORS = {
 
 
 def validate_service_for_config(service, validator_context):
-    """ Attempts to validate the configuration for the given service. """
+    """
+    Attempts to validate the configuration for the given service.
+    """
     if not service in VALIDATORS:
         return {"status": False}
 
@@ -84,9 +88,10 @@ def validate_service_for_config(service, validator_context):
 
 
 def is_valid_config_upload_filename(filename):
-    """ Returns true if and only if the given filename is one which is supported for upload
-      from the configuration UI tool.
-  """
+    """
+    Returns true if and only if the given filename is one which is supported for upload from the
+    configuration UI tool.
+    """
     if filename in CONFIG_FILENAMES:
         return True
 
@@ -94,8 +99,9 @@ def is_valid_config_upload_filename(filename):
 
 
 class ValidatorContext(object):
-    """ Context to run validators in, with any additional runtime configuration they need
-  """
+    """
+    Context to run validators in, with any additional runtime configuration they need.
+    """
 
     def __init__(
         self,
@@ -143,17 +149,18 @@ class ValidatorContext(object):
         init_scripts_location=None,
     ):
         """
-    Creates a ValidatorContext from an app config, with a given config to validate
-    :param app: the Flask app to pull configuration information from
-    :param config: the config to validate
-    :param user_password: request password
-    :param instance_keys: The instance keys handler
-    :param ip_resolver: an App
-    :param client: http client used to connect to services
-    :param config_provider: config provider used to access config volume(s)
-    :param init_scripts_location: location where initial load scripts are stored
-    :return: ValidatorContext
-    """
+        Creates a ValidatorContext from an app config, with a given config to validate.
+
+        :param app: the Flask app to pull configuration information from
+        :param config: the config to validate
+        :param user_password: request password
+        :param instance_keys: The instance keys handler
+        :param ip_resolver: an App
+        :param client: http client used to connect to services
+        :param config_provider: config provider used to access config volume(s)
+        :param init_scripts_location: location where initial load scripts are stored
+        :return: ValidatorContext
+        """
         url_scheme_and_hostname = URLSchemeAndHostname.from_app_config(app.config)
 
         return cls(

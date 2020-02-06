@@ -1,4 +1,6 @@
-""" Messages API. """
+"""
+Messages API.
+"""
 from flask import abort
 from flask import make_response
 from flask import request
@@ -21,7 +23,9 @@ from globalmessages_models_pre_oci import pre_oci_model as model
 
 @resource("/v1/messages")
 class GlobalUserMessages(ApiResource):
-    """ Resource for getting a list of super user messages """
+    """
+    Resource for getting a list of super user messages.
+    """
 
     schemas = {
         "GetMessage": {
@@ -81,7 +85,9 @@ class GlobalUserMessages(ApiResource):
 
     @nickname("getGlobalMessages")
     def get(self):
-        """ Return a super users messages """
+        """
+        Return a super users messages.
+        """
         return {
             "messages": [m.to_dict() for m in model.get_all_messages()],
         }
@@ -92,7 +98,9 @@ class GlobalUserMessages(ApiResource):
     @validate_json_request("CreateMessage")
     @require_scope(scopes.SUPERUSER)
     def post(self):
-        """ Create a message """
+        """
+        Create a message.
+        """
         if not features.SUPER_USERS:
             abort(404)
 
@@ -111,14 +119,18 @@ class GlobalUserMessages(ApiResource):
 @resource("/v1/message/<uuid>")
 @show_if(features.SUPER_USERS)
 class GlobalUserMessage(ApiResource):
-    """ Resource for managing individual messages """
+    """
+    Resource for managing individual messages.
+    """
 
     @require_fresh_login
     @verify_not_prod
     @nickname("deleteGlobalMessage")
     @require_scope(scopes.SUPERUSER)
     def delete(self, uuid):
-        """ Delete a message """
+        """
+        Delete a message.
+        """
         if SuperUserPermission().can():
             model.delete_message(uuid)
             return make_response("", 204)

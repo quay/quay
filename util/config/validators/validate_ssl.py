@@ -9,7 +9,9 @@ class SSLValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the SSL configuration (if enabled). """
+        """
+        Validates the SSL configuration (if enabled).
+        """
         config = validator_context.config
         config_provider = validator_context.config_provider
 
@@ -64,7 +66,9 @@ class SSLValidator(BaseValidator):
 
 
 def _ssl_cn(server_hostname):
-    """ Return the common name (fully qualified host name) from the SERVER_HOSTNAME. """
+    """
+    Return the common name (fully qualified host name) from the SERVER_HOSTNAME.
+    """
     host_port = server_hostname.rsplit(":", 1)
 
     # SERVER_HOSTNAME includes the port

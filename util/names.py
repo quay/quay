@@ -18,14 +18,17 @@ TAG_ERROR = (
 
 
 class ImplicitLibraryNamespaceNotAllowed(Exception):
-    """ Exception raised if the implicit library namespace was specified but is
-      not allowed. """
+    """
+    Exception raised if the implicit library namespace was specified but is not allowed.
+    """
 
     pass
 
 
 def escape_tag(tag, default="latest"):
-    """ Escapes a Docker tag, ensuring it matches the tag regular expression. """
+    """
+    Escapes a Docker tag, ensuring it matches the tag regular expression.
+    """
     if not tag:
         return default
 
@@ -73,9 +76,10 @@ def parse_robot_username(robot_username):
 
 
 def parse_urn(urn):
-    """ Parses a URN, returning a pair that contains a list of URN
-      namespace parts, followed by the URN's unique ID.
-  """
+    """
+    Parses a URN, returning a pair that contains a list of URN namespace parts, followed by the
+    URN's unique ID.
+    """
     if not urn.startswith("urn:"):
         return None
 
@@ -84,9 +88,10 @@ def parse_urn(urn):
 
 
 def parse_single_urn(urn):
-    """ Parses a URN, returning a pair that contains the first
-      namespace part, followed by the URN's unique ID.
-  """
+    """
+    Parses a URN, returning a pair that contains the first namespace part, followed by the URN's
+    unique ID.
+    """
     result = parse_urn(urn)
     if result is None or not len(result[0]):
         return None

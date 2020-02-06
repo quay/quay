@@ -8,7 +8,9 @@ class JWTAuthValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context, public_key_path=None):
-        """ Validates the JWT authentication system. """
+        """
+        Validates the JWT authentication system.
+        """
         config = validator_context.config
         http_client = validator_context.http_client
         jwt_auth_max = validator_context.jwt_auth_max

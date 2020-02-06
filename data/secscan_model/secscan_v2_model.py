@@ -38,19 +38,22 @@ unscanned_images = Gauge(
 
 class ScanToken(namedtuple("NextScanToken", ["min_id"])):
     """
-  ScanToken represents an opaque token that can be passed between runs of the security worker
-  to continue scanning whereever the previous run left off. Note that the data of the token is
-  *opaque* to the security worker, and the security worker should *not* pull any data out or modify
-  the token in any way.
-  """
+    ScanToken represents an opaque token that can be passed between runs of the security worker to
+    continue scanning whereever the previous run left off. Note that the data of the token is.
+
+    *opaque* to the security worker, and the security worker should *not* pull any data out or modify
+    the token in any way.
+    """
 
 
 @deprecated(reason="Will be replaced by a V4 API security scanner soon")
 class V2SecurityScanner(SecurityScannerInterface):
-    """ Implementation of the security scanner interface for Clair V2 API-compatible implementations.
+    """
+    Implementation of the security scanner interface for Clair V2 API-compatible implementations.
 
     NOTE: This is a legacy implementation and is intended to be removed once everyone is moved to
-    the more modern V4 API. (Yes, we skipped V3) """
+    the more modern V4 API. (Yes, we skipped V3)
+    """
 
     def __init__(self, app, instance_keys, storage):
         self.app = app
@@ -88,7 +91,9 @@ class V2SecurityScanner(SecurityScannerInterface):
 
     @property
     def legacy_api_handler(self):
-        """ Exposes the legacy security scan API for legacy workers that need it. """
+        """
+        Exposes the legacy security scan API for legacy workers that need it.
+        """
         return self._legacy_secscan_api
 
     def register_model_cleanup_callbacks(self, data_model_config):
@@ -176,11 +181,13 @@ class V2SecurityScanner(SecurityScannerInterface):
         return (iterator, ScanToken(max_id + 1))
 
     def perform_indexing(self, start_token=None):
-        """ Performs indexing of the next set of unindexed manifests/images. If start_token is given,
-            the indexing should resume from that point. Returns a new start index for the next
-            iteration of indexing. The tokens returned and given are assumed to be opaque outside
-            of this implementation and should not be relied upon by the caller to conform to any
-            particular format.
+        """
+        Performs indexing of the next set of unindexed manifests/images.
+
+        If start_token is given, the indexing should resume from that point. Returns a new start
+        index for the next iteration of indexing. The tokens returned and given are assumed to be
+        opaque outside of this implementation and should not be relied upon by the caller to conform
+        to any particular format.
         """
         # NOTE: This import is in here because otherwise this class would depend upon app.
         # Its not great, but as this is intended to be legacy until its removed, its okay.

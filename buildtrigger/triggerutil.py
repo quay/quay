@@ -99,7 +99,9 @@ def should_skip_commit(metadata):
 
 
 def raise_if_skipped_build(prepared_build, config):
-    """ Raises a SkipRequestException if the given build should be skipped. """
+    """
+    Raises a SkipRequestException if the given build should be skipped.
+    """
     # Check to ensure we have metadata.
     if not prepared_build.metadata:
         logger.debug("Skipping request due to missing metadata for prepared build")

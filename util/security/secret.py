@@ -3,8 +3,9 @@ import uuid
 
 
 def convert_secret_key(config_secret_key):
-    """ Converts the secret key from the app config into a secret key that is usable by AES
-      Cipher. """
+    """
+    Converts the secret key from the app config into a secret key that is usable by AES Cipher.
+    """
     secret_key = None
 
     # First try parsing the key as an int.

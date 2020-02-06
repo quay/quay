@@ -1,9 +1,9 @@
-"""Run full tag backfill
+"""
+Run full tag backfill.
 
 Revision ID: b918abdbee43
 Revises: 481623ba00ba
 Create Date: 2019-03-14 13:38:03.411609
-
 """
 
 # revision identifiers, used by Alembic.

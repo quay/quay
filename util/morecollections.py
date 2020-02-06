@@ -13,9 +13,10 @@ class AttrDict(dict):
 
 
 class FastIndexList(object):
-    """ List which keeps track of the indicies of its items in a fast manner, and allows for
-      quick removal of items.
-  """
+    """
+    List which keeps track of the indicies of its items in a fast manner, and allows for quick
+    removal of items.
+    """
 
     def __init__(self):
         self._list = []
@@ -24,17 +25,23 @@ class FastIndexList(object):
         self._counter = 0
 
     def add(self, item):
-        """ Adds an item to the index list. """
+        """
+        Adds an item to the index list.
+        """
         self._list.append(item)
         self._index_map[item] = self._counter
         self._counter = self._counter + 1
 
     def values(self):
-        """ Returns an iterable stream of all the values in the list. """
+        """
+        Returns an iterable stream of all the values in the list.
+        """
         return list(self._list)
 
     def index(self, value):
-        """ Returns the index of the given item in the list or None if none. """
+        """
+        Returns the index of the given item in the list or None if none.
+        """
         found = self._index_map.get(value, None)
         if found is None:
             return None
@@ -42,7 +49,9 @@ class FastIndexList(object):
         return found - self._index_offset
 
     def pop_until(self, index_inclusive):
-        """ Pops off any items in the list until the given index, inclusive, and returns them. """
+        """
+        Pops off any items in the list until the given index, inclusive, and returns them.
+        """
         values = self._list[0 : index_inclusive + 1]
         for value in values:
             self._index_map.pop(value, None)
@@ -53,15 +62,16 @@ class FastIndexList(object):
 
 
 class IndexedStreamingDiffTracker(object):
-    """ Helper class which tracks the difference between two streams of strings,
-      calling the `added` callback for strings when they are successfully verified
-      as being present in the first stream and not present in the second stream.
-      Unlike StreamingDiffTracker, this class expects each string value to have an
-      associated `index` value, which must be the same for equal values in both
-      streams and *must* be in order. This allows us to be a bit more efficient
-      in clearing up items that we know won't be present. The `index` is *not*
-      assumed to start at 0 or be contiguous, merely increasing.
-  """
+    """
+    Helper class which tracks the difference between two streams of strings, calling the `added`
+    callback for strings when they are successfully verified as being present in the first stream
+    and not present in the second stream.
+
+    Unlike StreamingDiffTracker, this class expects each string value to have an associated `index`
+    value, which must be the same for equal values in both streams and *must* be in order. This
+    allows us to be a bit more efficient in clearing up items that we know won't be present. The
+    `index` is *not* assumed to start at 0 or be contiguous, merely increasing.
+    """
 
     def __init__(self, reporter, result_per_stream):
         self._reporter = reporter
@@ -76,8 +86,9 @@ class IndexedStreamingDiffTracker(object):
         self._old_stream_map = {}
 
     def push_new(self, stream_tuples):
-        """ Pushes a list of values for the `New` stream.
-    """
+        """
+        Pushes a list of values for the `New` stream.
+        """
         stream_tuples_list = list(stream_tuples)
         assert len(stream_tuples_list) <= self._reports_per_stream
 
@@ -94,8 +105,9 @@ class IndexedStreamingDiffTracker(object):
         self._process()
 
     def push_old(self, stream_tuples):
-        """ Pushes a list of values for the `Old` stream.
-    """
+        """
+        Pushes a list of values for the `Old` stream.
+        """
         if self._new_stream_finished and not self._new_stream:
             # Nothing more to do.
             return
@@ -152,12 +164,14 @@ class IndexedStreamingDiffTracker(object):
 
 
 class StreamingDiffTracker(object):
-    """ Helper class which tracks the difference between two streams of strings, calling the
-      `added` callback for strings when they are successfully verified as being present in
-      the first stream and not present in the second stream. This class requires that the
-      streams of strings be consistently ordered *in some way common to both* (but the
-      strings themselves do not need to be sorted).
-  """
+    """
+    Helper class which tracks the difference between two streams of strings, calling the `added`
+    callback for strings when they are successfully verified as being present in the first stream
+    and not present in the second stream.
+
+    This class requires that the streams of strings be consistently ordered *in some way common to
+    both* (but the strings themselves do not need to be sorted).
+    """
 
     def __init__(self, reporter, result_per_stream):
         self._reporter = reporter
@@ -172,8 +186,9 @@ class StreamingDiffTracker(object):
         self.push_new([])
 
     def push_new(self, stream_values):
-        """ Pushes a list of values for the `New` stream.
-    """
+        """
+        Pushes a list of values for the `New` stream.
+        """
 
         # Add all the new values to the list.
         counter = 0
@@ -199,8 +214,9 @@ class StreamingDiffTracker(object):
                     self._new_stream.pop_until(self._new_stream.index(value))
 
     def push_old(self, stream_values):
-        """ Pushes a stream of values for the `Old` stream.
-    """
+        """
+        Pushes a stream of values for the `Old` stream.
+        """
 
         if self._old_stream_finished:
             return

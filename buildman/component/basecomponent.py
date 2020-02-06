@@ -2,7 +2,9 @@ from autobahn.asyncio.wamp import ApplicationSession
 
 
 class BaseComponent(ApplicationSession):
-    """ Base class for all registered component sessions in the server. """
+    """
+    Base class for all registered component sessions in the server.
+    """
 
     def __init__(self, config, **kwargs):
         ApplicationSession.__init__(self, config)

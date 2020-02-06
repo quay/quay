@@ -15,7 +15,9 @@ from test.registry.protocols import (
 
 @unique
 class V1ProtocolSteps(Enum):
-    """ Defines the various steps of the protocol, for matching failures. """
+    """
+    Defines the various steps of the protocol, for matching failures.
+    """
 
     PUT_IMAGES = "put-images"
     GET_IMAGES = "get-images"

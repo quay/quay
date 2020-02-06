@@ -20,25 +20,33 @@ def is_not_none(value):
 
 @add_metaclass(ABCMeta)
 class DataModelCache(object):
-    """ Defines an interface for cache storing and returning tuple data model objects. """
+    """
+    Defines an interface for cache storing and returning tuple data model objects.
+    """
 
     @abstractmethod
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
-        """ Checks the cache for the specified cache key and returns the value found (if any). If none
-        found, the loader is called to get a result and populate the cache.
-    """
+        """
+        Checks the cache for the specified cache key and returns the value found (if any).
+
+        If none found, the loader is called to get a result and populate the cache.
+        """
         pass
 
 
 class NoopDataModelCache(DataModelCache):
-    """ Implementation of the data model cache which does nothing. """
+    """
+    Implementation of the data model cache which does nothing.
+    """
 
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         return loader()
 
 
 class InMemoryDataModelCache(DataModelCache):
-    """ Implementation of the data model cache backed by an in-memory dictionary. """
+    """
+    Implementation of the data model cache backed by an in-memory dictionary.
+    """
 
     def __init__(self):
         self.cache = ExpiresDict()
@@ -83,7 +91,9 @@ _JSON_TYPE = 2
 
 
 class MemcachedModelCache(DataModelCache):
-    """ Implementation of the data model cache backed by a memcached. """
+    """
+    Implementation of the data model cache backed by a memcached.
+    """
 
     def __init__(
         self,

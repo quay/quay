@@ -1,4 +1,6 @@
-""" Manages app specific tokens for the current user. """
+"""
+Manages app specific tokens for the current user.
+"""
 
 import logging
 import math
@@ -56,7 +58,9 @@ _DEFAULT_TOKEN_EXPIRATION_WINDOW = "4w"
 @resource("/v1/user/apptoken")
 @show_if(features.APP_SPECIFIC_TOKENS)
 class AppTokens(ApiResource):
-    """ Lists all app specific tokens for a user """
+    """
+    Lists all app specific tokens for a user.
+    """
 
     schemas = {
         "NewToken": {
@@ -73,7 +77,9 @@ class AppTokens(ApiResource):
     @parse_args()
     @query_param("expiring", "If true, only returns those tokens expiring soon", type=truthy_bool)
     def get(self, parsed_args):
-        """ Lists the app specific tokens for the user. """
+        """
+        Lists the app specific tokens for the user.
+        """
         expiring = parsed_args["expiring"]
         if expiring:
             expiration = app.config.get("APP_SPECIFIC_TOKEN_EXPIRATION")
@@ -94,7 +100,9 @@ class AppTokens(ApiResource):
     @nickname("createAppToken")
     @validate_json_request("NewToken")
     def post(self):
-        """ Create a new app specific token for user. """
+        """
+        Create a new app specific token for user.
+        """
         title = request.get_json()["title"]
         token = model.appspecifictoken.create_token(get_authenticated_user(), title)
 
@@ -113,13 +121,17 @@ class AppTokens(ApiResource):
 @show_if(features.APP_SPECIFIC_TOKENS)
 @path_param("token_uuid", "The uuid of the app specific token")
 class AppToken(ApiResource):
-    """ Provides operations on an app specific token """
+    """
+    Provides operations on an app specific token.
+    """
 
     @require_user_admin
     @require_fresh_login
     @nickname("getAppToken")
     def get(self, token_uuid):
-        """ Returns a specific app token for the user. """
+        """
+        Returns a specific app token for the user.
+        """
         token = model.appspecifictoken.get_token_by_uuid(token_uuid, owner=get_authenticated_user())
         if token is None:
             raise NotFound()
@@ -132,7 +144,9 @@ class AppToken(ApiResource):
     @require_fresh_login
     @nickname("revokeAppToken")
     def delete(self, token_uuid):
-        """ Revokes a specific app token for the user. """
+        """
+        Revokes a specific app token for the user.
+        """
         token = model.appspecifictoken.revoke_token_by_uuid(
             token_uuid, owner=get_authenticated_user()
         )

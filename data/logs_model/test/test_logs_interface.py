@@ -610,9 +610,9 @@ def test_date_range_in_single_index(dt1, dt2, expected_result):
 
 def test_pagination(logs_model, mock_page_size):
     """
-  Make sure that pagination does not stop if searching through multiple indices by day,
-  and the current log count matches the page size while there are still indices to be searched.
-  """
+    Make sure that pagination does not stop if searching through multiple indices by day, and the
+    current log count matches the page size while there are still indices to be searched.
+    """
     day1 = datetime.now()
     day2 = day1 + timedelta(days=1)
     day3 = day2 + timedelta(days=1)

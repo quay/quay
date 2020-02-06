@@ -6,16 +6,17 @@ from trollius import get_event_loop, coroutine
 
 def wrap_with_threadpool(obj, worker_threads=1):
     """
-  Wraps a class in an async executor so that it can be safely used in an event loop like trollius.
-  """
+    Wraps a class in an async executor so that it can be safely used in an event loop like trollius.
+    """
     async_executor = ThreadPoolExecutor(worker_threads)
     return AsyncWrapper(obj, executor=async_executor), async_executor
 
 
 class AsyncWrapper(object):
-    """ Wrapper class which will transform a syncronous library to one that can be used with
-      trollius coroutines.
-  """
+    """
+    Wrapper class which will transform a syncronous library to one that can be used with trollius
+    coroutines.
+    """
 
     def __init__(self, delegate, loop=None, executor=None):
         self._loop = loop if loop is not None else get_event_loop()
@@ -29,9 +30,10 @@ class AsyncWrapper(object):
             return delegate_attr
 
         def wrapper(*args, **kwargs):
-            """ Wraps the delegate_attr with primitives that will transform sync calls to ones shelled
-          out to a thread pool.
-      """
+            """
+            Wraps the delegate_attr with primitives that will transform sync calls to ones shelled
+            out to a thread pool.
+            """
             callable_delegate_attr = partial(delegate_attr, *args, **kwargs)
             return self._loop.run_in_executor(self._executor, callable_delegate_attr)
 

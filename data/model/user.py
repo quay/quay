@@ -89,7 +89,9 @@ def create_user(
     prompts=tuple(),
     is_possible_abuser=False,
 ):
-    """ Creates a regular user, if allowed. """
+    """
+    Creates a regular user, if allowed.
+    """
     if not validate_password(password):
         raise InvalidPasswordException(INVALID_PASSWORD_MESSAGE)
 
@@ -168,9 +170,10 @@ def create_user_noverify(
 
 
 def increase_maximum_build_count(user, maximum_queued_builds_count):
-    """ Increases the maximum number of allowed builds on the namespace, if greater than that
-      already present.
-  """
+    """
+    Increases the maximum number of allowed builds on the namespace, if greater than that already
+    present.
+    """
     if (
         user.maximum_queued_builds_count is not None
         and maximum_queued_builds_count > user.maximum_queued_builds_count
@@ -282,15 +285,19 @@ def change_send_invoice_email(user, invoice_email):
 
 
 def _convert_to_s(timespan_string):
-    """ Returns the given timespan string (e.g. `2w` or `45s`) into seconds. """
+    """
+    Returns the given timespan string (e.g. `2w` or `45s`) into seconds.
+    """
     return convert_to_timedelta(timespan_string).total_seconds()
 
 
 def change_user_tag_expiration(user, tag_expiration_s):
-    """ Changes the tag expiration on the given user/org. Note that the specified expiration must
-      be within the configured TAG_EXPIRATION_OPTIONS or this method will raise a
-      DataModelException.
-  """
+    """
+    Changes the tag expiration on the given user/org.
+
+    Note that the specified expiration must be within the configured TAG_EXPIRATION_OPTIONS or this
+    method will raise a DataModelException.
+    """
     allowed_options = [_convert_to_s(o) for o in config.app_config["TAG_EXPIRATION_OPTIONS"]]
     if tag_expiration_s not in allowed_options:
         raise DataModelException("Invalid tag expiration option")
@@ -357,8 +364,10 @@ def get_or_create_robot_metadata(robot):
 
 
 def update_robot_metadata(robot, description="", unstructured_json=None):
-    """ Updates the description and user-specified unstructured metadata associated
-      with a robot account to that specified. """
+    """
+    Updates the description and user-specified unstructured metadata associated with a robot account
+    to that specified.
+    """
     metadata = get_or_create_robot_metadata(robot)
     metadata.description = description
     metadata.unstructured_json = unstructured_json or metadata.unstructured_json or {}
@@ -366,13 +375,17 @@ def update_robot_metadata(robot, description="", unstructured_json=None):
 
 
 def retrieve_robot_token(robot):
-    """ Returns the decrypted token for the given robot. """
+    """
+    Returns the decrypted token for the given robot.
+    """
     token = RobotAccountToken.get(robot_account=robot).token.decrypt()
     return token
 
 
 def get_robot_and_metadata(robot_shortname, parent):
-    """ Returns a tuple of the robot matching the given shortname, its token, and its metadata. """
+    """
+    Returns a tuple of the robot matching the given shortname, its token, and its metadata.
+    """
     robot_username = format_robot_username(parent.username, robot_shortname)
     robot, metadata = lookup_robot_and_metadata(robot_username)
     token = retrieve_robot_token(robot)
@@ -489,14 +502,18 @@ def delete_robot(robot_username):
 
 
 def list_namespace_robots(namespace):
-    """ Returns all the robots found under the given namespace. """
+    """
+    Returns all the robots found under the given namespace.
+    """
     return _list_entity_robots(namespace)
 
 
 def _list_entity_robots(entity_name, include_metadata=True, include_token=True):
-    """ Return the list of robots for the specified entity. This MUST return a query, not a
-      materialized list so that callers can use db_for_update.
-  """
+    """
+    Return the list of robots for the specified entity.
+
+    This MUST return a query, not a materialized list so that callers can use db_for_update.
+    """
     if include_metadata or include_token:
         query = (
             User.select(User, RobotAccountToken, RobotAccountMetadata)
@@ -543,7 +560,9 @@ def list_entity_robot_permission_teams(entity_name, limit=None, include_permissi
 
 
 def update_user_metadata(user, metadata=None):
-    """ Updates the metadata associated with the user, including his/her name and company. """
+    """
+    Updates the metadata associated with the user, including his/her name and company.
+    """
     metadata = metadata if metadata is not None else {}
 
     with db_transaction():
@@ -826,7 +845,9 @@ def get_user_or_org_by_customer_id(customer_id):
 
 
 def invalidate_all_sessions(user):
-    """ Invalidates all existing user sessions by rotating the user's UUID. """
+    """
+    Invalidates all existing user sessions by rotating the user's UUID.
+    """
     if not user:
         return
 
@@ -924,11 +945,13 @@ def _get_matching_users(
 
 
 def verify_user(username_or_email, password):
-    """ Verifies that the given username/email + password pair is valid. If the username or e-mail
-      address is invalid, returns None. If the password specified does not match for the given user,
-      either returns None or raises TooManyLoginAttemptsException if there have been too many
-      invalid login attempts. Returns the user object if the login was valid.
-  """
+    """
+    Verifies that the given username/email + password pair is valid.
+
+    If the username or e-mail address is invalid, returns None. If the password specified does not
+    match for the given user, either returns None or raises TooManyLoginAttemptsException if there
+    have been too many invalid login attempts. Returns the user object if the login was valid.
+    """
 
     # Make sure we didn't get any unicode for the username.
     try:
@@ -1080,7 +1103,9 @@ def detach_external_login(user, service_name):
 
 
 def get_solely_admined_organizations(user_obj):
-    """ Returns the organizations admined solely by the given user. """
+    """
+    Returns the organizations admined solely by the given user.
+    """
     orgs = (
         User.select()
         .where(User.organization == True)
@@ -1115,10 +1140,12 @@ def get_solely_admined_organizations(user_obj):
 
 
 def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
-    """ Marks a namespace (as referenced by the given user) for deletion. A queue item will be added
-      to delete the namespace's repositories and storage, while the namespace itself will be
-      renamed, disabled, and delinked from other tables.
-  """
+    """
+    Marks a namespace (as referenced by the given user) for deletion.
+
+    A queue item will be added to delete the namespace's repositories and storage, while the
+    namespace itself will be renamed, disabled, and delinked from other tables.
+    """
     if not user.enabled:
         return None
 
@@ -1173,7 +1200,9 @@ def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
 
 
 def delete_namespace_via_marker(marker_id, queues):
-    """ Deletes a namespace referenced by the given DeletedNamespace marker ID. """
+    """
+    Deletes a namespace referenced by the given DeletedNamespace marker ID.
+    """
     try:
         marker = DeletedNamespace.get(id=marker_id)
     except DeletedNamespace.DoesNotExist:
@@ -1183,9 +1212,12 @@ def delete_namespace_via_marker(marker_id, queues):
 
 
 def delete_user(user, queues):
-    """ Deletes a user/organization/robot. Should *not* be called by any user-facing API. Instead,
-      mark_namespace_for_deletion should be used, and the queue should call this method.
-  """
+    """
+    Deletes a user/organization/robot.
+
+    Should *not* be called by any user-facing API. Instead, mark_namespace_for_deletion should be
+    used, and the queue should call this method.
+    """
     # Delete all queue items for the user.
     for queue in queues:
         queue.delete_namespaced_items(user.username)
@@ -1241,7 +1273,9 @@ def _delete_user_linked_data(user):
 
 
 def get_pull_credentials(robotname):
-    """ Returns the pull credentials for a robot with the given name. """
+    """
+    Returns the pull credentials for a robot with the given name.
+    """
     try:
         robot = lookup_robot(robotname)
     except InvalidRobotException:
@@ -1258,13 +1292,17 @@ def get_pull_credentials(robotname):
 
 
 def get_region_locations(user):
-    """ Returns the locations defined as preferred storage for the given user. """
+    """
+    Returns the locations defined as preferred storage for the given user.
+    """
     query = UserRegion.select().join(ImageStorageLocation).where(UserRegion.user == user)
     return set([region.location.name for region in query])
 
 
 def get_federated_logins(user_ids, service_name):
-    """ Returns all federated logins for the given user ids under the given external service. """
+    """
+    Returns all federated logins for the given user ids under the given external service.
+    """
     if not user_ids:
         return []
 
@@ -1278,7 +1316,9 @@ def get_federated_logins(user_ids, service_name):
 
 
 def list_namespace_geo_restrictions(namespace_name):
-    """ Returns all of the defined geographic restrictions for the given namespace. """
+    """
+    Returns all of the defined geographic restrictions for the given namespace.
+    """
     return NamespaceGeoRestriction.select().join(User).where(User.username == namespace_name)
 
 

@@ -30,19 +30,25 @@ JWT_CLOCK_SKEW_SECONDS = 30
 
 
 class DiscoveryFailureException(Exception):
-    """ Exception raised when OIDC discovery fails. """
+    """
+    Exception raised when OIDC discovery fails.
+    """
 
     pass
 
 
 class PublicKeyLoadException(Exception):
-    """ Exception raised if loading the OIDC public key fails. """
+    """
+    Exception raised if loading the OIDC public key fails.
+    """
 
     pass
 
 
 class OIDCLoginService(OAuthService):
-    """ Defines a generic service for all OpenID-connect compatible login services. """
+    """
+    Defines a generic service for all OpenID-connect compatible login services.
+    """
 
     def __init__(self, config, key_name, client=None):
         super(OIDCLoginService, self).__init__(config, key_name)
@@ -84,11 +90,12 @@ class OIDCLoginService(OAuthService):
         return self._get_endpoint("userinfo_endpoint")
 
     def _get_endpoint(self, endpoint_key, **kwargs):
-        """ Returns the OIDC endpoint with the given key found in the OIDC discovery
-        document, with the given kwargs added as query parameters. Additionally,
-        any defined parameters found in the OIDC configuration block are also
-        added.
-    """
+        """
+        Returns the OIDC endpoint with the given key found in the OIDC discovery document, with the
+        given kwargs added as query parameters.
+
+        Additionally, any defined parameters found in the OIDC configuration block are also added.
+        """
         endpoint = self._oidc_config().get(endpoint_key, "")
         if not endpoint:
             return None
@@ -232,9 +239,12 @@ class OIDCLoginService(OAuthService):
             return {}
 
     def _load_oidc_config_via_discovery(self, is_debugging):
-        """ Attempts to load the OIDC config via the OIDC discovery mechanism. If is_debugging is True,
-        non-secure connections are alllowed. Raises an DiscoveryFailureException on failure.
-    """
+        """
+        Attempts to load the OIDC config via the OIDC discovery mechanism.
+
+        If is_debugging is True, non-secure connections are alllowed. Raises an
+        DiscoveryFailureException on failure.
+        """
         oidc_server = self.config["OIDC_SERVER"]
         if not oidc_server.startswith("https://") and not is_debugging:
             raise DiscoveryFailureException("OIDC server must be accessed over SSL")
@@ -254,10 +264,12 @@ class OIDCLoginService(OAuthService):
             raise DiscoveryFailureException("Could not parse OIDC discovery information")
 
     def decode_user_jwt(self, token):
-        """ Decodes the given JWT under the given provider and returns it. Raises an InvalidTokenError
-        exception on an invalid token or a PublicKeyLoadException if the public key could not be
-        loaded for decoding.
-    """
+        """
+        Decodes the given JWT under the given provider and returns it.
+
+        Raises an InvalidTokenError exception on an invalid token or a PublicKeyLoadException if the
+        public key could not be loaded for decoding.
+        """
         # Find the key to use.
         headers = jwt.get_unverified_header(token)
         kid = headers.get("kid", None)
@@ -322,8 +334,11 @@ class OIDCLoginService(OAuthService):
                 raise ite
 
     def _get_public_key(self, kid, force_refresh=False):
-        """ Retrieves the public key for this handler with the given kid. Raises a
-        PublicKeyLoadException on failure. """
+        """
+        Retrieves the public key for this handler with the given kid.
+
+        Raises a PublicKeyLoadException on failure.
+        """
 
         # If force_refresh is true, we expire all the items in the cache by setting the time to
         # the current time + the expiration TTL.
@@ -342,9 +357,11 @@ class _PublicKeyCache(TTLCache):
         self._login_service = login_service
 
     def __missing__(self, kid):
-        """ Loads the public key for this handler from the OIDC service. Raises PublicKeyLoadException
-        on failure.
-    """
+        """
+        Loads the public key for this handler from the OIDC service.
+
+        Raises PublicKeyLoadException on failure.
+        """
         keys_url = self._login_service._oidc_config()["jwks_uri"]
 
         # Load the keys.

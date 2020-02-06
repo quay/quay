@@ -7,7 +7,9 @@ class GoogleLoginValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the Google Login client ID and secret. """
+        """
+        Validates the Google Login client ID and secret.
+        """
         config = validator_context.config
         client = validator_context.http_client
         url_scheme_and_hostname = validator_context.url_scheme_and_hostname

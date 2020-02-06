@@ -6,17 +6,18 @@ from concurrent.futures import Executor, Future, CancelledError
 
 
 class AsyncExecutorWrapper(object):
-    """ This class will wrap a syncronous library transparently in a way which
-      will move all calls off to an asynchronous Executor, and will change all
-      returned values to be Future objects.
-  """
+    """
+    This class will wrap a syncronous library transparently in a way which will move all calls off
+    to an asynchronous Executor, and will change all returned values to be Future objects.
+    """
 
     SYNC_FLAG_FIELD = "__AsyncExecutorWrapper__sync__"
 
     def __init__(self, delegate, executor):
-        """ Wrap the specified synchronous delegate instance, and submit() all
-        method calls to the specified Executor instance.
-    """
+        """
+        Wrap the specified synchronous delegate instance, and submit() all method calls to the
+        specified Executor instance.
+        """
         self._delegate = delegate
         self._executor = executor
 
@@ -48,9 +49,10 @@ class AsyncExecutorWrapper(object):
 
     @classmethod
     def sync(cls, f):
-        """ Annotate the given method to flag it as synchronous so that AsyncExecutorWrapper
-        will return the result immediately without submitting it to the executor.
-    """
+        """
+        Annotate the given method to flag it as synchronous so that AsyncExecutorWrapper will return
+        the result immediately without submitting it to the executor.
+        """
         setattr(f, cls.SYNC_FLAG_FIELD, True)
         return f
 
@@ -61,8 +63,9 @@ class NullExecutorCancelled(CancelledError):
 
 
 class NullExecutor(Executor):
-    """ Executor instance which always returns a Future completed with a
-      CancelledError exception. """
+    """
+    Executor instance which always returns a Future completed with a CancelledError exception.
+    """
 
     def submit(self, _, *args, **kwargs):
         always_fail = Future()

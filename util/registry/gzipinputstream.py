@@ -10,20 +10,20 @@ WINDOW_BUFFER_SIZE = 16 + zlib.MAX_WBITS
 
 class GzipInputStream(object):
     """
-  Simple class that allow streaming reads from GZip files.
+    Simple class that allow streaming reads from GZip files.
 
-  Python 2.x gzip.GZipFile relies on .seek() and .tell(), so it
-  doesn't support this (@see: http://bo4.me/YKWSsL).
+    Python 2.x gzip.GZipFile relies on .seek() and .tell(), so it
+    doesn't support this (@see: http://bo4.me/YKWSsL).
 
-  Adapted from: https://gist.github.com/beaufour/4205533
-  """
+    Adapted from: https://gist.github.com/beaufour/4205533
+    """
 
     def __init__(self, fileobj):
         """
-    Initialize with the given file-like object.
+        Initialize with the given file-like object.
 
-    @param fileobj: file-like object,
-    """
+        @param fileobj: file-like object,
+        """
         self._file = fileobj
         self._zip = zlib.decompressobj(WINDOW_BUFFER_SIZE)
         self._offset = 0  # position in unzipped stream
@@ -31,10 +31,10 @@ class GzipInputStream(object):
 
     def __fill(self, num_bytes):
         """
-    Fill the internal buffer with 'num_bytes' of data.
+        Fill the internal buffer with 'num_bytes' of data.
 
-    @param num_bytes: int, number of bytes to read in (0 = everything)
-    """
+        @param num_bytes: int, number of bytes to read in (0 = everything)
+        """
 
         if not self._zip:
             return

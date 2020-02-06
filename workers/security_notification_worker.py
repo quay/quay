@@ -26,10 +26,13 @@ class SecurityNotificationWorker(QueueWorker):
         self.perform_notification_work(data)
 
     def perform_notification_work(self, data, layer_limit=_LAYER_LIMIT):
-        """ Performs the work for handling a security notification as referenced by the given data
-        object. Returns True on successful handling, False on non-retryable failure and raises
-        a JobException on retryable failure.
-    """
+        """
+        Performs the work for handling a security notification as referenced by the given data
+        object.
+
+        Returns True on successful handling, False on non-retryable failure and raises a
+        JobException on retryable failure.
+        """
         secscan_api = secscan_model.legacy_api_handler
 
         notification_name = data["Name"]

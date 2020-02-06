@@ -47,25 +47,27 @@ def _paginate_list(stripe_klass, num_days, **incoming_kwargs):
 
 
 def list_charges(num_days):
-    """ List all charges that have occurred in the past specified number of days.
-  """
+    """
+    List all charges that have occurred in the past specified number of days.
+    """
 
     for charge in _paginate_list(stripe.Charge, num_days, expand=["data.invoice"]):
         yield charge
 
 
 def list_refunds(num_days):
-    """ List all refunds that have occurred in the past specified number of days.
-  """
+    """
+    List all refunds that have occurred in the past specified number of days.
+    """
     expand = ["data.charge", "data.charge.invoice"]
     for refund in _paginate_list(stripe.Refund, num_days, expand=expand):
         yield refund
 
 
 def format_refund(refund):
-    """ Generator which will return one or more line items corresponding to the
-      specified refund.
-  """
+    """
+    Generator which will return one or more line items corresponding to the specified refund.
+    """
     refund_period_start = None
     refund_period_end = None
     invoice_iterable = expand_invoice(refund.charge.invoice, refund.charge.amount)
@@ -115,9 +117,10 @@ def expand_invoice(invoice, total_amount):
 
 
 def format_charge(charge):
-    """ Generator which will return one or more line items corresponding to the
-      line items for this charge.
-      """
+    """
+    Generator which will return one or more line items corresponding to the line items for this
+    charge.
+    """
     ch_status = "Paid"
     if charge.failure_code is not None:
         ch_status = "Failed"
@@ -228,9 +231,8 @@ def format_charge(charge):
 
 class _UnicodeWriter(object):
     """
-  A CSV writer which will write rows to CSV file "f",
-  which is encoded in the given encoding.
-  """
+    A CSV writer which will write rows to CSV file "f", which is encoded in the given encoding.
+    """
 
     def __init__(self, f, dialect=csv.excel, encoding="utf-8", **kwds):
         # Redirect output to a queue
@@ -259,9 +261,11 @@ class _UnicodeWriter(object):
 
 
 def _merge_row_streams(*row_generators):
-    """ Descending merge sort of multiple row streams in the form of (tx_date, [row data]).
-      Works recursively on an arbitrary number of row streams.
-  """
+    """
+    Descending merge sort of multiple row streams in the form of (tx_date, [row data]).
+
+    Works recursively on an arbitrary number of row streams.
+    """
     if len(row_generators) == 1:
         for only_candidate in row_generators[0]:
             yield only_candidate

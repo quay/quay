@@ -12,17 +12,24 @@ logger = logging.getLogger(__name__)
 
 
 class JobException(Exception):
-    """ A job exception is an exception that is caused by something being malformed in the job. When
-      a worker raises this exception the job will be terminated and the retry will not be returned
-      to the queue. """
+    """
+    A job exception is an exception that is caused by something being malformed in the job.
+
+    When a worker raises this exception the job will be terminated and the retry will not be
+    returned to the queue.
+    """
 
     pass
 
 
 class WorkerUnhealthyException(Exception):
-    """ When this exception is raised, the worker is no longer healthy and will not accept any more
-      work. When this is raised while processing a queue item, the item should be returned to the
-      queue along with another retry. """
+    """
+    When this exception is raised, the worker is no longer healthy and will not accept any more
+    work.
+
+    When this is raised while processing a queue item, the item should be returned to the queue
+    along with another retry.
+    """
 
     pass
 
@@ -56,15 +63,20 @@ class QueueWorker(Worker):
         self.add_operation(self.run_watchdog, self._watchdog_period_seconds)
 
     def process_queue_item(self, job_details):
-        """ Processes the work for the given job. If the job fails and should be retried,
-        this method should raise a WorkerUnhealthyException. If the job should be marked
-        as permanently failed, it should raise a JobException. Otherwise, a successful return
-        of this method will remove the job from the queue as completed.
-    """
+        """
+        Processes the work for the given job.
+
+        If the job fails and should be retried, this method should raise a WorkerUnhealthyException.
+        If the job should be marked as permanently failed, it should raise a JobException.
+        Otherwise, a successful return of this method will remove the job from the queue as
+        completed.
+        """
         raise NotImplementedError("Workers must implement run.")
 
     def watchdog(self):
-        """ Function that gets run once every watchdog_period_seconds. """
+        """
+        Function that gets run once every watchdog_period_seconds.
+        """
         pass
 
     def extend_processing(self, seconds_from_now, updated_data=None):

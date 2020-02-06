@@ -49,9 +49,10 @@ ACCESS_SCHEMA = {
 
 
 class DownloadProxy(object):
-    """ Helper class to enable proxying of direct download URLs for storage via the registry's
-      local NGINX.
-  """
+    """
+    Helper class to enable proxying of direct download URLs for storage via the registry's local
+    NGINX.
+    """
 
     def __init__(self, app, instance_keys):
         self.app = app
@@ -60,8 +61,9 @@ class DownloadProxy(object):
         app.add_url_rule("/_storage_proxy_auth", "_storage_proxy_auth", self._validate_proxy_url)
 
     def proxy_download_url(self, download_url):
-        """ Returns a URL to proxy the specified blob download URL.
-    """
+        """
+        Returns a URL to proxy the specified blob download URL.
+        """
         # Parse the URL to be downloaded into its components (host, path, scheme).
         parsed = urlparse(download_url)
 

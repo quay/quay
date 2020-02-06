@@ -8,7 +8,9 @@ from util.registry.tarlayerformat import TarLayerFormat
 
 
 class StreamLayerMerger(TarLayerFormat):
-    """ Class which creates a generator of the combined TAR data for a set of Docker layers. """
+    """
+    Class which creates a generator of the combined TAR data for a set of Docker layers.
+    """
 
     def __init__(self, get_tar_stream_iterator, path_prefix=None, reporter=None):
         super(StreamLayerMerger, self).__init__(

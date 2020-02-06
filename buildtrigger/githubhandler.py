@@ -78,9 +78,11 @@ GITHUB_WEBHOOK_PAYLOAD_SCHEMA = {
 
 
 def get_transformed_webhook_payload(gh_payload, default_branch=None, lookup_user=None):
-    """ Returns the GitHub webhook JSON payload transformed into our own payload
-      format. If the gh_payload is not valid, returns None.
-  """
+    """
+    Returns the GitHub webhook JSON payload transformed into our own payload format.
+
+    If the gh_payload is not valid, returns None.
+    """
     try:
         validate(gh_payload, GITHUB_WEBHOOK_PAYLOAD_SCHEMA)
     except Exception as exc:
@@ -149,11 +151,13 @@ def _catch_ssl_errors(func):
 
 class GithubBuildTrigger(BuildTriggerHandler):
     """
-  BuildTrigger for GitHub that uses the archive API and buildpacks.
-  """
+    BuildTrigger for GitHub that uses the archive API and buildpacks.
+    """
 
     def _get_client(self):
-        """ Returns an authenticated client for talking to the GitHub API. """
+        """
+        Returns an authenticated client for talking to the GitHub API.
+        """
         return Github(
             self.auth_token,
             base_url=github_trigger.api_endpoint(),

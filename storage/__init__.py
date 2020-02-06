@@ -28,8 +28,10 @@ STORAGE_DRIVER_CLASSES = {
 
 
 def get_storage_driver(location, chunk_cleanup_queue, config_provider, ip_resolver, storage_params):
-    """ Returns a storage driver class for the given storage configuration
-      (a pair of string name and a dict of parameters). """
+    """
+    Returns a storage driver class for the given storage configuration (a pair of string name and a
+    dict of parameters).
+    """
     driver = storage_params[0]
     parameters = storage_params[1]
     driver_class = STORAGE_DRIVER_CLASSES.get(driver, FakeStorage)

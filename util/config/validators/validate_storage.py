@@ -7,7 +7,9 @@ class StorageValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates registry storage. """
+        """
+        Validates registry storage.
+        """
         config = validator_context.config
         client = validator_context.http_client
         ip_resolver = validator_context.ip_resolver

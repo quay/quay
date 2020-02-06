@@ -27,13 +27,17 @@ logger = logging.getLogger(__name__)
 
 
 class InvalidMetadataException(Exception):
-    """ Exception raised when the upstream API metadata that doesn't parse correctly. """
+    """
+    Exception raised when the upstream API metadata that doesn't parse correctly.
+    """
 
     pass
 
 
 class Non200ResponseException(Exception):
-    """ Exception raised when the upstream API returns a non-200 HTTP status code. """
+    """
+    Exception raised when the upstream API returns a non-200 HTTP status code.
+    """
 
     def __init__(self, response):
         super(Non200ResponseException, self).__init__()
@@ -41,7 +45,9 @@ class Non200ResponseException(Exception):
 
 
 class TUFMetadataAPI(object):
-    """ Helper class for talking to the TUF Metadata service (Apostille). """
+    """
+    Helper class for talking to the TUF Metadata service (Apostille).
+    """
 
     def __init__(self, app, config, client=None):
         feature_enabled = config.get("FEATURE_SIGNING", False)
@@ -56,22 +62,24 @@ class TUFMetadataAPI(object):
 
 @add_metaclass(ABCMeta)
 class TUFMetadataAPIInterface(object):
-    """ Helper class for talking to the TUF Metadata service (Apostille). """
+    """
+    Helper class for talking to the TUF Metadata service (Apostille).
+    """
 
     @abstractmethod
     def get_default_tags_with_expiration(self, namespace, repository, targets_file=None):
         """
-    Gets the tag -> sha mappings for a repo, as well as the expiration of the signatures.
-    Does not verify the metadata, this is purely for display purposes.
+        Gets the tag -> sha mappings for a repo, as well as the expiration of the signatures. Does
+        not verify the metadata, this is purely for display purposes.
 
-    Args:
-      namespace: namespace containing the repository
-      repository: the repo to get tags for
-      targets_file: the specific delegation to read from. Default: targets/releases.json
+        Args:
+          namespace: namespace containing the repository
+          repository: the repo to get tags for
+          targets_file: the specific delegation to read from. Default: targets/releases.json
 
-    Returns:
-      targets, expiration or None, None
-    """
+        Returns:
+          targets, expiration or None, None
+        """
         pass
 
     @abstractmethod
@@ -79,37 +87,39 @@ class TUFMetadataAPIInterface(object):
         self, namespace, repository, targets_file=None, targets_map=None
     ):
         """
-    Gets the tag -> sha mappings of all delegations for a repo, as well as the expiration of the signatures.
-    Does not verify the metadata, this is purely for display purposes.
-    
-    Args:
-      namespace: namespace containing the repository
-      repository: the repo to get tags for
-      targets_file: the specific target or delegation to read from. Default: targets.json
-    
-    Returns:
-      targets
-    """
+        Gets the tag -> sha mappings of all delegations for a repo, as well as the expiration of the
+        signatures. Does not verify the metadata, this is purely for display purposes.
+
+        Args:
+          namespace: namespace containing the repository
+          repository: the repo to get tags for
+          targets_file: the specific target or delegation to read from. Default: targets.json
+
+        Returns:
+          targets
+        """
         pass
 
     @abstractmethod
     def delete_metadata(self, namespace, repository):
         """
-    Deletes the TUF metadata for a repo
+        Deletes the TUF metadata for a repo.
 
-    Args:
-      namespace: namespace containing the repository
-      repository: the repo to delete metadata for
+        Args:
+          namespace: namespace containing the repository
+          repository: the repo to delete metadata for
 
-    Returns:
-       True if successful, False otherwise
-    """
+        Returns:
+           True if successful, False otherwise
+        """
         pass
 
 
 @nooper
 class NoopTUFMetadataAPI(TUFMetadataAPIInterface):
-    """ No-op version of the TUF API. """
+    """
+    No-op version of the TUF API.
+    """
 
     pass
 
@@ -124,17 +134,17 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
 
     def get_default_tags_with_expiration(self, namespace, repository, targets_file=None):
         """
-    Gets the tag -> sha mappings for a repo, as well as the expiration of the signatures.
-    Does not verify the metadata, this is purely for display purposes.
+        Gets the tag -> sha mappings for a repo, as well as the expiration of the signatures. Does
+        not verify the metadata, this is purely for display purposes.
 
-    Args:
-      namespace: namespace containing the repository
-      repository: the repo to get tags for
-      targets_file: the specific delegation to read from. Default: targets/releases.json
+        Args:
+          namespace: namespace containing the repository
+          repository: the repo to get tags for
+          targets_file: the specific delegation to read from. Default: targets/releases.json
 
-    Returns:
-      targets, expiration or None, None
-    """
+        Returns:
+          targets, expiration or None, None
+        """
 
         if not targets_file:
             targets_file = "targets/releases.json"
@@ -149,17 +159,17 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
         self, namespace, repository, targets_file=None, targets_map=None
     ):
         """
-    Gets the tag -> sha mappings of all delegations for a repo, as well as the expiration of the signatures.
-    Does not verify the metadata, this is purely for display purposes.
+        Gets the tag -> sha mappings of all delegations for a repo, as well as the expiration of the
+        signatures. Does not verify the metadata, this is purely for display purposes.
 
-    Args:
-      namespace: namespace containing the repository
-      repository: the repo to get tags for
-      targets_file: the specific target or delegation to read from. Default: targets.json
+        Args:
+          namespace: namespace containing the repository
+          repository: the repo to get tags for
+          targets_file: the specific target or delegation to read from. Default: targets.json
 
-    Returns:
-      targets
-    """
+        Returns:
+          targets
+        """
 
         if not targets_file:
             targets_file = "targets.json"
@@ -193,15 +203,15 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
 
     def delete_metadata(self, namespace, repository):
         """
-    Deletes the TUF metadata for a repo
+        Deletes the TUF metadata for a repo.
 
-    Args:
-      namespace: namespace containing the repository
-      repository: the repo to delete metadata for
+        Args:
+          namespace: namespace containing the repository
+          repository: the repo to delete metadata for
 
-    Returns:
-       True if successful, False otherwise
-    """
+        Returns:
+           True if successful, False otherwise
+        """
         gun = self._gun(namespace, repository)
         try:
             self._delete(gun)
@@ -242,7 +252,9 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
         return None
 
     def _parse_signed(self, json_response):
-        """ Attempts to parse the targets from a metadata response """
+        """
+        Attempts to parse the targets from a metadata response.
+        """
         signed = json_response.get("signed")
         if not signed:
             raise InvalidMetadataException(
@@ -251,7 +263,9 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
         return signed
 
     def _auth_header(self, gun, actions):
-        """ Generate a registry auth token for apostille"""
+        """
+        Generate a registry auth token for apostille.
+        """
         access = [{"type": "repository", "name": gun, "actions": actions,}]
         context, subject = build_context_and_subject(
             auth_context=None, tuf_roots={gun: SIGNER_TUF_ROOT}
@@ -279,7 +293,9 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
         )
 
     def _request(self, method, endpoint, path, body, headers, params, timeout):
-        """ Issues an HTTP request to the signing endpoint. """
+        """
+        Issues an HTTP request to the signing endpoint.
+        """
         url = urljoin(endpoint, path)
         logger.debug("%sing signing URL %s", method.upper(), url)
 
@@ -292,8 +308,9 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
         return resp
 
     def _call(self, method, path, params=None, body=None, headers=None):
-        """ Issues an HTTP request to signing service and handles failover for GET requests.
-    """
+        """
+        Issues an HTTP request to signing service and handles failover for GET requests.
+        """
         timeout = self._config.get("TUF_API_TIMEOUT_SECONDS", 1)
         endpoint = self._config["TUF_SERVER"]
 
@@ -314,7 +331,9 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
 
 @failover
 def _failover_read_request(request_fn, endpoint, path, body, headers, params, timeout):
-    """ This function auto-retries read-only requests until they return a 2xx status code. """
+    """
+    This function auto-retries read-only requests until they return a 2xx status code.
+    """
     try:
         return request_fn("GET", endpoint, path, body, headers, params, timeout)
     except (requests.exceptions.RequestException, Non200ResponseException) as ex:

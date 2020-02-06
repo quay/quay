@@ -11,7 +11,9 @@ PREFIX_BLACKLIST = ["ldap", "jwt", "keystone"]
 
 
 class OAuthLoginManager(object):
-    """ Helper class which manages all registered OAuth login services. """
+    """
+    Helper class which manages all registered OAuth login services.
+    """
 
     def __init__(self, config, client=None):
         self.services = []

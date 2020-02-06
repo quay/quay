@@ -8,14 +8,15 @@ logger = logging.getLogger(__name__)
 
 
 class CannotReadUserEventsException(Exception):
-    """ Exception raised if user events cannot be read. """
+    """
+    Exception raised if user events cannot be read.
+    """
 
 
 class UserEventBuilder(object):
     """
-  Defines a helper class for constructing UserEvent and UserEventListener
-  instances.
-  """
+    Defines a helper class for constructing UserEvent and UserEventListener instances.
+    """
 
     def __init__(self, redis_config):
         self._redis_config = redis_config
@@ -56,9 +57,8 @@ class UserEventsBuilderModule(object):
 
 class UserEvent(object):
     """
-  Defines a helper class for publishing to realtime user events
-  as backed by Redis.
-  """
+    Defines a helper class for publishing to realtime user events as backed by Redis.
+    """
 
     def __init__(self, redis_config, username):
         self._redis = redis.StrictRedis(socket_connect_timeout=2, socket_timeout=2, **redis_config)
@@ -75,9 +75,10 @@ class UserEvent(object):
 
     def publish_event_data(self, event_id, data_obj):
         """
-    Publishes the serialized form of the data object for the given event. Note that this occurs
-    in a thread to prevent blocking.
-    """
+        Publishes the serialized form of the data object for the given event.
+
+        Note that this occurs in a thread to prevent blocking.
+        """
 
         def conduct():
             try:
@@ -92,9 +93,8 @@ class UserEvent(object):
 
 class UserEventListener(object):
     """
-  Defines a helper class for subscribing to realtime user events as
-  backed by Redis.
-  """
+    Defines a helper class for subscribing to realtime user events as backed by Redis.
+    """
 
     def __init__(self, redis_config, username, events=None):
         events = events or set([])
@@ -117,10 +117,10 @@ class UserEventListener(object):
 
     def event_stream(self):
         """
-    Starts listening for events on the channel(s), yielding for each event
-    found. Will yield a "pulse" event (a custom event we've decided) as a heartbeat
-    every few seconds.
-    """
+        Starts listening for events on the channel(s), yielding for each event found.
+
+        Will yield a "pulse" event (a custom event we've decided) as a heartbeat every few seconds.
+        """
         while True:
             pubsub = self._pubsub
             if pubsub is None:
@@ -148,9 +148,10 @@ class UserEventListener(object):
 
     def stop(self):
         """
-    Unsubscribes from the channel(s). Should be called once the connection
-    has terminated.
-    """
+        Unsubscribes from the channel(s).
+
+        Should be called once the connection has terminated.
+        """
         if self._pubsub is not None:
             self._pubsub.unsubscribe()
             self._pubsub.close()

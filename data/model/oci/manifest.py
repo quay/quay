@@ -34,8 +34,9 @@ CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "l
 
 
 class CreateManifestException(Exception):
-    """ Exception raised when creating a manifest fails and explicit exception
-      raising is requested. """
+    """
+    Exception raised when creating a manifest fails and explicit exception raising is requested.
+    """
 
 
 def lookup_manifest(
@@ -45,11 +46,13 @@ def lookup_manifest(
     require_available=False,
     temp_tag_expiration_sec=TEMP_TAG_EXPIRATION_SEC,
 ):
-    """ Returns the manifest with the specified digest under the specified repository
-      or None if none. If allow_dead is True, then manifests referenced by only
-      dead tags will also be returned. If require_available is True, the manifest
-      will be marked with a temporary tag to ensure it remains available.
-  """
+    """
+    Returns the manifest with the specified digest under the specified repository or None if none.
+
+    If allow_dead is True, then manifests referenced by only dead tags will also be returned. If
+    require_available is True, the manifest will be marked with a temporary tag to ensure it remains
+    available.
+    """
     if not require_available:
         return _lookup_manifest(repository_id, manifest_digest, allow_dead=allow_dead)
 
@@ -103,16 +106,17 @@ def get_or_create_manifest(
     raise_on_error=False,
     retriever=None,
 ):
-    """ Returns a CreatedManifest for the manifest in the specified repository with the matching
-      digest (if it already exists) or, if not yet created, creates and returns the manifest.
+    """
+    Returns a CreatedManifest for the manifest in the specified repository with the matching digest
+    (if it already exists) or, if not yet created, creates and returns the manifest.
 
-      Returns None if there was an error creating the manifest, unless raise_on_error is specified,
-      in which case a CreateManifestException exception will be raised instead to provide more
-      context to the error.
+    Returns None if there was an error creating the manifest, unless raise_on_error is specified,
+    in which case a CreateManifestException exception will be raised instead to provide more
+    context to the error.
 
-      Note that *all* blobs referenced by the manifest must exist already in the repository or this
-      method will fail with a None.
-  """
+    Note that *all* blobs referenced by the manifest must exist already in the repository or this
+    method will fail with a None.
+    """
     existing = lookup_manifest(
         repository_id,
         manifest_interface_instance.digest,

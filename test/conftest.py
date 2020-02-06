@@ -5,17 +5,17 @@ import pytest
 
 def pytest_collection_modifyitems(config, items):
     """
-  This adds a pytest marker that consistently shards all collected tests.
+    This adds a pytest marker that consistently shards all collected tests.
 
-  Use it like the following:
-  $ py.test -m shard_1_of_3
-  $ py.test -m shard_2_of_3
-  $ py.test -m shard_3_of_3
+    Use it like the following:
+    $ py.test -m shard_1_of_3
+    $ py.test -m shard_2_of_3
+    $ py.test -m shard_3_of_3
 
-  This code was originally adopted from the MIT-licensed ansible/molecule@9e7b79b:
-  Copyright (c) 2015-2018 Cisco Systems, Inc.
-  Copyright (c) 2018 Red Hat, Inc.
-  """
+    This code was originally adopted from the MIT-licensed ansible/molecule@9e7b79b:
+    Copyright (c) 2015-2018 Cisco Systems, Inc.
+    Copyright (c) 2018 Red Hat, Inc.
+    """
     mark_opt = config.getoption("-m")
     if not mark_opt.startswith("shard_"):
         return

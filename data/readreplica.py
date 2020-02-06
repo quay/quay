@@ -8,15 +8,18 @@ ReadOnlyConfig = namedtuple("ReadOnlyConfig", ["is_readonly", "read_replicas"])
 
 
 class ReadOnlyModeException(Exception):
-    """ Exception raised if a write operation was attempted when in read only mode.
-  """
+    """
+    Exception raised if a write operation was attempted when in read only mode.
+    """
 
 
 class AutomaticFailoverWrapper(object):
-    """ Class which wraps a peewee database driver and (optionally) a second driver.
-      When executing SQL, if an OperationalError occurs, if a second driver is given,
-      the query is attempted again on the fallback DB. Otherwise, the exception is raised.
-  """
+    """
+    Class which wraps a peewee database driver and (optionally) a second driver.
+
+    When executing SQL, if an OperationalError occurs, if a second driver is given, the query is
+    attempted again on the fallback DB. Otherwise, the exception is raised.
+    """
 
     def __init__(self, primary_db, fallback_db=None):
         self._primary_db = primary_db
@@ -45,20 +48,20 @@ class AutomaticFailoverWrapper(object):
 
 
 class ReadReplicaSupportedModel(Model):
-    """ Base model for peewee data models that support using a read replica for SELECT
-      requests not under transactions, and automatic failover to the master if the
-      read replica fails.
+    """
+    Base model for peewee data models that support using a read replica for SELECT requests not
+    under transactions, and automatic failover to the master if the read replica fails.
 
-      Read-only queries are initially attempted on one of the read replica databases
-      being used; if an OperationalError occurs when attempting to invoke the query,
-      then the failure is logged and the query is retried on the database master.
+    Read-only queries are initially attempted on one of the read replica databases
+    being used; if an OperationalError occurs when attempting to invoke the query,
+    then the failure is logged and the query is retried on the database master.
 
-      Queries that are non-SELECTs (or under transactions) are always tried on the
-      master.
+    Queries that are non-SELECTs (or under transactions) are always tried on the
+    master.
 
-      If the system is configured into read only mode, then all non-read-only queries
-      will raise a ReadOnlyModeException.
-  """
+    If the system is configured into read only mode, then all non-read-only queries
+    will raise a ReadOnlyModeException.
+    """
 
     @classmethod
     def _read_only_config(cls):
@@ -77,9 +80,11 @@ class ReadReplicaSupportedModel(Model):
 
     @classmethod
     def _select_database(cls):
-        """ Selects a read replica database if we're configured to support read replicas.
+        """
+        Selects a read replica database if we're configured to support read replicas.
+
         Otherwise, selects the master database.
-    """
+        """
         # Select the master DB if read replica support is not enabled.
         read_only_config = cls._read_only_config()
         if not read_only_config.read_replicas:

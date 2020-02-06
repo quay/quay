@@ -38,7 +38,9 @@ def get_keystone_users(
 
 
 class KeystoneV2Users(FederatedUsers):
-    """ Delegates authentication to OpenStack Keystone V2. """
+    """
+    Delegates authentication to OpenStack Keystone V2.
+    """
 
     def __init__(
         self,
@@ -145,7 +147,9 @@ class KeystoneV2Users(FederatedUsers):
 
 
 class KeystoneV3Users(FederatedUsers):
-    """ Delegates authentication to OpenStack Keystone V3. """
+    """
+    Delegates authentication to OpenStack Keystone V3.
+    """
 
     def __init__(
         self,

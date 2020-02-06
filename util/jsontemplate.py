@@ -8,11 +8,15 @@ INLINE_PATH_PATTERN = r"\$\{([^}]*)\}"
 
 
 class JSONTemplateParseException(Exception):
-    """ Exception raised if a JSON template could not be parsed. """
+    """
+    Exception raised if a JSON template could not be parsed.
+    """
 
 
 class JSONTemplate(object):
-    """ Represents a parsed template for producing JSON. """
+    """
+    Represents a parsed template for producing JSON.
+    """
 
     def __init__(self, template_string):
         try:

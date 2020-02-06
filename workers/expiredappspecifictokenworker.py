@@ -27,8 +27,9 @@ class ExpiredAppSpecificTokenWorker(Worker):
         self.add_operation(self._gc_expired_tokens, POLL_PERIOD_SECONDS)
 
     def _gc_expired_tokens(self):
-        """ Garbage collects any expired app specific tokens outside of the configured
-        window. """
+        """
+        Garbage collects any expired app specific tokens outside of the configured window.
+        """
         logger.debug(
             "Garbage collecting expired app specific tokens with window: %s", self.expiration_window
         )

@@ -107,7 +107,9 @@ class TestServerQuayDB(BaseTestServer):
 
     @pytest.mark.xfail
     def test_push_package_already_exists_force(self, db_with_data1, package_b64blob, client):
-        """ No force push implemented """
+        """
+        No force push implemented.
+        """
         BaseTestServer.test_push_package_already_exists_force(
             self, db_with_data1, package_b64blob, client
         )
@@ -126,7 +128,9 @@ class TestQuayModels(CnrTestModels):
 
     @pytest.mark.xfail
     def test_channel_delete_releases(self, db_with_data1):
-        """ Can't remove a release from the channel, only delete the channel entirely """
+        """
+        Can't remove a release from the channel, only delete the channel entirely.
+        """
         CnrTestModels.test_channel_delete_releases(self, db_with_data1)
 
     @pytest.mark.xfail

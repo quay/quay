@@ -20,92 +20,116 @@ logger = logging.getLogger(__name__)
 @add_metaclass(ABCMeta)
 class AuthContext(object):
     """
-  Interface that represents the current context of authentication.
-  """
+    Interface that represents the current context of authentication.
+    """
 
     @property
     @abstractmethod
     def entity_kind(self):
-        """ Returns the kind of the entity in this auth context. """
+        """
+        Returns the kind of the entity in this auth context.
+        """
         pass
 
     @property
     @abstractmethod
     def is_anonymous(self):
-        """ Returns true if this is an anonymous context. """
+        """
+        Returns true if this is an anonymous context.
+        """
         pass
 
     @property
     @abstractmethod
     def authed_oauth_token(self):
-        """ Returns the authenticated OAuth token, if any. """
+        """
+        Returns the authenticated OAuth token, if any.
+        """
         pass
 
     @property
     @abstractmethod
     def authed_user(self):
-        """ Returns the authenticated user, whether directly, or via an OAuth or access token. Note that
-        this property will also return robot accounts.
-    """
+        """
+        Returns the authenticated user, whether directly, or via an OAuth or access token.
+
+        Note that this property will also return robot accounts.
+        """
         pass
 
     @property
     @abstractmethod
     def has_nonrobot_user(self):
-        """ Returns whether a user (not a robot) was authenticated successfully. """
+        """
+        Returns whether a user (not a robot) was authenticated successfully.
+        """
         pass
 
     @property
     @abstractmethod
     def identity(self):
-        """ Returns the identity for the auth context. """
+        """
+        Returns the identity for the auth context.
+        """
         pass
 
     @property
     @abstractmethod
     def description(self):
-        """ Returns a human-readable and *public* description of the current auth context. """
+        """
+        Returns a human-readable and *public* description of the current auth context.
+        """
         pass
 
     @property
     @abstractmethod
     def credential_username(self):
-        """ Returns the username to create credentials for this context's entity, if any. """
+        """
+        Returns the username to create credentials for this context's entity, if any.
+        """
         pass
 
     @abstractmethod
     def analytics_id_and_public_metadata(self):
-        """ Returns the analytics ID and public log metadata for this auth context. """
+        """
+        Returns the analytics ID and public log metadata for this auth context.
+        """
         pass
 
     @abstractmethod
     def apply_to_request_context(self):
-        """ Applies this auth result to the auth context and Flask-Principal. """
+        """
+        Applies this auth result to the auth context and Flask-Principal.
+        """
         pass
 
     @abstractmethod
     def to_signed_dict(self):
-        """ Serializes the auth context into a dictionary suitable for inclusion in a JWT or other
-        form of signed serialization.
-    """
+        """
+        Serializes the auth context into a dictionary suitable for inclusion in a JWT or other form
+        of signed serialization.
+        """
         pass
 
     @property
     @abstractmethod
     def unique_key(self):
-        """ Returns a key that is unique to this auth context type and its data. For example, an
-        instance of the auth context type for the user might be a string of the form
-        `user-{user-uuid}`. Callers should treat this key as opaque and not rely on the contents
-        for anything besides uniqueness. This is typically used by callers when they'd like to
-        check cache but not hit the database to get a fully validated auth context.
-    """
+        """
+        Returns a key that is unique to this auth context type and its data.
+
+        For example, an instance of the auth context type for the user might be a string of the form
+        `user-{user-uuid}`. Callers should treat this key as opaque and not rely on the contents for
+        anything besides uniqueness. This is typically used by callers when they'd like to check
+        cache but not hit the database to get a fully validated auth context.
+        """
         pass
 
 
 class ValidatedAuthContext(AuthContext):
-    """ ValidatedAuthContext represents the loaded, authenticated and validated auth information
-      for the current request context.
-  """
+    """
+    ValidatedAuthContext represents the loaded, authenticated and validated auth information for the
+    current request context.
+    """
 
     def __init__(
         self,
@@ -133,7 +157,9 @@ class ValidatedAuthContext(AuthContext):
 
     @property
     def entity_kind(self):
-        """ Returns the kind of the entity in this auth context. """
+        """
+        Returns the kind of the entity in this auth context.
+        """
         for kind in ContextEntityKind:
             if hasattr(self, kind.value) and getattr(self, kind.value):
                 return kind
@@ -142,9 +168,11 @@ class ValidatedAuthContext(AuthContext):
 
     @property
     def authed_user(self):
-        """ Returns the authenticated user, whether directly, or via an OAuth token. Note that this
-        will also return robot accounts.
-    """
+        """
+        Returns the authenticated user, whether directly, or via an OAuth token.
+
+        Note that this will also return robot accounts.
+        """
         authed_user = self._authed_user()
         if authed_user is not None and not authed_user.enabled:
             logger.warning("Attempt to reference a disabled user/robot: %s", authed_user.username)
@@ -170,17 +198,23 @@ class ValidatedAuthContext(AuthContext):
 
     @property
     def is_anonymous(self):
-        """ Returns true if this is an anonymous context. """
+        """
+        Returns true if this is an anonymous context.
+        """
         return not self.authed_user and not self.token and not self.signed_data
 
     @property
     def has_nonrobot_user(self):
-        """ Returns whether a user (not a robot) was authenticated successfully. """
+        """
+        Returns whether a user (not a robot) was authenticated successfully.
+        """
         return bool(self.authed_user and not self.robot)
 
     @property
     def identity(self):
-        """ Returns the identity for the auth context. """
+        """
+        Returns the identity for the auth context.
+        """
         if self.oauthtoken:
             scope_set = scopes_from_scope_string(self.oauthtoken.scope)
             return QuayDeferredPermissionUser.for_user(self.oauthtoken.authorized_user, scope_set)
@@ -200,7 +234,9 @@ class ValidatedAuthContext(AuthContext):
 
     @property
     def entity_reference(self):
-        """ Returns the DB object reference for this context's entity. """
+        """
+        Returns the DB object reference for this context's entity.
+        """
         if self.entity_kind == ContextEntityKind.anonymous:
             return None
 
@@ -208,23 +244,31 @@ class ValidatedAuthContext(AuthContext):
 
     @property
     def description(self):
-        """ Returns a human-readable and *public* description of the current auth context. """
+        """
+        Returns a human-readable and *public* description of the current auth context.
+        """
         handler = CONTEXT_ENTITY_HANDLERS[self.entity_kind]()
         return handler.description(self.entity_reference)
 
     @property
     def credential_username(self):
-        """ Returns the username to create credentials for this context's entity, if any. """
+        """
+        Returns the username to create credentials for this context's entity, if any.
+        """
         handler = CONTEXT_ENTITY_HANDLERS[self.entity_kind]()
         return handler.credential_username(self.entity_reference)
 
     def analytics_id_and_public_metadata(self):
-        """ Returns the analytics ID and public log metadata for this auth context. """
+        """
+        Returns the analytics ID and public log metadata for this auth context.
+        """
         handler = CONTEXT_ENTITY_HANDLERS[self.entity_kind]()
         return handler.analytics_id_and_public_metadata(self.entity_reference)
 
     def apply_to_request_context(self):
-        """ Applies this auth result to the auth context and Flask-Principal. """
+        """
+        Applies this auth result to the auth context and Flask-Principal.
+        """
         # Save to the request context.
         set_authenticated_context(self)
 
@@ -238,9 +282,10 @@ class ValidatedAuthContext(AuthContext):
         return "%s-%s" % (signed_dict["entity_kind"], signed_dict.get("entity_reference", "(anon)"))
 
     def to_signed_dict(self):
-        """ Serializes the auth context into a dictionary suitable for inclusion in a JWT or other
-        form of signed serialization.
-    """
+        """
+        Serializes the auth context into a dictionary suitable for inclusion in a JWT or other form
+        of signed serialization.
+        """
         dict_data = {
             "version": 2,
             "entity_kind": self.entity_kind.value,
@@ -288,11 +333,14 @@ class ValidatedAuthContext(AuthContext):
 
 
 class SignedAuthContext(AuthContext):
-    """ SignedAuthContext represents an auth context loaded from a signed token of some kind,
-      such as a JWT. Unlike ValidatedAuthContext, SignedAuthContext operates lazily, only loading
-      the actual {user, robot, token, etc} when requested. This allows registry operations that
-      only need to check if *some* entity is present to do so, without hitting the database.
-  """
+    """
+    SignedAuthContext represents an auth context loaded from a signed token of some kind, such as a
+    JWT.
+
+    Unlike ValidatedAuthContext, SignedAuthContext operates lazily, only loading the actual {user,
+    robot, token, etc} when requested. This allows registry operations that only need to check if
+    *some* entity is present to do so, without hitting the database.
+    """
 
     def __init__(self, kind, signed_data, v1_dict_format):
         self.kind = kind
@@ -325,9 +373,10 @@ class SignedAuthContext(AuthContext):
 
     @lru_cache(maxsize=1)
     def _get_validated(self):
-        """ Returns a ValidatedAuthContext for this signed context, resolving all the necessary
+        """
+        Returns a ValidatedAuthContext for this signed context, resolving all the necessary
         references.
-    """
+        """
         if not self.v1_dict_format:
             if self.kind == ContextEntityKind.anonymous:
                 return ValidatedAuthContext()
@@ -390,19 +439,25 @@ class SignedAuthContext(AuthContext):
 
     @property
     def entity_kind(self):
-        """ Returns the kind of the entity in this auth context. """
+        """
+        Returns the kind of the entity in this auth context.
+        """
         return self.kind
 
     @property
     def is_anonymous(self):
-        """ Returns true if this is an anonymous context. """
+        """
+        Returns true if this is an anonymous context.
+        """
         return self.kind == ContextEntityKind.anonymous
 
     @property
     def authed_user(self):
-        """ Returns the authenticated user, whether directly, or via an OAuth or access token. Note that
-        this property will also return robot accounts.
-    """
+        """
+        Returns the authenticated user, whether directly, or via an OAuth or access token.
+
+        Note that this property will also return robot accounts.
+        """
         if self.kind == ContextEntityKind.anonymous:
             return None
 
@@ -417,7 +472,9 @@ class SignedAuthContext(AuthContext):
 
     @property
     def has_nonrobot_user(self):
-        """ Returns whether a user (not a robot) was authenticated successfully. """
+        """
+        Returns whether a user (not a robot) was authenticated successfully.
+        """
         if self.kind == ContextEntityKind.anonymous:
             return False
 
@@ -425,29 +482,40 @@ class SignedAuthContext(AuthContext):
 
     @property
     def identity(self):
-        """ Returns the identity for the auth context. """
+        """
+        Returns the identity for the auth context.
+        """
         return self._get_validated().identity
 
     @property
     def description(self):
-        """ Returns a human-readable and *public* description of the current auth context. """
+        """
+        Returns a human-readable and *public* description of the current auth context.
+        """
         return self._get_validated().description
 
     @property
     def credential_username(self):
-        """ Returns the username to create credentials for this context's entity, if any. """
+        """
+        Returns the username to create credentials for this context's entity, if any.
+        """
         return self._get_validated().credential_username
 
     def analytics_id_and_public_metadata(self):
-        """ Returns the analytics ID and public log metadata for this auth context. """
+        """
+        Returns the analytics ID and public log metadata for this auth context.
+        """
         return self._get_validated().analytics_id_and_public_metadata()
 
     def apply_to_request_context(self):
-        """ Applies this auth result to the auth context and Flask-Principal. """
+        """
+        Applies this auth result to the auth context and Flask-Principal.
+        """
         return self._get_validated().apply_to_request_context()
 
     def to_signed_dict(self):
-        """ Serializes the auth context into a dictionary suitable for inclusion in a JWT or other
-        form of signed serialization.
-    """
+        """
+        Serializes the auth context into a dictionary suitable for inclusion in a JWT or other form
+        of signed serialization.
+        """
         return self.signed_data

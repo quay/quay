@@ -1,4 +1,6 @@
-""" Billing information, subscriptions, and plan information. """
+"""
+Billing information, subscriptions, and plan information.
+"""
 
 import stripe
 
@@ -32,7 +34,9 @@ import json
 
 
 def get_namespace_plan(namespace):
-    """ Returns the plan of the given namespace. """
+    """
+    Returns the plan of the given namespace.
+    """
     namespace_user = model.user.get_namespace_user(namespace)
     if namespace_user is None:
         return None
@@ -54,7 +58,9 @@ def get_namespace_plan(namespace):
 
 
 def lookup_allowed_private_repos(namespace):
-    """ Returns false if the given namespace has used its allotment of private repositories. """
+    """
+    Returns false if the given namespace has used its allotment of private repositories.
+    """
     current_plan = get_namespace_plan(namespace)
     if current_plan is None:
         return False
@@ -185,11 +191,15 @@ def delete_billing_invoice_field(user, field_uuid):
 @resource("/v1/plans/")
 @show_if(features.BILLING)
 class ListPlans(ApiResource):
-    """ Resource for listing the available plans. """
+    """
+    Resource for listing the available plans.
+    """
 
     @nickname("listPlans")
     def get(self):
-        """ List the avaialble plans. """
+        """
+        List the avaialble plans.
+        """
         return {
             "plans": PLANS,
         }
@@ -199,7 +209,9 @@ class ListPlans(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class UserCard(ApiResource):
-    """ Resource for managing a user's credit card. """
+    """
+    Resource for managing a user's credit card.
+    """
 
     schemas = {
         "UserCard": {
@@ -219,7 +231,9 @@ class UserCard(ApiResource):
     @require_user_admin
     @nickname("getUserCard")
     def get(self):
-        """ Get the user's credit card. """
+        """
+        Get the user's credit card.
+        """
         user = get_authenticated_user()
         return get_card(user)
 
@@ -227,7 +241,9 @@ class UserCard(ApiResource):
     @nickname("setUserCard")
     @validate_json_request("UserCard")
     def post(self):
-        """ Update the user's credit card. """
+        """
+        Update the user's credit card.
+        """
         user = get_authenticated_user()
         token = request.get_json()["token"]
         response = set_card(user, token)
@@ -241,7 +257,9 @@ class UserCard(ApiResource):
 @related_user_resource(UserCard)
 @show_if(features.BILLING)
 class OrganizationCard(ApiResource):
-    """ Resource for managing an organization's credit card. """
+    """
+    Resource for managing an organization's credit card.
+    """
 
     schemas = {
         "OrgCard": {
@@ -261,7 +279,9 @@ class OrganizationCard(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrgCard")
     def get(self, orgname):
-        """ Get the organization's credit card. """
+        """
+        Get the organization's credit card.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             organization = model.organization.get_organization(orgname)
@@ -272,7 +292,9 @@ class OrganizationCard(ApiResource):
     @nickname("setOrgCard")
     @validate_json_request("OrgCard")
     def post(self, orgname):
-        """ Update the orgnaization's credit card. """
+        """
+        Update the orgnaization's credit card.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             organization = model.organization.get_organization(orgname)
@@ -288,7 +310,9 @@ class OrganizationCard(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class UserPlan(ApiResource):
-    """ Resource for managing a user's subscription. """
+    """
+    Resource for managing a user's subscription.
+    """
 
     schemas = {
         "UserSubscription": {
@@ -313,7 +337,9 @@ class UserPlan(ApiResource):
     @nickname("updateUserSubscription")
     @validate_json_request("UserSubscription")
     def put(self):
-        """ Create or update the user's subscription. """
+        """
+        Create or update the user's subscription.
+        """
         request_data = request.get_json()
         plan = request_data["plan"]
         token = request_data["token"] if "token" in request_data else None
@@ -323,7 +349,9 @@ class UserPlan(ApiResource):
     @require_user_admin
     @nickname("getUserSubscription")
     def get(self):
-        """ Fetch any existing subscription for the user. """
+        """
+        Fetch any existing subscription for the user.
+        """
         cus = None
         user = get_authenticated_user()
         private_repos = model.user.get_private_repo_count(user.username)
@@ -351,7 +379,9 @@ class UserPlan(ApiResource):
 @related_user_resource(UserPlan)
 @show_if(features.BILLING)
 class OrganizationPlan(ApiResource):
-    """ Resource for managing a org's subscription. """
+    """
+    Resource for managing a org's subscription.
+    """
 
     schemas = {
         "OrgSubscription": {
@@ -376,7 +406,9 @@ class OrganizationPlan(ApiResource):
     @nickname("updateOrgSubscription")
     @validate_json_request("OrgSubscription")
     def put(self, orgname):
-        """ Create or update the org's subscription. """
+        """
+        Create or update the org's subscription.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             request_data = request.get_json()
@@ -390,7 +422,9 @@ class OrganizationPlan(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrgSubscription")
     def get(self, orgname):
-        """ Fetch any existing subscription for the org. """
+        """
+        Fetch any existing subscription for the org.
+        """
         cus = None
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
@@ -419,12 +453,16 @@ class OrganizationPlan(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class UserInvoiceList(ApiResource):
-    """ Resource for listing a user's invoices. """
+    """
+    Resource for listing a user's invoices.
+    """
 
     @require_user_admin
     @nickname("listUserInvoices")
     def get(self):
-        """ List the invoices for the current user. """
+        """
+        List the invoices for the current user.
+        """
         user = get_authenticated_user()
         if not user.stripe_id:
             raise NotFound()
@@ -437,12 +475,16 @@ class UserInvoiceList(ApiResource):
 @related_user_resource(UserInvoiceList)
 @show_if(features.BILLING)
 class OrganizationInvoiceList(ApiResource):
-    """ Resource for listing an orgnaization's invoices. """
+    """
+    Resource for listing an orgnaization's invoices.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("listOrgInvoices")
     def get(self, orgname):
-        """ List the invoices for the specified orgnaization. """
+        """
+        List the invoices for the specified orgnaization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             organization = model.organization.get_organization(orgname)
@@ -458,7 +500,9 @@ class OrganizationInvoiceList(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class UserInvoiceFieldList(ApiResource):
-    """ Resource for listing and creating a user's custom invoice fields. """
+    """
+    Resource for listing and creating a user's custom invoice fields.
+    """
 
     schemas = {
         "InvoiceField": {
@@ -476,7 +520,9 @@ class UserInvoiceFieldList(ApiResource):
     @require_user_admin
     @nickname("listUserInvoiceFields")
     def get(self):
-        """ List the invoice fields for the current user. """
+        """
+        List the invoice fields for the current user.
+        """
         user = get_authenticated_user()
         if not user.stripe_id:
             raise NotFound()
@@ -487,7 +533,9 @@ class UserInvoiceFieldList(ApiResource):
     @nickname("createUserInvoiceField")
     @validate_json_request("InvoiceField")
     def post(self):
-        """ Creates a new invoice field. """
+        """
+        Creates a new invoice field.
+        """
         user = get_authenticated_user()
         if not user.stripe_id:
             raise NotFound()
@@ -501,12 +549,16 @@ class UserInvoiceFieldList(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class UserInvoiceField(ApiResource):
-    """ Resource for deleting a user's custom invoice fields. """
+    """
+    Resource for deleting a user's custom invoice fields.
+    """
 
     @require_user_admin
     @nickname("deleteUserInvoiceField")
     def delete(self, field_uuid):
-        """ Deletes the invoice field for the current user. """
+        """
+        Deletes the invoice field for the current user.
+        """
         user = get_authenticated_user()
         if not user.stripe_id:
             raise NotFound()
@@ -524,7 +576,9 @@ class UserInvoiceField(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class OrganizationInvoiceFieldList(ApiResource):
-    """ Resource for listing and creating an organization's custom invoice fields. """
+    """
+    Resource for listing and creating an organization's custom invoice fields.
+    """
 
     schemas = {
         "InvoiceField": {
@@ -542,7 +596,9 @@ class OrganizationInvoiceFieldList(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("listOrgInvoiceFields")
     def get(self, orgname):
-        """ List the invoice fields for the organization. """
+        """
+        List the invoice fields for the organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             organization = model.organization.get_organization(orgname)
@@ -557,7 +613,9 @@ class OrganizationInvoiceFieldList(ApiResource):
     @nickname("createOrgInvoiceField")
     @validate_json_request("InvoiceField")
     def post(self, orgname):
-        """ Creates a new invoice field. """
+        """
+        Creates a new invoice field.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             organization = model.organization.get_organization(orgname)
@@ -577,12 +635,16 @@ class OrganizationInvoiceFieldList(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class OrganizationInvoiceField(ApiResource):
-    """ Resource for deleting an organization's custom invoice fields. """
+    """
+    Resource for deleting an organization's custom invoice fields.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("deleteOrgInvoiceField")
     def delete(self, orgname, field_uuid):
-        """ Deletes the invoice field for the current user. """
+        """
+        Deletes the invoice field for the current user.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             organization = model.organization.get_organization(orgname)

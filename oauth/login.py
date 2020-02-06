@@ -11,58 +11,79 @@ logger = logging.getLogger(__name__)
 
 
 class OAuthLoginException(Exception):
-    """ Exception raised if a login operation fails. """
+    """
+    Exception raised if a login operation fails.
+    """
 
     pass
 
 
 @add_metaclass(ABCMeta)
 class OAuthLoginService(OAuthService):
-    """ A base class for defining an OAuth-compliant service that can be used for, amongst other
-      things, login and authentication. """
+    """
+    A base class for defining an OAuth-compliant service that can be used for, amongst other things,
+    login and authentication.
+    """
 
     @abstractmethod
     def login_enabled(self):
-        """ Returns true if the login service is enabled. """
+        """
+        Returns true if the login service is enabled.
+        """
         pass
 
     @abstractmethod
     def get_login_service_id(self, user_info):
-        """ Returns the internal ID for the given user under this login service. """
+        """
+        Returns the internal ID for the given user under this login service.
+        """
         pass
 
     @abstractmethod
     def get_login_service_username(self, user_info):
-        """ Returns the username for the given user under this login service. """
+        """
+        Returns the username for the given user under this login service.
+        """
         pass
 
     @abstractmethod
     def get_verified_user_email(self, app_config, http_client, token, user_info):
-        """ Returns the verified email address for the given user, if any or None if none. """
+        """
+        Returns the verified email address for the given user, if any or None if none.
+        """
         pass
 
     @abstractmethod
     def get_icon(self):
-        """ Returns the icon to display for this login service. """
+        """
+        Returns the icon to display for this login service.
+        """
         pass
 
     @abstractmethod
     def get_login_scopes(self):
-        """ Returns the list of scopes for login for this service. """
+        """
+        Returns the list of scopes for login for this service.
+        """
         pass
 
     def service_verify_user_info_for_login(self, app_config, http_client, token, user_info):
-        """ Performs service-specific verification of user information for login. On failure, a service
-        should raise a OAuthLoginService.
-    """
+        """
+        Performs service-specific verification of user information for login.
+
+        On failure, a service should raise a OAuthLoginService.
+        """
         # By default, does nothing.
         pass
 
     def exchange_code_for_login(self, app_config, http_client, code, redirect_suffix):
-        """ Exchanges the given OAuth access code for user information on behalf of a user trying to
-        login or attach their account. Raises a OAuthLoginService exception on failure. Returns
-        a tuple consisting of (service_id, service_username, email)
-    """
+        """
+        Exchanges the given OAuth access code for user information on behalf of a user trying to
+        login or attach their account.
+
+        Raises a OAuthLoginService exception on failure. Returns a tuple consisting of (service_id,
+        service_username, email)
+        """
 
         # Retrieve the token for the OAuth code.
         try:

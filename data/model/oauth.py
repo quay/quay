@@ -35,8 +35,9 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
 
     @property
     def token_expires_in(self):
-        """Property method to get the token expiration time in seconds.
-    """
+        """
+        Property method to get the token expiration time in seconds.
+        """
         return int(60 * 60 * 24 * 365.25 * 10)  # 10 Years
 
     def validate_client_id(self, client_id):

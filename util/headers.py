@@ -2,7 +2,9 @@ import base64
 
 
 def parse_basic_auth(header_value):
-    """ Attempts to parse the given header value as a Base64-encoded Basic auth header. """
+    """
+    Attempts to parse the given header value as a Base64-encoded Basic auth header.
+    """
 
     if not header_value:
         return None

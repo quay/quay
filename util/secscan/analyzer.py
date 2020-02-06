@@ -24,21 +24,26 @@ logger = logging.getLogger(__name__)
 
 
 class PreemptedException(Exception):
-    """ Exception raised if another worker analyzed the image before this worker was able to do so.
-  """
+    """
+    Exception raised if another worker analyzed the image before this worker was able to do so.
+    """
 
 
 class LayerAnalyzer(object):
-    """ Helper class to perform analysis of a layer via the security scanner. """
+    """
+    Helper class to perform analysis of a layer via the security scanner.
+    """
 
     def __init__(self, config, api):
         self._api = api
         self._target_version = config.get("SECURITY_SCANNER_ENGINE_VERSION_TARGET", 2)
 
     def analyze_recursively(self, layer):
-        """ Analyzes a layer and all its parents. Raises a PreemptedException if the analysis was
-        preempted by another worker.
-    """
+        """
+        Analyzes a layer and all its parents.
+
+        Raises a PreemptedException if the analysis was preempted by another worker.
+        """
         try:
             self._analyze_recursively_and_check(layer)
         except MissingParentLayerException:
@@ -51,9 +56,10 @@ class LayerAnalyzer(object):
                     raise PreemptedException
 
     def _analyze_recursively_and_check(self, layer, force_parents=False):
-        """ Analyzes a layer and all its parents, optionally forcing parents to be reanalyzed,
-        and checking for various exceptions that can occur during analysis.
-    """
+        """
+        Analyzes a layer and all its parents, optionally forcing parents to be reanalyzed, and
+        checking for various exceptions that can occur during analysis.
+        """
         try:
             self._analyze_recursively(layer, force_parents=force_parents)
         except InvalidLayerException:
@@ -96,13 +102,14 @@ class LayerAnalyzer(object):
         self._analyze(layer, force_parents=force_parents)
 
     def _analyze(self, layer, force_parents=False):
-        """ Analyzes a single layer.
+        """
+        Analyzes a single layer.
 
         Return a tuple of two bools:
           - The first one tells us if we should evaluate its children.
           - The second one is set to False when another worker pre-empted the candidate's analysis
             for us.
-    """
+        """
         # If the parent couldn't be analyzed with the target version or higher, we can't analyze
         # this image. Mark it as failed with the current target version.
         if not force_parents and (

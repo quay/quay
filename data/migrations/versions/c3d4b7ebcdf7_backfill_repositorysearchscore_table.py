@@ -1,9 +1,9 @@
-"""Backfill RepositorySearchScore table
+"""
+Backfill RepositorySearchScore table.
 
 Revision ID: c3d4b7ebcdf7
 Revises: f30984525c86
 Create Date: 2017-04-13 12:01:59.572775
-
 """
 
 # revision identifiers, used by Alembic.

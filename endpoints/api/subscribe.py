@@ -1,4 +1,6 @@
-""" Subscribe to plans. """
+"""
+Subscribe to plans.
+"""
 import logging
 import stripe
 import features

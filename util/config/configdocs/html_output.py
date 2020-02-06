@@ -1,11 +1,15 @@
 class HtmlOutput:
-    """ Generates HTML from documentation model """
+    """
+    Generates HTML from documentation model.
+    """
 
     def __init__(self):
         pass
 
     def generate_output(self, parsed_items):
-        """Returns generated HTML strin"""
+        """
+        Returns generated HTML strin.
+        """
         return (
             self.__get_html_begin() + self.__get_html_middle(parsed_items) + self.__get_html_end()
         )

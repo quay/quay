@@ -44,7 +44,9 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None):
 
 
 def format_date(date):
-    """ Output an RFC822 date format. """
+    """
+    Output an RFC822 date format.
+    """
     if date is None:
         return None
     return formatdate(timegm(date.utctimetuple()))
@@ -147,7 +149,9 @@ def validate_json_request(schema_name, optional=False):
 
 
 def kubernetes_only(f):
-    """ Aborts the request with a 400 if the app is not running on kubernetes """
+    """
+    Aborts the request with a 400 if the app is not running on kubernetes.
+    """
 
     @wraps(f)
     def abort_if_not_kube(*args, **kwargs):

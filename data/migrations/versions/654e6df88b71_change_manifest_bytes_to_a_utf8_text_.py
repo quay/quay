@@ -1,9 +1,9 @@
-"""Change manifest_bytes to a UTF8 text field
+"""
+Change manifest_bytes to a UTF8 text field.
 
 Revision ID: 654e6df88b71
 Revises: eafdeadcebc7
 Create Date: 2018-08-15 09:58:46.109277
-
 """
 
 # revision identifiers, used by Alembic.

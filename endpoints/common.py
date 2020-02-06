@@ -30,9 +30,11 @@ JS_BUNDLE_NAME = "bundle"
 
 
 def common_login(user_uuid, permanent_session=True):
-    """ Performs login of the given user, with optional non-permanence on the session.
-      Returns a tuple with (success, headers to set on success).
-  """
+    """
+    Performs login of the given user, with optional non-permanence on the session.
+
+    Returns a tuple with (success, headers to set on success).
+    """
     user = model.get_user(user_uuid)
     if user is None:
         return (False, None)
@@ -70,7 +72,9 @@ def common_login(user_uuid, permanent_session=True):
 
 
 def _list_files(path, extension, contains=""):
-    """ Returns a list of all the files with the given extension found under the given path. """
+    """
+    Returns a list of all the files with the given extension found under the given path.
+    """
 
     def matches(f):
         return os.path.splitext(f)[1] == "." + extension and contains in os.path.splitext(f)[0]
@@ -87,7 +91,9 @@ FONT_AWESOME_5 = "use.fontawesome.com/releases/v5.0.4/css/all.css"
 
 
 def render_page_template(name, route_data=None, **kwargs):
-    """ Renders the page template with the given name as the response and returns its contents. """
+    """
+    Renders the page template with the given name as the response and returns its contents.
+    """
     main_scripts = _list_files("build", "js", JS_BUNDLE_NAME)
 
     use_cdn = app.config.get("USE_CDN", True)

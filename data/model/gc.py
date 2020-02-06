@@ -56,11 +56,13 @@ class _GarbageCollectorContext(object):
 
 
 def purge_repository(repo, force=False):
-    """ Completely delete all traces of the repository. Will return True upon
-      complete success, and False upon partial or total failure. Garbage
-      collection is incremental and repeatable, so this return value does
-      not need to be checked or responded to.
-      """
+    """
+    Completely delete all traces of the repository.
+
+    Will return True upon complete success, and False upon partial or total failure. Garbage
+    collection is incremental and repeatable, so this return value does not need to be checked or
+    responded to.
+    """
     assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
 
     # Delete the repository of all Appr-referenced entries.
@@ -96,10 +98,12 @@ def purge_repository(repo, force=False):
 
 
 def _chunk_iterate_for_deletion(query, chunk_size=10):
-    """ Returns an iterator that loads the rows returned by the given query in chunks. Note that
-      order is not guaranteed here, so this will only work (i.e. not return duplicates) if
-      the rows returned are being deleted between calls.
-  """
+    """
+    Returns an iterator that loads the rows returned by the given query in chunks.
+
+    Note that order is not guaranteed here, so this will only work (i.e. not return duplicates) if
+    the rows returned are being deleted between calls.
+    """
     while True:
         results = list(query.limit(chunk_size))
         if not results:
@@ -109,9 +113,9 @@ def _chunk_iterate_for_deletion(query, chunk_size=10):
 
 
 def _purge_repository_contents(repo):
-    """ Purges all the contents of a repository, removing all of its tags,
-      manifests and images.
-  """
+    """
+    Purges all the contents of a repository, removing all of its tags, manifests and images.
+    """
     logger.debug("Purging repository %s", repo)
 
     # Purge via all the tags.
@@ -168,7 +172,9 @@ def _purge_repository_contents(repo):
 
 
 def garbage_collect_repo(repo):
-    """ Performs garbage collection over the contents of a repository. """
+    """
+    Performs garbage collection over the contents of a repository.
+    """
     # Purge expired tags.
     had_changes = False
 
@@ -200,9 +206,10 @@ def garbage_collect_repo(repo):
 
 
 def _run_garbage_collection(context):
-    """ Runs the garbage collection loop, deleting manifests, images, labels and blobs
-      in an iterative fashion.
-  """
+    """
+    Runs the garbage collection loop, deleting manifests, images, labels and blobs in an iterative
+    fashion.
+    """
     has_changes = True
 
     while has_changes:

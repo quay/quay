@@ -2,7 +2,9 @@ from data.cache.impl import NoopDataModelCache, InMemoryDataModelCache, Memcache
 
 
 def get_model_cache(config):
-    """ Returns a data model cache matching the given configuration. """
+    """
+    Returns a data model cache matching the given configuration.
+    """
     cache_config = config.get("DATA_MODEL_CACHE_CONFIG", {})
     engine = cache_config.get("engine", "noop")
 

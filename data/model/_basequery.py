@@ -27,11 +27,13 @@ logger = logging.getLogger(__name__)
 
 
 def reduce_as_tree(queries_to_reduce):
-    """ This method will split a list of queries into halves recursively until we reach individual
-      queries, at which point it will start unioning the queries, or the already unioned subqueries.
-      This works around a bug in peewee SQL generation where reducing linearly generates a chain
-      of queries that will exceed the recursion depth limit when it has around 80 queries.
-      """
+    """
+    This method will split a list of queries into halves recursively until we reach individual
+    queries, at which point it will start unioning the queries, or the already unioned subqueries.
+
+    This works around a bug in peewee SQL generation where reducing linearly generates a chain of
+    queries that will exceed the recursion depth limit when it has around 80 queries.
+    """
     mid = len(queries_to_reduce) / 2
     left = queries_to_reduce[:mid]
     right = queries_to_reduce[mid:]
@@ -179,8 +181,11 @@ def calculate_image_aggregate_size(ancestors_str, image_size, parent_image):
 
 
 def update_last_accessed(token_or_user):
-    """ Updates the `last_accessed` field on the given token or user. If the existing field's value
-      is within the configured threshold, the update is skipped. """
+    """
+    Updates the `last_accessed` field on the given token or user.
+
+    If the existing field's value is within the configured threshold, the update is skipped.
+    """
     if not config.app_config.get("FEATURE_USER_LAST_ACCESSED"):
         return
 

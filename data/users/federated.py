@@ -15,7 +15,9 @@ DISABLED_MESSAGE = "User creation is disabled. Please contact your administrator
 
 
 class FederatedUsers(object):
-    """ Base class for all federated users systems. """
+    """
+    Base class for all federated users systems.
+    """
 
     def __init__(self, federated_service, requires_email):
         self._federated_service = federated_service
@@ -42,19 +44,23 @@ class FederatedUsers(object):
         return False
 
     def get_user(self, username_or_email):
-        """ Retrieves the user with the given username or email, returning a tuple containing
-        a UserInformation (if success) and the error message (on failure).
-    """
+        """
+        Retrieves the user with the given username or email, returning a tuple containing a
+        UserInformation (if success) and the error message (on failure).
+        """
         raise NotImplementedError
 
     def verify_credentials(self, username_or_email, password):
-        """ Verifies the given credentials against the backing federated service, returning
-        a tuple containing a UserInformation (on success) and the error message (on failure).
-    """
+        """
+        Verifies the given credentials against the backing federated service, returning a tuple
+        containing a UserInformation (on success) and the error message (on failure).
+        """
         raise NotImplementedError
 
     def query_users(self, query, limit=20):
-        """ If implemented, get_user must be implemented as well. """
+        """
+        If implemented, get_user must be implemented as well.
+        """
         return (None, "Not supported")
 
     def link_user(self, username_or_email):
@@ -70,9 +76,10 @@ class FederatedUsers(object):
         )
 
     def verify_and_link_user(self, username_or_email, password):
-        """ Verifies the given credentials and, if valid, creates/links a database user to the
+        """
+        Verifies the given credentials and, if valid, creates/links a database user to the
         associated federated service.
-    """
+        """
         (credentials, err_msg) = self.verify_credentials(username_or_email, password)
         if credentials is None:
             return (None, err_msg)
@@ -80,9 +87,12 @@ class FederatedUsers(object):
         return self._get_and_link_federated_user_info(credentials.username, credentials.email)
 
     def confirm_existing_user(self, username, password):
-        """ Confirms that the given *database* username and service password are valid for the linked
-        service. This method is used when the federated service's username is not known.
-    """
+        """
+        Confirms that the given *database* username and service password are valid for the linked
+        service.
+
+        This method is used when the federated service's username is not known.
+        """
         db_user = model.user.get_user(username)
         if not db_user:
             return (None, "Invalid user")
@@ -98,21 +108,28 @@ class FederatedUsers(object):
         return (db_user, None)
 
     def service_metadata(self):
-        """ Returns a dictionary of extra metadata to present to *superusers* about this auth engine.
+        """
+        Returns a dictionary of extra metadata to present to *superusers* about this auth engine.
+
         For example, LDAP returns the base DN so we can display to the user during sync setup.
-    """
+        """
         return {}
 
     def check_group_lookup_args(self, group_lookup_args):
-        """ Verifies that the given group lookup args point to a valid group. Returns a tuple consisting
-        of a boolean status and an error message (if any).
-    """
+        """
+        Verifies that the given group lookup args point to a valid group.
+
+        Returns a tuple consisting of a boolean status and an error message (if any).
+        """
         return (False, "Not supported")
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
-        """ Returns an iterator over all the members of the group matching the given lookup args
-        dictionary. The format of the lookup args dictionary is specific to the implementation.
-    """
+        """
+        Returns an iterator over all the members of the group matching the given lookup args
+        dictionary.
+
+        The format of the lookup args dictionary is specific to the implementation.
+        """
         return (None, "Not supported")
 
     def _get_and_link_federated_user_info(self, username, email, internal_create=False):

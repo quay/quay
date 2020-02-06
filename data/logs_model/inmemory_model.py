@@ -26,8 +26,10 @@ StoredLog = namedtuple(
 
 class InMemoryModel(ActionLogsDataInterface):
     """
-  InMemoryModel implements the data model for logs in-memory. FOR TESTING ONLY.
-  """
+    InMemoryModel implements the data model for logs in-memory.
+
+    FOR TESTING ONLY.
+    """
 
     def __init__(self):
         self.logs = []
@@ -315,7 +317,9 @@ class InMemoryLogRotationContext(LogRotationContextInterface):
                 self.all_logs.remove(log)
 
     def yield_logs_batch(self):
-        """ Yield a batch of logs and a filename for that batch. """
+        """
+        Yield a batch of logs and a filename for that batch.
+        """
         filename = "inmemory_model_filename_placeholder"
         filename = ".".join((filename, "txt.gz"))
         yield [log_and_repo.stored_log for log_and_repo in self.expired_logs], filename

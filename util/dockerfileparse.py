@@ -23,9 +23,10 @@ class ParsedDockerfile(object):
 
     @staticmethod
     def parse_image_identifier(image_identifier):
-        """ Parses a docker image identifier, and returns a tuple of image name and tag, where the tag
+        """
+        Parses a docker image identifier, and returns a tuple of image name and tag, where the tag
         is filled in with "latest" if left unspecified.
-    """
+        """
         # Note:
         # Dockerfile images references can be of multiple forms:
         #   server:port/some/path
@@ -51,11 +52,15 @@ class ParsedDockerfile(object):
         return (":".join(parts[0:-1]), parts[-1])
 
     def get_base_image(self):
-        """ Return the base image without the tag name. """
+        """
+        Return the base image without the tag name.
+        """
         return self.get_image_and_tag()[0]
 
     def get_image_and_tag(self):
-        """ Returns the image and tag from the FROM line of the dockerfile. """
+        """
+        Returns the image and tag from the FROM line of the dockerfile.
+        """
         image_identifier = self._get_from_image_identifier()
         if image_identifier is None:
             return (None, None)

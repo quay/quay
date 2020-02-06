@@ -12,7 +12,9 @@ SIGNATURE_PREFIX = "sigv2="
 
 
 def generate_signed_token(grants, user_context):
-    """ Generates a signed session token with the given grants and user context. """
+    """
+    Generates a signed session token with the given grants and user context.
+    """
     ser = SecureCookieSessionInterface().get_signing_serializer(app)
     data_to_sign = {
         "grants": grants,
@@ -24,9 +26,10 @@ def generate_signed_token(grants, user_context):
 
 
 def validate_signed_grant(auth_header):
-    """ Validates a signed grant as found inside an auth header and returns whether it points to
-      a valid grant.
-  """
+    """
+    Validates a signed grant as found inside an auth header and returns whether it points to a valid
+    grant.
+    """
     if not auth_header:
         return ValidateResult(AuthKind.signed_grant, missing=True)
 

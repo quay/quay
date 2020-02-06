@@ -1,9 +1,9 @@
-"""Remove 'oci' tables not used by CNR. The rest will be migrated and renamed.
+"""
+Remove 'oci' tables not used by CNR. The rest will be migrated and renamed.
 
 Revision ID: 5cbbfc95bac7
 Revises: 1783530bee68
 Create Date: 2018-05-23 17:28:40.114433
-
 """
 
 # revision identifiers, used by Alembic.

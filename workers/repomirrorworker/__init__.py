@@ -32,13 +32,15 @@ unmirrored_repositories = Gauge(
 
 
 class PreemptedException(Exception):
-    """ Exception raised if another worker analyzed the image before this worker was able to do so.
-  """
+    """
+    Exception raised if another worker analyzed the image before this worker was able to do so.
+    """
 
 
 class RepoMirrorSkopeoException(Exception):
-    """ Exception from skopeo
-  """
+    """
+    Exception from skopeo.
+    """
 
     def __init__(self, message, stdout, stderr):
         self.message = message
@@ -47,9 +49,11 @@ class RepoMirrorSkopeoException(Exception):
 
 
 def process_mirrors(skopeo, token=None):
-    """ Performs mirroring of repositories whose last sync time is greater than sync interval.
-      If a token is provided, scanning will begin where the token indicates it previously completed.
-  """
+    """
+    Performs mirroring of repositories whose last sync time is greater than sync interval.
+
+    If a token is provided, scanning will begin where the token indicates it previously completed.
+    """
 
     if not features.REPO_MIRROR:
         logger.debug("Repository mirror disabled; skipping RepoMirrorWorker process_mirrors")
@@ -79,7 +83,9 @@ def process_mirrors(skopeo, token=None):
 
 
 def perform_mirror(skopeo, mirror):
-    """Run mirror on all matching tags of remote repository."""
+    """
+    Run mirror on all matching tags of remote repository.
+    """
 
     if os.getenv("DEBUGLOG", "false").lower() == "true":
         verbose_logs = True
@@ -302,11 +308,11 @@ def get_all_tags(skopeo, mirror):
 
 def _skopeo_inspect_failure(result):
     """
-  Custom processing of skopeo error messages for user friendly description
+    Custom processing of skopeo error messages for user friendly description.
 
-  :param result: SkopeoResults object
-  :return: Message to display
-  """
+    :param result: SkopeoResults object
+    :return: Message to display
+    """
 
     lines = result.stderr.split("\n")
     for line in lines:

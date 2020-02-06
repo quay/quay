@@ -9,7 +9,9 @@ from StringIO import StringIO
 
 
 class GPG2Signer(object):
-    """ Helper class for signing data using GPG2. """
+    """
+    Helper class for signing data using GPG2.
+    """
 
     def __init__(self, config, config_provider):
         if not config.get("GPG2_PRIVATE_KEY_NAME"):
@@ -41,7 +43,9 @@ class GPG2Signer(object):
         return self._config_provider.get_volume_file(self._public_key_filename, mode="rb")
 
     def detached_sign(self, stream):
-        """ Signs the given stream, returning the signature. """
+        """
+        Signs the given stream, returning the signature.
+        """
         ctx = self._ctx
         try:
             ctx.signers = [ctx.get_key(self._private_key_name)]

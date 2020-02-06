@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 def list_manifest_labels(manifest_id, prefix_filter=None):
-    """ Lists all labels found on the given manifest, with an optional filter by key prefix. """
+    """
+    Lists all labels found on the given manifest, with an optional filter by key prefix.
+    """
     query = (
         Label.select(Label, MediaType)
         .join(MediaType)
@@ -41,7 +43,9 @@ def list_manifest_labels(manifest_id, prefix_filter=None):
 
 
 def get_manifest_label(label_uuid, manifest):
-    """ Retrieves the manifest label on the manifest with the given UUID or None if none. """
+    """
+    Retrieves the manifest label on the manifest with the given UUID or None if none.
+    """
     try:
         return (
             Label.select(Label, LabelSourceType)
@@ -59,7 +63,9 @@ def get_manifest_label(label_uuid, manifest):
 def create_manifest_label(
     manifest_id, key, value, source_type_name, media_type_name=None, adjust_old_model=True
 ):
-    """ Creates a new manifest label on a specific tag manifest. """
+    """
+    Creates a new manifest label on a specific tag manifest.
+    """
     if not key:
         raise InvalidLabelKeyException("Missing key on label")
 
@@ -134,9 +140,11 @@ def create_manifest_label(
 
 
 def delete_manifest_label(label_uuid, manifest):
-    """ Deletes the manifest label on the tag manifest with the given ID. Returns the label deleted
-      or None if none.
-  """
+    """
+    Deletes the manifest label on the tag manifest with the given ID.
+
+    Returns the label deleted or None if none.
+    """
     # Find the label itself.
     label = get_manifest_label(label_uuid, manifest)
     if label is None:

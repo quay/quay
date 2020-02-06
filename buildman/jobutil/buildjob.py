@@ -14,13 +14,17 @@ logger = logging.getLogger(__name__)
 
 
 class BuildJobLoadException(Exception):
-    """ Exception raised if a build job could not be instantiated for some reason. """
+    """
+    Exception raised if a build job could not be instantiated for some reason.
+    """
 
     pass
 
 
 class BuildJob(object):
-    """ Represents a single in-progress build job. """
+    """
+    Represents a single in-progress build job.
+    """
 
     def __init__(self, job_item):
         self.job_item = job_item
@@ -56,17 +60,23 @@ class BuildJob(object):
 
     @property
     def build_uuid(self):
-        """ Returns the unique UUID for this build job. """
+        """
+        Returns the unique UUID for this build job.
+        """
         return self.job_details["build_uuid"]
 
     @property
     def namespace(self):
-        """ Returns the namespace under which this build is running. """
+        """
+        Returns the namespace under which this build is running.
+        """
         return self.repo_build.repository.namespace_user.username
 
     @property
     def repo_name(self):
-        """ Returns the name of the repository under which this build is running. """
+        """
+        Returns the name of the repository under which this build is running.
+        """
         return self.repo_build.repository.name
 
     @property
@@ -74,7 +84,9 @@ class BuildJob(object):
         return self._load_repo_build()
 
     def get_build_package_url(self, user_files):
-        """ Returns the URL of the build package for this build, if any or empty string if none. """
+        """
+        Returns the URL of the build package for this build, if any or empty string if none.
+        """
         archive_url = self.build_config.get("archive_url", None)
         if archive_url:
             return archive_url
@@ -88,7 +100,9 @@ class BuildJob(object):
 
     @property
     def pull_credentials(self):
-        """ Returns the pull credentials for this job, or None if none. """
+        """
+        Returns the pull credentials for this job, or None if none.
+        """
         return self.job_details.get("pull_credentials")
 
     @property
@@ -102,7 +116,9 @@ class BuildJob(object):
             )
 
     def determine_cached_tag(self, base_image_id=None, cache_comments=None):
-        """ Returns the tag to pull to prime the cache or None if none. """
+        """
+        Returns the tag to pull to prime the cache or None if none.
+        """
         cached_tag = self._determine_cached_tag_by_tag()
         logger.debug(
             "Determined cached tag %s for %s: %s", cached_tag, base_image_id, cache_comments
@@ -110,9 +126,12 @@ class BuildJob(object):
         return cached_tag
 
     def _determine_cached_tag_by_tag(self):
-        """ Determines the cached tag by looking for one of the tags being built, and seeing if it
-        exists in the repository. This is a fallback for when no comment information is available.
-    """
+        """
+        Determines the cached tag by looking for one of the tags being built, and seeing if it
+        exists in the repository.
+
+        This is a fallback for when no comment information is available.
+        """
         with UseThenDisconnect(app.config):
             tags = self.build_config.get("docker_tags", ["latest"])
             repository = RepositoryReference.for_repo_obj(self.repo_build.repository)
@@ -128,7 +147,9 @@ class BuildJob(object):
 
 
 class BuildJobNotifier(object):
-    """ A class for sending notifications to a job that only relies on the build_uuid """
+    """
+    A class for sending notifications to a job that only relies on the build_uuid.
+    """
 
     def __init__(self, build_uuid):
         self.build_uuid = build_uuid

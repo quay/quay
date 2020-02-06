@@ -1,9 +1,9 @@
-"""Add full text search indexing for repo name and description
+"""
+Add full text search indexing for repo name and description.
 
 Revision ID: e2894a3a3c19
 Revises: d42c175b439a
 Create Date: 2017-01-11 13:55:54.890774
-
 """
 
 # revision identifiers, used by Alembic.

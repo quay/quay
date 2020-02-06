@@ -3,8 +3,8 @@ from collections import namedtuple
 
 class Repository(namedtuple("Repository", ["namespace_name", "name"])):
     """
-  Repository represents a repository.
-  """
+    Repository represents a repository.
+    """
 
 
 class Notification(
@@ -21,5 +21,5 @@ class Notification(
     )
 ):
     """
-  Notification represents a registered notification of some kind.
-  """
+    Notification represents a registered notification of some kind.
+    """

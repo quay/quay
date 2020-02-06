@@ -1,4 +1,6 @@
-""" Conduct searches against all registry context. """
+"""
+Conduct searches against all registry context.
+"""
 
 import features
 
@@ -46,7 +48,9 @@ REPOSITORY_SEARCH_SCORE = 4
 @resource("/v1/entities/link/<username>")
 @internal_only
 class LinkExternalEntity(ApiResource):
-    """ Resource for linking external entities to internal users. """
+    """
+    Resource for linking external entities to internal users.
+    """
 
     @nickname("linkExternalUser")
     def post(self, username):
@@ -74,7 +78,9 @@ class LinkExternalEntity(ApiResource):
 
 @resource("/v1/entities/<prefix>")
 class EntitySearch(ApiResource):
-    """ Resource for searching entities. """
+    """
+    Resource for searching entities.
+    """
 
     @path_param("prefix", "The prefix of the entities being looked up")
     @parse_args()
@@ -85,7 +91,9 @@ class EntitySearch(ApiResource):
     @query_param("includeOrgs", "Whether to include orgs names.", type=truthy_bool, default=False)
     @nickname("getMatchingEntities")
     def get(self, prefix, parsed_args):
-        """ Get a list of entities that match the specified prefix. """
+        """
+        Get a list of entities that match the specified prefix.
+        """
 
         # Ensure we don't have any unicode characters in the search, as it breaks the search. Nothing
         # being searched can have unicode in it anyway, so this is a safe operation.
@@ -233,7 +241,9 @@ def search_entity_view(username, entity, get_short_name=None):
 
 
 def conduct_team_search(username, query, encountered_teams, results):
-    """ Finds the matching teams where the user is a member. """
+    """
+    Finds the matching teams where the user is a member.
+    """
     matching_teams = model.team.get_matching_user_teams(query, get_authenticated_user(), limit=5)
     for team in matching_teams:
         if team.id in encountered_teams:
@@ -254,7 +264,9 @@ def conduct_team_search(username, query, encountered_teams, results):
 
 
 def conduct_admined_team_search(username, query, encountered_teams, results):
-    """ Finds matching teams in orgs admined by the user. """
+    """
+    Finds matching teams in orgs admined by the user.
+    """
     matching_teams = model.team.get_matching_admined_teams(query, get_authenticated_user(), limit=5)
     for team in matching_teams:
         if team.id in encountered_teams:
@@ -275,7 +287,9 @@ def conduct_admined_team_search(username, query, encountered_teams, results):
 
 
 def conduct_repo_search(username, query, results, offset=0, limit=5):
-    """ Finds matching repositories. """
+    """
+    Finds matching repositories.
+    """
     matching_repos = model.repository.get_filtered_matching_repositories(
         query, username, limit=limit, repo_kind=None, offset=offset
     )
@@ -286,14 +300,18 @@ def conduct_repo_search(username, query, results, offset=0, limit=5):
 
 
 def conduct_namespace_search(username, query, results):
-    """ Finds matching users and organizations. """
+    """
+    Finds matching users and organizations.
+    """
     matching_entities = model.user.get_matching_user_namespaces(query, username, limit=5)
     for entity in matching_entities:
         results.append(search_entity_view(username, entity))
 
 
 def conduct_robot_search(username, query, results):
-    """ Finds matching robot accounts. """
+    """
+    Finds matching robot accounts.
+    """
 
     def get_short_name(name):
         return parse_robot_username(name)[1]
@@ -332,14 +350,18 @@ def repo_result_view(repo, username, last_modified=None, stars=None, popularity=
 
 @resource("/v1/find/all")
 class ConductSearch(ApiResource):
-    """ Resource for finding users, repositories, teams, etc. """
+    """
+    Resource for finding users, repositories, teams, etc.
+    """
 
     @parse_args()
     @query_param("query", "The search query.", type=str, default="")
     @require_scope(scopes.READ_REPO)
     @nickname("conductSearch")
     def get(self, parsed_args):
-        """ Get a list of entities and resources that match the specified query. """
+        """
+        Get a list of entities and resources that match the specified query.
+        """
         query = parsed_args["query"]
         if not query:
             return {"results": []}
@@ -379,14 +401,18 @@ MAX_RESULT_PAGE_COUNT = app.config.get("SEARCH_MAX_RESULT_PAGE_COUNT", 10)
 
 @resource("/v1/find/repositories")
 class ConductRepositorySearch(ApiResource):
-    """ Resource for finding repositories. """
+    """
+    Resource for finding repositories.
+    """
 
     @parse_args()
     @query_param("query", "The search query.", type=str, default="")
     @query_param("page", "The page.", type=int, default=1)
     @nickname("conductRepoSearch")
     def get(self, parsed_args):
-        """ Get a list of apps and repositories that match the specified query. """
+        """
+        Get a list of apps and repositories that match the specified query.
+        """
         query = parsed_args["query"]
         page = min(max(1, parsed_args["page"]), MAX_RESULT_PAGE_COUNT)
         offset = (page - 1) * MAX_PER_PAGE

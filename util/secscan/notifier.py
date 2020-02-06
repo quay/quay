@@ -21,14 +21,14 @@ class ProcessNotificationPageResult(Enum):
 
 
 class SecurityNotificationHandler(object):
-    """ Class to process paginated notifications from the security scanner and issue
-      Quay vulnerability_found notifications for all necessary tags. Callers should
-      initialize, call process_notification_page_data for each page until it returns
-      FINISHED_PROCESSING or FAILED and, if succeeded, then call send_notifications
-      to send out the notifications queued.
+    """
+    Class to process paginated notifications from the security scanner and issue Quay
+    vulnerability_found notifications for all necessary tags. Callers should initialize, call
+    process_notification_page_data for each page until it returns FINISHED_PROCESSING or FAILED and,
+    if succeeded, then call send_notifications to send out the notifications queued.
 
-      NOTE: This is legacy code and should be removed once we're fully moved to Clair V4.
-  """
+    NOTE: This is legacy code and should be removed once we're fully moved to Clair V4.
+    """
 
     def __init__(self, legacy_secscan_api, results_per_stream):
         self.tags_by_repository_map = defaultdict(set)
@@ -42,7 +42,9 @@ class SecurityNotificationHandler(object):
         self.vulnerability_info = None
 
     def send_notifications(self):
-        """ Sends all queued up notifications. """
+        """
+        Sends all queued up notifications.
+        """
         if self.vulnerability_info is None:
             return
 
@@ -70,9 +72,12 @@ class SecurityNotificationHandler(object):
                 )
 
     def process_notification_page_data(self, notification_page_data):
-        """ Processes the given notification page data to spawn vulnerability notifications as
-        necessary. Returns the status of the processing.
-    """
+        """
+        Processes the given notification page data to spawn vulnerability notifications as
+        necessary.
+
+        Returns the status of the processing.
+        """
         if not "New" in notification_page_data:
             return self._done()
 

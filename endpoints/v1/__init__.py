@@ -49,10 +49,12 @@ def handle_readonly(ex):
 
 
 def check_v1_push_enabled(namespace_name_kwarg="namespace_name"):
-    """ Decorator which checks if V1 push is enabled for the current namespace. The first argument
-      to the wrapped function must be the namespace name or there must be a kwarg with the
-      name `namespace_name`.
-  """
+    """
+    Decorator which checks if V1 push is enabled for the current namespace.
+
+    The first argument to the wrapped function must be the namespace name or there must be a kwarg
+    with the name `namespace_name`.
+    """
 
     def wrapper(wrapped):
         @wraps(wrapped)

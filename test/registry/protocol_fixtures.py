@@ -16,7 +16,9 @@ from test.registry.protocol_v2 import V2Protocol
 
 @pytest.fixture(scope="session")
 def basic_images():
-    """ Returns basic images for push and pull testing. """
+    """
+    Returns basic images for push and pull testing.
+    """
     # Note: order is from base layer down to leaf.
     parent_bytes = layer_bytes_for_contents("parent contents")
     image_bytes = layer_bytes_for_contents("some contents")
@@ -28,7 +30,9 @@ def basic_images():
 
 @pytest.fixture(scope="session")
 def unicode_images():
-    """ Returns basic images for push and pull testing that contain unicode in the image metadata. """
+    """
+    Returns basic images for push and pull testing that contain unicode in the image metadata.
+    """
     # Note: order is from base layer down to leaf.
     parent_bytes = layer_bytes_for_contents("parent contents")
     image_bytes = layer_bytes_for_contents("some contents")
@@ -45,7 +49,9 @@ def unicode_images():
 
 @pytest.fixture(scope="session")
 def different_images():
-    """ Returns different basic images for push and pull testing. """
+    """
+    Returns different basic images for push and pull testing.
+    """
     # Note: order is from base layer down to leaf.
     parent_bytes = layer_bytes_for_contents("different parent contents")
     image_bytes = layer_bytes_for_contents("some different contents")
@@ -57,7 +63,9 @@ def different_images():
 
 @pytest.fixture(scope="session")
 def sized_images():
-    """ Returns basic images (with sizes) for push and pull testing. """
+    """
+    Returns basic images (with sizes) for push and pull testing.
+    """
     # Note: order is from base layer down to leaf.
     parent_bytes = layer_bytes_for_contents("parent contents", mode="")
     image_bytes = layer_bytes_for_contents("some contents", mode="")
@@ -82,7 +90,9 @@ def sized_images():
 
 @pytest.fixture(scope="session")
 def multi_layer_images():
-    """ Returns complex images (with sizes) for push and pull testing. """
+    """
+    Returns complex images (with sizes) for push and pull testing.
+    """
     # Note: order is from base layer down to leaf.
     layer1_bytes = layer_bytes_for_contents(
         "layer 1 contents", mode="", other_files={"file1": "from-layer-1",}
@@ -145,7 +155,9 @@ def multi_layer_images():
 
 @pytest.fixture(scope="session")
 def remote_images():
-    """ Returns images with at least one remote layer for push and pull testing. """
+    """
+    Returns images with at least one remote layer for push and pull testing.
+    """
     # Note: order is from base layer down to leaf.
     remote_bytes = layer_bytes_for_contents("remote contents")
     parent_bytes = layer_bytes_for_contents("parent contents")
@@ -159,7 +171,9 @@ def remote_images():
 
 @pytest.fixture(scope="session")
 def images_with_empty_layer():
-    """ Returns images for push and pull testing that contain an empty layer. """
+    """
+    Returns images for push and pull testing that contain an empty layer.
+    """
     # Note: order is from base layer down to leaf.
     parent_bytes = layer_bytes_for_contents("parent contents")
     empty_bytes = layer_bytes_for_contents("", empty=True)
@@ -177,7 +191,9 @@ def images_with_empty_layer():
 
 @pytest.fixture(scope="session")
 def unicode_emoji_images():
-    """ Returns basic images for push and pull testing that contain unicode in the image metadata. """
+    """
+    Returns basic images for push and pull testing that contain unicode in the image metadata.
+    """
     # Note: order is from base layer down to leaf.
     parent_bytes = layer_bytes_for_contents("parent contents")
     image_bytes = layer_bytes_for_contents("some contents")

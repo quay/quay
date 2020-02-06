@@ -10,8 +10,9 @@ class Permission(
     namedtuple("Permission", ["repository_name", "repository_visibility_name", "role_name"])
 ):
     """
-  Permission the relationship between a robot and a repository and whether that robot can see the repo.
-  """
+    Permission the relationship between a robot and a repository and whether that robot can see the
+    repo.
+    """
 
     def to_dict(self):
         return {
@@ -25,10 +26,11 @@ class Permission(
 
 class Team(namedtuple("Team", ["name", "avatar"])):
     """
-  Team represents a team entry for a robot list entry.
-  :type name: string
-  :type avatar: {string -> string}
-  """
+    Team represents a team entry for a robot list entry.
+
+    :type name: string
+    :type avatar: {string -> string}
+    """
 
     def to_dict(self):
         return {
@@ -52,15 +54,16 @@ class RobotWithPermissions(
     )
 ):
     """
-  RobotWithPermissions is a list of robot entries.
-  :type name: string
-  :type password: string
-  :type created: datetime|None
-  :type last_accessed: datetime|None
-  :type teams: [Team]
-  :type repository_names: [string]
-  :type description: string
-  """
+    RobotWithPermissions is a list of robot entries.
+
+    :type name: string
+    :type password: string
+    :type created: datetime|None
+    :type last_accessed: datetime|None
+    :type teams: [Team]
+    :type repository_names: [string]
+    :type description: string
+    """
 
     def to_dict(self, include_token=False):
         data = {
@@ -87,14 +90,15 @@ class Robot(
     )
 ):
     """
-  Robot represents a robot entity.
-  :type name: string
-  :type password: string
-  :type created: datetime|None
-  :type last_accessed: datetime|None
-  :type description: string
-  :type unstructured_metadata: dict
-  """
+    Robot represents a robot entity.
+
+    :type name: string
+    :type password: string
+    :type created: datetime|None
+    :type last_accessed: datetime|None
+    :type description: string
+    :type unstructured_metadata: dict
+    """
 
     def to_dict(self, include_metadata=False, include_token=False):
         data = {
@@ -118,8 +122,8 @@ class Robot(
 @add_metaclass(ABCMeta)
 class RobotInterface(object):
     """
-  Interface that represents all data store interactions required by the Robot API
-  """
+    Interface that represents all data store interactions required by the Robot API.
+    """
 
     @abstractmethod
     def get_org_robot(self, robot_shortname, orgname):

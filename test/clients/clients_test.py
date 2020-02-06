@@ -169,9 +169,10 @@ def _indent(text, amount):
 
 
 def scp_to_vagrant(source, destination):
-    """scp_to_vagrant copies the file from source to destination in the default
-    vagrant box without vagrant scp, which may fail on some coreos boxes.
-  """
+    """
+    scp_to_vagrant copies the file from source to destination in the default vagrant box without
+    vagrant scp, which may fail on some coreos boxes.
+    """
     config = _run_and_wait(["vagrant", "ssh-config"])
     config_lines = config.split("\n")
     params = ["scp"]

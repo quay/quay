@@ -24,8 +24,11 @@ class ArchiveBuildLogsWorker(Worker):
         self.add_operation(self._archive_redis_buildlogs, POLL_PERIOD_SECONDS)
 
     def _archive_redis_buildlogs(self):
-        """ Archive a single build, choosing a candidate at random. This process must be idempotent to
-        avoid needing two-phase commit. """
+        """
+        Archive a single build, choosing a candidate at random.
+
+        This process must be idempotent to avoid needing two-phase commit.
+        """
         # Get a random build to archive
         to_archive = model.get_archivable_build()
         if to_archive is None:

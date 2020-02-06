@@ -37,24 +37,25 @@ class RepositoryBuild(
     )
 ):
     """
-  RepositoryBuild represents a build associated with a repostiory
-  :type uuid: string
-  :type logs_archived: boolean
-  :type repository_namespace_user_username: string
-  :type repository_name: string
-  :type can_write: boolean
-  :type can_write: boolean
-  :type pull_robot: User
-  :type resource_key: string
-  :type trigger: Trigger
-  :type display_name: string
-  :type started: boolean
-  :type job_config: {Any -> Any}
-  :type phase: string
-  :type status: string
-  :type error: string
-  :type archive_url: string
-  """
+    RepositoryBuild represents a build associated with a repostiory.
+
+    :type uuid: string
+    :type logs_archived: boolean
+    :type repository_namespace_user_username: string
+    :type repository_name: string
+    :type can_write: boolean
+    :type can_write: boolean
+    :type pull_robot: User
+    :type resource_key: string
+    :type trigger: Trigger
+    :type display_name: string
+    :type started: boolean
+    :type job_config: {Any -> Any}
+    :type phase: string
+    :type status: string
+    :type error: string
+    :type archive_url: string
+    """
 
     def to_dict(self):
 
@@ -94,12 +95,13 @@ class RepositoryBuild(
 
 class Approval(namedtuple("Approval", ["approver", "approval_type", "approved_date", "notes"])):
     """
-  Approval represents whether a key has been approved or not
-  :type approver: User
-  :type approval_type: string
-  :type approved_date: Date
-  :type notes: string
-  """
+    Approval represents whether a key has been approved or not.
+
+    :type approver: User
+    :type approval_type: string
+    :type approved_date: Date
+    :type notes: string
+    """
 
     def to_dict(self):
         return {
@@ -127,18 +129,18 @@ class ServiceKey(
     )
 ):
     """
-  ServiceKey is an apostille signing key
-  :type name: string
-  :type kid: int
-  :type service: string
-  :type jwk: string
-  :type metadata: string
-  :type created_date: Date
-  :type expiration_date: Date
-  :type rotation_duration: Date
-  :type approval: Approval
+    ServiceKey is an apostille signing key.
 
-  """
+    :type name: string
+    :type kid: int
+    :type service: string
+    :type jwk: string
+    :type metadata: string
+    :type created_date: Date
+    :type expiration_date: Date
+    :type rotation_duration: Date
+    :type approval: Approval
+    """
 
     def to_dict(self):
         return {
@@ -156,13 +158,14 @@ class ServiceKey(
 
 class User(namedtuple("User", ["username", "email", "verified", "enabled", "robot"])):
     """
-  User represents a single user.
-  :type username: string
-  :type email: string
-  :type verified: boolean
-  :type enabled: boolean
-  :type robot: User
-  """
+    User represents a single user.
+
+    :type username: string
+    :type email: string
+    :type verified: boolean
+    :type enabled: boolean
+    :type robot: User
+    """
 
     def to_dict(self):
         user_data = {
@@ -179,10 +182,11 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
 
 class Organization(namedtuple("Organization", ["username", "email"])):
     """
-  Organization represents a single org.
-  :type username: string
-  :type email: string
-  """
+    Organization represents a single org.
+
+    :type username: string
+    :type email: string
+    """
 
     def to_dict(self):
         return {
@@ -194,11 +198,11 @@ class Organization(namedtuple("Organization", ["username", "email"])):
 @add_metaclass(ABCMeta)
 class SuperuserDataInterface(object):
     """
-  Interface that represents all data store interactions required by a superuser api.
-  """
+    Interface that represents all data store interactions required by a superuser api.
+    """
 
     @abstractmethod
     def list_all_service_keys(self):
         """
-    Returns a list of service keys
-    """
+        Returns a list of service keys.
+        """

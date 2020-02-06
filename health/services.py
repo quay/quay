@@ -34,7 +34,9 @@ def _compute_internal_endpoint(app, endpoint):
 
 def _check_gunicorn(endpoint):
     def fn(app):
-        """ Returns the status of the gunicorn workers. """
+        """
+        Returns the status of the gunicorn workers.
+        """
         client = app.config["HTTPCLIENT"]
         registry_url = _compute_internal_endpoint(app, endpoint)
         try:
@@ -50,7 +52,9 @@ def _check_gunicorn(endpoint):
 
 
 def _check_jwt_proxy(app):
-    """ Returns the status of JWT proxy in the container. """
+    """
+    Returns the status of JWT proxy in the container.
+    """
     client = app.config["HTTPCLIENT"]
     registry_url = _compute_internal_endpoint(app, "secscan")
     try:
@@ -66,17 +70,23 @@ def _check_jwt_proxy(app):
 
 
 def _check_database(app):
-    """ Returns the status of the database, as accessed from this instance. """
+    """
+    Returns the status of the database, as accessed from this instance.
+    """
     return model.check_health(app.config)
 
 
 def _check_redis(app):
-    """ Returns the status of Redis, as accessed from this instance. """
+    """
+    Returns the status of Redis, as accessed from this instance.
+    """
     return build_logs.check_health()
 
 
 def _check_storage(app):
-    """ Returns the status of storage, as accessed from this instance. """
+    """
+    Returns the status of storage, as accessed from this instance.
+    """
     if app.config.get("REGISTRY_STATE", "normal") == "readonly":
         return (True, "Storage check disabled for readonly mode")
 
@@ -89,14 +99,18 @@ def _check_storage(app):
 
 
 def _check_auth(app):
-    """ Returns the status of the auth engine, as accessed from this instance. """
+    """
+    Returns the status of the auth engine, as accessed from this instance.
+    """
     return authentication.ping()
 
 
 def _check_service_key(app):
-    """ Returns the status of the service key for this instance. If the key has disappeared or
-      has expired, then will return False.
-  """
+    """
+    Returns the status of the service key for this instance.
+
+    If the key has disappeared or has expired, then will return False.
+    """
     if not app.config.get("SETUP_COMPLETE", False):
         return (True, "Stack not fully setup; skipping check")
 
@@ -125,9 +139,11 @@ def _disk_within_threshold(path, threshold):
 
 def _check_disk_space(for_warning):
     def _check_disk_space(app):
-        """ Returns the status of the disk space for this instance. If the available disk space is below
-        a certain threshold, then will return False.
-    """
+        """
+        Returns the status of the disk space for this instance.
+
+        If the available disk space is below a certain threshold, then will return False.
+        """
         if not app.config.get("SETUP_COMPLETE", False):
             return (True, "Stack not fully setup; skipping check")
 
@@ -181,7 +197,9 @@ _WARNING_SERVICES = {
 
 
 def check_all_services(app, skip, for_instance=False):
-    """ Returns a dictionary containing the status of all the services defined. """
+    """
+    Returns a dictionary containing the status of all the services defined.
+    """
     if for_instance:
         services = dict(_INSTANCE_SERVICES)
         services.update(_GLOBAL_SERVICES)
@@ -192,7 +210,9 @@ def check_all_services(app, skip, for_instance=False):
 
 
 def check_warning_services(app, skip):
-    """ Returns a dictionary containing the status of all the warning services defined. """
+    """
+    Returns a dictionary containing the status of all the warning services defined.
+    """
     return _check_services(app, skip, _WARNING_SERVICES)
 
 

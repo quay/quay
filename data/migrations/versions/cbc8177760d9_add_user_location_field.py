@@ -1,9 +1,9 @@
-"""Add user location field
+"""
+Add user location field.
 
 Revision ID: cbc8177760d9
 Revises: 7367229b38d9
 Create Date: 2018-02-02 17:39:16.589623
-
 """
 
 # revision identifiers, used by Alembic.

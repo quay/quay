@@ -14,7 +14,9 @@ class AuthKind(Enum):
 
 
 class ValidateResult(object):
-    """ A result of validating auth in one form or another. """
+    """
+    A result of validating auth in one form or another.
+    """
 
     def __init__(
         self,
@@ -47,11 +49,15 @@ class ValidateResult(object):
         return self.tuple() == other.tuple()
 
     def apply_to_context(self):
-        """ Applies this auth result to the auth context and Flask-Principal. """
+        """
+        Applies this auth result to the auth context and Flask-Principal.
+        """
         self.context.apply_to_request_context()
 
     def with_kind(self, kind):
-        """ Returns a copy of this result, but with the kind replaced. """
+        """
+        Returns a copy of this result, but with the kind replaced.
+        """
         result = ValidateResult(kind, missing=self.missing, error_message=self.error_message)
         result.context = self.context
         return result
@@ -65,15 +71,21 @@ class ValidateResult(object):
 
     @property
     def authed_user(self):
-        """ Returns the authenticated user, whether directly, or via an OAuth token. """
+        """
+        Returns the authenticated user, whether directly, or via an OAuth token.
+        """
         return self.context.authed_user
 
     @property
     def has_nonrobot_user(self):
-        """ Returns whether a user (not a robot) was authenticated successfully. """
+        """
+        Returns whether a user (not a robot) was authenticated successfully.
+        """
         return self.context.has_nonrobot_user
 
     @property
     def auth_valid(self):
-        """ Returns whether authentication successfully occurred. """
+        """
+        Returns whether authentication successfully occurred.
+        """
         return self.context.entity_kind != ContextEntityKind.anonymous

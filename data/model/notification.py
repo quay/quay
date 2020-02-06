@@ -144,7 +144,9 @@ def delete_matching_notifications(target, kind_name, **kwargs):
 
 
 def increment_notification_failure_count(uuid):
-    """ This increments the number of failures by one """
+    """
+    This increments the number of failures by one.
+    """
     (
         RepositoryNotification.update(
             number_of_failures=RepositoryNotification.number_of_failures + 1
@@ -155,7 +157,9 @@ def increment_notification_failure_count(uuid):
 
 
 def reset_notification_number_of_failures(namespace_name, repository_name, uuid):
-    """ This resets the number of failures for a repo notification to 0 """
+    """
+    This resets the number of failures for a repo notification to 0.
+    """
     try:
         notification = (
             RepositoryNotification.select().where(RepositoryNotification.uuid == uuid).get()
@@ -174,7 +178,9 @@ def reset_notification_number_of_failures(namespace_name, repository_name, uuid)
 
 
 def reset_number_of_failures_to_zero(notification_id):
-    """ This resets the number of failures for a repo notification to 0 """
+    """
+    This resets the number of failures for a repo notification to 0.
+    """
     RepositoryNotification.update(number_of_failures=0).where(
         RepositoryNotification.id == notification_id
     ).execute()
@@ -197,7 +203,9 @@ def create_repo_notification(
 
 
 def _base_get_notification(uuid):
-    """ This is a base query for get statements """
+    """
+    This is a base query for get statements.
+    """
     return (
         RepositoryNotification.select(RepositoryNotification, Repository, Namespace)
         .join(Repository)
@@ -207,7 +215,9 @@ def _base_get_notification(uuid):
 
 
 def get_enabled_notification(uuid):
-    """ This returns a notification with less than 3 failures """
+    """
+    This returns a notification with less than 3 failures.
+    """
     try:
         return (
             _base_get_notification(uuid).where(RepositoryNotification.number_of_failures < 3).get()

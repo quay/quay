@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class ExternalJWTAuthN(FederatedUsers):
-    """ Delegates authentication to a REST endpoint that returns JWTs. """
+    """
+    Delegates authentication to a REST endpoint that returns JWTs.
+    """
 
     PUBLIC_KEY_FILENAME = "jwt-authn.cert"
 
@@ -119,7 +121,9 @@ class ExternalJWTAuthN(FederatedUsers):
         return (user_info, None)
 
     def _execute_call(self, url, aud, auth=None, params=None):
-        """ Executes a call to the external JWT auth provider. """
+        """
+        Executes a call to the external JWT auth provider.
+        """
         result = self.client.get(url, timeout=2, auth=auth, params=params)
         if result.status_code != 200:
             return (None, result.text or "Could not make JWT auth call")

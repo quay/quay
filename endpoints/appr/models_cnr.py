@@ -37,12 +37,16 @@ def _strip_sha256_header(digest):
 
 
 def _split_package_name(package):
-    """ Returns the namespace and package-name """
+    """
+    Returns the namespace and package-name.
+    """
     return package.split("/")
 
 
 def _join_package_name(ns, name):
-    """ Returns a app-name in the 'namespace/name' format """
+    """
+    Returns a app-name in the 'namespace/name' format.
+    """
     return "%s/%s" % (ns, name)
 
 
@@ -100,9 +104,10 @@ class CNRAppModel(AppRegistryDataInterface):
     def list_applications(
         self, namespace=None, media_type=None, search=None, username=None, with_channels=False
     ):
-        """ Lists all repositories that contain applications, with optional filtering to a specific
+        """
+        Lists all repositories that contain applications, with optional filtering to a specific
         namespace and view a specific user.
-    """
+        """
         limit = app.config.get("APP_REGISTRY_RESULTS_LIMIT", 50)
         views = []
         for repo in appr_model.package.list_packages_query(
@@ -147,7 +152,9 @@ class CNRAppModel(AppRegistryDataInterface):
         return data.model.repository.repository_is_public(namespace, name)
 
     def create_application(self, package_name, visibility, owner):
-        """ Create a new app repository, owner is the user who creates it """
+        """
+        Create a new app repository, owner is the user who creates it.
+        """
         if self.is_readonly:
             raise ReadOnlyException("Currently in read-only mode")
 
@@ -155,7 +162,9 @@ class CNRAppModel(AppRegistryDataInterface):
         data.model.repository.create_repository(ns, name, owner, visibility, "application")
 
     def application_exists(self, package_name):
-        """ Create a new app repository, owner is the user who creates it """
+        """
+        Create a new app repository, owner is the user who creates it.
+        """
         ns, name = _split_package_name(package_name)
         return data.model.repository.get_repository(ns, name, kind_filter="application") is not None
 
@@ -189,11 +198,12 @@ class CNRAppModel(AppRegistryDataInterface):
         )
 
     def list_manifests(self, package_name, release=None):
-        """ Returns the list of all manifests of an Application.
+        """
+        Returns the list of all manifests of an Application.
 
         Todo:
           * Paginate
-    """
+        """
         try:
             repo = _application(package_name)
             return list(appr_model.manifest.get_manifest_types(repo, self.models_ref, release))
@@ -202,8 +212,8 @@ class CNRAppModel(AppRegistryDataInterface):
 
     def fetch_release(self, package_name, release, media_type):
         """
-     Retrieves an AppRelease from it's repository-name and release-name
-    """
+        Retrieves an AppRelease from it's repository-name and release-name.
+        """
         repo = _application(package_name)
         try:
             tag, manifest, blob = appr_model.release.get_app_release(
@@ -254,9 +264,9 @@ class CNRAppModel(AppRegistryDataInterface):
         )
 
     def create_release(self, package, user, visibility, force=False):
-        """ Add an app-release to a repository
-    package is an instance of data.cnr.package.Package
-    """
+        """
+        Add an app-release to a repository package is an instance of data.cnr.package.Package.
+        """
         if self.is_readonly:
             raise ReadOnlyException("Currently in read-only mode")
 
@@ -276,9 +286,11 @@ class CNRAppModel(AppRegistryDataInterface):
         )
 
     def delete_release(self, package_name, release, media_type):
-        """ Remove/Delete an app-release from an app-repository.
+        """
+        Remove/Delete an app-release from an app-repository.
+
         It does not delete the entire app-repository, only a single release
-    """
+        """
         if self.is_readonly:
             raise ReadOnlyException("Currently in read-only mode")
 
@@ -293,12 +305,15 @@ class CNRAppModel(AppRegistryDataInterface):
             raise_package_not_found(package_name, release, media_type)
 
     def release_exists(self, package, release):
-        """ Return true if a release with that name already exist or
-    have existed (include deleted ones) """
+        """
+        Return true if a release with that name already exist or have existed (include deleted ones)
+        """
         # TODO: Figure out why this isn't implemented.
 
     def channel_exists(self, package_name, channel_name):
-        """ Returns true if channel exists """
+        """
+        Returns true if channel exists.
+        """
         repo = _application(package_name)
         return appr_model.tag.tag_exists(repo, channel_name, self.models_ref, "channel")
 
@@ -317,13 +332,17 @@ class CNRAppModel(AppRegistryDataInterface):
             raise_channel_not_found(package_name, channel_name)
 
     def list_channels(self, package_name):
-        """ Returns all AppChannel for a package """
+        """
+        Returns all AppChannel for a package.
+        """
         repo = _application(package_name)
         channels = appr_model.channel.get_repo_channels(repo, self.models_ref)
         return [ChannelView(name=chan.name, current=chan.linked_tag.name) for chan in channels]
 
     def fetch_channel(self, package_name, channel_name, with_releases=True):
-        """ Returns an AppChannel """
+        """
+        Returns an AppChannel.
+        """
         repo = _application(package_name)
 
         try:

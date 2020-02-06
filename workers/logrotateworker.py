@@ -33,7 +33,9 @@ SAVE_LOCATION = app.config.get("ACTION_LOG_ARCHIVE_LOCATION")
 
 
 class LogRotateWorker(Worker):
-    """ Worker used to rotate old logs out the database and into storage. """
+    """
+    Worker used to rotate old logs out the database and into storage.
+    """
 
     def __init__(self):
         super(LogRotateWorker, self).__init__()
@@ -74,7 +76,9 @@ class LogRotateWorker(Worker):
 
 
 def log_dict(log):
-    """ Pretty prints a LogEntry in JSON. """
+    """
+    Pretty prints a LogEntry in JSON.
+    """
     try:
         metadata_json = json.loads(str(log.metadata_json))
     except ValueError:

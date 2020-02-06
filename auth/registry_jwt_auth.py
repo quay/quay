@@ -57,7 +57,9 @@ class InvalidJWTException(Exception):
 
 
 def get_auth_headers(repository=None, scopes=None):
-    """ Returns a dictionary of headers for auth responses. """
+    """
+    Returns a dictionary of headers for auth responses.
+    """
     headers = {}
     realm_auth_path = url_for("v2.generate_registry_jwt")
     authenticate = 'Bearer realm="{0}{1}",service="{2}"'.format(
@@ -76,10 +78,13 @@ def get_auth_headers(repository=None, scopes=None):
 
 
 def identity_from_bearer_token(bearer_header):
-    """ Process a bearer header and return the loaded identity, or raise InvalidJWTException if an
-      identity could not be loaded. Expects tokens and grants in the format of the Docker registry
-      v2 auth spec: https://docs.docker.com/registry/spec/auth/token/
-  """
+    """
+    Process a bearer header and return the loaded identity, or raise InvalidJWTException if an
+    identity could not be loaded.
+
+    Expects tokens and grants in the format of the Docker registry v2 auth spec:
+    https://docs.docker.com/registry/spec/auth/token/
+    """
     logger.debug("Validating auth header: %s", bearer_header)
 
     try:
@@ -121,9 +126,11 @@ def identity_from_bearer_token(bearer_header):
 
 
 def process_registry_jwt_auth(scopes=None):
-    """ Processes the registry JWT auth token found in the authorization header. If none found,
-      no error is returned. If an invalid token is found, raises a 401.
-  """
+    """
+    Processes the registry JWT auth token found in the authorization header.
+
+    If none found, no error is returned. If an invalid token is found, raises a 401.
+    """
 
     def inner(func):
         @wraps(func)

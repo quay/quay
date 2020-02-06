@@ -1,5 +1,7 @@
 class LabelValidator(object):
-    """ Helper class for validating that labels meet prefix requirements. """
+    """
+    Helper class for validating that labels meet prefix requirements.
+    """
 
     def __init__(self, app):
         self.app = app
@@ -15,7 +17,9 @@ class LabelValidator(object):
         self.reserved_prefixed_set = set(default_prefixes + overridden_prefixes)
 
     def has_reserved_prefix(self, label_key):
-        """ Validates that the provided label key does not match any reserved prefixes. """
+        """
+        Validates that the provided label key does not match any reserved prefixes.
+        """
         for prefix in self.reserved_prefixed_set:
             if label_key.startswith(prefix):
                 return True
