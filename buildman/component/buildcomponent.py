@@ -478,7 +478,7 @@ class BuildComponent(BaseComponent):
         Alerts the parent that a build has completed and sets the status back to running.
         """
         yield from self.parent_manager.job_completed(self._current_job, job_status, self)
-        
+
         # Set the component back to a running state.
         yield from self._set_status(ComponentStatus.RUNNING)
 
