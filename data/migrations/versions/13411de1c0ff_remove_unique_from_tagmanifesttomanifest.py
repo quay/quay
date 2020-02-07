@@ -1,9 +1,9 @@
-"""Remove unique from TagManifestToManifest
+"""
+Remove unique from TagManifestToManifest.
 
 Revision ID: 13411de1c0ff
 Revises: 654e6df88b71
 Create Date: 2018-08-19 23:30:24.969549
-
 """
 
 # revision identifiers, used by Alembic.

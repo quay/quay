@@ -22,9 +22,12 @@ _SESSION_KEY = "__manifestbuilder"
 
 
 def create_manifest_builder(repository_ref, storage, legacy_signing_key):
-    """ Creates a new manifest builder for populating manifests under the specified repository
-      and returns it. Returns None if the builder could not be constructed.
-  """
+    """
+    Creates a new manifest builder for populating manifests under the specified repository and
+    returns it.
+
+    Returns None if the builder could not be constructed.
+    """
     builder_id = str(uuid.uuid4())
     builder = _ManifestBuilder(
         repository_ref, _BuilderState(builder_id, {}, {}, {}, []), storage, legacy_signing_key
@@ -34,9 +37,10 @@ def create_manifest_builder(repository_ref, storage, legacy_signing_key):
 
 
 def lookup_manifest_builder(repository_ref, builder_id, storage, legacy_signing_key):
-    """ Looks up the manifest builder with the given ID under the specified repository and returns
-      it or None if none.
-  """
+    """
+    Looks up the manifest builder with the given ID under the specified repository and returns it or
+    None if none.
+    """
     builder_state_tuple = session.get(_SESSION_KEY)
     if builder_state_tuple is None:
         return None
@@ -49,9 +53,10 @@ def lookup_manifest_builder(repository_ref, builder_id, storage, legacy_signing_
 
 
 class _ManifestBuilder(object):
-    """ Helper class which provides an interface for bookkeeping the layers and configuration of
-      manifests being constructed.
-  """
+    """
+    Helper class which provides an interface for bookkeeping the layers and configuration of
+    manifests being constructed.
+    """
 
     def __init__(self, repository_ref, builder_state, storage, legacy_signing_key):
         self._repository_ref = repository_ref
@@ -61,12 +66,16 @@ class _ManifestBuilder(object):
 
     @property
     def builder_id(self):
-        """ Returns the unique ID for this builder. """
+        """
+        Returns the unique ID for this builder.
+        """
         return self._builder_state.builder_id
 
     @property
     def committed_tags(self):
-        """ Returns the tags committed by this builder, if any. """
+        """
+        Returns the tags committed by this builder, if any.
+        """
         return [
             registry_model.get_repo_tag(self._repository_ref, tag_name, include_legacy_image=True)
             for tag_name in self._builder_state.tags.keys()
@@ -75,9 +84,11 @@ class _ManifestBuilder(object):
     def start_layer(
         self, layer_id, v1_metadata_string, location_name, calling_user, temp_tag_expiration
     ):
-        """ Starts a new layer with the given ID to be placed into a manifest. Returns the layer
-        started or None if an error occurred.
-    """
+        """
+        Starts a new layer with the given ID to be placed into a manifest.
+
+        Returns the layer started or None if an error occurred.
+        """
         # Ensure the repository still exists.
         repository = model.repository.lookup_repository(self._repository_ref._db_id)
         if repository is None:
@@ -148,7 +159,11 @@ class _ManifestBuilder(object):
         return ManifestLayer(layer_id, v1_metadata_string, created.id)
 
     def lookup_layer(self, layer_id):
-        """ Returns a layer with the given ID under this builder. If none exists, returns None. """
+        """
+        Returns a layer with the given ID under this builder.
+
+        If none exists, returns None.
+        """
         if layer_id not in self._builder_state.images:
             return None
 
@@ -159,7 +174,9 @@ class _ManifestBuilder(object):
         return ManifestLayer(layer_id, image.v1_json_metadata, image.id)
 
     def assign_layer_blob(self, layer, blob, computed_checksums):
-        """ Assigns a blob to a layer. """
+        """
+        Assigns a blob to a layer.
+        """
         assert blob
         assert not blob.uploading
 
@@ -180,25 +197,31 @@ class _ManifestBuilder(object):
         return True
 
     def validate_layer_checksum(self, layer, checksum):
-        """ Returns whether the checksum for a layer matches that specified.
-    """
+        """
+        Returns whether the checksum for a layer matches that specified.
+        """
         return checksum in self.get_layer_checksums(layer)
 
     def get_layer_checksums(self, layer):
-        """ Returns the registered defined for the layer, if any. """
+        """
+        Returns the registered defined for the layer, if any.
+        """
         return self._builder_state.checksums.get(layer.layer_id) or []
 
     def save_precomputed_checksum(self, layer, checksum):
-        """ Saves a precomputed checksum for a layer. """
+        """
+        Saves a precomputed checksum for a layer.
+        """
         checksums = self._builder_state.checksums.get(layer.layer_id) or []
         checksums.append(checksum)
         self._builder_state.checksums[layer.layer_id] = checksums
         self._save_to_session()
 
     def commit_tag_and_manifest(self, tag_name, layer):
-        """ Commits a new tag + manifest for that tag to the repository with the given name,
-        pointing to the given layer.
-    """
+        """
+        Commits a new tag + manifest for that tag to the repository with the given name, pointing to
+        the given layer.
+        """
         legacy_image = registry_model.get_legacy_image(self._repository_ref, layer.layer_id)
         if legacy_image is None:
             return None
@@ -214,10 +237,12 @@ class _ManifestBuilder(object):
         return tag
 
     def done(self):
-        """ Marks the manifest builder as complete and disposes of any state. This call is optional
-        and it is expected manifest builders will eventually time out if unused for an
-        extended period of time.
-    """
+        """
+        Marks the manifest builder as complete and disposes of any state.
+
+        This call is optional and it is expected manifest builders will eventually time out if
+        unused for an extended period of time.
+        """
         temp_storages = self._builder_state.temp_storages
         for storage_id in temp_storages:
             try:

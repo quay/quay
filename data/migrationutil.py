@@ -11,12 +11,15 @@ MigrationPhase = namedtuple("MigrationPhase", ["name", "alembic_revision", "flag
 class DataMigration(object):
     @abstractproperty
     def alembic_migration_revision(self):
-        """ Returns the alembic migration revision corresponding to the currently configured phase.
-    """
+        """
+        Returns the alembic migration revision corresponding to the currently configured phase.
+        """
 
     @abstractmethod
     def has_flag(self, flag):
-        """ Returns true if the data migration's current phase has the given flag set. """
+        """
+        Returns true if the data migration's current phase has the given flag set.
+        """
 
 
 class NullDataMigration(DataMigration):

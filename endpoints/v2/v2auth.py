@@ -56,9 +56,10 @@ scopeResult = namedtuple(
 @anon_protect
 def generate_registry_jwt(auth_result):
     """
-  This endpoint will generate a JWT conforming to the Docker Registry v2 Auth Spec:
-  https://docs.docker.com/registry/spec/auth/token/
-  """
+    This endpoint will generate a JWT conforming to the Docker Registry v2 Auth Spec:
+
+    https://docs.docker.com/registry/spec/auth/token/
+    """
     audience_param = request.args.get("service")
     logger.debug("Request audience: %s", audience_param)
 

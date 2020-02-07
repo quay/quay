@@ -22,42 +22,46 @@ class NotificationEvent(object):
 
     def get_level(self, event_data, notification_data):
         """
-    Returns a 'level' representing the severity of the event.
-    Valid values are: 'info', 'warning', 'error', 'primary', 'success'
-    """
+        Returns a 'level' representing the severity of the event.
+
+        Valid values are: 'info', 'warning', 'error', 'primary', 'success'
+        """
         raise NotImplementedError
 
     def get_summary(self, event_data, notification_data):
         """
-    Returns a human readable one-line summary for the given notification data.
-    """
+        Returns a human readable one-line summary for the given notification data.
+        """
         raise NotImplementedError
 
     def get_message(self, event_data, notification_data):
         """
-    Returns a human readable HTML message for the given notification data.
-    """
+        Returns a human readable HTML message for the given notification data.
+        """
         return TEMPLATE_ENV.get_template(self.event_name() + ".html").render(
             {"event_data": event_data, "notification_data": notification_data}
         )
 
     def get_sample_data(self, namespace_name, repo_name, event_config):
         """
-    Returns sample data for testing the raising of this notification, with an example notification.
-    """
+        Returns sample data for testing the raising of this notification, with an example
+        notification.
+        """
         raise NotImplementedError
 
     def should_perform(self, event_data, notification_data):
         """
-    Whether a notification for this event should be performed. By default returns True.
-    """
+        Whether a notification for this event should be performed.
+
+        By default returns True.
+        """
         return True
 
     @classmethod
     def event_name(cls):
         """
-    Particular event implemented by subclasses.
-    """
+        Particular event implemented by subclasses.
+        """
         raise NotImplementedError
 
     @classmethod
@@ -157,7 +161,9 @@ class RepoMirrorSyncFailedEvent(NotificationEvent):
 
 
 def _build_summary(event_data):
-    """ Returns a summary string for the build data found in the event data block. """
+    """
+    Returns a summary string for the build data found in the event data block.
+    """
     summary = "for repository %s [%s]" % (event_data["repository"], event_data["build_id"][0:7])
     return summary
 

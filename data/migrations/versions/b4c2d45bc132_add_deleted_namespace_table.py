@@ -1,9 +1,9 @@
-"""Add deleted namespace table
+"""
+Add deleted namespace table.
 
 Revision ID: b4c2d45bc132
 Revises: 152edccba18c
 Create Date: 2018-02-27 11:43:02.329941
-
 """
 
 # revision identifiers, used by Alembic.

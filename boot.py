@@ -69,8 +69,8 @@ def _verify_service_key():
 
 def setup_jwt_proxy():
     """
-  Creates a service key for quay to use in the jwtproxy and generates the JWT proxy configuration.
-  """
+    Creates a service key for quay to use in the jwtproxy and generates the JWT proxy configuration.
+    """
     if os.path.exists(os.path.join(CONF_DIR, "jwtproxy_conf.yaml")):
         # Proxy is already setup. Make sure the service key is still valid.
         quay_key_id = _verify_service_key()

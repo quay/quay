@@ -7,7 +7,9 @@ from data import model
 
 
 def can_create_user(email_address, blacklisted_domains=None):
-    """ Returns true if a user with the specified e-mail address can be created. """
+    """
+    Returns true if a user with the specified e-mail address can be created.
+    """
 
     if features.BLACKLISTED_EMAILS and email_address and "@" in email_address:
         blacklisted_domains = blacklisted_domains or []

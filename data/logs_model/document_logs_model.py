@@ -50,11 +50,12 @@ COUNT_REPOSITORY_ACTION_TIMEOUT = 30
 
 
 def _date_range_descending(start_datetime, end_datetime, includes_end_datetime=False):
-    """ Generate the dates between `end_datetime` and `start_datetime`.
+    """
+    Generate the dates between `end_datetime` and `start_datetime`.
 
-  If `includes_end_datetime` is set, the generator starts at `end_datetime`,
-  otherwise, starts the generator at `end_datetime` minus 1 second.
-  """
+    If `includes_end_datetime` is set, the generator starts at `end_datetime`, otherwise, starts the
+    generator at `end_datetime` minus 1 second.
+    """
     assert end_datetime >= start_datetime
     start_date = start_datetime.date()
 
@@ -69,12 +70,13 @@ def _date_range_descending(start_datetime, end_datetime, includes_end_datetime=F
 
 
 def _date_range_in_single_index(dt1, dt2):
-    """ Determine whether a single index can be searched given a range
-  of dates or datetimes. If date instances are given, difference should be 1 day.
+    """
+    Determine whether a single index can be searched given a range of dates or datetimes. If date
+    instances are given, difference should be 1 day.
 
-  NOTE: dt2 is exclusive to the search result set.
-  i.e. The date range is larger or equal to dt1 and strictly smaller than dt2
-  """
+    NOTE: dt2 is exclusive to the search result set.
+    i.e. The date range is larger or equal to dt1 and strictly smaller than dt2
+    """
     assert isinstance(dt1, date) and isinstance(dt2, date)
 
     dt = dt2 - dt1
@@ -106,34 +108,40 @@ def _for_elasticsearch_logs(logs, repository_id=None, namespace_id=None):
 
 
 def _random_id():
-    """ Generates a unique uuid4 string for the random_id field in LogEntry.
-  It is used as tie-breaker for sorting logs based on datetime:
-  https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-after.html
-  """
+    """
+    Generates a unique uuid4 string for the random_id field in LogEntry.
+
+    It is used as tie-breaker for sorting logs based on datetime:
+    https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-search-after.html
+    """
     return str(uuid.uuid4())
 
 
 @add_metaclass(ABCMeta)
 class ElasticsearchLogsModelInterface(object):
     """
-  Interface for Elasticsearch specific operations with the logs model.
-  These operations are usually index based.
-  """
+    Interface for Elasticsearch specific operations with the logs model.
+
+    These operations are usually index based.
+    """
 
     @abstractmethod
     def can_delete_index(self, index, cutoff_date):
-        """ Return whether the given index is older than the given cutoff date. """
+        """
+        Return whether the given index is older than the given cutoff date.
+        """
 
     @abstractmethod
     def list_indices(self):
-        """ List the logs model's indices. """
+        """
+        List the logs model's indices.
+        """
 
 
 class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsModelInterface):
     """
-  DocumentLogsModel implements the data model for the logs API backed by an
-  elasticsearch service.
-  """
+    DocumentLogsModel implements the data model for the logs API backed by an elasticsearch service.
+    """
 
     def __init__(
         self, should_skip_logging=None, elasticsearch_config=None, producer=None, **kwargs
@@ -155,11 +163,12 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
 
     @staticmethod
     def _get_ids_by_names(repository_name, namespace_name, performer_name):
-        """ Retrieve repository/namespace/performer ids based on their names.
-        throws DataModelException when the namespace_name does not match any
-        user in the database.
+        """
+        Retrieve repository/namespace/performer ids based on their names.
+
+        throws DataModelException when the namespace_name does not match any user in the database.
         returns database ID or None if not exists.
-    """
+        """
         repository_id = None
         account_id = None
         performer_id = None
@@ -269,10 +278,11 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
         return search.execute()
 
     def _load_latest_logs(self, performer_id, repository_id, account_id, filter_kinds, size):
-        """ Return the latest logs from Elasticsearch.
+        """
+        Return the latest logs from Elasticsearch.
 
-    Look at indices up to theset logrotateworker threshold, or up to 30 days if not defined.
-    """
+        Look at indices up to theset logrotateworker threshold, or up to 30 days if not defined.
+        """
         # Set the last index to check to be the logrotateworker threshold, or 30 days
         end_datetime = datetime.now()
         start_datetime = end_datetime - timedelta(days=DATE_RANGE_LIMIT)
@@ -563,7 +573,9 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
         return self._es_client.list_indices()
 
     def yield_log_rotation_context(self, cutoff_date, min_logs_per_rotation):
-        """ Yield a context manager for a group of outdated logs. """
+        """
+        Yield a context manager for a group of outdated logs.
+        """
         all_indices = self.list_indices()
         for index in all_indices:
             if not self.can_delete_index(index, cutoff_date):
@@ -575,11 +587,10 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
 
 class ElasticsearchLogRotationContext(LogRotationContextInterface):
     """
-  ElasticsearchLogRotationContext yield batch of logs from an index.
+    ElasticsearchLogRotationContext yield batch of logs from an index.
 
-  When completed without exceptions, this context will delete its associated
-  Elasticsearch index.
-  """
+    When completed without exceptions, this context will delete its associated Elasticsearch index.
+    """
 
     def __init__(self, index, min_logs_per_rotation, es_client):
         self._es_client = es_client
@@ -623,7 +634,9 @@ class ElasticsearchLogRotationContext(LogRotationContextInterface):
         return search
 
     def _generate_filename(self):
-        """ Generate the filenames used to archive the action logs. """
+        """
+        Generate the filenames used to archive the action logs.
+        """
         filename = "%s_%d-%d" % (self.index, self.start_pos, self.end_pos)
         filename = ".".join((filename, "txt.gz"))
         return filename

@@ -20,8 +20,8 @@ FAILED_SEND_SLEEP_SECS = 15
 
 def start_cloudwatch_sender(metrics, app):
     """
-  Starts sending from metrics to a new CloudWatchSender.
-  """
+    Starts sending from metrics to a new CloudWatchSender.
+    """
     access_key = app.config.get("CLOUDWATCH_AWS_ACCESS_KEY")
     secret_key = app.config.get("CLOUDWATCH_AWS_SECRET_KEY")
     namespace = app.config.get("CLOUDWATCH_NAMESPACE")
@@ -36,8 +36,9 @@ def start_cloudwatch_sender(metrics, app):
 
 class CloudWatchSender(Thread):
     """
-  CloudWatchSender loops indefinitely and pulls metrics off of a queue then sends it to CloudWatch.
-  """
+    CloudWatchSender loops indefinitely and pulls metrics off of a queue then sends it to
+    CloudWatch.
+    """
 
     def __init__(self, metrics, aws_access_key, aws_secret_key, namespace):
         Thread.__init__(self)

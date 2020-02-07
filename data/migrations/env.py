@@ -54,10 +54,12 @@ tables = AttrDict(target_metadata.tables)
 
 
 def get_tester():
-    """ Returns the tester to use. We only return the tester that populates data
-      if the TEST_MIGRATE env var is set to `true` AND we make sure we're not
-      connecting to a production database.
-  """
+    """
+    Returns the tester to use.
+
+    We only return the tester that populates data if the TEST_MIGRATE env var is set to `true` AND
+    we make sure we're not connecting to a production database.
+    """
     if os.environ.get("TEST_MIGRATE", "") == "true":
         url = unquote(DB_URI)
         if url.find("amazonaws.com") < 0:
@@ -92,17 +94,17 @@ def report_success(ctx=None, step=None, heads=None, run_args=None):
 
 
 def run_migrations_offline():
-    """Run migrations in 'offline' mode.
+    """
+    Run migrations in 'offline' mode.
 
-  This configures the context with just a URL
-  and not an Engine, though an Engine is acceptable
-  here as well.  By skipping the Engine creation
-  we don't even need a DBAPI to be available.
+    This configures the context with just a URL
+    and not an Engine, though an Engine is acceptable
+    here as well.  By skipping the Engine creation
+    we don't even need a DBAPI to be available.
 
-  Calls to context.execute() here emit the given string to the
-  script output.
-
-  """
+    Calls to context.execute() here emit the given string to the
+    script output.
+    """
     url = unquote(DB_URI)
     context.configure(url=url, target_metadata=target_metadata, transactional_ddl=True)
 
@@ -111,12 +113,11 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """Run migrations in 'online' mode.
+    """
+    Run migrations in 'online' mode.
 
-  In this scenario we need to create an Engine
-  and associate a connection with the context.
-
-  """
+    In this scenario we need to create an Engine and associate a connection with the context.
+    """
 
     if (
         isinstance(db.obj, SqliteDatabase)

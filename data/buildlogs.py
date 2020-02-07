@@ -44,9 +44,9 @@ class RedisBuildLogs(object):
 
     def append_log_entry(self, build_id, log_obj):
         """
-    Appends the serialized form of log_obj to the end of the log entry list
-    and returns the new length of the list.
-    """
+        Appends the serialized form of log_obj to the end of the log entry list and returns the new
+        length of the list.
+        """
         pipeline = self._redis.pipeline(transaction=False)
         pipeline.expire(self._logs_key(build_id), SEVEN_DAYS)
         pipeline.rpush(self._logs_key(build_id), json.dumps(log_obj))
@@ -55,9 +55,9 @@ class RedisBuildLogs(object):
 
     def append_log_message(self, build_id, log_message, log_type=None, log_data=None):
         """
-    Wraps the message in an envelope and push it to the end of the log entry
-    list and returns the index at which it was inserted.
-    """
+        Wraps the message in an envelope and push it to the end of the log entry list and returns
+        the index at which it was inserted.
+        """
         log_obj = {"message": log_message}
 
         if log_type:
@@ -70,9 +70,9 @@ class RedisBuildLogs(object):
 
     def get_log_entries(self, build_id, start_index):
         """
-    Returns a tuple of the current length of the list and an iterable of the
-    requested log entries.
-    """
+        Returns a tuple of the current length of the list and an iterable of the requested log
+        entries.
+        """
         try:
             llen = self._redis.llen(self._logs_key(build_id))
             log_entries = self._redis.lrange(self._logs_key(build_id), start_index, -1)
@@ -82,20 +82,20 @@ class RedisBuildLogs(object):
 
     def expire_status(self, build_id):
         """
-    Sets the status entry to expire in 1 day.
-    """
+        Sets the status entry to expire in 1 day.
+        """
         self._redis.expire(self._status_key(build_id), ONE_DAY)
 
     def expire_log_entries(self, build_id):
         """
-    Sets the log entry to expire in 1 day.
-    """
+        Sets the log entry to expire in 1 day.
+        """
         self._redis.expire(self._logs_key(build_id), ONE_DAY)
 
     def delete_log_entries(self, build_id):
         """
-    Delete the log entry
-    """
+        Delete the log entry.
+        """
         self._redis.delete(self._logs_key(build_id))
 
     @staticmethod
@@ -104,15 +104,14 @@ class RedisBuildLogs(object):
 
     def set_status(self, build_id, status_obj):
         """
-    Sets the status key for this build to json serialized form of the supplied
-    obj.
-    """
+        Sets the status key for this build to json serialized form of the supplied obj.
+        """
         self._redis.set(self._status_key(build_id), json.dumps(status_obj), ex=SEVEN_DAYS)
 
     def get_status(self, build_id):
         """
-    Loads the status information for the specified build id.
-    """
+        Loads the status information for the specified build id.
+        """
         try:
             fetched = self._redis.get(self._status_key(build_id))
         except redis.RedisError as re:

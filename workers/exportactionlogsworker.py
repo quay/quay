@@ -43,9 +43,10 @@ class ExportResult(Enum):
 
 
 class ExportActionLogsWorker(QueueWorker):
-    """ Worker which exports action logs for a namespace or a repository based on
-      a queued request from the API.
-  """
+    """
+    Worker which exports action logs for a namespace or a repository based on a queued request from
+    the API.
+    """
 
     def process_queue_item(self, job_details):
         return self._process_queue_item(job_details, app_storage)

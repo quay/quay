@@ -2,9 +2,10 @@ from multiprocessing.queues import Empty, Queue
 
 
 class QueueFile(object):
-    """ Class which implements a file-like interface and reads QueueResult's from a blocking
-      multiprocessing queue.
-  """
+    """
+    Class which implements a file-like interface and reads QueueResult's from a blocking
+    multiprocessing queue.
+    """
 
     def __init__(self, queue, name=None, timeout=None):
         self._queue = queue

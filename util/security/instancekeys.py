@@ -22,17 +22,21 @@ class CachingKey(object):
 
 
 class InstanceKeys(object):
-    """ InstanceKeys defines a helper class for interacting with the Quay instance service keys
-      used for JWT signing of registry tokens as well as requests from Quay to other services
-      such as Clair. Each container will have a single registered instance key.
-  """
+    """
+    InstanceKeys defines a helper class for interacting with the Quay instance service keys used for
+    JWT signing of registry tokens as well as requests from Quay to other services such as Clair.
+
+    Each container will have a single registered instance key.
+    """
 
     def __init__(self, app):
         self.app = app
         self.instance_keys = ExpiresDict(self._load_instance_keys)
 
     def clear_cache(self):
-        """ Clears the cache of instance keys. """
+        """
+        Clears the cache of instance keys.
+        """
         self.instance_keys = ExpiresDict(self._load_instance_keys)
 
     def _load_instance_keys(self):
@@ -45,28 +49,38 @@ class InstanceKeys(object):
 
     @property
     def service_name(self):
-        """ Returns the name of the instance key's service (i.e. 'quay'). """
+        """
+        Returns the name of the instance key's service (i.e. 'quay').
+        """
         return self.app.config["INSTANCE_SERVICE_KEY_SERVICE"]
 
     @property
     def service_key_expiration(self):
-        """ Returns the defined expiration for instance service keys, in minutes. """
+        """
+        Returns the defined expiration for instance service keys, in minutes.
+        """
         return self.app.config.get("INSTANCE_SERVICE_KEY_EXPIRATION", 120)
 
     @property
     @lru_cache(maxsize=1)
     def local_key_id(self):
-        """ Returns the ID of the local instance service key. """
+        """
+        Returns the ID of the local instance service key.
+        """
         return _load_file_contents(self.app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"])
 
     @property
     @lru_cache(maxsize=1)
     def local_private_key(self):
-        """ Returns the private key of the local instance service key. """
+        """
+        Returns the private key of the local instance service key.
+        """
         return _load_file_contents(self.app.config["INSTANCE_SERVICE_KEY_LOCATION"])
 
     def get_service_key_public_key(self, kid):
-        """ Returns the public key associated with the given instance service key or None if none. """
+        """
+        Returns the public key associated with the given instance service key or None if none.
+        """
         caching_key = self.instance_keys.get(kid)
         if caching_key is None:
             return None
@@ -75,6 +89,8 @@ class InstanceKeys(object):
 
 
 def _load_file_contents(path):
-    """ Returns the contents of the specified file path. """
+    """
+    Returns the contents of the specified file path.
+    """
     with open(path) as f:
         return f.read()

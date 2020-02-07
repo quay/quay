@@ -32,18 +32,19 @@ class RepositoryBaseElement(
     )
 ):
     """
-  Repository a single quay repository
-  :type namespace_name: string
-  :type repository_name: string
-  :type is_starred: boolean
-  :type is_public: boolean
-  :type kind_name: string
-  :type description: string
-  :type namespace_user_organization: boolean
-  :type should_last_modified: boolean
-  :type should_popularity: boolean
-  :type should_is_starred: boolean
-  """
+    Repository a single quay repository.
+
+    :type namespace_name: string
+    :type repository_name: string
+    :type is_starred: boolean
+    :type is_public: boolean
+    :type kind_name: string
+    :type description: string
+    :type namespace_user_organization: boolean
+    :type should_last_modified: boolean
+    :type should_popularity: boolean
+    :type should_is_starred: boolean
+    """
 
     def to_dict(self):
         repo = {
@@ -73,11 +74,12 @@ class ApplicationRepository(
     )
 ):
     """
-  Repository a single quay repository
-  :type repository_base_elements: RepositoryBaseElement
-  :type channels: [Channel]
-  :type releases: [Release]
-  """
+    Repository a single quay repository.
+
+    :type repository_base_elements: RepositoryBaseElement
+    :type channels: [Channel]
+    :type releases: [Release]
+    """
 
     def to_dict(self):
         repo_data = {
@@ -104,13 +106,14 @@ class ImageRepositoryRepository(
     )
 ):
     """
-  Repository a single quay repository
-  :type repository_base_elements: RepositoryBaseElement
-  :type tags: [Tag]
-  :type counts: [count]
-  :type badge_token: string
-  :type trust_enabled: boolean
-  """
+    Repository a single quay repository.
+
+    :type repository_base_elements: RepositoryBaseElement
+    :type tags: [Tag]
+    :type counts: [count]
+    :type badge_token: string
+    :type trust_enabled: boolean
+    """
 
     def to_dict(self):
         img_repo = {
@@ -139,19 +142,21 @@ class ImageRepositoryRepository(
 
 class Repository(namedtuple("Repository", ["namespace_name", "repository_name",])):
     """
-  Repository a single quay repository
-  :type namespace_name: string
-  :type repository_name: string
-  """
+    Repository a single quay repository.
+
+    :type namespace_name: string
+    :type repository_name: string
+    """
 
 
 class Channel(namedtuple("Channel", ["name", "linked_tag_name", "linked_tag_lifetime_start"])):
     """
-  Repository a single quay repository
-  :type name: string
-  :type linked_tag_name: string
-  :type linked_tag_lifetime_start: string
-  """
+    Repository a single quay repository.
+
+    :type name: string
+    :type linked_tag_name: string
+    :type linked_tag_lifetime_start: string
+    """
 
     def to_dict(self):
         return {
@@ -165,11 +170,12 @@ class Channel(namedtuple("Channel", ["name", "linked_tag_name", "linked_tag_life
 
 class Release(namedtuple("Channel", ["name", "lifetime_start", "releases_channels_map"])):
     """
-  Repository a single quay repository
-  :type name: string
-  :type last_modified: string
-  :type releases_channels_map: {string -> string}
-  """
+    Repository a single quay repository.
+
+    :type name: string
+    :type last_modified: string
+    :type releases_channels_map: {string -> string}
+    """
 
     def to_dict(self):
         return {
@@ -239,28 +245,28 @@ class Count(namedtuple("Count", ["date", "count"])):
 @add_metaclass(ABCMeta)
 class RepositoryDataInterface(object):
     """
-  Interface that represents all data store interactions required by a Repository.
-  """
+    Interface that represents all data store interactions required by a Repository.
+    """
 
     @abstractmethod
     def get_repo(self, namespace_name, repository_name, user, include_tags=True, max_tags=500):
         """
-    Returns a repository
-    """
+        Returns a repository.
+        """
 
     @abstractmethod
     def repo_exists(self, namespace_name, repository_name):
         """
-    Returns true if a repo exists and false if not
-    """
+        Returns true if a repo exists and false if not.
+        """
 
     @abstractmethod
     def create_repo(
         self, namespace, name, creating_user, description, visibility="private", repo_kind="image"
     ):
         """
-    Returns creates a new repo
-    """
+        Returns creates a new repo.
+        """
 
     @abstractmethod
     def get_repo_list(
@@ -276,41 +282,41 @@ class RepositoryDataInterface(object):
         popularity,
     ):
         """
-    Returns a RepositoryBaseElement
-    """
+        Returns a RepositoryBaseElement.
+        """
 
     @abstractmethod
     def set_repository_visibility(self, namespace_name, repository_name, visibility):
         """
-    Sets a repository's visibility if it is found
-    """
+        Sets a repository's visibility if it is found.
+        """
 
     @abstractmethod
     def set_trust(self, namespace_name, repository_name, trust):
         """
-    Sets a repository's trust_enabled field if it is found
-    """
+        Sets a repository's trust_enabled field if it is found.
+        """
 
     @abstractmethod
     def set_description(self, namespace_name, repository_name, description):
         """
-    Sets a repository's description if it is found.
-    """
+        Sets a repository's description if it is found.
+        """
 
     @abstractmethod
     def mark_repository_for_deletion(self, namespace_name, repository_name, repository_gc_queue):
         """
-    Marks a repository for deletion.
-    """
+        Marks a repository for deletion.
+        """
 
     @abstractmethod
     def check_repository_usage(self, user_name, plan_found):
         """
-    Creates a notification for a user if they are over or under on their repository usage
-    """
+        Creates a notification for a user if they are over or under on their repository usage.
+        """
 
     @abstractmethod
     def set_repository_state(self, namespace_name, repository_name, state):
         """
-    Set the State of the Repository.
-    """
+        Set the State of the Repository.
+        """

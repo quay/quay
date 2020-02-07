@@ -8,7 +8,9 @@ class BaseGitHubValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the OAuth credentials and API endpoint for a Github service. """
+        """
+        Validates the OAuth credentials and API endpoint for a Github service.
+        """
         config = validator_context.config
         client = validator_context.http_client
         url_scheme_and_hostname = validator_context.url_scheme_and_hostname

@@ -153,8 +153,9 @@ app.register_blueprint(testbp, url_prefix="/__test")
 
 
 class TestFeature(object):
-    """ Helper object which temporarily sets the value of a feature flag.
-  """
+    """
+    Helper object which temporarily sets the value of a feature flag.
+    """
 
     def __init__(self, test_case, feature_flag, test_value):
         self.test_case = test_case
@@ -187,8 +188,11 @@ _JWK = RSAKey(key=RSA.generate(2048))
 
 
 class FailureCodes:
-    """ Defines tuples representing the HTTP status codes for various errors. The tuple
-      is defined as ('errordescription', V1HTTPStatusCode, V2HTTPStatusCode). """
+    """
+    Defines tuples representing the HTTP status codes for various errors.
+
+    The tuple is defined as ('errordescription', V1HTTPStatusCode, V2HTTPStatusCode).
+    """
 
     UNAUTHENTICATED = ("unauthenticated", 401, 401)
     UNAUTHORIZED = ("unauthorized", 403, 401)
@@ -199,8 +203,12 @@ class FailureCodes:
 
 
 def _get_expected_code(expected_failure, version, success_status_code):
-    """ Returns the HTTP status code for the expected failure under the specified protocol version
-      (1 or 2). If none, returns the success status code. """
+    """
+    Returns the HTTP status code for the expected failure under the specified protocol version (1 or
+    2).
+
+    If none, returns the success status code.
+    """
     if not expected_failure:
         return success_status_code
 
@@ -1404,7 +1412,9 @@ class V1RegistryTests(
     RegistryTestCaseMixin,
     LiveServerTestCase,
 ):
-    """ Tests for V1 registry. """
+    """
+    Tests for V1 registry.
+    """
 
     def test_search(self):
         # Public
@@ -1517,7 +1527,9 @@ class V2RegistryTests(
     RegistryTestCaseMixin,
     LiveServerTestCase,
 ):
-    """ Tests for V2 registry. """
+    """
+    Tests for V2 registry.
+    """
 
     def test_proper_auth_response(self):
         response = self.conduct(
@@ -2126,10 +2138,14 @@ class V1PushV2PullRegistryTests(
     RegistryTestCaseMixin,
     LiveServerTestCase,
 ):
-    """ Tests for V1 push, V2 pull registry. """
+    """
+    Tests for V1 push, V2 pull registry.
+    """
 
     def test_multiple_tag_with_pull(self):
-        """ Tagging the same exact V1 tag multiple times and then pulling with V2. """
+        """
+        Tagging the same exact V1 tag multiple times and then pulling with V2.
+        """
         images = self._get_default_images()
 
         self.do_push("devtable", "newrepo", "devtable", "password", images=images)
@@ -2146,11 +2162,15 @@ class V1PullV2PushRegistryTests(
     RegistryTestCaseMixin,
     LiveServerTestCase,
 ):
-    """ Tests for V1 pull, V2 push registry. """
+    """
+    Tests for V1 pull, V2 push registry.
+    """
 
 
 class TorrentTestMixin(V2RegistryPullMixin):
-    """ Mixin of tests for torrent support. """
+    """
+    Mixin of tests for torrent support.
+    """
 
     def get_torrent(self, blobsum):
         # Enable direct download URLs in fake storage.
@@ -2208,7 +2228,9 @@ class TorrentTestMixin(V2RegistryPullMixin):
 class TorrentV1PushTests(
     RegistryTestCaseMixin, TorrentTestMixin, V1RegistryPushMixin, LiveServerTestCase
 ):
-    """ Torrent tests via V1 push. """
+    """
+    Torrent tests via V1 push.
+    """
 
     pass
 
@@ -2216,13 +2238,17 @@ class TorrentV1PushTests(
 class TorrentV2PushTests(
     RegistryTestCaseMixin, TorrentTestMixin, V2RegistryPushMixin, LiveServerTestCase
 ):
-    """ Torrent tests via V2 push. """
+    """
+    Torrent tests via V2 push.
+    """
 
     pass
 
 
 class SquashingTests(RegistryTestCaseMixin, V1RegistryPushMixin, LiveServerTestCase):
-    """ Tests for registry squashing. """
+    """
+    Tests for registry squashing.
+    """
 
     def get_squashed_image(self, auth="sig"):
         response = self.conduct("GET", "/c1/squash/devtable/newrepo/latest", auth=auth)
@@ -2380,7 +2406,9 @@ class SquashingTests(RegistryTestCaseMixin, V1RegistryPushMixin, LiveServerTestC
 
 
 class LoginTests(object):
-    """ Generic tests for registry login. """
+    """
+    Generic tests for registry login.
+    """
 
     def test_invalid_username_knownrepo(self):
         self.do_login(
@@ -2433,7 +2461,9 @@ class LoginTests(object):
 class V1LoginTests(
     V1RegistryLoginMixin, LoginTests, RegistryTestCaseMixin, BaseRegistryMixin, LiveServerTestCase
 ):
-    """ Tests for V1 login. """
+    """
+    Tests for V1 login.
+    """
 
     pass  # No additional tests.
 
@@ -2441,7 +2471,9 @@ class V1LoginTests(
 class V2LoginTests(
     V2RegistryLoginMixin, LoginTests, RegistryTestCaseMixin, BaseRegistryMixin, LiveServerTestCase
 ):
-    """ Tests for V2 login. """
+    """
+    Tests for V2 login.
+    """
 
     def do_logincheck(
         self, username, password, scope, expected_actions=[], expect_success=True, **kwargs

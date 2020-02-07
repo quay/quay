@@ -10,9 +10,11 @@ from util.bytes import Bytes
 
 
 def parse_manifest_from_bytes(manifest_bytes, media_type, validate=True):
-    """ Parses and returns a manifest from the given bytes, for the given media type.
-      Raises a ManifestException if the parse fails for some reason.
-  """
+    """
+    Parses and returns a manifest from the given bytes, for the given media type.
+
+    Raises a ManifestException if the parse fails for some reason.
+    """
     assert isinstance(manifest_bytes, Bytes)
 
     if media_type == DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE:

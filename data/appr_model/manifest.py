@@ -53,7 +53,9 @@ def get_or_create_manifest(manifest_json, media_type_name, models_ref):
 
 
 def get_manifest_types(repo, models_ref, release=None):
-    """ Returns an array of MediaTypes.name for a repo, can filter by tag """
+    """
+    Returns an array of MediaTypes.name for a repo, can filter by tag.
+    """
     Tag = models_ref.Tag
     ManifestListManifest = models_ref.ManifestListManifest
 

@@ -234,9 +234,10 @@ def get_matching_teams(team_prefix, organization):
 
 
 def get_teams_within_org(organization, has_external_auth=False):
-    """ Returns a AttrDict of team info (id, name, description), its role under the org,
-      the number of repositories on which it has permission, and the number of members.
-  """
+    """
+    Returns a AttrDict of team info (id, name, description), its role under the org, the number of
+    repositories on which it has permission, and the number of members.
+    """
     query = Team.select().where(Team.organization == organization).join(TeamRole)
 
     def _team_view(team):
@@ -363,8 +364,10 @@ def delete_team_invite(code, user_obj=None):
 
 
 def find_matching_team_invite(code, user_obj):
-    """ Finds a team invite with the given code that applies to the given user and returns it or
-      raises a DataModelException if not found. """
+    """
+    Finds a team invite with the given code that applies to the given user and returns it or raises
+    a DataModelException if not found.
+    """
     found = lookup_team_invite(code)
 
     # If the invite is for a specific user, we have to confirm that here.
@@ -380,7 +383,9 @@ def find_matching_team_invite(code, user_obj):
 
 
 def find_organization_invites(organization, user_obj):
-    """ Finds all organization team invites for the given user under the given organization. """
+    """
+    Finds all organization team invites for the given user under the given organization.
+    """
     invite_check = TeamMemberInvite.user == user_obj
     if user_obj.verified:
         invite_check = invite_check | (TeamMemberInvite.email == user_obj.email)
@@ -392,10 +397,14 @@ def find_organization_invites(organization, user_obj):
 
 
 def confirm_team_invite(code, user_obj):
-    """ Confirms the given team invite code for the given user by adding the user to the team
-      and deleting the code. Raises a DataModelException if the code was not found or does
-      not apply to the given user. If the user is invited to two or more teams under the
-      same organization, they are automatically confirmed for all of them. """
+    """
+    Confirms the given team invite code for the given user by adding the user to the team and
+    deleting the code.
+
+    Raises a DataModelException if the code was not found or does not apply to the given user. If
+    the user is invited to two or more teams under the same organization, they are automatically
+    confirmed for all of them.
+    """
     found = find_matching_team_invite(code, user_obj)
 
     # Find all matching invitations for the user under the organization.
@@ -434,10 +443,12 @@ def confirm_team_invite(code, user_obj):
 
 
 def get_federated_team_member_mapping(team, login_service_name):
-    """ Returns a dict of all federated IDs for all team members in the team whose users are
-      bound to the login service within the given name. The dictionary is from federated service
-      identifier (username) to their Quay User table ID.
-  """
+    """
+    Returns a dict of all federated IDs for all team members in the team whose users are bound to
+    the login service within the given name.
+
+    The dictionary is from federated service identifier (username) to their Quay User table ID.
+    """
     login_service = LoginService.get(name=login_service_name)
 
     query = (
@@ -451,17 +462,27 @@ def get_federated_team_member_mapping(team, login_service_name):
 
 
 def list_team_users(team):
-    """ Returns an iterator of all the *users* found in a team. Does not include robots. """
+    """
+    Returns an iterator of all the *users* found in a team.
+
+    Does not include robots.
+    """
     return User.select().join(TeamMember).join(Team).where(Team.id == team, User.robot == False)
 
 
 def list_team_robots(team):
-    """ Returns an iterator of all the *robots* found in a team. Does not include users. """
+    """
+    Returns an iterator of all the *robots* found in a team.
+
+    Does not include users.
+    """
     return User.select().join(TeamMember).join(Team).where(Team.id == team, User.robot == True)
 
 
 def set_team_syncing(team, login_service_name, config):
-    """ Sets the given team to sync to the given service using the given config. """
+    """
+    Sets the given team to sync to the given service using the given config.
+    """
     login_service = LoginService.get(name=login_service_name)
     return TeamSync.create(
         team=team, transaction_id="", service=login_service, config=json.dumps(config)
@@ -469,16 +490,20 @@ def set_team_syncing(team, login_service_name, config):
 
 
 def remove_team_syncing(orgname, teamname):
-    """ Removes syncing on the team matching the given organization name and team name. """
+    """
+    Removes syncing on the team matching the given organization name and team name.
+    """
     existing = get_team_sync_information(orgname, teamname)
     if existing:
         existing.delete_instance()
 
 
 def get_stale_team(stale_timespan):
-    """ Returns a team that is setup to sync to an external group, and who has not been synced in
-      now - stale_timespan. Returns None if none found.
-  """
+    """
+    Returns a team that is setup to sync to an external group, and who has not been synced in.
+
+    now - stale_timespan. Returns None if none found.
+    """
     stale_at = datetime.now() - stale_timespan
 
     try:
@@ -500,9 +525,10 @@ def get_stale_team(stale_timespan):
 
 
 def get_team_sync_information(orgname, teamname):
-    """ Returns the team syncing information for the team with the given name under the organization
-      with the given name or None if none.
-  """
+    """
+    Returns the team syncing information for the team with the given name under the organization
+    with the given name or None if none.
+    """
     query = (
         TeamSync.select(TeamSync, LoginService)
         .join(Team)
@@ -519,10 +545,12 @@ def get_team_sync_information(orgname, teamname):
 
 
 def update_sync_status(team_sync_info):
-    """ Attempts to update the transaction ID and last updated time on a TeamSync object. If the
-      transaction ID on the entry in the DB does not match that found on the object, this method
-      returns False, which indicates another caller updated it first.
-  """
+    """
+    Attempts to update the transaction ID and last updated time on a TeamSync object.
+
+    If the transaction ID on the entry in the DB does not match that found on the object, this
+    method returns False, which indicates another caller updated it first.
+    """
     new_transaction_id = str(uuid.uuid4())
     query = TeamSync.update(transaction_id=new_transaction_id, last_updated=datetime.now()).where(
         TeamSync.id == team_sync_info.id, TeamSync.transaction_id == team_sync_info.transaction_id
@@ -531,7 +559,9 @@ def update_sync_status(team_sync_info):
 
 
 def delete_members_not_present(team, member_id_set):
-    """ Deletes all members of the given team that are not found in the member ID set. """
+    """
+    Deletes all members of the given team that are not found in the member ID set.
+    """
     with db_transaction():
         user_ids = set([u.id for u in list_team_users(team)])
         to_delete = list(user_ids - member_id_set)

@@ -31,7 +31,9 @@ def client_with_identity(auth_username, client):
 
 @contextmanager
 def toggle_feature(name, enabled):
-    """ Context manager which temporarily toggles a feature. """
+    """
+    Context manager which temporarily toggles a feature.
+    """
     import features
 
     previous_value = getattr(features, name)
@@ -41,7 +43,9 @@ def toggle_feature(name, enabled):
 
 
 def add_csrf_param(client, params):
-    """ Returns a params dict with the CSRF parameter added. """
+    """
+    Returns a params dict with the CSRF parameter added.
+    """
     params = params or {}
 
     with client.session_transaction() as sess:
@@ -52,7 +56,9 @@ def add_csrf_param(client, params):
 
 
 def gen_basic_auth(username, password):
-    """ Generates a basic auth header. """
+    """
+    Generates a basic auth header.
+    """
     return "Basic " + base64.b64encode("%s:%s" % (username, password))
 
 
@@ -67,7 +73,9 @@ def conduct_call(
     headers=None,
     raw_body=None,
 ):
-    """ Conducts a call to a Flask endpoint. """
+    """
+    Conducts a call to a Flask endpoint.
+    """
     params = add_csrf_param(client, params)
 
     final_url = url_for(resource, **params)

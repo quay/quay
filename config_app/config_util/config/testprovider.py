@@ -8,8 +8,11 @@ REAL_FILES = ["test/data/signing-private.gpg", "test/data/signing-public.gpg", "
 
 
 class TestConfigProvider(BaseProvider):
-    """ Implementation of the config provider for testing. Everything is kept in-memory instead on
-      the real file system. """
+    """
+    Implementation of the config provider for testing.
+
+    Everything is kept in-memory instead on the real file system.
+    """
 
     def __init__(self):
         self.clear()

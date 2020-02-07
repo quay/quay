@@ -1,9 +1,9 @@
-"""update queue item table indices
+"""
+update queue item table indices.
 
 Revision ID: f5167870dd66
 Revises: 45fd8b9869d4
 Create Date: 2016-12-08 17:26:20.333846
-
 """
 
 # revision identifiers, used by Alembic.

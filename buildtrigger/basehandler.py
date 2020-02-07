@@ -164,7 +164,9 @@ class BuildTriggerHandler(object):
 
     @property
     def auth_token(self):
-        """ Returns the auth token for the trigger. """
+        """
+        Returns the auth token for the trigger.
+        """
         # NOTE: This check is for testing.
         if hasattr(self.trigger, "auth_token"):
             return self.trigger.auth_token
@@ -177,98 +179,111 @@ class BuildTriggerHandler(object):
     @abstractmethod
     def load_dockerfile_contents(self):
         """
-    Loads the Dockerfile found for the trigger's config and returns them or None if none could
-    be found/loaded.
-    """
+        Loads the Dockerfile found for the trigger's config and returns them or None if none could
+        be found/loaded.
+        """
         pass
 
     @abstractmethod
     def list_build_source_namespaces(self):
         """
-    Take the auth information for the specific trigger type and load the
-    list of namespaces that can contain build sources.
-    """
+        Take the auth information for the specific trigger type and load the list of namespaces that
+        can contain build sources.
+        """
         pass
 
     @abstractmethod
     def list_build_sources_for_namespace(self, namespace):
         """
-    Take the auth information for the specific trigger type and load the
-    list of repositories under the given namespace.
-    """
+        Take the auth information for the specific trigger type and load the list of repositories
+        under the given namespace.
+        """
         pass
 
     @abstractmethod
     def list_build_subdirs(self):
         """
-    Take the auth information and the specified config so far and list all of
-    the possible subdirs containing dockerfiles.
-    """
+        Take the auth information and the specified config so far and list all of the possible
+        subdirs containing dockerfiles.
+        """
         pass
 
     @abstractmethod
     def handle_trigger_request(self, request):
         """
-    Transform the incoming request data into a set of actions. Returns a PreparedBuild.
-    """
+        Transform the incoming request data into a set of actions.
+
+        Returns a PreparedBuild.
+        """
         pass
 
     @abstractmethod
     def is_active(self):
         """
-    Returns True if the current build trigger is active. Inactive means further
-    setup is needed.
-    """
+        Returns True if the current build trigger is active.
+
+        Inactive means further setup is needed.
+        """
         pass
 
     @abstractmethod
     def activate(self, standard_webhook_url):
         """
-    Activates the trigger for the service, with the given new configuration.
-    Returns new public and private config that should be stored if successful.
-    """
+        Activates the trigger for the service, with the given new configuration.
+
+        Returns new public and private config that should be stored if successful.
+        """
         pass
 
     @abstractmethod
     def deactivate(self):
         """
-    Deactivates the trigger for the service, removing any hooks installed in
-    the remote service. Returns the new config that should be stored if this
-    trigger is going to be re-activated.
-    """
+        Deactivates the trigger for the service, removing any hooks installed in the remote service.
+
+        Returns the new config that should be stored if this trigger is going to be re-activated.
+        """
         pass
 
     @abstractmethod
     def manual_start(self, run_parameters=None):
         """
-    Manually creates a repository build for this trigger. Returns a PreparedBuild.
-    """
+        Manually creates a repository build for this trigger.
+
+        Returns a PreparedBuild.
+        """
         pass
 
     @abstractmethod
     def list_field_values(self, field_name, limit=None):
         """
-    Lists all values for the given custom trigger field. For example, a trigger might have a
-    field named "branches", and this method would return all branches.
-    """
+        Lists all values for the given custom trigger field.
+
+        For example, a trigger might have a field named "branches", and this method would return all
+        branches.
+        """
         pass
 
     @abstractmethod
     def get_repository_url(self):
-        """ Returns the URL of the current trigger's repository. Note that this operation
-        can be called in a loop, so it should be as fast as possible. """
+        """
+        Returns the URL of the current trigger's repository.
+
+        Note that this operation can be called in a loop, so it should be as fast as possible.
+        """
         pass
 
     @classmethod
     def filename_is_dockerfile(cls, file_name):
-        """ Returns whether the file is named Dockerfile or follows the convention <name>.Dockerfile"""
+        """
+        Returns whether the file is named Dockerfile or follows the convention <name>.Dockerfile.
+        """
         return file_name.endswith(".Dockerfile") or u"Dockerfile" == file_name
 
     @classmethod
     def service_name(cls):
         """
-    Particular service implemented by subclasses.
-    """
+        Particular service implemented by subclasses.
+        """
         raise NotImplementedError
 
     @classmethod
@@ -280,17 +295,22 @@ class BuildTriggerHandler(object):
         raise InvalidServiceException("Unable to find service: %s" % trigger.service.name)
 
     def put_config_key(self, key, value):
-        """ Updates a config key in the trigger, saving it to the DB. """
+        """
+        Updates a config key in the trigger, saving it to the DB.
+        """
         self.config[key] = value
         model.build.update_build_trigger(self.trigger, self.config)
 
     def set_auth_token(self, auth_token):
-        """ Sets the auth token for the trigger, saving it to the DB. """
+        """
+        Sets the auth token for the trigger, saving it to the DB.
+        """
         model.build.update_build_trigger(self.trigger, self.config, auth_token=auth_token)
 
     def get_dockerfile_path(self):
-        """ Returns the normalized path to the Dockerfile found in the subdirectory
-        in the config. """
+        """
+        Returns the normalized path to the Dockerfile found in the subdirectory in the config.
+        """
         dockerfile_path = self.config.get("dockerfile_path") or "Dockerfile"
         if dockerfile_path[0] == "/":
             dockerfile_path = dockerfile_path[1:]
@@ -395,7 +415,9 @@ class BuildTriggerHandler(object):
 
     @classmethod
     def get_parent_directory_mappings(cls, dockerfile_path, current_paths=None):
-        """ Returns a map of dockerfile_paths to it's possible contexts. """
+        """
+        Returns a map of dockerfile_paths to it's possible contexts.
+        """
         if dockerfile_path == "":
             return {}
 

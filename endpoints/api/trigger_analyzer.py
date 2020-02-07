@@ -6,7 +6,9 @@ from util import dockerfileparse
 
 
 def is_parent(context, dockerfile_path):
-    """ This checks whether the context is a parent of the dockerfile_path"""
+    """
+    This checks whether the context is a parent of the dockerfile_path.
+    """
     if context == "" or dockerfile_path == "":
         return False
 
@@ -28,7 +30,9 @@ def is_parent(context, dockerfile_path):
 
 
 class TriggerAnalyzer:
-    """ This analyzes triggers and returns the appropriate trigger and robot view to the frontend. """
+    """
+    This analyzes triggers and returns the appropriate trigger and robot view to the frontend.
+    """
 
     def __init__(
         self, handler, namespace_name, server_hostname, new_config_dict, admin_org_permission

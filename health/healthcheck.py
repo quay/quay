@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_healthchecker(app, config_provider, instance_keys):
-    """ Returns a HealthCheck instance for the given app. """
+    """
+    Returns a HealthCheck instance for the given app.
+    """
     return HealthCheck.get_checker(app, config_provider, instance_keys)
 
 
@@ -24,38 +26,41 @@ class HealthCheck(object):
 
     def check_warning(self):
         """
-    Conducts a check on the warnings, returning a dict representing the HealthCheck
-    output and a number indicating the health check response code.
-    """
+        Conducts a check on the warnings, returning a dict representing the HealthCheck output and a
+        number indicating the health check response code.
+        """
         service_statuses = check_warning_services(self.app, [])
         return self.get_instance_health(service_statuses)
 
     def check_instance(self):
         """
-    Conducts a check on this specific instance, returning a dict representing the HealthCheck
-    output and a number indicating the health check response code.
-    """
+        Conducts a check on this specific instance, returning a dict representing the HealthCheck
+        output and a number indicating the health check response code.
+        """
         service_statuses = check_all_services(self.app, self.instance_skips, for_instance=True)
         return self.get_instance_health(service_statuses)
 
     def check_endtoend(self):
         """
-    Conducts a check on all services, returning a dict representing the HealthCheck
-    output and a number indicating the health check response code.
-    """
+        Conducts a check on all services, returning a dict representing the HealthCheck output and a
+        number indicating the health check response code.
+        """
         service_statuses = check_all_services(self.app, [], for_instance=False)
         return self.calculate_overall_health(service_statuses)
 
     def get_instance_health(self, service_statuses):
         """
-    For the given service statuses, returns a dict representing the HealthCheck
-    output and a number indicating the health check response code. By default,
-    this simply ensures that all services are reporting as healthy.
-    """
+        For the given service statuses, returns a dict representing the HealthCheck output and a
+        number indicating the health check response code.
+
+        By default, this simply ensures that all services are reporting as healthy.
+        """
         return self.calculate_overall_health(service_statuses)
 
     def calculate_overall_health(self, service_statuses, skip=None, notes=None):
-        """ Returns true if and only if all the given service statuses report as healthy. """
+        """
+        Returns true if and only if all the given service statuses report as healthy.
+        """
         is_healthy = True
         notes = notes or []
 
@@ -173,7 +178,9 @@ class RDSAwareHealthCheck(HealthCheck):
         return self.calculate_overall_health(service_statuses, skip=skip, notes=notes)
 
     def _get_rds_status(self):
-        """ Returns the status of the RDS instance as reported by AWS. """
+        """
+        Returns the status of the RDS instance as reported by AWS.
+        """
         try:
             region = boto.rds2.connect_to_region(
                 self.region,

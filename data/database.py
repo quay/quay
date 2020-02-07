@@ -95,9 +95,11 @@ _EXTRA_ARGS = {
 
 
 def pipes_concat(arg1, arg2, *extra_args):
-    """ Concat function for sqlite, since it doesn't support fn.Concat.
-      Concatenates clauses with || characters.
-  """
+    """
+    Concat function for sqlite, since it doesn't support fn.Concat.
+
+    Concatenates clauses with || characters.
+    """
     reduced = arg1.concat(arg2)
     for arg in extra_args:
         reduced = reduced.concat(arg)
@@ -105,9 +107,11 @@ def pipes_concat(arg1, arg2, *extra_args):
 
 
 def function_concat(arg1, arg2, *extra_args):
-    """ Default implementation of concat which uses fn.Concat(). Used by all
-      database engines except sqlite.
-  """
+    """
+    Default implementation of concat which uses fn.Concat().
+
+    Used by all database engines except sqlite.
+    """
     return fn.Concat(arg1, arg2, *extra_args)
 
 
@@ -125,16 +129,17 @@ def null_for_update(query):
 
 
 def delete_instance_filtered(instance, model_class, delete_nullable, skip_transitive_deletes):
-    """ Deletes the DB instance recursively, skipping any models in the skip_transitive_deletes set.
+    """
+    Deletes the DB instance recursively, skipping any models in the skip_transitive_deletes set.
 
-      Callers *must* ensure that any models listed in the skip_transitive_deletes must be capable
-      of being directly deleted when the instance is deleted (with automatic sorting handling
-      dependency order).
+    Callers *must* ensure that any models listed in the skip_transitive_deletes must be capable
+    of being directly deleted when the instance is deleted (with automatic sorting handling
+    dependency order).
 
-      For example, the RepositoryTag and Image tables for Repository will always refer to the
-      *same* repository when RepositoryTag references Image, so we can safely skip
-      transitive deletion for the RepositoryTag table.
-  """
+    For example, the RepositoryTag and Image tables for Repository will always refer to the
+    *same* repository when RepositoryTag references Image, so we can safely skip
+    transitive deletion for the RepositoryTag table.
+    """
     # We need to sort the ops so that models get cleaned in order of their dependencies
     ops = reversed(list(instance.dependencies(delete_nullable)))
     filtered_ops = []
@@ -206,9 +211,10 @@ class RetryOperationalError(object):
 
 
 class CloseForLongOperation(object):
-    """ Helper object which disconnects the database then reconnects after the nested operation
-      completes.
-  """
+    """
+    Helper object which disconnects the database then reconnects after the nested operation
+    completes.
+    """
 
     def __init__(self, config_object):
         self.config_object = config_object
@@ -225,7 +231,9 @@ class CloseForLongOperation(object):
 
 
 class UseThenDisconnect(object):
-    """ Helper object for conducting work with a database and then tearing it down. """
+    """
+    Helper object for conducting work with a database and then tearing it down.
+    """
 
     def __init__(self, config_object):
         self.config_object = config_object
@@ -241,9 +249,10 @@ class UseThenDisconnect(object):
 
 
 class TupleSelector(object):
-    """ Helper class for selecting tuples from a peewee query and easily accessing
-      them as if they were objects.
-  """
+    """
+    Helper class for selecting tuples from a peewee query and easily accessing them as if they were
+    objects.
+    """
 
     class _TupleWrapper(object):
         def __init__(self, data, fields):
@@ -255,7 +264,9 @@ class TupleSelector(object):
 
     @classmethod
     def tuple_reference_key(cls, field):
-        """ Returns a string key for referencing a field in a TupleSelector. """
+        """
+        Returns a string key for referencing a field in a TupleSelector.
+        """
         if isinstance(field, Function):
             return field.name + ",".join([cls.tuple_reference_key(arg) for arg in field.arguments])
 
@@ -288,8 +299,11 @@ ensure_under_transaction = CallableProxy()
 
 
 def validate_database_url(url, db_kwargs, connect_timeout=5):
-    """ Validates that we can connect to the given database URL, with the given kwargs. Raises
-      an exception if the validation fails. """
+    """
+    Validates that we can connect to the given database URL, with the given kwargs.
+
+    Raises an exception if the validation fails.
+    """
     db_kwargs = db_kwargs.copy()
 
     try:
@@ -305,8 +319,11 @@ def validate_database_url(url, db_kwargs, connect_timeout=5):
 
 
 def validate_database_precondition(url, db_kwargs, connect_timeout=5):
-    """ Validates that we can connect to the given database URL and the database meets our
-      precondition. Raises an exception if the validation fails. """
+    """
+    Validates that we can connect to the given database URL and the database meets our precondition.
+
+    Raises an exception if the validation fails.
+    """
     db_kwargs = db_kwargs.copy()
     try:
         driver = _db_from_url(
@@ -473,19 +490,23 @@ def _get_enum_field_values(enum_field):
 
 
 class EnumField(ForeignKeyField):
-    """ Create a cached python Enum from an EnumTable """
+    """
+    Create a cached python Enum from an EnumTable.
+    """
 
     def __init__(self, model, enum_key_field="name", *args, **kwargs):
         """
-    model is the EnumTable model-class (see ForeignKeyField)
-    enum_key_field is the field from the EnumTable to use as the enum name
-    """
+        model is the EnumTable model-class (see ForeignKeyField) enum_key_field is the field from
+        the EnumTable to use as the enum name.
+        """
         self.enum_key_field = enum_key_field
         super(EnumField, self).__init__(model, *args, **kwargs)
 
     @property
     def enum(self):
-        """ Returns a python enun.Enum generated from the associated EnumTable """
+        """
+        Returns a python enun.Enum generated from the associated EnumTable.
+        """
         return _get_enum_field_values(self)
 
     def get_id(self, name):
@@ -512,10 +533,12 @@ class EnumField(ForeignKeyField):
 
 
 def deprecated_field(field, flag):
-    """ Marks a field as deprecated and removes it from the peewee model if the
-      flag is not set. A flag is defined in the active_migration module and will
-      be associated with one or more migration phases.
-  """
+    """
+    Marks a field as deprecated and removes it from the peewee model if the flag is not set.
+
+    A flag is defined in the active_migration module and will be associated with one or more
+    migration phases.
+    """
     if ActiveDataMigration.has_flag(flag):
         return field
 
@@ -529,9 +552,10 @@ class BaseModel(ReadReplicaSupportedModel):
         read_only_config = read_only_config
 
     def __getattribute__(self, name):
-        """ Adds _id accessors so that foreign key field IDs can be looked up without making
-        a database roundtrip.
-    """
+        """
+        Adds _id accessors so that foreign key field IDs can be looked up without making a database
+        roundtrip.
+        """
         if name.endswith("_id"):
             field_name = name[0 : len(name) - 3]
             if field_name in self._meta.fields:
@@ -762,13 +786,14 @@ class RepositoryKind(BaseModel):
 @unique
 class RepositoryState(IntEnum):
     """
-  Possible states of a repository.
-  NORMAL:    Regular repo where all actions are possible
-  READ_ONLY: Only read actions, such as pull, are allowed regardless of specific user permissions
-  MIRROR:    Equivalent to READ_ONLY except that mirror robot has write permission
-  MARKED_FOR_DELETION: Indicates the repository has been marked for deletion and should be hidden
-                       and un-usable.
-  """
+    Possible states of a repository.
+
+    NORMAL:    Regular repo where all actions are possible
+    READ_ONLY: Only read actions, such as pull, are allowed regardless of specific user permissions
+    MIRROR:    Equivalent to READ_ONLY except that mirror robot has write permission
+    MARKED_FOR_DELETION: Indicates the repository has been marked for deletion and should be hidden
+                         and un-usable.
+    """
 
     NORMAL = 0
     READ_ONLY = 1
@@ -1038,9 +1063,9 @@ class Image(BaseModel):
         )
 
     def ancestor_id_list(self):
-        """ Returns an integer list of ancestor ids, ordered chronologically from
-        root to direct parent.
-    """
+        """
+        Returns an integer list of ancestor ids, ordered chronologically from root to direct parent.
+        """
         return map(int, self.ancestors.split("/")[1:-1])
 
 
@@ -1078,7 +1103,9 @@ class RepositoryTag(BaseModel):
 
 
 class BUILD_PHASE(object):
-    """ Build phases enum """
+    """
+    Build phases enum.
+    """
 
     ERROR = "error"
     INTERNAL_ERROR = "internalerror"
@@ -1102,7 +1129,9 @@ class BUILD_PHASE(object):
 
 
 class TRIGGER_DISABLE_REASON(object):
-    """ Build trigger disable reason enum """
+    """
+    Build trigger disable reason enum.
+    """
 
     BUILD_FALURES = "successive_build_failures"
     INTERNAL_ERRORS = "successive_build_internal_errors"
@@ -1195,7 +1224,11 @@ class LogEntry(BaseModel):
 
 
 class LogEntry2(BaseModel):
-    """ TEMP FOR QUAY.IO ONLY. DO NOT RELEASE INTO QUAY ENTERPRISE. """
+    """
+    TEMP FOR QUAY.IO ONLY.
+
+    DO NOT RELEASE INTO QUAY ENTERPRISE.
+    """
 
     kind = ForeignKeyField(LogEntryKind)
     account = IntegerField(index=True, db_column="account_id")
@@ -1423,8 +1456,9 @@ class ServiceKey(BaseModel):
 
 
 class MediaType(BaseModel):
-    """ MediaType is an enumeration of the possible formats of various objects in the data model.
-  """
+    """
+    MediaType is an enumeration of the possible formats of various objects in the data model.
+    """
 
     name = CharField(index=True, unique=True)
 
@@ -1437,17 +1471,19 @@ class Messages(BaseModel):
 
 
 class LabelSourceType(BaseModel):
-    """ LabelSourceType is an enumeration of the possible sources for a label.
-  """
+    """
+    LabelSourceType is an enumeration of the possible sources for a label.
+    """
 
     name = CharField(index=True, unique=True)
     mutable = BooleanField(default=False)
 
 
 class Label(BaseModel):
-    """ Label represents user-facing metadata associated with another entry in the database (e.g. a
-      Manifest).
-  """
+    """
+    Label represents user-facing metadata associated with another entry in the database (e.g. a
+    Manifest).
+    """
 
     uuid = CharField(default=uuid_generator, index=True, unique=True)
     key = CharField(index=True)
@@ -1457,8 +1493,9 @@ class Label(BaseModel):
 
 
 class ApprBlob(BaseModel):
-    """ ApprBlob represents a content-addressable object stored outside of the database.
-  """
+    """
+    ApprBlob represents a content-addressable object stored outside of the database.
+    """
 
     digest = CharField(index=True, unique=True)
     media_type = EnumField(MediaType)
@@ -1467,15 +1504,17 @@ class ApprBlob(BaseModel):
 
 
 class ApprBlobPlacementLocation(BaseModel):
-    """ ApprBlobPlacementLocation is an enumeration of the possible storage locations for ApprBlobs.
-  """
+    """
+    ApprBlobPlacementLocation is an enumeration of the possible storage locations for ApprBlobs.
+    """
 
     name = CharField(index=True, unique=True)
 
 
 class ApprBlobPlacement(BaseModel):
-    """ ApprBlobPlacement represents the location of a Blob.
-  """
+    """
+    ApprBlobPlacement represents the location of a Blob.
+    """
 
     blob = ForeignKeyField(ApprBlob)
     location = EnumField(ApprBlobPlacementLocation)
@@ -1487,8 +1526,9 @@ class ApprBlobPlacement(BaseModel):
 
 
 class ApprManifest(BaseModel):
-    """ ApprManifest represents the metadata and collection of blobs that comprise an Appr image.
-  """
+    """
+    ApprManifest represents the metadata and collection of blobs that comprise an Appr image.
+    """
 
     digest = CharField(index=True, unique=True)
     media_type = EnumField(MediaType)
@@ -1496,8 +1536,9 @@ class ApprManifest(BaseModel):
 
 
 class ApprManifestBlob(BaseModel):
-    """ ApprManifestBlob is a many-to-many relation table linking ApprManifests and ApprBlobs.
-  """
+    """
+    ApprManifestBlob is a many-to-many relation table linking ApprManifests and ApprBlobs.
+    """
 
     manifest = ForeignKeyField(ApprManifest, index=True)
     blob = ForeignKeyField(ApprBlob, index=True)
@@ -1509,8 +1550,9 @@ class ApprManifestBlob(BaseModel):
 
 
 class ApprManifestList(BaseModel):
-    """ ApprManifestList represents all of the various Appr manifests that compose an ApprTag.
-  """
+    """
+    ApprManifestList represents all of the various Appr manifests that compose an ApprTag.
+    """
 
     digest = CharField(index=True, unique=True)
     manifest_list_json = JSONField()
@@ -1519,15 +1561,17 @@ class ApprManifestList(BaseModel):
 
 
 class ApprTagKind(BaseModel):
-    """ ApprTagKind is a enumtable to reference tag kinds.
-  """
+    """
+    ApprTagKind is a enumtable to reference tag kinds.
+    """
 
     name = CharField(index=True, unique=True)
 
 
 class ApprTag(BaseModel):
-    """ ApprTag represents a user-facing alias for referencing an ApprManifestList.
-  """
+    """
+    ApprTag represents a user-facing alias for referencing an ApprManifestList.
+    """
 
     name = CharField()
     repository = ForeignKeyField(Repository)
@@ -1555,9 +1599,10 @@ ApprChannel = ApprTag.alias()
 
 
 class ApprManifestListManifest(BaseModel):
-    """ ApprManifestListManifest is a many-to-many relation table linking ApprManifestLists and
-      ApprManifests.
-  """
+    """
+    ApprManifestListManifest is a many-to-many relation table linking ApprManifestLists and
+    ApprManifests.
+    """
 
     manifest_list = ForeignKeyField(ApprManifestList, index=True)
     manifest = ForeignKeyField(ApprManifest, index=True)
@@ -1573,9 +1618,10 @@ class ApprManifestListManifest(BaseModel):
 
 
 class AppSpecificAuthToken(BaseModel):
-    """ AppSpecificAuthToken represents a token generated by a user for use with an external
-      application where putting the user's credentials, even encrypted, is deemed too risky.
-  """
+    """
+    AppSpecificAuthToken represents a token generated by a user for use with an external application
+    where putting the user's credentials, even encrypted, is deemed too risky.
+    """
 
     user = QuayUserField()
     uuid = CharField(default=uuid_generator, max_length=36, index=True)
@@ -1594,9 +1640,11 @@ class AppSpecificAuthToken(BaseModel):
 
 
 class Manifest(BaseModel):
-    """ Manifest represents a single manifest under a repository. Within a repository,
-      there can only be one manifest with the same digest.
-  """
+    """
+    Manifest represents a single manifest under a repository.
+
+    Within a repository, there can only be one manifest with the same digest.
+    """
 
     repository = ForeignKeyField(Repository)
     digest = CharField(index=True)
@@ -1613,15 +1661,17 @@ class Manifest(BaseModel):
 
 
 class TagKind(BaseModel):
-    """ TagKind describes the various kinds of tags that can be found in the registry.
-  """
+    """
+    TagKind describes the various kinds of tags that can be found in the registry.
+    """
 
     name = CharField(index=True, unique=True)
 
 
 class Tag(BaseModel):
-    """ Tag represents a user-facing alias for referencing a Manifest or as an alias to another tag.
-  """
+    """
+    Tag represents a user-facing alias for referencing a Manifest or as an alias to another tag.
+    """
 
     name = CharField()
     repository = ForeignKeyField(Repository)
@@ -1648,10 +1698,12 @@ class Tag(BaseModel):
 
 
 class ManifestChild(BaseModel):
-    """ ManifestChild represents a relationship between a manifest and its child manifest(s).
-      Multiple manifests can share the same children. Note that since Manifests are stored
-      per-repository, the repository here is a bit redundant, but we do so to make cleanup easier.
-  """
+    """
+    ManifestChild represents a relationship between a manifest and its child manifest(s).
+
+    Multiple manifests can share the same children. Note that since Manifests are stored per-
+    repository, the repository here is a bit redundant, but we do so to make cleanup easier.
+    """
 
     repository = ForeignKeyField(Repository)
     manifest = ForeignKeyField(Manifest)
@@ -1669,10 +1721,12 @@ class ManifestChild(BaseModel):
 
 
 class ManifestLabel(BaseModel):
-    """ ManifestLabel represents a label applied to a Manifest, within a repository.
-      Note that since Manifests are stored per-repository, the repository here is
-      a bit redundant, but we do so to make cleanup easier.
-  """
+    """
+    ManifestLabel represents a label applied to a Manifest, within a repository.
+
+    Note that since Manifests are stored per-repository, the repository here is a bit redundant, but
+    we do so to make cleanup easier.
+    """
 
     repository = ForeignKeyField(Repository, index=True)
     manifest = ForeignKeyField(Manifest)
@@ -1685,7 +1739,9 @@ class ManifestLabel(BaseModel):
 
 
 class ManifestBlob(BaseModel):
-    """ ManifestBlob represents a blob that is used by a manifest. """
+    """
+    ManifestBlob represents a blob that is used by a manifest.
+    """
 
     repository = ForeignKeyField(Repository, index=True)
     manifest = ForeignKeyField(Manifest)
@@ -1698,9 +1754,10 @@ class ManifestBlob(BaseModel):
 
 
 class ManifestLegacyImage(BaseModel):
-    """ For V1-compatible manifests only, this table maps from the manifest to its associated
-      Docker image.
-  """
+    """
+    For V1-compatible manifests only, this table maps from the manifest to its associated Docker
+    image.
+    """
 
     repository = ForeignKeyField(Repository, index=True)
     manifest = ForeignKeyField(Manifest, unique=True)
@@ -1708,7 +1765,9 @@ class ManifestLegacyImage(BaseModel):
 
 
 class TagManifest(BaseModel):
-    """ TO BE DEPRECATED: The manifest for a tag. """
+    """
+    TO BE DEPRECATED: The manifest for a tag.
+    """
 
     tag = ForeignKeyField(RepositoryTag, unique=True)
     digest = CharField(index=True)
@@ -1724,8 +1783,9 @@ class TagManifestToManifest(BaseModel):
 
 
 class TagManifestLabel(BaseModel):
-    """ TO BE DEPRECATED: Mapping from a tag manifest to a label.
-  """
+    """
+    TO BE DEPRECATED: Mapping from a tag manifest to a label.
+    """
 
     repository = ForeignKeyField(Repository, index=True)
     annotated = ForeignKeyField(TagManifest, index=True)
@@ -1762,17 +1822,18 @@ class TagToRepositoryTag(BaseModel):
 @unique
 class RepoMirrorRuleType(IntEnum):
     """
-  Types of mirroring rules.
-  TAG_GLOB_CSV: Comma separated glob values (eg. "7.6,7.6-1.*")
-  """
+    Types of mirroring rules.
+
+    TAG_GLOB_CSV: Comma separated glob values (eg. "7.6,7.6-1.*")
+    """
 
     TAG_GLOB_CSV = 1
 
 
 class RepoMirrorRule(BaseModel):
     """
-  Determines how a given Repository should be mirrored.
-  """
+    Determines how a given Repository should be mirrored.
+    """
 
     uuid = CharField(default=uuid_generator, max_length=36, index=True)
     repository = ForeignKeyField(Repository, index=True)
@@ -1789,8 +1850,8 @@ class RepoMirrorRule(BaseModel):
 @unique
 class RepoMirrorType(IntEnum):
     """
-  Types of repository mirrors.
-  """
+    Types of repository mirrors.
+    """
 
     PULL = 1  # Pull images from the external repo
 
@@ -1798,8 +1859,8 @@ class RepoMirrorType(IntEnum):
 @unique
 class RepoMirrorStatus(IntEnum):
     """
-  Possible statuses of repository mirroring.
-  """
+    Possible statuses of repository mirroring.
+    """
 
     FAIL = -1
     NEVER_RUN = 0
@@ -1810,9 +1871,9 @@ class RepoMirrorStatus(IntEnum):
 
 class RepoMirrorConfig(BaseModel):
     """
-  Represents a repository to be mirrored and any additional configuration
-  required to perform the mirroring.
-  """
+    Represents a repository to be mirrored and any additional configuration required to perform the
+    mirroring.
+    """
 
     repository = ForeignKeyField(Repository, index=True, unique=True, backref="mirror")
     creation_date = DateTimeField(default=datetime.utcnow)

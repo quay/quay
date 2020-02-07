@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class StatusHandler(object):
-    """ Context wrapper for writing status to build logs. """
+    """
+    Context wrapper for writing status to build logs.
+    """
 
     def __init__(self, build_logs, repository_build_uuid):
         self._current_phase = None

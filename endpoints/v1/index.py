@@ -390,7 +390,9 @@ def get_search():
 
 
 def _conduct_repo_search(username, query, limit=25, page=1):
-    """ Finds matching repositories. """
+    """
+    Finds matching repositories.
+    """
     # Note that we put a maximum limit of five pages here, because this API should only really ever
     # be used by the Docker CLI, and it doesn't even paginate.
     page = min(page, 5)

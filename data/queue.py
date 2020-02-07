@@ -45,7 +45,9 @@ DEFAULT_BATCH_SIZE = 1000
 
 
 class WorkQueue(object):
-    """ Work queue defines methods for interacting with a queue backed by the database. """
+    """
+    Work queue defines methods for interacting with a queue backed by the database.
+    """
 
     def __init__(
         self, queue_name, transaction_factory, canonical_name_match_list=None, has_namespace=False,
@@ -95,7 +97,9 @@ class WorkQueue(object):
         )
 
     def num_alive_jobs(self, canonical_name_list):
-        """ Returns the number of alive queue items with a given prefix. """
+        """
+        Returns the number of alive queue items with a given prefix.
+        """
 
         def strip_slash(name):
             return name.lstrip("/")
@@ -113,7 +117,10 @@ class WorkQueue(object):
     def num_available_jobs_between(
         self, available_min_time, available_max_time, canonical_name_list
     ):
-        """ Returns the number of available queue items with a given prefix, between the two provided times. """
+        """
+        Returns the number of available queue items with a given prefix, between the two provided
+        times.
+        """
 
         def strip_slash(name):
             return name.lstrip("/")
@@ -159,8 +166,11 @@ class WorkQueue(object):
         queue_items_available_unlocked.labels(self._queue_name).set(available_not_running_count)
 
     def has_retries_remaining(self, item_id):
-        """ Returns whether the queue item with the given id has any retries remaining. If the
-        queue item does not exist, returns False. """
+        """
+        Returns whether the queue item with the given id has any retries remaining.
+
+        If the queue item does not exist, returns False.
+        """
         with self._transaction_factory(db):
             try:
                 return QueueItem.get(id=item_id).retries_remaining > 0
@@ -168,7 +178,9 @@ class WorkQueue(object):
                 return False
 
     def delete_namespaced_items(self, namespace, subpath=None):
-        """ Deletes all items in this queue that exist under the given namespace. """
+        """
+        Deletes all items in this queue that exist under the given namespace.
+        """
         if not self._has_namespaced_items:
             return False
 
@@ -178,9 +190,8 @@ class WorkQueue(object):
 
     def alive(self, canonical_name_list):
         """
-    Returns True if a job matching the canonical name list is currently processing
-    or available.
-    """
+        Returns True if a job matching the canonical name list is currently processing or available.
+        """
         canonical_name = self._canonical_name([self._queue_name] + canonical_name_list)
         try:
             select_query = QueueItem.select().where(QueueItem.queue_name == canonical_name)
@@ -208,9 +219,11 @@ class WorkQueue(object):
 
         def batch_put(canonical_name_list, message, available_after=0, retries_remaining=5):
             """
-      Put an item, if it shouldn't be processed for some number of seconds,
-      specify that amount as available_after. Returns the ID of the queue item added.
-      """
+            Put an item, if it shouldn't be processed for some number of seconds, specify that
+            amount as available_after.
+
+            Returns the ID of the queue item added.
+            """
             items_to_insert.append(
                 self._queue_dict(canonical_name_list, message, available_after, retries_remaining)
             )
@@ -226,8 +239,12 @@ class WorkQueue(object):
             remaining = remaining[batch_size:]
 
     def put(self, canonical_name_list, message, available_after=0, retries_remaining=5):
-        """ Put an item, if it shouldn't be processed for some number of seconds,
-            specify that amount as available_after. Returns the ID of the queue item added. """
+        """
+        Put an item, if it shouldn't be processed for some number of seconds, specify that amount as
+        available_after.
+
+        Returns the ID of the queue item added.
+        """
         item = QueueItem.create(
             **self._queue_dict(canonical_name_list, message, available_after, retries_remaining)
         )
@@ -235,8 +252,11 @@ class WorkQueue(object):
         return str(item.id)
 
     def _select_available_item(self, ordering_required, now):
-        """ Selects an available queue item from the queue table and returns it, if any. If none,
-        return None. """
+        """
+        Selects an available queue item from the queue table and returns it, if any.
+
+        If none, return None.
+        """
         name_match_query = self._name_match_query()
 
         try:
@@ -267,10 +287,13 @@ class WorkQueue(object):
             return None
 
     def _attempt_to_claim_item(self, db_item, now, processing_time):
-        """ Attempts to claim the specified queue item for this instance. Returns True on success and False on failure.
+        """
+        Attempts to claim the specified queue item for this instance. Returns True on success and
+        False on failure.
 
-        Note that the underlying QueueItem row in the database will be changed on success, but
-        the db_item object given as a parameter will *not* have its fields updated. """
+        Note that the underlying QueueItem row in the database will be changed on success, but the
+        db_item object given as a parameter will *not* have its fields updated.
+        """
 
         # Try to claim the item. We do so by updating the item's information only if its current
         # state ID matches that returned in the previous query. Since all updates to the QueueItem
@@ -292,9 +315,12 @@ class WorkQueue(object):
         return changed == 1
 
     def get(self, processing_time=300, ordering_required=False):
-        """ Get an available item and mark it as unavailable for the default of five
-            minutes. The result of this method must always be composed of simple
-            python objects which are JSON serializable for network portability reasons. """
+        """
+        Get an available item and mark it as unavailable for the default of five minutes.
+
+        The result of this method must always be composed of simple python objects which are JSON
+        serializable for network portability reasons.
+        """
         now = datetime.utcnow()
 
         # Select an available queue item.
@@ -324,8 +350,11 @@ class WorkQueue(object):
         )
 
     def cancel(self, item_id):
-        """ Attempts to cancel the queue item with the given ID from the queue.
-            Returns true on success and false if the queue item could not be canceled. """
+        """
+        Attempts to cancel the queue item with the given ID from the queue.
+
+        Returns true on success and false if the queue item could not be canceled.
+        """
         count_removed = QueueItem.delete().where(QueueItem.id == item_id).execute()
         return count_removed > 0
 
@@ -378,11 +407,11 @@ class WorkQueue(object):
 
 def delete_expired(expiration_threshold, deletion_threshold, batch_size):
     """
-  Deletes all queue items that are older than the provided expiration threshold in batches of the
-  provided size. If there are less items than the deletion threshold, this method does nothing.
+    Deletes all queue items that are older than the provided expiration threshold in batches of the
+    provided size. If there are less items than the deletion threshold, this method does nothing.
 
-  Returns the number of items deleted.
-  """
+    Returns the number of items deleted.
+    """
     to_delete = list(
         QueueItem.select()
         .where(QueueItem.processing_expires <= expiration_threshold)

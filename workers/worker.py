@@ -21,10 +21,12 @@ logger = logging.getLogger(__name__)
 
 def with_exponential_backoff(backoff_multiplier=10, max_backoff=3600, max_retries=10):
     def inner(func):
-        """ Decorator to retry the operation with exponential backoff if it raised an exception.
+        """
+        Decorator to retry the operation with exponential backoff if it raised an exception.
+
         Waits 2^attempts * `backoff_multiplier`, up to `max_backoff`, up to `max_retries` number of time,
         then re-raise the exception.
-    """
+        """
 
         def wrapper(*args, **kwargs):
             attempts = 0
@@ -50,7 +52,9 @@ def with_exponential_backoff(backoff_multiplier=10, max_backoff=3600, max_retrie
 
 
 class Worker(object):
-    """ Base class for workers which perform some work periodically. """
+    """
+    Base class for workers which perform some work periodically.
+    """
 
     def __init__(self):
         self._sched = BackgroundScheduler()
@@ -70,7 +74,9 @@ class Worker(object):
         return self._terminated.is_set()
 
     def ungracefully_terminated(self):
-        """ Method called when the worker has been terminated in an ungraceful fashion. """
+        """
+        Method called when the worker has been terminated in an ungraceful fashion.
+        """
         pass
 
     def add_operation(self, operation_func, operation_sec):

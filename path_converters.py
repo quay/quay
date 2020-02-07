@@ -4,8 +4,11 @@ import features
 
 
 class APIRepositoryPathConverter(BaseConverter):
-    """ Converter for handling repository paths. Does not handle library paths.
-  """
+    """
+    Converter for handling repository paths.
+
+    Does not handle library paths.
+    """
 
     def __init__(self, url_map):
         super(APIRepositoryPathConverter, self).__init__(url_map)
@@ -14,9 +17,11 @@ class APIRepositoryPathConverter(BaseConverter):
 
 
 class RepositoryPathConverter(BaseConverter):
-    """ Converter for handling repository paths. Handles both library and non-library paths (if
-      configured).
-  """
+    """
+    Converter for handling repository paths.
+
+    Handles both library and non-library paths (if configured).
+    """
 
     def __init__(self, url_map):
         super(RepositoryPathConverter, self).__init__(url_map)
@@ -30,7 +35,9 @@ class RepositoryPathConverter(BaseConverter):
 
 
 class RegexConverter(BaseConverter):
-    """ Converter for handling custom regular expression patterns in paths. """
+    """
+    Converter for handling custom regular expression patterns in paths.
+    """
 
     def __init__(self, url_map, regex_value):
         super(RegexConverter, self).__init__(url_map)

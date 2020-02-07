@@ -1,9 +1,9 @@
-"""Add new Appr-specific tables
+"""
+Add new Appr-specific tables.
 
 Revision ID: 610320e9dacf
 Revises: 5cbbfc95bac7
 Create Date: 2018-05-24 16:46:13.514562
-
 """
 
 # revision identifiers, used by Alembic.

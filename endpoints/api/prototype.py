@@ -1,4 +1,6 @@
-""" Manage default permissions added to repositories. """
+"""
+Manage default permissions added to repositories.
+"""
 
 from flask import request
 
@@ -74,7 +76,9 @@ def log_prototype_action(action_kind, orgname, prototype, **kwargs):
 @resource("/v1/organization/<orgname>/prototypes")
 @path_param("orgname", "The name of the organization")
 class PermissionPrototypeList(ApiResource):
-    """ Resource for listing and creating permission prototypes. """
+    """
+    Resource for listing and creating permission prototypes.
+    """
 
     schemas = {
         "NewPrototype": {
@@ -121,7 +125,9 @@ class PermissionPrototypeList(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrganizationPrototypePermissions")
     def get(self, orgname):
-        """ List the existing prototypes for this organization. """
+        """
+        List the existing prototypes for this organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -145,7 +151,9 @@ class PermissionPrototypeList(ApiResource):
     @nickname("createOrganizationPrototypePermission")
     @validate_json_request("NewPrototype")
     def post(self, orgname):
-        """ Create a new permission prototype. """
+        """
+        Create a new permission prototype.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -206,7 +214,9 @@ class PermissionPrototypeList(ApiResource):
 @path_param("orgname", "The name of the organization")
 @path_param("prototypeid", "The ID of the prototype")
 class PermissionPrototype(ApiResource):
-    """ Resource for managingin individual permission prototypes. """
+    """
+    Resource for managingin individual permission prototypes.
+    """
 
     schemas = {
         "PrototypeUpdate": {
@@ -226,7 +236,9 @@ class PermissionPrototype(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("deleteOrganizationPrototypePermission")
     def delete(self, orgname, prototypeid):
-        """ Delete an existing permission prototype. """
+        """
+        Delete an existing permission prototype.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -248,7 +260,9 @@ class PermissionPrototype(ApiResource):
     @nickname("updateOrganizationPrototypePermission")
     @validate_json_request("PrototypeUpdate")
     def put(self, orgname, prototypeid):
-        """ Update the role of an existing permission prototype. """
+        """
+        Update the role of an existing permission prototype.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:

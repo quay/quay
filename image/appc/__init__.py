@@ -15,8 +15,8 @@ ACNAME_REGEX = re.compile(r"[^a-z-]+")
 
 class AppCImageFormatter(TarImageFormatter):
     """
-  Image formatter which produces an tarball according to the AppC specification.
-  """
+    Image formatter which produces an tarball according to the AppC specification.
+    """
 
     def stream_generator(
         self,
@@ -56,8 +56,8 @@ class DockerV1ToACIManifestTranslator(object):
     @staticmethod
     def _build_isolators(docker_config):
         """
-    Builds ACI isolator config from the docker config.
-    """
+        Builds ACI isolator config from the docker config.
+        """
 
         def _isolate_memory(memory):
             return {"name": "memory/limit", "value": {"request": str(memory) + "B",}}
@@ -91,13 +91,13 @@ class DockerV1ToACIManifestTranslator(object):
     @staticmethod
     def _build_ports(docker_config):
         """
-    Builds the ports definitions for the ACI.
+        Builds the ports definitions for the ACI.
 
-    Formats:
-      port/tcp
-      port/udp
-      port
-    """
+        Formats:
+          port/tcp
+          port/udp
+          port
+        """
         ports = []
 
         exposed_ports = docker_config["ExposedPorts"]
@@ -134,7 +134,9 @@ class DockerV1ToACIManifestTranslator(object):
 
     @staticmethod
     def _build_volumes(docker_config):
-        """ Builds the volumes definitions for the ACI. """
+        """
+        Builds the volumes definitions for the ACI.
+        """
         volumes = []
 
         def get_name(docker_volume_path):
@@ -157,7 +159,9 @@ class DockerV1ToACIManifestTranslator(object):
 
     @staticmethod
     def build_manifest(tag, manifest, synthetic_image_id):
-        """ Builds an ACI manifest of an existing repository image. """
+        """
+        Builds an ACI manifest of an existing repository image.
+        """
         docker_layer_data = JSONPathDict(json.loads(manifest.leaf_layer.raw_v1_metadata))
         config = docker_layer_data["config"] or JSONPathDict({})
 

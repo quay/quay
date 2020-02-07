@@ -31,7 +31,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 #
-"""Read from and write to tar format archives.
+"""
+Read from and write to tar format archives.
 """
 
 __version__ = "$Revision: 85213 $"
@@ -179,13 +180,15 @@ if ENCODING is None:
 
 
 def stn(s, length):
-    """Convert a python string to a null-terminated string buffer.
+    """
+    Convert a python string to a null-terminated string buffer.
     """
     return s[:length] + (length - len(s)) * NUL
 
 
 def nts(s):
-    """Convert a null-terminated string field to a python string.
+    """
+    Convert a null-terminated string field to a python string.
     """
     # Use the string up to the first null char.
     p = s.find("\0")
@@ -195,7 +198,8 @@ def nts(s):
 
 
 def nti(s):
-    """Convert a number field to a python number.
+    """
+    Convert a number field to a python number.
     """
     # There are two possible encodings for a number field, see
     # itn() below.
@@ -213,7 +217,8 @@ def nti(s):
 
 
 def itn(n, digits=8, format=DEFAULT_FORMAT):
-    """Convert a python number to a number field.
+    """
+    Convert a python number to a number field.
     """
     # POSIX 1003.1-1988 requires numbers to be encoded as a string of
     # octal digits followed by a null-byte, this allows values up to
@@ -241,7 +246,8 @@ def itn(n, digits=8, format=DEFAULT_FORMAT):
 
 
 def uts(s, encoding, errors):
-    """Convert a unicode object to a string.
+    """
+    Convert a unicode object to a string.
     """
     if errors == "utf-8":
         # An extra error handler similar to the -o invalid=UTF-8 option
@@ -262,13 +268,13 @@ def uts(s, encoding, errors):
 
 
 def calc_chksums(buf):
-    """Calculate the checksum for a member's header by summing up all
-       characters except for the chksum field which is treated as if
-       it was filled with spaces. According to the GNU tar sources,
-       some tars (Sun and NeXT) calculate chksum with signed char,
-       which will be different if there are chars in the buffer with
-       the high bit set. So we calculate two checksums, unsigned and
-       signed.
+    """
+    Calculate the checksum for a member's header by summing up all characters except for the chksum
+    field which is treated as if it was filled with spaces.
+
+    According to the GNU tar sources, some tars (Sun and NeXT) calculate chksum with signed char,
+    which will be different if there are chars in the buffer with the high bit set. So we calculate
+    two checksums, unsigned and signed.
     """
     unsigned_chksum = 256 + sum(
         struct.unpack("148B", buf[:148]) + struct.unpack("356B", buf[156:512])
@@ -280,8 +286,10 @@ def calc_chksums(buf):
 
 
 def copyfileobj(src, dst, length=None):
-    """Copy length bytes from fileobj src to fileobj dst.
-       If length is None, copy the entire content.
+    """
+    Copy length bytes from fileobj src to fileobj dst.
+
+    If length is None, copy the entire content.
     """
     if length == 0:
         return
@@ -327,9 +335,11 @@ filemode_table = (
 
 
 def filemode(mode):
-    """Convert a file's mode to a string of the form
-       -rwxrwxrwx.
-       Used by TarFile.list()
+    """
+    Convert a file's mode to a string of the form.
+
+    -rwxrwxrwx.
+    Used by TarFile.list()
     """
     perm = []
     for table in filemode_table:
@@ -343,67 +353,89 @@ def filemode(mode):
 
 
 class TarError(Exception):
-    """Base exception."""
+    """
+    Base exception.
+    """
 
     pass
 
 
 class ExtractError(TarError):
-    """General exception for extract errors."""
+    """
+    General exception for extract errors.
+    """
 
     pass
 
 
 class ReadError(TarError):
-    """Exception for unreadable tar archives."""
+    """
+    Exception for unreadable tar archives.
+    """
 
     pass
 
 
 class CompressionError(TarError):
-    """Exception for unavailable compression methods."""
+    """
+    Exception for unavailable compression methods.
+    """
 
     pass
 
 
 class StreamError(TarError):
-    """Exception for unsupported operations on stream-like TarFiles."""
+    """
+    Exception for unsupported operations on stream-like TarFiles.
+    """
 
     pass
 
 
 class HeaderError(TarError):
-    """Base exception for header errors."""
+    """
+    Base exception for header errors.
+    """
 
     pass
 
 
 class EmptyHeaderError(HeaderError):
-    """Exception for empty headers."""
+    """
+    Exception for empty headers.
+    """
 
     pass
 
 
 class TruncatedHeaderError(HeaderError):
-    """Exception for truncated headers."""
+    """
+    Exception for truncated headers.
+    """
 
     pass
 
 
 class EOFHeaderError(HeaderError):
-    """Exception for end of file headers."""
+    """
+    Exception for end of file headers.
+    """
 
     pass
 
 
 class InvalidHeaderError(HeaderError):
-    """Exception for invalid headers."""
+    """
+    Exception for invalid headers.
+    """
 
     pass
 
 
 class SubsequentHeaderError(HeaderError):
-    """Exception for missing and invalid extended headers."""
+    """
+    Exception for missing and invalid extended headers.
+    """
 
     pass
 
@@ -412,9 +444,10 @@ class SubsequentHeaderError(HeaderError):
 # internal stream interface
 # ---------------------------
 class _LowLevelFile:
-    """Low-level file object. Supports reading and writing.
-       It is used instead of a regular file object for streaming
-       access.
+    """
+    Low-level file object.
+
+    Supports reading and writing. It is used instead of a regular file object for streaming access.
     """
 
     def __init__(self, name, mode):
@@ -434,18 +467,18 @@ class _LowLevelFile:
 
 
 class _Stream:
-    """Class that serves as an adapter between TarFile and
-       a stream-like object.  The stream-like object only
-       needs to have a read() or write() method and is accessed
-       blockwise.  Use of gzip or bzip2 compression is possible.
-       A stream-like object could be for example: sys.stdin,
-       sys.stdout, a socket, a tape device etc.
+    """
+    Class that serves as an adapter between TarFile and a stream-like object.  The stream-like
+    object only needs to have a read() or write() method and is accessed blockwise.  Use of gzip or
+    bzip2 compression is possible. A stream-like object could be for example: sys.stdin, sys.stdout,
+    a socket, a tape device etc.
 
-       _Stream is intended to be used only internally.
+    _Stream is intended to be used only internally.
     """
 
     def __init__(self, name, mode, comptype, fileobj, bufsize):
-        """Construct a _Stream object.
+        """
+        Construct a _Stream object.
         """
         self._extfileobj = True
         if fileobj is None:
@@ -501,7 +534,8 @@ class _Stream:
             self.close()
 
     def _init_write_gz(self):
-        """Initialize for writing with gzip compression.
+        """
+        Initialize for writing with gzip compression.
         """
         self.cmp = self.zlib.compressobj(
             9, self.zlib.DEFLATED, -self.zlib.MAX_WBITS, self.zlib.DEF_MEM_LEVEL, 0
@@ -515,7 +549,8 @@ class _Stream:
         self.__write(self.name + NUL)
 
     def write(self, s):
-        """Write string s to the stream.
+        """
+        Write string s to the stream.
         """
         if self.comptype == "gz":
             self.crc = self.zlib.crc32(s, self.crc) & 0xFFFFFFFFL
@@ -525,8 +560,8 @@ class _Stream:
         self.__write(s)
 
     def __write(self, s):
-        """Write string s to the stream if a whole new block
-           is ready to be written.
+        """
+        Write string s to the stream if a whole new block is ready to be written.
         """
         self.buf += s
         while len(self.buf) > self.bufsize:
@@ -534,8 +569,10 @@ class _Stream:
             self.buf = self.buf[self.bufsize :]
 
     def close(self):
-        """Close the _Stream object. No operation should be
-           done on it afterwards.
+        """
+        Close the _Stream object.
+
+        No operation should be done on it afterwards.
         """
         if self.closed:
             return
@@ -562,7 +599,8 @@ class _Stream:
                 self.fileobj.close()
 
     def _init_read_gz(self):
-        """Initialize for reading a gzip compressed fileobj.
+        """
+        Initialize for reading a gzip compressed fileobj.
         """
         self.cmp = self.zlib.decompressobj(-self.zlib.MAX_WBITS)
         self.dbuf = ""
@@ -593,13 +631,16 @@ class _Stream:
             self.__read(2)
 
     def tell(self):
-        """Return the stream's file pointer position.
+        """
+        Return the stream's file pointer position.
         """
         return self.pos
 
     def seek(self, pos=0):
-        """Set the stream's file pointer to pos. Negative seeking
-           is forbidden.
+        """
+        Set the stream's file pointer to pos.
+
+        Negative seeking is forbidden.
         """
         if pos - self.pos >= 0:
             blocks, remainder = divmod(pos - self.pos, self.bufsize)
@@ -611,9 +652,10 @@ class _Stream:
         return self.pos
 
     def read(self, size=None):
-        """Return the next size number of bytes from the stream.
-           If size is not defined, return all bytes of the stream
-           up to EOF.
+        """
+        Return the next size number of bytes from the stream.
+
+        If size is not defined, return all bytes of the stream up to EOF.
         """
         if size is None:
             t = []
@@ -629,7 +671,8 @@ class _Stream:
         return buf
 
     def _read(self, size):
-        """Return size bytes from the stream.
+        """
+        Return size bytes from the stream.
         """
         if self.comptype == "tar":
             return self.__read(size)
@@ -651,8 +694,10 @@ class _Stream:
         return t[:size]
 
     def __read(self, size):
-        """Return size bytes from stream. If internal buffer is empty,
-           read another block from the stream.
+        """
+        Return size bytes from stream.
+
+        If internal buffer is empty, read another block from the stream.
         """
         c = len(self.buf)
         t = [self.buf]
@@ -671,8 +716,9 @@ class _Stream:
 
 
 class _StreamProxy(object):
-    """Small proxy class that enables transparent compression
-       detection for the Stream interface (mode 'r|*').
+    """
+    Small proxy class that enables transparent compression detection for the Stream interface (mode
+    'r|*').
     """
 
     def __init__(self, fileobj):
@@ -698,11 +744,11 @@ class _StreamProxy(object):
 
 
 class _BZ2Proxy(object):
-    """Small proxy class that enables external file object
-       support for "r:bz2" and "w:bz2" modes. This is actually
-       a workaround for a limitation in bz2 module's BZ2File
-       class which (unlike gzip.GzipFile) has no support for
-       a file object argument.
+    """
+    Small proxy class that enables external file object support for "r:bz2" and "w:bz2" modes.
+
+    This is actually a workaround for a limitation in bz2 module's BZ2File class which (unlike
+    gzip.GzipFile) has no support for a file object argument.
     """
 
     blocksize = 16 * 1024
@@ -766,9 +812,9 @@ class _BZ2Proxy(object):
 # Extraction file object
 # ------------------------
 class _FileInFile(object):
-    """A thin wrapper around an existing file object that
-       provides a part of its data as an individual file
-       object.
+    """
+    A thin wrapper around an existing file object that provides a part of its data as an individual
+    file object.
     """
 
     def __init__(self, fileobj, offset, size, sparse=None):
@@ -779,17 +825,20 @@ class _FileInFile(object):
         self.position = 0
 
     def tell(self):
-        """Return the current file position.
+        """
+        Return the current file position.
         """
         return self.position
 
     def seek(self, position):
-        """Seek to a position in the file.
+        """
+        Seek to a position in the file.
         """
         self.position = position
 
     def read(self, size=None):
-        """Read data from the file.
+        """
+        Read data from the file.
         """
         if size is None:
             size = self.size - self.position
@@ -808,14 +857,16 @@ class _FileInFile(object):
         return buf
 
     def readnormal(self, size):
-        """Read operation for regular files.
+        """
+        Read operation for regular files.
         """
         self.fileobj.seek(self.offset + self.position)
         self.position += size
         return self.__read(size)
 
     def readsparse(self, size):
-        """Read operation for sparse files.
+        """
+        Read operation for sparse files.
         """
         data = []
         while size > 0:
@@ -827,7 +878,8 @@ class _FileInFile(object):
         return "".join(data)
 
     def readsparsesection(self, size):
-        """Read a single section of a sparse file.
+        """
+        Read a single section of a sparse file.
         """
         section = self.sparse.find(self.position)
 
@@ -850,8 +902,10 @@ class _FileInFile(object):
 
 
 class ExFileObject(object):
-    """File-like object for reading an archive member.
-       Is returned by TarFile.extractfile().
+    """
+    File-like object for reading an archive member.
+
+    Is returned by TarFile.extractfile().
     """
 
     blocksize = 1024
@@ -869,8 +923,10 @@ class ExFileObject(object):
         self.buffer = ""
 
     def read(self, size=None):
-        """Read at most size bytes from the file. If size is not
-           present or None, read all data until EOF is reached.
+        """
+        Read at most size bytes from the file.
+
+        If size is not present or None, read all data until EOF is reached.
         """
         if self.closed:
             raise ValueError("I/O operation on closed file")
@@ -893,9 +949,11 @@ class ExFileObject(object):
         return buf
 
     def readline(self, size=-1):
-        """Read one entire line from the file. If size is present
-           and non-negative, return a string with at most that
-           size, which may be an incomplete line.
+        """
+        Read one entire line from the file.
+
+        If size is present and non-negative, return a string with at most that size, which may be an
+        incomplete line.
         """
         if self.closed:
             raise ValueError("I/O operation on closed file")
@@ -924,7 +982,8 @@ class ExFileObject(object):
         return buf
 
     def readlines(self):
-        """Return a list with all remaining lines.
+        """
+        Return a list with all remaining lines.
         """
         result = []
         while True:
@@ -935,7 +994,8 @@ class ExFileObject(object):
         return result
 
     def tell(self):
-        """Return the current file position.
+        """
+        Return the current file position.
         """
         if self.closed:
             raise ValueError("I/O operation on closed file")
@@ -943,7 +1003,8 @@ class ExFileObject(object):
         return self.position
 
     def seek(self, pos, whence=os.SEEK_SET):
-        """Seek to a position in the file.
+        """
+        Seek to a position in the file.
         """
         if self.closed:
             raise ValueError("I/O operation on closed file")
@@ -964,12 +1025,14 @@ class ExFileObject(object):
         self.fileobj.seek(self.position)
 
     def close(self):
-        """Close the file object.
+        """
+        Close the file object.
         """
         self.closed = True
 
     def __iter__(self):
-        """Get an iterator over the file's lines.
+        """
+        Get an iterator over the file's lines.
         """
         while True:
             line = self.readline()
@@ -984,16 +1047,18 @@ class ExFileObject(object):
 # Exported Classes
 # ------------------
 class TarInfo(object):
-    """Informational class which holds the details about an
-       archive member given by a tar header block.
-       TarInfo objects are returned by TarFile.getmember(),
-       TarFile.getmembers() and TarFile.gettarinfo() and are
-       usually created internally.
+    """
+    Informational class which holds the details about an archive member given by a tar header block.
+
+    TarInfo objects are returned by TarFile.getmember(), TarFile.getmembers() and
+    TarFile.gettarinfo() and are usually created internally.
     """
 
     def __init__(self, name=""):
-        """Construct a TarInfo object. name is the optional name
-           of the member.
+        """
+        Construct a TarInfo object.
+
+        name is the optional name of the member.
         """
         self.name = name  # member name
         self.mode = 0644  # file permissions
@@ -1036,7 +1101,8 @@ class TarInfo(object):
         return "<%s %r at %#x>" % (self.__class__.__name__, self.name, id(self))
 
     def get_info(self, encoding, errors):
-        """Return the TarInfo's attributes as a dictionary.
+        """
+        Return the TarInfo's attributes as a dictionary.
         """
         info = {
             "name": self.name,
@@ -1064,7 +1130,8 @@ class TarInfo(object):
         return info
 
     def tobuf(self, format=DEFAULT_FORMAT, encoding=ENCODING, errors="strict"):
-        """Return a tar header as a string of 512 byte blocks.
+        """
+        Return a tar header as a string of 512 byte blocks.
         """
         info = self.get_info(encoding, errors)
 
@@ -1078,7 +1145,8 @@ class TarInfo(object):
             raise ValueError("invalid format")
 
     def create_ustar_header(self, info):
-        """Return the object as a ustar header block.
+        """
+        Return the object as a ustar header block.
         """
         info["magic"] = POSIX_MAGIC
 
@@ -1091,7 +1159,8 @@ class TarInfo(object):
         return self._create_header(info, USTAR_FORMAT)
 
     def create_gnu_header(self, info):
-        """Return the object as a GNU header block sequence.
+        """
+        Return the object as a GNU header block sequence.
         """
         info["magic"] = GNU_MAGIC
 
@@ -1105,9 +1174,11 @@ class TarInfo(object):
         return buf + self._create_header(info, GNU_FORMAT)
 
     def create_pax_header(self, info, encoding, errors):
-        """Return the object as a ustar header block. If it cannot be
-           represented this way, prepend a pax extended header sequence
-           with supplement information.
+        """
+        Return the object as a ustar header block.
+
+        If it cannot be represented this way, prepend a pax extended header sequence with supplement
+        information.
         """
         info["magic"] = POSIX_MAGIC
         pax_headers = self.pax_headers.copy()
@@ -1160,13 +1231,14 @@ class TarInfo(object):
 
     @classmethod
     def create_pax_global_header(cls, pax_headers):
-        """Return the object as a pax global header block sequence.
+        """
+        Return the object as a pax global header block sequence.
         """
         return cls._create_pax_generic_header(pax_headers, type=XGLTYPE)
 
     def _posix_split_name(self, name):
-        """Split a name longer than 100 chars into a prefix
-           and a name part.
+        """
+        Split a name longer than 100 chars into a prefix and a name part.
         """
         prefix = name[: LENGTH_PREFIX + 1]
         while prefix and prefix[-1] != "/":
@@ -1181,8 +1253,10 @@ class TarInfo(object):
 
     @staticmethod
     def _create_header(info, format):
-        """Return a header block. info is a dictionary with file
-           information, format must be one of the *_FORMAT constants.
+        """
+        Return a header block.
+
+        info is a dictionary with file information, format must be one of the *_FORMAT constants.
         """
         parts = [
             stn(info.get("name", ""), 100),
@@ -1209,8 +1283,8 @@ class TarInfo(object):
 
     @staticmethod
     def _create_payload(payload):
-        """Return the string payload filled with zero bytes
-           up to the next 512 byte border.
+        """
+        Return the string payload filled with zero bytes up to the next 512 byte border.
         """
         blocks, remainder = divmod(len(payload), BLOCKSIZE)
         if remainder > 0:
@@ -1219,8 +1293,8 @@ class TarInfo(object):
 
     @classmethod
     def _create_gnu_long_header(cls, name, type):
-        """Return a GNUTYPE_LONGNAME or GNUTYPE_LONGLINK sequence
-           for name.
+        """
+        Return a GNUTYPE_LONGNAME or GNUTYPE_LONGLINK sequence for name.
         """
         name += NUL
 
@@ -1235,9 +1309,11 @@ class TarInfo(object):
 
     @classmethod
     def _create_pax_generic_header(cls, pax_headers, type=XHDTYPE):
-        """Return a POSIX.1-2001 extended or global header sequence
-           that contains a list of keyword, value pairs. The values
-           must be unicode objects.
+        """
+        Return a POSIX.1-2001 extended or global header sequence that contains a list of keyword,
+        value pairs.
+
+        The values must be unicode objects.
         """
         records = []
         for keyword, value in pax_headers.iteritems():
@@ -1266,7 +1342,8 @@ class TarInfo(object):
 
     @classmethod
     def frombuf(cls, buf):
-        """Construct a TarInfo object from a 512 byte string buffer.
+        """
+        Construct a TarInfo object from a 512 byte string buffer.
         """
         if len(buf) == 0:
             raise EmptyHeaderError("empty header")
@@ -1312,8 +1389,8 @@ class TarInfo(object):
 
     @classmethod
     def fromtarfile(cls, tarfile):
-        """Return the next TarInfo object from TarFile object
-           tarfile.
+        """
+        Return the next TarInfo object from TarFile object tarfile.
         """
         buf = tarfile.fileobj.read(BLOCKSIZE)
         obj = cls.frombuf(buf)
@@ -1332,8 +1409,8 @@ class TarInfo(object):
     #    begin.
     # 3. Return self or another valid TarInfo object.
     def _proc_member(self, tarfile):
-        """Choose the right processing method depending on
-           the type and call it.
+        """
+        Choose the right processing method depending on the type and call it.
         """
         if self.type in (GNUTYPE_LONGNAME, GNUTYPE_LONGLINK):
             return self._proc_gnulong(tarfile)
@@ -1345,8 +1422,8 @@ class TarInfo(object):
             return self._proc_builtin(tarfile)
 
     def _proc_builtin(self, tarfile):
-        """Process a builtin type or an unknown type which
-           will be treated as a regular file.
+        """
+        Process a builtin type or an unknown type which will be treated as a regular file.
         """
         self.offset_data = tarfile.fileobj.tell()
         offset = self.offset_data
@@ -1362,8 +1439,8 @@ class TarInfo(object):
         return self
 
     def _proc_gnulong(self, tarfile):
-        """Process the blocks that hold a GNU longname
-           or longlink member.
+        """
+        Process the blocks that hold a GNU longname or longlink member.
         """
         buf = tarfile.fileobj.read(self._block(self.size))
 
@@ -1384,7 +1461,8 @@ class TarInfo(object):
         return next
 
     def _proc_sparse(self, tarfile):
-        """Process a GNU sparse header plus extra headers.
+        """
+        Process a GNU sparse header plus extra headers.
         """
         buf = self.buf
         sp = _ringbuffer()
@@ -1440,8 +1518,8 @@ class TarInfo(object):
         return self
 
     def _proc_pax(self, tarfile):
-        """Process an extended or global header as described in
-           POSIX.1-2001.
+        """
+        Process an extended or global header as described in POSIX.1-2001.
         """
         # Read the header information.
         buf = tarfile.fileobj.read(self._block(self.size))
@@ -1505,8 +1583,8 @@ class TarInfo(object):
         return next
 
     def _apply_pax_info(self, pax_headers, encoding, errors):
-        """Replace fields with supplemental information from a previous
-           pax extended or global header.
+        """
+        Replace fields with supplemental information from a previous pax extended or global header.
         """
         for keyword, value in pax_headers.iteritems():
             if keyword not in PAX_FIELDS:
@@ -1528,8 +1606,8 @@ class TarInfo(object):
         self.pax_headers = pax_headers.copy()
 
     def _block(self, count):
-        """Round up a byte count by BLOCKSIZE and return it,
-           e.g. _block(834) => 1024.
+        """
+        Round up a byte count by BLOCKSIZE and return it, e.g. _block(834) => 1024.
         """
         blocks, remainder = divmod(count, BLOCKSIZE)
         if remainder:
@@ -1571,7 +1649,8 @@ class TarInfo(object):
 
 
 class TarFile(object):
-    """The TarFile Class provides an interface to tar archives.
+    """
+    The TarFile Class provides an interface to tar archives.
     """
 
     debug = 0  # May be set from 0 (no msgs) to 3 (all msgs)
@@ -1611,13 +1690,13 @@ class TarFile(object):
         debug=None,
         errorlevel=None,
     ):
-        """Open an (uncompressed) tar archive `name'. `mode' is either 'r' to
-           read from an existing archive, 'a' to append data to an existing
-           file or 'w' to create a new file overwriting an existing one. `mode'
-           defaults to 'r'.
-           If `fileobj' is given, it is used for reading or writing data. If it
-           can be determined, `mode' is overridden by `fileobj's mode.
-           `fileobj' is not closed, when TarFile is closed.
+        """
+        Open an (uncompressed) tar archive `name'.
+
+        `mode' is either 'r' to read from an existing archive, 'a' to append data to an existing
+        file or 'w' to create a new file overwriting an existing one. `mode' defaults to 'r'. If
+        `fileobj' is given, it is used for reading or writing data. If it can be determined, `mode'
+        is overridden by `fileobj's mode. `fileobj' is not closed, when TarFile is closed.
         """
         modes = {"r": "rb", "a": "r+b", "w": "wb"}
         if mode not in modes:
@@ -1738,26 +1817,26 @@ class TarFile(object):
 
     @classmethod
     def open(cls, name=None, mode="r", fileobj=None, bufsize=RECORDSIZE, **kwargs):
-        """Open a tar archive for reading, writing or appending. Return
-           an appropriate TarFile class.
+        """
+        Open a tar archive for reading, writing or appending. Return an appropriate TarFile class.
 
-           mode:
-           'r' or 'r:*' open for reading with transparent compression
-           'r:'         open for reading exclusively uncompressed
-           'r:gz'       open for reading with gzip compression
-           'r:bz2'      open for reading with bzip2 compression
-           'a' or 'a:'  open for appending, creating the file if necessary
-           'w' or 'w:'  open for writing without compression
-           'w:gz'       open for writing with gzip compression
-           'w:bz2'      open for writing with bzip2 compression
+        mode:
+        'r' or 'r:*' open for reading with transparent compression
+        'r:'         open for reading exclusively uncompressed
+        'r:gz'       open for reading with gzip compression
+        'r:bz2'      open for reading with bzip2 compression
+        'a' or 'a:'  open for appending, creating the file if necessary
+        'w' or 'w:'  open for writing without compression
+        'w:gz'       open for writing with gzip compression
+        'w:bz2'      open for writing with bzip2 compression
 
-           'r|*'        open a stream of tar blocks with transparent compression
-           'r|'         open an uncompressed stream of tar blocks for reading
-           'r|gz'       open a gzip compressed stream of tar blocks
-           'r|bz2'      open a bzip2 compressed stream of tar blocks
-           'w|'         open an uncompressed stream for writing
-           'w|gz'       open a gzip compressed stream for writing
-           'w|bz2'      open a bzip2 compressed stream for writing
+        'r|*'        open a stream of tar blocks with transparent compression
+        'r|'         open an uncompressed stream of tar blocks for reading
+        'r|gz'       open a gzip compressed stream of tar blocks
+        'r|bz2'      open a bzip2 compressed stream of tar blocks
+        'w|'         open an uncompressed stream for writing
+        'w|gz'       open a gzip compressed stream for writing
+        'w|bz2'      open a bzip2 compressed stream for writing
         """
 
         if not name and not fileobj:
@@ -1814,7 +1893,8 @@ class TarFile(object):
 
     @classmethod
     def taropen(cls, name, mode="r", fileobj=None, **kwargs):
-        """Open uncompressed tar archive name for reading or writing.
+        """
+        Open uncompressed tar archive name for reading or writing.
         """
         if mode not in ("r", "a", "w"):
             raise ValueError("mode must be 'r', 'a' or 'w'")
@@ -1822,8 +1902,10 @@ class TarFile(object):
 
     @classmethod
     def gzopen(cls, name, mode="r", fileobj=None, compresslevel=9, **kwargs):
-        """Open gzip compressed tar archive name for reading or writing.
-           Appending is not allowed.
+        """
+        Open gzip compressed tar archive name for reading or writing.
+
+        Appending is not allowed.
         """
         if mode not in ("r", "w"):
             raise ValueError("mode must be 'r' or 'w'")
@@ -1857,8 +1939,10 @@ class TarFile(object):
 
     @classmethod
     def bz2open(cls, name, mode="r", fileobj=None, compresslevel=9, **kwargs):
-        """Open bzip2 compressed tar archive name for reading or writing.
-           Appending is not allowed.
+        """
+        Open bzip2 compressed tar archive name for reading or writing.
+
+        Appending is not allowed.
         """
         if mode not in ("r", "w"):
             raise ValueError("mode must be 'r' or 'w'.")
@@ -1897,8 +1981,10 @@ class TarFile(object):
     # The public methods which TarFile provides:
 
     def close(self):
-        """Close the TarFile. In write-mode, two finishing zero blocks are
-           appended to the archive.
+        """
+        Close the TarFile.
+
+        In write-mode, two finishing zero blocks are appended to the archive.
         """
         if self.closed:
             return
@@ -1918,10 +2004,11 @@ class TarFile(object):
                 self.fileobj.close()
 
     def getmember(self, name):
-        """Return a TarInfo object for member `name'. If `name' can not be
-           found in the archive, KeyError is raised. If a member occurs more
-           than once in the archive, its last occurrence is assumed to be the
-           most up-to-date version.
+        """
+        Return a TarInfo object for member `name'.
+
+        If `name' can not be found in the archive, KeyError is raised. If a member occurs more than
+        once in the archive, its last occurrence is assumed to be the most up-to-date version.
         """
         tarinfo = self._getmember(name)
         if tarinfo is None:
@@ -1929,8 +2016,10 @@ class TarFile(object):
         return tarinfo
 
     def getmembers(self):
-        """Return the members of the archive as a list of TarInfo objects. The
-           list has the same order as the members in the archive.
+        """
+        Return the members of the archive as a list of TarInfo objects.
+
+        The list has the same order as the members in the archive.
         """
         self._check()
         if not self._loaded:  # if we want to obtain a list of
@@ -1939,17 +2028,20 @@ class TarFile(object):
         return self.members
 
     def getnames(self):
-        """Return the members of the archive as a list of their names. It has
-           the same order as the list returned by getmembers().
+        """
+        Return the members of the archive as a list of their names.
+
+        It has the same order as the list returned by getmembers().
         """
         return [tarinfo.name for tarinfo in self.getmembers()]
 
     def gettarinfo(self, name=None, arcname=None, fileobj=None):
-        """Create a TarInfo object for either the file `name' or the file
-           object `fileobj' (using os.fstat on its file descriptor). You can
-           modify some of the TarInfo's attributes before you add it using
-           addfile(). If given, `arcname' specifies an alternative name for the
-           file in the archive.
+        """
+        Create a TarInfo object for either the file `name' or the file object `fileobj' (using
+        os.fstat on its file descriptor).
+
+        You can modify some of the TarInfo's attributes before you add it using addfile(). If given,
+        `arcname' specifies an alternative name for the file in the archive.
         """
         self._check("aw")
 
@@ -2047,9 +2139,11 @@ class TarFile(object):
         return tarinfo
 
     def list(self, verbose=True):
-        """Print a table of contents to sys.stdout. If `verbose' is False, only
-           the names of the members are printed. If it is True, an `ls -l'-like
-           output is produced.
+        """
+        Print a table of contents to sys.stdout.
+
+        If `verbose' is False, only the names of the members are printed. If it is True, an `ls
+        -l'-like output is produced.
         """
         self._check()
 
@@ -2073,15 +2167,15 @@ class TarFile(object):
             print
 
     def add(self, name, arcname=None, recursive=True, exclude=None, filter=None):
-        """Add the file `name' to the archive. `name' may be any type of file
-           (directory, fifo, symbolic link, etc.). If given, `arcname'
-           specifies an alternative name for the file in the archive.
-           Directories are added recursively by default. This can be avoided by
-           setting `recursive' to False. `exclude' is a function that should
-           return True for each filename to be excluded. `filter' is a function
-           that expects a TarInfo object argument and returns the changed
-           TarInfo object, if it returns None the TarInfo object will be
-           excluded from the archive.
+        """
+        Add the file `name' to the archive.
+
+        `name' may be any type of file (directory, fifo, symbolic link, etc.). If given, `arcname'
+        specifies an alternative name for the file in the archive. Directories are added recursively
+        by default. This can be avoided by setting `recursive' to False. `exclude' is a function
+        that should return True for each filename to be excluded. `filter' is a function that
+        expects a TarInfo object argument and returns the changed TarInfo object, if it returns None
+        the TarInfo object will be excluded from the archive.
         """
         self._check("aw")
 
@@ -2135,11 +2229,12 @@ class TarFile(object):
             self.addfile(tarinfo)
 
     def addfile(self, tarinfo, fileobj=None):
-        """Add the TarInfo object `tarinfo' to the archive. If `fileobj' is
-           given, tarinfo.size bytes are read from it and added to the archive.
-           You can create TarInfo objects using gettarinfo().
-           On Windows platforms, `fileobj' should always be opened with mode
-           'rb' to avoid irritation about the file size.
+        """
+        Add the TarInfo object `tarinfo' to the archive.
+
+        If `fileobj' is given, tarinfo.size bytes are read from it and added to the archive. You can
+        create TarInfo objects using gettarinfo(). On Windows platforms, `fileobj' should always be
+        opened with mode 'rb' to avoid irritation about the file size.
         """
         self._check("aw")
 
@@ -2161,11 +2256,12 @@ class TarFile(object):
         self.members.append(tarinfo)
 
     def extractall(self, path=".", members=None):
-        """Extract all members from the archive to the current working
-           directory and set owner, modification time and permissions on
-           directories afterwards. `path' specifies a different directory
-           to extract to. `members' is optional and must be a subset of the
-           list returned by getmembers().
+        """
+        Extract all members from the archive to the current working directory and set owner,
+        modification time and permissions on directories afterwards.
+
+        `path' specifies a different directory to extract to. `members' is optional and must be a
+        subset of the list returned by getmembers().
         """
         directories = []
 
@@ -2198,10 +2294,11 @@ class TarFile(object):
                     self._dbg(1, "tarfile: %s" % e)
 
     def extract(self, member, path=""):
-        """Extract a member from the archive to the current working directory,
-           using its full name. Its file information is extracted as accurately
-           as possible. `member' may be a filename or a TarInfo object. You can
-           specify a different directory using `path'.
+        """
+        Extract a member from the archive to the current working directory, using its full name.
+
+        Its file information is extracted as accurately as possible. `member' may be a filename or a
+        TarInfo object. You can specify a different directory using `path'.
         """
         self._check("r")
 
@@ -2231,13 +2328,16 @@ class TarFile(object):
                 self._dbg(1, "tarfile: %s" % e)
 
     def extractfile(self, member):
-        """Extract a member from the archive as a file object. `member' may be
-           a filename or a TarInfo object. If `member' is a regular file, a
-           file-like object is returned. If `member' is a link, a file-like
-           object is constructed from the link's target. If `member' is none of
-           the above, None is returned.
-           The file-like object is read-only and provides the following
-           methods: read(), readline(), readlines(), seek() and tell()
+        """
+        Extract a member from the archive as a file object.
+
+        `member' may be
+        a filename or a TarInfo object. If `member' is a regular file, a
+        file-like object is returned. If `member' is a link, a file-like
+        object is constructed from the link's target. If `member' is none of
+        the above, None is returned.
+        The file-like object is read-only and provides the following
+        methods: read(), readline(), readlines(), seek() and tell()
         """
         self._check("r")
 
@@ -2269,8 +2369,8 @@ class TarFile(object):
             return None
 
     def _extract_member(self, tarinfo, targetpath):
-        """Extract the TarInfo object tarinfo to a physical
-           file called targetpath.
+        """
+        Extract the TarInfo object tarinfo to a physical file called targetpath.
         """
         # Fetch the TarInfo object for the given name
         # and build the destination pathname, replacing
@@ -2316,7 +2416,8 @@ class TarFile(object):
     # subclass to implement other functionality.
 
     def makedir(self, tarinfo, targetpath):
-        """Make a directory called targetpath.
+        """
+        Make a directory called targetpath.
         """
         try:
             # Use a safe mode for the directory, the real mode is set
@@ -2327,7 +2428,8 @@ class TarFile(object):
                 raise
 
     def makefile(self, tarinfo, targetpath):
-        """Make a file called targetpath.
+        """
+        Make a file called targetpath.
         """
         source = self.extractfile(tarinfo)
         try:
@@ -2337,14 +2439,15 @@ class TarFile(object):
             source.close()
 
     def makeunknown(self, tarinfo, targetpath):
-        """Make a file from a TarInfo object with an unknown type
-           at targetpath.
+        """
+        Make a file from a TarInfo object with an unknown type at targetpath.
         """
         self.makefile(tarinfo, targetpath)
         self._dbg(1, "tarfile: Unknown file type %r, " "extracted as regular file." % tarinfo.type)
 
     def makefifo(self, tarinfo, targetpath):
-        """Make a fifo called targetpath.
+        """
+        Make a fifo called targetpath.
         """
         if hasattr(os, "mkfifo"):
             os.mkfifo(targetpath)
@@ -2352,7 +2455,8 @@ class TarFile(object):
             raise ExtractError("fifo not supported by system")
 
     def makedev(self, tarinfo, targetpath):
-        """Make a character or block device called targetpath.
+        """
+        Make a character or block device called targetpath.
         """
         if not hasattr(os, "mknod") or not hasattr(os, "makedev"):
             raise ExtractError("special devices not supported by system")
@@ -2366,9 +2470,11 @@ class TarFile(object):
         os.mknod(targetpath, mode, os.makedev(tarinfo.devmajor, tarinfo.devminor))
 
     def makelink(self, tarinfo, targetpath):
-        """Make a (symbolic) link called targetpath. If it cannot be created
-          (platform limitation), we try to make a copy of the referenced file
-          instead of a link.
+        """
+        Make a (symbolic) link called targetpath.
+
+        If it cannot be created (platform limitation), we try to make a copy of the referenced file
+        instead of a link.
         """
         if hasattr(os, "symlink") and hasattr(os, "link"):
             # For systems that support symbolic and hard links.
@@ -2391,7 +2497,8 @@ class TarFile(object):
                 raise ExtractError("unable to resolve link inside archive")
 
     def chown(self, tarinfo, targetpath):
-        """Set owner of targetpath according to tarinfo.
+        """
+        Set owner of targetpath according to tarinfo.
         """
         if pwd and hasattr(os, "geteuid") and os.geteuid() == 0:
             # We have to be root to do so.
@@ -2413,7 +2520,8 @@ class TarFile(object):
                 raise ExtractError("could not change owner")
 
     def chmod(self, tarinfo, targetpath):
-        """Set file permissions of targetpath according to tarinfo.
+        """
+        Set file permissions of targetpath according to tarinfo.
         """
         if hasattr(os, "chmod"):
             try:
@@ -2422,7 +2530,8 @@ class TarFile(object):
                 raise ExtractError("could not change mode")
 
     def utime(self, tarinfo, targetpath):
-        """Set modification time of targetpath according to tarinfo.
+        """
+        Set modification time of targetpath according to tarinfo.
         """
         if not hasattr(os, "utime"):
             return
@@ -2433,9 +2542,11 @@ class TarFile(object):
 
     # --------------------------------------------------------------------------
     def next(self):
-        """Return the next member of the archive as a TarInfo object, when
-           TarFile is opened for reading. Return None if there is no more
-           available.
+        """
+        Return the next member of the archive as a TarInfo object, when TarFile is opened for
+        reading.
+
+        Return None if there is no more available.
         """
         self._check("ra")
         if self.firstmember is not None:
@@ -2487,8 +2598,10 @@ class TarFile(object):
     # Little helper methods:
 
     def _getmember(self, name, tarinfo=None, normalize=False):
-        """Find an archive member by name from bottom to top.
-           If tarinfo is given, it is used as the starting point.
+        """
+        Find an archive member by name from bottom to top.
+
+        If tarinfo is given, it is used as the starting point.
         """
         # Ensure that all members have been loaded.
         members = self.getmembers()
@@ -2510,8 +2623,8 @@ class TarFile(object):
                 return member
 
     def _load(self):
-        """Read through the entire archive file and look for readable
-           members.
+        """
+        Read through the entire archive file and look for readable members.
         """
         while True:
             tarinfo = self.next()
@@ -2520,8 +2633,8 @@ class TarFile(object):
         self._loaded = True
 
     def _check(self, mode=None):
-        """Check if TarFile is still open, and if the operation's mode
-           corresponds to TarFile's mode.
+        """
+        Check if TarFile is still open, and if the operation's mode corresponds to TarFile's mode.
         """
         if self.closed:
             raise IOError("%s is closed" % self.__class__.__name__)
@@ -2529,8 +2642,8 @@ class TarFile(object):
             raise IOError("bad operation for mode %r" % self.mode)
 
     def _find_link_target(self, tarinfo):
-        """Find the target member of a symlink or hardlink member in the
-           archive.
+        """
+        Find the target member of a symlink or hardlink member in the archive.
         """
         if tarinfo.issym():
             # Always search the entire archive.
@@ -2548,7 +2661,8 @@ class TarFile(object):
         return member
 
     def __iter__(self):
-        """Provide an iterator object.
+        """
+        Provide an iterator object.
         """
         if self._loaded:
             return iter(self.members)
@@ -2556,7 +2670,8 @@ class TarFile(object):
             return TarIter(self)
 
     def _dbg(self, level, msg):
-        """Write debugging output to sys.stderr.
+        """
+        Write debugging output to sys.stderr.
         """
         if level <= self.debug:
             print >> sys.stderr, msg
@@ -2580,26 +2695,30 @@ class TarFile(object):
 
 
 class TarIter:
-    """Iterator Class.
+    """
+    Iterator Class.
 
-       for tarinfo in TarFile(...):
-           suite...
+    for tarinfo in TarFile(...):     suite...
     """
 
     def __init__(self, tarfile):
-        """Construct a TarIter object.
+        """
+        Construct a TarIter object.
         """
         self.tarfile = tarfile
         self.index = 0
 
     def __iter__(self):
-        """Return iterator object.
+        """
+        Return iterator object.
         """
         return self
 
     def next(self):
-        """Return the next item using TarFile's next() method.
-           When all members have been read, set TarFile as _loaded.
+        """
+        Return the next item using TarFile's next() method.
+
+        When all members have been read, set TarFile as _loaded.
         """
         # Fix for SF #1100429: Under rare circumstances it can
         # happen that getmembers() is called during iteration,
@@ -2622,7 +2741,8 @@ class TarIter:
 
 # Helper classes for sparse file support
 class _section:
-    """Base class for _data and _hole.
+    """
+    Base class for _data and _hole.
     """
 
     def __init__(self, offset, size):
@@ -2634,7 +2754,8 @@ class _section:
 
 
 class _data(_section):
-    """Represent a data section in a sparse file.
+    """
+    Represent a data section in a sparse file.
     """
 
     def __init__(self, offset, size, realpos):
@@ -2643,15 +2764,16 @@ class _data(_section):
 
 
 class _hole(_section):
-    """Represent a hole section in a sparse file.
+    """
+    Represent a hole section in a sparse file.
     """
 
     pass
 
 
 class _ringbuffer(list):
-    """Ringbuffer class which increases performance
-       over a regular list.
+    """
+    Ringbuffer class which increases performance over a regular list.
     """
 
     def __init__(self):
@@ -2681,8 +2803,8 @@ TAR_GZIPPED = 8  # zipfile.ZIP_DEFLATED
 
 
 class TarFileCompat:
-    """TarFile class compatible with standard module zipfile's
-       ZipFile class.
+    """
+    TarFile class compatible with standard module zipfile's ZipFile class.
     """
 
     def __init__(self, file, mode="r", compression=TAR_PLAIN):
@@ -2745,8 +2867,8 @@ class TarFileCompat:
 # exported functions
 # --------------------
 def is_tarfile(name):
-    """Return True if name points to a tar archive that we
-       are able to handle, else return False.
+    """
+    Return True if name points to a tar archive that we are able to handle, else return False.
     """
     try:
         t = open(name)

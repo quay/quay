@@ -36,17 +36,18 @@ DOCKER_SCHEMA2_MANIFESTLIST_VARIANT_KEY = "variant"
 
 class MalformedSchema2ManifestList(ManifestException):
     """
-  Raised when a manifest list fails an assertion that should be true according to the
-  Docker Manifest v2.2 Specification.
-  """
+    Raised when a manifest list fails an assertion that should be true according to the Docker
+    Manifest v2.2 Specification.
+    """
 
     pass
 
 
 class MismatchManifestException(MalformedSchema2ManifestList):
-    """ Raised when a manifest list contains a schema 1 manifest with a differing architecture
-      from that specified in the manifest list for the manifest.
-  """
+    """
+    Raised when a manifest list contains a schema 1 manifest with a differing architecture from that
+    specified in the manifest list for the manifest.
+    """
 
     pass
 
@@ -211,7 +212,9 @@ class DockerSchema2ManifestList(ManifestInterface):
 
     @property
     def is_manifest_list(self):
-        """ Returns whether this manifest is a list. """
+        """
+        Returns whether this manifest is a list.
+        """
         return True
 
     @property
@@ -220,17 +223,23 @@ class DockerSchema2ManifestList(ManifestInterface):
 
     @property
     def digest(self):
-        """ The digest of the manifest, including type prefix. """
+        """
+        The digest of the manifest, including type prefix.
+        """
         return digest_tools.sha256_digest(self._manifest_bytes.as_encoded_str())
 
     @property
     def media_type(self):
-        """ The media type of the schema. """
+        """
+        The media type of the schema.
+        """
         return self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MEDIATYPE_KEY]
 
     @property
     def manifest_dict(self):
-        """ Returns the manifest as a dictionary ready to be serialized to JSON. """
+        """
+        Returns the manifest as a dictionary ready to be serialized to JSON.
+        """
         return self._parsed
 
     @property
@@ -238,8 +247,10 @@ class DockerSchema2ManifestList(ManifestInterface):
         return self._manifest_bytes
 
     def get_layers(self, content_retriever):
-        """ Returns the layers of this manifest, from base to leaf or None if this kind of manifest
-        does not support layers. """
+        """
+        Returns the layers of this manifest, from base to leaf or None if this kind of manifest does
+        not support layers.
+        """
         return None
 
     @property
@@ -260,15 +271,18 @@ class DockerSchema2ManifestList(ManifestInterface):
 
     @lru_cache(maxsize=1)
     def manifests(self, content_retriever):
-        """ Returns the manifests in the list.
-    """
+        """
+        Returns the manifests in the list.
+        """
         manifests = self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MANIFESTS_KEY]
         return [LazyManifestLoader(m, content_retriever) for m in manifests]
 
     def validate(self, content_retriever):
-        """ Performs validation of required assertions about the manifest. Raises a ManifestException
-        on failure.
-    """
+        """
+        Performs validation of required assertions about the manifest.
+
+        Raises a ManifestException on failure.
+        """
         for index, m in enumerate(self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MANIFESTS_KEY]):
             if m[DOCKER_SCHEMA2_MANIFESTLIST_MEDIATYPE_KEY] == DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE:
                 platform = m[DOCKER_SCHEMA2_MANIFESTLIST_PLATFORM_KEY]
@@ -311,9 +325,11 @@ class DockerSchema2ManifestList(ManifestInterface):
         return False
 
     def get_schema1_manifest(self, namespace_name, repo_name, tag_name, content_retriever):
-        """ Returns the manifest that is compatible with V1, by virtue of being `amd64` and `linux`.
+        """
+        Returns the manifest that is compatible with V1, by virtue of being `amd64` and `linux`.
+
         If none, returns None.
-    """
+        """
         legacy_manifest = self._get_legacy_manifest(content_retriever)
         if legacy_manifest is None:
             return None
@@ -337,9 +353,10 @@ class DockerSchema2ManifestList(ManifestInterface):
         )
 
     def _get_legacy_manifest(self, content_retriever):
-        """ Returns the manifest under this list with architecture amd64 and os linux, if any, or None
+        """
+        Returns the manifest under this list with architecture amd64 and os linux, if any, or None
         if none or error.
-    """
+        """
         for manifest_ref in self.manifests(content_retriever):
             platform = manifest_ref._manifest_data[DOCKER_SCHEMA2_MANIFESTLIST_PLATFORM_KEY]
             architecture = platform[DOCKER_SCHEMA2_MANIFESTLIST_ARCHITECTURE_KEY]
@@ -364,14 +381,16 @@ class DockerSchema2ManifestList(ManifestInterface):
 
 class DockerSchema2ManifestListBuilder(object):
     """
-  A convenient abstraction around creating new DockerSchema2ManifestList's.
-  """
+    A convenient abstraction around creating new DockerSchema2ManifestList's.
+    """
 
     def __init__(self):
         self.manifests = []
 
     def add_manifest(self, manifest, architecture, os):
-        """ Adds a manifest to the list. """
+        """
+        Adds a manifest to the list.
+        """
         manifest = manifest.unsigned()  # Make sure we add the unsigned version to the list.
         self.add_manifest_digest(
             manifest.digest,
@@ -382,7 +401,9 @@ class DockerSchema2ManifestListBuilder(object):
         )
 
     def add_manifest_digest(self, manifest_digest, manifest_size, media_type, architecture, os):
-        """ Adds a manifest to the list. """
+        """
+        Adds a manifest to the list.
+        """
         self.manifests.append(
             (
                 manifest_digest,
@@ -396,7 +417,9 @@ class DockerSchema2ManifestListBuilder(object):
         )
 
     def build(self):
-        """ Builds and returns the DockerSchema2ManifestList. """
+        """
+        Builds and returns the DockerSchema2ManifestList.
+        """
         assert self.manifests
 
         manifest_list_dict = {

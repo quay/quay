@@ -39,7 +39,9 @@ def user():
 
 @pytest.mark.parametrize("action_kind", [("pull"), ("oops")])
 def test_log_action_unknown_action(action_kind):
-    """ test unknown action types throw an exception when logged """
+    """
+    test unknown action types throw an exception when logged.
+    """
     with pytest.raises(Exception):
         log_action(action_kind, None)
 

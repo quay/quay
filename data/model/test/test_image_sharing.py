@@ -63,8 +63,11 @@ def assertDifferentStorage(
 
 
 def test_same_user(storage, initialized_db):
-    """ The same user creates two images, each which should be shared in the same repo. This is a
-    sanity check. """
+    """
+    The same user creates two images, each which should be shared in the same repo.
+
+    This is a sanity check.
+    """
 
     # Create a reference to a new docker ID => new image.
     first_storage_id = createStorage(storage, "first-image")
@@ -83,7 +86,9 @@ def test_same_user(storage, initialized_db):
 
 
 def test_no_user_private_repo(storage, initialized_db):
-    """ If no user is specified (token case usually), then no sharing can occur on a private repo. """
+    """
+    If no user is specified (token case usually), then no sharing can occur on a private repo.
+    """
     # Create a reference to a new docker ID => new image.
     first_storage = createStorage(storage, "the-image", username=None, repository=SHARED_REPO)
 
@@ -94,7 +99,10 @@ def test_no_user_private_repo(storage, initialized_db):
 
 
 def test_no_user_public_repo(storage, initialized_db):
-    """ If no user is specified (token case usually), then no sharing can occur on a private repo except when the image is first public. """
+    """
+    If no user is specified (token case usually), then no sharing can occur on a private repo except
+    when the image is first public.
+    """
     # Create a reference to a new docker ID => new image.
     first_storage = createStorage(storage, "the-image", username=None, repository=PUBLIC_REPO)
 
@@ -103,7 +111,9 @@ def test_no_user_public_repo(storage, initialized_db):
 
 
 def test_different_user_same_repo(storage, initialized_db):
-    """ Two different users create the same image in the same repo. """
+    """
+    Two different users create the same image in the same repo.
+    """
 
     # Create a reference to a new docker ID under the first user => new image.
     first_storage = createStorage(
@@ -117,7 +127,9 @@ def test_different_user_same_repo(storage, initialized_db):
 
 
 def test_different_repo_no_shared_access(storage, initialized_db):
-    """ Neither user has access to the other user's repository. """
+    """
+    Neither user has access to the other user's repository.
+    """
 
     # Create a reference to a new docker ID under the first user => new image.
     first_storage_id = createStorage(
@@ -134,7 +146,9 @@ def test_different_repo_no_shared_access(storage, initialized_db):
 
 
 def test_public_than_private(storage, initialized_db):
-    """ An image is created publicly then used privately, so it should be shared. """
+    """
+    An image is created publicly then used privately, so it should be shared.
+    """
 
     # Create a reference to a new docker ID under the first user => new image.
     first_storage = createStorage(
@@ -148,7 +162,9 @@ def test_public_than_private(storage, initialized_db):
 
 
 def test_private_than_public(storage, initialized_db):
-    """ An image is created privately then used publicly, so it should *not* be shared. """
+    """
+    An image is created privately then used publicly, so it should *not* be shared.
+    """
 
     # Create a reference to a new docker ID under the first user => new image.
     first_storage = createStorage(storage, "the-image", username=ADMIN_ACCESS_USER, repository=REPO)
@@ -160,10 +176,12 @@ def test_private_than_public(storage, initialized_db):
 
 
 def test_different_repo_with_access(storage, initialized_db):
-    """ An image is created in one repo (SHARED_REPO) which the user (PUBLIC_USER) has access to. Later, the
-      image is created in another repo (PUBLIC_REPO) that the user also has access to. The image should
-      be shared since the user has access.
-  """
+    """
+    An image is created in one repo (SHARED_REPO) which the user (PUBLIC_USER) has access to.
+
+    Later, the image is created in another repo (PUBLIC_REPO) that the user also has access to. The
+    image should be shared since the user has access.
+    """
     # Create the image in the shared repo => new image.
     first_storage = createStorage(
         storage, "the-image", username=ADMIN_ACCESS_USER, repository=SHARED_REPO
@@ -177,7 +195,9 @@ def test_different_repo_with_access(storage, initialized_db):
 
 
 def test_org_access(storage, initialized_db):
-    """ An image is accessible by being a member of the organization. """
+    """
+    An image is accessible by being a member of the organization.
+    """
 
     # Create the new image under the org's repo => new image.
     first_storage = createStorage(
@@ -196,7 +216,9 @@ def test_org_access(storage, initialized_db):
 
 
 def test_org_access_different_user(storage, initialized_db):
-    """ An image is accessible by being a member of the organization. """
+    """
+    An image is accessible by being a member of the organization.
+    """
 
     # Create the new image under the org's repo => new image.
     first_storage = createStorage(
@@ -215,7 +237,9 @@ def test_org_access_different_user(storage, initialized_db):
 
 
 def test_org_no_access(storage, initialized_db):
-    """ An image is not accessible if not a member of the organization. """
+    """
+    An image is not accessible if not a member of the organization.
+    """
 
     # Create the new image under the org's repo => new image.
     first_storage = createStorage(
@@ -229,7 +253,9 @@ def test_org_no_access(storage, initialized_db):
 
 
 def test_org_not_team_member_with_access(storage, initialized_db):
-    """ An image is accessible to a user specifically listed as having permission on the org repo. """
+    """
+    An image is accessible to a user specifically listed as having permission on the org repo.
+    """
 
     # Create the new image under the org's repo => new image.
     first_storage = createStorage(
@@ -243,7 +269,9 @@ def test_org_not_team_member_with_access(storage, initialized_db):
 
 
 def test_org_not_team_member_with_no_access(storage, initialized_db):
-    """ A user that has access to one org repo but not another and is not a team member. """
+    """
+    A user that has access to one org repo but not another and is not a team member.
+    """
 
     # Create the new image under the org's repo => new image.
     first_storage = createStorage(

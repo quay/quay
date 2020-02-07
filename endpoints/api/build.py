@@ -1,4 +1,6 @@
-""" Create, list, cancel and get status/logs of repository builds. """
+"""
+Create, list, cancel and get status/logs of repository builds.
+"""
 import datetime
 import hashlib
 import json
@@ -105,7 +107,9 @@ def trigger_view(trigger, can_read=False, can_admin=False, for_build=False):
 
 
 def _get_build_status(build_obj):
-    """ Returns the updated build phase, status and (if any) error for the build object. """
+    """
+    Returns the updated build phase, status and (if any) error for the build object.
+    """
     phase = build_obj.phase
     status = {}
     error = None
@@ -186,7 +190,9 @@ def build_status_view(build_obj):
 @resource("/v1/repository/<apirepopath:repository>/build/")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositoryBuildList(RepositoryParamResource):
-    """ Resource related to creating and listing repository builds. """
+    """
+    Resource related to creating and listing repository builds.
+    """
 
     schemas = {
         "RepositoryBuildRequest": {
@@ -238,7 +244,9 @@ class RepositoryBuildList(RepositoryParamResource):
     @nickname("getRepoBuilds")
     @disallow_for_app_repositories
     def get(self, namespace, repository, parsed_args):
-        """ Get the list of repository builds. """
+        """
+        Get the list of repository builds.
+        """
         limit = parsed_args.get("limit", 5)
         since = parsed_args.get("since", None)
 
@@ -254,7 +262,9 @@ class RepositoryBuildList(RepositoryParamResource):
     @disallow_for_non_normal_repositories
     @validate_json_request("RepositoryBuildRequest")
     def post(self, namespace, repository):
-        """ Request that a repository be built and pushed from the specified input. """
+        """
+        Request that a repository be built and pushed from the specified input.
+        """
         logger.debug("User requested repository initialization.")
         request_json = request.get_json()
 
@@ -377,13 +387,17 @@ class RepositoryBuildList(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("build_uuid", "The UUID of the build")
 class RepositoryBuildResource(RepositoryParamResource):
-    """ Resource for dealing with repository builds. """
+    """
+    Resource for dealing with repository builds.
+    """
 
     @require_repo_read
     @nickname("getRepoBuild")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
-        """ Returns information about a build. """
+        """
+        Returns information about a build.
+        """
         try:
             build = model.build.get_repository_build(build_uuid)
         except model.build.InvalidRepositoryBuildException:
@@ -402,7 +416,9 @@ class RepositoryBuildResource(RepositoryParamResource):
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     def delete(self, namespace, repository, build_uuid):
-        """ Cancels a repository build. """
+        """
+        Cancels a repository build.
+        """
         try:
             build = model.build.get_repository_build(build_uuid)
         except model.build.InvalidRepositoryBuildException:
@@ -424,13 +440,17 @@ class RepositoryBuildResource(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("build_uuid", "The UUID of the build")
 class RepositoryBuildStatus(RepositoryParamResource):
-    """ Resource for dealing with repository build status. """
+    """
+    Resource for dealing with repository build status.
+    """
 
     @require_repo_read
     @nickname("getRepoBuildStatus")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
-        """ Return the status for the builds specified by the build uuids. """
+        """
+        Return the status for the builds specified by the build uuids.
+        """
         build = model.build.get_repository_build(build_uuid)
         if (
             not build
@@ -467,13 +487,17 @@ def get_logs_or_log_url(build):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("build_uuid", "The UUID of the build")
 class RepositoryBuildLogs(RepositoryParamResource):
-    """ Resource for loading repository build logs. """
+    """
+    Resource for loading repository build logs.
+    """
 
     @require_repo_read
     @nickname("getRepoBuildLogs")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
-        """ Return the build logs for the build specified by the build uuid. """
+        """
+        Return the build logs for the build specified by the build uuid.
+        """
         can_write = ModifyRepositoryPermission(namespace, repository).can()
         if not features.READER_BUILD_LOGS and not can_write:
             raise Unauthorized()
@@ -492,7 +516,9 @@ class RepositoryBuildLogs(RepositoryParamResource):
 @resource("/v1/filedrop/")
 @internal_only
 class FileDropResource(ApiResource):
-    """ Custom verb for setting up a client side file transfer. """
+    """
+    Custom verb for setting up a client side file transfer.
+    """
 
     schemas = {
         "FileDropRequest": {
@@ -511,7 +537,9 @@ class FileDropResource(ApiResource):
     @nickname("getFiledropUrl")
     @validate_json_request("FileDropRequest")
     def post(self):
-        """ Request a URL to which a file may be uploaded. """
+        """
+        Request a URL to which a file may be uploaded.
+        """
         mime_type = request.get_json()["mimeType"]
         (url, file_id) = user_files.prepare_for_drop(mime_type, requires_cors=True)
         return {

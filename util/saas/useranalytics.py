@@ -27,15 +27,15 @@ def build_error_callback(message_when_exception):
 
 
 class _MarketoAnalyticsClient(object):
-    """ User analytics implementation which will report user changes to the
-      Marketo API.
-  """
+    """
+    User analytics implementation which will report user changes to the Marketo API.
+    """
 
     def __init__(self, marketo_client, munchkin_private_key, lead_source):
-        """ Instantiate with the given marketorestpython.client, the Marketo
-        Munchkin Private Key, and the Lead Source that we want to set when we
-        create new lead records in Marketo.
-    """
+        """
+        Instantiate with the given marketorestpython.client, the Marketo Munchkin Private Key, and
+        the Lead Source that we want to set when we create new lead records in Marketo.
+        """
         self._marketo = marketo_client
         self._munchkin_private_key = munchkin_private_key
         self._lead_source = lead_source
@@ -114,9 +114,10 @@ class _MarketoAnalyticsClient(object):
 
     @AsyncExecutorWrapper.sync
     def get_user_analytics_metadata(self, user_obj):
-        """ Return a list of properties that should be added to the user object to allow
-        analytics associations.
-    """
+        """
+        Return a list of properties that should be added to the user object to allow analytics
+        associations.
+        """
         if not self._munchkin_private_key:
             return dict()
 

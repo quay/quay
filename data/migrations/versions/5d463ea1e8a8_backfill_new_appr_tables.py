@@ -1,9 +1,9 @@
-"""Backfill new appr tables
+"""
+Backfill new appr tables.
 
 Revision ID: 5d463ea1e8a8
 Revises: 610320e9dacf
 Create Date: 2018-07-08 10:01:19.756126
-
 """
 
 # revision identifiers, used by Alembic.

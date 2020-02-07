@@ -1,9 +1,9 @@
-"""Add TeamSync table
+"""
+Add TeamSync table.
 
 Revision ID: be8d1c402ce0
 Revises: a6c463dfb9fe
 Create Date: 2017-02-23 13:34:52.356812
-
 """
 
 # revision identifiers, used by Alembic.

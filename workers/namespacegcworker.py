@@ -13,8 +13,9 @@ NAMESPACE_GC_TIMEOUT = 60 * 15  # 15 minutes
 
 
 class NamespaceGCWorker(QueueWorker):
-    """ Worker which cleans up namespaces enqueued to be GCed.
-  """
+    """
+    Worker which cleans up namespaces enqueued to be GCed.
+    """
 
     def process_queue_item(self, job_details):
         logger.debug("Got namespace GC queue item: %s", job_details)

@@ -1,9 +1,9 @@
-"""Add user prompt support
+"""
+Add user prompt support.
 
 Revision ID: 6c7014e84a5e
 Revises: c156deb8845d
 Create Date: 2016-10-31 16:26:31.447705
-
 """
 
 # revision identifiers, used by Alembic.

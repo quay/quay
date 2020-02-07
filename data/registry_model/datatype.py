@@ -4,15 +4,16 @@ from functools import wraps, total_ordering
 
 
 class FromDictionaryException(Exception):
-    """ Exception raised if constructing a data type from a dictionary fails due to
-      missing data.
-  """
+    """
+    Exception raised if constructing a data type from a dictionary fails due to missing data.
+    """
 
 
 def datatype(name, static_fields):
-    """ Defines a base class for a datatype that will represent a row from the database,
-      in an abstracted form.
-  """
+    """
+    Defines a base class for a datatype that will represent a row from the database, in an
+    abstracted form.
+    """
 
     @total_ordering
     class DataType(object):
@@ -60,7 +61,9 @@ def datatype(name, static_fields):
 
 
 def requiresinput(input_name):
-    """ Marks a property on the data type as requiring an input to be invoked. """
+    """
+    Marks a property on the data type as requiring an input to be invoked.
+    """
 
     def inner(func):
         @wraps(func)
@@ -78,7 +81,9 @@ def requiresinput(input_name):
 
 
 def optionalinput(input_name):
-    """ Marks a property on the data type as having an input be optional when invoked. """
+    """
+    Marks a property on the data type as having an input be optional when invoked.
+    """
 
     def inner(func):
         @wraps(func)

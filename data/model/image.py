@@ -41,8 +41,9 @@ def _namespace_id_for_username(username):
 
 
 def get_image_with_storage(docker_image_id, storage_uuid):
-    """ Returns the image with the given docker image ID and storage uuid or None if none.
-  """
+    """
+    Returns the image with the given docker image ID and storage uuid or None if none.
+    """
     try:
         return (
             Image.select(Image, ImageStorage)
@@ -55,9 +56,12 @@ def get_image_with_storage(docker_image_id, storage_uuid):
 
 
 def get_parent_images(namespace_name, repository_name, image_obj):
-    """ Returns a list of parent Image objects starting with the most recent parent
-      and ending with the base layer. The images in this query will include the storage.
-  """
+    """
+    Returns a list of parent Image objects starting with the most recent parent and ending with the
+    base layer.
+
+    The images in this query will include the storage.
+    """
     parents = image_obj.ancestors
 
     # Ancestors are in the format /<root>/<intermediate>/.../<parent>/, with each path section
@@ -81,7 +85,9 @@ def get_parent_images(namespace_name, repository_name, image_obj):
 
 
 def get_placements_for_images(images):
-    """ Returns the placements for the given images, as a map from image storage ID to placements. """
+    """
+    Returns the placements for the given images, as a map from image storage ID to placements.
+    """
     if not images:
         return {}
 
@@ -101,9 +107,10 @@ def get_placements_for_images(images):
 
 
 def get_image_and_placements(namespace_name, repo_name, docker_image_id):
-    """ Returns the repo image (with a storage object) and storage placements for the image
-      or (None, None) if non found.
-  """
+    """
+    Returns the repo image (with a storage object) and storage placements for the image or (None,
+    None) if non found.
+    """
     repo_image = get_repo_image_and_storage(namespace_name, repo_name, docker_image_id)
     if repo_image is None:
         return (None, None)
@@ -120,9 +127,11 @@ def get_image_and_placements(namespace_name, repo_name, docker_image_id):
 
 
 def get_repo_image(namespace_name, repository_name, docker_image_id):
-    """ Returns the repository image with the given Docker image ID or None if none.
-      Does not include the storage object.
-  """
+    """
+    Returns the repository image with the given Docker image ID or None if none.
+
+    Does not include the storage object.
+    """
 
     def limit_to_image_id(query):
         return query.where(Image.docker_image_id == docker_image_id).limit(1)
@@ -135,9 +144,11 @@ def get_repo_image(namespace_name, repository_name, docker_image_id):
 
 
 def get_repo_image_and_storage(namespace_name, repository_name, docker_image_id):
-    """ Returns the repository image with the given Docker image ID or None if none.
-      Includes the storage object.
-  """
+    """
+    Returns the repository image with the given Docker image ID or None if none.
+
+    Includes the storage object.
+    """
 
     def limit_to_image_id(query):
         return query.where(Image.docker_image_id == docker_image_id)
@@ -150,9 +161,11 @@ def get_repo_image_and_storage(namespace_name, repository_name, docker_image_id)
 
 
 def get_image_by_id(namespace_name, repository_name, docker_image_id):
-    """ Returns the repository image with the given Docker image ID or raises if not found.
-      Includes the storage object.
-  """
+    """
+    Returns the repository image with the given Docker image ID or raises if not found.
+
+    Includes the storage object.
+    """
     image = get_repo_image_and_storage(namespace_name, repository_name, docker_image_id)
     if not image:
         raise InvalidImageException(
@@ -209,7 +222,11 @@ def get_repository_images_without_placements(repo_obj, with_ancestor=None):
 
 
 def get_repository_images(namespace_name, repository_name):
-    """ Returns all the repository images in the repository. Does not include storage objects. """
+    """
+    Returns all the repository images in the repository.
+
+    Does not include storage objects.
+    """
     return _get_repository_images(namespace_name, repository_name, lambda q: q)
 
 
@@ -351,8 +368,9 @@ def set_image_metadata(
     v1_json_metadata,
     parent=None,
 ):
-    """ Sets metadata that is specific to how a binary piece of storage fits into the layer tree.
-  """
+    """
+    Sets metadata that is specific to how a binary piece of storage fits into the layer tree.
+    """
     with db_transaction():
         try:
             fetched = (
@@ -423,9 +441,10 @@ def synthesize_v1_image(
     v1_json_metadata,
     parent_image=None,
 ):
-    """ Find an existing image with this docker image id, and if none exists, write one with the
-      specified metadata.
-  """
+    """
+    Find an existing image with this docker image id, and if none exists, write one with the
+    specified metadata.
+    """
     ancestors = "/"
     if parent_image is not None:
         ancestors = "{0}{1}/".format(parent_image.ancestors, parent_image.id)
@@ -477,27 +496,37 @@ def ensure_image_locations(*names):
 
 
 def get_max_id_for_sec_scan():
-    """ Gets the maximum id for a clair sec scan """
+    """
+    Gets the maximum id for a clair sec scan.
+    """
     return Image.select(fn.Max(Image.id)).scalar()
 
 
 def get_min_id_for_sec_scan(version):
-    """ Gets the minimum id for a clair sec scan """
+    """
+    Gets the minimum id for a clair sec scan.
+    """
     return Image.select(fn.Min(Image.id)).where(Image.security_indexed_engine < version).scalar()
 
 
 def total_image_count():
-    """ Returns the total number of images in DB """
+    """
+    Returns the total number of images in DB.
+    """
     return Image.select().count()
 
 
 def get_image_pk_field():
-    """ Returns the primary key for Image DB model """
+    """
+    Returns the primary key for Image DB model.
+    """
     return Image.id
 
 
 def get_images_eligible_for_scan(clair_version):
-    """ Returns a query that gives all images eligible for a clair scan """
+    """
+    Returns a query that gives all images eligible for a clair scan.
+    """
     return (
         get_image_with_storage_and_parent_base()
         .where(Image.security_indexed_engine < clair_version)

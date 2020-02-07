@@ -1,9 +1,9 @@
-"""Drop checksum on ImageStorage
+"""
+Drop checksum on ImageStorage.
 
 Revision ID: c91c564aad34
 Revises: 152bb29a1bb3
 Create Date: 2018-02-21 12:17:52.405644
-
 """
 
 # revision identifiers, used by Alembic.

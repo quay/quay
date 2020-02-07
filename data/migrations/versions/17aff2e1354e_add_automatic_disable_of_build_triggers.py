@@ -1,9 +1,9 @@
-"""Add automatic disable of build triggers
+"""
+Add automatic disable of build triggers.
 
 Revision ID: 17aff2e1354e
 Revises: 61cadbacb9fc
 Create Date: 2017-10-18 15:58:03.971526
-
 """
 
 # revision identifiers, used by Alembic.

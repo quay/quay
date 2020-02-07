@@ -1,9 +1,9 @@
-"""Repository Mirror
+"""
+Repository Mirror.
 
 Revision ID: 5248ddf35167
 Revises: b918abdbee43
 Create Date: 2019-06-25 16:22:36.310532
-
 """
 
 revision = "5248ddf35167"

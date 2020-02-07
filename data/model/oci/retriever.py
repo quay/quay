@@ -10,9 +10,10 @@ RETRY_DELAY = 0.3  # seconds
 
 
 class RepositoryContentRetriever(ContentRetriever):
-    """ Implementation of the ContentRetriever interface for manifests that retrieves
-      config blobs and child manifests for the specified repository.
-  """
+    """
+    Implementation of the ContentRetriever interface for manifests that retrieves config blobs and
+    child manifests for the specified repository.
+    """
 
     def __init__(self, repository_id, storage):
         self.repository_id = repository_id
@@ -23,7 +24,9 @@ class RepositoryContentRetriever(ContentRetriever):
         return RepositoryContentRetriever(repository_id, storage)
 
     def get_manifest_bytes_with_digest(self, digest):
-        """ Returns the bytes of the manifest with the given digest or None if none found. """
+        """
+        Returns the bytes of the manifest with the given digest or None if none found.
+        """
         query = (
             Manifest.select()
             .where(Manifest.repository == self.repository_id)
@@ -36,7 +39,9 @@ class RepositoryContentRetriever(ContentRetriever):
             return None
 
     def get_blob_bytes_with_digest(self, digest):
-        """ Returns the bytes of the blob with the given digest or None if none found. """
+        """
+        Returns the bytes of the blob with the given digest or None if none found.
+        """
         blob = get_repository_blob_by_digest(self.repository_id, digest)
         if blob is None:
             return None

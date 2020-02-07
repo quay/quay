@@ -22,7 +22,9 @@ class CannotSendEmailException(Exception):
 
 
 class GmailAction(object):
-    """ Represents an action that can be taken in Gmail in response to the email. """
+    """
+    Represents an action that can be taken in Gmail in response to the email.
+    """
 
     def __init__(self, metadata):
         self.metadata = metadata

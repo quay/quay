@@ -114,7 +114,9 @@ def tag_exists(repo, tag_name, models_ref, tag_kind="release"):
 
 
 def filter_tags_by_media_type(tag_query, media_type, models_ref):
-    """ Return only available tag for a media_type. """
+    """
+    Return only available tag for a media_type.
+    """
     ManifestListManifest = models_ref.ManifestListManifest
     Tag = models_ref.Tag
     media_type = manifest_media_type(media_type)

@@ -1,9 +1,9 @@
-"""add_notification_type
+"""
+add_notification_type.
 
 Revision ID: 45fd8b9869d4
 Revises: 94836b099894
 Create Date: 2016-12-01 12:02:19.724528
-
 """
 
 # revision identifiers, used by Alembic.

@@ -23,9 +23,11 @@ authentication_count = Counter(
 
 
 def _auth_decorator(pass_result=False, handlers=None):
-    """ Builds an auth decorator that runs the given handlers and, if any return successfully,
-      sets up the auth context. The wrapped function will be invoked *regardless of success or
-      failure of the auth handler(s)*
+    """
+    Builds an auth decorator that runs the given handlers and, if any return successfully, sets up
+    the auth context.
+
+    The wrapped function will be invoked *regardless of success or failure of the auth handler(s)*
     """
 
     def processor(func):
@@ -75,8 +77,10 @@ process_basic_auth_no_pass = _auth_decorator(handlers=[validate_basic_auth])
 
 
 def require_session_login(func):
-    """ Decorates a function and ensures that a valid session cookie exists or a 401 is raised. If
-      a valid session cookie does exist, the authenticated user and identity are also set.
+    """
+    Decorates a function and ensures that a valid session cookie exists or a 401 is raised.
+
+    If a valid session cookie does exist, the authenticated user and identity are also set.
     """
 
     @wraps(func)
@@ -95,9 +99,11 @@ def require_session_login(func):
 
 
 def extract_namespace_repo_from_session(func):
-    """ Extracts the namespace and repository name from the current session (which must exist)
-      and passes them into the decorated function as the first and second arguments. If the
-      session doesn't exist or does not contain these arugments, a 400 error is raised.
+    """
+    Extracts the namespace and repository name from the current session (which must exist) and
+    passes them into the decorated function as the first and second arguments.
+
+    If the session doesn't exist or does not contain these arugments, a 400 error is raised.
     """
 
     @wraps(func)

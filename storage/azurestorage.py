@@ -1,6 +1,7 @@
-""" Azure storage driver.
+"""
+Azure storage driver.
 
-    Based on: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-python-how-to-use-blob-storage
+Based on: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-python-how-to-use-blob-storage
 """
 
 import logging
@@ -251,9 +252,11 @@ class AzureStorage(BaseStorage):
         return total_bytes_written, new_metadata, None
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
-        """ Complete the chunked upload and store the final results in the path indicated.
+        """
+        Complete the chunked upload and store the final results in the path indicated.
+
         Returns nothing.
-    """
+        """
         # Commit the blob's blocks.
         upload_blob_path = self._upload_blob_path_from_uuid(uuid)
         block_list = [BlobBlock(block_id) for block_id in storage_metadata[_BLOCKS_KEY]]
@@ -307,9 +310,11 @@ class AzureStorage(BaseStorage):
             raise IOError("Exception when trying to delete uploaded blob")
 
     def cancel_chunked_upload(self, uuid, storage_metadata):
-        """ Cancel the chunked upload and clean up any outstanding partially uploaded data.
+        """
+        Cancel the chunked upload and clean up any outstanding partially uploaded data.
+
         Returns nothing.
-    """
+        """
         upload_blob_path = self._upload_blob_path_from_uuid(uuid)
         logger.debug("Canceling chunked upload %s at path %s", uuid, upload_blob_path)
         self._blob_service.delete_blob(self._azure_container, upload_blob_path)

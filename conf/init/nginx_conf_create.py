@@ -66,8 +66,8 @@ def write_config(filename, **kwargs):
 
 def generate_nginx_config(config):
     """
-  Generates nginx config from the app config
-  """
+    Generates nginx config from the app config.
+    """
     config = config or {}
     use_https = os.path.exists(os.path.join(QUAYCONF_DIR, "stack/ssl.key"))
     use_old_certs = os.path.exists(os.path.join(QUAYCONF_DIR, "stack/ssl.old.key"))
@@ -89,8 +89,8 @@ def generate_nginx_config(config):
 
 def generate_server_config(config):
     """
-  Generates server config from the app config
-  """
+    Generates server config from the app config.
+    """
     config = config or {}
     tuf_server = config.get("TUF_SERVER", None)
     tuf_host = config.get("TUF_HOST", None)
@@ -111,8 +111,8 @@ def generate_server_config(config):
 
 def generate_rate_limiting_config(config):
     """
-  Generates rate limiting config from the app config
-  """
+    Generates rate limiting config from the app config.
+    """
     config = config or {}
     non_rate_limited_namespaces = config.get("NON_RATE_LIMITED_NAMESPACES") or set()
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
@@ -126,8 +126,8 @@ def generate_rate_limiting_config(config):
 
 def generate_hosted_http_base_config(config):
     """
-  Generates hosted http base config from the app config
-  """
+    Generates hosted http base config from the app config.
+    """
     config = config or {}
     feature_proxy_protocol = config.get("FEATURE_PROXY_PROTOCOL", False)
 

@@ -1,9 +1,9 @@
-"""Remove reference to subdir
+"""
+Remove reference to subdir.
 
 Revision ID: 53e2ac668296
 Revises: ed01e313d3cb
 Create Date: 2017-03-28 15:01:31.073382
-
 """
 
 # revision identifiers, used by Alembic.
@@ -46,7 +46,9 @@ def downgrade(tables, tester, progress_reporter):
 
 
 def delete_subdir(config):
-    """ Remove subdir from config """
+    """
+    Remove subdir from config.
+    """
     if not config:
         return config
     if "subdir" in config:
@@ -56,7 +58,9 @@ def delete_subdir(config):
 
 
 def add_subdir(config):
-    """ Add subdir back into config """
+    """
+    Add subdir back into config.
+    """
     if not config:
         return config
     if "context" in config:

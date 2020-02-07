@@ -50,9 +50,11 @@ WORKER_TIMEOUT = app.config.get("BACKFILL_TAGS_TIMEOUT", 6000)
 
 
 class BrokenManifest(ManifestInterface):
-    """ Implementation of the ManifestInterface for "broken" manifests. This allows us to add the
-      new manifest row while not adding any additional rows for it.
-  """
+    """
+    Implementation of the ManifestInterface for "broken" manifests.
+
+    This allows us to add the new manifest row while not adding any additional rows for it.
+    """
 
     def __init__(self, digest, payload):
         self._digest = digest

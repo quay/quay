@@ -14,13 +14,17 @@ def _ensure_sha256_header(digest):
 
 
 def get_blob(digest, models_ref):
-    """ Find a blob by its digest. """
+    """
+    Find a blob by its digest.
+    """
     Blob = models_ref.Blob
     return Blob.select().where(Blob.digest == _ensure_sha256_header(digest)).get()
 
 
 def get_or_create_blob(digest, size, media_type_name, locations, models_ref):
-    """ Try to find a blob by its digest or create it. """
+    """
+    Try to find a blob by its digest or create it.
+    """
     Blob = models_ref.Blob
     BlobPlacement = models_ref.BlobPlacement
 
@@ -48,7 +52,9 @@ def get_or_create_blob(digest, size, media_type_name, locations, models_ref):
 
 
 def get_blob_locations(digest, models_ref):
-    """ Find all locations names for a blob. """
+    """
+    Find all locations names for a blob.
+    """
     Blob = models_ref.Blob
     BlobPlacement = models_ref.BlobPlacement
     BlobPlacementLocation = models_ref.BlobPlacementLocation

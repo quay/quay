@@ -1,9 +1,9 @@
-"""Add maximum build queue count setting to user table
+"""
+Add maximum build queue count setting to user table.
 
 Revision ID: 152bb29a1bb3
 Revises: 7367229b38d9
 Create Date: 2018-02-20 13:34:34.902415
-
 """
 
 # revision identifiers, used by Alembic.

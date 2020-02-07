@@ -53,7 +53,9 @@ SEARCH_FIELDS = Enum("SearchFields", ["name", "description"])
 
 
 class RepoStateConfigException(Exception):
-    """ Repository.state value requires further configuration to operate. """
+    """
+    Repository.state value requires further configuration to operate.
+    """
 
     pass
 
@@ -130,9 +132,10 @@ def _get_gc_expiration_policies():
 
 
 def get_random_gc_policy():
-    """ Return a single random policy from the database to use when garbage collecting or None if
-      none available.
-  """
+    """
+    Return a single random policy from the database to use when garbage collecting or None if none
+    available.
+    """
     policies = _get_gc_expiration_policies()
     if not policies:
         return None
@@ -176,13 +179,17 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
 
 
 def star_repository(user, repository):
-    """ Stars a repository. """
+    """
+    Stars a repository.
+    """
     star = Star.create(user=user.id, repository=repository.id)
     star.save()
 
 
 def unstar_repository(user, repository):
-    """ Unstars a repository. """
+    """
+    Unstars a repository.
+    """
     try:
         (Star.delete().where(Star.repository == repository.id, Star.user == user.id).execute())
     except Star.DoesNotExist:
@@ -200,7 +207,9 @@ def set_description(repo, description):
 
 
 def get_user_starred_repositories(user, kind_filter="image"):
-    """ Retrieves all of the repositories a user has starred. """
+    """
+    Retrieves all of the repositories a user has starred.
+    """
     try:
         repo_kind = Repository.kind.get_id(kind_filter)
     except RepositoryKind.DoesNotExist:
@@ -221,7 +230,9 @@ def get_user_starred_repositories(user, kind_filter="image"):
 
 
 def repository_is_starred(user, repository):
-    """ Determines whether a user has starred a repository or not. """
+    """
+    Determines whether a user has starred a repository or not.
+    """
     try:
         (Star.select().where(Star.repository == repository.id, Star.user == user.id).get())
         return True
@@ -230,9 +241,10 @@ def repository_is_starred(user, repository):
 
 
 def get_stars(repository_ids):
-    """ Returns a map from repository ID to the number of stars for each repository in the
-      given repository IDs list.
-  """
+    """
+    Returns a map from repository ID to the number of stars for each repository in the given
+    repository IDs list.
+    """
     if not repository_ids:
         return {}
 
@@ -253,8 +265,9 @@ def get_stars(repository_ids):
 def get_visible_repositories(
     username, namespace=None, kind_filter="image", include_public=False, start_id=None, limit=None
 ):
-    """ Returns the repositories visible to the given user (if any).
-  """
+    """
+    Returns the repositories visible to the given user (if any).
+    """
     if not include_public and not username:
         # Short circuit by returning a query that will find no repositories. We need to return a query
         # here, as it will be modified by other queries later on.
@@ -295,7 +308,9 @@ def get_visible_repositories(
 
 
 def get_app_repository(namespace_name, repository_name):
-    """ Find an application repository. """
+    """
+    Find an application repository.
+    """
     try:
         return _basequery.get_existing_repository(
             namespace_name, repository_name, kind_filter="application"
@@ -328,10 +343,12 @@ def _get_namespace_user(username):
 def get_filtered_matching_repositories(
     lookup_value, filter_username=None, repo_kind="image", offset=0, limit=25, search_fields=None
 ):
-    """ Returns an iterator of all repositories matching the given lookup value, with optional
-      filtering to a specific user. If the user is unspecified, only public repositories will
-      be returned.
-  """
+    """
+    Returns an iterator of all repositories matching the given lookup value, with optional filtering
+    to a specific user.
+
+    If the user is unspecified, only public repositories will be returned.
+    """
     if search_fields is None:
         search_fields = set([SEARCH_FIELDS.description.name, SEARCH_FIELDS.name.name])
 
@@ -413,10 +430,12 @@ def _filter_repositories_visible_to_user(unfiltered_query, filter_user_id, limit
 def _get_sorted_matching_repositories(
     lookup_value, repo_kind="image", include_private=False, search_fields=None, ids_only=False
 ):
-    """ Returns a query of repositories matching the given lookup string, with optional inclusion of
-      private repositories. Note that this method does *not* filter results based on visibility
-      to users.
-  """
+    """
+    Returns a query of repositories matching the given lookup string, with optional inclusion of
+    private repositories.
+
+    Note that this method does *not* filter results based on visibility to users.
+    """
     select_fields = [Repository.id] if ids_only else [Repository, Namespace]
 
     if not lookup_value:
@@ -555,9 +574,11 @@ def confirm_email_authorization_for_repo(code):
 
 
 def is_empty(namespace_name, repository_name):
-    """ Returns if the repository referenced by the given namespace and name is empty. If the repo
-      doesn't exist, returns True.
-  """
+    """
+    Returns if the repository referenced by the given namespace and name is empty.
+
+    If the repo doesn't exist, returns True.
+    """
     try:
         tag.list_repository_tags(namespace_name, repository_name).limit(1).get()
         return False
@@ -566,7 +587,11 @@ def is_empty(namespace_name, repository_name):
 
 
 def get_repository_state(namespace_name, repository_name):
-    """ Return the Repository State if the Repository exists. Otherwise, returns None. """
+    """
+    Return the Repository State if the Repository exists.
+
+    Otherwise, returns None.
+    """
     repo = get_repository(namespace_name, repository_name)
     if repo:
         return repo.state
@@ -580,8 +605,10 @@ def set_repository_state(repo, state):
 
 
 def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_queue):
-    """ Marks a repository for future deletion in the background. The repository will be
-        renamed and hidden, and then deleted later by a worker.
+    """
+    Marks a repository for future deletion in the background.
+
+    The repository will be renamed and hidden, and then deleted later by a worker.
     """
     repo = get_repository(namespace_name, repository_name)
     if not repo:

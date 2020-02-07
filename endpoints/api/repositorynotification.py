@@ -1,4 +1,6 @@
-""" List, create and manage repository events/notifications. """
+"""
+List, create and manage repository events/notifications.
+"""
 
 import logging
 from flask import request
@@ -30,7 +32,9 @@ logger = logging.getLogger(__name__)
 @resource("/v1/repository/<apirepopath:repository>/notification/")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositoryNotificationList(RepositoryParamResource):
-    """ Resource for dealing with listing and creating notifications on a repository. """
+    """
+    Resource for dealing with listing and creating notifications on a repository.
+    """
 
     schemas = {
         "NotificationCreateRequest": {
@@ -103,7 +107,9 @@ class RepositoryNotificationList(RepositoryParamResource):
     @nickname("listRepoNotifications")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name):
-        """ List the notifications for the specified repository. """
+        """
+        List the notifications for the specified repository.
+        """
         notifications = model.list_repo_notifications(namespace_name, repository_name)
         return {"notifications": [n.to_dict() for n in notifications]}
 
@@ -112,13 +118,17 @@ class RepositoryNotificationList(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("uuid", "The UUID of the notification")
 class RepositoryNotification(RepositoryParamResource):
-    """ Resource for dealing with specific notifications. """
+    """
+    Resource for dealing with specific notifications.
+    """
 
     @require_repo_admin
     @nickname("getRepoNotification")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, uuid):
-        """ Get information for the specified notification. """
+        """
+        Get information for the specified notification.
+        """
         found = model.get_repo_notification(uuid)
         if not found:
             raise NotFound()
@@ -128,7 +138,9 @@ class RepositoryNotification(RepositoryParamResource):
     @nickname("deleteRepoNotification")
     @disallow_for_app_repositories
     def delete(self, namespace_name, repository_name, uuid):
-        """ Deletes the specified notification. """
+        """
+        Deletes the specified notification.
+        """
         deleted = model.delete_repo_notification(namespace_name, repository_name, uuid)
         if not deleted:
             raise InvalidRequest(
@@ -155,7 +167,9 @@ class RepositoryNotification(RepositoryParamResource):
     @nickname("resetRepositoryNotificationFailures")
     @disallow_for_app_repositories
     def post(self, namespace_name, repository_name, uuid):
-        """ Resets repository notification to 0 failures. """
+        """
+        Resets repository notification to 0 failures.
+        """
         reset = model.reset_notification_number_of_failures(namespace_name, repository_name, uuid)
         if not reset:
             raise InvalidRequest(
@@ -183,13 +197,17 @@ class RepositoryNotification(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("uuid", "The UUID of the notification")
 class TestRepositoryNotification(RepositoryParamResource):
-    """ Resource for queuing a test of a notification. """
+    """
+    Resource for queuing a test of a notification.
+    """
 
     @require_repo_admin
     @nickname("testRepoNotification")
     @disallow_for_app_repositories
     def post(self, namespace_name, repository_name, uuid):
-        """ Queues a test notification for this repository. """
+        """
+        Queues a test notification for this repository.
+        """
         test_note = model.queue_test_notification(uuid)
         if not test_note:
             raise InvalidRequest(

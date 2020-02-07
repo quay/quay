@@ -1,9 +1,9 @@
-"""Change BlobUpload fields to BigIntegers to allow layers > 8GB
+"""
+Change BlobUpload fields to BigIntegers to allow layers > 8GB.
 
 Revision ID: b8ae68ad3e52
 Revises: 7a525c68eb13
 Create Date: 2017-02-27 11:26:49.182349
-
 """
 
 # revision identifiers, used by Alembic.

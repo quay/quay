@@ -1,9 +1,9 @@
-"""Add disabled datetime to trigger
+"""
+Add disabled datetime to trigger.
 
 Revision ID: 87fbbc224f10
 Revises: 17aff2e1354e
 Create Date: 2017-10-24 14:06:37.658705
-
 """
 
 # revision identifiers, used by Alembic.

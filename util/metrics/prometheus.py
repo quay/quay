@@ -29,8 +29,10 @@ ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 @lru_cache(maxsize=1)
 def process_grouping_key():
-    """ Implements a grouping key based on the last argument used to run the current process.
-        https://github.com/prometheus/client_python#exporting-to-a-pushgateway
+    """
+    Implements a grouping key based on the last argument used to run the current process.
+
+    https://github.com/prometheus/client_python#exporting-to-a-pushgateway
     """
     return {
         "host": socket.gethostname(),
@@ -40,7 +42,9 @@ def process_grouping_key():
 
 
 class PrometheusPlugin(object):
-    """ Application plugin for reporting metrics to Prometheus. """
+    """
+    Application plugin for reporting metrics to Prometheus.
+    """
 
     def __init__(self, app=None):
         self.app = app
@@ -104,7 +108,9 @@ class ThreadPusher(threading.Thread):
 
 
 def timed_blueprint(bp):
-    """ Decorates a blueprint to have its request duration tracked by Prometheus. """
+    """
+    Decorates a blueprint to have its request duration tracked by Prometheus.
+    """
 
     def _time_before_request():
         g._request_start_time = time.time()

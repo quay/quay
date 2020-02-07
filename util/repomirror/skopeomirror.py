@@ -60,9 +60,11 @@ class SkopeoMirror(object):
         verbose_logs=False,
     ):
         """
-    Unless a specific tag is known, 'skopeo inspect' won't work. Here first 'latest' is checked
-    and then the tag expression, split at commas, is each checked until one works.
-    """
+        Unless a specific tag is known, 'skopeo inspect' won't work.
+
+        Here first 'latest' is checked and then the tag expression, split at commas, is each checked
+        until one works.
+        """
 
         args = ["/usr/bin/skopeo"]
         if verbose_logs:

@@ -1,4 +1,6 @@
-""" List, create and manage repositories. """
+"""
+List, create and manage repositories.
+"""
 
 import logging
 import datetime
@@ -59,9 +61,11 @@ MAX_DAYS_IN_3_MONTHS = 92
 
 
 def check_allowed_private_repos(namespace):
-    """ Checks to see if the given namespace has reached its private repository limit. If so,
-      raises a ExceedsLicenseException.
-  """
+    """
+    Checks to see if the given namespace has reached its private repository limit.
+
+    If so, raises a ExceedsLicenseException.
+    """
     # Not enabled if billing is disabled.
     if not features.BILLING:
         return
@@ -72,7 +76,9 @@ def check_allowed_private_repos(namespace):
 
 @resource("/v1/repository")
 class RepositoryList(ApiResource):
-    """Operations for creating and listing repositories."""
+    """
+    Operations for creating and listing repositories.
+    """
 
     schemas = {
         "NewRepo": {
@@ -110,7 +116,9 @@ class RepositoryList(ApiResource):
     @nickname("createRepo")
     @validate_json_request("NewRepo")
     def post(self):
-        """Create a new repository."""
+        """
+        Create a new repository.
+        """
         owner = get_authenticated_user()
         req = request.get_json()
 
@@ -186,8 +194,9 @@ class RepositoryList(ApiResource):
     @query_param("repo_kind", "The kind of repositories to return", type=str, default="image")
     @page_support()
     def get(self, page_token, parsed_args):
-        """ Fetch the list of repositories visible to the current user under a variety of situations.
-    """
+        """
+        Fetch the list of repositories visible to the current user under a variety of situations.
+        """
         # Ensure that the user requests either filtered by a namespace, only starred repositories,
         # or public repositories. This ensures that the user is not requesting *all* visible repos,
         # which can cause a surge in DB CPU usage.
@@ -225,7 +234,9 @@ class RepositoryList(ApiResource):
 @resource("/v1/repository/<apirepopath:repository>")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class Repository(RepositoryParamResource):
-    """Operations for managing a specific repository."""
+    """
+    Operations for managing a specific repository.
+    """
 
     schemas = {
         "RepoUpdate": {
@@ -251,7 +262,9 @@ class Repository(RepositoryParamResource):
     @require_repo_read
     @nickname("getRepo")
     def get(self, namespace, repository, parsed_args):
-        """Fetch the specified repository."""
+        """
+        Fetch the specified repository.
+        """
         logger.debug("Get repo: %s/%s" % (namespace, repository))
         include_tags = parsed_args["includeTags"]
         max_tags = 500
@@ -292,7 +305,9 @@ class Repository(RepositoryParamResource):
     @nickname("updateRepo")
     @validate_json_request("RepoUpdate")
     def put(self, namespace, repository):
-        """ Update the description in the specified repository. """
+        """
+        Update the description in the specified repository.
+        """
         if not model.repo_exists(namespace, repository):
             raise NotFound()
 
@@ -310,7 +325,9 @@ class Repository(RepositoryParamResource):
     @require_repo_admin
     @nickname("deleteRepository")
     def delete(self, namespace, repository):
-        """ Delete a repository. """
+        """
+        Delete a repository.
+        """
         username = model.mark_repository_for_deletion(namespace, repository, repository_gc_queue)
 
         if features.BILLING:
@@ -327,7 +344,9 @@ class Repository(RepositoryParamResource):
 @resource("/v1/repository/<apirepopath:repository>/changevisibility")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositoryVisibility(RepositoryParamResource):
-    """ Custom verb for changing the visibility of the repository. """
+    """
+    Custom verb for changing the visibility of the repository.
+    """
 
     schemas = {
         "ChangeVisibility": {
@@ -348,7 +367,9 @@ class RepositoryVisibility(RepositoryParamResource):
     @nickname("changeRepoVisibility")
     @validate_json_request("ChangeVisibility")
     def post(self, namespace, repository):
-        """ Change the visibility of a repository. """
+        """
+        Change the visibility of a repository.
+        """
         if model.repo_exists(namespace, repository):
             values = request.get_json()
             visibility = values["visibility"]
@@ -368,7 +389,9 @@ class RepositoryVisibility(RepositoryParamResource):
 @resource("/v1/repository/<apirepopath:repository>/changetrust")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositoryTrust(RepositoryParamResource):
-    """ Custom verb for changing the trust settings of the repository. """
+    """
+    Custom verb for changing the trust settings of the repository.
+    """
 
     schemas = {
         "ChangeRepoTrust": {
@@ -389,7 +412,9 @@ class RepositoryTrust(RepositoryParamResource):
     @nickname("changeRepoTrust")
     @validate_json_request("ChangeRepoTrust")
     def post(self, namespace, repository):
-        """ Change the visibility of a repository. """
+        """
+        Change the visibility of a repository.
+        """
         if not model.repo_exists(namespace, repository):
             raise NotFound()
 
@@ -414,7 +439,9 @@ class RepositoryTrust(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @show_if(features.REPO_MIRROR)
 class RepositoryStateResource(RepositoryParamResource):
-    """ Custom verb for changing the state of the repository. """
+    """
+    Custom verb for changing the state of the repository.
+    """
 
     schemas = {
         "ChangeRepoState": {
@@ -435,7 +462,9 @@ class RepositoryStateResource(RepositoryParamResource):
     @nickname("changeRepoState")
     @validate_json_request("ChangeRepoState")
     def put(self, namespace, repository):
-        """ Change the state of a repository. """
+        """
+        Change the state of a repository.
+        """
         if not model.repo_exists(namespace, repository):
             raise NotFound()
 

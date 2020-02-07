@@ -5,10 +5,14 @@ from config_app.config_endpoints.api.superuser_models_interface import user_view
 
 @resource("/v1/user/")
 class User(ApiResource):
-    """ Operations related to users. """
+    """
+    Operations related to users.
+    """
 
     @nickname("getLoggedInUser")
     def get(self):
-        """ Get user information for the authenticated user. """
+        """
+        Get user information for the authenticated user.
+        """
         user = get_authenticated_user()
         return user_view(user)

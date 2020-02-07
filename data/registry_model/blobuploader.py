@@ -34,19 +34,27 @@ BLOB_CONTENT_TYPE = "application/octet-stream"
 
 
 class BlobUploadException(Exception):
-    """ Base for all exceptions raised when uploading blobs. """
+    """
+    Base for all exceptions raised when uploading blobs.
+    """
 
 
 class BlobRangeMismatchException(BlobUploadException):
-    """ Exception raised if the range to be uploaded does not match. """
+    """
+    Exception raised if the range to be uploaded does not match.
+    """
 
 
 class BlobDigestMismatchException(BlobUploadException):
-    """ Exception raised if the digest requested does not match that of the contents uploaded. """
+    """
+    Exception raised if the digest requested does not match that of the contents uploaded.
+    """
 
 
 class BlobTooLargeException(BlobUploadException):
-    """ Exception raised if the data uploaded exceeds the maximum_blob_size. """
+    """
+    Exception raised if the data uploaded exceeds the maximum_blob_size.
+    """
 
     def __init__(self, uploaded, max_allowed):
         super(BlobTooLargeException, self).__init__()
@@ -61,9 +69,12 @@ BlobUploadSettings = namedtuple(
 
 
 def create_blob_upload(repository_ref, storage, settings, extra_blob_stream_handlers=None):
-    """ Creates a new blob upload in the specified repository and returns a manager for interacting
-      with that upload. Returns None if a new blob upload could not be started.
-  """
+    """
+    Creates a new blob upload in the specified repository and returns a manager for interacting with
+    that upload.
+
+    Returns None if a new blob upload could not be started.
+    """
     location_name = storage.preferred_locations[0]
     new_upload_uuid, upload_metadata = storage.initiate_chunked_upload(location_name)
     blob_upload = registry_model.create_blob_upload(
@@ -78,9 +89,10 @@ def create_blob_upload(repository_ref, storage, settings, extra_blob_stream_hand
 
 
 def retrieve_blob_upload_manager(repository_ref, blob_upload_id, storage, settings):
-    """ Retrieves the manager for an in-progress blob upload with the specified ID under the given
-      repository or None if none.
-  """
+    """
+    Retrieves the manager for an in-progress blob upload with the specified ID under the given
+    repository or None if none.
+    """
     blob_upload = registry_model.lookup_blob_upload(repository_ref, blob_upload_id)
     if blob_upload is None:
         return None
@@ -90,9 +102,10 @@ def retrieve_blob_upload_manager(repository_ref, blob_upload_id, storage, settin
 
 @contextmanager
 def complete_when_uploaded(blob_upload):
-    """ Wraps the given blob upload in a context manager that completes the upload when the context
-      closes.
-  """
+    """
+    Wraps the given blob upload in a context manager that completes the upload when the context
+    closes.
+    """
     try:
         yield blob_upload
     except Exception as ex:
@@ -106,10 +119,13 @@ def complete_when_uploaded(blob_upload):
 
 @contextmanager
 def upload_blob(repository_ref, storage, settings, extra_blob_stream_handlers=None):
-    """ Starts a new blob upload in the specified repository and yields a manager for interacting
-      with that upload. When the context manager completes, the blob upload is deleted, whether
-      committed to a blob or not. Yields None if a blob upload could not be started.
-  """
+    """
+    Starts a new blob upload in the specified repository and yields a manager for interacting with
+    that upload.
+
+    When the context manager completes, the blob upload is deleted, whether committed to a blob or
+    not. Yields None if a blob upload could not be started.
+    """
     created = create_blob_upload(repository_ref, storage, settings, extra_blob_stream_handlers)
     if not created:
         yield None
@@ -127,8 +143,10 @@ def upload_blob(repository_ref, storage, settings, extra_blob_stream_handlers=No
 
 
 class _BlobUploadManager(object):
-    """ Defines a helper class for easily interacting with blob uploads in progress, including
-      handling of database and storage calls. """
+    """
+    Defines a helper class for easily interacting with blob uploads in progress, including handling
+    of database and storage calls.
+    """
 
     def __init__(
         self, repository_ref, blob_upload, settings, storage, extra_blob_stream_handlers=None
@@ -145,15 +163,19 @@ class _BlobUploadManager(object):
 
     @property
     def blob_upload_id(self):
-        """ Returns the unique ID for the blob upload. """
+        """
+        Returns the unique ID for the blob upload.
+        """
         return self.blob_upload.upload_id
 
     def upload_chunk(self, app_config, input_fp, start_offset=0, length=-1):
-        """ Uploads a chunk of data found in the given input file-like interface. start_offset and
-            length are optional and should match a range header if any was given.
+        """
+        Uploads a chunk of data found in the given input file-like interface. start_offset and
+        length are optional and should match a range header if any was given.
 
-            Returns the total number of bytes uploaded after this upload has completed. Raises
-            a BlobUploadException if the upload failed. """
+        Returns the total number of bytes uploaded after this upload has completed. Raises a
+        BlobUploadException if the upload failed.
+        """
         assert start_offset is not None
         assert length is not None
 
@@ -271,7 +293,9 @@ class _BlobUploadManager(object):
         return new_blob_bytes
 
     def cancel_upload(self):
-        """ Cancels the blob upload, deleting any data uploaded and removing the upload itself. """
+        """
+        Cancels the blob upload, deleting any data uploaded and removing the upload itself.
+        """
         if self.blob_upload is None:
             return
 
@@ -286,12 +310,14 @@ class _BlobUploadManager(object):
         registry_model.delete_blob_upload(self.blob_upload)
 
     def commit_to_blob(self, app_config, expected_digest=None):
-        """ Commits the blob upload to a blob under the repository. The resulting blob will be marked
-            to not be GCed for some period of time (as configured by `committed_blob_expiration`).
+        """
+        Commits the blob upload to a blob under the repository. The resulting blob will be marked to
+        not be GCed for some period of time (as configured by `committed_blob_expiration`).
 
-            If expected_digest is specified, the content digest of the data uploaded for the blob is
-            compared to that given and, if it does not match, a BlobDigestMismatchException is
-            raised. The digest given must be of type `Digest` and not a string. """
+        If expected_digest is specified, the content digest of the data uploaded for the blob is
+        compared to that given and, if it does not match, a BlobDigestMismatchException is raised.
+        The digest given must be of type `Digest` and not a string.
+        """
         # Compare the content digest.
         if expected_digest is not None:
             self._validate_digest(expected_digest)
@@ -322,7 +348,9 @@ class _BlobUploadManager(object):
         return blob
 
     def _validate_digest(self, expected_digest):
-        """ Verifies that the digest's SHA matches that of the uploaded data. """
+        """
+        Verifies that the digest's SHA matches that of the uploaded data.
+        """
         try:
             computed_digest = digest_tools.sha256_digest_from_hashlib(self.blob_upload.sha_state)
             if not digest_tools.digests_equal(computed_digest, expected_digest):
@@ -337,9 +365,12 @@ class _BlobUploadManager(object):
             raise BlobDigestMismatchException()
 
     def _finalize_blob_storage(self, app_config):
-        """ When an upload is successful, this ends the uploading process from the storage's perspective.
+        """
+        When an upload is successful, this ends the uploading process from the storage's
+        perspective.
 
-            Returns True if the blob already existed. """
+        Returns True if the blob already existed.
+        """
         computed_digest = digest_tools.sha256_digest_from_hashlib(self.blob_upload.sha_state)
         final_blob_location = digest_tools.content_path(computed_digest)
 

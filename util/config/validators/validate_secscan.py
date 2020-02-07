@@ -10,7 +10,9 @@ class SecurityScannerValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the configuration for talking to a Quay Security Scanner. """
+        """
+        Validates the configuration for talking to a Quay Security Scanner.
+        """
         config = validator_context.config
         client = validator_context.http_client
         feature_sec_scanner = validator_context.feature_sec_scanner

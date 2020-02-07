@@ -15,7 +15,9 @@ DEFAULT_MAX_BLOCK_SECONDS = 5
 
 
 class KafkaLogsProducer(LogProducerInterface):
-    """ Log producer writing log entries to a Kafka stream. """
+    """
+    Log producer writing log entries to a Kafka stream.
+    """
 
     def __init__(self, bootstrap_servers=None, topic=None, client_id=None, max_block_seconds=None):
         self.bootstrap_servers = bootstrap_servers

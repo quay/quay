@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 @resource("/v1/kubernetes/deployments/")
 class SuperUserKubernetesDeployment(ApiResource):
-    """ Resource for the getting the status of Red Hat Quay deployments and cycling them """
+    """
+    Resource for the getting the status of Red Hat Quay deployments and cycling them.
+    """
 
     schemas = {
         "ValidateDeploymentNames": {
@@ -65,7 +67,9 @@ class QEDeploymentRolloutStatus(ApiResource):
 
 @resource("/v1/kubernetes/deployments/rollback")
 class QEDeploymentRollback(ApiResource):
-    """ Resource for rolling back deployments """
+    """
+    Resource for rolling back deployments.
+    """
 
     schemas = {
         "ValidateDeploymentNames": {
@@ -111,7 +115,9 @@ class QEDeploymentRollback(ApiResource):
 
 @resource("/v1/kubernetes/config")
 class SuperUserKubernetesConfiguration(ApiResource):
-    """ Resource for saving the config files to kubernetes secrets. """
+    """
+    Resource for saving the config files to kubernetes secrets.
+    """
 
     @kubernetes_only
     @nickname("scDeployConfiguration")
@@ -128,7 +134,9 @@ class SuperUserKubernetesConfiguration(ApiResource):
 
 @resource("/v1/kubernetes/config/populate")
 class KubernetesConfigurationPopulator(ApiResource):
-    """ Resource for populating the local configuration from the cluster's kubernetes secrets. """
+    """
+    Resource for populating the local configuration from the cluster's kubernetes secrets.
+    """
 
     @kubernetes_only
     @nickname("scKubePopulateConfig")

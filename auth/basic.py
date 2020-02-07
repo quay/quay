@@ -10,19 +10,23 @@ logger = logging.getLogger(__name__)
 
 
 def has_basic_auth(username):
-    """ Returns true if a basic auth header exists with a username and password pair that validates
-      against the internal authentication system. Returns True on full success and False on any
-      failure (missing header, invalid header, invalid credentials, etc).
-  """
+    """
+    Returns true if a basic auth header exists with a username and password pair that validates
+    against the internal authentication system.
+
+    Returns True on full success and False on any failure (missing header, invalid header, invalid
+    credentials, etc).
+    """
     auth_header = request.headers.get("authorization", "")
     result = validate_basic_auth(auth_header)
     return result.has_nonrobot_user and result.context.user.username == username
 
 
 def validate_basic_auth(auth_header):
-    """ Validates the specified basic auth header, returning whether its credentials point
-      to a valid user or token.
-  """
+    """
+    Validates the specified basic auth header, returning whether its credentials point to a valid
+    user or token.
+    """
     if not auth_header:
         return ValidateResult(AuthKind.basic, missing=True)
 
@@ -41,8 +45,9 @@ def validate_basic_auth(auth_header):
 
 
 def _parse_basic_auth_header(auth):
-    """ Parses the given basic auth header, returning the credentials found inside.
-  """
+    """
+    Parses the given basic auth header, returning the credentials found inside.
+    """
     normalized = [part.strip() for part in auth.split(" ") if part]
     if normalized[0].lower() != "basic" or len(normalized) != 2:
         return None, "Invalid basic auth header"

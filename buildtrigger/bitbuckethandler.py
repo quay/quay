@@ -128,9 +128,9 @@ BITBUCKET_COMMIT_INFO_SCHEMA = {
 
 
 def get_transformed_commit_info(bb_commit, ref, default_branch, repository_name, lookup_author):
-    """ Returns the BitBucket commit information transformed into our own
-      payload format.
-  """
+    """
+    Returns the BitBucket commit information transformed into our own payload format.
+    """
     try:
         validate(bb_commit, BITBUCKET_COMMIT_INFO_SCHEMA)
     except Exception as exc:
@@ -165,9 +165,11 @@ def get_transformed_commit_info(bb_commit, ref, default_branch, repository_name,
 
 
 def get_transformed_webhook_payload(bb_payload, default_branch=None):
-    """ Returns the BitBucket webhook JSON payload transformed into our own payload
-      format. If the bb_payload is not valid, returns None.
-  """
+    """
+    Returns the BitBucket webhook JSON payload transformed into our own payload format.
+
+    If the bb_payload is not valid, returns None.
+    """
     try:
         validate(bb_payload, BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA)
     except Exception as exc:
@@ -209,15 +211,17 @@ def get_transformed_webhook_payload(bb_payload, default_branch=None):
 
 class BitbucketBuildTrigger(BuildTriggerHandler):
     """
-  BuildTrigger for Bitbucket.
-  """
+    BuildTrigger for Bitbucket.
+    """
 
     @classmethod
     def service_name(cls):
         return "bitbucket"
 
     def _get_client(self):
-        """ Returns a BitBucket API client for this trigger's config. """
+        """
+        Returns a BitBucket API client for this trigger's config.
+        """
         key = app.config.get("BITBUCKET_TRIGGER_CONFIG", {}).get("CONSUMER_KEY", "")
         secret = app.config.get("BITBUCKET_TRIGGER_CONFIG", {}).get("CONSUMER_SECRET", "")
 
@@ -227,7 +231,9 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         return BitBucket(key, secret, callback_url, timeout=15)
 
     def _get_authorized_client(self):
-        """ Returns an authorized API client. """
+        """
+        Returns an authorized API client.
+        """
         base_client = self._get_client()
         auth_token = self.auth_token or "invalid:invalid"
         token_parts = auth_token.split(":")
@@ -238,14 +244,18 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         return base_client.get_authorized_client(access_token, access_token_secret)
 
     def _get_repository_client(self):
-        """ Returns an API client for working with this config's BB repository. """
+        """
+        Returns an API client for working with this config's BB repository.
+        """
         source = self.config["build_source"]
         (namespace, name) = source.split("/")
         bitbucket_client = self._get_authorized_client()
         return bitbucket_client.for_namespace(namespace).repositories().get(name)
 
     def _get_default_branch(self, repository, default_value="master"):
-        """ Returns the default branch for the repository or the value given. """
+        """
+        Returns the default branch for the repository or the value given.
+        """
         (result, data, _) = repository.get_main_branch()
         if result:
             return data["name"]
@@ -253,7 +263,9 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         return default_value
 
     def get_oauth_url(self):
-        """ Returns the OAuth URL to authorize Bitbucket. """
+        """
+        Returns the OAuth URL to authorize Bitbucket.
+        """
         bitbucket_client = self._get_client()
         (result, data, err_msg) = bitbucket_client.get_authorization_url()
         if not result:
@@ -262,7 +274,9 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         return data
 
     def exchange_verifier(self, verifier):
-        """ Exchanges the given verifier token to setup this trigger. """
+        """
+        Exchanges the given verifier token to setup this trigger.
+        """
         bitbucket_client = self._get_client()
         access_token = self.config.get("access_token", "")
         access_token_secret = self.auth_token

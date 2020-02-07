@@ -58,7 +58,9 @@ def get_image_location_for_id(location_id):
 
 
 def add_storage_placement(storage, location_name):
-    """ Adds a storage placement for the given storage at the given location. """
+    """
+    Adds a storage placement for the given storage at the given location.
+    """
     location = get_image_location_for_name(location_name)
     try:
         ImageStoragePlacement.create(location=location.id, storage=storage)
@@ -68,9 +70,10 @@ def add_storage_placement(storage, location_name):
 
 
 def _orphaned_storage_query(candidate_ids):
-    """ Returns the subset of the candidate ImageStorage IDs representing storages that are no
-      longer referenced by images.
-  """
+    """
+    Returns the subset of the candidate ImageStorage IDs representing storages that are no longer
+    referenced by images.
+    """
     # Issue a union query to find all storages that are still referenced by a candidate storage. This
     # is much faster than the group_by and having call we used to use here.
     nonorphaned_queries = []
@@ -106,17 +109,20 @@ def _orphaned_storage_query(candidate_ids):
 
 
 def garbage_collect_storage(storage_id_whitelist):
-    """ Performs GC on a possible subset of the storage's with the IDs found in the
-      whitelist. The storages in the whitelist will be checked, and any orphaned will
-      be removed, with those IDs being returned.
-  """
+    """
+    Performs GC on a possible subset of the storage's with the IDs found in the whitelist.
+
+    The storages in the whitelist will be checked, and any orphaned will be removed, with those IDs
+    being returned.
+    """
     if len(storage_id_whitelist) == 0:
         return []
 
     def placements_to_filtered_paths_set(placements_list):
-        """ Returns the list of paths to remove from storage, filtered from the given placements
-        query by removing any CAS paths that are still referenced by storage(s) in the database.
-    """
+        """
+        Returns the list of paths to remove from storage, filtered from the given placements query
+        by removing any CAS paths that are still referenced by storage(s) in the database.
+        """
         with ensure_under_transaction():
             if not placements_list:
                 return set()
@@ -305,7 +311,9 @@ def get_storage_by_uuid(storage_uuid):
 
 
 def get_layer_path(storage_record):
-    """ Returns the path in the storage engine to the layer data referenced by the storage row. """
+    """
+    Returns the path in the storage engine to the layer data referenced by the storage row.
+    """
     assert storage_record.cas_path is not None
     return get_layer_path_for_storage(
         storage_record.uuid, storage_record.cas_path, storage_record.content_checksum
@@ -313,8 +321,9 @@ def get_layer_path(storage_record):
 
 
 def get_layer_path_for_storage(storage_uuid, cas_path, content_checksum):
-    """ Returns the path in the storage engine to the layer data referenced by the storage
-      information. """
+    """
+    Returns the path in the storage engine to the layer data referenced by the storage information.
+    """
     store = config.store
     if not cas_path:
         logger.debug("Serving layer from legacy v1 path for storage %s", storage_uuid)
@@ -324,8 +333,9 @@ def get_layer_path_for_storage(storage_uuid, cas_path, content_checksum):
 
 
 def lookup_repo_storages_by_content_checksum(repo, checksums, by_manifest=False):
-    """ Looks up repository storages (without placements) matching the given repository
-      and checksum. """
+    """
+    Looks up repository storages (without placements) matching the given repository and checksum.
+    """
     if not checksums:
         return []
 
@@ -379,9 +389,10 @@ def lookup_repo_storages_by_content_checksum(repo, checksums, by_manifest=False)
 def set_image_storage_metadata(
     docker_image_id, namespace_name, repository_name, image_size, uncompressed_size
 ):
-    """ Sets metadata that is specific to the binary storage of the data, irrespective of how it
-      is used in the layer tree.
-  """
+    """
+    Sets metadata that is specific to the binary storage of the data, irrespective of how it is used
+    in the layer tree.
+    """
     if image_size is None:
         raise DataModelException("Empty image size field")
 

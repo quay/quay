@@ -7,7 +7,9 @@ class KeystoneValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the Keystone authentication system. """
+        """
+        Validates the Keystone authentication system.
+        """
         config = validator_context.config
 
         if config.get("AUTHENTICATION_TYPE", "Database") != "Keystone":

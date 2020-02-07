@@ -46,9 +46,9 @@ logger = logging.getLogger(__name__)
 
 class MalformedSchema2Manifest(ManifestException):
     """
-  Raised when a manifest fails an assertion that should be true according to the Docker Manifest
-  v2.2 Specification.
-  """
+    Raised when a manifest fails an assertion that should be true according to the Docker Manifest
+    v2.2 Specification.
+    """
 
     pass
 
@@ -167,9 +167,11 @@ class DockerSchema2Manifest(ManifestInterface):
                 raise MalformedSchema2Manifest("missing `urls` for remote layer")
 
     def validate(self, content_retriever):
-        """ Performs validation of required assertions about the manifest. Raises a ManifestException
-        on failure.
-    """
+        """
+        Performs validation of required assertions about the manifest.
+
+        Raises a ManifestException on failure.
+        """
         # Nothing to validate.
 
     @property
@@ -202,14 +204,18 @@ class DockerSchema2Manifest(ManifestInterface):
 
     @property
     def filesystem_layers(self):
-        """ Returns the file system layers of this manifest, from base to leaf. """
+        """
+        Returns the file system layers of this manifest, from base to leaf.
+        """
         if self._filesystem_layers is None:
             self._filesystem_layers = list(self._generate_filesystem_layers())
         return self._filesystem_layers
 
     @property
     def leaf_filesystem_layer(self):
-        """ Returns the leaf file system layer for this manifest. """
+        """
+        Returns the leaf file system layer for this manifest.
+        """
         return self.filesystem_layers[-1]
 
     @property
@@ -241,8 +247,10 @@ class DockerSchema2Manifest(ManifestInterface):
         return self._get_built_config(content_retriever).labels
 
     def get_layers(self, content_retriever):
-        """ Returns the layers of this manifest, from base to leaf or None if this kind of manifest
-        does not support layers. """
+        """
+        Returns the layers of this manifest, from base to leaf or None if this kind of manifest does
+        not support layers.
+        """
         for image_layer in self._manifest_image_layers(content_retriever):
             is_remote = image_layer.blob_layer.is_remote if image_layer.blob_layer else False
             urls = image_layer.blob_layer.urls if image_layer.blob_layer else None
@@ -371,9 +379,9 @@ class DockerSchema2Manifest(ManifestInterface):
         return schema2_config.has_empty_layer
 
     def _populate_schema1_builder(self, v1_builder, content_retriever):
-        """ Populates a DockerSchema1ManifestBuilder with the layers and config from
-        this schema.
-    """
+        """
+        Populates a DockerSchema1ManifestBuilder with the layers and config from this schema.
+        """
         assert not self.has_remote_layer
         schema2_config = self._get_built_config(content_retriever)
         layers = list(self._manifest_image_layers(content_retriever))
@@ -428,23 +436,29 @@ class DockerSchema2Manifest(ManifestInterface):
 
 class DockerSchema2ManifestBuilder(object):
     """
-  A convenient abstraction around creating new DockerSchema2Manifests.
-  """
+    A convenient abstraction around creating new DockerSchema2Manifests.
+    """
 
     def __init__(self):
         self.config = None
         self.filesystem_layers = []
 
     def set_config(self, schema2_config):
-        """ Sets the configuration for the manifest being built. """
+        """
+        Sets the configuration for the manifest being built.
+        """
         self.set_config_digest(schema2_config.digest, schema2_config.size)
 
     def set_config_digest(self, config_digest, config_size):
-        """ Sets the digest and size of the configuration layer. """
+        """
+        Sets the digest and size of the configuration layer.
+        """
         self.config = DockerV2ManifestConfig(size=config_size, digest=config_digest)
 
     def add_layer(self, digest, size, urls=None):
-        """ Adds a filesystem layer to the manifest. """
+        """
+        Adds a filesystem layer to the manifest.
+        """
         self.filesystem_layers.append(
             DockerV2ManifestLayer(
                 index=len(self.filesystem_layers),
@@ -456,7 +470,9 @@ class DockerSchema2ManifestBuilder(object):
         )
 
     def build(self, ensure_ascii=True):
-        """ Builds and returns the DockerSchema2Manifest. """
+        """
+        Builds and returns the DockerSchema2Manifest.
+        """
         assert self.filesystem_layers
         assert self.config
 

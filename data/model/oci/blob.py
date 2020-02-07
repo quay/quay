@@ -5,9 +5,10 @@ from data.model.blob import get_repository_blob_by_digest as legacy_get
 
 
 def get_repository_blob_by_digest(repository, blob_digest):
-    """ Find the content-addressable blob linked to the specified repository and
-      returns it or None if none.
-  """
+    """
+    Find the content-addressable blob linked to the specified repository and returns it or None if
+    none.
+    """
     try:
         storage = (
             ImageStorage.select(ImageStorage.uuid)

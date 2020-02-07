@@ -39,12 +39,17 @@ class BaseStorage(StoragePaths):
         self.buffer_size = 64 * 1024
 
     def setup(self):
-        """ Called to perform any storage system setup. """
+        """
+        Called to perform any storage system setup.
+        """
         pass
 
     def validate(self, client):
-        """ Called to perform storage system validation. The client is an HTTP
-        client to use for any external calls. """
+        """
+        Called to perform storage system validation.
+
+        The client is an HTTP client to use for any external calls.
+        """
         # Put a temporary file to make sure the normal storage paths work.
         self.put_content("_verify", "testing 123")
         if not self.exists("_verify"):
@@ -86,9 +91,11 @@ class BaseStorage(StoragePaths):
         raise NotImplementedError
 
     def stream_write_to_fp(self, in_fp, out_fp, num_bytes=READ_UNTIL_END):
-        """ Copy the specified number of bytes from the input file stream to the output stream. If
-        num_bytes < 0 copy until the stream ends. Returns the number of bytes copied.
-    """
+        """
+        Copy the specified number of bytes from the input file stream to the output stream.
+
+        If num_bytes < 0 copy until the stream ends. Returns the number of bytes copied.
+        """
         bytes_copied = 0
         while bytes_copied < num_bytes or num_bytes == READ_UNTIL_END:
             size_to_read = min(num_bytes - bytes_copied, self.buffer_size)
@@ -109,26 +116,34 @@ class BaseStorage(StoragePaths):
 
 class BaseStorageV2(BaseStorage):
     def initiate_chunked_upload(self):
-        """ Start a new chunked upload, returning the uuid and any associated storage metadata
-    """
+        """
+        Start a new chunked upload, returning the uuid and any associated storage metadata.
+        """
         raise NotImplementedError
 
     def stream_upload_chunk(self, uuid, offset, length, in_fp, storage_metadata, content_type=None):
-        """ Upload the specified amount of data from the given file pointer to the chunked destination
-        specified, starting at the given offset. Returns the number of bytes uploaded, a new
-        version of the storage_metadata and an error object (if one occurred or None if none).
-        Pass length as -1 to upload as much data from the in_fp as possible.
-    """
+        """
+        Upload the specified amount of data from the given file pointer to the chunked destination
+        specified, starting at the given offset.
+
+        Returns the number of bytes uploaded, a new version of the storage_metadata and an error
+        object (if one occurred or None if none). Pass length as -1 to upload as much data from the
+        in_fp as possible.
+        """
         raise NotImplementedError
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
-        """ Complete the chunked upload and store the final results in the path indicated.
+        """
+        Complete the chunked upload and store the final results in the path indicated.
+
         Returns nothing.
-    """
+        """
         raise NotImplementedError
 
     def cancel_chunked_upload(self, uuid, storage_metadata):
-        """ Cancel the chunked upload and clean up any outstanding partially uploaded data.
+        """
+        Cancel the chunked upload and clean up any outstanding partially uploaded data.
+
         Returns nothing.
-    """
+        """
         raise NotImplementedError

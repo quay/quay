@@ -19,8 +19,8 @@ class GlobalMessage(
 @add_metaclass(ABCMeta)
 class GlobalMessageDataInterface(object):
     """
-  Data interface for globalmessages API
-  """
+    Data interface for globalmessages API.
+    """
 
     @abstractmethod
     def get_all_messages(self):

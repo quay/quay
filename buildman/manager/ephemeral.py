@@ -65,7 +65,9 @@ BuildInfo = namedtuple("BuildInfo", ["component", "build_job", "execution_id", "
 
 
 class EphemeralBuilderManager(BaseManager):
-    """ Build manager implementation for the Enterprise Registry. """
+    """
+    Build manager implementation for the Enterprise Registry.
+    """
 
     EXECUTORS = {
         "popen": PopenExecutor,
@@ -98,7 +100,9 @@ class EphemeralBuilderManager(BaseManager):
 
     @coroutine
     def _mark_job_incomplete(self, build_job, build_info):
-        """ Marks a job as incomplete, in response to a failure to start or a timeout. """
+        """
+        Marks a job as incomplete, in response to a failure to start or a timeout.
+        """
         executor_name = build_info.executor_name
         execution_id = build_info.execution_id
 
@@ -137,13 +141,13 @@ class EphemeralBuilderManager(BaseManager):
     @coroutine
     def _job_callback(self, key_change):
         """
-    This is the callback invoked when keys related to jobs are changed.
-    It ignores all events related to the creation of new jobs.
-    Deletes or expirations cause checks to ensure they've been properly marked as completed.
+        This is the callback invoked when keys related to jobs are changed. It ignores all events
+        related to the creation of new jobs. Deletes or expirations cause checks to ensure they've
+        been properly marked as completed.
 
-    :param key_change: the event and value produced by a key changing in the orchestrator
-    :type key_change: :class:`KeyChange`
-    """
+        :param key_change: the event and value produced by a key changing in the orchestrator
+        :type key_change: :class:`KeyChange`
+        """
         if key_change.event in (KeyEvent.CREATE, KeyEvent.SET):
             raise Return()
 
@@ -339,35 +343,35 @@ class EphemeralBuilderManager(BaseManager):
 
     def _metric_key(self, realm):
         """
-    Create a key which is used to track a job in the Orchestrator.
+        Create a key which is used to track a job in the Orchestrator.
 
-    :param realm: realm for the build
-    :type realm: str
-    :returns: key used to track jobs
-    :rtype: str
-    """
+        :param realm: realm for the build
+        :type realm: str
+        :returns: key used to track jobs
+        :rtype: str
+        """
         return slash_join(self._metric_prefix, realm)
 
     def _job_key(self, build_job):
         """
-    Creates a key which is used to track a job in the Orchestrator.
+        Creates a key which is used to track a job in the Orchestrator.
 
-    :param build_job: unique job identifier for a build
-    :type build_job: str
-    :returns: key used to track the job
-    :rtype: str
-    """
+        :param build_job: unique job identifier for a build
+        :type build_job: str
+        :returns: key used to track the job
+        :rtype: str
+        """
         return slash_join(self._job_prefix, build_job.job_details["build_uuid"])
 
     def _realm_key(self, realm):
         """
-    Create a key which is used to track an incoming connection on a realm.
+        Create a key which is used to track an incoming connection on a realm.
 
-    :param realm: realm for the build
-    :type realm: str
-    :returns: key used to track the connection to the realm
-    :rtype: str
-    """
+        :param realm: realm for the build
+        :type realm: str
+        :returns: key used to track the connection to the realm
+        :rtype: str
+        """
         return slash_join(self._realm_prefix, realm)
 
     def initialize(self, manager_config):
@@ -787,10 +791,11 @@ class EphemeralBuilderManager(BaseManager):
             logger.exception("Could not write metric for realm %s", realm)
 
     def num_workers(self):
-        """ The number of workers we're managing locally.
+        """
+        The number of workers we're managing locally.
 
-            :returns: the number of the workers locally managed
-            :rtype: int
+        :returns: the number of the workers locally managed
+        :rtype: int
         """
         return len(self._component_to_job)
 

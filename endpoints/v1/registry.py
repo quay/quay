@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 def require_completion(f):
-    """ This make sure that the image push correctly finished. """
+    """
+    This make sure that the image push correctly finished.
+    """
 
     @wraps(f)
     def wrapper(namespace, repository, *args, **kwargs):
@@ -56,7 +58,9 @@ def require_completion(f):
 
 
 def set_cache_headers(f):
-    """Returns HTTP headers suitable for caching."""
+    """
+    Returns HTTP headers suitable for caching.
+    """
 
     @wraps(f)
     def wrapper(*args, **kwargs):

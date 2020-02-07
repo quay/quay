@@ -8,7 +8,9 @@ class RedisValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates connecting to redis. """
+        """
+        Validates connecting to redis.
+        """
         config = validator_context.config
 
         redis_config = config.get("BUILDLOGS_REDIS", {})

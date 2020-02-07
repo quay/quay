@@ -1,9 +1,9 @@
-"""Add NamespaceGeoRestriction table
+"""
+Add NamespaceGeoRestriction table.
 
 Revision ID: 54492a68a3cf
 Revises: c00a1f15968b
 Create Date: 2018-12-05 15:12:14.201116
-
 """
 
 # revision identifiers, used by Alembic.

@@ -3,10 +3,10 @@ import psutil
 
 
 def get_worker_count(worker_kind_name, multiplier, minimum=None, maximum=None):
-    """ Returns the number of gunicorn workers to run for the given worker kind,
-      based on a combination of environment variable, multiplier, minimum (if any),
-      and number of accessible CPU cores.
-  """
+    """
+    Returns the number of gunicorn workers to run for the given worker kind, based on a combination
+    of environment variable, multiplier, minimum (if any), and number of accessible CPU cores.
+    """
     minimum = minimum or multiplier
     maximum = maximum or (multiplier * multiplier)
 

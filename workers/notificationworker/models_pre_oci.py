@@ -9,7 +9,9 @@ from workers.notificationworker.models_interface import (
 
 
 def notification(notification_row):
-    """ Converts the given notification row into a notification tuple. """
+    """
+    Converts the given notification row into a notification tuple.
+    """
     return Notification(
         uuid=notification_row.uuid,
         event_name=notification_row.event.name,

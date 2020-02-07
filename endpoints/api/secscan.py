@@ -1,4 +1,6 @@
-""" List and manage repository vulnerabilities and other security information. """
+"""
+List and manage repository vulnerabilities and other security information.
+"""
 
 import logging
 import features
@@ -27,7 +29,9 @@ from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
 
 @unique
 class SecurityScanStatus(Enum):
-    """ Security scan status enum """
+    """
+    Security scan status enum.
+    """
 
     SCANNED = "scanned"
     FAILED = "failed"
@@ -46,9 +50,10 @@ logger = logging.getLogger(__name__)
 
 
 def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
-    """ Returns a dict representing the result of a call to the security status API for the given
-      manifest or image.
-  """
+    """
+    Returns a dict representing the result of a call to the security status API for the given
+    manifest or image.
+    """
     result = secscan_model.load_security_information(
         manifest_or_legacy_image, include_vulnerabilities=include_vulnerabilities
     )
@@ -70,8 +75,11 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("imageid", "The image ID")
 class RepositoryImageSecurity(RepositoryParamResource):
-    """ Operations for managing the vulnerabilities in a repository image.
-        DEPRECATED: Please retrieve security by manifest . """
+    """
+    Operations for managing the vulnerabilities in a repository image.
+
+    DEPRECATED: Please retrieve security by manifest .
+    """
 
     @process_basic_auth_no_pass
     @require_repo_read
@@ -82,7 +90,9 @@ class RepositoryImageSecurity(RepositoryParamResource):
         "vulnerabilities", "Include vulnerabilities information", type=truthy_bool, default=False
     )
     def get(self, namespace, repository, imageid, parsed_args):
-        """ Fetches the features and vulnerabilities (if any) for a repository image. """
+        """
+        Fetches the features and vulnerabilities (if any) for a repository image.
+        """
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
@@ -99,7 +109,9 @@ class RepositoryImageSecurity(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("manifestref", "The digest of the manifest")
 class RepositoryManifestSecurity(RepositoryParamResource):
-    """ Operations for managing the vulnerabilities in a repository manifest. """
+    """
+    Operations for managing the vulnerabilities in a repository manifest.
+    """
 
     @process_basic_auth_no_pass
     @require_repo_read

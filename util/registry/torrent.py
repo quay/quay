@@ -30,18 +30,20 @@ class TorrentConfiguration(object):
 
 
 def _jwt_from_infodict(torrent_config, infodict):
-    """ Returns an encoded JWT for the given BitTorrent info dict, signed by the local instance's
-      private key.
-  """
+    """
+    Returns an encoded JWT for the given BitTorrent info dict, signed by the local instance's
+    private key.
+    """
     digest = hashlib.sha1()
     digest.update(bencode.bencode(infodict))
     return jwt_from_infohash(torrent_config, digest.digest())
 
 
 def jwt_from_infohash(torrent_config, infohash_digest):
-    """ Returns an encoded JWT for the given BitTorrent infohash, signed by the local instance's
-      private key.
-  """
+    """
+    Returns an encoded JWT for the given BitTorrent infohash, signed by the local instance's private
+    key.
+    """
     token_data = {
         "iss": torrent_config.instance_keys.service_name,
         "aud": torrent_config.announce_url,
@@ -78,21 +80,28 @@ def make_torrent(torrent_config, name, webseed, length, piece_length, pieces):
 
 
 def public_torrent_filename(blob_uuid):
-    """ Returns the filename for the given blob UUID in a public image. """
+    """
+    Returns the filename for the given blob UUID in a public image.
+    """
     return hashlib.sha256(blob_uuid).hexdigest()
 
 
 def per_user_torrent_filename(torrent_config, user_uuid, blob_uuid):
-    """ Returns the filename for the given blob UUID for a private image. """
+    """
+    Returns the filename for the given blob UUID for a private image.
+    """
     joined = torrent_config.filename_pepper + "||" + blob_uuid + "||" + user_uuid
     return hashlib.sha256(joined).hexdigest()
 
 
 class PieceHasher(object):
-    """ Utility for computing torrent piece hashes as the data flows through the update
-      method of this class. Users should get the final value by calling final_piece_hashes
-      since new chunks are allocated lazily.
-  """
+    """
+    Utility for computing torrent piece hashes as the data flows through the update method of this
+    class.
+
+    Users should get the final value by calling final_piece_hashes since new chunks are allocated
+    lazily.
+    """
 
     def __init__(
         self,

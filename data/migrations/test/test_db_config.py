@@ -16,7 +16,9 @@ from test.fixtures import *
     ],
 )
 def test_alembic_db_uri(db_uri, is_valid):
-    """ Test if the given URI is escaped for string interpolation (Python's configparser). """
+    """
+    Test if the given URI is escaped for string interpolation (Python's configparser).
+    """
     with patch("alembic.script.ScriptDirectory.run_env") as m:
         if is_valid:
             run_alembic_migration(db_uri)

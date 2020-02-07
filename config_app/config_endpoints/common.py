@@ -30,7 +30,9 @@ TYPE_CONVERTER = {
 
 
 def _list_files(path, extension, contains=""):
-    """ Returns a list of all the files with the given extension found under the given path. """
+    """
+    Returns a list of all the files with the given extension found under the given path.
+    """
 
     def matches(f):
         return os.path.splitext(f)[1] == "." + extension and contains in os.path.splitext(f)[0]
@@ -47,7 +49,9 @@ FONT_AWESOME_4 = "netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.cs
 
 
 def render_page_template(name, route_data=None, js_bundle_name=DEFAULT_JS_BUNDLE_NAME, **kwargs):
-    """ Renders the page template with the given name as the response and returns its contents. """
+    """
+    Renders the page template with the given name as the response and returns its contents.
+    """
     main_scripts = _list_files("build", "js", js_bundle_name)
 
     use_cdn = os.getenv("TESTING") == "true"

@@ -8,7 +8,9 @@ def generate_secret_key():
 
 
 def add_enterprise_config_defaults(config_obj, current_secret_key):
-    """ Adds/Sets the config defaults for enterprise registry config. """
+    """
+    Adds/Sets the config defaults for enterprise registry config.
+    """
     # These have to be false.
     config_obj["TESTING"] = False
     config_obj["USE_CDN"] = False

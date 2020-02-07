@@ -20,14 +20,18 @@ logger = logging.getLogger(__name__)
 
 
 class MaximumBuildsQueuedException(Exception):
-    """ This exception is raised when a build is requested, but the incoming build
-        would exceed the configured maximum build rate. """
+    """
+    This exception is raised when a build is requested, but the incoming build would exceed the
+    configured maximum build rate.
+    """
 
     pass
 
 
 class BuildTriggerDisabledException(Exception):
-    """ This exception is raised when a build is required, but the build trigger has been disabled. """
+    """
+    This exception is raised when a build is required, but the build trigger has been disabled.
+    """
 
     pass
 
@@ -147,9 +151,11 @@ def start_build(repository, prepared_build, pull_robot_name=None):
 
 
 class PreparedBuild(object):
-    """ Class which holds all the information about a prepared build. The build queuing service
-      will use this result to actually invoke the build.
-  """
+    """
+    Class which holds all the information about a prepared build.
+
+    The build queuing service will use this result to actually invoke the build.
+    """
 
     def __init__(self, trigger=None):
         self._dockerfile_id = None

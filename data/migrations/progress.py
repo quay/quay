@@ -9,22 +9,29 @@ from util.abchelpers import nooper
 
 @add_metaclass(ABCMeta)
 class ProgressReporter(object):
-    """ Implements an interface for reporting progress with the migrations.
-  """
+    """
+    Implements an interface for reporting progress with the migrations.
+    """
 
     @abstractmethod
     def report_version_complete(self, success):
-        """ Called when an entire migration is complete. """
+        """
+        Called when an entire migration is complete.
+        """
 
     @abstractmethod
     def report_step_progress(self):
-        """ Called when a single step in the migration has been completed. """
+        """
+        Called when a single step in the migration has been completed.
+        """
 
 
 @nooper
 class NullReporter(ProgressReporter):
-    """ No-op version of the progress reporter, designed for use when no progress
-      reporting endpoint is provided. """
+    """
+    No-op version of the progress reporter, designed for use when no progress reporting endpoint is
+    provided.
+    """
 
 
 class PrometheusReporter(ProgressReporter):

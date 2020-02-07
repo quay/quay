@@ -41,10 +41,13 @@ INIT_DB_PATH = 0
 
 @pytest.fixture(scope="session")
 def init_db_path(tmpdir_factory):
-    """ Creates a new database and appropriate configuration. Note that the initial database
-      is created *once* per session. In the non-full-db-test case, the database_uri fixture
-      makes a copy of the SQLite database file on disk and passes a new copy to each test.
-  """
+    """
+    Creates a new database and appropriate configuration.
+
+    Note that the initial database is created *once* per session. In the non-full-db-test case, the
+    database_uri fixture makes a copy of the SQLite database file on disk and passes a new copy to
+    each test.
+    """
     # NOTE: We use a global here because pytest runs this code multiple times, due to the fixture
     # being imported instead of being in a conftest. Moving to conftest has its own issues, and this
     # call is quite slow, so we simply cache it here.
@@ -61,10 +64,12 @@ def _init_db_path(tmpdir_factory):
 
 
 def _init_db_path_real_db(db_uri):
-    """ Initializes a real database for testing by populating it from scratch. Note that this does
-      *not* add the tables (merely data). Callers must have migrated the database before calling
-      the test suite.
-  """
+    """
+    Initializes a real database for testing by populating it from scratch. Note that this does.
+
+    *not* add the tables (merely data). Callers must have migrated the database before calling
+    the test suite.
+    """
     configure(
         {
             "DB_URI": db_uri,
@@ -80,9 +85,10 @@ def _init_db_path_real_db(db_uri):
 
 
 def _init_db_path_sqlite(tmpdir_factory):
-    """ Initializes a SQLite database for testing by populating it from scratch and placing it into
-      a temp directory file.
-  """
+    """
+    Initializes a SQLite database for testing by populating it from scratch and placing it into a
+    temp directory file.
+    """
     sqlitedbfile = str(tmpdir_factory.mktemp("data").join("test.db"))
     sqlitedb = "sqlite:///{0}".format(sqlitedbfile)
     conf = {
@@ -108,11 +114,13 @@ def _init_db_path_sqlite(tmpdir_factory):
 
 @pytest.yield_fixture()
 def database_uri(monkeypatch, init_db_path, sqlitedb_file):
-    """ Returns the database URI to use for testing. In the SQLite case, a new, distinct copy of
-      the SQLite database is created by copying the initialized database file (sqlitedb_file)
-      on a per-test basis. In the non-SQLite case, a reference to the existing database URI is
-      returned.
-  """
+    """
+    Returns the database URI to use for testing.
+
+    In the SQLite case, a new, distinct copy of the SQLite database is created by copying the
+    initialized database file (sqlitedb_file) on a per-test basis. In the non-SQLite case, a
+    reference to the existing database URI is returned.
+    """
     if os.environ.get("TEST_DATABASE_URI"):
         db_uri = os.environ["TEST_DATABASE_URI"]
         monkeypatch.setenv("DB_URI", db_uri)
@@ -134,7 +142,9 @@ def database_uri(monkeypatch, init_db_path, sqlitedb_file):
 
 @pytest.fixture()
 def sqlitedb_file(tmpdir):
-    """ Returns the path at which the initialized, golden SQLite database file will be placed. """
+    """
+    Returns the path at which the initialized, golden SQLite database file will be placed.
+    """
     test_db_file = tmpdir.mkdir("quaydb").join("test.db")
     return str(test_db_file)
 
@@ -145,7 +155,9 @@ def _create_transaction(db):
 
 @pytest.fixture()
 def appconfig(database_uri):
-    """ Returns application configuration for testing that references the proper database URI. """
+    """
+    Returns application configuration for testing that references the proper database URI.
+    """
     conf = {
         "TESTING": True,
         "DEBUG": True,
@@ -177,7 +189,9 @@ FRAME_NAME_INDEX = 3
 
 @pytest.fixture()
 def initialized_db(appconfig):
-    """ Configures the database for the database found in the appconfig. """
+    """
+    Configures the database for the database found in the appconfig.
+    """
     under_test_real_database = bool(os.environ.get("TEST_DATABASE_URI"))
 
     # Configure the database.
@@ -271,7 +285,9 @@ def initialized_db(appconfig):
 
 @pytest.fixture()
 def app(appconfig, initialized_db):
-    """ Used by pytest-flask plugin to inject a custom app instance for testing. """
+    """
+    Used by pytest-flask plugin to inject a custom app instance for testing.
+    """
     app = Flask(__name__)
     login_manager = LoginManager(app)
 

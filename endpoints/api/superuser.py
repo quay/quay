@@ -1,4 +1,6 @@
-""" Superuser API. """
+"""
+Superuser API.
+"""
 import logging
 import os
 import string
@@ -68,7 +70,9 @@ def get_services():
 @resource("/v1/superuser/aggregatelogs")
 @internal_only
 class SuperUserAggregateLogs(ApiResource):
-    """ Resource for fetching aggregated logs for the current user. """
+    """
+    Resource for fetching aggregated logs for the current user.
+    """
 
     @require_fresh_login
     @verify_not_prod
@@ -77,7 +81,9 @@ class SuperUserAggregateLogs(ApiResource):
     @query_param("starttime", "Earliest time from which to get logs. (%m/%d/%Y %Z)", type=str)
     @query_param("endtime", "Latest time to which to get logs. (%m/%d/%Y %Z)", type=str)
     def get(self, parsed_args):
-        """ Returns the aggregated logs for the current system. """
+        """
+        Returns the aggregated logs for the current system.
+        """
         if SuperUserPermission().can():
             (start_time, end_time) = _validate_logs_arguments(
                 parsed_args["starttime"], parsed_args["endtime"]
@@ -95,7 +101,9 @@ LOGS_PER_PAGE = 20
 @internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserLogs(ApiResource):
-    """ Resource for fetching all logs in the system. """
+    """
+    Resource for fetching all logs in the system.
+    """
 
     @require_fresh_login
     @verify_not_prod
@@ -107,7 +115,9 @@ class SuperUserLogs(ApiResource):
     @page_support()
     @require_scope(scopes.SUPERUSER)
     def get(self, parsed_args, page_token):
-        """ List the usage logs for the current system. """
+        """
+        List the usage logs for the current system.
+        """
         if SuperUserPermission().can():
             start_time = parsed_args["starttime"]
             end_time = parsed_args["endtime"]
@@ -158,14 +168,18 @@ def user_view(user, password=None):
 @internal_only
 @show_if(features.SUPER_USERS)
 class ChangeLog(ApiResource):
-    """ Resource for returning the change log for enterprise customers. """
+    """
+    Resource for returning the change log for enterprise customers.
+    """
 
     @require_fresh_login
     @verify_not_prod
     @nickname("getChangeLog")
     @require_scope(scopes.SUPERUSER)
     def get(self):
-        """ Returns the change log for this installation. """
+        """
+        Returns the change log for this installation.
+        """
         if SuperUserPermission().can():
             with open(os.path.join(ROOT_DIR, "CHANGELOG.md"), "r") as f:
                 return {"log": f.read()}
@@ -177,14 +191,18 @@ class ChangeLog(ApiResource):
 @internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserOrganizationList(ApiResource):
-    """ Resource for listing organizations in the system. """
+    """
+    Resource for listing organizations in the system.
+    """
 
     @require_fresh_login
     @verify_not_prod
     @nickname("listAllOrganizations")
     @require_scope(scopes.SUPERUSER)
     def get(self):
-        """ Returns a list of all organizations in the system. """
+        """
+        Returns a list of all organizations in the system.
+        """
         if SuperUserPermission().can():
             return {"organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]}
 
@@ -194,7 +212,9 @@ class SuperUserOrganizationList(ApiResource):
 @resource("/v1/superuser/users/")
 @show_if(features.SUPER_USERS)
 class SuperUserList(ApiResource):
-    """ Resource for listing users in the system. """
+    """
+    Resource for listing users in the system.
+    """
 
     schemas = {
         "CreateInstallUser": {
@@ -223,7 +243,9 @@ class SuperUserList(ApiResource):
     )
     @require_scope(scopes.SUPERUSER)
     def get(self, parsed_args):
-        """ Returns a list of all users in the system. """
+        """
+        Returns a list of all users in the system.
+        """
         if SuperUserPermission().can():
             users = pre_oci_model.get_active_users(disabled=parsed_args["disabled"])
             return {"users": [user.to_dict() for user in users]}
@@ -236,7 +258,9 @@ class SuperUserList(ApiResource):
     @validate_json_request("CreateInstallUser")
     @require_scope(scopes.SUPERUSER)
     def post(self):
-        """ Creates a new user. """
+        """
+        Creates a new user.
+        """
         # Ensure that we are using database auth.
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             raise InvalidRequest("Cannot create a user in a non-database auth system")
@@ -275,7 +299,9 @@ class SuperUserList(ApiResource):
 @show_if(features.SUPER_USERS)
 @show_if(features.MAILING)
 class SuperUserSendRecoveryEmail(ApiResource):
-    """ Resource for sending a recovery user on behalf of a user. """
+    """
+    Resource for sending a recovery user on behalf of a user.
+    """
 
     @require_fresh_login
     @verify_not_prod
@@ -306,7 +332,9 @@ class SuperUserSendRecoveryEmail(ApiResource):
 @internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserManagement(ApiResource):
-    """ Resource for managing users in the system. """
+    """
+    Resource for managing users in the system.
+    """
 
     schemas = {
         "UpdateUser": {
@@ -326,7 +354,9 @@ class SuperUserManagement(ApiResource):
     @nickname("getInstallUser")
     @require_scope(scopes.SUPERUSER)
     def get(self, username):
-        """ Returns information about the specified user. """
+        """
+        Returns information about the specified user.
+        """
         if SuperUserPermission().can():
             user = pre_oci_model.get_nonrobot_user(username)
             if user is None:
@@ -341,7 +371,9 @@ class SuperUserManagement(ApiResource):
     @nickname("deleteInstallUser")
     @require_scope(scopes.SUPERUSER)
     def delete(self, username):
-        """ Deletes the specified user. """
+        """
+        Deletes the specified user.
+        """
         if SuperUserPermission().can():
             user = pre_oci_model.get_nonrobot_user(username)
             if user is None:
@@ -361,7 +393,9 @@ class SuperUserManagement(ApiResource):
     @validate_json_request("UpdateUser")
     @require_scope(scopes.SUPERUSER)
     def put(self, username):
-        """ Updates information about the specified user. """
+        """
+        Updates information about the specified user.
+        """
         if SuperUserPermission().can():
             user = pre_oci_model.get_nonrobot_user(username)
             if user is None:
@@ -418,14 +452,18 @@ class SuperUserManagement(ApiResource):
 @internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserTakeOwnership(ApiResource):
-    """ Resource for a superuser to take ownership of a namespace. """
+    """
+    Resource for a superuser to take ownership of a namespace.
+    """
 
     @require_fresh_login
     @verify_not_prod
     @nickname("takeOwnership")
     @require_scope(scopes.SUPERUSER)
     def post(self, namespace):
-        """ Takes ownership of the specified organization or user. """
+        """
+        Takes ownership of the specified organization or user.
+        """
         if SuperUserPermission().can():
             # Disallow for superusers.
             if superusers.is_superuser(namespace):
@@ -455,7 +493,9 @@ class SuperUserTakeOwnership(ApiResource):
 @path_param("name", "The name of the organizaton being managed")
 @show_if(features.SUPER_USERS)
 class SuperUserOrganizationManagement(ApiResource):
-    """ Resource for managing organizations in the system. """
+    """
+    Resource for managing organizations in the system.
+    """
 
     schemas = {
         "UpdateOrg": {
@@ -473,7 +513,9 @@ class SuperUserOrganizationManagement(ApiResource):
     @nickname("deleteOrganization")
     @require_scope(scopes.SUPERUSER)
     def delete(self, name):
-        """ Deletes the specified organization. """
+        """
+        Deletes the specified organization.
+        """
         if SuperUserPermission().can():
             pre_oci_model.mark_organization_for_deletion(name)
             return "", 204
@@ -486,7 +528,9 @@ class SuperUserOrganizationManagement(ApiResource):
     @validate_json_request("UpdateOrg")
     @require_scope(scopes.SUPERUSER)
     def put(self, name):
-        """ Updates information about the specified user. """
+        """
+        Updates information about the specified user.
+        """
         if SuperUserPermission().can():
             org_data = request.get_json()
             old_name = org_data["name"] if "name" in org_data else None
@@ -522,7 +566,9 @@ def approval_view(approval):
 @resource("/v1/superuser/keys")
 @show_if(features.SUPER_USERS)
 class SuperUserServiceKeyManagement(ApiResource):
-    """ Resource for managing service keys."""
+    """
+    Resource for managing service keys.
+    """
 
     schemas = {
         "CreateServiceKey": {
@@ -636,7 +682,9 @@ class SuperUserServiceKeyManagement(ApiResource):
 @path_param("kid", "The unique identifier for a service key")
 @show_if(features.SUPER_USERS)
 class SuperUserServiceKey(ApiResource):
-    """ Resource for managing service keys. """
+    """
+    Resource for managing service keys.
+    """
 
     schemas = {
         "PutServiceKey": {
@@ -753,7 +801,9 @@ class SuperUserServiceKey(ApiResource):
 @path_param("kid", "The unique identifier for a service key")
 @show_if(features.SUPER_USERS)
 class SuperUserServiceKeyApproval(ApiResource):
-    """ Resource for approving service keys. """
+    """
+    Resource for approving service keys.
+    """
 
     schemas = {
         "ApproveServiceKey": {
@@ -801,14 +851,18 @@ class SuperUserServiceKeyApproval(ApiResource):
 @path_param("build_uuid", "The UUID of the build")
 @show_if(features.SUPER_USERS)
 class SuperUserRepositoryBuildLogs(ApiResource):
-    """ Resource for loading repository build logs for the superuser. """
+    """
+    Resource for loading repository build logs for the superuser.
+    """
 
     @require_fresh_login
     @verify_not_prod
     @nickname("getRepoBuildLogsSuperUser")
     @require_scope(scopes.SUPERUSER)
     def get(self, build_uuid):
-        """ Return the build logs for the build specified by the build uuid. """
+        """
+        Return the build logs for the build specified by the build uuid.
+        """
         if SuperUserPermission().can():
             try:
                 repo_build = pre_oci_model.get_repository_build(build_uuid)
@@ -824,14 +878,18 @@ class SuperUserRepositoryBuildLogs(ApiResource):
 @path_param("build_uuid", "The UUID of the build")
 @show_if(features.SUPER_USERS)
 class SuperUserRepositoryBuildStatus(ApiResource):
-    """ Resource for dealing with repository build status. """
+    """
+    Resource for dealing with repository build status.
+    """
 
     @require_fresh_login
     @verify_not_prod
     @nickname("getRepoBuildStatusSuperUser")
     @require_scope(scopes.SUPERUSER)
     def get(self, build_uuid):
-        """ Return the status for the builds specified by the build uuids. """
+        """
+        Return the status for the builds specified by the build uuids.
+        """
         if SuperUserPermission().can():
             try:
                 build = pre_oci_model.get_repository_build(build_uuid)
@@ -847,14 +905,18 @@ class SuperUserRepositoryBuildStatus(ApiResource):
 @path_param("build_uuid", "The UUID of the build")
 @show_if(features.SUPER_USERS)
 class SuperUserRepositoryBuildResource(ApiResource):
-    """ Resource for dealing with repository builds as a super user. """
+    """
+    Resource for dealing with repository builds as a super user.
+    """
 
     @require_fresh_login
     @verify_not_prod
     @nickname("getRepoBuildSuperUser")
     @require_scope(scopes.SUPERUSER)
     def get(self, build_uuid):
-        """ Returns information about a build. """
+        """
+        Returns information about a build.
+        """
         if SuperUserPermission().can():
             try:
                 build = pre_oci_model.get_repository_build(build_uuid)

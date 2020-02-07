@@ -86,7 +86,9 @@ def test_get_repo_does_not_exist(client):
 
 
 def test_get_mirror(client):
-    """ Verify that performing a `GET` request returns expected and accurate data. """
+    """
+    Verify that performing a `GET` request returns expected and accurate data.
+    """
     mirror = _setup_mirror()
 
     with client_with_identity("devtable", client) as cl:
@@ -160,7 +162,9 @@ def test_get_mirror(client):
     ],
 )
 def test_change_config(key, value, expected_status, client):
-    """ Verify that changing each attribute works as expected. """
+    """
+    Verify that changing each attribute works as expected.
+    """
     mirror = _setup_mirror()
 
     with client_with_identity("devtable", client) as cl:
@@ -223,7 +227,9 @@ def test_change_config(key, value, expected_status, client):
     ],
 )
 def test_change_credentials(request_body, expected_status, client):
-    """ Verify credentials can only be modified as a pair. """
+    """
+    Verify credentials can only be modified as a pair.
+    """
     mirror = _setup_mirror()
 
     with client_with_identity("devtable", client) as cl:

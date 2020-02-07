@@ -25,7 +25,9 @@ from util.bytes import Bytes
 
 @unique
 class V2ProtocolSteps(Enum):
-    """ Defines the various steps of the protocol, for matching failures. """
+    """
+    Defines the various steps of the protocol, for matching failures.
+    """
 
     AUTH = "auth"
     BLOB_HEAD_CHECK = "blob-head-check"
@@ -127,10 +129,10 @@ class V2Protocol(RegistryProtocol):
 
     def auth(self, session, credentials, namespace, repo_name, scopes=None, expected_failure=None):
         """
-    Performs the V2 Auth flow, returning the token (if any) and the response.
+        Performs the V2 Auth flow, returning the token (if any) and the response.
 
-    Spec: https://docs.docker.com/registry/spec/auth/token/
-    """
+        Spec: https://docs.docker.com/registry/spec/auth/token/
+        """
 
         scopes = scopes or []
         auth = None

@@ -201,10 +201,10 @@ def _get_dangling_manifest_count():
 
 @contextmanager
 def assert_gc_integrity(expect_storage_removed=True, check_oci_tags=True):
-    """ Specialized assertion for ensuring that GC cleans up all dangling storages
-      and labels, invokes the callback for images removed and doesn't invoke the
-      callback for images *not* removed.
-  """
+    """
+    Specialized assertion for ensuring that GC cleans up all dangling storages and labels, invokes
+    the callback for images removed and doesn't invoke the callback for images *not* removed.
+    """
     # Add a callback for when images are removed.
     removed_image_storages = []
     model.config.register_image_cleanup_callback(removed_image_storages.extend)
@@ -277,9 +277,10 @@ def assert_gc_integrity(expect_storage_removed=True, check_oci_tags=True):
 
 
 def test_has_garbage(default_tag_policy, initialized_db):
-    """ Remove all existing repositories, then add one without garbage, check, then add one with
-      garbage, and check again.
-  """
+    """
+    Remove all existing repositories, then add one without garbage, check, then add one with
+    garbage, and check again.
+    """
     # Delete all existing repos.
     for repo in database.Repository.select().order_by(database.Repository.id):
         assert model.gc.purge_repository(repo, force=True)
@@ -330,8 +331,10 @@ def test_find_garbage_policy_functions(default_tag_policy, initialized_db):
 
 
 def test_one_tag(default_tag_policy, initialized_db):
-    """ Create a repository with a single tag, then remove that tag and verify that the repository
-      is now empty. """
+    """
+    Create a repository with a single tag, then remove that tag and verify that the repository is
+    now empty.
+    """
     with assert_gc_integrity():
         repository = create_repository(latest=["i1", "i2", "i3"])
         delete_tag(repository, "latest")
@@ -339,7 +342,9 @@ def test_one_tag(default_tag_policy, initialized_db):
 
 
 def test_two_tags_unshared_images(default_tag_policy, initialized_db):
-    """ Repository has two tags with no shared images between them. """
+    """
+    Repository has two tags with no shared images between them.
+    """
     with assert_gc_integrity():
         repository = create_repository(latest=["i1", "i2", "i3"], other=["f1", "f2"])
         delete_tag(repository, "latest")
@@ -348,9 +353,11 @@ def test_two_tags_unshared_images(default_tag_policy, initialized_db):
 
 
 def test_two_tags_shared_images(default_tag_policy, initialized_db):
-    """ Repository has two tags with shared images. Deleting the tag should only remove the
-      unshared images.
-  """
+    """
+    Repository has two tags with shared images.
+
+    Deleting the tag should only remove the unshared images.
+    """
     with assert_gc_integrity():
         repository = create_repository(latest=["i1", "i2", "i3"], other=["i1", "f1"])
         delete_tag(repository, "latest")
@@ -359,9 +366,11 @@ def test_two_tags_shared_images(default_tag_policy, initialized_db):
 
 
 def test_unrelated_repositories(default_tag_policy, initialized_db):
-    """ Two repositories with different images. Removing the tag from one leaves the other's
-      images intact.
-  """
+    """
+    Two repositories with different images.
+
+    Removing the tag from one leaves the other's images intact.
+    """
     with assert_gc_integrity():
         repository1 = create_repository(latest=["i1", "i2", "i3"], name="repo1")
         repository2 = create_repository(latest=["j1", "j2", "j3"], name="repo2")
@@ -373,9 +382,11 @@ def test_unrelated_repositories(default_tag_policy, initialized_db):
 
 
 def test_related_repositories(default_tag_policy, initialized_db):
-    """ Two repositories with shared images. Removing the tag from one leaves the other's
-      images intact.
-  """
+    """
+    Two repositories with shared images.
+
+    Removing the tag from one leaves the other's images intact.
+    """
     with assert_gc_integrity():
         repository1 = create_repository(latest=["i1", "i2", "i3"], name="repo1")
         repository2 = create_repository(latest=["i1", "i2", "j1"], name="repo2")
@@ -387,9 +398,10 @@ def test_related_repositories(default_tag_policy, initialized_db):
 
 
 def test_inaccessible_repositories(default_tag_policy, initialized_db):
-    """ Two repositories under different namespaces should result in the images being deleted
-      but not completely removed from the database.
-  """
+    """
+    Two repositories under different namespaces should result in the images being deleted but not
+    completely removed from the database.
+    """
     with assert_gc_integrity():
         repository1 = create_repository(namespace=ADMIN_ACCESS_USER, latest=["i1", "i2", "i3"])
         repository2 = create_repository(namespace=PUBLIC_USER, latest=["i1", "i2", "i3"])
@@ -400,8 +412,11 @@ def test_inaccessible_repositories(default_tag_policy, initialized_db):
 
 
 def test_many_multiple_shared_images(default_tag_policy, initialized_db):
-    """ Repository has multiple tags with shared images. Delete all but one tag.
-  """
+    """
+    Repository has multiple tags with shared images.
+
+    Delete all but one tag.
+    """
     with assert_gc_integrity():
         repository = create_repository(
             latest=["i1", "i2", "i3", "i4", "i5", "i6", "i7", "i8", "j0"],
@@ -421,9 +436,11 @@ def test_many_multiple_shared_images(default_tag_policy, initialized_db):
 
 
 def test_multiple_shared_images(default_tag_policy, initialized_db):
-    """ Repository has multiple tags with shared images. Selectively deleting the tags, and
-      verifying at each step.
-  """
+    """
+    Repository has multiple tags with shared images.
+
+    Selectively deleting the tags, and verifying at each step.
+    """
     with assert_gc_integrity():
         repository = create_repository(
             latest=["i1", "i2", "i3"],
@@ -512,8 +529,11 @@ def test_empty_gc(default_tag_policy, initialized_db):
 
 
 def test_time_machine_no_gc(default_tag_policy, initialized_db):
-    """ Repository has two tags with shared images. Deleting the tag should not remove any images
-  """
+    """
+    Repository has two tags with shared images.
+
+    Deleting the tag should not remove any images
+    """
     with assert_gc_integrity(expect_storage_removed=False):
         repository = create_repository(latest=["i1", "i2", "i3"], other=["i1", "f1"])
         _set_tag_expiration_policy(repository.namespace_user.username, 60 * 60 * 24)
@@ -524,9 +544,11 @@ def test_time_machine_no_gc(default_tag_policy, initialized_db):
 
 
 def test_time_machine_gc(default_tag_policy, initialized_db):
-    """ Repository has two tags with shared images. Deleting the second tag should cause the images
-      for the first deleted tag to gc.
-  """
+    """
+    Repository has two tags with shared images.
+
+    Deleting the second tag should cause the images for the first deleted tag to gc.
+    """
     now = datetime.utcnow()
 
     with assert_gc_integrity():
@@ -547,9 +569,11 @@ def test_time_machine_gc(default_tag_policy, initialized_db):
 
 
 def test_images_shared_storage(default_tag_policy, initialized_db):
-    """ Repository with two tags, both with the same shared storage. Deleting the first
-      tag should delete the first image, but *not* its storage.
-  """
+    """
+    Repository with two tags, both with the same shared storage.
+
+    Deleting the first tag should delete the first image, but *not* its storage.
+    """
     with assert_gc_integrity(expect_storage_removed=False):
         repository = create_repository()
 
@@ -585,9 +609,11 @@ def test_images_shared_storage(default_tag_policy, initialized_db):
 
 
 def test_image_with_cas(default_tag_policy, initialized_db):
-    """ A repository with a tag pointing to an image backed by CAS. Deleting and GCing the tag
-      should result in the storage and its CAS data being removed.
-  """
+    """
+    A repository with a tag pointing to an image backed by CAS.
+
+    Deleting and GCing the tag should result in the storage and its CAS data being removed.
+    """
     with assert_gc_integrity(expect_storage_removed=True):
         repository = create_repository()
 
@@ -627,10 +653,13 @@ def test_image_with_cas(default_tag_policy, initialized_db):
 
 
 def test_images_shared_cas(default_tag_policy, initialized_db):
-    """ A repository, each two tags, pointing to the same image, which has image storage
-      with the same *CAS path*, but *distinct records*. Deleting the first tag should delete the
-      first image, and its storage, but not the file in storage, as it shares its CAS path.
-  """
+    """
+    A repository, each two tags, pointing to the same image, which has image storage with the same
+    *CAS path*, but *distinct records*.
+
+    Deleting the first tag should delete the first image, and its storage, but not the file in
+    storage, as it shares its CAS path.
+    """
     with assert_gc_integrity(expect_storage_removed=True):
         repository = create_repository()
 
@@ -686,10 +715,12 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
 
 
 def test_images_shared_cas_with_new_blob_table(default_tag_policy, initialized_db):
-    """ A repository with a tag and image that shares its CAS path with a record in the new Blob
-      table. Deleting the first tag should delete the first image, and its storage, but not the
-      file in storage, as it shares its CAS path with the blob row.
-  """
+    """
+    A repository with a tag and image that shares its CAS path with a record in the new Blob table.
+
+    Deleting the first tag should delete the first image, and its storage, but not the file in
+    storage, as it shares its CAS path with the blob row.
+    """
     with assert_gc_integrity(expect_storage_removed=True):
         repository = create_repository()
 
@@ -733,7 +764,9 @@ def test_images_shared_cas_with_new_blob_table(default_tag_policy, initialized_d
 
 
 def test_super_long_image_chain_gc(app, default_tag_policy):
-    """ Test that a super long chain of images all gets properly GCed. """
+    """
+    Test that a super long chain of images all gets properly GCed.
+    """
     with assert_gc_integrity():
         images = ["i%s" % i for i in range(0, 100)]
         repository = create_repository(latest=images)
@@ -744,9 +777,10 @@ def test_super_long_image_chain_gc(app, default_tag_policy):
 
 
 def test_manifest_v2_shared_config_and_blobs(app, default_tag_policy):
-    """ Test that GCing a tag that refers to a V2 manifest with the same config and some shared
-      blobs as another manifest ensures that the config blob and shared blob are NOT GCed.
-  """
+    """
+    Test that GCing a tag that refers to a V2 manifest with the same config and some shared blobs as
+    another manifest ensures that the config blob and shared blob are NOT GCed.
+    """
     repo = model.repository.create_repository("devtable", "newrepo", None)
     manifest1, built1 = create_manifest_for_testing(
         repo, differentiation_field="1", include_shared_blob=True

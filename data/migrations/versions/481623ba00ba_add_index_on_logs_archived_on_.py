@@ -1,9 +1,9 @@
-"""Add index on logs_archived on repositorybuild
+"""
+Add index on logs_archived on repositorybuild.
 
 Revision ID: 481623ba00ba
 Revises: b9045731c4de
 Create Date: 2019-02-15 16:09:47.326805
-
 """
 
 # revision identifiers, used by Alembic.

@@ -45,12 +45,16 @@ logger = logging.getLogger(__name__)
 
 
 def get_max_id_for_sec_scan():
-    """ Gets the maximum id for security scanning """
+    """
+    Gets the maximum id for security scanning.
+    """
     return RepositoryTag.select(fn.Max(RepositoryTag.id)).scalar()
 
 
 def get_min_id_for_sec_scan(version):
-    """ Gets the minimum id for a security scanning """
+    """
+    Gets the minimum id for a security scanning.
+    """
     return _tag_alive(
         RepositoryTag.select(fn.Min(RepositoryTag.id))
         .join(Image)
@@ -59,7 +63,9 @@ def get_min_id_for_sec_scan(version):
 
 
 def get_tag_pk_field():
-    """ Returns the primary key for Image DB model """
+    """
+    Returns the primary key for Image DB model.
+    """
     return RepositoryTag.id
 
 
@@ -88,7 +94,9 @@ def _tag_alive(query, now_ts=None):
 
 
 def filter_has_repository_event(query, event):
-    """ Filters the query by ensuring the repositories returned have the given event. """
+    """
+    Filters the query by ensuring the repositories returned have the given event.
+    """
     return (
         query.join(Repository)
         .join(RepositoryNotification)
@@ -97,10 +105,11 @@ def filter_has_repository_event(query, event):
 
 
 def filter_tags_have_repository_event(query, event):
-    """ Filters the query by ensuring the repository tags live in a repository that has the given
-      event. Also returns the image storage for the tag's image and orders the results by
-      lifetime_start_ts.
-  """
+    """
+    Filters the query by ensuring the repository tags live in a repository that has the given event.
+
+    Also returns the image storage for the tag's image and orders the results by lifetime_start_ts.
+    """
     query = filter_has_repository_event(query, event)
     query = query.switch(RepositoryTag).join(Image).join(ImageStorage)
     query = query.switch(RepositoryTag).order_by(RepositoryTag.lifetime_start_ts.desc())
@@ -114,8 +123,10 @@ _MAX_IMAGE_LOOKUP_COUNT = 500
 def get_matching_tags_for_images(
     image_pairs, filter_images=None, filter_tags=None, selections=None
 ):
-    """ Returns all tags that contain the images with the given docker_image_id and storage_uuid,
-      as specified as an iterable of pairs. """
+    """
+    Returns all tags that contain the images with the given docker_image_id and storage_uuid, as
+    specified as an iterable of pairs.
+    """
     if not image_pairs:
         return []
 
@@ -200,8 +211,10 @@ def get_matching_tags_for_images(
 
 
 def get_matching_tags(docker_image_id, storage_uuid, *args):
-    """ Returns a query pointing to all tags that contain the image with the
-      given docker_image_id and storage_uuid. """
+    """
+    Returns a query pointing to all tags that contain the image with the given docker_image_id and
+    storage_uuid.
+    """
     image_row = image.get_image_with_storage(docker_image_id, storage_uuid)
     if image_row is None:
         return RepositoryTag.select().where(RepositoryTag.id < 0)  # Empty query.
@@ -226,7 +239,9 @@ def get_tags_for_image(image_id, *args):
 
 
 def get_tag_manifest_digests(tags):
-    """ Returns a map from tag ID to its associated manifest digest, if any. """
+    """
+    Returns a map from tag ID to its associated manifest digest, if any.
+    """
     if not tags:
         return dict()
 
@@ -238,9 +253,10 @@ def get_tag_manifest_digests(tags):
 
 
 def list_active_repo_tags(repo, start_id=None, limit=None, include_images=True):
-    """ Returns all of the active, non-hidden tags in a repository, joined to they images
-      and (if present), their manifest.
-  """
+    """
+    Returns all of the active, non-hidden tags in a repository, joined to they images and (if
+    present), their manifest.
+    """
     if include_images:
         query = _tag_alive(
             RepositoryTag.select(RepositoryTag, Image, ImageStorage, TagManifest.digest)
@@ -377,8 +393,11 @@ def create_or_update_tag_for_repo(
 
 
 def create_temporary_hidden_tag(repo, image_obj, expiration_s):
-    """ Create a tag with a defined timeline, that will not appear in the UI or CLI. Returns the name
-      of the temporary tag. """
+    """
+    Create a tag with a defined timeline, that will not appear in the UI or CLI.
+
+    Returns the name of the temporary tag.
+    """
     now_ts = get_epoch_timestamp()
     expire_ts = now_ts + expiration_s
     tag_name = str(uuid4())
@@ -394,8 +413,9 @@ def create_temporary_hidden_tag(repo, image_obj, expiration_s):
 
 
 def lookup_unrecoverable_tags(repo):
-    """ Returns the tags  in a repository that are expired and past their time machine recovery
-      period. """
+    """
+    Returns the tags  in a repository that are expired and past their time machine recovery period.
+    """
     expired_clause = get_epoch_timestamp() - Namespace.removed_tag_expiration_s
     return (
         RepositoryTag.select()
@@ -519,7 +539,9 @@ def list_repository_tag_history(
 
 
 def restore_tag_to_manifest(repo_obj, tag_name, manifest_digest):
-    """ Restores a tag to a specific manifest digest. """
+    """
+    Restores a tag to a specific manifest digest.
+    """
     with db_transaction():
         # Verify that the manifest digest already existed under this repository under the
         # tag.
@@ -559,7 +581,9 @@ def restore_tag_to_manifest(repo_obj, tag_name, manifest_digest):
 
 
 def restore_tag_to_image(repo_obj, tag_name, docker_image_id):
-    """ Restores a tag to a specific image ID. """
+    """
+    Restores a tag to a specific image ID.
+    """
     with db_transaction():
         # Verify that the image ID already existed under this repository under the
         # tag.
@@ -588,9 +612,12 @@ def restore_tag_to_image(repo_obj, tag_name, docker_image_id):
 def store_tag_manifest_for_testing(
     namespace_name, repository_name, tag_name, manifest, leaf_layer_id, storage_id_map
 ):
-    """ Stores a tag manifest for a specific tag name in the database. Returns the TagManifest
-      object, as well as a boolean indicating whether the TagManifest was created.
-  """
+    """
+    Stores a tag manifest for a specific tag name in the database.
+
+    Returns the TagManifest object, as well as a boolean indicating whether the TagManifest was
+    created.
+    """
     try:
         repo = _basequery.get_existing_repository(namespace_name, repository_name)
     except Repository.DoesNotExist:
@@ -602,9 +629,12 @@ def store_tag_manifest_for_testing(
 def store_tag_manifest_for_repo(
     repository_id, tag_name, manifest, leaf_layer_id, storage_id_map, reversion=False
 ):
-    """ Stores a tag manifest for a specific tag name in the database. Returns the TagManifest
-      object, as well as a boolean indicating whether the TagManifest was created.
-  """
+    """
+    Stores a tag manifest for a specific tag name in the database.
+
+    Returns the TagManifest object, as well as a boolean indicating whether the TagManifest was
+    created.
+    """
     # Create the new-style OCI manifest and its blobs.
     oci_manifest = _populate_manifest_and_blobs(
         repository_id, manifest, storage_id_map, leaf_layer_id=leaf_layer_id
@@ -737,7 +767,9 @@ def _populate_manifest_and_blobs(repository, manifest, storage_id_map, leaf_laye
 
 
 def populate_manifest(repository, manifest, legacy_image, storage_ids):
-    """ Populates the rows for the manifest, including its blobs and legacy image. """
+    """
+    Populates the rows for the manifest, including its blobs and legacy image.
+    """
     media_type = Manifest.media_type.get_id(manifest.media_type)
 
     # Check for an existing manifest. If present, return it.
@@ -838,9 +870,11 @@ def _load_repo_manifests(namespace, repo_name, allow_dead=False):
 
 
 def change_repository_tag_expiration(namespace_name, repo_name, tag_name, expiration_date):
-    """ Changes the expiration of the tag with the given name to the given expiration datetime. If
-      the expiration datetime is None, then the tag is marked as not expiring.
-  """
+    """
+    Changes the expiration of the tag with the given name to the given expiration datetime.
+
+    If the expiration datetime is None, then the tag is marked as not expiring.
+    """
     try:
         tag = get_active_tag(namespace_name, repo_name, tag_name)
         return change_tag_expiration(tag, expiration_date)
@@ -850,18 +884,20 @@ def change_repository_tag_expiration(namespace_name, repo_name, tag_name, expira
 
 def set_tag_expiration_for_manifest(tag_manifest, expiration_sec):
     """
-  Changes the expiration of the tag that points to the given manifest to be its lifetime start +
-  the expiration seconds.
-  """
+    Changes the expiration of the tag that points to the given manifest to be its lifetime start +
+    the expiration seconds.
+    """
     expiration_time_ts = tag_manifest.tag.lifetime_start_ts + expiration_sec
     expiration_date = datetime.utcfromtimestamp(expiration_time_ts)
     return change_tag_expiration(tag_manifest.tag, expiration_date)
 
 
 def change_tag_expiration(tag, expiration_date):
-    """ Changes the expiration of the given tag to the given expiration datetime. If
-      the expiration datetime is None, then the tag is marked as not expiring.
-  """
+    """
+    Changes the expiration of the given tag to the given expiration datetime.
+
+    If the expiration datetime is None, then the tag is marked as not expiring.
+    """
     end_ts = None
     min_expire_sec = convert_to_timedelta(config.app_config.get("LABELED_EXPIRATION_MINIMUM", "1h"))
     max_expire_sec = convert_to_timedelta(
@@ -880,9 +916,11 @@ def change_tag_expiration(tag, expiration_date):
 
 
 def set_tag_end_ts(tag, end_ts):
-    """ Sets the end timestamp for a tag. Should only be called by change_tag_expiration
-      or tests.
-  """
+    """
+    Sets the end timestamp for a tag.
+
+    Should only be called by change_tag_expiration or tests.
+    """
     end_ms = end_ts * 1000 if end_ts is not None else None
 
     with db_transaction():
@@ -915,9 +953,9 @@ def set_tag_end_ts(tag, end_ts):
 
 
 def find_matching_tag(repo_id, tag_names):
-    """ Finds the most recently pushed alive tag in the repository with one of the given names,
-      if any.
-  """
+    """
+    Finds the most recently pushed alive tag in the repository with one of the given names, if any.
+    """
     try:
         return _tag_alive(
             RepositoryTag.select()
@@ -929,7 +967,9 @@ def find_matching_tag(repo_id, tag_names):
 
 
 def get_most_recent_tag(repo_id):
-    """ Returns the most recently pushed alive tag in the repository, or None if none. """
+    """
+    Returns the most recently pushed alive tag in the repository, or None if none.
+    """
     try:
         return _tag_alive(
             RepositoryTag.select()

@@ -4,7 +4,9 @@ from util.config.provider.k8sprovider import KubernetesConfigProvider
 
 
 def get_config_provider(config_volume, yaml_filename, py_filename, testing=False, kubernetes=False):
-    """ Loads and returns the config provider for the current environment. """
+    """
+    Loads and returns the config provider for the current environment.
+    """
     if testing:
         return TestConfigProvider()
 

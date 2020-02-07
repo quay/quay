@@ -4,9 +4,11 @@ def _complain_ifclosed(closed):
 
 
 class GeneratorFile(object):
-    """ File-like object which wraps a Python generator to produce the file contents.
-      Modeled on StringIO and comments on the file-like interface copied from there.
-  """
+    """
+    File-like object which wraps a Python generator to produce the file contents.
+
+    Modeled on StringIO and comments on the file-like interface copied from there.
+    """
 
     def __init__(self, generator):
         self._generator = generator
@@ -18,17 +20,20 @@ class GeneratorFile(object):
         return self
 
     def tell(self):
-        """Return the file's current position, like stdio's ftell()."""
+        """
+        Return the file's current position, like stdio's ftell().
+        """
         _complain_ifclosed(self._closed)
         return self._position
 
     def next(self):
-        """A file object is its own iterator, for example iter(f) returns f
-    (unless f is closed). When a file is used as an iterator, typically
-    in a for loop (for example, for line in f: print line), the next()
-    method is called repeatedly. This method returns the next input line,
-    or raises StopIteration when EOF is hit.
-    """
+        """
+        A file object is its own iterator, for example iter(f) returns f (unless f is closed).
+
+        When a file is used as an iterator, typically in a for loop (for example, for line in f:
+        print line), the next() method is called repeatedly. This method returns the next input
+        line, or raises StopIteration when EOF is hit.
+        """
         _complain_ifclosed(self._closed)
         r = self.read()
         if not r:
@@ -50,13 +55,14 @@ class GeneratorFile(object):
         _complain_ifclosed(self._closed)
 
     def read(self, size=-1):
-        """Read at most size bytes from the file
-    (less if the read hits EOF before obtaining size bytes).
+        """
+        Read at most size bytes from the file (less if the read hits EOF before obtaining size
+        bytes).
 
-    If the size argument is negative or omitted, read all data until EOF
-    is reached. The bytes are returned as a string object. An empty
-    string is returned when EOF is encountered immediately.
-    """
+        If the size argument is negative or omitted, read all data until EOF is reached. The bytes
+        are returned as a string object. An empty string is returned when EOF is encountered
+        immediately.
+        """
         _complain_ifclosed(self._closed)
         buf = self._buf
         while size < 0 or len(buf) < size:

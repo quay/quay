@@ -38,9 +38,12 @@ class InvalidBearerTokenException(Exception):
 
 
 def decode_bearer_header(bearer_header, instance_keys, config):
-    """ decode_bearer_header decodes the given bearer header that contains an encoded JWT with both
-      a Key ID as well as the signed JWT and returns the decoded and validated JWT. On any error,
-      raises an InvalidBearerTokenException with the reason for failure. """
+    """
+    decode_bearer_header decodes the given bearer header that contains an encoded JWT with both a
+    Key ID as well as the signed JWT and returns the decoded and validated JWT.
+
+    On any error, raises an InvalidBearerTokenException with the reason for failure.
+    """
     # Extract the jwt token from the header
     match = jwtutil.TOKEN_REGEX.match(bearer_header)
     if match is None:
@@ -53,9 +56,9 @@ def decode_bearer_header(bearer_header, instance_keys, config):
 
 def observe_decode():
     """
-  Decorates `decode_bearer_tokens` to record a metric into Prometheus such that any exceptions
-  raised get recorded as a failure and the return of a payload is considered a success.
-  """
+    Decorates `decode_bearer_tokens` to record a metric into Prometheus such that any exceptions
+    raised get recorded as a failure and the return of a payload is considered a success.
+    """
 
     def decorator(func):
         @wraps(func)
@@ -75,9 +78,12 @@ def observe_decode():
 
 @observe_decode()
 def decode_bearer_token(bearer_token, instance_keys, config):
-    """ decode_bearer_token decodes the given bearer token that contains both a Key ID as well as the
-      encoded JWT and returns the decoded and validated JWT. On any error, raises an
-      InvalidBearerTokenException with the reason for failure. """
+    """
+    decode_bearer_token decodes the given bearer token that contains both a Key ID as well as the
+    encoded JWT and returns the decoded and validated JWT.
+
+    On any error, raises an InvalidBearerTokenException with the reason for failure.
+    """
     # Decode the key ID.
     try:
         headers = jwt.get_unverified_header(bearer_token)
@@ -124,9 +130,10 @@ def decode_bearer_token(bearer_token, instance_keys, config):
 
 
 def generate_bearer_token(audience, subject, context, access, lifetime_s, instance_keys):
-    """ Generates a registry bearer token (without the 'Bearer ' portion) based on the given
-      information.
-  """
+    """
+    Generates a registry bearer token (without the 'Bearer ' portion) based on the given
+    information.
+    """
     return _generate_jwt_object(
         audience,
         subject,
@@ -142,7 +149,9 @@ def generate_bearer_token(audience, subject, context, access, lifetime_s, instan
 def _generate_jwt_object(
     audience, subject, context, access, lifetime_s, issuer, key_id, private_key
 ):
-    """ Generates a compact encoded JWT with the values specified. """
+    """
+    Generates a compact encoded JWT with the values specified.
+    """
     token_data = {
         "iss": issuer,
         "aud": audience,
@@ -162,8 +171,10 @@ def _generate_jwt_object(
 
 
 def build_context_and_subject(auth_context=None, tuf_roots=None):
-    """ Builds the custom context field for the JWT signed token and returns it,
-      along with the subject for the JWT signed token. """
+    """
+    Builds the custom context field for the JWT signed token and returns it, along with the subject
+    for the JWT signed token.
+    """
     # Serialize to a dictionary.
     context = auth_context.to_signed_dict() if auth_context else {}
 

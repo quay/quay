@@ -91,28 +91,37 @@ class DataTypes(object):
 
 @add_metaclass(ABCMeta)
 class MigrationTester(object):
-    """ Implements an interface for adding testing capabilities to the
-      data model migration system in Alembic.
-  """
+    """
+    Implements an interface for adding testing capabilities to the data model migration system in
+    Alembic.
+    """
 
     TestDataType = DataTypes
 
     @abstractmethod
     def is_testing(self):
-        """ Returns whether we are currently under a migration test. """
+        """
+        Returns whether we are currently under a migration test.
+        """
 
     @abstractmethod
     def populate_table(self, table_name, fields):
-        """ Called to populate a table with the given fields filled in with testing data. """
+        """
+        Called to populate a table with the given fields filled in with testing data.
+        """
 
     @abstractmethod
     def populate_column(self, table_name, col_name, field_type):
-        """ Called to populate a column in a table to be filled in with testing data. """
+        """
+        Called to populate a column in a table to be filled in with testing data.
+        """
 
 
 @nooper
 class NoopTester(MigrationTester):
-    """ No-op version of the tester, designed for production workloads. """
+    """
+    No-op version of the tester, designed for production workloads.
+    """
 
 
 class PopulateTestDataTester(MigrationTester):

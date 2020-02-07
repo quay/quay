@@ -1,4 +1,6 @@
-""" Access usage logs for organizations or repositories. """
+"""
+Access usage logs for organizations or repositories.
+"""
 from datetime import datetime, timedelta
 
 from flask import request
@@ -112,7 +114,9 @@ def _get_aggregate_logs(
 @resource("/v1/repository/<apirepopath:repository>/logs")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositoryLogs(RepositoryParamResource):
-    """ Resource for fetching logs for the specific repository. """
+    """
+    Resource for fetching logs for the specific repository.
+    """
 
     @require_repo_admin
     @nickname("listRepoLogs")
@@ -121,7 +125,9 @@ class RepositoryLogs(RepositoryParamResource):
     @query_param("endtime", 'Latest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
     @page_support()
     def get(self, namespace, repository, page_token, parsed_args):
-        """ List the logs for the specified repository. """
+        """
+        List the logs for the specified repository.
+        """
         if registry_model.lookup_repository(namespace, repository) is None:
             raise NotFound()
 
@@ -138,7 +144,9 @@ class RepositoryLogs(RepositoryParamResource):
 
 @resource("/v1/user/logs")
 class UserLogs(ApiResource):
-    """ Resource for fetching logs for the current user. """
+    """
+    Resource for fetching logs for the current user.
+    """
 
     @require_user_admin
     @nickname("listUserLogs")
@@ -148,7 +156,9 @@ class UserLogs(ApiResource):
     @query_param("performer", "Username for which to filter logs.", type=str)
     @page_support()
     def get(self, parsed_args, page_token):
-        """ List the logs for the current user. """
+        """
+        List the logs for the current user.
+        """
         performer_name = parsed_args["performer"]
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
@@ -168,7 +178,9 @@ class UserLogs(ApiResource):
 @path_param("orgname", "The name of the organization")
 @related_user_resource(UserLogs)
 class OrgLogs(ApiResource):
-    """ Resource for fetching logs for the entire organization. """
+    """
+    Resource for fetching logs for the entire organization.
+    """
 
     @nickname("listOrgLogs")
     @parse_args()
@@ -178,7 +190,9 @@ class OrgLogs(ApiResource):
     @page_support()
     @require_scope(scopes.ORG_ADMIN)
     def get(self, orgname, page_token, parsed_args):
-        """ List the logs for the specified organization. """
+        """
+        List the logs for the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             performer_name = parsed_args["performer"]
@@ -200,7 +214,9 @@ class OrgLogs(ApiResource):
 @show_if(features.AGGREGATED_LOG_COUNT_RETRIEVAL)
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositoryAggregateLogs(RepositoryParamResource):
-    """ Resource for fetching aggregated logs for the specific repository. """
+    """
+    Resource for fetching aggregated logs for the specific repository.
+    """
 
     @require_repo_admin
     @nickname("getAggregateRepoLogs")
@@ -208,7 +224,9 @@ class RepositoryAggregateLogs(RepositoryParamResource):
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
     @query_param("endtime", 'Latest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
     def get(self, namespace, repository, parsed_args):
-        """ Returns the aggregated logs for the specified repository. """
+        """
+        Returns the aggregated logs for the specified repository.
+        """
         if registry_model.lookup_repository(namespace, repository) is None:
             raise NotFound()
 
@@ -220,7 +238,9 @@ class RepositoryAggregateLogs(RepositoryParamResource):
 @resource("/v1/user/aggregatelogs")
 @show_if(features.AGGREGATED_LOG_COUNT_RETRIEVAL)
 class UserAggregateLogs(ApiResource):
-    """ Resource for fetching aggregated logs for the current user. """
+    """
+    Resource for fetching aggregated logs for the current user.
+    """
 
     @require_user_admin
     @nickname("getAggregateUserLogs")
@@ -229,7 +249,9 @@ class UserAggregateLogs(ApiResource):
     @query_param("endtime", 'Latest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
     @query_param("performer", "Username for which to filter logs.", type=str)
     def get(self, parsed_args):
-        """ Returns the aggregated logs for the current user. """
+        """
+        Returns the aggregated logs for the current user.
+        """
         performer_name = parsed_args["performer"]
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
@@ -249,7 +271,9 @@ class UserAggregateLogs(ApiResource):
 @path_param("orgname", "The name of the organization")
 @related_user_resource(UserLogs)
 class OrgAggregateLogs(ApiResource):
-    """ Resource for fetching aggregate logs for the entire organization. """
+    """
+    Resource for fetching aggregate logs for the entire organization.
+    """
 
     @nickname("getAggregateOrgLogs")
     @parse_args()
@@ -258,7 +282,9 @@ class OrgAggregateLogs(ApiResource):
     @query_param("performer", "Username for which to filter logs.", type=str)
     @require_scope(scopes.ORG_ADMIN)
     def get(self, orgname, parsed_args):
-        """ Gets the aggregated logs for the specified organization. """
+        """
+        Gets the aggregated logs for the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             performer_name = parsed_args["performer"]
@@ -319,7 +345,9 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
 @show_if(features.LOG_EXPORT)
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class ExportRepositoryLogs(RepositoryParamResource):
-    """ Resource for exporting the logs for the specific repository. """
+    """
+    Resource for exporting the logs for the specific repository.
+    """
 
     schemas = {"ExportLogs": EXPORT_LOGS_SCHEMA}
 
@@ -330,7 +358,9 @@ class ExportRepositoryLogs(RepositoryParamResource):
     @query_param("endtime", 'Latest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
     @validate_json_request("ExportLogs")
     def post(self, namespace, repository, parsed_args):
-        """ Queues an export of the logs for the specified repository. """
+        """
+        Queues an export of the logs for the specified repository.
+        """
         if registry_model.lookup_repository(namespace, repository) is None:
             raise NotFound()
 
@@ -347,7 +377,9 @@ class ExportRepositoryLogs(RepositoryParamResource):
 @resource("/v1/user/exportlogs")
 @show_if(features.LOG_EXPORT)
 class ExportUserLogs(ApiResource):
-    """ Resource for exporting the logs for the current user repository. """
+    """
+    Resource for exporting the logs for the current user repository.
+    """
 
     schemas = {"ExportLogs": EXPORT_LOGS_SCHEMA}
 
@@ -358,7 +390,9 @@ class ExportUserLogs(ApiResource):
     @query_param("endtime", 'Latest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
     @validate_json_request("ExportLogs")
     def post(self, parsed_args):
-        """ Returns the aggregated logs for the current user. """
+        """
+        Returns the aggregated logs for the current user.
+        """
         start_time = parsed_args["starttime"]
         end_time = parsed_args["endtime"]
 
@@ -374,7 +408,9 @@ class ExportUserLogs(ApiResource):
 @path_param("orgname", "The name of the organization")
 @related_user_resource(ExportUserLogs)
 class ExportOrgLogs(ApiResource):
-    """ Resource for exporting the logs for an entire organization. """
+    """
+    Resource for exporting the logs for an entire organization.
+    """
 
     schemas = {"ExportLogs": EXPORT_LOGS_SCHEMA}
 
@@ -385,7 +421,9 @@ class ExportOrgLogs(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @validate_json_request("ExportLogs")
     def post(self, orgname, parsed_args):
-        """ Exports the logs for the specified organization. """
+        """
+        Exports the logs for the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             start_time = parsed_args["starttime"]

@@ -47,9 +47,9 @@ class ServiceKeyAlreadyApproved(Exception):
 
 class PreOCIModel(SuperuserDataInterface):
     """
-  PreOCIModel implements the data model for the SuperUser using a database schema
-  before it was changed to support the OCI specification.
-  """
+    PreOCIModel implements the data model for the SuperUser using a database schema before it was
+    changed to support the OCI specification.
+    """
 
     def list_all_service_keys(self):
         keys = model.service_keys.list_all_keys()

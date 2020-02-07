@@ -1,4 +1,6 @@
-""" Manage user and organization robot accounts. """
+"""
+Manage user and organization robot accounts.
+"""
 
 from endpoints.api import (
     resource,
@@ -52,7 +54,9 @@ def robots_list(prefix, include_permissions=False, include_token=False, limit=No
 
 @resource("/v1/user/robots")
 class UserRobotList(ApiResource):
-    """ Resource for listing user robots. """
+    """
+    Resource for listing user robots.
+    """
 
     @require_user_admin
     @nickname("getUserRobots")
@@ -68,7 +72,9 @@ class UserRobotList(ApiResource):
     )
     @query_param("limit", "If specified, the number of robots to return.", type=int, default=None)
     def get(self, parsed_args):
-        """ List the available robots for the user. """
+        """
+        List the available robots for the user.
+        """
         user = get_authenticated_user()
         return robots_list(
             user.username,
@@ -83,7 +89,9 @@ class UserRobotList(ApiResource):
     "robot_shortname", "The short name for the robot, without any user or organization prefix"
 )
 class UserRobot(ApiResource):
-    """ Resource for managing a user's robots. """
+    """
+    Resource for managing a user's robots.
+    """
 
     schemas = {
         "CreateRobot": CREATE_ROBOT_SCHEMA,
@@ -92,7 +100,9 @@ class UserRobot(ApiResource):
     @require_user_admin
     @nickname("getUserRobot")
     def get(self, robot_shortname):
-        """ Returns the user's robot with the specified name. """
+        """
+        Returns the user's robot with the specified name.
+        """
         parent = get_authenticated_user()
         robot = model.get_user_robot(robot_shortname, parent)
         return robot.to_dict(include_metadata=True, include_token=True)
@@ -102,7 +112,9 @@ class UserRobot(ApiResource):
     @max_json_size(ROBOT_MAX_SIZE)
     @validate_json_request("CreateRobot", optional=True)
     def put(self, robot_shortname):
-        """ Create a new user robot with the specified name. """
+        """
+        Create a new user robot with the specified name.
+        """
         parent = get_authenticated_user()
         create_data = request.get_json() or {}
         robot = model.create_user_robot(
@@ -125,7 +137,9 @@ class UserRobot(ApiResource):
     @require_user_admin
     @nickname("deleteUserRobot")
     def delete(self, robot_shortname):
-        """ Delete an existing robot. """
+        """
+        Delete an existing robot.
+        """
         parent = get_authenticated_user()
         model.delete_robot(format_robot_username(parent.username, robot_shortname))
         log_action("delete_robot", parent.username, {"robot": robot_shortname})
@@ -136,7 +150,9 @@ class UserRobot(ApiResource):
 @path_param("orgname", "The name of the organization")
 @related_user_resource(UserRobotList)
 class OrgRobotList(ApiResource):
-    """ Resource for listing an organization's robots. """
+    """
+    Resource for listing an organization's robots.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrgRobots")
@@ -152,7 +168,9 @@ class OrgRobotList(ApiResource):
     )
     @query_param("limit", "If specified, the number of robots to return.", type=int, default=None)
     def get(self, orgname, parsed_args):
-        """ List the organization's robots. """
+        """
+        List the organization's robots.
+        """
         permission = OrganizationMemberPermission(orgname)
         if permission.can():
             include_token = AdministerOrganizationPermission(orgname).can() and parsed_args.get(
@@ -178,7 +196,9 @@ class OrgRobotList(ApiResource):
 )
 @related_user_resource(UserRobot)
 class OrgRobot(ApiResource):
-    """ Resource for managing an organization's robots. """
+    """
+    Resource for managing an organization's robots.
+    """
 
     schemas = {
         "CreateRobot": CREATE_ROBOT_SCHEMA,
@@ -187,7 +207,9 @@ class OrgRobot(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrgRobot")
     def get(self, orgname, robot_shortname):
-        """ Returns the organization's robot with the specified name. """
+        """
+        Returns the organization's robot with the specified name.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             robot = model.get_org_robot(robot_shortname, orgname)
@@ -200,7 +222,9 @@ class OrgRobot(ApiResource):
     @max_json_size(ROBOT_MAX_SIZE)
     @validate_json_request("CreateRobot", optional=True)
     def put(self, orgname, robot_shortname):
-        """ Create a new robot in the organization. """
+        """
+        Create a new robot in the organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             create_data = request.get_json() or {}
@@ -226,7 +250,9 @@ class OrgRobot(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("deleteOrgRobot")
     def delete(self, orgname, robot_shortname):
-        """ Delete an existing organization robot. """
+        """
+        Delete an existing organization robot.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             model.delete_robot(format_robot_username(orgname, robot_shortname))
@@ -241,12 +267,16 @@ class OrgRobot(ApiResource):
     "robot_shortname", "The short name for the robot, without any user or organization prefix"
 )
 class UserRobotPermissions(ApiResource):
-    """ Resource for listing the permissions a user's robot has in the system. """
+    """
+    Resource for listing the permissions a user's robot has in the system.
+    """
 
     @require_user_admin
     @nickname("getUserRobotPermissions")
     def get(self, robot_shortname):
-        """ Returns the list of repository permissions for the user's robot. """
+        """
+        Returns the list of repository permissions for the user's robot.
+        """
         parent = get_authenticated_user()
         robot = model.get_user_robot(robot_shortname, parent)
         permissions = model.list_robot_permissions(robot.name)
@@ -261,12 +291,16 @@ class UserRobotPermissions(ApiResource):
 )
 @related_user_resource(UserRobotPermissions)
 class OrgRobotPermissions(ApiResource):
-    """ Resource for listing the permissions an org's robot has in the system. """
+    """
+    Resource for listing the permissions an org's robot has in the system.
+    """
 
     @require_user_admin
     @nickname("getOrgRobotPermissions")
     def get(self, orgname, robot_shortname):
-        """ Returns the list of repository permissions for the org's robot. """
+        """
+        Returns the list of repository permissions for the org's robot.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             robot = model.get_org_robot(robot_shortname, orgname)
@@ -282,12 +316,16 @@ class OrgRobotPermissions(ApiResource):
     "robot_shortname", "The short name for the robot, without any user or organization prefix"
 )
 class RegenerateUserRobot(ApiResource):
-    """ Resource for regenerate an organization's robot's token. """
+    """
+    Resource for regenerate an organization's robot's token.
+    """
 
     @require_user_admin
     @nickname("regenerateUserRobotToken")
     def post(self, robot_shortname):
-        """ Regenerates the token for a user's robot. """
+        """
+        Regenerates the token for a user's robot.
+        """
         parent = get_authenticated_user()
         robot = model.regenerate_user_robot_token(robot_shortname, parent)
         log_action("regenerate_robot_token", parent.username, {"robot": robot_shortname})
@@ -301,12 +339,16 @@ class RegenerateUserRobot(ApiResource):
 )
 @related_user_resource(RegenerateUserRobot)
 class RegenerateOrgRobot(ApiResource):
-    """ Resource for regenerate an organization's robot's token. """
+    """
+    Resource for regenerate an organization's robot's token.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("regenerateOrgRobotToken")
     def post(self, orgname, robot_shortname):
-        """ Regenerates the token for an organization robot. """
+        """
+        Regenerates the token for an organization robot.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             robot = model.regenerate_org_robot_token(robot_shortname, orgname)

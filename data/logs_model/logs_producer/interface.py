@@ -6,4 +6,6 @@ from six import add_metaclass
 class LogProducerInterface(object):
     @abstractmethod
     def send(self, logentry):
-        """ Send a log entry to the configured log infrastructure. """
+        """
+        Send a log entry to the configured log infrastructure.
+        """

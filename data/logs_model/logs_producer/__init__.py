@@ -5,9 +5,11 @@ logger = logging.getLogger(__name__)
 
 
 class LogSendException(Exception):
-    """ A generic error when sending the logs to its destination.
-  e.g. Kinesis, Kafka, Elasticsearch, ...
-  """
+    """
+    A generic error when sending the logs to its destination.
+
+    e.g. Kinesis, Kafka, Elasticsearch, ...
+    """
 
     pass
 

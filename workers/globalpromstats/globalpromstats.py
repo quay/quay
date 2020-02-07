@@ -23,8 +23,9 @@ WORKER_FREQUENCY = app.config.get("GLOBAL_PROMETHEUS_STATS_FREQUENCY", 60 * 60)
 
 
 class GlobalPrometheusStatsWorker(Worker):
-    """ Worker which reports global stats (# of users, orgs, repos, etc) to Prometheus periodically.
-  """
+    """
+    Worker which reports global stats (# of users, orgs, repos, etc) to Prometheus periodically.
+    """
 
     def __init__(self):
         super(GlobalPrometheusStatsWorker, self).__init__()

@@ -33,9 +33,10 @@ SEARCH_BUCKETS = [
 
 
 def find_uncounted_repository():
-    """ Returns a repository that has not yet had an entry added into the RepositoryActionCount
-      table for yesterday.
-  """
+    """
+    Returns a repository that has not yet had an entry added into the RepositoryActionCount table
+    for yesterday.
+    """
     try:
         # Get a random repository to count.
         today = date.today()
@@ -56,9 +57,11 @@ def find_uncounted_repository():
 
 
 def count_repository_actions(to_count, day):
-    """ Aggregates repository actions from the LogEntry table for the specified day. Returns the
-      count or None on error.
-  """
+    """
+    Aggregates repository actions from the LogEntry table for the specified day.
+
+    Returns the count or None on error.
+    """
     # TODO: Clean this up a bit.
     def lookup_action_count(model):
         return (
@@ -81,9 +84,11 @@ def count_repository_actions(to_count, day):
 
 
 def store_repository_action_count(repository, day, action_count):
-    """ Stores the action count for a repository for a specific day. Returns False if the
-      repository already has an entry for the specified day.
-  """
+    """
+    Stores the action count for a repository for a specific day.
+
+    Returns False if the repository already has an entry for the specified day.
+    """
     try:
         RepositoryActionCount.create(repository=repository, date=day, count=action_count)
         return True
@@ -93,10 +98,13 @@ def store_repository_action_count(repository, day, action_count):
 
 
 def update_repository_score(repo):
-    """ Updates the repository score entry for the given table by retrieving information from
-      the RepositoryActionCount table. Note that count_repository_actions for the repo should
-      be called first. Returns True if the row was updated and False otherwise.
-  """
+    """
+    Updates the repository score entry for the given table by retrieving information from the
+    RepositoryActionCount table.
+
+    Note that count_repository_actions for the repo should be called first. Returns True if the row
+    was updated and False otherwise.
+    """
     today = date.today()
 
     # Retrieve the counts for each bucket and calculate the final score.

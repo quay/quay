@@ -25,8 +25,10 @@ QE_CONFIG_SECRET = os.environ.get("QE_K8S_CONFIG_SECRET", "quay-enterprise-confi
 
 
 class KubernetesConfigProvider(BaseFileProvider):
-    """ Implementation of the config provider that reads and writes configuration
-      data from a Kubernetes Secret. """
+    """
+    Implementation of the config provider that reads and writes configuration data from a Kubernetes
+    Secret.
+    """
 
     def __init__(
         self,

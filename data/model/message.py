@@ -2,12 +2,16 @@ from data.database import Messages, MediaType
 
 
 def get_messages():
-    """Query the data base for messages and returns a container of database message objects"""
+    """
+    Query the data base for messages and returns a container of database message objects.
+    """
     return Messages.select(Messages, MediaType).join(MediaType)
 
 
 def create(messages):
-    """Insert messages into the database."""
+    """
+    Insert messages into the database.
+    """
     inserted = []
     for message in messages:
         severity = message["severity"]
@@ -21,7 +25,9 @@ def create(messages):
 
 
 def delete_message(uuids):
-    """Delete message from the database"""
+    """
+    Delete message from the database.
+    """
     if not uuids:
         return
     Messages.delete().where(Messages.uuid << uuids).execute()

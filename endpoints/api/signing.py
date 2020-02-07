@@ -1,4 +1,6 @@
-""" List and manage repository signing information """
+"""
+List and manage repository signing information.
+"""
 
 import logging
 import features
@@ -23,13 +25,17 @@ logger = logging.getLogger(__name__)
 @show_if(features.SIGNING)
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositorySignatures(RepositoryParamResource):
-    """ Operations for managing the signatures in a repository image. """
+    """
+    Operations for managing the signatures in a repository image.
+    """
 
     @require_repo_read
     @nickname("getRepoSignatures")
     @disallow_for_app_repositories
     def get(self, namespace, repository):
-        """ Fetches the list of signed tags for the repository. """
+        """
+        Fetches the list of signed tags for the repository.
+        """
         if not model.is_trust_enabled(namespace, repository):
             raise NotFound()
 

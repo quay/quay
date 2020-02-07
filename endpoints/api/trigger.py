@@ -1,4 +1,6 @@
-""" Create, list and manage build triggers. """
+"""
+Create, list and manage build triggers.
+"""
 
 import logging
 from urlparse import urlunparse
@@ -62,13 +64,17 @@ def get_trigger(trigger_uuid):
 @resource("/v1/repository/<apirepopath:repository>/trigger/")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class BuildTriggerList(RepositoryParamResource):
-    """ Resource for listing repository build triggers. """
+    """
+    Resource for listing repository build triggers.
+    """
 
     @require_repo_admin
     @disallow_for_app_repositories
     @nickname("listBuildTriggers")
     def get(self, namespace_name, repo_name):
-        """ List the triggers for the specified repository. """
+        """
+        List the triggers for the specified repository.
+        """
         triggers = model.build.list_build_triggers(namespace_name, repo_name)
         return {"triggers": [trigger_view(trigger, can_admin=True) for trigger in triggers]}
 
@@ -77,7 +83,9 @@ class BuildTriggerList(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("trigger_uuid", "The UUID of the build trigger")
 class BuildTrigger(RepositoryParamResource):
-    """ Resource for managing specific build triggers. """
+    """
+    Resource for managing specific build triggers.
+    """
 
     schemas = {
         "UpdateTrigger": {
@@ -97,7 +105,9 @@ class BuildTrigger(RepositoryParamResource):
     @disallow_for_app_repositories
     @nickname("getBuildTrigger")
     def get(self, namespace_name, repo_name, trigger_uuid):
-        """ Get information for the specified build trigger. """
+        """
+        Get information for the specified build trigger.
+        """
         return trigger_view(get_trigger(trigger_uuid), can_admin=True)
 
     @require_repo_admin
@@ -106,7 +116,9 @@ class BuildTrigger(RepositoryParamResource):
     @nickname("updateBuildTrigger")
     @validate_json_request("UpdateTrigger")
     def put(self, namespace_name, repo_name, trigger_uuid):
-        """ Updates the specified build trigger. """
+        """
+        Updates the specified build trigger.
+        """
         trigger = get_trigger(trigger_uuid)
 
         handler = BuildTriggerHandler.get_handler(trigger)
@@ -134,7 +146,9 @@ class BuildTrigger(RepositoryParamResource):
     @disallow_for_non_normal_repositories
     @nickname("deleteBuildTrigger")
     def delete(self, namespace_name, repo_name, trigger_uuid):
-        """ Delete the specified build trigger. """
+        """
+        Delete the specified build trigger.
+        """
         trigger = get_trigger(trigger_uuid)
 
         handler = BuildTriggerHandler.get_handler(trigger)
@@ -165,7 +179,9 @@ class BuildTrigger(RepositoryParamResource):
 @path_param("trigger_uuid", "The UUID of the build trigger")
 @internal_only
 class BuildTriggerSubdirs(RepositoryParamResource):
-    """ Custom verb for fetching the subdirs which are buildable for a trigger. """
+    """
+    Custom verb for fetching the subdirs which are buildable for a trigger.
+    """
 
     schemas = {
         "BuildTriggerSubdirRequest": {"type": "object", "description": "Arbitrary json.",},
@@ -177,7 +193,9 @@ class BuildTriggerSubdirs(RepositoryParamResource):
     @nickname("listBuildTriggerSubdirs")
     @validate_json_request("BuildTriggerSubdirRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
-        """ List the subdirectories available for the specified build trigger and source. """
+        """
+        List the subdirectories available for the specified build trigger and source.
+        """
         trigger = get_trigger(trigger_uuid)
 
         user_permission = UserAdminPermission(trigger.connected_user.username)
@@ -215,8 +233,9 @@ class BuildTriggerSubdirs(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("trigger_uuid", "The UUID of the build trigger")
 class BuildTriggerActivate(RepositoryParamResource):
-    """ Custom verb for activating a build trigger once all required information has been collected.
-  """
+    """
+    Custom verb for activating a build trigger once all required information has been collected.
+    """
 
     schemas = {
         "BuildTriggerActivateRequest": {
@@ -238,7 +257,9 @@ class BuildTriggerActivate(RepositoryParamResource):
     @nickname("activateBuildTrigger")
     @validate_json_request("BuildTriggerActivateRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
-        """ Activate the specified build trigger. """
+        """
+        Activate the specified build trigger.
+        """
         trigger = get_trigger(trigger_uuid)
         handler = BuildTriggerHandler.get_handler(trigger)
         if handler.is_active():
@@ -323,9 +344,10 @@ class BuildTriggerActivate(RepositoryParamResource):
 @path_param("trigger_uuid", "The UUID of the build trigger")
 @internal_only
 class BuildTriggerAnalyze(RepositoryParamResource):
-    """ Custom verb for analyzing the config for a build trigger and suggesting various changes
-      (such as a robot account to use for pulling)
-  """
+    """
+    Custom verb for analyzing the config for a build trigger and suggesting various changes (such as
+    a robot account to use for pulling)
+    """
 
     schemas = {
         "BuildTriggerAnalyzeRequest": {
@@ -341,7 +363,9 @@ class BuildTriggerAnalyze(RepositoryParamResource):
     @nickname("analyzeBuildTrigger")
     @validate_json_request("BuildTriggerAnalyzeRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
-        """ Analyze the specified build trigger configuration. """
+        """
+        Analyze the specified build trigger configuration.
+        """
         trigger = get_trigger(trigger_uuid)
 
         if trigger.repository.namespace_user.username != namespace_name:
@@ -377,7 +401,9 @@ class BuildTriggerAnalyze(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("trigger_uuid", "The UUID of the build trigger")
 class ActivateBuildTrigger(RepositoryParamResource):
-    """ Custom verb to manually activate a build trigger. """
+    """
+    Custom verb to manually activate a build trigger.
+    """
 
     schemas = {
         "RunParameters": {
@@ -407,7 +433,9 @@ class ActivateBuildTrigger(RepositoryParamResource):
     @nickname("manuallyStartBuildTrigger")
     @validate_json_request("RunParameters")
     def post(self, namespace_name, repo_name, trigger_uuid):
-        """ Manually start a build from the specified trigger. """
+        """
+        Manually start a build from the specified trigger.
+        """
         trigger = get_trigger(trigger_uuid)
         if not trigger.enabled:
             raise InvalidRequest("Trigger is not enabled.")
@@ -444,7 +472,9 @@ class ActivateBuildTrigger(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("trigger_uuid", "The UUID of the build trigger")
 class TriggerBuildList(RepositoryParamResource):
-    """ Resource to represent builds that were activated from the specified trigger. """
+    """
+    Resource to represent builds that were activated from the specified trigger.
+    """
 
     @require_repo_admin
     @disallow_for_app_repositories
@@ -452,7 +482,9 @@ class TriggerBuildList(RepositoryParamResource):
     @query_param("limit", "The maximum number of builds to return", type=int, default=5)
     @nickname("listTriggerRecentBuilds")
     def get(self, namespace_name, repo_name, trigger_uuid, parsed_args):
-        """ List the builds started by the specified trigger. """
+        """
+        List the builds started by the specified trigger.
+        """
         limit = parsed_args["limit"]
         builds = model.build.list_trigger_builds(namespace_name, repo_name, trigger_uuid, limit)
         return {"builds": [build_status_view(bld) for bld in builds]}
@@ -464,14 +496,18 @@ FIELD_VALUE_LIMIT = 30
 @resource("/v1/repository/<apirepopath:repository>/trigger/<trigger_uuid>/fields/<field_name>")
 @internal_only
 class BuildTriggerFieldValues(RepositoryParamResource):
-    """ Custom verb to fetch a values list for a particular field name. """
+    """
+    Custom verb to fetch a values list for a particular field name.
+    """
 
     @require_repo_admin
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("listTriggerFieldValues")
     def post(self, namespace_name, repo_name, trigger_uuid, field_name):
-        """ List the field values for a custom run field. """
+        """
+        List the field values for a custom run field.
+        """
         trigger = get_trigger(trigger_uuid)
 
         config = request.get_json() or None
@@ -492,7 +528,9 @@ class BuildTriggerFieldValues(RepositoryParamResource):
 @path_param("trigger_uuid", "The UUID of the build trigger")
 @internal_only
 class BuildTriggerSources(RepositoryParamResource):
-    """ Custom verb to fetch the list of build sources for the trigger config. """
+    """
+    Custom verb to fetch the list of build sources for the trigger config.
+    """
 
     schemas = {
         "BuildTriggerSourcesRequest": {
@@ -513,7 +551,9 @@ class BuildTriggerSources(RepositoryParamResource):
     @nickname("listTriggerBuildSources")
     @validate_json_request("BuildTriggerSourcesRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
-        """ List the build sources for the trigger configuration thus far. """
+        """
+        List the build sources for the trigger configuration thus far.
+        """
         namespace = request.get_json().get("namespace")
         if namespace is None:
             raise InvalidRequest()
@@ -537,13 +577,17 @@ class BuildTriggerSources(RepositoryParamResource):
 @path_param("trigger_uuid", "The UUID of the build trigger")
 @internal_only
 class BuildTriggerSourceNamespaces(RepositoryParamResource):
-    """ Custom verb to fetch the list of namespaces (orgs, projects, etc) for the trigger config. """
+    """
+    Custom verb to fetch the list of namespaces (orgs, projects, etc) for the trigger config.
+    """
 
     @require_repo_admin
     @disallow_for_app_repositories
     @nickname("listTriggerBuildSourceNamespaces")
     def get(self, namespace_name, repo_name, trigger_uuid):
-        """ List the build sources for the trigger configuration thus far. """
+        """
+        List the build sources for the trigger configuration thus far.
+        """
         trigger = get_trigger(trigger_uuid)
 
         user_permission = UserAdminPermission(trigger.connected_user.username)

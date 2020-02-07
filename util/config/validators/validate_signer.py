@@ -9,7 +9,9 @@ class SignerValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the GPG public+private key pair used for signing converted ACIs. """
+        """
+        Validates the GPG public+private key pair used for signing converted ACIs.
+        """
         config = validator_context.config
         config_provider = validator_context.config_provider
 

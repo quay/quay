@@ -1,9 +1,9 @@
-"""repo mirror columns
+"""
+repo mirror columns.
 
 Revision ID: 34c8ef052ec9
 Revises: c059b952ed76
 Create Date: 2019-10-07 13:11:20.424715
-
 """
 
 # revision identifiers, used by Alembic.
@@ -41,9 +41,9 @@ BATCH_SIZE = 10
 # Original model
 class RepoMirrorConfig(BaseModel):
     """
-  Represents a repository to be mirrored and any additional configuration
-  required to perform the mirroring.
-  """
+    Represents a repository to be mirrored and any additional configuration required to perform the
+    mirroring.
+    """
 
     repository = ForeignKeyField(Repository, index=True, unique=True, backref="mirror")
     creation_date = DateTimeField(default=datetime.utcnow)

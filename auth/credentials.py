@@ -27,7 +27,9 @@ class CredentialKind(Enum):
 
 
 def validate_credentials(auth_username, auth_password_or_token):
-    """ Validates a pair of auth username and password/token credentials. """
+    """
+    Validates a pair of auth username and password/token credentials.
+    """
     # Check for access tokens.
     if auth_username == ACCESS_TOKEN_USERNAME:
         logger.debug("Found credentials for access token")

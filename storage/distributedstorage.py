@@ -46,7 +46,9 @@ class DistributedStorage(StoragePaths):
 
     @property
     def locations(self):
-        """ Returns the names of the locations supported. """
+        """
+        Returns the names of the locations supported.
+        """
         return list(self._storages.keys())
 
     _get_direct_download_url = _location_aware(BaseStorage.get_direct_download_url)
@@ -89,7 +91,9 @@ class DistributedStorage(StoragePaths):
         return self.proxy.proxy_download_url(download_url)
 
     def copy_between(self, path, source_location, destination_location):
-        """ Copies a file between the source location and the destination location. """
+        """
+        Copies a file between the source location and the destination location.
+        """
         source_storage = self._storages[source_location]
         destination_storage = self._storages[destination_location]
         source_storage.copy_to(destination_storage, path)

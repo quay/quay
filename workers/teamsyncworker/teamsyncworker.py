@@ -18,8 +18,9 @@ STALE_CUTOFF = convert_to_timedelta(app.config.get("TEAM_RESYNC_STALE_TIME", "30
 
 
 class TeamSynchronizationWorker(Worker):
-    """ Worker which synchronizes teams with their backing groups in LDAP/Keystone/etc.
-  """
+    """
+    Worker which synchronizes teams with their backing groups in LDAP/Keystone/etc.
+    """
 
     def __init__(self):
         super(TeamSynchronizationWorker, self).__init__()

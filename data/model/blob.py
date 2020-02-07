@@ -28,8 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_repository_blob_by_digest(repository, blob_digest):
-    """ Find the content-addressable blob linked to the specified repository.
-  """
+    """
+    Find the content-addressable blob linked to the specified repository.
+    """
     assert blob_digest
     try:
         storage = (
@@ -49,8 +50,9 @@ def get_repository_blob_by_digest(repository, blob_digest):
 
 
 def get_repo_blob_by_digest(namespace, repo_name, blob_digest):
-    """ Find the content-addressable blob linked to the specified repository.
-  """
+    """
+    Find the content-addressable blob linked to the specified repository.
+    """
     assert blob_digest
     try:
         storage = (
@@ -97,8 +99,9 @@ def store_blob_record_and_temp_link_in_repo(
     link_expiration_s,
     uncompressed_byte_count=None,
 ):
-    """ Store a record of the blob and temporarily link it to the specified repository.
-  """
+    """
+    Store a record of the blob and temporarily link it to the specified repository.
+    """
     assert blob_digest
     assert byte_count is not None
 
@@ -135,9 +138,11 @@ def store_blob_record_and_temp_link_in_repo(
 
 
 def temp_link_blob(repository_id, blob_digest, link_expiration_s):
-    """ Temporarily links to the blob record from the given repository. If the blob record is not
-      found, return None.
-  """
+    """
+    Temporarily links to the blob record from the given repository.
+
+    If the blob record is not found, return None.
+    """
     assert blob_digest
 
     with db_transaction():
@@ -163,7 +168,9 @@ def _temp_link_blob(repository_id, storage, link_expiration_s):
 
 
 def get_stale_blob_upload(stale_timespan):
-    """ Returns a random blob upload which was created before the stale timespan. """
+    """
+    Returns a random blob upload which was created before the stale timespan.
+    """
     stale_threshold = datetime.now() - stale_timespan
 
     try:
@@ -192,7 +199,9 @@ def get_stale_blob_upload(stale_timespan):
 
 
 def get_blob_upload_by_uuid(upload_uuid):
-    """ Loads the upload with the given UUID, if any. """
+    """
+    Loads the upload with the given UUID, if any.
+    """
     try:
         return BlobUpload.select().where(BlobUpload.uuid == upload_uuid).get()
     except BlobUpload.DoesNotExist:
@@ -200,8 +209,9 @@ def get_blob_upload_by_uuid(upload_uuid):
 
 
 def get_blob_upload(namespace, repo_name, upload_uuid):
-    """ Load the upload which is already in progress.
-  """
+    """
+    Load the upload which is already in progress.
+    """
     try:
         return (
             BlobUpload.select(BlobUpload, ImageStorageLocation)
@@ -221,14 +231,18 @@ def get_blob_upload(namespace, repo_name, upload_uuid):
 
 
 def initiate_upload(namespace, repo_name, uuid, location_name, storage_metadata):
-    """ Initiates a blob upload for the repository with the given namespace and name,
-      in a specific location. """
+    """
+    Initiates a blob upload for the repository with the given namespace and name, in a specific
+    location.
+    """
     repo = _basequery.get_existing_repository(namespace, repo_name)
     return initiate_upload_for_repo(repo, uuid, location_name, storage_metadata)
 
 
 def initiate_upload_for_repo(repo, uuid, location_name, storage_metadata):
-    """ Initiates a blob upload for a specific repository object, in a specific location. """
+    """
+    Initiates a blob upload for a specific repository object, in a specific location.
+    """
     location = storage_model.get_image_location_for_name(location_name)
     return BlobUpload.create(
         repository=repo, location=location.id, uuid=uuid, storage_metadata=storage_metadata
@@ -236,11 +250,12 @@ def initiate_upload_for_repo(repo, uuid, location_name, storage_metadata):
 
 
 def get_shared_blob(digest):
-    """ Returns the ImageStorage blob with the given digest or, if not present,
-      returns None. This method is *only* to be used for shared blobs that are
-      globally accessible, such as the special empty gzipped tar layer that Docker
-      no longer pushes to us.
-  """
+    """
+    Returns the ImageStorage blob with the given digest or, if not present, returns None.
+
+    This method is *only* to be used for shared blobs that are globally accessible, such as the
+    special empty gzipped tar layer that Docker no longer pushes to us.
+    """
     assert digest
     try:
         return ImageStorage.get(content_checksum=digest, uploading=False)
@@ -249,12 +264,13 @@ def get_shared_blob(digest):
 
 
 def get_or_create_shared_blob(digest, byte_data, storage):
-    """ Returns the ImageStorage blob with the given digest or, if not present,
-      adds a row and writes the given byte data to the storage engine.
-      This method is *only* to be used for shared blobs that are globally
-      accessible, such as the special empty gzipped tar layer that Docker
-      no longer pushes to us.
-  """
+    """
+    Returns the ImageStorage blob with the given digest or, if not present, adds a row and writes
+    the given byte data to the storage engine.
+
+    This method is *only* to be used for shared blobs that are globally accessible, such as the
+    special empty gzipped tar layer that Docker no longer pushes to us.
+    """
     assert digest
     assert byte_data is not None
     assert storage

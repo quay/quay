@@ -9,10 +9,10 @@ OLD_CONFIG_SUBDIR = "old/"
 
 
 class TransientDirectoryProvider(FileConfigProvider):
-    """ Implementation of the config provider that reads and writes the data
-      from/to the file system, only using temporary directories,
-      deleting old dirs and creating new ones as requested.
-  """
+    """
+    Implementation of the config provider that reads and writes the data from/to the file system,
+    only using temporary directories, deleting old dirs and creating new ones as requested.
+    """
 
     def __init__(self, config_volume, yaml_filename, py_filename):
         # Create a temp directory that will be cleaned up when we change the config path
@@ -29,8 +29,8 @@ class TransientDirectoryProvider(FileConfigProvider):
 
     def new_config_dir(self):
         """
-    Update the path with a new temporary directory, deleting the old one in the process
-    """
+        Update the path with a new temporary directory, deleting the old one in the process.
+        """
         self.temp_dir.cleanup()
         temp_dir = TemporaryDirectory()
 
@@ -40,8 +40,8 @@ class TransientDirectoryProvider(FileConfigProvider):
 
     def create_copy_of_config_dir(self):
         """
-    Create a directory to store loaded/populated configuration (for rollback if necessary)
-    """
+        Create a directory to store loaded/populated configuration (for rollback if necessary)
+        """
         if self.old_config_dir is not None:
             self.old_config_dir.cleanup()
 

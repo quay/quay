@@ -24,7 +24,9 @@ class Avatar(object):
 
 
 class BaseAvatar(object):
-    """ Base class for all avatar implementations. """
+    """
+    Base class for all avatar implementations.
+    """
 
     def __init__(self, preferred_url_scheme, colors, http_client):
         self.preferred_url_scheme = preferred_url_scheme
@@ -32,9 +34,10 @@ class BaseAvatar(object):
         self.http_client = http_client
 
     def get_mail_html(self, name, email_or_id, size=16, kind="user"):
-        """ Returns the full HTML and CSS for viewing the avatar of the given name and email address,
+        """
+        Returns the full HTML and CSS for viewing the avatar of the given name and email address,
         with an optional size.
-    """
+        """
         data = self.get_data(name, email_or_id, kind)
         url = self._get_url(data["hash"], size) if kind != "team" else None
         font_size = size - 6
@@ -110,12 +113,16 @@ class BaseAvatar(object):
         return {"name": name, "hash": hash_value, "color": hash_color, "kind": kind}
 
     def _get_url(self, hash_value, size):
-        """ Returns the URL for displaying the overlay avatar. """
+        """
+        Returns the URL for displaying the overlay avatar.
+        """
         return None
 
 
 class GravatarAvatar(BaseAvatar):
-    """ Avatar system that uses gravatar for generating avatars. """
+    """
+    Avatar system that uses gravatar for generating avatars.
+    """
 
     def _get_url(self, hash_value, size=16):
         return "%s://www.gravatar.com/avatar/%s?d=404&size=%s" % (
@@ -126,7 +133,9 @@ class GravatarAvatar(BaseAvatar):
 
 
 class LocalAvatar(BaseAvatar):
-    """ Avatar system that uses the local system for generating avatars. """
+    """
+    Avatar system that uses the local system for generating avatars.
+    """
 
     pass
 

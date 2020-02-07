@@ -22,13 +22,14 @@ _PORT_NUMBER = 5001
 
 @contextmanager
 def fake_jwt(requires_email=True):
-    """ Context manager which instantiates and runs a webserver with a fake JWT implementation,
-      until the result is yielded.
+    """
+    Context manager which instantiates and runs a webserver with a fake JWT implementation, until
+    the result is yielded.
 
-      Usage:
-      with fake_jwt() as jwt_auth:
-        # Make jwt_auth requests.
-  """
+    Usage:
+    with fake_jwt() as jwt_auth:
+      # Make jwt_auth requests.
+    """
     jwt_app, port, public_key = _create_app(requires_email)
     server_url = "http://" + jwt_app.config["SERVER_HOSTNAME"]
 
@@ -172,7 +173,9 @@ def _create_app(emails=True):
 
 
 class JWTAuthTestMixin:
-    """ Mixin defining all the JWT auth tests. """
+    """
+    Mixin defining all the JWT auth tests.
+    """
 
     maxDiff = None
 
@@ -314,7 +317,9 @@ class JWTAuthTestMixin:
 
 
 class JWTAuthNoEmailTestCase(JWTAuthTestMixin, unittest.TestCase):
-    """ Test cases for JWT auth, with emails disabled. """
+    """
+    Test cases for JWT auth, with emails disabled.
+    """
 
     @property
     def emails(self):
@@ -322,7 +327,9 @@ class JWTAuthNoEmailTestCase(JWTAuthTestMixin, unittest.TestCase):
 
 
 class JWTAuthTestCase(JWTAuthTestMixin, unittest.TestCase):
-    """ Test cases for JWT auth, with emails enabled. """
+    """
+    Test cases for JWT auth, with emails enabled.
+    """
 
     @property
     def emails(self):

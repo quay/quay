@@ -3,14 +3,15 @@ from jsonpath_rw import parse
 
 
 class SafeDictSetter(object):
-    """ Specialized write-only dictionary wrapper class that allows for setting
-      nested keys via a path syntax.
+    """
+    Specialized write-only dictionary wrapper class that allows for setting nested keys via a path
+    syntax.
 
-      Example:
-        sds = SafeDictSetter()
-        sds['foo.bar.baz'] = 'hello' # Sets 'foo' = {'bar': {'baz': 'hello'}}
-        sds['somekey'] = None # Does not set the key since the value is None
-  """
+    Example:
+      sds = SafeDictSetter()
+      sds['foo.bar.baz'] = 'hello' # Sets 'foo' = {'bar': {'baz': 'hello'}}
+      sds['somekey'] = None # Does not set the key since the value is None
+    """
 
     def __init__(self, initial_object=None):
         self._object = initial_object or {}
@@ -19,7 +20,9 @@ class SafeDictSetter(object):
         self.set(path, value)
 
     def set(self, path, value, allow_none=False):
-        """ Sets the value of the given path to the given value. """
+        """
+        Sets the value of the given path to the given value.
+        """
         if value is None and not allow_none:
             return
 
@@ -37,26 +40,32 @@ class SafeDictSetter(object):
         current[pieces[-1]] = value
 
     def dict_value(self):
-        """ Returns the dict value built. """
+        """
+        Returns the dict value built.
+        """
         return self._object
 
     def json_value(self):
-        """ Returns the JSON string value of the dictionary built. """
+        """
+        Returns the JSON string value of the dictionary built.
+        """
         return json.dumps(self._object)
 
 
 class JSONPathDict(object):
-    """ Specialized read-only dictionary wrapper class that uses the jsonpath_rw library
-      to access keys via an X-Path-like syntax.
+    """
+    Specialized read-only dictionary wrapper class that uses the jsonpath_rw library to access keys
+    via an X-Path-like syntax.
 
-      Example:
-        pd = JSONPathDict({'hello': {'hi': 'there'}})
-        pd['hello.hi'] # Returns 'there'
-  """
+    Example:
+      pd = JSONPathDict({'hello': {'hi': 'there'}})
+      pd['hello.hi'] # Returns 'there'
+    """
 
     def __init__(self, dict_value):
-        """ Init the helper with the JSON object.
-    """
+        """
+        Init the helper with the JSON object.
+        """
         self._object = dict_value
 
     def __getitem__(self, path):
@@ -69,7 +78,11 @@ class JSONPathDict(object):
         return self._object.iterkeys()
 
     def get(self, path, not_found_handler=None):
-        """ Returns the value found at the given path. Path is a json-path expression. """
+        """
+        Returns the value found at the given path.
+
+        Path is a json-path expression.
+        """
         if self._object == {} or self._object is None:
             return None
         jsonpath_expr = parse(path)

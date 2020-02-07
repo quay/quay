@@ -166,9 +166,9 @@ def validate_scope_string(scopes):
 
 
 def is_subset_string(full_string, expected_string):
-    """ Returns true if the scopes found in expected_string are also found
-      in full_string.
-  """
+    """
+    Returns true if the scopes found in expected_string are also found in full_string.
+    """
     full_scopes = scopes_from_scope_string(full_string)
     if not full_scopes:
         return False

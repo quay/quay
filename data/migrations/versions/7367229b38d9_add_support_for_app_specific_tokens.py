@@ -1,9 +1,9 @@
-"""Add support for app specific tokens
+"""
+Add support for app specific tokens.
 
 Revision ID: 7367229b38d9
 Revises: d8989249f8f6
 Create Date: 2017-12-12 13:15:42.419764
-
 """
 
 # revision identifiers, used by Alembic.

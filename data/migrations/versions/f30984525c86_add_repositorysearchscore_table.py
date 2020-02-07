@@ -1,9 +1,9 @@
-"""Add RepositorySearchScore table
+"""
+Add RepositorySearchScore table.
 
 Revision ID: f30984525c86
 Revises: be8d1c402ce0
 Create Date: 2017-04-04 14:30:13.270728
-
 """
 
 # revision identifiers, used by Alembic.

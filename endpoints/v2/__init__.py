@@ -67,8 +67,8 @@ def paginate(
     callback_kwarg_name="pagination_callback",
 ):
     """
-  Decorates a handler adding a parsed pagination token and a callback to encode a response token.
-  """
+    Decorates a handler adding a parsed pagination token and a callback to encode a response token.
+    """
 
     def wrapper(func):
         @wraps(func)

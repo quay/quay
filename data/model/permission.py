@@ -240,7 +240,9 @@ def __apply_permission_list(repo, proto_query, name_property, create_permission_
 def __entity_permission_repo_query(
     entity_id, entity_table, entity_id_property, namespace_name, repository_name
 ):
-    """ This method works for both users and teams. """
+    """
+    This method works for both users and teams.
+    """
 
     return (
         RepositoryPermission.select(entity_table, Repository, Namespace, Role, RepositoryPermission)

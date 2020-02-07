@@ -13,7 +13,9 @@ class BittorrentValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the configuration for using BitTorrent for downloads. """
+        """
+        Validates the configuration for using BitTorrent for downloads.
+        """
         config = validator_context.config
         client = validator_context.http_client
 

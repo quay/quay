@@ -66,8 +66,8 @@ class TeamPermission(namedtuple("TeamPermission", ["role_name", "team_name", "av
 @add_metaclass(ABCMeta)
 class PermissionDataInterface(object):
     """
-  Data interface used by permissions API
-  """
+    Data interface used by permissions API.
+    """
 
     @abstractmethod
     def get_repo_permissions_by_user(self, namespace_name, repository_name):

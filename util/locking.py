@@ -9,13 +9,18 @@ logger = logging.getLogger(__name__)
 
 
 class LockNotAcquiredException(Exception):
-    """ Exception raised if a GlobalLock could not be acquired. """
+    """
+    Exception raised if a GlobalLock could not be acquired.
+    """
 
 
 class GlobalLock(object):
-    """ A lock object that blocks globally via Redis. Note that Redis is not considered a tier-1
-      service, so this lock should not be used for any critical code paths.
-  """
+    """
+    A lock object that blocks globally via Redis.
+
+    Note that Redis is not considered a tier-1 service, so this lock should not be used for any
+    critical code paths.
+    """
 
     def __init__(self, name, lock_ttl=600):
         self._lock_name = name

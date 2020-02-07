@@ -12,9 +12,11 @@ POLL_PERIOD_SECONDS = 10
 
 
 class ChunkCleanupWorker(QueueWorker):
-    """ Worker which cleans up chunks enqueued by the storage engine(s). This is typically used to
-      cleanup empty chunks which are no longer needed.
-  """
+    """
+    Worker which cleans up chunks enqueued by the storage engine(s).
+
+    This is typically used to cleanup empty chunks which are no longer needed.
+    """
 
     def process_queue_item(self, job_details):
         logger.debug("Got chunk cleanup queue item: %s", job_details)
