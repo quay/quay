@@ -28,13 +28,14 @@ def get_config_as_kube_secret(config_path):
     certs_dir = os.path.join(config_path, EXTRA_CA_DIRECTORY)
     if os.path.exists(certs_dir):
         for extra_cert in os.listdir(certs_dir):
-            with open(os.path.join(certs_dir, extra_cert)) as f:
-                data[EXTRA_CA_DIRECTORY_PREFIX + extra_cert] = base64.b64encode(f.read())
+            file_path = os.path.join(certs_dir, extra_cert)
+            with open(file_path, "rb") as f:
+                data[EXTRA_CA_DIRECTORY_PREFIX + extra_cert] = base64.b64encode(f.read()).decode()
 
     for name in os.listdir(config_path):
         file_path = os.path.join(config_path, name)
         if not os.path.isdir(file_path):
-            with open(file_path) as f:
-                data[name] = base64.b64encode(f.read())
+            with open(file_path, "rb") as f:
+                data[name] = base64.b64encode(f.read()).decode()
 
     return data
