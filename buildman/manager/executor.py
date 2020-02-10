@@ -43,7 +43,6 @@ build_start_duration = Histogram(
     "quay_build_start_duration_seconds",
     "seconds taken for a executor to start executing a queued build",
     labelnames=["executor"],
-    buckets=[0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 180.0, 240.0, 300.0, 600.0],
 )
 
 
