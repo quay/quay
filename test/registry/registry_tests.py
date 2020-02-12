@@ -18,7 +18,7 @@ from test.registry.protocol_fixtures import *
 from test.registry.protocols import Failures, Image, layer_bytes_for_contents, ProtocolOptions
 
 from app import instance_keys
-from data.model.tag import list_repository_tags
+from data.registry_model import registry_model
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
@@ -170,37 +170,6 @@ def test_overwrite_tag(
         "latest",
         different_images,
         credentials=credentials,
-    )
-
-
-def test_no_tag_manifests(
-    pusher,
-    puller,
-    basic_images,
-    liveserver_session,
-    app_reloader,
-    liveserver,
-    registry_server_executor,
-    data_model,
-):
-    """ Test: Basic pull without manifests. """
-    if data_model == "oci_model":
-        # Skip; OCI model doesn't have tag backfill.
-        return
-
-    credentials = ("devtable", "password")
-
-    # Push a new repository.
-    pusher.push(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
-    )
-
-    # Delete all tag manifests.
-    registry_server_executor.on(liveserver).delete_manifests()
-
-    # Ensure we can still pull.
-    puller.pull(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
     )
 
 
@@ -1057,77 +1026,6 @@ def test_expiration_label(
         assert tag_data.get("end_ts") is None
 
 
-@pytest.mark.parametrize(
-    "content_type",
-    [
-        "application/vnd.oci.image.manifest.v1+json",
-        "application/vnd.docker.distribution.manifest.v2+json",
-    ],
-)
-def test_unsupported_manifest_content_type(
-    content_type, manifest_protocol, basic_images, data_model, liveserver_session, app_reloader
-):
-    """ Test: Attempt to push a manifest with an unsupported media type. """
-    if data_model == "oci_model":
-        # Skip; OCI requires the new manifest content types.
-        return
-
-    credentials = ("devtable", "password")
-
-    options = ProtocolOptions()
-    options.manifest_content_type = content_type
-
-    # Attempt to push a new repository.
-    manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        options=options,
-        expected_failure=Failures.UNSUPPORTED_CONTENT_TYPE,
-    )
-
-
-@pytest.mark.parametrize(
-    "accept_mimetypes",
-    [
-        ["application/vnd.oci.image.manifest.v1+json"],
-        [
-            "application/vnd.docker.distribution.manifest.v2+json",
-            "application/vnd.docker.distribution.manifest.list.v2+json",
-        ],
-        ["application/vnd.foo.bar"],
-    ],
-)
-def test_unsupported_manifest_accept_headers(
-    accept_mimetypes, manifest_protocol, basic_images, data_model, liveserver_session, app_reloader
-):
-    """ Test: Attempt to push a manifest with an unsupported accept headers. """
-    if data_model == "oci_model":
-        # Skip; OCI requires the new manifest content types.
-        return
-
-    credentials = ("devtable", "password")
-
-    options = ProtocolOptions()
-    options.manifest_content_type = DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
-    options.accept_mimetypes = accept_mimetypes
-
-    # Attempt to push a new repository.
-    manifest_protocol.push(
-        liveserver_session,
-        "devtable",
-        "newrepo",
-        "latest",
-        basic_images,
-        credentials=credentials,
-        options=options,
-        expected_failure=Failures.UNSUPPORTED_CONTENT_TYPE,
-    )
-
-
 def test_invalid_blob_reference(manifest_protocol, basic_images, liveserver_session, app_reloader):
     """ Test: Attempt to push a manifest with an invalid blob reference. """
     credentials = ("devtable", "password")
@@ -1594,7 +1492,8 @@ def test_tags(
         repo_name=repository,
     )
 
-    expected_tags = [tag.name for tag in list_repository_tags(namespace, repository)]
+    repo_ref = registry_model.lookup_repository(namespace, repository)
+    expected_tags = [tag.name for tag in registry_model.list_all_active_repository_tags(repo_ref)]
     assert len(results) == len(expected_tags)
     assert set([r for r in results]) == set(expected_tags)
 
@@ -1744,7 +1643,9 @@ def test_multilayer_squashed_images(
     tar = tarfile.open(fileobj=StringIO(response.content))
 
     # Verify the squashed image.
-    expected_image_id = "9d35b270436387f821e08de0dfdd501efd70de893ec2c2c7cb01ef19008bee7a"
+    expected_image_id = next(
+        (name for name in tar.getnames() if not "/" in name and name != "repositories")
+    )
     expected_names = [
         "repositories",
         expected_image_id,
@@ -1936,9 +1837,6 @@ def test_aci_conversion_manifest_list(
     schema_version,
 ):
     """ Test: Pulling of ACI converted image from a manifest list. """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2428,9 +2326,6 @@ def test_push_pull_manifest_list_back_compat(
     """ Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
       and one not, and, if there is a legacy manifest, ensure it can be pulled.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2496,9 +2391,6 @@ def test_push_pull_manifest_list(
     """ Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
       and one not, and pull it.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2550,9 +2442,6 @@ def test_push_pull_manifest_remote_layers(
     """ Test: Push a new tag with a manifest which contains at least one remote layer, and then
       pull that manifest back.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2582,9 +2471,6 @@ def test_push_manifest_list_missing_manifest(
 ):
     """ Test: Attempt to push a new tag with a manifest list containing an invalid manifest.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2617,9 +2503,6 @@ def test_push_pull_manifest_list_again(
     """ Test: Push a new tag with a manifest list containing two manifests, push it again, and pull
       it.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2678,9 +2561,6 @@ def test_push_pull_manifest_list_duplicate_manifest(
 ):
     """ Test: Push a manifest list that contains the same child manifest twice.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2746,7 +2626,9 @@ def test_squashed_images_empty_layer(
     tar = tarfile.open(fileobj=StringIO(response.content))
 
     # Verify the squashed image.
-    expected_image_id = "9d35b270436387f821e08de0dfdd501efd70de893ec2c2c7cb01ef19008bee7a"
+    expected_image_id = next(
+        (name for name in tar.getnames() if not "/" in name and name != "repositories")
+    )
     expected_names = [
         "repositories",
         expected_image_id,
@@ -2763,10 +2645,6 @@ def test_squashed_image_unsupported(
 ):
     """ Test: Attempting to pull a squashed image for a manifest list without an amd64+linux entry.
   """
-    credentials = ("devtable", "password")
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2802,10 +2680,6 @@ def test_squashed_image_manifest_list(
     """ Test: Pull a squashed image for a manifest list with an amd64+linux entry.
   """
     credentials = ("devtable", "password")
-    if data_model != "oci_model":
-        return
-
-    credentials = ("devtable", "password")
     options = ProtocolOptions()
 
     # Build the manifest that will go in the list.
@@ -2835,7 +2709,9 @@ def test_squashed_image_manifest_list(
 
     # Verify the squashed image.
     tar = tarfile.open(fileobj=StringIO(response.content))
-    expected_image_id = "9d35b270436387f821e08de0dfdd501efd70de893ec2c2c7cb01ef19008bee7a"
+    expected_image_id = next(
+        (name for name in tar.getnames() if not "/" in name and name != "repositories")
+    )
     expected_names = [
         "repositories",
         expected_image_id,
@@ -2851,10 +2727,6 @@ def test_verify_schema2(
     v22_protocol, basic_images, liveserver_session, liveserver, app_reloader, data_model
 ):
     """ Test: Ensure that pushing of schema 2 manifests results in a pull of a schema2 manifest. """
-    credentials = ("devtable", "password")
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2928,9 +2800,6 @@ def test_pull_manifest_list_schema2_only(
       list content type is not being sent, this should return just the manifest (or none if no
       linux+amd64 is present.)
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
 
     # Build the manifests that will go in the list.
@@ -3026,9 +2895,6 @@ def test_push_legacy_pull_not_allowed(
     """ Test: Push a V2 Schema 2 manifest and attempt to pull via V1 when there is no assigned legacy
       image.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -3144,9 +3010,6 @@ def test_attempt_push_mismatched_manifest(
     """ Test: Attempt to push a manifest list refering to a schema 1 manifest with a different
       architecture than that specified in the manifest list.
   """
-    if data_model != "oci_model":
-        return
-
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 

@@ -174,16 +174,13 @@ def registry_server_executor(app):
     return executor
 
 
-@pytest.fixture(params=["pre_oci_model", "oci_model"])
+@pytest.fixture(params=["oci_model"])
 def data_model(request):
     return request.param
 
 
 @pytest.fixture()
 def liveserver_app(app, registry_server_executor, init_db_path, data_model):
-    # Change the data model being used.
-    registry_model.set_for_testing(data_model == "oci_model")
-
     registry_server_executor.apply_blueprint_to_app(app)
 
     if os.environ.get("DEBUG", "false").lower() == "true":

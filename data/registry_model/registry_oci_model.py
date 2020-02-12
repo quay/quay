@@ -19,6 +19,7 @@ from data.registry_model.datatypes import (
     Blob,
     ShallowTag,
     LikelyVulnerableTag,
+    RepositoryReference,
 )
 from data.registry_model.shared import SharedModel
 from data.registry_model.label_handlers import apply_label_to_manifest
@@ -143,6 +144,8 @@ class OCIModel(SharedModel, RegistryDataInterface):
         """
         Returns the manifest associated with the given tag.
         """
+        assert tag is not None
+
         legacy_image = None
         if include_legacy_image:
             legacy_image = oci.shared.get_legacy_image_for_manifest(tag._manifest)
@@ -388,7 +391,10 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
         # Re-target the tag to it.
         tag = oci.tag.retarget_tag(
-            tag_name, created_manifest.manifest, adjust_old_model=not self.oci_model_only
+            tag_name,
+            created_manifest.manifest,
+            adjust_old_model=not self.oci_model_only,
+            raise_on_error=raise_on_error,
         )
         if tag is None:
             return (None, None)
@@ -814,6 +820,13 @@ class OCIModel(SharedModel, RegistryDataInterface):
                 yield LikelyVulnerableTag.for_tag(
                     tag, tag.repository, docker_image_id, storage_uuid
                 )
+
+    def find_repository_with_garbage(self, limit_to_gc_policy_s):
+        repo = model.oci.tag.find_repository_with_garbage(limit_to_gc_policy_s)
+        if repo is None:
+            return None
+
+        return RepositoryReference.for_repo_obj(repo)
 
 
 oci_model = OCIModel()

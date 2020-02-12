@@ -511,3 +511,9 @@ class RegistryDataInterface(object):
 
         Returns an iterator of LikelyVulnerableTag instances.
         """
+
+    @abstractmethod
+    def find_repository_with_garbage(self, limit_to_gc_policy_s):
+        """ Returns a repository reference to a repository that contains garbage for collection
+            or None if none.
+        """
