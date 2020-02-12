@@ -33,7 +33,6 @@ def default_services():
         "security_notification_worker": {"autostart": "true"},
         "securityworker": {"autostart": "true"},
         "storagereplication": {"autostart": "true"},
-        "tagbackfillworker": {"autostart": "true"},
         "teamsyncworker": {"autostart": "true"},
         "dnsmasq": {"autostart": "true"},
         "gunicorn-registry": {"autostart": "true"},

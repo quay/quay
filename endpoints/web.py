@@ -210,25 +210,6 @@ def setup():
     return index("")
 
 
-@web.route("/upgradeprogress/")
-@no_cache
-@route_show_if(not features.BILLING)
-@route_show_if(app.config.get("V3_UPGRADE_MODE") == "background")
-def upgrade_progress():
-    total_tags = RepositoryTag.select().where(RepositoryTag.hidden == False).count()
-    if total_tags == 0:
-        return jsonify({"progress": 1.0, "tags_remaining": 0, "total_tags": 0,})
-
-    upgraded_tags = TagToRepositoryTag.select().count()
-    return jsonify(
-        {
-            "progress": float(upgraded_tags) / total_tags,
-            "tags_remaining": total_tags - upgraded_tags,
-            "total_tags": total_tags,
-        }
-    )
-
-
 @web.route("/signin/")
 @no_cache
 def signin(redirect=None):

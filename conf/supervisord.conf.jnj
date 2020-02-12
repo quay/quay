@@ -168,14 +168,6 @@ autostart = {{ config['storagereplication']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:tagbackfillworker]
-environment=
-  PYTHONPATH=%(ENV_QUAYDIR)s
-command=python -m workers.tagbackfillworker
-autostart = {{ config['tagbackfillworker']['autostart'] }}
-stdout_events_enabled = true
-stderr_events_enabled = true
-
 [program:teamsyncworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
