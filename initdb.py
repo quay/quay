@@ -7,11 +7,13 @@ import os
 import argparse
 
 from datetime import datetime, timedelta, date
+from freezegun import freeze_time
 from peewee import SqliteDatabase
 from itertools import count
 from uuid import UUID, uuid4
 from threading import Event
 
+from app import app, storage as store, tf, docker_v2_signing_key
 from email.utils import formatdate
 from data.database import (
     db,
@@ -59,11 +61,14 @@ from data.fields import Credential
 from data.logs_model import logs_model
 from data.queue import WorkQueue
 from data.registry_model import registry_model
-from data.registry_model.registry_pre_oci_model import pre_oci_model
-from app import app, storage as store, tf
+from data.registry_model.datatypes import RepositoryReference
+from digest.digest_tools import sha256_digest
 from storage.basestorage import StoragePaths
 from image.docker.schema1 import DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
+from image.docker.schema1 import DockerSchema1ManifestBuilder
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from image.docker.schema2.config import DockerSchema2Config
 
 
 from workers import repositoryactioncounter
@@ -72,142 +77,9 @@ from workers import repositoryactioncounter
 logger = logging.getLogger(__name__)
 
 
-SAMPLE_DIFFS = ["test/data/sample/diffs/diffs%s.json" % i for i in range(1, 10)]
-
-SAMPLE_CMDS = [
-    ["/bin/bash"],
-    ["/bin/sh", "-c", 'echo "PasswordAuthentication no" >> /etc/ssh/sshd_config'],
-    ["/bin/sh", "-c", "sed -i 's/#\\(force_color_prompt\\)/\\1/' /etc/skel/.bashrc"],
-    ["/bin/sh", "-c", "#(nop) EXPOSE [8080]"],
-    ["/bin/sh", "-c", "#(nop) MAINTAINER Jake Moshenko <jake@devtable.com>"],
-    None,
-]
-
-REFERENCE_DATE = datetime(2013, 6, 23)
 TEST_STRIPE_ID = "cus_2tmnh3PkXQS8NG"
 
 IS_TESTING_REAL_DATABASE = bool(os.environ.get("TEST_DATABASE_URI"))
-
-
-def __gen_checksum(image_id):
-    csum = hashlib.md5(image_id)
-    return "tarsum+sha256:" + csum.hexdigest() + csum.hexdigest()
-
-
-def __gen_image_id(repo, image_num):
-    str_to_hash = "%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)
-
-    img_id = hashlib.md5(str_to_hash)
-    return img_id.hexdigest() + img_id.hexdigest()
-
-
-def __gen_image_uuid(repo, image_num):
-    str_to_hash = "%s/%s/%s" % (repo.namespace_user.username, repo.name, image_num)
-
-    img_uuid = hashlib.md5(str_to_hash)
-    return UUID(bytes=img_uuid.digest())
-
-
-global_image_num = count()
-
-
-def __create_subtree(with_storage, repo, structure, creator_username, parent, tag_map):
-    num_nodes, subtrees, last_node_tags = structure
-
-    # create the nodes
-    for model_num in range(num_nodes):
-        image_num = next(global_image_num)
-        docker_image_id = __gen_image_id(repo, image_num)
-        logger.debug("new docker id: %s", docker_image_id)
-        checksum = __gen_checksum(docker_image_id)
-
-        new_image = model.image.find_create_or_link_image(
-            docker_image_id, repo, None, {}, "local_us"
-        )
-        new_image.storage.uuid = __gen_image_uuid(repo, image_num)
-        new_image.storage.uploading = False
-        new_image.storage.save()
-
-        # Write out a fake torrentinfo
-        model.storage.save_torrent_info(new_image.storage, 1, "deadbeef")
-
-        # Write some data for the storage.
-        if with_storage or os.environ.get("WRITE_STORAGE_FILES"):
-            storage_paths = StoragePaths()
-            paths = [storage_paths.v1_image_layer_path]
-
-            for path_builder in paths:
-                path = path_builder(new_image.storage.uuid)
-                store.put_content("local_us", path, checksum)
-
-        new_image.security_indexed = False
-        new_image.security_indexed_engine = -1
-        new_image.save()
-
-        creation_time = REFERENCE_DATE + timedelta(weeks=image_num) + timedelta(days=model_num)
-        command_list = SAMPLE_CMDS[image_num % len(SAMPLE_CMDS)]
-        command = json.dumps(command_list) if command_list else None
-
-        v1_metadata = {
-            "id": docker_image_id,
-        }
-        if parent is not None:
-            v1_metadata["parent"] = parent.docker_image_id
-
-        new_image = model.image.set_image_metadata(
-            docker_image_id,
-            repo.namespace_user.username,
-            repo.name,
-            str(creation_time),
-            "no comment",
-            command,
-            json.dumps(v1_metadata),
-            parent,
-        )
-        new_image.storage.content_checksum = checksum
-        new_image.storage.save()
-
-        compressed_size = random.randrange(1, 1024 * 1024 * 1024)
-        model.storage.set_image_storage_metadata(
-            docker_image_id,
-            repo.namespace_user.username,
-            repo.name,
-            compressed_size,
-            int(compressed_size * 1.4),
-        )
-
-        parent = new_image
-
-    if last_node_tags:
-        if not isinstance(last_node_tags, list):
-            last_node_tags = [last_node_tags]
-
-        repo_ref = registry_model.lookup_repository(repo.namespace_user.username, repo.name)
-        for tag_name in last_node_tags:
-            adjusted_tag_name = tag_name
-            now_ms = None
-            if tag_name[0] == "#":
-                adjusted_tag_name = tag_name[1:]
-                now_ms = get_epoch_timestamp_ms() - 1000
-
-            new_tag = model.tag.create_or_update_tag(
-                repo.namespace_user.username,
-                repo.name,
-                adjusted_tag_name,
-                new_image.docker_image_id,
-                now_ms=now_ms,
-            )
-
-            derived = model.image.find_or_create_derived_storage(new_tag, "squash", "local_us")
-            model.storage.find_or_create_storage_signature(derived, "gpg2")
-
-            tag = pre_oci_model.get_repo_tag(repo_ref, adjusted_tag_name)
-            assert tag._db_id == new_tag.id
-            assert pre_oci_model.backfill_manifest_for_tag(tag)
-            tag_map[tag_name] = new_tag
-
-    for subtree in subtrees:
-        __create_subtree(with_storage, repo, subtree, creator_username, new_image, tag_map)
 
 
 def __generate_service_key(
@@ -253,9 +125,87 @@ def __generate_service_key(
         )
 
 
-def __generate_repository(
-    with_storage, user_obj, name, description, is_public, permissions, structure
+def _populate_blob(repo, content):
+    assert isinstance(repo, Repository)
+    assert isinstance(content, basestring)
+    digest = str(sha256_digest(content))
+    location = ImageStorageLocation.get(name="local_us")
+    blob = model.blob.store_blob_record_and_temp_link_in_repo(
+        repo, digest, location, len(content), 120
+    )
+    return blob, digest
+
+
+def __create_manifest_and_tags(
+    repo, structure, creator_username, tag_map, current_level=0, builder=None, last_leaf_id=None
 ):
+    num_layers, subtrees, tag_names = structure
+
+    num_layers = num_layers or 1
+
+    tag_names = tag_names or []
+    tag_names = [tag_names] if not isinstance(tag_names, list) else tag_names
+
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+    builder = (
+        builder
+        if builder
+        else DockerSchema1ManifestBuilder(repo.namespace_user.username, repo.name, "")
+    )
+
+    # TODO: Change this to a mixture of Schema1 and Schema2 manifest once we no longer need to
+    # read from storage for Schema2.
+
+    # Populate layers. Note, we do this in reverse order using insert_layer, as it is easier to
+    # add the leaf last (even though Schema1 has it listed first).
+    parent_id = last_leaf_id
+    leaf_id = None
+    for layer_index in range(0, num_layers):
+        content = "layer-%s-%s-%s" % (layer_index, current_level, get_epoch_timestamp_ms())
+        _, digest = _populate_blob(repo, content)
+        current_id = "abcdef%s%s%s" % (layer_index, current_level, get_epoch_timestamp_ms())
+
+        if layer_index == num_layers - 1:
+            leaf_id = current_id
+
+        config = {
+            "id": current_id,
+        }
+        if parent_id:
+            config["parent"] = parent_id
+
+        builder.insert_layer(digest, json.dumps(config))
+        parent_id = current_id
+
+    for tag_name in tag_names:
+        adjusted_tag_name = tag_name
+        now = datetime.utcnow()
+        if tag_name[0] == "#":
+            adjusted_tag_name = tag_name[1:]
+            now = now - timedelta(seconds=1)
+
+        manifest = builder.clone(adjusted_tag_name).build()
+
+        with freeze_time(now):
+            created_tag, _ = registry_model.create_manifest_and_retarget_tag(
+                repo_ref, manifest, adjusted_tag_name, store, raise_on_error=True
+            )
+            assert created_tag
+            tag_map[adjusted_tag_name] = created_tag
+
+    for subtree in subtrees:
+        __create_manifest_and_tags(
+            repo,
+            subtree,
+            creator_username,
+            tag_map,
+            current_level=current_level + 1,
+            builder=builder,
+            last_leaf_id=leaf_id,
+        )
+
+
+def __generate_repository(user_obj, name, description, is_public, permissions, structure):
     repo = model.repository.create_repository(user_obj.username, name, user_obj)
 
     if is_public:
@@ -268,11 +218,12 @@ def __generate_repository(
     for delegate, role in permissions:
         model.permission.set_user_repo_permission(delegate.username, user_obj.username, name, role)
 
+    tag_map = {}
     if isinstance(structure, list):
         for leaf in structure:
-            __create_subtree(with_storage, repo, leaf, user_obj.username, None, {})
+            __create_manifest_and_tags(repo, leaf, user_obj.username, tag_map)
     else:
-        __create_subtree(with_storage, repo, structure, user_obj.username, None, {})
+        __create_manifest_and_tags(repo, structure, user_obj.username, tag_map)
 
     return repo
 
@@ -292,7 +243,7 @@ def finished_database_for_testing(testcase):
     testcases[testcase]["transaction"].__exit__(True, None, None)
 
 
-def setup_database_for_testing(testcase, with_storage=False, force_rebuild=False):
+def setup_database_for_testing(testcase):
     """
     Called when a testcase has started using the database, indicating that the database should be
     setup (if not already) and a savepoint created.
@@ -302,7 +253,7 @@ def setup_database_for_testing(testcase, with_storage=False, force_rebuild=False
     if not IS_TESTING_REAL_DATABASE and not isinstance(db.obj, SqliteDatabase):
         raise RuntimeError("Attempted to wipe production database!")
 
-    if not db_initialized_for_testing.is_set() or force_rebuild:
+    if not db_initialized_for_testing.is_set():
         logger.debug("Setting up DB for testing.")
 
         # Setup the database.
@@ -310,7 +261,7 @@ def setup_database_for_testing(testcase, with_storage=False, force_rebuild=False
             wipe_database()
             initialize_database()
 
-        populate_database(with_storage=with_storage)
+        populate_database()
 
         models_missing_data = find_models_missing_data()
         if models_missing_data:
@@ -567,7 +518,7 @@ def wipe_database():
     db.drop_tables(all_models)
 
 
-def populate_database(minimal=False, with_storage=False):
+def populate_database(minimal=False):
     logger.debug("Populating the DB with test data.")
 
     # Check if the data already exists. If so, we skip. This can happen between calls from the
@@ -662,37 +613,31 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     __generate_repository(
-        with_storage,
-        new_user_4,
-        "randomrepo",
-        "Random repo repository.",
-        False,
-        [],
-        (4, [], ["latest", "prod"]),
+        new_user_4, "randomrepo", "Random repo repository.", False, [], (4, [], ["latest", "prod"]),
     )
 
     simple_repo = __generate_repository(
-        with_storage,
-        new_user_1,
-        "simple",
-        "Simple repository.",
-        False,
-        [],
-        (4, [], ["latest", "prod"]),
+        new_user_1, "simple", "Simple repository.", False, [], (4, [], ["latest", "prod"]),
     )
 
     # Add some labels to the latest tag's manifest.
-    tag_manifest = model.tag.load_tag_manifest(new_user_1.username, "simple", "latest")
-    first_label = model.label.create_manifest_label(tag_manifest, "foo", "bar", "manifest")
-    model.label.create_manifest_label(tag_manifest, "foo", "baz", "api")
-    model.label.create_manifest_label(tag_manifest, "anotherlabel", "1234", "internal")
-    model.label.create_manifest_label(tag_manifest, "jsonlabel", '{"hey": "there"}', "internal")
+    repo_ref = RepositoryReference.for_repo_obj(simple_repo)
+    tag = registry_model.get_repo_tag(repo_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+    assert manifest
+
+    first_label = registry_model.create_manifest_label(manifest, "foo", "bar", "manifest")
+    registry_model.create_manifest_label(manifest, "foo", "baz", "api")
+    registry_model.create_manifest_label(manifest, "anotherlabel", "1234", "internal")
+    registry_model.create_manifest_label(
+        manifest, "jsonlabel", '{"hey": "there"}', "internal", "application/json"
+    )
 
     label_metadata = {
         "key": "foo",
         "value": "bar",
-        "id": first_label.id,
-        "manifest_digest": tag_manifest.digest,
+        "id": first_label._db_id,
+        "manifest_digest": manifest.digest,
     }
 
     logs_model.log_action(
@@ -701,7 +646,7 @@ def populate_database(minimal=False, with_storage=False):
         performer=new_user_1,
         timestamp=datetime.now(),
         metadata=label_metadata,
-        repository=tag_manifest.tag.repository,
+        repository=simple_repo,
     )
 
     model.blob.initiate_upload(new_user_1.username, simple_repo.name, str(uuid4()), "local_us", {})
@@ -710,7 +655,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     __generate_repository(
-        with_storage,
         new_user_1,
         "sharedtags",
         "Shared tags repository",
@@ -731,7 +675,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     __generate_repository(
-        with_storage,
         new_user_1,
         "history",
         "Historical repository.",
@@ -741,7 +684,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     __generate_repository(
-        with_storage,
         new_user_1,
         "complex",
         "Complex repository with many branches and tags.",
@@ -755,7 +697,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     __generate_repository(
-        with_storage,
         new_user_1,
         "gargantuan",
         None,
@@ -775,19 +716,12 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     trusted_repo = __generate_repository(
-        with_storage,
-        new_user_1,
-        "trusted",
-        "Trusted repository.",
-        False,
-        [],
-        (4, [], ["latest", "prod"]),
+        new_user_1, "trusted", "Trusted repository.", False, [], (4, [], ["latest", "prod"]),
     )
     trusted_repo.trust_enabled = True
     trusted_repo.save()
 
     publicrepo = __generate_repository(
-        with_storage,
         new_user_2,
         "publicrepo",
         "Public repository pullable by the world.",
@@ -796,12 +730,9 @@ def populate_database(minimal=False, with_storage=False):
         (10, [], "latest"),
     )
 
-    __generate_repository(
-        with_storage, outside_org, "coolrepo", "Some cool repo.", False, [], (5, [], "latest")
-    )
+    __generate_repository(outside_org, "coolrepo", "Some cool repo.", False, [], (5, [], "latest"))
 
     __generate_repository(
-        with_storage,
         new_user_1,
         "shared",
         "Shared repository, another user can write.",
@@ -811,7 +742,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     __generate_repository(
-        with_storage,
         new_user_1,
         "text-full-repo",
         "This is a repository for testing text search",
@@ -821,7 +751,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     building = __generate_repository(
-        with_storage,
         new_user_1,
         "building",
         "Empty repository which is building.",
@@ -957,7 +886,6 @@ def populate_database(minimal=False, with_storage=False):
     owners.save()
 
     org_repo = __generate_repository(
-        with_storage,
         org,
         "orgrepo",
         "Repository owned by an org.",
@@ -967,7 +895,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     __generate_repository(
-        with_storage,
         org,
         "anotherorgrepo",
         "Another repository owned by an org.",
@@ -1004,7 +931,6 @@ def populate_database(minimal=False, with_storage=False):
     model.team.set_team_syncing(another_synced_team, "ldap", {"group_dn": "cn=Test-Group,ou=Users"})
 
     __generate_repository(
-        with_storage,
         new_user_1,
         "superwide",
         None,
@@ -1030,7 +956,6 @@ def populate_database(minimal=False, with_storage=False):
     )
 
     mirror_repo = __generate_repository(
-        with_storage,
         new_user_1,
         "mirrored",
         "Mirrored repository.",
@@ -1050,13 +975,7 @@ def populate_database(minimal=False, with_storage=False):
     mirror = model.repo_mirror.enable_mirroring_for_repository(*mirror_args, **mirror_kwargs)
 
     read_only_repo = __generate_repository(
-        with_storage,
-        new_user_1,
-        "readonly",
-        "Read-Only Repo.",
-        False,
-        [],
-        (4, [], ["latest", "prod"]),
+        new_user_1, "readonly", "Read-Only Repo.", False, [], (4, [], ["latest", "prod"]),
     )
     read_only_repo.state = RepositoryState.READ_ONLY
     read_only_repo.save()
@@ -1307,12 +1226,13 @@ def populate_database(minimal=False, with_storage=False):
 WHITELISTED_EMPTY_MODELS = [
     "DeletedNamespace",
     "DeletedRepository",
-    "LogEntry",
-    "LogEntry2",
     "ManifestChild",
     "NamespaceGeoRestriction",
     "RepoMirrorConfig",
     "RepoMirrorRule",
+    "ImageStorageSignature",
+    "DerivedStorageForImage",
+    "TorrentInfo",
 ]
 
 
@@ -1327,7 +1247,9 @@ def find_models_missing_data():
         try:
             one_model.select().get()
         except one_model.DoesNotExist:
-            if one_model.__name__ not in WHITELISTED_EMPTY_MODELS:
+            if one_model.__name__ not in WHITELISTED_EMPTY_MODELS and not hasattr(
+                one_model, "__deprecated_model"
+            ):
                 models_missing_data.add(one_model.__name__)
 
     return models_missing_data
