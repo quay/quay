@@ -357,13 +357,6 @@ def test_retarget_tag(initialized_db):
 
     assert results[0] == created
 
-    # Verify old-style tables.
-    repository_tag = TagToRepositoryTag.get(tag=created).repository_tag
-    assert repository_tag.lifetime_start_ts == int(created.lifetime_start_ms / 1000)
-
-    tag_manifest = TagManifest.get(tag=repository_tag)
-    assert TagManifestToManifest.get(tag_manifest=tag_manifest).manifest == created.manifest
-
 
 def test_retarget_tag_wrong_name(initialized_db):
     repo = get_repository("devtable", "history")

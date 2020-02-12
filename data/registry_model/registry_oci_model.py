@@ -197,12 +197,7 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
         # Create the label itself.
         label = oci.label.create_manifest_label(
-            manifest._db_id,
-            key,
-            value,
-            source_type_name,
-            media_type_name,
-            adjust_old_model=not self.oci_model_only,
+            manifest._db_id, key, value, source_type_name, media_type_name,
         )
         if label is None:
             return None
@@ -391,10 +386,7 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
         # Re-target the tag to it.
         tag = oci.tag.retarget_tag(
-            tag_name,
-            created_manifest.manifest,
-            adjust_old_model=not self.oci_model_only,
-            raise_on_error=raise_on_error,
+            tag_name, created_manifest.manifest, raise_on_error=raise_on_error,
         )
         if tag is None:
             return (None, None)

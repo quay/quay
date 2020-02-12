@@ -284,8 +284,9 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
         )
 
 
-def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_old_model=True,
-                 raise_on_error=False):
+def retarget_tag(
+    tag_name, manifest_id, is_reversion=False, now_ms=None, raise_on_error=False,
+):
     """
     Creates or updates a tag with the specified name to point to the given manifest under its
     repository.
@@ -351,32 +352,6 @@ def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
         )
-
-        # TODO: Remove the linkage code once RepositoryTag is gone.
-        # If this is a schema 1 manifest, then add a TagManifest linkage to it. Otherwise, it will only
-        # be pullable via the new OCI model.
-        if adjust_old_model:
-            if (
-                manifest.media_type.name in DOCKER_SCHEMA1_CONTENT_TYPES
-                and legacy_image is not None
-            ):
-                old_style_tag = RepositoryTag.create(
-                    repository=manifest.repository_id,
-                    image=legacy_image,
-                    name=tag_name,
-                    lifetime_start_ts=now_ts,
-                    reversion=is_reversion,
-                )
-                TagToRepositoryTag.create(
-                    tag=created, repository_tag=old_style_tag, repository=manifest.repository_id
-                )
-
-                tag_manifest = TagManifest.create(
-                    tag=old_style_tag, digest=manifest.digest, json_data=manifest.manifest_bytes
-                )
-                TagManifestToManifest.create(
-                    tag_manifest=tag_manifest, manifest=manifest, repository=manifest.repository_id
-                )
 
         return created
 
