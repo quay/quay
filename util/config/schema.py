@@ -87,6 +87,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "LOGS_MODEL",
     "LOGS_MODEL_CONFIG",
     "APP_REGISTRY_RESULTS_LIMIT",
+    "V3_UPGRADE_MODE",  # Deprecated old flag
 }
 
 CONFIG_SCHEMA = {
@@ -105,18 +106,6 @@ CONFIG_SCHEMA = {
         "TAG_EXPIRATION_OPTIONS",
     ],
     "properties": {
-        "V3_UPGRADE_MODE": {
-            "type": "string",
-            "description": "The current stage of the V3 upgrade.",
-            "enum": [
-                "background",
-                "complete",
-                "production-transition",
-                "post-oci-rollout",
-                "post-oci-roll-back-compat",
-            ],
-            "x-example": "background",
-        },
         "REGISTRY_STATE": {
             "type": "string",
             "description": "The state of the registry.",

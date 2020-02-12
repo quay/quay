@@ -48,14 +48,5 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    if (
-        (app.config.get("V3_UPGRADE_MODE") == "production-transition")
-        or (app.config.get("V3_UPGRADE_MODE") == "post-oci-rollout")
-        or (app.config.get("V3_UPGRADE_MODE") == "post-oci-roll-back-compat")
-    ):
-        logger.debug("GC worker disabled for production transition; skipping")
-        while True:
-            time.sleep(100000)
-
     worker = GarbageCollectionWorker()
     worker.start()

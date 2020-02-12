@@ -1,3 +1,2 @@
 SETUP_COMPLETE: true
-V3_UPGRADE_MODE: complete
 DATABASE_SECRET_KEY: anothercrazykey!
