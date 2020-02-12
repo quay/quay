@@ -611,9 +611,8 @@ def build_status_badge(namespace_name, repo_name):
         if not repo or token != repo.badge_token:
             abort(404)
 
-    is_empty = model.repository.is_empty(namespace_name, repo_name)
     recent_build = model.build.get_recent_repository_build(namespace_name, repo_name)
-    if not is_empty and (not recent_build or recent_build.phase == "complete"):
+    if recent_build and recent_build.phase == "complete":
         status_name = "ready"
     elif recent_build and recent_build.phase == "error":
         status_name = "failed"
