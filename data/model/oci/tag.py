@@ -35,6 +35,11 @@ from util.timedeltastring import convert_to_timedelta
 logger = logging.getLogger(__name__)
 
 
+class RetargetTagException(Exception):
+    """ Exception raised when re-targetting a tag fails and explicit exception
+      raising is requested. """
+
+
 def get_tag_by_id(tag_id):
     """
     Returns the tag with the given ID, joined with its manifest or None if none.
@@ -278,7 +283,8 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
         )
 
 
-def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_old_model=True):
+def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_old_model=True,
+                 raise_on_error=False):
     """
     Creates or updates a tag with the specified name to point to the given manifest under its
     repository.
@@ -294,6 +300,9 @@ def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_
             .get()
         )
     except Manifest.DoesNotExist:
+        if raise_on_error:
+            raise RetargetTagException("Manifest requested no longer exists")
+
         return None
 
     # CHECK: Make sure that we are not mistargeting a schema 1 manifest to a tag with a different
@@ -310,8 +319,11 @@ def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_
                     tag_name,
                 )
                 return None
-        except MalformedSchema1Manifest:
+        except MalformedSchema1Manifest as msme:
             logger.exception("Could not parse schema1 manifest")
+            if raise_on_error:
+                raise RetargetTagException(msme)
+
             return None
 
     legacy_image = get_legacy_image_for_manifest(manifest)
