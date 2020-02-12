@@ -34,7 +34,9 @@ def test_change_tag_expiration(client, app):
             "tag": "latest",
         }
 
-        tag = model.tag.get_active_tag("devtable", "simple", "latest")
+        repo_ref = registry_model.lookup_repository("devtable", "simple")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
+
         updated_expiration = tag.lifetime_start_ts + 60 * 60 * 24
 
         request_body = {
@@ -42,7 +44,7 @@ def test_change_tag_expiration(client, app):
         }
 
         conduct_api_call(cl, RepositoryTag, "put", params, request_body, 201)
-        tag = model.tag.get_active_tag("devtable", "simple", "latest")
+        tag = registry_model.get_repo_tag(repo_ref, "latest")
         assert tag.lifetime_end_ts == updated_expiration
 
 

@@ -208,7 +208,7 @@ def test_delete_tag(initialized_db):
         assert get_tag(repo, tag.name) == tag
         assert tag.lifetime_end_ms is None
 
-        with assert_query_count(4):
+        with assert_query_count(3):
             assert delete_tag(repo, tag.name) == tag
 
         assert get_tag(repo, tag.name) is None
@@ -222,7 +222,7 @@ def test_delete_tags_for_manifest(initialized_db):
         repo = tag.repository
         assert get_tag(repo, tag.name) == tag
 
-        with assert_query_count(5):
+        with assert_query_count(4):
             assert delete_tags_for_manifest(tag.manifest) == [tag]
 
         assert get_tag(repo, tag.name) is None

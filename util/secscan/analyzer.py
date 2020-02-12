@@ -6,7 +6,7 @@ from collections import defaultdict
 import features
 
 from data.database import ExternalNotificationEvent, IMAGE_NOT_SCANNED_ENGINE_VERSION, Image
-from data.model.tag import filter_tags_have_repository_event, get_tags_for_image
+from data.model.oci.tag import filter_tags_have_repository_event, get_tags_for_legacy_image
 from data.model.image import set_secscan_status, get_image_with_storage_and_parent_base
 from notifications import spawn_notification
 from util.secscan import PRIORITY_LEVELS
@@ -165,7 +165,12 @@ class LayerAnalyzer(object):
             # Get the tags of the layer we analyzed.
             repository_map = defaultdict(list)
             event = ExternalNotificationEvent.get(name="vulnerability_found")
-            matching = list(filter_tags_have_repository_event(get_tags_for_image(layer.id), event))
+
+            # NOTE: This should really use the registry_model, but as this whole analyzer is
+            # now deprecated, we'll keep calling into the model directly for the time being.
+            matching = list(
+                filter_tags_have_repository_event(get_tags_for_legacy_image(layer.id), event)
+            )
 
             for tag in matching:
                 repository_map[tag.repository_id].append(tag)

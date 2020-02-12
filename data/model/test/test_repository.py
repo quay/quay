@@ -17,13 +17,6 @@ def test_duplicate_repository_different_kinds(initialized_db):
     assert not create_repository("devtable", "somenewrepo", None, repo_kind="application")
 
 
-def test_is_empty(initialized_db):
-    create_repository("devtable", "somenewrepo", None, repo_kind="image")
-
-    assert is_empty("devtable", "somenewrepo")
-    assert not is_empty("devtable", "simple")
-
-
 @pytest.mark.skipif(
     os.environ.get("TEST_DATABASE_URI", "").find("mysql") >= 0,
     reason="MySQL requires specialized indexing of newly created repos",
