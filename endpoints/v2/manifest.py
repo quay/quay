@@ -11,6 +11,7 @@ from auth.registry_jwt_auth import process_registry_jwt_auth
 from digest import digest_tools
 from data.registry_model import registry_model
 from data.model.oci.manifest import CreateManifestException
+from data.model.oci.tag import RetargetTagException
 from endpoints.decorators import anon_protect, parse_repository_name, check_readonly
 from endpoints.metrics import image_pulls, image_pushes
 from endpoints.v2 import v2_bp, require_repo_read, require_repo_write
@@ -160,6 +161,16 @@ def _reject_manifest2_schema2(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         namespace_name = kwargs["namespace_name"]
+        if (
+            request.content_type
+            and request.content_type != "application/json"
+            and request.content_type
+            not in DOCKER_SCHEMA1_CONTENT_TYPES | DOCKER_SCHEMA2_CONTENT_TYPES
+        ):
+            raise ManifestInvalid(
+                detail={"message": "manifest schema version not supported"}, http_status_code=415
+            )
+
         if registry_model.supports_schema2(namespace_name) and namespace_name not in app.config.get(
             "V22_NAMESPACE_BLACKLIST", []
         ):
@@ -355,6 +366,8 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         )
     except CreateManifestException as cme:
         raise ManifestInvalid(detail={"message": str(cme)})
+    except RetargetTagException as rte:
+        raise ManifestInvalid(detail={"message": str(rte)})
 
     if manifest is None:
         raise ManifestInvalid()
