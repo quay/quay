@@ -1233,6 +1233,8 @@ WHITELISTED_EMPTY_MODELS = [
     "ImageStorageSignature",
     "DerivedStorageForImage",
     "TorrentInfo",
+    "LogEntry",
+    "LogEntry2",
 ]
 
 
