@@ -4,6 +4,7 @@ import unittest
 
 from app import app, storage, notification_queue, url_scheme_and_hostname
 from data import model
+from data.registry_model import registry_model
 from data.database import Image, IMAGE_NOT_SCANNED_ENGINE_VERSION
 from endpoints.v2 import v2_bp
 from initdb import setup_database_for_testing, finished_database_for_testing
@@ -28,6 +29,17 @@ def process_notification_data(legacy_api, notification_data):
     result = handler.process_notification_page_data(notification_data)
     handler.send_notifications()
     return result == ProcessNotificationPageResult.FINISHED_PROCESSING
+
+
+def _get_legacy_image(namespace, repo, tag, include_storage=True):
+    repo_ref = registry_model.lookup_repository(namespace, repo)
+    repo_tag = registry_model.get_repo_tag(repo_ref, tag, include_legacy_image=True)
+    return Image.get(id=repo_tag.legacy_image._db_id)
+
+
+def _delete_tag(namespace, repo, tag):
+    repo_ref = registry_model.lookup_repository(namespace, repo)
+    registry_model.delete_tag(repo_ref, tag)
 
 
 class TestSecurityScanner(unittest.TestCase):
@@ -81,9 +93,7 @@ class TestSecurityScanner(unittest.TestCase):
         """
         Test for basic retrieval of layers from the security scanner.
         """
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
 
         with fake_security_scanner() as security_scanner:
             # Ensure the layer doesn't exist yet.
@@ -112,9 +122,7 @@ class TestSecurityScanner(unittest.TestCase):
             # Already registered.
             pass
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -137,7 +145,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
     def test_analyze_layer_success(self):
@@ -145,9 +153,7 @@ class TestSecurityScanner(unittest.TestCase):
         Tests that analyzing a layer successfully marks it as analyzed.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -155,7 +161,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
     def test_analyze_layer_failure(self):
@@ -163,9 +169,7 @@ class TestSecurityScanner(unittest.TestCase):
         Tests that failing to analyze a layer (because it 422s) marks it as analyzed but failed.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -175,7 +179,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_internal_error(self):
@@ -183,9 +187,7 @@ class TestSecurityScanner(unittest.TestCase):
         Tests that failing to analyze a layer (because it 500s) marks it as not analyzed.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -196,7 +198,7 @@ class TestSecurityScanner(unittest.TestCase):
             with self.assertRaises(APIRequestFailure):
                 analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, False, -1)
 
     def test_analyze_layer_error(self):
@@ -204,9 +206,7 @@ class TestSecurityScanner(unittest.TestCase):
         Tests that failing to analyze a layer (because it 400s) marks it as analyzed but failed.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -219,7 +219,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer.analyze_recursively(layer)
 
             # Make sure it is marked as analyzed, but in a failed state.
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_unexpected_status(self):
@@ -227,9 +227,7 @@ class TestSecurityScanner(unittest.TestCase):
         Tests that a response from a scanner with an unexpected status code fails correctly.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -243,7 +241,7 @@ class TestSecurityScanner(unittest.TestCase):
                 analyzer.analyze_recursively(layer)
 
             # Make sure it isn't analyzed.
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, False, -1)
 
     def test_analyze_layer_missing_parent_handled(self):
@@ -251,9 +249,7 @@ class TestSecurityScanner(unittest.TestCase):
         Tests that a missing parent causes an automatic reanalysis, which succeeds.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -263,7 +259,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer.analyze_recursively(layer)
 
             # Make sure it was analyzed.
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
             # Mark the layer as not yet scanned.
@@ -277,7 +273,7 @@ class TestSecurityScanner(unittest.TestCase):
             # Analyze again, which should properly re-analyze the missing parent and this layer.
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
     def test_analyze_layer_invalid_parent(self):
@@ -286,9 +282,7 @@ class TestSecurityScanner(unittest.TestCase):
         analyzed, but failed.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -298,7 +292,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer.analyze_recursively(layer)
 
             # Make sure it was analyzed.
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
             # Mark the layer as not yet scanned.
@@ -315,7 +309,7 @@ class TestSecurityScanner(unittest.TestCase):
             # Try to analyze again, which should try to reindex the parent and fail.
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_unsupported_parent(self):
@@ -324,9 +318,7 @@ class TestSecurityScanner(unittest.TestCase):
         being marked as analyzed, but failed.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -338,7 +330,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def test_analyze_layer_missing_storage(self):
@@ -346,9 +338,7 @@ class TestSecurityScanner(unittest.TestCase):
         Tests trying to analyze a layer with missing storage.
         """
 
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -362,15 +352,13 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, False, 1)
 
     def assert_analyze_layer_notify(
         self, security_indexed_engine, security_indexed, expect_notification
     ):
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         self.assertFalse(layer.security_indexed)
         self.assertEquals(-1, layer.security_indexed_engine)
 
@@ -414,7 +402,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
         # Ensure an event was written for the tag (if necessary).
@@ -442,7 +430,7 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertIsNone(queue_item)
 
         # Ensure its security indexed engine was updated.
-        updated_layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+        updated_layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
         self.assertEquals(updated_layer.id, layer.id)
         self.assertTrue(updated_layer.security_indexed_engine > 0)
 
@@ -459,9 +447,7 @@ class TestSecurityScanner(unittest.TestCase):
         self.assert_analyze_layer_notify(0, False, True)
 
     def test_notification_new_layers_not_vulnerable(self):
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         layer_id = "%s.%s" % (layer.docker_image_id, layer.storage.uuid)
 
         # Add a repo event for the layer.
@@ -478,7 +464,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
             # Add a notification for the layer.
@@ -491,9 +477,7 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertIsNone(notification_queue.get())
 
     def test_notification_delete(self):
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         layer_id = "%s.%s" % (layer.docker_image_id, layer.storage.uuid)
 
         # Add a repo event for the layer.
@@ -510,7 +494,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
             # Add a notification for the layer.
@@ -523,9 +507,7 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertIsNone(notification_queue.get())
 
     def test_notification_new_layers(self):
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         layer_id = "%s.%s" % (layer.docker_image_id, layer.storage.uuid)
 
         # Add a repo event for the layer.
@@ -542,7 +524,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
             vuln_info = {
@@ -575,9 +557,7 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertTrue(item_body["event_data"]["vulnerability"]["has_fix"])
 
     def test_notification_no_new_layers(self):
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
 
         # Add a repo event for the layer.
         repo = model.repository.get_repository(ADMIN_ACCESS_USER, SIMPLE_REPO)
@@ -593,7 +573,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
             # Add a notification for the layer.
@@ -616,9 +596,7 @@ class TestSecurityScanner(unittest.TestCase):
         )
 
     def test_notification_no_new_layers_increased_severity(self):
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
         layer_id = "%s.%s" % (layer.docker_image_id, layer.storage.uuid)
 
         # Add a repo event for the layer.
@@ -635,7 +613,7 @@ class TestSecurityScanner(unittest.TestCase):
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
 
             old_vuln_info = {
@@ -710,12 +688,8 @@ class TestSecurityScanner(unittest.TestCase):
         self.assertTrue(len(model.image.get_images_eligible_for_scan(expected_version + 1)) > 0)
 
     def test_notification_worker(self):
-        layer1 = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
-        layer2 = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, COMPLEX_REPO, "prod", include_storage=True
-        )
+        layer1 = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
+        layer2 = _get_legacy_image(ADMIN_ACCESS_USER, COMPLEX_REPO, "prod", include_storage=True)
 
         # Add a repo events for the layers.
         simple_repo = model.repository.get_repository(ADMIN_ACCESS_USER, SIMPLE_REPO)
@@ -781,12 +755,8 @@ class TestSecurityScanner(unittest.TestCase):
         self.assert_notification_worker_offset_pages(indexed=True)
 
     def assert_notification_worker_offset_pages(self, indexed=False):
-        layer1 = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
-        layer2 = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, COMPLEX_REPO, "prod", include_storage=True
-        )
+        layer1 = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
+        layer2 = _get_legacy_image(ADMIN_ACCESS_USER, COMPLEX_REPO, "prod", include_storage=True)
 
         # Add a repo events for the layers.
         simple_repo = model.repository.get_repository(ADMIN_ACCESS_USER, SIMPLE_REPO)
@@ -876,19 +846,17 @@ class TestSecurityScanner(unittest.TestCase):
             self.assertIsNone(notification_queue.get())
 
     def test_layer_gc(self):
-        layer = model.tag.get_tag_image(
-            ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True
-        )
+        layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest", include_storage=True)
 
         # Delete the prod tag so that only the `latest` tag remains.
-        model.tag.delete_tag(ADMIN_ACCESS_USER, SIMPLE_REPO, "prod")
+        _delete_tag(ADMIN_ACCESS_USER, SIMPLE_REPO, "prod")
 
         with fake_security_scanner() as security_scanner:
             # Analyze the layer.
             analyzer = LayerAnalyzer(app.config, self.api)
             analyzer.analyze_recursively(layer)
 
-            layer = model.tag.get_tag_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            layer = _get_legacy_image(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             self.assertAnalyzed(layer, security_scanner, True, 1)
             self.assertTrue(security_scanner.has_layer(security_scanner.layer_id(layer)))
 
@@ -896,7 +864,7 @@ class TestSecurityScanner(unittest.TestCase):
             model.user.change_user_tag_expiration(namespace_user, 0)
 
             # Delete the tag in the repository and GC.
-            model.tag.delete_tag(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
+            _delete_tag(ADMIN_ACCESS_USER, SIMPLE_REPO, "latest")
             time.sleep(1)
 
             repo = model.repository.get_repository(ADMIN_ACCESS_USER, SIMPLE_REPO)
