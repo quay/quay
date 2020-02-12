@@ -147,7 +147,6 @@ from data.model import (
     repository,
     service_keys,
     storage,
-    tag,
     team,
     token,
     user,
