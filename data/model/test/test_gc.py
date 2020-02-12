@@ -1,5 +1,6 @@
 import hashlib
 import pytest
+import json
 
 from datetime import datetime, timedelta
 
@@ -13,20 +14,25 @@ from playhouse.test_utils import assert_query_count
 from freezegun import freeze_time
 
 from data import model, database
+from data.registry_model import registry_model
+from data.registry_model.datatypes import RepositoryReference
 from data.database import (
     Image,
     ImageStorage,
     DerivedStorageForImage,
     Label,
-    TagManifestLabel,
+    ManifestLabel,
     ApprBlob,
     Manifest,
     TagManifestToManifest,
     ManifestBlob,
     Tag,
     TagToRepositoryTag,
+    ImageStorageLocation,
+    RepositoryTag,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
+from digest.digest_tools import sha256_digest
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schemas import parse_manifest_from_bytes
@@ -52,53 +58,23 @@ def default_tag_policy(initialized_db):
     _set_tag_expiration_policy(PUBLIC_USER, 0)
 
 
-def create_image(docker_image_id, repository_obj, username):
-    preferred = storage.preferred_locations[0]
-    image = model.image.find_create_or_link_image(
-        docker_image_id, repository_obj, username, {}, preferred
+def _delete_temp_links(repo):
+    """ Deletes any temp links to blobs. """
+    for hidden in list(
+        RepositoryTag.select().where(RepositoryTag.hidden == True, RepositoryTag.repository == repo)
+    ):
+        hidden.delete_instance()
+        hidden.image.delete_instance()
+
+
+def _populate_blob(repo, content):
+    digest = str(sha256_digest(content))
+    location = ImageStorageLocation.get(name="local_us")
+    storage.put_content(["local_us"], storage.blob_path(digest), "somecontent")
+    blob = model.blob.store_blob_record_and_temp_link_in_repo(
+        repo, digest, location, len(content), 120
     )
-    image.storage.uploading = False
-    image.storage.save()
-
-    # Create derived images as well.
-    model.image.find_or_create_derived_storage(image, "squash", preferred)
-    model.image.find_or_create_derived_storage(image, "aci", preferred)
-
-    # Add some torrent info.
-    try:
-        database.TorrentInfo.get(storage=image.storage)
-    except database.TorrentInfo.DoesNotExist:
-        model.storage.save_torrent_info(image.storage, 1, "helloworld")
-
-    # Add some additional placements to the image.
-    for location_name in ["local_eu"]:
-        location = database.ImageStorageLocation.get(name=location_name)
-
-        try:
-            database.ImageStoragePlacement.get(location=location, storage=image.storage)
-        except:
-            continue
-
-        database.ImageStoragePlacement.create(location=location, storage=image.storage)
-
-    return image.storage
-
-
-def store_tag_manifest(namespace, repo_name, tag_name, image_id):
-    builder = DockerSchema1ManifestBuilder(namespace, repo_name, tag_name)
-    storage_id_map = {}
-    try:
-        image_storage = ImageStorage.select().where(~(ImageStorage.content_checksum >> None)).get()
-        builder.add_layer(image_storage.content_checksum, '{"id": "foo"}')
-        storage_id_map[image_storage.content_checksum] = image_storage.id
-    except ImageStorage.DoesNotExist:
-        pass
-
-    manifest = builder.build(docker_v2_signing_key)
-    manifest_row, _ = model.tag.store_tag_manifest_for_testing(
-        namespace, repo_name, tag_name, manifest, image_id, storage_id_map
-    )
-    return manifest_row
+    return blob, digest
 
 
 def create_repository(namespace=ADMIN_ACCESS_USER, name=REPO, **kwargs):
@@ -106,32 +82,8 @@ def create_repository(namespace=ADMIN_ACCESS_USER, name=REPO, **kwargs):
     repo = model.repository.create_repository(namespace, name, user)
 
     # Populate the repository with the tags.
-    image_map = {}
-    for tag_name in kwargs:
-        image_ids = kwargs[tag_name]
-        parent = None
-
-        for image_id in image_ids:
-            if not image_id in image_map:
-                image_map[image_id] = create_image(image_id, repo, namespace)
-
-            v1_metadata = {
-                "id": image_id,
-            }
-            if parent is not None:
-                v1_metadata["parent"] = parent.docker_image_id
-
-            # Set the ancestors for the image.
-            parent = model.image.set_image_metadata(
-                image_id, namespace, name, "", "", "", v1_metadata, parent=parent
-            )
-
-        # Set the tag for the image.
-        tag_manifest = store_tag_manifest(namespace, name, tag_name, image_ids[-1])
-
-        # Add some labels to the tag.
-        model.label.create_manifest_label(tag_manifest, "foo", "bar", "manifest")
-        model.label.create_manifest_label(tag_manifest, "meh", "grah", "manifest")
+    for tag_name, image_ids in kwargs.iteritems():
+        move_tag(repo, tag_name, image_ids, expect_gc=False)
 
     return repo
 
@@ -141,16 +93,41 @@ def gc_now(repository):
 
 
 def delete_tag(repository, tag, perform_gc=True, expect_gc=True):
-    model.tag.delete_tag(repository.namespace_user.username, repository.name, tag)
+    repo_ref = RepositoryReference.for_repo_obj(repository)
+    registry_model.delete_tag(repo_ref, tag)
     if perform_gc:
         assert model.gc.garbage_collect_repo(repository) == expect_gc
 
 
-def move_tag(repository, tag, docker_image_id, expect_gc=True):
-    model.tag.create_or_update_tag(
-        repository.namespace_user.username, repository.name, tag, docker_image_id
+def move_tag(repository, tag, image_ids, expect_gc=True):
+    namespace = repository.namespace_user.username
+    name = repository.name
+
+    repo_ref = RepositoryReference.for_repo_obj(repository)
+    builder = DockerSchema1ManifestBuilder(namespace, name, tag)
+
+    # NOTE: Building root to leaf.
+    parent_id = None
+    for image_id in image_ids:
+        config = {"id": image_id, "config": {"Labels": {"foo": "bar", "meh": "grah",}}}
+
+        if parent_id:
+            config["parent"] = parent_id
+
+        # Create a storage row for the layer blob.
+        _, layer_blob_digest = _populate_blob(repository, image_id)
+
+        builder.insert_layer(layer_blob_digest, json.dumps(config))
+        parent_id = image_id
+
+    # Store the manifest.
+    manifest = builder.build(docker_v2_signing_key)
+    registry_model.create_manifest_and_retarget_tag(
+        repo_ref, manifest, tag, storage, raise_on_error=True
     )
-    assert model.gc.garbage_collect_repo(repository) == expect_gc
+
+    if expect_gc:
+        assert model.gc.garbage_collect_repo(repository) == expect_gc
 
 
 def assert_not_deleted(repository, *args):
@@ -189,30 +166,43 @@ def _get_dangling_label_count():
 
 def _get_dangling_labels():
     label_ids = set([current.id for current in Label.select()])
-    referenced_by_manifest = set([mlabel.label_id for mlabel in TagManifestLabel.select()])
+    referenced_by_manifest = set([mlabel.label_id for mlabel in ManifestLabel.select()])
     return label_ids - referenced_by_manifest
 
 
 def _get_dangling_manifest_count():
     manifest_ids = set([current.id for current in Manifest.select()])
-    referenced_by_tag_manifest = set([tmt.manifest_id for tmt in TagManifestToManifest.select()])
-    return len(manifest_ids - referenced_by_tag_manifest)
+    referenced_by_tag = set([tag.manifest_id for tag in Tag.select()])
+    return len(manifest_ids - referenced_by_tag)
 
 
 @contextmanager
-def assert_gc_integrity(expect_storage_removed=True, check_oci_tags=True):
+def assert_gc_integrity(expect_storage_removed=True):
     """
     Specialized assertion for ensuring that GC cleans up all dangling storages and labels, invokes
     the callback for images removed and doesn't invoke the callback for images *not* removed.
     """
+
     # Add a callback for when images are removed.
     removed_image_storages = []
     model.config.register_image_cleanup_callback(removed_image_storages.extend)
+
+    # Store existing storages. We won't verify these for existence because they
+    # were likely created as test data.
+    existing_digests = set()
+    for storage_row in ImageStorage.select():
+        if storage_row.cas_path:
+            existing_digests.add(storage_row.content_checksum)
+
+    for blob_row in ApprBlob.select():
+        existing_digests.add(blob_row.digest)
 
     # Store the number of dangling storages and labels.
     existing_storage_count = _get_dangling_storage_count()
     existing_label_count = _get_dangling_label_count()
     existing_manifest_count = _get_dangling_manifest_count()
+
+    # Yield to the GC test.
     yield
 
     # Ensure the number of dangling storages, manifests and labels has not changed.
@@ -250,17 +240,17 @@ def assert_gc_integrity(expect_storage_removed=True, check_oci_tags=True):
     # Ensure all CAS storage is in the storage engine.
     preferred = storage.preferred_locations[0]
     for storage_row in ImageStorage.select():
+        if storage_row.content_checksum in existing_digests:
+            continue
+
         if storage_row.cas_path:
             storage.get_content({preferred}, storage.blob_path(storage_row.content_checksum))
 
     for blob_row in ApprBlob.select():
-        storage.get_content({preferred}, storage.blob_path(blob_row.digest))
+        if blob_row.digest in existing_digests:
+            continue
 
-    # Ensure there are no danglings OCI tags.
-    if check_oci_tags:
-        oci_tags = {t.id for t in Tag.select()}
-        referenced_oci_tags = {t.tag_id for t in TagToRepositoryTag.select()}
-        assert not oci_tags - referenced_oci_tags
+        storage.get_content({preferred}, storage.blob_path(blob_row.digest))
 
     # Ensure all tags have valid manifests.
     for manifest in {t.manifest for t in Tag.select()}:
@@ -296,13 +286,13 @@ def test_has_garbage(default_tag_policy, initialized_db):
     repository = create_repository(latest=["i1", "i2", "i3"])
 
     # Ensure that no repositories are returned by the has garbage check.
-    assert model.repository.find_repository_with_garbage(1000000000) is None
+    assert model.oci.tag.find_repository_with_garbage(1000000000) is None
 
     # Delete a tag.
     delete_tag(repository, "latest", perform_gc=False)
 
     # There should still not be any repositories with garbage, due to time machine.
-    assert model.repository.find_repository_with_garbage(1000000000) is None
+    assert model.oci.tag.find_repository_with_garbage(1000000000) is None
 
     # Change the time machine expiration on the namespace.
     (
@@ -312,7 +302,7 @@ def test_has_garbage(default_tag_policy, initialized_db):
     )
 
     # Now we should find the repository for GC.
-    repository = model.repository.find_repository_with_garbage(0)
+    repository = model.oci.tag.find_repository_with_garbage(0)
     assert repository is not None
     assert repository.name == REPO
 
@@ -320,7 +310,7 @@ def test_has_garbage(default_tag_policy, initialized_db):
     assert model.gc.garbage_collect_repo(repository)
 
     # There should now be no repositories with garbage.
-    assert model.repository.find_repository_with_garbage(0) is None
+    assert model.oci.tag.find_repository_with_garbage(0) is None
 
 
 def test_find_garbage_policy_functions(default_tag_policy, initialized_db):
@@ -466,7 +456,7 @@ def test_multiple_shared_images(default_tag_policy, initialized_db):
         # fourth -> f1->i1
 
         # Move tag fourth to i3. This should remove f1 since it is no longer referenced.
-        move_tag(repository, "fourth", "i3")
+        move_tag(repository, "fourth", ["i1", "i2", "i3"])
         assert_deleted(repository, "f1")
         assert_not_deleted(repository, "i1", "i2", "i3", "t1", "t2", "t3")
 
@@ -492,7 +482,7 @@ def test_multiple_shared_images(default_tag_policy, initialized_db):
         # fourth -> i3->i2->i1
 
         # Add tag to i1.
-        move_tag(repository, "newtag", "i1", expect_gc=False)
+        move_tag(repository, "newtag", ["i1"], expect_gc=False)
         assert_not_deleted(repository, "i1", "i2", "i3")
 
         # Current state:
@@ -568,46 +558,6 @@ def test_time_machine_gc(default_tag_policy, initialized_db):
             assert_not_deleted(repository, "i1", "f1")
 
 
-def test_images_shared_storage(default_tag_policy, initialized_db):
-    """
-    Repository with two tags, both with the same shared storage.
-
-    Deleting the first tag should delete the first image, but *not* its storage.
-    """
-    with assert_gc_integrity(expect_storage_removed=False):
-        repository = create_repository()
-
-        # Add two tags, each with their own image, but with the same storage.
-        image_storage = model.storage.create_v1_storage(storage.preferred_locations[0])
-
-        first_image = Image.create(
-            docker_image_id="i1", repository=repository, storage=image_storage, ancestors="/"
-        )
-
-        second_image = Image.create(
-            docker_image_id="i2", repository=repository, storage=image_storage, ancestors="/"
-        )
-
-        store_tag_manifest(
-            repository.namespace_user.username,
-            repository.name,
-            "first",
-            first_image.docker_image_id,
-        )
-
-        store_tag_manifest(
-            repository.namespace_user.username,
-            repository.name,
-            "second",
-            second_image.docker_image_id,
-        )
-
-        # Delete the first tag.
-        delete_tag(repository, "first")
-        assert_deleted(repository, "i1")
-        assert_not_deleted(repository, "i2")
-
-
 def test_image_with_cas(default_tag_policy, initialized_db):
     """
     A repository with a tag pointing to an image backed by CAS.
@@ -627,22 +577,30 @@ def test_image_with_cas(default_tag_policy, initialized_db):
         location = database.ImageStorageLocation.get(name=preferred)
         database.ImageStoragePlacement.create(location=location, storage=image_storage)
 
+        # Temp link so its available.
+        model.blob.store_blob_record_and_temp_link_in_repo(
+            repository, digest, location, len(content), 120
+        )
+
         # Ensure the CAS path exists.
         assert storage.exists({preferred}, storage.blob_path(digest))
 
-        # Create the image and the tag.
-        first_image = Image.create(
-            docker_image_id="i1", repository=repository, storage=image_storage, ancestors="/"
+        # Store a manifest pointing to that path.
+        builder = DockerSchema1ManifestBuilder(
+            repository.namespace_user.username, repository.name, "first"
+        )
+        builder.insert_layer(digest, json.dumps({"id": "i1",}))
+
+        # Store the manifest.
+        manifest = builder.build(docker_v2_signing_key)
+
+        repo_ref = RepositoryReference.for_repo_obj(repository)
+        registry_model.create_manifest_and_retarget_tag(
+            repo_ref, manifest, "first", storage, raise_on_error=True
         )
 
-        store_tag_manifest(
-            repository.namespace_user.username,
-            repository.name,
-            "first",
-            first_image.docker_image_id,
-        )
-
-        assert_not_deleted(repository, "i1")
+        # Delete the temp reference.
+        _delete_temp_links(repository)
 
         # Delete the tag.
         delete_tag(repository, "first")
@@ -677,32 +635,45 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         database.ImageStoragePlacement.create(location=location, storage=is1)
         database.ImageStoragePlacement.create(location=location, storage=is2)
 
+        # Temp link so its available.
+        model.blob.store_blob_record_and_temp_link_in_repo(
+            repository, digest, location, len(content), 120
+        )
+
         # Ensure the CAS path exists.
         assert storage.exists({preferred}, storage.blob_path(digest))
 
-        # Create two images in the repository, and two tags, each pointing to one of the storages.
-        first_image = Image.create(
-            docker_image_id="i1", repository=repository, storage=is1, ancestors="/"
+        repo_ref = RepositoryReference.for_repo_obj(repository)
+
+        # Store a manifest pointing to that path as `first`.
+        builder = DockerSchema1ManifestBuilder(
+            repository.namespace_user.username, repository.name, "first"
+        )
+        builder.insert_layer(digest, json.dumps({"id": "i1",}))
+        manifest = builder.build(docker_v2_signing_key)
+        registry_model.create_manifest_and_retarget_tag(
+            repo_ref, manifest, "first", storage, raise_on_error=True
         )
 
-        second_image = Image.create(
-            docker_image_id="i2", repository=repository, storage=is2, ancestors="/"
+        # Store another as `second`.
+        builder = DockerSchema1ManifestBuilder(
+            repository.namespace_user.username, repository.name, "second"
+        )
+        builder.insert_layer(digest, json.dumps({"id": "i2",}))
+        manifest = builder.build(docker_v2_signing_key)
+        created, _ = registry_model.create_manifest_and_retarget_tag(
+            repo_ref, manifest, "second", storage, raise_on_error=True
         )
 
-        store_tag_manifest(
-            repository.namespace_user.username,
-            repository.name,
-            "first",
-            first_image.docker_image_id,
-        )
+        # Manually retarget the second manifest's blob to the second row.
+        second_blob = ManifestBlob.get(manifest=created._db_id, blob=is1)
+        second_blob.blob = is2
+        second_blob.save()
 
-        store_tag_manifest(
-            repository.namespace_user.username,
-            repository.name,
-            "second",
-            second_image.docker_image_id,
-        )
+        # Delete the temp reference.
+        _delete_temp_links(repository)
 
+        # Ensure the legacy images exist.
         assert_not_deleted(repository, "i1", "i2")
 
         # Delete the first tag.
@@ -711,55 +682,6 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         assert_not_deleted(repository, "i2")
 
         # Ensure the CAS path still exists.
-        assert storage.exists({preferred}, storage.blob_path(digest))
-
-
-def test_images_shared_cas_with_new_blob_table(default_tag_policy, initialized_db):
-    """
-    A repository with a tag and image that shares its CAS path with a record in the new Blob table.
-
-    Deleting the first tag should delete the first image, and its storage, but not the file in
-    storage, as it shares its CAS path with the blob row.
-    """
-    with assert_gc_integrity(expect_storage_removed=True):
-        repository = create_repository()
-
-        # Create two image storage records with the same content checksum.
-        content = "hello world"
-        digest = "sha256:" + hashlib.sha256(content).hexdigest()
-        preferred = storage.preferred_locations[0]
-        storage.put_content({preferred}, storage.blob_path(digest), content)
-
-        media_type = database.MediaType.get(name="text/plain")
-
-        is1 = database.ImageStorage.create(content_checksum=digest, uploading=False)
-        database.ApprBlob.create(digest=digest, size=0, media_type=media_type)
-
-        location = database.ImageStorageLocation.get(name=preferred)
-        database.ImageStoragePlacement.create(location=location, storage=is1)
-
-        # Ensure the CAS path exists.
-        assert storage.exists({preferred}, storage.blob_path(digest))
-
-        # Create the image in the repository, and the tag.
-        first_image = Image.create(
-            docker_image_id="i1", repository=repository, storage=is1, ancestors="/"
-        )
-
-        store_tag_manifest(
-            repository.namespace_user.username,
-            repository.name,
-            "first",
-            first_image.docker_image_id,
-        )
-
-        assert_not_deleted(repository, "i1")
-
-        # Delete the tag.
-        delete_tag(repository, "first")
-        assert_deleted(repository, "i1")
-
-        # Ensure the CAS path still exists, as it is referenced by the Blob table
         assert storage.exists({preferred}, storage.blob_path(digest))
 
 
@@ -796,7 +718,7 @@ def test_manifest_v2_shared_config_and_blobs(app, default_tag_policy):
     model.oci.tag.retarget_tag("tag1", manifest1)
     model.oci.tag.retarget_tag("tag2", manifest2)
 
-    with assert_gc_integrity(expect_storage_removed=True, check_oci_tags=False):
+    with assert_gc_integrity(expect_storage_removed=True):
         # Delete tag2.
         model.oci.tag.delete_tag(repo, "tag2")
         assert model.gc.garbage_collect_repo(repo)
