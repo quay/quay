@@ -666,9 +666,14 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         )
 
         # Manually retarget the second manifest's blob to the second row.
-        second_blob = ManifestBlob.get(manifest=created._db_id, blob=is1)
-        second_blob.blob = is2
-        second_blob.save()
+        try:
+            second_blob = ManifestBlob.get(manifest=created._db_id, blob=is1)
+            second_blob.blob = is2
+            second_blob.save()
+        except ManifestBlob.DoesNotExist:
+            second_blob = ManifestBlob.get(manifest=created._db_id, blob=is2)
+            second_blob.blob = is1
+            second_blob.save()
 
         # Delete the temp reference.
         _delete_temp_links(repository)
