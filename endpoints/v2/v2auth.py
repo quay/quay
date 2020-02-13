@@ -255,10 +255,14 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                 # TODO: Push-to-create functionality should be configurable
                 if CreateRepositoryPermission(namespace).can() and user is not None:
                     logger.debug("Creating repository: %s/%s", namespace, reponame)
-                    repository_ref = RepositoryReference.for_repo_obj(
-                        model.repository.create_repository(namespace, reponame, user)
-                    )
-                    final_actions.append("push")
+                    found = model.repository.get_or_create_repository(namespace, reponame, user)
+                    if found is not None:
+                        repository_ref = RepositoryReference.for_repo_obj(found)
+
+                        if repository_ref.kind != "image":
+                            raise Unsupported(message="Cannot push to an app repository")
+
+                        final_actions.append("push")
                 else:
                     logger.debug("No permission to create repository %s/%s", namespace, reponame)
 

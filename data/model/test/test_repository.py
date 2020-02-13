@@ -2,8 +2,6 @@ from datetime import timedelta
 
 import pytest
 
-from peewee import IntegrityError
-
 from data.model.gc import purge_repository
 from data.model.repository import create_repository, is_empty
 from data.model.repository import get_filtered_matching_repositories
@@ -12,11 +10,10 @@ from test.fixtures import *
 
 def test_duplicate_repository_different_kinds(initialized_db):
     # Create an image repo.
-    create_repository("devtable", "somenewrepo", None, repo_kind="image")
+    assert create_repository("devtable", "somenewrepo", None, repo_kind="image")
 
     # Try to create an app repo with the same name, which should fail.
-    with pytest.raises(IntegrityError):
-        create_repository("devtable", "somenewrepo", None, repo_kind="application")
+    assert not create_repository("devtable", "somenewrepo", None, repo_kind="application")
 
 
 def test_is_empty(initialized_db):

@@ -79,13 +79,32 @@ def create_repository(
     yesterday = datetime.now() - timedelta(days=1)
 
     with db_transaction():
-        repo = Repository.create(
-            name=name,
-            visibility=Repository.visibility.get_id(visibility),
-            namespace_user=namespace_user,
-            kind=Repository.kind.get_id(repo_kind),
-            description=description,
-        )
+        # Check if the repository exists to avoid an IntegrityError if possible.
+        existing = get_repository(namespace, name)
+        if existing is not None:
+            return None
+
+        try:
+            repo = Repository.create(
+                name=name,
+                visibility=Repository.visibility.get_id(visibility),
+                namespace_user=namespace_user,
+                kind=Repository.kind.get_id(repo_kind),
+                description=description,
+            )
+        except IntegrityError as ie:
+            # NOTE: This is a just-in-case fallback.
+            try:
+                Repository.get(namespace_user=namespace_user, name=name)
+                return None
+            except Repository.DoesNotExist:
+                logger.error(
+                    "Got integrity error when trying to create repository %s/%s: %s",
+                    namespace,
+                    name,
+                    ie,
+                )
+                return None
 
         RepositoryActionCount.create(repository=repo, count=0, date=yesterday)
         RepositorySearchScore.create(repository=repo, score=0)

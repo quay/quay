@@ -201,6 +201,9 @@ class PreOCIModel(RepositoryDataInterface):
             repo_kind=repo_kind,
             description=description,
         )
+        if repo is None:
+            return None
+
         return Repository(namespace_name, repository_name)
 
     def get_repo(self, namespace_name, repository_name, user, include_tags=True, max_tags=500):

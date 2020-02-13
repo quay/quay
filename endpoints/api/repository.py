@@ -144,7 +144,7 @@ class RepositoryList(ApiResource):
                 raise InvalidRequest("Invalid repository name")
 
             kind = req.get("repo_kind", "image") or "image"
-            model.create_repo(
+            created = model.create_repo(
                 namespace_name,
                 repository_name,
                 owner,
@@ -152,6 +152,8 @@ class RepositoryList(ApiResource):
                 visibility=visibility,
                 repo_kind=kind,
             )
+            if created is None:
+                raise InvalidRequest("Could not create repository")
 
             log_action(
                 "create_repo",
