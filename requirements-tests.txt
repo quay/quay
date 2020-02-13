@@ -1,7 +1,5 @@
 -e git+https://github.com/ant31/pytest-sugar.git#egg=pytest-sugar
-backports.tempfile
 freezegun==0.3.12
-mockldap
 pytest
 pytest-cov
 pytest-flask

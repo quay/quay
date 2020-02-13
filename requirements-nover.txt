@@ -2,7 +2,7 @@
 -e git+https://github.com/DevTable/container-cloud-config.git#egg=container-cloud-config
 -e git+https://github.com/DevTable/python-etcd.git@sslfix#egg=python-etcd
 -e git+https://github.com/NateFerrero/oauth2lib.git#egg=oauth2lib
--e git+https://github.com/coreos/mockldap.git@v0.1.x#egg=mockldap
+-e git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
 -e git+https://github.com/coreos/py-bitbucket.git#egg=py-bitbucket
 -e git+https://github.com/coreos/resumablehashlib.git#egg=resumablehashlib
 -e git+https://github.com/jepcastelein/marketo-rest-python.git#egg=marketorestpython

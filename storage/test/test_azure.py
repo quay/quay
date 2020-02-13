@@ -1,5 +1,5 @@
 import base64
-import md5
+import hashlib
 import pytest
 import io
 
@@ -65,7 +65,7 @@ def fake_azure_storage(files=None):
                     "status_code": 201,
                     "content": "{}",
                     "headers": {
-                        "Content-MD5": base64.b64encode(md5.new(request.body).digest()),
+                        "Content-MD5": base64.b64encode(hashlib.md5(request.body).digest()),
                         "ETag": "foo",
                         "x-ms-request-server-encrypted": "false",
                         "last-modified": "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -84,7 +84,7 @@ def fake_azure_storage(files=None):
                     "status_code": 201,
                     "content": "{}",
                     "headers": {
-                        "Content-MD5": base64.b64encode(md5.new(files[filename]).digest()),
+                        "Content-MD5": base64.b64encode(hashlib.md5(files[filename]).digest()),
                         "ETag": "foo",
                         "x-ms-request-server-encrypted": "false",
                         "last-modified": "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -111,7 +111,7 @@ def fake_azure_storage(files=None):
                 "status_code": 201,
                 "content": "{}",
                 "headers": {
-                    "Content-MD5": base64.b64encode(md5.new(request.body).digest()),
+                    "Content-MD5": base64.b64encode(hashlib.md5(request.body).digest()),
                     "ETag": "foo",
                     "x-ms-request-server-encrypted": "false",
                     "last-modified": "Wed, 21 Oct 2015 07:28:00 GMT",
