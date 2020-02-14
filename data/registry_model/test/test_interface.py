@@ -328,6 +328,22 @@ def test_repository_tag_history(namespace, name, expected_tag_count, has_expired
             assert registry_model.has_expired_tag(repository_ref, "latest")
 
 
+def test_repository_tag_history_future_expires(registry_model):
+    # Set the expiration of a tag to the future.
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    registry_model.change_repository_tag_expiration(tag, datetime.utcnow() + timedelta(days=7))
+
+    # List the tag history and ensure the tag is returned with the correct expiration.
+    history, has_more = registry_model.list_repository_tag_history(repository_ref)
+    assert not has_more
+    assert history
+
+    for tag in history:
+        if tag.name == "latest":
+            assert tag.lifetime_end_ms is not None
+
+
 @pytest.mark.parametrize(
     "repositories, expected_tag_count",
     [([], 0), ([("devtable", "simple"), ("devtable", "building")], 1),],

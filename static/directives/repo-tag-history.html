@@ -2,6 +2,7 @@
    <div class="cor-loader" ng-if="!historyEntries"></div>
 
    <span class="co-filter-box">
+    <label><input type="checkbox" ng-model="options.showFuture">Show Future</label>
     <input class="form-control" type="text" ng-model="filter" placeholder="Filter History...">
    </span>
 
@@ -49,7 +50,8 @@
                           manifest-digest="entry.manifest_digest"></manifest-link>
                   </span>
                   <span ng-switch-when="delete">
-                    was deleted
+                    <span ng-if="::isFuture(entry)">will expire</span>
+                    <span ng-if="::!isFuture(entry)">was deleted</span>
                   </span>
                   <span ng-switch-when="move">
                     was moved to
@@ -83,7 +85,7 @@
               </div>
             </td>
             <td class="revert-col hidden-xs hidden-sm">
-              <div ng-if="!entry.date_break && repository.can_write && !inReadOnlyMode" class="history-revert">
+              <div ng-if="!entry.date_break && repository.can_write && !inReadOnlyMode && !isFuture(entry)" class="history-revert">
                 <span ng-switch on="entry.action">
                   <a ng-switch-when="delete" ng-click="askRestoreTag(entry, true)">
                     Restore to
