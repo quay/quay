@@ -32,27 +32,28 @@ def _perform_cleanup():
 
 
 def test_missing_link(initialized_db):
-    """ Tests for a corner case that could result in missing a link to a blob referenced by a
-      manifest. The test exercises the case as follows:
+    """
+    Tests for a corner case that could result in missing a link to a blob referenced by a manifest.
+    The test exercises the case as follows:
 
-      1) Push a manifest of a single layer with a Docker ID `FIRST_ID`, pointing
-          to blob `FIRST_BLOB`. The database should contain the tag referencing the layer, with
-          no changed ID and the blob not being GCed.
+    1) Push a manifest of a single layer with a Docker ID `FIRST_ID`, pointing
+        to blob `FIRST_BLOB`. The database should contain the tag referencing the layer, with
+        no changed ID and the blob not being GCed.
 
-      2) Push a manifest of two layers:
+    2) Push a manifest of two layers:
 
-          Layer 1: `FIRST_ID` with blob `SECOND_BLOB`: Will result in a new synthesized ID
-          Layer 2: `SECOND_ID` with blob `THIRD_BLOB`: Will result in `SECOND_ID` pointing to the
-                  `THIRD_BLOB`, with a parent pointing to the new synthesized ID's layer.
+        Layer 1: `FIRST_ID` with blob `SECOND_BLOB`: Will result in a new synthesized ID
+        Layer 2: `SECOND_ID` with blob `THIRD_BLOB`: Will result in `SECOND_ID` pointing to the
+                `THIRD_BLOB`, with a parent pointing to the new synthesized ID's layer.
 
-      3) Push a manifest of two layers:
+    3) Push a manifest of two layers:
 
-          Layer 1: `THIRD_ID` with blob `FOURTH_BLOB`: Will result in a new `THIRD_ID` layer
-          Layer 2: `FIRST_ID` with blob  `THIRD_BLOB`: Since `FIRST_ID` already points to `SECOND_BLOB`,
-                  this will synthesize a new ID. With the current bug, the synthesized ID will match
-                  that of `SECOND_ID`, leaving `THIRD_ID` unlinked and therefore, after a GC, missing
-                  `FOURTH_BLOB`.
-  """
+        Layer 1: `THIRD_ID` with blob `FOURTH_BLOB`: Will result in a new `THIRD_ID` layer
+        Layer 2: `FIRST_ID` with blob  `THIRD_BLOB`: Since `FIRST_ID` already points to `SECOND_BLOB`,
+                this will synthesize a new ID. With the current bug, the synthesized ID will match
+                that of `SECOND_ID`, leaving `THIRD_ID` unlinked and therefore, after a GC, missing
+                `FOURTH_BLOB`.
+    """
     with set_tag_expiration_policy("devtable", 0):
         location_name = storage.preferred_locations[0]
         location = database.ImageStorageLocation.get(name=location_name)

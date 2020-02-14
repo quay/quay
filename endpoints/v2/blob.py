@@ -126,7 +126,9 @@ def download_blob(namespace_name, repo_name, digest):
 
 
 def _try_to_mount_blob(repository_ref, mount_blob_digest):
-    """ Attempts to mount a blob requested by the user from another repository. """
+    """
+    Attempts to mount a blob requested by the user from another repository.
+    """
     logger.debug("Got mount request for blob `%s` into `%s`", mount_blob_digest, repository_ref)
     from_repo = request.args.get("from", None)
     if from_repo is None:
@@ -406,8 +408,8 @@ def delete_digest(namespace_name, repo_name, digest):
 
 def _render_range(num_uploaded_bytes, with_bytes_prefix=True):
     """
-  Returns a string formatted to be used in the Range header.
-  """
+    Returns a string formatted to be used in the Range header.
+    """
     return "{0}0-{1}".format("bytes=" if with_bytes_prefix else "", num_uploaded_bytes - 1)
 
 
@@ -417,11 +419,11 @@ def _current_request_url():
 
 def _abort_range_not_satisfiable(valid_end, upload_uuid):
     """
-  Writes a failure response for scenarios where the registry cannot function
-  with the provided range.
+    Writes a failure response for scenarios where the registry cannot function with the provided
+    range.
 
-  TODO: Unify this with the V2RegistryException class.
-  """
+    TODO: Unify this with the V2RegistryException class.
+    """
     flask_abort(
         Response(
             status=416,
@@ -436,11 +438,11 @@ def _abort_range_not_satisfiable(valid_end, upload_uuid):
 
 def _parse_range_header(range_header_text):
     """
-  Parses the range header.
+    Parses the range header.
 
-  Returns a tuple of the start offset and the length.
-  If the parse fails, raises _InvalidRangeHeader.
-  """
+    Returns a tuple of the start offset and the length. If the parse fails, raises
+    _InvalidRangeHeader.
+    """
     found = RANGE_HEADER_REGEX.match(range_header_text)
     if found is None:
         raise _InvalidRangeHeader()
@@ -456,10 +458,10 @@ def _parse_range_header(range_header_text):
 
 def _start_offset_and_length(range_header):
     """
-  Returns a tuple of the start offset and the length.
-  If the range header doesn't exist, defaults to (0, -1).
-  If parsing fails, returns (None, None).
-  """
+    Returns a tuple of the start offset and the length.
+
+    If the range header doesn't exist, defaults to (0, -1). If parsing fails, returns (None, None).
+    """
     start_offset, length = 0, -1
     if range_header is not None:
         try:
@@ -471,7 +473,9 @@ def _start_offset_and_length(range_header):
 
 
 def _upload_settings():
-    """ Returns the settings for instantiating a blob upload manager. """
+    """
+    Returns the settings for instantiating a blob upload manager.
+    """
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
     settings = BlobUploadSettings(
         maximum_blob_size=app.config["MAXIMUM_LAYER_SIZE"],
@@ -482,10 +486,13 @@ def _upload_settings():
 
 
 def _upload_chunk(blob_uploader, commit_digest=None):
-    """ Performs uploading of a chunk of data in the current request's stream, via the blob uploader
-      given. If commit_digest is specified, the upload is committed to a blob once the stream's
-      data has been read and stored.
-  """
+    """
+    Performs uploading of a chunk of data in the current request's stream, via the blob uploader
+    given.
+
+    If commit_digest is specified, the upload is committed to a blob once the stream's data has been
+    read and stored.
+    """
     start_offset, length = _start_offset_and_length(request.headers.get("range"))
     if None in {start_offset, length}:
         raise InvalidRequest(message="Invalid range header")

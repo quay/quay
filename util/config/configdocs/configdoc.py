@@ -1,4 +1,6 @@
-""" Generates html documentation from JSON Schema """
+"""
+Generates html documentation from JSON Schema.
+"""
 
 
 import json
@@ -11,7 +13,9 @@ from util.config.schema import CONFIG_SCHEMA
 
 
 def make_custom_sort(orders):
-    """ Sort in a specified order any dictionary nested in a complex structure """
+    """
+    Sort in a specified order any dictionary nested in a complex structure.
+    """
 
     orders = [{k: -i for (i, k) in enumerate(reversed(order), 1)} for order in orders]
 

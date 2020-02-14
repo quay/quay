@@ -1,9 +1,9 @@
-"""Add missing index on UUID fields
+"""
+Add missing index on UUID fields.
 
 Revision ID: e184af42242d
 Revises: 6ec8726c0ace
 Create Date: 2019-02-14 16:35:47.768086
-
 """
 
 # revision identifiers, used by Alembic.

@@ -10,40 +10,57 @@ FileCopy = namedtuple("FileCopy", ["source", "destination"])
 
 @add_metaclass(ABCMeta)
 class Client(object):
-    """ Client defines the interface for all clients being tested. """
-
-    @abstractmethod
-    def setup_client(self, registry_host, verify_tls):
-        """ Returns the commands necessary to setup the client inside the VM.
+    """
+    Client defines the interface for all clients being tested.
     """
 
     @abstractmethod
+    def setup_client(self, registry_host, verify_tls):
+        """
+        Returns the commands necessary to setup the client inside the VM.
+        """
+
+    @abstractmethod
     def populate_test_image(self, registry_host, namespace, name):
-        """ Returns the commands necessary to populate the test image. """
+        """
+        Returns the commands necessary to populate the test image.
+        """
 
     @abstractmethod
     def print_version(self):
-        """ Returns the commands necessary to print the version of the client. """
+        """
+        Returns the commands necessary to print the version of the client.
+        """
 
     @abstractmethod
     def login(self, registry_host, username, password):
-        """ Returns the commands necessary to login. """
+        """
+        Returns the commands necessary to login.
+        """
 
     @abstractmethod
     def push(self, registry_host, namespace, name):
-        """ Returns the commands necessary to test pushing. """
+        """
+        Returns the commands necessary to test pushing.
+        """
 
     @abstractmethod
     def pre_pull_cleanup(self, registry_host, namespace, name):
-        """ Returns the commands necessary to cleanup before pulling. """
+        """
+        Returns the commands necessary to cleanup before pulling.
+        """
 
     @abstractmethod
     def pull(self, registry_host, namespace, name):
-        """ Returns the commands necessary to test pulling. """
+        """
+        Returns the commands necessary to test pulling.
+        """
 
     @abstractmethod
     def verify(self, registry_host, namespace, name):
-        """ Returns the commands necessary to verify the pulled image. """
+        """
+        Returns the commands necessary to verify the pulled image.
+        """
 
 
 class DockerClient(Client):

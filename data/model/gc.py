@@ -1,5 +1,7 @@
 import logging
 
+from peewee import fn
+
 from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag
 from data.model.oci import tag as oci_tag
 from data.database import Repository, db_for_update
@@ -15,6 +17,15 @@ from data.database import (
     Label,
     TagManifestLabel,
     RepositoryState,
+    RepositoryBuild,
+    RepositoryBuildTrigger,
+    RepositoryActionCount,
+    Star,
+    AccessToken,
+    RepositoryNotification,
+    BlobUpload,
+    RepoMirrorConfig,
+    RepositoryPermission,
 )
 from data.database import RepositoryTag, TagManifest, Image, DerivedStorageForImage
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
@@ -56,11 +67,13 @@ class _GarbageCollectorContext(object):
 
 
 def purge_repository(repo, force=False):
-    """ Completely delete all traces of the repository. Will return True upon
-      complete success, and False upon partial or total failure. Garbage
-      collection is incremental and repeatable, so this return value does
-      not need to be checked or responded to.
-      """
+    """
+    Completely delete all traces of the repository.
+
+    Will return True upon complete success, and False upon partial or total failure. Garbage
+    collection is incremental and repeatable, so this return value does not need to be checked or
+    responded to.
+    """
     assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
 
     # Delete the repository of all Appr-referenced entries.
@@ -81,6 +94,18 @@ def purge_repository(repo, force=False):
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
     assert Image.select().where(Image.repository == repo).count() == 0
 
+    # Delete any repository build triggers, builds, and any other large-ish reference tables for
+    # the repository.
+    _chunk_delete_all(repo, RepositoryPermission, force=force)
+    _chunk_delete_all(repo, RepositoryBuild, force=force)
+    _chunk_delete_all(repo, RepositoryBuildTrigger, force=force)
+    _chunk_delete_all(repo, RepositoryActionCount, force=force)
+    _chunk_delete_all(repo, Star, force=force)
+    _chunk_delete_all(repo, AccessToken, force=force)
+    _chunk_delete_all(repo, RepositoryNotification, force=force)
+    _chunk_delete_all(repo, BlobUpload, force=force)
+    _chunk_delete_all(repo, RepoMirrorConfig, force=force)
+
     # Delete any marker rows for the repository.
     DeletedRepository.delete().where(DeletedRepository.repository == repo).execute()
 
@@ -95,11 +120,35 @@ def purge_repository(repo, force=False):
     return True
 
 
+def _chunk_delete_all(repo, model, force=False, chunk_size=500):
+    """ Deletes all rows referencing the given repository in the given model. """
+    assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
+
+    while True:
+        min_id = model.select(fn.Min(model.id)).where(model.repository == repo).scalar()
+        if min_id is None:
+            return
+
+        max_id = (
+            model.select(fn.Max(model.id))
+            .where(model.repository == repo, model.id <= (min_id + chunk_size))
+            .scalar()
+        )
+        if min_id is None or max_id is None or min_id > max_id:
+            return
+
+        model.delete().where(
+            model.repository == repo, model.id >= min_id, model.id <= max_id
+        ).execute()
+
+
 def _chunk_iterate_for_deletion(query, chunk_size=10):
-    """ Returns an iterator that loads the rows returned by the given query in chunks. Note that
-      order is not guaranteed here, so this will only work (i.e. not return duplicates) if
-      the rows returned are being deleted between calls.
-  """
+    """
+    Returns an iterator that loads the rows returned by the given query in chunks.
+
+    Note that order is not guaranteed here, so this will only work (i.e. not return duplicates) if
+    the rows returned are being deleted between calls.
+    """
     while True:
         results = list(query.limit(chunk_size))
         if not results:
@@ -109,9 +158,9 @@ def _chunk_iterate_for_deletion(query, chunk_size=10):
 
 
 def _purge_repository_contents(repo):
-    """ Purges all the contents of a repository, removing all of its tags,
-      manifests and images.
-  """
+    """
+    Purges all the contents of a repository, removing all of its tags, manifests and images.
+    """
     logger.debug("Purging repository %s", repo)
 
     # Purge via all the tags.
@@ -168,7 +217,9 @@ def _purge_repository_contents(repo):
 
 
 def garbage_collect_repo(repo):
-    """ Performs garbage collection over the contents of a repository. """
+    """
+    Performs garbage collection over the contents of a repository.
+    """
     # Purge expired tags.
     had_changes = False
 
@@ -200,9 +251,10 @@ def garbage_collect_repo(repo):
 
 
 def _run_garbage_collection(context):
-    """ Runs the garbage collection loop, deleting manifests, images, labels and blobs
-      in an iterative fashion.
-  """
+    """
+    Runs the garbage collection loop, deleting manifests, images, labels and blobs in an iterative
+    fashion.
+    """
     has_changes = True
 
     while has_changes:

@@ -206,13 +206,14 @@ def app_reloader(request, liveserver, registry_server_executor):
 
 
 class FeatureFlagValue(object):
-    """ Helper object which temporarily sets the value of a feature flag.
+    """
+    Helper object which temporarily sets the value of a feature flag.
 
-      Usage:
+    Usage:
 
-      with FeatureFlagValue('ANONYMOUS_ACCESS', False, registry_server_executor.on(liveserver)):
-        ... Features.ANONYMOUS_ACCESS is False in this context ...
-  """
+    with FeatureFlagValue('ANONYMOUS_ACCESS', False, registry_server_executor.on(liveserver)):
+      ... Features.ANONYMOUS_ACCESS is False in this context ...
+    """
 
     def __init__(self, feature_flag, test_value, executor):
         self.feature_flag = feature_flag
@@ -230,13 +231,14 @@ class FeatureFlagValue(object):
 
 
 class ConfigChange(object):
-    """ Helper object which temporarily sets the value of a config key.
+    """
+    Helper object which temporarily sets the value of a config key.
 
-      Usage:
+    Usage:
 
-      with ConfigChange('SOMEKEY', 'value', registry_server_executor.on(liveserver)):
-        ... app.config['SOMEKEY'] is 'value' in this context ...
-  """
+    with ConfigChange('SOMEKEY', 'value', registry_server_executor.on(liveserver)):
+      ... app.config['SOMEKEY'] is 'value' in this context ...
+    """
 
     def __init__(self, config_key, test_value, executor, liveserver):
         self.config_key = config_key

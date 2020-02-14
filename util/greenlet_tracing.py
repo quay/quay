@@ -21,7 +21,9 @@ def enable_tracing():
 
 
 def greenlet_callback(event, args):
-    """ This is a callback that is executed greenlet on all events. """
+    """
+    This is a callback that is executed greenlet on all events.
+    """
     if event in ("switch", "throw"):
         # It's only safe to unpack args under these two events.
         (origin, _target) = args
@@ -39,7 +41,9 @@ def greenlet_callback(event, args):
 
 
 def switch_callback(_args):
-    """ This is a callback that is executed specifically on greenlet switches. """
+    """
+    This is a callback that is executed specifically on greenlet switches.
+    """
     global _latest_switch
     greenlet_switch.inc()
 
@@ -54,7 +58,10 @@ def switch_callback(_args):
 
 
 def throw_callback(_args):
-    """ This is a callback that is executed on execeptions from origin to target.
-        This callback is running in the context of the target greenlet and any exceptions will
-        replace the original, as if target.throw() was used replacing the exception. """
+    """
+    This is a callback that is executed on execeptions from origin to target.
+
+    This callback is running in the context of the target greenlet and any exceptions will replace
+    the original, as if target.throw() was used replacing the exception.
+    """
     greenlet_throw.inc()

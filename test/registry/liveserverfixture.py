@@ -16,10 +16,11 @@ from flask.blueprints import Blueprint
 
 
 class liveFlaskServer(object):
-    """ Helper class for spawning a live Flask server for testing.
+    """
+    Helper class for spawning a live Flask server for testing.
 
-      Based on https://github.com/jarus/flask-testing/blob/master/flask_testing/utils.py#L421
-  """
+    Based on https://github.com/jarus/flask-testing/blob/master/flask_testing/utils.py#L421
+    """
 
     def __init__(self, app, port_value):
         self.app = app
@@ -28,8 +29,8 @@ class liveFlaskServer(object):
 
     def get_server_url(self):
         """
-    Return the url of the test server
-    """
+        Return the url of the test server.
+        """
         return "http://localhost:%s" % self._port_value.value
 
     def terminate_live_server(self):
@@ -111,10 +112,10 @@ class liveFlaskServer(object):
 
     def _get_server_address(self):
         """
-    Gets the server address used to test the connection with a socket.
-    Respects both the LIVESERVER_PORT config value and overriding
-    get_server_url()
-    """
+        Gets the server address used to test the connection with a socket.
+
+        Respects both the LIVESERVER_PORT config value and overriding get_server_url()
+        """
         parts = urlparse(self.get_server_url())
 
         host = parts.hostname
@@ -132,7 +133,9 @@ class liveFlaskServer(object):
 
 
 class LiveFixtureServerSession(object):
-    """ Helper class for calling the live server via a single requests Session. """
+    """
+    Helper class for calling the live server via a single requests Session.
+    """
 
     def __init__(self, base_url):
         self.base_url = base_url
@@ -158,27 +161,34 @@ class LiveFixtureServerSession(object):
 
 
 class LiveFixtureServer(object):
-    """ Helper for interacting with a live server. """
+    """
+    Helper for interacting with a live server.
+    """
 
     def __init__(self, url):
         self.url = url
 
     @contextmanager
     def session(self):
-        """ Yields a session for speaking to the live server. """
+        """
+        Yields a session for speaking to the live server.
+        """
         yield LiveFixtureServerSession(self.url)
 
     def new_session(self):
-        """ Returns a new session for speaking to the live server. """
+        """
+        Returns a new session for speaking to the live server.
+        """
         return LiveFixtureServerSession(self.url)
 
 
 @pytest.fixture(scope="function")
 def liveserver(liveserver_app):
-    """ Runs a live Flask server for the app for the duration of the test.
+    """
+    Runs a live Flask server for the app for the duration of the test.
 
-      Based on https://github.com/jarus/flask-testing/blob/master/flask_testing/utils.py#L421
-  """
+    Based on https://github.com/jarus/flask-testing/blob/master/flask_testing/utils.py#L421
+    """
     context = liveserver_app.test_request_context()
     context.push()
 
@@ -195,51 +205,58 @@ def liveserver(liveserver_app):
 
 @pytest.fixture(scope="function")
 def liveserver_session(liveserver, liveserver_app):
-    """ Fixtures which instantiates a liveserver and returns a single session for
-      interacting with that server.
-  """
+    """
+    Fixtures which instantiates a liveserver and returns a single session for interacting with that
+    server.
+    """
     return LiveFixtureServerSession(liveserver.url)
 
 
 class LiveServerExecutor(object):
-    """ Helper class which can be used to register functions to be executed in the
-      same process as the live server. This is necessary because the live server
-      runs in a different process and, therefore, in order to execute state changes
-      outside of the server's normal flows (i.e. via code), it must be executed
-      *in-process* via an HTTP call. The LiveServerExecutor class abstracts away
-      all the setup for this process.
+    """
+    Helper class which can be used to register functions to be executed in the same process as the
+    live server. This is necessary because the live server runs in a different process and,
+    therefore, in order to execute state changes outside of the server's normal flows (i.e. via
+    code), it must be executed.
 
-      Usage:
-        def _perform_operation(first_param, second_param):
-          ... do some operation in the app ...
-          return 'some value'
+    *in-process* via an HTTP call. The LiveServerExecutor class abstracts away
+    all the setup for this process.
 
-        @pytest.fixture(scope="session")
-        def my_server_executor():
-          executor = LiveServerExecutor()
-          executor.register('performoperation', _perform_operation)
-          return executor
+    Usage:
+      def _perform_operation(first_param, second_param):
+        ... do some operation in the app ...
+        return 'some value'
 
-        @pytest.fixture()
-        def liveserver_app(app, my_server_executor):
-          ... other app setup here ...
-          my_server_executor.apply_blueprint_to_app(app)
-          return app
+      @pytest.fixture(scope="session")
+      def my_server_executor():
+        executor = LiveServerExecutor()
+        executor.register('performoperation', _perform_operation)
+        return executor
 
-        def test_mytest(liveserver, my_server_executor):
-          # Invokes 'performoperation' in the liveserver's process.
-          my_server_executor.on(liveserver).performoperation('first', 'second')
-  """
+      @pytest.fixture()
+      def liveserver_app(app, my_server_executor):
+        ... other app setup here ...
+        my_server_executor.apply_blueprint_to_app(app)
+        return app
+
+      def test_mytest(liveserver, my_server_executor):
+        # Invokes 'performoperation' in the liveserver's process.
+        my_server_executor.on(liveserver).performoperation('first', 'second')
+    """
 
     def __init__(self):
         self.funcs = {}
 
     def register(self, fn_name, fn):
-        """ Registers the given function under the given name. """
+        """
+        Registers the given function under the given name.
+        """
         self.funcs[fn_name] = fn
 
     def apply_blueprint_to_app(self, app):
-        """ Applies a blueprint to the app, to support invocation from this executor. """
+        """
+        Applies a blueprint to the app, to support invocation from this executor.
+        """
         testbp = Blueprint("testbp", __name__)
 
         def build_invoker(fn_name, fn):
@@ -256,11 +273,15 @@ class LiveServerExecutor(object):
         app.register_blueprint(testbp, url_prefix="/__test")
 
     def on(self, server):
-        """ Returns an invoker for the given live server. """
+        """
+        Returns an invoker for the given live server.
+        """
         return liveServerExecutorInvoker(self.funcs, server)
 
     def on_session(self, server_session):
-        """ Returns an invoker for the given live server session. """
+        """
+        Returns an invoker for the given live server session.
+        """
         return liveServerExecutorInvoker(self.funcs, server_session)
 
 

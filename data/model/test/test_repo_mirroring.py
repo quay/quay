@@ -56,8 +56,8 @@ def disable_existing_mirrors():
 
 def test_eligible_oldest_first(initialized_db):
     """
-  Eligible mirror candidates should be returned with the oldest (earliest created) first.
-  """
+    Eligible mirror candidates should be returned with the oldest (earliest created) first.
+    """
 
     disable_existing_mirrors()
     mirror_first, repo_first = create_mirror_repo_robot(["updated", "created"], repo_name="first")
@@ -76,8 +76,9 @@ def test_eligible_oldest_first(initialized_db):
 
 def test_eligible_includes_expired_syncing(initialized_db):
     """
-  Mirrors that have an end time in the past are eligible even if their state indicates still syncing.
-  """
+    Mirrors that have an end time in the past are eligible even if their state indicates still
+    syncing.
+    """
 
     disable_existing_mirrors()
     mirror_first, repo_first = create_mirror_repo_robot(["updated", "created"], repo_name="first")
@@ -105,8 +106,8 @@ def test_eligible_includes_expired_syncing(initialized_db):
 
 def test_eligible_includes_immediate(initialized_db):
     """
-  Mirrors that are SYNC_NOW, regardless of starting time
-  """
+    Mirrors that are SYNC_NOW, regardless of starting time.
+    """
 
     disable_existing_mirrors()
     mirror_first, repo_first = create_mirror_repo_robot(["updated", "created"], repo_name="first")
@@ -155,8 +156,8 @@ def test_create_rule_validations(initialized_db):
 
 def test_long_registry_passwords(initialized_db):
     """
-  Verify that long passwords, such as Base64 JWT used by Redhat's Registry, work as expected.
-  """
+    Verify that long passwords, such as Base64 JWT used by Redhat's Registry, work as expected.
+    """
     MAX_PASSWORD_LENGTH = 1024
 
     username = "".join("a" for _ in range(MAX_PASSWORD_LENGTH))
@@ -181,8 +182,8 @@ def test_long_registry_passwords(initialized_db):
 
 def test_sync_status_to_cancel(initialized_db):
     """
-  SYNCING and SYNC_NOW mirrors may be canceled, ending in NEVER_RUN
-  """
+    SYNCING and SYNC_NOW mirrors may be canceled, ending in NEVER_RUN.
+    """
 
     disable_existing_mirrors()
     mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="cancel")
@@ -217,8 +218,8 @@ def test_sync_status_to_cancel(initialized_db):
 
 def test_release_mirror(initialized_db):
     """
-  Mirrors that are SYNC_NOW, regardless of starting time
-  """
+    Mirrors that are SYNC_NOW, regardless of starting time.
+    """
 
     disable_existing_mirrors()
     mirror, repo = create_mirror_repo_robot(["updated", "created"], repo_name="first")

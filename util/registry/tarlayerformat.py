@@ -10,7 +10,9 @@ from util.abchelpers import nooper
 
 
 class TarLayerReadException(Exception):
-    """ Exception raised when reading a layer has failed. """
+    """
+    Exception raised when reading a layer has failed.
+    """
 
     pass
 
@@ -23,7 +25,9 @@ CHUNK_SIZE = 1024 * 1024 * 9
 class TarLayerFormatterReporter(object):
     @abstractmethod
     def report_pass(self, stream_count):
-        """ Reports a formatting pass. """
+        """
+        Reports a formatting pass.
+        """
         pass
 
 
@@ -34,7 +38,9 @@ class NoopReporter(TarLayerFormatterReporter):
 
 @add_metaclass(ABCMeta)
 class TarLayerFormat(object):
-    """ Class which creates a generator of the combined TAR data. """
+    """
+    Class which creates a generator of the combined TAR data.
+    """
 
     def __init__(self, tar_stream_getter_iterator, path_prefix=None, reporter=None):
         self.tar_stream_getter_iterator = tar_stream_getter_iterator
@@ -146,20 +152,23 @@ class TarLayerFormat(object):
 
     @abstractmethod
     def is_skipped_file(self, filename):
-        """ Returns true if the file with the given name will be skipped during append.
-    """
+        """
+        Returns true if the file with the given name will be skipped during append.
+        """
         pass
 
     @abstractmethod
     def should_append_file(self, filename):
-        """ Returns true if the file with the given name should be appended when producing
-        the new TAR.
-    """
+        """
+        Returns true if the file with the given name should be appended when producing the new TAR.
+        """
         pass
 
     @abstractmethod
     def after_tar_layer(self):
-        """ Invoked after a TAR layer is added, to do any post-add work. """
+        """
+        Invoked after a TAR layer is added, to do any post-add work.
+        """
         pass
 
     @staticmethod

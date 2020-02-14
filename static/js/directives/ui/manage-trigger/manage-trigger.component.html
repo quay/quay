@@ -250,6 +250,71 @@
       </div>
     </linear-workflow-section><!-- /Section: Trigger Options -->
 
+    <!-- Section: Tagging Options -->
+    <linear-workflow-section class="row"
+                             section-id="taggingoptions"
+                             section-title="Tagging Options"
+                             section-valid="$ctrl.local.triggerOptions.default_tag_from_ref || $ctrl.local.triggerOptions.tag_templates.length">
+      <div class="col-lg-7 col-md-7 col-sm-12 main-col">
+        <h3>Configure Tagging</h3>
+        <strong>
+          Confirm basic tagging options
+        </strong>
+        <div class="checkbox" style="margin-top: 20px;">
+          <label>
+            <input type="checkbox"
+                    ng-model="$ctrl.local.triggerOptions.default_tag_from_ref">
+            <div class="title">Tag manifest with the branch or tag name</div>
+            <div class="description">Tags the built manifest the name of the branch or tag for the git commit.</div>
+          </label>
+        </div>
+        <div class="checkbox">
+          <label>
+            <input type="checkbox"
+                   ng-model="$ctrl.local.triggerOptions.latest_for_default_branch">
+            <div class="title">Add <code>latest</code> tag if on default branch</div>
+            <div class="description">Tags the built manifest with <code>latest</code> if the build
+                                     occurred on the default branch for the repository.
+            </div>
+          </label>
+        </div>
+        <hr>
+        <strong>
+          Add custom tagging templates
+        </strong>
+        <ul class="custom-template-list" ng-show="$ctrl.local.triggerOptions.tag_templates.length">
+          <li ng-repeat="template in $ctrl.local.triggerOptions.tag_templates">
+            <code>{{ template }}</code>
+            <i class="fa fa-close" ng-click="$ctrl.removeTagTemplate(template)"></i>
+          </li>
+        </ul>
+        <div class="empty" ng-show="$ctrl.local.triggerOptions.tag_templates.length == 0">
+          No tag templates defined.
+        </div>
+        <div class="enter-template">
+          <span>Enter a tag template:</span>
+          <input class="form-control" type="text" placeholder="${commit_info.short_sha}" ng-model="$ctrl.local.currentTagTemplate">
+          <button class="btn btn-default" ng-disabled="!$ctrl.local.currentTagTemplate"
+                  ng-click="$ctrl.addTagTemplate()">Add Tag Template</button>
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-4 hidden-sm hidden-xs help-col">
+        <p>By default, all built manifests will be tagged with the name of the branch or tag in
+           which the commit occurred.</p>
+        <p>To modify this default, as well as the default to add the <code>latest</code> tag,
+           change the corresponding options on the left.</p>
+        <p>Need more control over how the built manifest is tagged? Add one or more custom tag templates.</p>
+        <p>For example, if you want all built manifests to be tagged with the commit's short SHA,
+           add a template of <code>${commit_info.short_sha}</code>.
+        </p>
+        <p>As another example, if you want on those manifests committed to a <b>branch</b>
+           to be tagged with the branch name, you can add a template of <code>${parsed_ref.branch}</code>.
+        </p>
+        <p>A full reference of for these templates can be found in the <a href="https://docs.quay.io/guides/tag-templating.html" target="_blank">Tag template documentation</a>.
+        </p>
+      </div>
+    </linear-workflow-section> <!-- /Section: Tagging options -->
+
     <!-- Section: Dockerfile Location -->
     <linear-workflow-section class="row"
                              section-id="dockerfilelocation"

@@ -1,9 +1,9 @@
-"""Reset our migrations with a required update
+"""
+Reset our migrations with a required update.
 
 Revision ID: c156deb8845d
 Revises: None
 Create Date: 2016-11-08 11:58:11.110762
-
 """
 
 # revision identifiers, used by Alembic.

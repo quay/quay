@@ -1,9 +1,9 @@
-"""add repository kind
+"""
+add repository kind.
 
 Revision ID: b4df55dea4b3
 Revises: 7a525c68eb13
 Create Date: 2017-03-19 12:59:41.484430
-
 """
 
 # revision identifiers, used by Alembic.

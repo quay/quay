@@ -7,9 +7,10 @@ from data.database import LogEntryKind, LogEntry3
 
 
 class assert_action_logged(object):
-    """ Specialized assertion for ensuring that a log entry of a particular kind was added under the
-      context of this call.
-  """
+    """
+    Specialized assertion for ensuring that a log entry of a particular kind was added under the
+    context of this call.
+    """
 
     def __init__(self, log_kind):
         self.log_kind = log_kind
@@ -37,15 +38,15 @@ _LIVESERVER_TIMEOUT = 5
 @contextmanager
 def liveserver_app(flask_app, port):
     """
-      Based on https://github.com/jarus/flask-testing/blob/master/flask_testing/utils.py
+    Based on https://github.com/jarus/flask-testing/blob/master/flask_testing/utils.py.
 
-      Runs the given Flask app as a live web server locally, on the given port, starting it
-      when called and terminating after the yield.
+    Runs the given Flask app as a live web server locally, on the given port, starting it
+    when called and terminating after the yield.
 
-      Usage:
-      with liveserver_app(flask_app, port):
-        # Code that makes use of the app.
-  """
+    Usage:
+    with liveserver_app(flask_app, port):
+      # Code that makes use of the app.
+    """
     shared = {}
 
     def _can_ping_server():

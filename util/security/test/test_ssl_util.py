@@ -8,7 +8,9 @@ from util.security.ssl import load_certificate, CertInvalidException, KeyInvalid
 
 
 def generate_test_cert(hostname="somehostname", san_list=None, expires=1000000):
-    """ Generates a test SSL certificate and returns the certificate data and private key data. """
+    """
+    Generates a test SSL certificate and returns the certificate data and private key data.
+    """
 
     # Based on: http://blog.richardknop.com/2012/08/create-a-self-signed-x509-certificate-in-python/
     # Create a key pair.

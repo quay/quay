@@ -16,13 +16,14 @@ _PORT_NUMBER = 5001
 
 @contextmanager
 def fake_keystone(version=3, requires_email=True):
-    """ Context manager which instantiates and runs a webserver with a fake Keystone implementation,
-      until the result is yielded.
+    """
+    Context manager which instantiates and runs a webserver with a fake Keystone implementation,
+    until the result is yielded.
 
-      Usage:
-      with fake_keystone(version) as keystone_auth:
-        # Make keystone_auth requests.
-  """
+    Usage:
+    with fake_keystone(version) as keystone_auth:
+      # Make keystone_auth requests.
+    """
     keystone_app, port = _create_app(requires_email)
     server_url = "http://" + keystone_app.config["SERVER_HOSTNAME"]
     endpoint_url = server_url + "/v3"

@@ -1,7 +1,8 @@
 class Bytes(object):
-    """ Wrapper around strings and unicode objects to ensure we are always using
-      the correct encoded or decoded data.
-  """
+    """
+    Wrapper around strings and unicode objects to ensure we are always using the correct encoded or
+    decoded data.
+    """
 
     def __init__(self, data):
         assert isinstance(data, str)

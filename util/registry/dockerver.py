@@ -8,11 +8,12 @@ _ONE_FIVE_ZERO = "1.5.0"
 
 
 def docker_version(user_agent_string):
-    """ Extract the Docker version from the user agent, taking special care to
-      handle the case of a 1.5 client requesting an auth token, which sends
-      a broken user agent. If we can not positively identify a version, return
-      None.
-      """
+    """
+    Extract the Docker version from the user agent, taking special care to handle the case of a 1.5
+    client requesting an auth token, which sends a broken user agent.
+
+    If we can not positively identify a version, return None.
+    """
 
     # First search for a well defined semver portion in the UA header.
     found_semver = _USER_AGENT_SEARCH_REGEX.search(user_agent_string)

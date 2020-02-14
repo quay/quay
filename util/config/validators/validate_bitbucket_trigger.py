@@ -8,7 +8,9 @@ class BitbucketTriggerValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the config for BitBucket. """
+        """
+        Validates the config for BitBucket.
+        """
         config = validator_context.config
 
         trigger_config = config.get("BITBUCKET_TRIGGER_CONFIG")

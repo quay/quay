@@ -24,8 +24,9 @@ class SplitModel(object):
         self.oci_only_mode = oci_only_mode
 
     def supports_schema2(self, namespace_name):
-        """ Returns whether the implementation of the data interface supports schema 2 format
-        manifests. """
+        """
+        Returns whether the implementation of the data interface supports schema 2 format manifests.
+        """
         return namespace_name in self.v22_namespace_whitelist
 
     def _namespace_from_kwargs(self, args_dict):

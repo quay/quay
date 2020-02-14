@@ -1,9 +1,9 @@
-"""Add trust_enabled to repository
+"""
+Add trust_enabled to repository.
 
 Revision ID: ed01e313d3cb
 Revises: c3d4b7ebcdf7
 Create Date: 2017-04-14 17:38:03.319695
-
 """
 
 # revision identifiers, used by Alembic.

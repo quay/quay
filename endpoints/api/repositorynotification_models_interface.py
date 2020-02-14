@@ -21,15 +21,16 @@ class RepositoryNotification(
     )
 ):
     """
-  RepositoryNotification represents a notification for a repository.
-  :type uuid: string
-  :type event: string
-  :type method: string
-  :type config: string
-  :type title: string
-  :type event_config: string
-  :type number_of_failures: int
-  """
+    RepositoryNotification represents a notification for a repository.
+
+    :type uuid: string
+    :type event: string
+    :type method: string
+    :type config: string
+    :type title: string
+    :type event_config: string
+    :type number_of_failures: int
+    """
 
     def to_dict(self):
         try:
@@ -56,8 +57,9 @@ class RepositoryNotification(
 @add_metaclass(ABCMeta)
 class RepoNotificationInterface(object):
     """
-  Interface that represents all data store interactions required by the RepositoryNotification API
-  """
+    Interface that represents all data store interactions required by the RepositoryNotification
+    API.
+    """
 
     @abstractmethod
     def create_repo_notification(

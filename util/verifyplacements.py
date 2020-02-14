@@ -1,9 +1,9 @@
 """
-Usage (from the root in the container): venv/bin/python -m util.verifyplacements
+Usage (from the root in the container): venv/bin/python -m util.verifyplacements.
 
 This script verifies that if a blob is listed as being in a specific storage location, the file
-actually exists there. If the file is not found in that storage location, the placement entry in
-the database is removed.
+actually exists there. If the file is not found in that storage location, the placement entry in the
+database is removed.
 """
 
 import logging

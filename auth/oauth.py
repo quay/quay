@@ -10,9 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 def validate_bearer_auth(auth_header):
-    """ Validates an OAuth token found inside a basic auth `Bearer` token, returning whether it
-      points to a valid OAuth token.
-  """
+    """
+    Validates an OAuth token found inside a basic auth `Bearer` token, returning whether it points
+    to a valid OAuth token.
+    """
     if not auth_header:
         return ValidateResult(AuthKind.oauth, missing=True)
 
@@ -26,8 +27,9 @@ def validate_bearer_auth(auth_header):
 
 
 def validate_oauth_token(token):
-    """ Validates the specified OAuth token, returning whether it points to a valid OAuth token.
-  """
+    """
+    Validates the specified OAuth token, returning whether it points to a valid OAuth token.
+    """
     validated = model.oauth.validate_access_token(token)
     if not validated:
         logger.warning("OAuth access token could not be validated: %s", token)

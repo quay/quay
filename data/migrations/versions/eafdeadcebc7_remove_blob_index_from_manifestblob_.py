@@ -1,9 +1,9 @@
-"""Remove blob_index from ManifestBlob table
+"""
+Remove blob_index from ManifestBlob table.
 
 Revision ID: eafdeadcebc7
 Revises: 9093adccc784
 Create Date: 2018-08-07 15:57:54.001225
-
 """
 
 # revision identifiers, used by Alembic.

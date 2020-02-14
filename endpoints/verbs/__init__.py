@@ -70,9 +70,10 @@ class VerbReporter(TarLayerFormatterReporter):
 
 def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, reporter):
     """
-  This method generates a stream of data which will be replicated and read from the queue files.
-  This method runs in a separate process.
-  """
+    This method generates a stream of data which will be replicated and read from the queue files.
+
+    This method runs in a separate process.
+    """
     # For performance reasons, we load the full image list here, cache it, then disconnect from
     # the database.
     with database.UseThenDisconnect(app.config):
@@ -113,8 +114,11 @@ def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, r
 
 
 def _sign_derived_image(verb, derived_image, queue_file):
-    """ Read from the queue file and sign the contents which are generated. This method runs in a
-      separate process. """
+    """
+    Read from the queue file and sign the contents which are generated.
+
+    This method runs in a separate process.
+    """
     signature = None
     try:
         signature = signer.detached_sign(queue_file)
@@ -132,9 +136,11 @@ def _sign_derived_image(verb, derived_image, queue_file):
 def _write_derived_image_to_storage(
     verb, derived_image, queue_file, namespace, repository, tag_name
 ):
-    """ Read from the generated stream and write it back to the storage engine. This method runs in a
-      separate process.
-  """
+    """
+    Read from the generated stream and write it back to the storage engine.
+
+    This method runs in a separate process.
+    """
 
     def handle_exception(ex):
         logger.debug(
@@ -177,9 +183,11 @@ def _write_derived_image_to_storage(
 
 
 def _torrent_for_blob(blob, is_public):
-    """ Returns a response containing the torrent file contents for the given blob. May abort
-      with an error if the state is not valid (e.g. non-public, non-user request).
-  """
+    """
+    Returns a response containing the torrent file contents for the given blob.
+
+    May abort with an error if the state is not valid (e.g. non-public, non-user request).
+    """
     # Make sure the storage has a size.
     if not blob.compressed_size:
         abort(404)
@@ -229,7 +237,9 @@ def _torrent_for_blob(blob, is_public):
 
 
 def _torrent_repo_verb(repository, tag, manifest, verb, **kwargs):
-    """ Handles returning a torrent for the given verb on the given image and tag. """
+    """
+    Handles returning a torrent for the given verb on the given image and tag.
+    """
     if not features.BITTORRENT:
         # Torrent feature is not enabled.
         abort(406)
@@ -539,7 +549,9 @@ def os_arch_checker(os, arch):
 
 
 def observe_route(protocol):
-    """ Decorates verb endpoints to record the image_pulls metric into Prometheus. """
+    """
+    Decorates verb endpoints to record the image_pulls metric into Prometheus.
+    """
 
     def decorator(func):
         @wraps(func)

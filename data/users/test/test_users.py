@@ -60,7 +60,9 @@ def test_auth_createuser(auth_system_builder, user1, user2, config, app):
 def test_createuser_with_blacklist(
     auth_system_builder, email, blacklisting_enabled, can_create, config, app
 ):
-    """Verify email blacklisting with User Creation"""
+    """
+    Verify email blacklisting with User Creation.
+    """
 
     MOCK_CONFIG = {"BLACKLISTED_EMAIL_DOMAINS": ["blacklisted.com", "blacklisted.net"]}
     MOCK_PASSWORD = "somepass"

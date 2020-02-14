@@ -27,11 +27,13 @@ MAX_SYNC_DURATION = 60 * 60 * 2  # 2 Hours
 
 def get_eligible_mirrors():
     """
-  Returns the RepoMirrorConfig that are ready to run now. This includes those that are:
-  1. Not currently syncing but whose start time is in the past
-  2. Status of "sync now"
-  3. Currently marked as syncing but whose expiration time is in the past
-  """
+    Returns the RepoMirrorConfig that are ready to run now.
+
+    This includes those that are:
+    1. Not currently syncing but whose start time is in the past
+    2. Status of "sync now"
+    3. Currently marked as syncing but whose expiration time is in the past
+    """
     now = datetime.utcnow()
     immediate_candidates_filter = (RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNC_NOW) & (
         RepoMirrorConfig.sync_expiration_date >> None
@@ -63,20 +65,25 @@ def get_eligible_mirrors():
 
 
 def get_max_id_for_repo_mirror_config():
-    """ Gets the maximum id for repository mirroring """
+    """
+    Gets the maximum id for repository mirroring.
+    """
     return RepoMirrorConfig.select(fn.Max(RepoMirrorConfig.id)).scalar()
 
 
 def get_min_id_for_repo_mirror_config():
-    """ Gets the minimum id for a repository mirroring """
+    """
+    Gets the minimum id for a repository mirroring.
+    """
     return RepoMirrorConfig.select(fn.Min(RepoMirrorConfig.id)).scalar()
 
 
 def claim_mirror(mirror):
     """
-  Attempt to create an exclusive lock on the RepoMirrorConfig and return it.
-  If unable to create the lock, `None` will be returned.
-  """
+    Attempt to create an exclusive lock on the RepoMirrorConfig and return it.
+
+    If unable to create the lock, `None` will be returned.
+    """
 
     # Attempt to update the RepoMirrorConfig to mark it as "claimed"
     now = datetime.utcnow()
@@ -99,14 +106,13 @@ def claim_mirror(mirror):
 
 def release_mirror(mirror, sync_status):
     """
-  Return a mirror to the queue and update its status.
+    Return a mirror to the queue and update its status.
 
-  Upon success, move next sync to be at the next interval in the future. Failures remain with
-  current date to ensure they are picked up for repeat attempt. After MAX_SYNC_RETRIES,
-  the next sync will be moved ahead as if it were a success. This is to allow a daily sync,
-  for example, to retry the next day. Without this, users would need to manually run syncs
-  to clear failure state.
-  """
+    Upon success, move next sync to be at the next interval in the future. Failures remain with
+    current date to ensure they are picked up for repeat attempt. After MAX_SYNC_RETRIES, the next
+    sync will be moved ahead as if it were a success. This is to allow a daily sync, for example, to
+    retry the next day. Without this, users would need to manually run syncs to clear failure state.
+    """
     if sync_status == RepoMirrorStatus.FAIL:
         retries = max(0, mirror.sync_retries_remaining - 1)
 
@@ -141,8 +147,8 @@ def release_mirror(mirror, sync_status):
 
 def expire_mirror(mirror):
     """
-  Set the mirror to synchronize ASAP and reset its failure count.
-  """
+    Set the mirror to synchronize ASAP and reset its failure count.
+    """
 
     # Set the next-sync date to now
     # TODO: Verify the `where` conditions would not expire a currently syncing mirror.
@@ -166,8 +172,8 @@ def expire_mirror(mirror):
 
 def create_mirroring_rule(repository, rule_value, rule_type=RepoMirrorRuleType.TAG_GLOB_CSV):
     """
-  Create a RepoMirrorRule for a given Repository.
-  """
+    Create a RepoMirrorRule for a given Repository.
+    """
 
     if rule_type != RepoMirrorRuleType.TAG_GLOB_CSV:
         raise ValidationError("validation failed: rule_type must be TAG_GLOB_CSV")
@@ -194,8 +200,8 @@ def enable_mirroring_for_repository(
     sync_start_date=None,
 ):
     """
-  Create a RepoMirrorConfig and set the Repository to the MIRROR state.
-  """
+    Create a RepoMirrorConfig and set the Repository to the MIRROR state.
+    """
     assert internal_robot.robot
 
     namespace, _ = parse_robot_username(internal_robot.username)
@@ -239,8 +245,8 @@ def enable_mirroring_for_repository(
 
 def update_sync_status(mirror, sync_status):
     """
-  Update the sync status
-  """
+    Update the sync status.
+    """
     query = RepoMirrorConfig.update(
         sync_transaction_id=uuid_generator(), sync_status=sync_status
     ).where(
@@ -255,10 +261,12 @@ def update_sync_status(mirror, sync_status):
 
 def update_sync_status_to_sync_now(mirror):
     """
-  This will change the sync status to SYNC_NOW and set the retries remaining to one, if it is
-  less than one. None will be returned in cases where this is not possible, such as if the
-  mirror is in the SYNCING state.
-  """
+    This will change the sync status to SYNC_NOW and set the retries remaining to one, if it is less
+    than one.
+
+    None will be returned in cases where this is not possible, such as if the mirror is in the
+    SYNCING state.
+    """
 
     if mirror.sync_status == RepoMirrorStatus.SYNCING:
         return None
@@ -283,10 +291,12 @@ def update_sync_status_to_sync_now(mirror):
 
 def update_sync_status_to_cancel(mirror):
     """
-  If the mirror is SYNCING, it will be force-claimed (ignoring existing transaction id), and the
-  state will set to NEVER_RUN. None will be returned in cases where this is not possible, such
-  as if the mirror is not in the SYNCING state.
-  """
+    If the mirror is SYNCING, it will be force-claimed (ignoring existing transaction id), and the
+    state will set to NEVER_RUN.
+
+    None will be returned in cases where this is not possible, such as if the mirror is not in the
+    SYNCING state.
+    """
 
     if (
         mirror.sync_status != RepoMirrorStatus.SYNCING
@@ -308,9 +318,9 @@ def update_sync_status_to_cancel(mirror):
 
 def update_with_transaction(mirror, **kwargs):
     """
-  Helper function which updates a Repository's RepoMirrorConfig while also rolling its
-  sync_transaction_id for locking purposes.
-  """
+    Helper function which updates a Repository's RepoMirrorConfig while also rolling its
+    sync_transaction_id for locking purposes.
+    """
 
     # RepoMirrorConfig attributes which can be modified
     mutable_attributes = (
@@ -349,8 +359,8 @@ def update_with_transaction(mirror, **kwargs):
 
 def get_mirror(repository):
     """
-  Return the RepoMirrorConfig associated with the given Repository, or None if it doesn't exist.
-  """
+    Return the RepoMirrorConfig associated with the given Repository, or None if it doesn't exist.
+    """
     try:
         return RepoMirrorConfig.get(repository=repository)
     except RepoMirrorConfig.DoesNotExist:
@@ -359,31 +369,31 @@ def get_mirror(repository):
 
 def enable_mirror(repository):
     """
-  Enables a RepoMirrorConfig.
-  """
+    Enables a RepoMirrorConfig.
+    """
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, is_enabled=True))
 
 
 def disable_mirror(repository):
     """
-  Disables a RepoMirrorConfig.
-  """
+    Disables a RepoMirrorConfig.
+    """
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, is_enabled=False))
 
 
 def delete_mirror(repository):
     """
-  Delete a Repository Mirroring configuration.
-  """
+    Delete a Repository Mirroring configuration.
+    """
     raise NotImplementedError("TODO: Not Implemented")
 
 
 def change_remote(repository, remote_repository):
     """
-  Update the external repository for Repository Mirroring.
-  """
+    Update the external repository for Repository Mirroring.
+    """
     mirror = get_mirror(repository)
     updates = {"external_reference": remote_repository}
     return bool(update_with_transaction(mirror, **updates))
@@ -391,8 +401,8 @@ def change_remote(repository, remote_repository):
 
 def change_credentials(repository, username, password):
     """
-  Update the credentials used to access the remote repository.
-  """
+    Update the credentials used to access the remote repository.
+    """
     mirror = get_mirror(repository)
     updates = {
         "external_registry_username": username,
@@ -403,32 +413,32 @@ def change_credentials(repository, username, password):
 
 def change_username(repository, username):
     """
-  Update the Username used to access the external repository.
-  """
+    Update the Username used to access the external repository.
+    """
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, external_registry_username=username))
 
 
 def change_sync_interval(repository, interval):
     """
-  Update the interval at which a repository will be synchronized.
-  """
+    Update the interval at which a repository will be synchronized.
+    """
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, sync_interval=interval))
 
 
 def change_sync_start_date(repository, dt):
     """
-  Specify when the repository should be synchronized next.
-  """
+    Specify when the repository should be synchronized next.
+    """
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, sync_start_date=dt))
 
 
 def change_root_rule(repository, rule):
     """
-  Specify which rule should be used for repository mirroring.
-  """
+    Specify which rule should be used for repository mirroring.
+    """
     assert rule.repository == repository
     mirror = get_mirror(repository)
     return bool(update_with_transaction(mirror, root_rule=rule))
@@ -436,26 +446,28 @@ def change_root_rule(repository, rule):
 
 def change_sync_status(repository, sync_status):
     """
-  Change Repository's mirroring status.
-  """
+    Change Repository's mirroring status.
+    """
     mirror = get_mirror(repository)
     return update_with_transaction(mirror, sync_status=sync_status)
 
 
 def change_retries_remaining(repository, retries_remaining):
     """
-  Change the number of retries remaining for mirroring a repository.
-  """
+    Change the number of retries remaining for mirroring a repository.
+    """
     mirror = get_mirror(repository)
     return update_with_transaction(mirror, sync_retries_remaining=retries_remaining)
 
 
 def change_external_registry_config(repository, config_updates):
     """
-  Update the 'external_registry_config' with the passed in fields. Config has:
-  verify_tls: True|False
-  proxy: JSON fields 'http_proxy', 'https_proxy', andn 'no_proxy'
-  """
+    Update the 'external_registry_config' with the passed in fields.
+
+    Config has:
+    verify_tls: True|False
+    proxy: JSON fields 'http_proxy', 'https_proxy', andn 'no_proxy'
+    """
     mirror = get_mirror(repository)
     external_registry_config = mirror.external_registry_config
 
@@ -476,9 +488,11 @@ def change_external_registry_config(repository, config_updates):
 
 def get_mirroring_robot(repository):
     """
-  Return the robot used for mirroring. Returns None if the repository does not have an associated
-  RepoMirrorConfig or the robot does not exist.
-  """
+    Return the robot used for mirroring.
+
+    Returns None if the repository does not have an associated RepoMirrorConfig or the robot does
+    not exist.
+    """
     mirror = get_mirror(repository)
     if mirror:
         return mirror.internal_robot
@@ -488,8 +502,8 @@ def get_mirroring_robot(repository):
 
 def set_mirroring_robot(repository, robot):
     """
-  Sets the mirroring robot for the repository.
-  """
+    Sets the mirroring robot for the repository.
+    """
     assert robot.robot
     namespace, _ = parse_robot_username(robot.username)
     if namespace != repository.namespace_user.username:
@@ -521,8 +535,8 @@ def create_rule(
     right_child=None,
 ):
     """
-  Create a new Rule for mirroring a Repository
-  """
+    Create a new Rule for mirroring a Repository.
+    """
 
     validate_rule(rule_type, rule_value)
 
@@ -539,16 +553,16 @@ def create_rule(
 
 def list_rules(repository):
     """
-  Returns all RepoMirrorRules associated with a Repository.
-  """
+    Returns all RepoMirrorRules associated with a Repository.
+    """
     rules = RepoMirrorRule.select().where(RepoMirrorRule.repository == repository).all()
     return rules
 
 
 def get_root_rule(repository):
     """
-  Return the primary mirroring Rule
-  """
+    Return the primary mirroring Rule.
+    """
     mirror = get_mirror(repository)
     try:
         rule = RepoMirrorRule.get(repository=repository)
@@ -559,8 +573,8 @@ def get_root_rule(repository):
 
 def change_rule(repository, rule_type, rule_value):
     """
-  Update the value of an existing rule.
-  """
+    Update the value of an existing rule.
+    """
 
     validate_rule(rule_type, rule_value)
 

@@ -272,11 +272,11 @@ def _parse_manifest():
 @check_readonly
 def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     """
-  Delete the manifest specified by the digest.
+    Delete the manifest specified by the digest.
 
-  Note: there is no equivalent method for deleting by tag name because it is
-  forbidden by the spec.
-  """
+    Note: there is no equivalent method for deleting by tag name because it is
+    forbidden by the spec.
+    """
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown()

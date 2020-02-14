@@ -7,10 +7,11 @@ from Crypto.Cipher import AES
 
 
 class AESCipher(object):
-    """ Helper class for encrypting and decrypting data via AES.
+    """
+    Helper class for encrypting and decrypting data via AES.
 
-      Copied From: http://stackoverflow.com/a/21928790
-  """
+    Copied From: http://stackoverflow.com/a/21928790
+    """
 
     def __init__(self, key):
         self.bs = 32

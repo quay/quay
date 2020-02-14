@@ -1,4 +1,6 @@
-""" Manage the current user. """
+"""
+Manage the current user.
+"""
 
 import logging
 import json
@@ -82,9 +84,11 @@ logger = logging.getLogger(__name__)
 
 
 def handle_invite_code(invite_code, user):
-    """ Checks that the given invite code matches the specified user's e-mail address. If so, the
-      user is marked as having a verified e-mail address and this method returns True.
-  """
+    """
+    Checks that the given invite code matches the specified user's e-mail address.
+
+    If so, the user is marked as having a verified e-mail address and this method returns True.
+    """
     parsed_invite = parse_single_urn(invite_code)
     if parsed_invite is None:
         return False
@@ -222,7 +226,9 @@ def notification_view(note):
 
 @resource("/v1/user/")
 class User(ApiResource):
-    """ Operations related to users. """
+    """
+    Operations related to users.
+    """
 
     schemas = {
         "NewUser": {
@@ -323,7 +329,9 @@ class User(ApiResource):
     @define_json_response("UserView")
     @anon_allowed
     def get(self):
-        """ Get user information for the authenticated user. """
+        """
+        Get user information for the authenticated user.
+        """
         user = get_authenticated_user()
         if user is None or user.organization or not UserReadPermission(user.username).can():
             raise InvalidToken("Requires authentication", payload={"session_required": False})
@@ -336,7 +344,9 @@ class User(ApiResource):
     @internal_only
     @validate_json_request("UpdateUser")
     def put(self):
-        """ Update a users details such as password or email. """
+        """
+        Update a users details such as password or email.
+        """
         user = get_authenticated_user()
         user_data = request.get_json()
         previous_username = None
@@ -443,7 +453,9 @@ class User(ApiResource):
     @internal_only
     @validate_json_request("NewUser")
     def post(self):
-        """ Create a new user. """
+        """
+        Create a new user.
+        """
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             abort(404)
 
@@ -513,7 +525,9 @@ class User(ApiResource):
     @nickname("deleteCurrentUser")
     @internal_only
     def delete(self):
-        """ Deletes the current user. """
+        """
+        Deletes the current user.
+        """
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             abort(404)
 
@@ -527,13 +541,16 @@ class User(ApiResource):
 @internal_only
 @show_if(features.BILLING)
 class PrivateRepositories(ApiResource):
-    """ Operations dealing with the available count of private repositories. """
+    """
+    Operations dealing with the available count of private repositories.
+    """
 
     @require_user_admin
     @nickname("getUserPrivateAllowed")
     def get(self):
-        """ Get the number of private repos this user has, and whether they are allowed to create more.
-    """
+        """
+        Get the number of private repos this user has, and whether they are allowed to create more.
+        """
         user = get_authenticated_user()
         private_repos = model.user.get_private_repo_count(user.username)
         repos_allowed = 0
@@ -551,8 +568,10 @@ class PrivateRepositories(ApiResource):
 @resource("/v1/user/clientkey")
 @internal_only
 class ClientKey(ApiResource):
-    """ Operations for returning an encrypted key which can be used in place of a password
-      for the Docker client. """
+    """
+    Operations for returning an encrypted key which can be used in place of a password for the
+    Docker client.
+    """
 
     schemas = {
         "GenerateClientKey": {
@@ -566,7 +585,9 @@ class ClientKey(ApiResource):
     @nickname("generateUserClientKey")
     @validate_json_request("GenerateClientKey")
     def post(self):
-        """  Return's the user's private client key. """
+        """
+        Return's the user's private client key.
+        """
         if not authentication.supports_encrypted_credentials:
             raise NotFound()
 
@@ -614,7 +635,9 @@ def conduct_signin(username_or_email, password, invite_code=None):
 @internal_only
 @show_if(app.config["AUTHENTICATION_TYPE"] == "Database")
 class ConvertToOrganization(ApiResource):
-    """ Operations for converting a user to an organization. """
+    """
+    Operations for converting a user to an organization.
+    """
 
     schemas = {
         "ConvertUser": {
@@ -642,7 +665,9 @@ class ConvertToOrganization(ApiResource):
     @nickname("convertUserToOrganization")
     @validate_json_request("ConvertUser")
     def post(self):
-        """ Convert the user to an organization. """
+        """
+        Convert the user to an organization.
+        """
         user = get_authenticated_user()
         convert_data = request.get_json()
 
@@ -676,7 +701,9 @@ class ConvertToOrganization(ApiResource):
 @show_if(features.DIRECT_LOGIN)
 @internal_only
 class Signin(ApiResource):
-    """ Operations for signing in the user. """
+    """
+    Operations for signing in the user.
+    """
 
     schemas = {
         "SigninUser": {
@@ -696,7 +723,9 @@ class Signin(ApiResource):
     @anon_allowed
     @readonly_call_allowed
     def post(self):
-        """ Sign in the user with the specified credentials. """
+        """
+        Sign in the user with the specified credentials.
+        """
         signin_data = request.get_json()
         if not signin_data:
             raise NotFound()
@@ -710,7 +739,9 @@ class Signin(ApiResource):
 @resource("/v1/signin/verify")
 @internal_only
 class VerifyUser(ApiResource):
-    """ Operations for verifying the existing user. """
+    """
+    Operations for verifying the existing user.
+    """
 
     schemas = {
         "VerifyUser": {
@@ -727,7 +758,9 @@ class VerifyUser(ApiResource):
     @validate_json_request("VerifyUser")
     @readonly_call_allowed
     def post(self):
-        """ Verifies the signed in the user with the specified credentials. """
+        """
+        Verifies the signed in the user with the specified credentials.
+        """
         signin_data = request.get_json()
         password = signin_data["password"]
 
@@ -746,11 +779,15 @@ class VerifyUser(ApiResource):
 @resource("/v1/signout")
 @internal_only
 class Signout(ApiResource):
-    """ Resource for signing out users. """
+    """
+    Resource for signing out users.
+    """
 
     @nickname("logout")
     def post(self):
-        """ Request that the current user be signed out. """
+        """
+        Request that the current user be signed out.
+        """
         # Invalidate all sessions for the user.
         model.user.invalidate_all_sessions(get_authenticated_user())
 
@@ -766,9 +803,9 @@ class Signout(ApiResource):
 @resource("/v1/externallogin/<service_id>")
 @internal_only
 class ExternalLoginInformation(ApiResource):
-    """ Resource for both setting a token for external login and returning its authorization
-      url.
-  """
+    """
+    Resource for both setting a token for external login and returning its authorization url.
+    """
 
     schemas = {
         "GetLogin": {
@@ -790,7 +827,9 @@ class ExternalLoginInformation(ApiResource):
     @readonly_call_allowed
     @validate_json_request("GetLogin")
     def post(self, service_id):
-        """ Generates the auth URL and CSRF token explicitly for OIDC/OAuth-associated login. """
+        """
+        Generates the auth URL and CSRF token explicitly for OIDC/OAuth-associated login.
+        """
         login_service = oauth_login.get_service(service_id)
         if login_service is None:
             raise InvalidRequest()
@@ -814,12 +853,16 @@ class ExternalLoginInformation(ApiResource):
 @show_if(features.DIRECT_LOGIN)
 @internal_only
 class DetachExternal(ApiResource):
-    """ Resource for detaching an external login. """
+    """
+    Resource for detaching an external login.
+    """
 
     @require_user_admin
     @nickname("detachExternalLogin")
     def post(self, service_id):
-        """ Request that the current user be detached from the external login service. """
+        """
+        Request that the current user be detached from the external login service.
+        """
         model.user.detach_external_login(get_authenticated_user(), service_id)
         return {"success": True}
 
@@ -828,7 +871,9 @@ class DetachExternal(ApiResource):
 @show_if(features.MAILING)
 @internal_only
 class Recovery(ApiResource):
-    """ Resource for requesting a password recovery email. """
+    """
+    Resource for requesting a password recovery email.
+    """
 
     schemas = {
         "RequestRecovery": {
@@ -849,7 +894,9 @@ class Recovery(ApiResource):
     @anon_allowed
     @validate_json_request("RequestRecovery")
     def post(self):
-        """ Request a password recovery email."""
+        """
+        Request a password recovery email.
+        """
 
         def redact(value):
             threshold = max((len(value) / 3) - 1, 1)
@@ -1025,7 +1072,9 @@ class UserAuthorization(ApiResource):
 
 @resource("/v1/user/starred")
 class StarredRepositoryList(ApiResource):
-    """ Operations for creating and listing starred repositories. """
+    """
+    Operations for creating and listing starred repositories.
+    """
 
     schemas = {
         "NewStarredRepository": {
@@ -1046,7 +1095,9 @@ class StarredRepositoryList(ApiResource):
     @require_user_admin
     @page_support()
     def get(self, page_token, parsed_args):
-        """ List all starred repositories. """
+        """
+        List all starred repositories.
+        """
         repo_query = model.repository.get_user_starred_repositories(get_authenticated_user())
 
         repos, next_page_token = model.modelutil.paginate(
@@ -1068,7 +1119,9 @@ class StarredRepositoryList(ApiResource):
     @validate_json_request("NewStarredRepository")
     @require_user_admin
     def post(self):
-        """ Star a repository. """
+        """
+        Star a repository.
+        """
         user = get_authenticated_user()
         req = request.get_json()
         namespace = req["namespace"]
@@ -1087,12 +1140,16 @@ class StarredRepositoryList(ApiResource):
 @resource("/v1/user/starred/<apirepopath:repository>")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class StarredRepository(RepositoryParamResource):
-    """ Operations for managing a specific starred repository. """
+    """
+    Operations for managing a specific starred repository.
+    """
 
     @nickname("deleteStar")
     @require_user_admin
     def delete(self, namespace, repository):
-        """ Removes a star from a repository. """
+        """
+        Removes a star from a repository.
+        """
         user = get_authenticated_user()
         repo = model.repository.get_repository(namespace, repository)
 
@@ -1103,11 +1160,15 @@ class StarredRepository(RepositoryParamResource):
 
 @resource("/v1/users/<username>")
 class Users(ApiResource):
-    """ Operations related to retrieving information about other users. """
+    """
+    Operations related to retrieving information about other users.
+    """
 
     @nickname("getUserInformation")
     def get(self, username):
-        """ Get user information for the specified user. """
+        """
+        Get user information for the specified user.
+        """
         user = model.user.get_nonrobot_user(username)
         if user is None:
             abort(404)

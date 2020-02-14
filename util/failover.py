@@ -7,9 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 class FailoverException(Exception):
-    """ Exception raised when an operation should be retried by the failover decorator.
-      Wraps the exception of the initial failure.
-  """
+    """
+    Exception raised when an operation should be retried by the failover decorator.
+
+    Wraps the exception of the initial failure.
+    """
 
     def __init__(self, exception):
         super(FailoverException, self).__init__()

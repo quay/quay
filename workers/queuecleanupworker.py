@@ -23,7 +23,9 @@ class QueueCleanupWorker(Worker):
         self.add_operation(self._cleanup_queue, QUEUE_CLEANUP_FREQUENCY)
 
     def _cleanup_queue(self):
-        """ Performs garbage collection on the queueitem table. """
+        """
+        Performs garbage collection on the queueitem table.
+        """
         with UseThenDisconnect(app.config):
             while True:
                 # Find all queue items older than the threshold (typically a week) and delete them.

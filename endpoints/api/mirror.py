@@ -110,12 +110,16 @@ common_properties = {
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @show_if(features.REPO_MIRROR)
 class RepoMirrorSyncNowResource(RepositoryParamResource):
-    """ A resource for managing RepoMirrorConfig.sync_status """
+    """
+    A resource for managing RepoMirrorConfig.sync_status.
+    """
 
     @require_repo_admin
     @nickname("syncNow")
     def post(self, namespace_name, repository_name):
-        """ Update the sync_status for a given Repository's mirroring configuration. """
+        """
+        Update the sync_status for a given Repository's mirroring configuration.
+        """
         repo = model.repository.get_repository(namespace_name, repository_name)
         if not repo:
             raise NotFound()
@@ -140,12 +144,16 @@ class RepoMirrorSyncNowResource(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @show_if(features.REPO_MIRROR)
 class RepoMirrorSyncCancelResource(RepositoryParamResource):
-    """ A resource for managing RepoMirrorConfig.sync_status """
+    """
+    A resource for managing RepoMirrorConfig.sync_status.
+    """
 
     @require_repo_admin
     @nickname("syncCancel")
     def post(self, namespace_name, repository_name):
-        """ Update the sync_status for a given Repository's mirroring configuration. """
+        """
+        Update the sync_status for a given Repository's mirroring configuration.
+        """
         repo = model.repository.get_repository(namespace_name, repository_name)
         if not repo:
             raise NotFound()
@@ -171,8 +179,8 @@ class RepoMirrorSyncCancelResource(RepositoryParamResource):
 @show_if(features.REPO_MIRROR)
 class RepoMirrorResource(RepositoryParamResource):
     """
-  Resource for managing repository mirroring.
-  """
+    Resource for managing repository mirroring.
+    """
 
     schemas = {
         "CreateMirrorConfig": {
@@ -211,7 +219,9 @@ class RepoMirrorResource(RepositoryParamResource):
     @define_json_response("ViewMirrorConfig")
     @nickname("getRepoMirrorConfig")
     def get(self, namespace_name, repository_name):
-        """ Return the Mirror configuration for a given Repository. """
+        """
+        Return the Mirror configuration for a given Repository.
+        """
         repo = model.repository.get_repository(namespace_name, repository_name)
         if not repo:
             raise NotFound()
@@ -246,7 +256,9 @@ class RepoMirrorResource(RepositoryParamResource):
     @nickname("createRepoMirrorConfig")
     @validate_json_request("CreateMirrorConfig")
     def post(self, namespace_name, repository_name):
-        """ Create a RepoMirrorConfig for a given Repository. """
+        """
+        Create a RepoMirrorConfig for a given Repository.
+        """
         # TODO: Tidy up this function
         # TODO: Specify only the data we want to pass on when creating the RepoMirrorConfig. Avoid
         #       the possibility of data injection.
@@ -296,7 +308,9 @@ class RepoMirrorResource(RepositoryParamResource):
     @validate_json_request("UpdateMirrorConfig")
     @nickname("changeRepoMirrorConfig")
     def put(self, namespace_name, repository_name):
-        """ Allow users to modifying the repository's mirroring configuration. """
+        """
+        Allow users to modifying the repository's mirroring configuration.
+        """
         values = request.get_json()
 
         repo = model.repository.get_repository(namespace_name, repository_name)
@@ -477,7 +491,9 @@ class RepoMirrorResource(RepositoryParamResource):
         return "", 201
 
     def _setup_robot_for_mirroring(self, namespace_name, repo_name, robot_username):
-        """ Validate robot exists and give write permissions. """
+        """
+        Validate robot exists and give write permissions.
+        """
         robot = model.user.lookup_robot(robot_username)
         assert robot.robot
 
@@ -497,7 +513,9 @@ class RepoMirrorResource(RepositoryParamResource):
         return robot
 
     def _string_to_dt(self, string):
-        """ Convert String to correct DateTime format. """
+        """
+        Convert String to correct DateTime format.
+        """
         if string is None:
             return None
 
@@ -516,7 +534,9 @@ class RepoMirrorResource(RepositoryParamResource):
         return dt
 
     def _dt_to_string(self, dt):
-        """ Convert DateTime to correctly formatted String."""
+        """
+        Convert DateTime to correctly formatted String.
+        """
         if dt is None:
             return None
 

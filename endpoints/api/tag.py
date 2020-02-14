@@ -1,4 +1,6 @@
-""" Manage the tags of a repository. """
+"""
+Manage the tags of a repository.
+"""
 from datetime import datetime
 from flask import request, abort
 
@@ -65,7 +67,9 @@ def _tag_dict(tag):
 @resource("/v1/repository/<apirepopath:repository>/tag/")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class ListRepositoryTags(RepositoryParamResource):
-    """ Resource for listing full repository tag history, alive *and dead*. """
+    """
+    Resource for listing full repository tag history, alive *and dead*.
+    """
 
     @require_repo_read
     @disallow_for_app_repositories
@@ -105,7 +109,9 @@ class ListRepositoryTags(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("tag", "The name of the tag")
 class RepositoryTag(RepositoryParamResource):
-    """ Resource for managing repository tags. """
+    """
+    Resource for managing repository tags.
+    """
 
     schemas = {
         "ChangeTag": {
@@ -134,7 +140,9 @@ class RepositoryTag(RepositoryParamResource):
     @nickname("changeTag")
     @validate_json_request("ChangeTag")
     def put(self, namespace, repository, tag):
-        """ Change which image a tag points to or create a new tag."""
+        """
+        Change which image a tag points to or create a new tag.
+        """
         if not TAG_REGEX.match(tag):
             abort(400, TAG_ERROR)
 
@@ -238,7 +246,9 @@ class RepositoryTag(RepositoryParamResource):
     @disallow_for_non_normal_repositories
     @nickname("deleteFullTag")
     def delete(self, namespace, repository, tag):
-        """ Delete the specified repository tag. """
+        """
+        Delete the specified repository tag.
+        """
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
@@ -260,7 +270,9 @@ class RepositoryTag(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("tag", "The name of the tag")
 class RepositoryTagImages(RepositoryParamResource):
-    """ Resource for listing the images in a specific repository tag. """
+    """
+    Resource for listing the images in a specific repository tag.
+    """
 
     @require_repo_read
     @nickname("listTagImages")
@@ -273,7 +285,9 @@ class RepositoryTagImages(RepositoryParamResource):
         default=False,
     )
     def get(self, namespace, repository, tag, parsed_args):
-        """ List the images for the specified repository tag. """
+        """
+        List the images for the specified repository tag.
+        """
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
@@ -309,7 +323,9 @@ class RepositoryTagImages(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("tag", "The name of the tag")
 class RestoreTag(RepositoryParamResource):
-    """ Resource for restoring a repository tag back to a previous image. """
+    """
+    Resource for restoring a repository tag back to a previous image.
+    """
 
     schemas = {
         "RestoreTag": {
@@ -334,7 +350,9 @@ class RestoreTag(RepositoryParamResource):
     @nickname("restoreTag")
     @validate_json_request("RestoreTag")
     def post(self, namespace, repository, tag):
-        """ Restores a repository tag back to a previous image in the repository. """
+        """
+        Restores a repository tag back to a previous image in the repository.
+        """
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()

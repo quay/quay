@@ -1,9 +1,9 @@
-"""Add last_accessed field to User table
+"""
+Add last_accessed field to User table.
 
 Revision ID: 224ce4c72c2f
 Revises: b547bc139ad8
 Create Date: 2018-03-12 22:44:07.070490
-
 """
 
 # revision identifiers, used by Alembic.

@@ -3,10 +3,14 @@ import collections
 
 
 class ParsedItem(dict):
-    """ Parsed Schema item """
+    """
+    Parsed Schema item.
+    """
 
     def __init__(self, json_object, name, required, level):
-        """Fills dict with basic item information"""
+        """
+        Fills dict with basic item information.
+        """
         super(ParsedItem, self).__init__()
         self["name"] = name
         self["title"] = json_object.get("title", "")
@@ -21,21 +25,28 @@ class ParsedItem(dict):
 
 
 class DocsModel:
-    """ Documentation model and Schema Parser """
+    """
+    Documentation model and Schema Parser.
+    """
 
     def __init__(self):
         self.__parsed_items = None
 
     def parse(self, json_object):
-        """ Returns multi-level list of recursively parsed items """
+        """
+        Returns multi-level list of recursively parsed items.
+        """
 
         self.__parsed_items = list()
         self.__parse_schema(json_object, "root", True, 0)
         return self.__parsed_items
 
     def __parse_schema(self, schema, name, required, level):
-        """ Parses schema, which type is object, array or leaf.
-    Appends new ParsedItem to self.__parsed_items lis """
+        """
+        Parses schema, which type is object, array or leaf.
+
+        Appends new ParsedItem to self.__parsed_items lis
+        """
         parsed_item = ParsedItem(schema, name, required, level)
         self.__parsed_items.append(parsed_item)
         required = schema.get("required", [])
@@ -51,12 +62,16 @@ class DocsModel:
             parse_leaf(parsed_item, schema)
 
     def __parse_object(self, parsed_item, schema, required, level):
-        """ Parses schema of type object """
+        """
+        Parses schema of type object.
+        """
         for key, value in schema.get("properties", {}).items():
             self.__parse_schema(value, key, key in required, level + 1)
 
     def __parse_array(self, parsed_item, schema, required, level):
-        """ Parses schema of type array """
+        """
+        Parses schema of type array.
+        """
         items = schema.get("items")
         parsed_item["minItems"] = schema.get("minItems", None)
         parsed_item["maxItems"] = schema.get("maxItems", None)
@@ -74,7 +89,9 @@ class DocsModel:
 
 
 def parse_leaf(parsed_item, schema):
-    """ Parses schema of a number and a string """
+    """
+    Parses schema of a number and a string.
+    """
     if parsed_item["name"] != "root":
         parsed_item["description"] = schema.get("description", "")
         parsed_item["x-reference"] = schema.get("x-reference", "")

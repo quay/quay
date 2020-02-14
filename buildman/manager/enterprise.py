@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class DynamicRegistrationComponent(BaseComponent):
-    """ Component session that handles dynamic registration of the builder components. """
+    """
+    Component session that handles dynamic registration of the builder components.
+    """
 
     def onConnect(self):
         self.join(REGISTRATION_REALM)
@@ -32,7 +34,9 @@ class DynamicRegistrationComponent(BaseComponent):
 
 
 class EnterpriseManager(BaseManager):
-    """ Build manager implementation for the Enterprise Registry. """
+    """
+    Build manager implementation for the Enterprise Registry.
+    """
 
     def __init__(self, *args, **kwargs):
         self.ready_components = set()
@@ -52,7 +56,9 @@ class EnterpriseManager(BaseManager):
         return 60
 
     def add_build_component(self):
-        """ Adds a new build component for an Enterprise Registry. """
+        """
+        Adds a new build component for an Enterprise Registry.
+        """
         # Generate a new unique realm ID for the build worker.
         realm = str(uuid.uuid4())
         new_component = self.register_component(realm, BuildComponent, token="")
@@ -61,7 +67,9 @@ class EnterpriseManager(BaseManager):
 
     @coroutine
     def schedule(self, build_job):
-        """ Schedules a build for an Enterprise Registry. """
+        """
+        Schedules a build for an Enterprise Registry.
+        """
         if self.shutting_down or not self.ready_components:
             raise Return(False, RETRY_TIMEOUT)
 

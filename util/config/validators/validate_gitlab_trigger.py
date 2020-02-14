@@ -7,7 +7,9 @@ class GitLabTriggerValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the OAuth credentials and API endpoint for a GitLab service. """
+        """
+        Validates the OAuth credentials and API endpoint for a GitLab service.
+        """
         config = validator_context.config
         url_scheme_and_hostname = validator_context.url_scheme_and_hostname
         client = validator_context.http_client

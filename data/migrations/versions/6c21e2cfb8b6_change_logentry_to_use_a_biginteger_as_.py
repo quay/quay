@@ -1,9 +1,9 @@
-"""Change LogEntry to use a BigInteger as its primary key
+"""
+Change LogEntry to use a BigInteger as its primary key.
 
 Revision ID: 6c21e2cfb8b6
 Revises: d17c695859ea
 Create Date: 2018-07-27 16:30:02.877346
-
 """
 
 # revision identifiers, used by Alembic.

@@ -21,9 +21,11 @@ class SizeInfo(object):
 
 
 def calculate_size_handler():
-    """ Returns an object and a SocketReader handler. The handler will gunzip the data it receives,
-      adding the size found to the object.
-  """
+    """
+    Returns an object and a SocketReader handler.
+
+    The handler will gunzip the data it receives, adding the size found to the object.
+    """
 
     size_info = SizeInfo()
     decompressor = zlib.decompressobj(ZLIB_GZIP_WINDOW)

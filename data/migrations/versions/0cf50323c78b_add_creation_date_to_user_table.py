@@ -1,9 +1,9 @@
-"""Add creation date to User table
+"""
+Add creation date to User table.
 
 Revision ID: 0cf50323c78b
 Revises: 87fbbc224f10
 Create Date: 2018-03-09 13:19:41.903196
-
 """
 
 # revision identifiers, used by Alembic.

@@ -112,9 +112,10 @@ class QuayDeferredPermissionUser(Identity):
         return self._translate_role_for_scopes(USER_ROLES, SCOPE_MAX_USER_ROLES, role)
 
     def _populate_user_provides(self, user_object):
-        """ Populates the provides that naturally apply to a user, such as being the admin of
-        their own namespace.
-    """
+        """
+        Populates the provides that naturally apply to a user, such as being the admin of their own
+        namespace.
+        """
 
         # Add the user specific permissions, only for non-oauth permission
         user_grant = _UserNeed(user_object.username, self._user_role_for_scopes("admin"))
@@ -142,9 +143,11 @@ class QuayDeferredPermissionUser(Identity):
             self.provides.add(_SuperUserNeed())
 
     def _populate_namespace_wide_provides(self, user_object, namespace_filter):
-        """ Populates the namespace-wide provides for a particular user under a particular namespace.
+        """
+        Populates the namespace-wide provides for a particular user under a particular namespace.
+
         This method does *not* add any provides for specific repositories.
-    """
+        """
 
         for team in model.permission.get_org_wide_permissions(
             user_object, org_filter=namespace_filter
@@ -169,7 +172,9 @@ class QuayDeferredPermissionUser(Identity):
             self.provides.add(team_grant)
 
     def _populate_repository_provides(self, user_object, namespace_filter, repository_name):
-        """ Populates the repository-specific provides for a particular user and repository. """
+        """
+        Populates the repository-specific provides for a particular user and repository.
+        """
 
         if namespace_filter and repository_name:
             permissions = model.permission.get_user_repository_permissions(
@@ -232,7 +237,9 @@ class QuayDeferredPermissionUser(Identity):
 
 
 class QuayPermission(Permission):
-    """ Base for all permissions in Quay. """
+    """
+    Base for all permissions in Quay.
+    """
 
     namespace = None
     repo_name = None

@@ -274,7 +274,9 @@ class LDAPUsers(FederatedUsers):
         return (False, None)
 
     def get_user(self, username_or_email):
-        """ Looks up a username or email in LDAP. """
+        """
+        Looks up a username or email in LDAP.
+        """
         logger.debug("Looking up LDAP username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
         if err_msg is not None:
@@ -285,7 +287,9 @@ class LDAPUsers(FederatedUsers):
         return self._build_user_information(found_response)
 
     def query_users(self, query, limit=20):
-        """ Queries LDAP for matching users. """
+        """
+        Queries LDAP for matching users.
+        """
         if not query:
             return (None, self.federated_service, "Empty query")
 
@@ -306,7 +310,9 @@ class LDAPUsers(FederatedUsers):
         return (final_results, self.federated_service, None)
 
     def verify_credentials(self, username_or_email, password):
-        """ Verify the credentials with LDAP. """
+        """
+        Verify the credentials with LDAP.
+        """
         # Make sure that even if the server supports anonymous binds, we don't allow it
         if not password:
             return (None, "Anonymous binding not allowed")

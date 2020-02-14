@@ -1,9 +1,9 @@
-"""Cleanup old robots
+"""
+Cleanup old robots.
 
 Revision ID: 5b7503aada1b
 Revises: 224ce4c72c2f
 Create Date: 2018-05-09 17:18:52.230504
-
 """
 
 # revision identifiers, used by Alembic.

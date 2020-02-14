@@ -5,7 +5,9 @@ logger = logging.getLogger(__name__)
 
 
 class RepoMirrorConfigValidator(object):
-    """ Helper class for validating the repository mirror configuration. """
+    """
+    Helper class for validating the repository mirror configuration.
+    """
 
     def __init__(self, feature_repo_mirror):
         self._feature_repo_mirror = feature_repo_mirror

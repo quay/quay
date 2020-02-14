@@ -4,7 +4,9 @@ from six import iteritems
 
 
 class ExpiresEntry(object):
-    """ A single entry under a ExpiresDict. """
+    """
+    A single entry under a ExpiresDict.
+    """
 
     def __init__(self, value, expires=None):
         self.value = value
@@ -19,10 +21,13 @@ class ExpiresEntry(object):
 
 
 class ExpiresDict(object):
-    """ ExpiresDict defines a dictionary-like class whose keys have expiration. The rebuilder is
-      a function that returns the full contents of the cached dictionary as a dict of the keys
-      and whose values are TTLEntry's. If the rebuilder is None, then no rebuilding is performed.
-  """
+    """
+    ExpiresDict defines a dictionary-like class whose keys have expiration.
+
+    The rebuilder is a function that returns the full contents of the cached dictionary as a dict of
+    the keys and whose values are TTLEntry's. If the rebuilder is None, then no rebuilding is
+    performed.
+    """
 
     def __init__(self, rebuilder=None):
         self._rebuilder = rebuilder

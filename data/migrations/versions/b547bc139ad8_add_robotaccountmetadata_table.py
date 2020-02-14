@@ -1,9 +1,9 @@
-"""Add RobotAccountMetadata table
+"""
+Add RobotAccountMetadata table.
 
 Revision ID: b547bc139ad8
 Revises: 0cf50323c78b
 Create Date: 2018-03-09 15:50:48.298880
-
 """
 
 # revision identifiers, used by Alembic.

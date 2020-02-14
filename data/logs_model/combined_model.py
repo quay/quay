@@ -9,13 +9,16 @@ logger = logging.getLogger(__name__)
 
 
 def _merge_aggregated_log_counts(*args):
-    """ Merge two lists of AggregatedLogCount based on the value of their kind_id and datetime.
-  """
+    """
+    Merge two lists of AggregatedLogCount based on the value of their kind_id and datetime.
+    """
     matching_keys = {}
     aggregated_log_counts_list = itertools.chain.from_iterable(args)
 
     def canonical_key_from_kind_date_tuple(kind_id, dt):
-        """ Return a comma separated key from an AggregatedLogCount's kind_id and datetime. """
+        """
+        Return a comma separated key from an AggregatedLogCount's kind_id and datetime.
+        """
         return str(kind_id) + "," + str(dt)
 
     for kind_id, count, dt in aggregated_log_counts_list:
@@ -33,9 +36,9 @@ def _merge_aggregated_log_counts(*args):
 
 class CombinedLogsModel(SharedModel, ActionLogsDataInterface):
     """
-  CombinedLogsModel implements the data model that logs to the first logs model and reads from
-  both.
-  """
+    CombinedLogsModel implements the data model that logs to the first logs model and reads from
+    both.
+    """
 
     def __init__(self, read_write_logs_model, read_only_logs_model):
         self.read_write_logs_model = read_write_logs_model

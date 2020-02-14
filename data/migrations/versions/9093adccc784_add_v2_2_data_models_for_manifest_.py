@@ -1,9 +1,9 @@
-"""Add V2_2 data models for Manifest, ManifestBlob and ManifestLegacyImage
+"""
+Add V2_2 data models for Manifest, ManifestBlob and ManifestLegacyImage.
 
 Revision ID: 9093adccc784
 Revises: 6c21e2cfb8b6
 Create Date: 2018-08-06 16:07:50.222749
-
 """
 
 # revision identifiers, used by Alembic.

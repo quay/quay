@@ -1,9 +1,9 @@
-"""Add LogEntry3 table
+"""
+Add LogEntry3 table.
 
 Revision ID: 6ec8726c0ace
 Revises: 54492a68a3cf
 Create Date: 2019-01-03 13:41:02.897957
-
 """
 
 # revision identifiers, used by Alembic.

@@ -11,17 +11,19 @@ from util.registry.streamlayerformat import StreamLayerMerger
 
 class FileEstimationException(Exception):
     """
-  Exception raised by build_docker_load_stream if the estimated size of the layer tar was lower
-  than the actual size. This means the sent tar header is wrong, and we have to fail.
-  """
+    Exception raised by build_docker_load_stream if the estimated size of the layer tar was lower
+    than the actual size.
+
+    This means the sent tar header is wrong, and we have to fail.
+    """
 
     pass
 
 
 class SquashedDockerImageFormatter(TarImageFormatter):
     """
-  Image formatter which produces a squashed image compatible with the `docker load` command.
-  """
+    Image formatter which produces a squashed image compatible with the `docker load` command.
+    """
 
     # Multiplier against the image size reported by Docker to account for the tar metadata.
     # Note: This multiplier was not formally calculated in anyway and should be adjusted overtime

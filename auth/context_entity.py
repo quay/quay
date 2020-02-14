@@ -12,10 +12,12 @@ from auth.credential_consts import (
 
 
 class ContextEntityKind(Enum):
-    """ Defines the various kinds of entities in an auth context. Note that the string values of
-      these fields *must* match the names of the fields in the ValidatedAuthContext class, as
-      we fill them in directly based on the string names here.
-  """
+    """
+    Defines the various kinds of entities in an auth context.
+
+    Note that the string values of these fields *must* match the names of the fields in the
+    ValidatedAuthContext class, as we fill them in directly based on the string names here.
+    """
 
     anonymous = "anonymous"
     user = "user"
@@ -29,35 +31,45 @@ class ContextEntityKind(Enum):
 @add_metaclass(ABCMeta)
 class ContextEntityHandler(object):
     """
-  Interface that represents handling specific kinds of entities under an auth context.
-  """
+    Interface that represents handling specific kinds of entities under an auth context.
+    """
 
     @abstractmethod
     def credential_username(self, entity_reference):
-        """ Returns the username to create credentials for this entity, if any. """
+        """
+        Returns the username to create credentials for this entity, if any.
+        """
         pass
 
     @abstractmethod
     def get_serialized_entity_reference(self, entity_reference):
-        """ Returns the entity reference for this kind of auth context, serialized into a form that can
-        be placed into a JSON object and put into a JWT. This is typically a DB UUID or another
-        unique identifier for the object in the DB.
-    """
+        """
+        Returns the entity reference for this kind of auth context, serialized into a form that can
+        be placed into a JSON object and put into a JWT.
+
+        This is typically a DB UUID or another unique identifier for the object in the DB.
+        """
         pass
 
     @abstractmethod
     def deserialize_entity_reference(self, serialized_entity_reference):
-        """ Returns the deserialized reference to the entity in the database, or None if none. """
+        """
+        Returns the deserialized reference to the entity in the database, or None if none.
+        """
         pass
 
     @abstractmethod
     def description(self, entity_reference):
-        """ Returns a human-readable and *public* description of the current entity. """
+        """
+        Returns a human-readable and *public* description of the current entity.
+        """
         pass
 
     @abstractmethod
     def analytics_id_and_public_metadata(self, entity_reference):
-        """ Returns the analyitics ID and a dict of public metadata for the current entity. """
+        """
+        Returns the analyitics ID and a dict of public metadata for the current entity.
+        """
         pass
 
 

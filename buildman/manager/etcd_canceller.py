@@ -5,7 +5,9 @@ logger = logging.getLogger(__name__)
 
 
 class EtcdCanceller(object):
-    """ A class that sends a message to etcd to cancel a build """
+    """
+    A class that sends a message to etcd to cancel a build.
+    """
 
     def __init__(self, config):
         etcd_host = config.get("ETCD_HOST", "127.0.0.1")
@@ -28,7 +30,9 @@ class EtcdCanceller(object):
         )
 
     def try_cancel_build(self, build_uuid):
-        """ Writes etcd message to cancel build_uuid. """
+        """
+        Writes etcd message to cancel build_uuid.
+        """
         logger.info("Cancelling build %s".format(build_uuid))
         try:
             self._etcd_client.write(

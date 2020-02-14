@@ -4,21 +4,26 @@ import OpenSSL
 
 
 class CertInvalidException(Exception):
-    """ Exception raised when a certificate could not be parsed/loaded. """
+    """
+    Exception raised when a certificate could not be parsed/loaded.
+    """
 
     pass
 
 
 class KeyInvalidException(Exception):
-    """ Exception raised when a key could not be parsed/loaded or successfully applied to a cert. """
+    """
+    Exception raised when a key could not be parsed/loaded or successfully applied to a cert.
+    """
 
     pass
 
 
 def load_certificate(cert_contents):
-    """ Loads the certificate from the given contents and returns it or raises a CertInvalidException
-      on failure.
-  """
+    """
+    Loads the certificate from the given contents and returns it or raises a CertInvalidException on
+    failure.
+    """
     try:
         cert = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert_contents)
         return SSLCertificate(cert)
@@ -30,15 +35,19 @@ _SUBJECT_ALT_NAME = "subjectAltName"
 
 
 class SSLCertificate(object):
-    """ Helper class for easier working with SSL certificates. """
+    """
+    Helper class for easier working with SSL certificates.
+    """
 
     def __init__(self, openssl_cert):
         self.openssl_cert = openssl_cert
 
     def validate_private_key(self, private_key_path):
-        """ Validates that the private key found at the given file path applies to this certificate.
+        """
+        Validates that the private key found at the given file path applies to this certificate.
+
         Raises a KeyInvalidException on failure.
-    """
+        """
         context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
         context.use_certificate(self.openssl_cert)
 
@@ -49,7 +58,9 @@ class SSLCertificate(object):
             raise KeyInvalidException(ex.args[0][0][2])
 
     def matches_name(self, check_name):
-        """ Returns true if this SSL certificate matches the given DNS hostname. """
+        """
+        Returns true if this SSL certificate matches the given DNS hostname.
+        """
         for dns_name in self.names:
             if fnmatch(check_name, dns_name):
                 return True
@@ -58,17 +69,25 @@ class SSLCertificate(object):
 
     @property
     def expired(self):
-        """ Returns whether the SSL certificate has expired. """
+        """
+        Returns whether the SSL certificate has expired.
+        """
         return self.openssl_cert.has_expired()
 
     @property
     def common_name(self):
-        """ Returns the defined common name for the certificate, if any. """
+        """
+        Returns the defined common name for the certificate, if any.
+        """
         return self.openssl_cert.get_subject().commonName
 
     @property
     def names(self):
-        """ Returns all the DNS named to which the certificate applies. May be empty. """
+        """
+        Returns all the DNS named to which the certificate applies.
+
+        May be empty.
+        """
         dns_names = set()
         common_name = self.common_name
         if common_name is not None:

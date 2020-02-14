@@ -1,4 +1,6 @@
-""" Create, list and manage an organization's teams. """
+"""
+Create, list and manage an organization's teams.
+"""
 
 import json
 
@@ -138,10 +140,13 @@ def invite_view(invite):
 
 
 def disallow_for_synced_team(except_robots=False):
-    """ Disallows the decorated operation for a team that is marked as being synced from an internal
-      auth provider such as LDAP. If except_robots is True, then the operation is allowed if the
-      member specified on the operation is a robot account.
-  """
+    """
+    Disallows the decorated operation for a team that is marked as being synced from an internal
+    auth provider such as LDAP.
+
+    If except_robots is True, then the operation is allowed if the member specified on the operation
+    is a robot account.
+    """
 
     def inner(func):
         @wraps(func)
@@ -169,7 +174,9 @@ disallow_all_for_synced_team = disallow_for_synced_team(except_robots=False)
 @path_param("orgname", "The name of the organization")
 @path_param("teamname", "The name of the team")
 class OrganizationTeam(ApiResource):
-    """ Resource for manging an organization's teams. """
+    """
+    Resource for manging an organization's teams.
+    """
 
     schemas = {
         "TeamDescription": {
@@ -194,7 +201,9 @@ class OrganizationTeam(ApiResource):
     @nickname("updateOrganizationTeam")
     @validate_json_request("TeamDescription")
     def put(self, orgname, teamname):
-        """ Update the org-wide permission for the specified team. """
+        """
+        Update the org-wide permission for the specified team.
+        """
         edit_permission = AdministerOrganizationPermission(orgname)
         if edit_permission.can():
             team = None
@@ -242,7 +251,9 @@ class OrganizationTeam(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("deleteOrganizationTeam")
     def delete(self, orgname, teamname):
-        """ Delete the specified team. """
+        """
+        Delete the specified team.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             model.team.remove_team(orgname, teamname, get_authenticated_user().username)
@@ -253,7 +264,9 @@ class OrganizationTeam(ApiResource):
 
 
 def _syncing_setup_allowed(orgname):
-    """ Returns whether syncing setup is allowed for the current user over the matching org. """
+    """
+    Returns whether syncing setup is allowed for the current user over the matching org.
+    """
     if not features.NONSUPERUSER_TEAM_SYNCING_SETUP and not SuperUserPermission().can():
         return False
 
@@ -265,7 +278,9 @@ def _syncing_setup_allowed(orgname):
 @path_param("teamname", "The name of the team")
 @show_if(features.TEAM_SYNCING)
 class OrganizationTeamSyncing(ApiResource):
-    """ Resource for managing syncing of a team by a backing group. """
+    """
+    Resource for managing syncing of a team by a backing group.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @require_scope(scopes.SUPERUSER)
@@ -315,7 +330,9 @@ class OrganizationTeamSyncing(ApiResource):
 @path_param("orgname", "The name of the organization")
 @path_param("teamname", "The name of the team")
 class TeamMemberList(ApiResource):
-    """ Resource for managing the list of members for a team. """
+    """
+    Resource for managing the list of members for a team.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @parse_args()
@@ -324,7 +341,9 @@ class TeamMemberList(ApiResource):
     )
     @nickname("getOrganizationTeamMembers")
     def get(self, orgname, teamname, parsed_args):
-        """ Retrieve the list of members for the specified team. """
+        """
+        Retrieve the list of members for the specified team.
+        """
         view_permission = ViewTeamPermission(orgname, teamname)
         edit_permission = AdministerOrganizationPermission(orgname)
 
@@ -379,13 +398,17 @@ class TeamMemberList(ApiResource):
 @path_param("teamname", "The name of the team")
 @path_param("membername", "The username of the team member")
 class TeamMember(ApiResource):
-    """ Resource for managing individual members of a team. """
+    """
+    Resource for managing individual members of a team.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("updateOrganizationTeamMember")
     @disallow_nonrobots_for_synced_team
     def put(self, orgname, teamname, membername):
-        """ Adds or invites a member to an existing team. """
+        """
+        Adds or invites a member to an existing team.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             team = None
@@ -423,9 +446,11 @@ class TeamMember(ApiResource):
     @nickname("deleteOrganizationTeamMember")
     @disallow_nonrobots_for_synced_team
     def delete(self, orgname, teamname, membername):
-        """ Delete a member of a team. If the user is merely invited to join
-        the team, then the invite is removed instead.
-    """
+        """
+        Delete a member of a team.
+
+        If the user is merely invited to join the team, then the invite is removed instead.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             # Remote the user from the team.
@@ -462,13 +487,17 @@ class TeamMember(ApiResource):
 @resource("/v1/organization/<orgname>/team/<teamname>/invite/<email>")
 @show_if(features.MAILING)
 class InviteTeamMember(ApiResource):
-    """ Resource for inviting a team member via email address. """
+    """
+    Resource for inviting a team member via email address.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("inviteTeamMemberEmail")
     @disallow_all_for_synced_team
     def put(self, orgname, teamname, email):
-        """ Invites an email address to an existing team. """
+        """
+        Invites an email address to an existing team.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             team = None
@@ -494,7 +523,9 @@ class InviteTeamMember(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("deleteTeamMemberEmailInvite")
     def delete(self, orgname, teamname, email):
-        """ Delete an invite of an email address to join a team. """
+        """
+        Delete an invite of an email address to join a team.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             team = None
@@ -523,11 +554,15 @@ class InviteTeamMember(ApiResource):
 @path_param("orgname", "The name of the organization")
 @path_param("teamname", "The name of the team")
 class TeamPermissions(ApiResource):
-    """ Resource for listing the permissions an org's team has in the system. """
+    """
+    Resource for listing the permissions an org's team has in the system.
+    """
 
     @nickname("getOrganizationTeamPermissions")
     def get(self, orgname, teamname):
-        """ Returns the list of repository permissions for the org's team. """
+        """
+        Returns the list of repository permissions for the org's team.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -546,12 +581,16 @@ class TeamPermissions(ApiResource):
 @internal_only
 @show_if(features.MAILING)
 class TeamMemberInvite(ApiResource):
-    """ Resource for managing invites to join a team. """
+    """
+    Resource for managing invites to join a team.
+    """
 
     @require_user_admin
     @nickname("acceptOrganizationTeamInvite")
     def put(self, code):
-        """ Accepts an invite to join a team in an organization. """
+        """
+        Accepts an invite to join a team in an organization.
+        """
         # Accept the invite for the current user.
         team = try_accept_invite(code, get_authenticated_user())
         if not team:
@@ -563,7 +602,9 @@ class TeamMemberInvite(ApiResource):
     @nickname("declineOrganizationTeamInvite")
     @require_user_admin
     def delete(self, code):
-        """ Delete an existing invitation to join a team. """
+        """
+        Delete an existing invitation to join a team.
+        """
         (team, inviter) = model.team.delete_team_invite(code, user_obj=get_authenticated_user())
 
         model.notification.delete_matching_notifications(

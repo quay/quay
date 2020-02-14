@@ -78,7 +78,9 @@ class Base64BinaryField(TextField):
 
 
 class DecryptedValue(object):
-    """ Wrapper around an already decrypted value to be placed into an encrypted field. """
+    """
+    Wrapper around an already decrypted value to be placed into an encrypted field.
+    """
 
     def __init__(self, decrypted_value):
         assert decrypted_value is not None
@@ -89,24 +91,34 @@ class DecryptedValue(object):
         return self.value
 
     def matches(self, unencrypted_value):
-        """ Returns whether the value of this field matches the unencrypted_value. """
+        """
+        Returns whether the value of this field matches the unencrypted_value.
+        """
         return self.decrypt() == unencrypted_value
 
 
 class LazyEncryptedValue(object):
-    """ Wrapper around an encrypted value in an encrypted field. Will decrypt lazily. """
+    """
+    Wrapper around an encrypted value in an encrypted field.
+
+    Will decrypt lazily.
+    """
 
     def __init__(self, encrypted_value, field):
         self.encrypted_value = encrypted_value
         self._field = field
 
     def decrypt(self, encrypter=None):
-        """ Decrypts the value. """
+        """
+        Decrypts the value.
+        """
         encrypter = encrypter or self._field.model._meta.encrypter
         return encrypter.decrypt_value(self.encrypted_value)
 
     def matches(self, unencrypted_value):
-        """ Returns whether the value of this field matches the unencrypted_value. """
+        """
+        Returns whether the value of this field matches the unencrypted_value.
+        """
         return self.decrypt() == unencrypted_value
 
     def __eq__(self, _):
@@ -132,7 +144,9 @@ class LazyEncryptedValue(object):
 
 
 def _add_encryption(field_class, requires_length_check=True):
-    """ Adds support for encryption and decryption to the given field class. """
+    """
+    Adds support for encryption and decryption to the given field class.
+    """
 
     class indexed_class(field_class):
         def __init__(self, default_token_length=None, *args, **kwargs):
@@ -202,11 +216,15 @@ class EnumField(SmallIntegerField):
         self.enum_type = enum_type
 
     def db_value(self, value):
-        """Convert the python value for storage in the database."""
+        """
+        Convert the python value for storage in the database.
+        """
         return int(value.value)
 
     def python_value(self, value):
-        """Convert the database value to a pythonic value."""
+        """
+        Convert the database value to a pythonic value.
+        """
         return self.enum_type(value) if value is not None else None
 
     def clone_base(self, **kwargs):
@@ -214,7 +232,9 @@ class EnumField(SmallIntegerField):
 
 
 def _add_fulltext(field_class):
-    """ Adds support for full text indexing and lookup to the given field class. """
+    """
+    Adds support for full text indexing and lookup to the given field class.
+    """
 
     class indexed_class(field_class):
         # Marker used by SQLAlchemy translation layer to add the proper index for full text searching.
@@ -256,32 +276,42 @@ FullIndexedTextField = _add_fulltext(TextField)
 
 
 class Credential(object):
-    """ Credential represents a hashed credential. """
+    """
+    Credential represents a hashed credential.
+    """
 
     def __init__(self, hashed):
         self.hashed = hashed
 
     def matches(self, value):
-        """ Returns true if this credential matches the unhashed value given. """
+        """
+        Returns true if this credential matches the unhashed value given.
+        """
         return bcrypt.hashpw(value.encode("utf-8"), self.hashed) == self.hashed
 
     @classmethod
     def from_string(cls, string_value):
-        """ Returns a Credential object from an unhashed string value. """
+        """
+        Returns a Credential object from an unhashed string value.
+        """
         return Credential(bcrypt.hashpw(string_value.encode("utf-8"), bcrypt.gensalt()))
 
     @classmethod
     def generate(cls, length=20):
-        """ Generates a new credential and returns it, along with its unhashed form. """
+        """
+        Generates a new credential and returns it, along with its unhashed form.
+        """
         token = random_string(length)
         return Credential.from_string(token), token
 
 
 class CredentialField(CharField):
-    """ A character field that stores crytographically hashed credentials that should never be
-      available to the user in plaintext after initial creation. This field automatically
-      provides verification.
-  """
+    """
+    A character field that stores crytographically hashed credentials that should never be available
+    to the user in plaintext after initial creation.
+
+    This field automatically provides verification.
+    """
 
     def __init__(self, *args, **kwargs):
         CharField.__init__(self, *args, **kwargs)

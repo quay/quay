@@ -32,9 +32,9 @@ def _create_channel(channel, releases_channels_map):
 
 class PreOCIModel(RepositoryDataInterface):
     """
-  PreOCIModel implements the data model for the Repo Email using a database schema
-  before it was changed to support the OCI specification.
-  """
+    PreOCIModel implements the data model for the Repo Email using a database schema before it was
+    changed to support the OCI specification.
+    """
 
     def check_repository_usage(self, username, plan_found):
         private_repos = model.user.get_private_repo_count(username)
@@ -201,6 +201,9 @@ class PreOCIModel(RepositoryDataInterface):
             repo_kind=repo_kind,
             description=description,
         )
+        if repo is None:
+            return None
+
         return Repository(namespace_name, repository_name)
 
     def get_repo(self, namespace_name, repository_name, user, include_tags=True, max_tags=500):

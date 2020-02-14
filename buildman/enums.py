@@ -2,7 +2,9 @@ from data.database import BUILD_PHASE
 
 
 class BuildJobResult(object):
-    """ Build job result enum """
+    """
+    Build job result enum.
+    """
 
     INCOMPLETE = "incomplete"
     COMPLETE = "complete"
@@ -10,7 +12,9 @@ class BuildJobResult(object):
 
 
 class BuildServerStatus(object):
-    """ Build server status enum """
+    """
+    Build server status enum.
+    """
 
     STARTING = "starting"
     RUNNING = "running"

@@ -1,9 +1,9 @@
-"""Add severity and media_type to global messages
+"""
+Add severity and media_type to global messages.
 
 Revision ID: 3e8cc74a1e7b
 Revises: fc47c1ec019f
 Create Date: 2017-01-17 16:22:28.584237
-
 """
 
 # revision identifiers, used by Alembic.

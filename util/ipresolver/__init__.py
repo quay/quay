@@ -42,26 +42,34 @@ def _get_aws_ip_ranges():
 
 @add_metaclass(ABCMeta)
 class IPResolverInterface(object):
-    """ Helper class for resolving information about an IP address. """
+    """
+    Helper class for resolving information about an IP address.
+    """
 
     @abstractmethod
     def resolve_ip(self, ip_address):
-        """ Attempts to return resolved information about the specified IP Address. If such an attempt
-        fails, returns None.
-    """
+        """
+        Attempts to return resolved information about the specified IP Address.
+
+        If such an attempt fails, returns None.
+        """
         pass
 
     @abstractmethod
     def is_ip_possible_threat(self, ip_address):
-        """ Attempts to return whether the given IP address is a possible abuser or spammer.
+        """
+        Attempts to return whether the given IP address is a possible abuser or spammer.
+
         Returns False if the IP address information could not be looked up.
-    """
+        """
         pass
 
 
 @nooper
 class NoopIPResolver(IPResolverInterface):
-    """ No-op version of the security scanner API. """
+    """
+    No-op version of the security scanner API.
+    """
 
     pass
 
@@ -116,9 +124,11 @@ class IPResolver(IPResolverInterface):
         return False
 
     def resolve_ip(self, ip_address):
-        """ Attempts to return resolved information about the specified IP Address. If such an attempt
-        fails, returns None.
-    """
+        """
+        Attempts to return resolved information about the specified IP Address.
+
+        If such an attempt fails, returns None.
+        """
         if not ip_address:
             return None
 

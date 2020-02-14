@@ -11,7 +11,9 @@ from util.morecollections import AttrDict
 
 
 def _format_date(date):
-    """ Output an RFC822 date format. """
+    """
+    Output an RFC822 date format.
+    """
     if date is None:
         return None
 
@@ -24,10 +26,12 @@ def _kinds():
 
 
 class LogEntriesPage(namedtuple("LogEntriesPage", ["logs", "next_page_token"])):
-    """ Represents a page returned by the lookup_logs call. The `logs` contains the logs
-      found for the page and `next_page_token`, if not None, contains the token to be
-      encoded and returned for the followup call.
-  """
+    """
+    Represents a page returned by the lookup_logs call.
+
+    The `logs` contains the logs found for the page and `next_page_token`, if not None, contains the
+    token to be encoded and returned for the followup call.
+    """
 
 
 class Log(
@@ -48,7 +52,9 @@ class Log(
         ],
     )
 ):
-    """ Represents a single log entry returned by the logs model. """
+    """
+    Represents a single log entry returned by the logs model.
+    """
 
     @classmethod
     def for_logentry(cls, log):
@@ -181,7 +187,9 @@ class Log(
 
 
 class AggregatedLogCount(namedtuple("AggregatedLogCount", ["kind_id", "count", "datetime"])):
-    """ Represents the aggregated count of the number of logs, of a particular kind, on a day. """
+    """
+    Represents the aggregated count of the number of logs, of a particular kind, on a day.
+    """
 
     def to_dict(self):
         view = {

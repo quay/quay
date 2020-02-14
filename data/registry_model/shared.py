@@ -31,13 +31,15 @@ MAXIMUM_GENERATED_MANIFEST_SIZE = 3 * 1024 * 1024  # 3 MB
 
 class SharedModel:
     """
-  SharedModel implements those data model operations for the registry API that are unchanged
-  between the old and new data models.
-  """
+    SharedModel implements those data model operations for the registry API that are unchanged
+    between the old and new data models.
+    """
 
     def lookup_repository(self, namespace_name, repo_name, kind_filter=None):
-        """ Looks up and returns a reference to the repository with the given namespace and name,
-        or None if none. """
+        """
+        Looks up and returns a reference to the repository with the given namespace and name, or
+        None if none.
+        """
         repo = model.repository.get_repository(namespace_name, repo_name, kind_filter=kind_filter)
         state = repo.state if repo is not None else None
         return RepositoryReference.for_repo_obj(
@@ -49,19 +51,24 @@ class SharedModel:
         )
 
     def is_existing_disabled_namespace(self, namespace_name):
-        """ Returns whether the given namespace exists and is disabled. """
+        """
+        Returns whether the given namespace exists and is disabled.
+        """
         namespace = model.user.get_namespace_user(namespace_name)
         return namespace is not None and not namespace.enabled
 
     def is_namespace_enabled(self, namespace_name):
-        """ Returns whether the given namespace exists and is enabled. """
+        """
+        Returns whether the given namespace exists and is enabled.
+        """
         namespace = model.user.get_namespace_user(namespace_name)
         return namespace is not None and namespace.enabled
 
     def get_derived_image_signature(self, derived_image, signer_name):
         """
-    Returns the signature associated with the derived image and a specific signer or None if none.
-    """
+        Returns the signature associated with the derived image and a specific signer or None if
+        none.
+        """
         try:
             derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
         except database.DerivedStorageForImage.DoesNotExist:
@@ -76,8 +83,8 @@ class SharedModel:
 
     def set_derived_image_signature(self, derived_image, signer_name, signature):
         """
-    Sets the calculated signature for the given derived image and signer to that specified.
-    """
+        Sets the calculated signature for the given derived image and signer to that specified.
+        """
         try:
             derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
         except database.DerivedStorageForImage.DoesNotExist:
@@ -91,8 +98,8 @@ class SharedModel:
 
     def delete_derived_image(self, derived_image):
         """
-    Deletes a derived image and all of its storage.
-    """
+        Deletes a derived image and all of its storage.
+        """
         try:
             derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
         except database.DerivedStorageForImage.DoesNotExist:
@@ -102,8 +109,8 @@ class SharedModel:
 
     def set_derived_image_size(self, derived_image, compressed_size):
         """
-    Sets the compressed size on the given derived image.
-    """
+        Sets the compressed size on the given derived image.
+        """
         try:
             derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
         except database.DerivedStorageForImage.DoesNotExist:
@@ -116,8 +123,8 @@ class SharedModel:
 
     def get_torrent_info(self, blob):
         """
-    Returns the torrent information associated with the given blob or None if none.
-    """
+        Returns the torrent information associated with the given blob or None if none.
+        """
         try:
             image_storage = database.ImageStorage.get(id=blob._db_id)
         except database.ImageStorage.DoesNotExist:
@@ -132,8 +139,8 @@ class SharedModel:
 
     def set_torrent_info(self, blob, piece_length, pieces):
         """
-    Sets the torrent infomation associated with the given blob to that specified.
-    """
+        Sets the torrent infomation associated with the given blob to that specified.
+        """
         try:
             image_storage = database.ImageStorage.get(id=blob._db_id)
         except database.ImageStorage.DoesNotExist:
@@ -150,10 +157,12 @@ class SharedModel:
         self, model_cache, repository_ref, start_pagination_id, limit
     ):
         """
-    Returns a page of active tags in a repository. Note that the tags returned by this method
-    are ShallowTag objects, which only contain the tag name. This method will automatically cache
-    the result and check the cache before making a call.
-    """
+        Returns a page of active tags in a repository.
+
+        Note that the tags returned by this method are ShallowTag objects, which only contain the
+        tag name. This method will automatically cache the result and check the cache before making
+        a call.
+        """
 
         def load_tags():
             tags = self.lookup_active_repository_tags(repository_ref, start_pagination_id, limit)
@@ -170,9 +179,10 @@ class SharedModel:
             return self.lookup_active_repository_tags(repository_ref, start_pagination_id, limit)
 
     def get_cached_namespace_region_blacklist(self, model_cache, namespace_name):
-        """ Returns a cached set of ISO country codes blacklisted for pulls for the namespace
-        or None if the list could not be loaded.
-    """
+        """
+        Returns a cached set of ISO country codes blacklisted for pulls for the namespace or None if
+        the list could not be loaded.
+        """
 
         def load_blacklist():
             restrictions = model.user.list_namespace_geo_restrictions(namespace_name)
@@ -190,9 +200,10 @@ class SharedModel:
 
     def get_cached_repo_blob(self, model_cache, namespace_name, repo_name, blob_digest):
         """
-    Returns the blob in the repository with the given digest if any or None if none.
-    Caches the result in the caching system.
-    """
+        Returns the blob in the repository with the given digest if any or None if none.
+
+        Caches the result in the caching system.
+        """
 
         def load_blob():
             repository_ref = self.lookup_repository(namespace_name, repo_name)
@@ -227,8 +238,11 @@ class SharedModel:
         pass
 
     def create_blob_upload(self, repository_ref, new_upload_id, location_name, storage_metadata):
-        """ Creates a new blob upload and returns a reference. If the blob upload could not be
-        created, returns None. """
+        """
+        Creates a new blob upload and returns a reference.
+
+        If the blob upload could not be created, returns None.
+        """
         repo = model.repository.lookup_repository(repository_ref._db_id)
         if repo is None:
             return None
@@ -242,9 +256,10 @@ class SharedModel:
             return None
 
     def lookup_blob_upload(self, repository_ref, blob_upload_id):
-        """ Looks up the blob upload withn the given ID under the specified repository and returns it
-        or None if none.
-    """
+        """
+        Looks up the blob upload withn the given ID under the specified repository and returns it or
+        None if none.
+        """
         upload_record = model.blob.get_blob_upload_by_uuid(blob_upload_id)
         if upload_record is None:
             return None
@@ -262,9 +277,11 @@ class SharedModel:
         chunk_count,
         sha_state,
     ):
-        """ Updates the fields of the blob upload to match those given. Returns the updated blob upload
-        or None if the record does not exists.
-    """
+        """
+        Updates the fields of the blob upload to match those given.
+
+        Returns the updated blob upload or None if the record does not exists.
+        """
         upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
         if upload_record is None:
             return None
@@ -280,14 +297,17 @@ class SharedModel:
         return BlobUpload.for_upload(upload_record)
 
     def delete_blob_upload(self, blob_upload):
-        """ Deletes a blob upload record. """
+        """
+        Deletes a blob upload record.
+        """
         upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
         if upload_record is not None:
             upload_record.delete_instance()
 
     def commit_blob_upload(self, blob_upload, blob_digest_str, blob_expiration_seconds):
-        """ Commits the blob upload into a blob and sets an expiration before that blob will be GCed.
-    """
+        """
+        Commits the blob upload into a blob and sets an expiration before that blob will be GCed.
+        """
         upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
         if upload_record is None:
             return None
@@ -313,11 +333,12 @@ class SharedModel:
 
     def mount_blob_into_repository(self, blob, target_repository_ref, expiration_sec):
         """
-    Mounts the blob from another repository into the specified target repository, and adds an
-    expiration before that blob is automatically GCed. This function is useful during push
-    operations if an existing blob from another repository is being pushed. Returns False if
-    the mounting fails.
-    """
+        Mounts the blob from another repository into the specified target repository, and adds an
+        expiration before that blob is automatically GCed.
+
+        This function is useful during push operations if an existing blob from another repository
+        is being pushed. Returns False if the mounting fails.
+        """
         storage = model.blob.temp_link_blob(
             target_repository_ref._db_id, blob.digest, expiration_sec
         )
@@ -325,8 +346,8 @@ class SharedModel:
 
     def get_legacy_images(self, repository_ref):
         """
-    Returns an iterator of all the LegacyImage's defined in the matching repository.
-    """
+        Returns an iterator of all the LegacyImage's defined in the matching repository.
+        """
         repo = model.repository.lookup_repository(repository_ref._db_id)
         if repo is None:
             return None
@@ -348,9 +369,10 @@ class SharedModel:
         self, repository_ref, docker_image_id, include_parents=False, include_blob=False
     ):
         """
-    Returns the matching LegacyImages under the matching repository, if any. If none,
-    returns None.
-    """
+        Returns the matching LegacyImages under the matching repository, if any.
+
+        If none, returns None.
+        """
         repo = model.repository.lookup_repository(repository_ref._db_id)
         if repo is None:
             return None
@@ -409,10 +431,12 @@ class SharedModel:
     def _list_manifest_layers(
         self, repo_id, parsed, storage, include_placements=False, by_manifest=False
     ):
-        """ Returns an *ordered list* of the layers found in the manifest, starting at the base and
+        """
+        Returns an *ordered list* of the layers found in the manifest, starting at the base and
         working towards the leaf, including the associated Blob and its placements (if specified).
+
         Returns None if the manifest could not be parsed and validated.
-    """
+        """
         assert not parsed.is_manifest_list
 
         retriever = RepositoryContentRetriever(repo_id, storage)
@@ -543,7 +567,9 @@ class SharedModel:
             return None
 
     def _get_shared_storage(self, blob_digest):
-        """ Returns an ImageStorage row for the blob digest if it is a globally shared storage. """
+        """
+        Returns an ImageStorage row for the blob digest if it is a globally shared storage.
+        """
         # If the EMPTY_LAYER_BLOB_DIGEST is in the checksums, look it up directly. Since we have
         # so many duplicate copies in the database currently, looking it up bound to a repository
         # can be incredibly slow, and, since it is defined as a globally shared layer, this is extra

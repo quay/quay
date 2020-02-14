@@ -12,9 +12,9 @@ from permission_models_interface import (
 
 class PreOCIModel(PermissionDataInterface):
     """
-  PreOCIModel implements the data model for Permission using a database schema
-  before it was changed to support the OCI specification.
-  """
+    PreOCIModel implements the data model for Permission using a database schema before it was
+    changed to support the OCI specification.
+    """
 
     def get_repo_permissions_by_user(self, namespace_name, repository_name):
         org = None

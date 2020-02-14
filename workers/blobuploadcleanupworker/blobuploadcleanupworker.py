@@ -21,7 +21,9 @@ class BlobUploadCleanupWorker(Worker):
         self.add_operation(self._cleanup_uploads, BLOBUPLOAD_CLEANUP_FREQUENCY)
 
     def _cleanup_uploads(self):
-        """ Performs garbage collection on the blobupload table. """
+        """
+        Performs garbage collection on the blobupload table.
+        """
         while True:
             # Find all blob uploads older than the threshold (typically a week) and delete them.
             with UseThenDisconnect(app.config):

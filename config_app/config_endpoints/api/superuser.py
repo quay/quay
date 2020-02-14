@@ -19,7 +19,10 @@ from config_app.config_endpoints.api import (
     log_action,
     validate_json_request,
 )
-from config_app.config_endpoints.api.superuser_models_pre_oci import pre_oci_model
+from config_app.config_endpoints.api.superuser_models_pre_oci import (
+    pre_oci_model,
+    ServiceKeyAlreadyApproved,
+)
 from config_app.config_util.ssl import load_certificate, CertInvalidException
 from config_app.c_app import app, config_provider, INIT_SCRIPTS_LOCATION
 
@@ -29,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 @resource("/v1/superuser/customcerts/<certpath>")
 class SuperUserCustomCertificate(ApiResource):
-    """ Resource for managing a custom certificate. """
+    """
+    Resource for managing a custom certificate.
+    """
 
     @nickname("uploadCustomCertificate")
     def post(self, certpath):
@@ -82,7 +87,9 @@ class SuperUserCustomCertificate(ApiResource):
 
 @resource("/v1/superuser/customcerts")
 class SuperUserCustomCertificates(ApiResource):
-    """ Resource for managing custom certificates. """
+    """
+    Resource for managing custom certificates.
+    """
 
     @nickname("getCustomCertificates")
     def get(self):
@@ -125,7 +132,9 @@ class SuperUserCustomCertificates(ApiResource):
 
 @resource("/v1/superuser/keys")
 class SuperUserServiceKeyManagement(ApiResource):
-    """ Resource for managing service keys."""
+    """
+    Resource for managing service keys.
+    """
 
     schemas = {
         "CreateServiceKey": {
@@ -218,7 +227,9 @@ class SuperUserServiceKeyManagement(ApiResource):
 
 @resource("/v1/superuser/approvedkeys/<kid>")
 class SuperUserServiceKeyApproval(ApiResource):
-    """ Resource for approving service keys. """
+    """
+    Resource for approving service keys.
+    """
 
     schemas = {
         "ApproveServiceKey": {

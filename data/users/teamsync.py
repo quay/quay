@@ -10,9 +10,10 @@ MAX_TEAMS_PER_ITERATION = 500
 
 
 def sync_teams_to_groups(authentication, stale_cutoff):
-    """ Performs team syncing by looking up any stale team(s) found, and performing the sync
-      operation on them.
-  """
+    """
+    Performs team syncing by looking up any stale team(s) found, and performing the sync operation
+    on them.
+    """
     logger.debug("Looking up teams to sync to groups")
 
     sync_team_tried = set()
@@ -36,9 +37,11 @@ def sync_teams_to_groups(authentication, stale_cutoff):
 
 
 def sync_team(authentication, stale_team_sync):
-    """ Performs synchronization of a team (as referenced by the TeamSync stale_team_sync).
-      Returns True on success and False otherwise.
-  """
+    """
+    Performs synchronization of a team (as referenced by the TeamSync stale_team_sync).
+
+    Returns True on success and False otherwise.
+    """
     sync_config = json.loads(stale_team_sync.config)
     logger.info(
         "Syncing team `%s` under organization %s via %s (#%s)",

@@ -325,7 +325,9 @@ PLANS = [
 
 
 def get_plan(plan_id):
-    """ Returns the plan with the given ID or None if none. """
+    """
+    Returns the plan with the given ID or None if none.
+    """
     for plan in PLANS:
         if plan["stripeId"] == plan_id:
             return plan

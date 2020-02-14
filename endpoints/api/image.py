@@ -1,4 +1,6 @@
-""" List and lookup repository images. """
+"""
+List and lookup repository images.
+"""
 import json
 
 from data.registry_model import registry_model
@@ -47,13 +49,17 @@ def image_dict(image, with_history=False, with_tags=False):
 @resource("/v1/repository/<apirepopath:repository>/image/")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 class RepositoryImageList(RepositoryParamResource):
-    """ Resource for listing repository images. """
+    """
+    Resource for listing repository images.
+    """
 
     @require_repo_read
     @nickname("listRepositoryImages")
     @disallow_for_app_repositories
     def get(self, namespace, repository):
-        """ List the images for the specified repository. """
+        """
+        List the images for the specified repository.
+        """
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
@@ -66,13 +72,17 @@ class RepositoryImageList(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("image_id", "The Docker image ID")
 class RepositoryImage(RepositoryParamResource):
-    """ Resource for handling repository images. """
+    """
+    Resource for handling repository images.
+    """
 
     @require_repo_read
     @nickname("getImage")
     @disallow_for_app_repositories
     def get(self, namespace, repository, image_id):
-        """ Get the information available for the specified image. """
+        """
+        Get the information available for the specified image.
+        """
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()

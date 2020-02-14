@@ -42,25 +42,26 @@ class NotificationMethod(object):
     @classmethod
     def method_name(cls):
         """
-    Particular method implemented by subclasses.
-    """
+        Particular method implemented by subclasses.
+        """
         raise NotImplementedError
 
     def validate(self, namespace_name, repo_name, config_data):
         """
-    Validates that the notification can be created with the given data. Throws
-    a CannotValidateNotificationMethodException on failure.
-    """
+        Validates that the notification can be created with the given data.
+
+        Throws a CannotValidateNotificationMethodException on failure.
+        """
         raise NotImplementedError
 
     def perform(self, notification_obj, event_handler, notification_data):
         """
-    Performs the notification method.
+        Performs the notification method.
 
-    notification_obj: The notification namedtuple.
-    event_handler: The NotificationEvent handler.
-    notification_data: The dict of notification data placed in the queue.
-    """
+        notification_obj: The notification namedtuple.
+        event_handler: The NotificationEvent handler.
+        notification_data: The dict of notification data placed in the queue.
+        """
         raise NotImplementedError
 
     @classmethod
@@ -234,9 +235,11 @@ class WebhookMethod(NotificationMethod):
 
 
 class FlowdockMethod(NotificationMethod):
-    """ Method for sending notifications to Flowdock via the Team Inbox API:
-      https://www.flowdock.com/api/team-inbox
-  """
+    """
+    Method for sending notifications to Flowdock via the Team Inbox API:
+
+    https://www.flowdock.com/api/team-inbox
+    """
 
     @classmethod
     def method_name(cls):
@@ -293,9 +296,11 @@ class FlowdockMethod(NotificationMethod):
 
 
 class HipchatMethod(NotificationMethod):
-    """ Method for sending notifications to Hipchat via the API:
-      https://www.hipchat.com/docs/apiv2/method/send_room_notification
-  """
+    """
+    Method for sending notifications to Hipchat via the API:
+
+    https://www.hipchat.com/docs/apiv2/method/send_room_notification
+    """
 
     @classmethod
     def method_name(cls):
@@ -411,9 +416,11 @@ def adjust_tags(html):
 
 
 class SlackMethod(NotificationMethod):
-    """ Method for sending notifications to Slack via the API:
-      https://api.slack.com/docs/attachments
-  """
+    """
+    Method for sending notifications to Slack via the API:
+
+    https://api.slack.com/docs/attachments
+    """
 
     @classmethod
     def method_name(cls):

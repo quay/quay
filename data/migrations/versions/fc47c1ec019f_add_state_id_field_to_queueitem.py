@@ -1,9 +1,9 @@
-"""Add state_id field to QueueItem
+"""
+Add state_id field to QueueItem.
 
 Revision ID: fc47c1ec019f
 Revises: f5167870dd66
 Create Date: 2017-01-12 15:44:23.643016
-
 """
 
 # revision identifiers, used by Alembic.

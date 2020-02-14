@@ -1,9 +1,9 @@
-"""repository mirror notification
+"""
+repository mirror notification.
 
 Revision ID: cc6778199cdb
 Revises: c059b952ed76
 Create Date: 2019-10-03 17:41:23.316914
-
 """
 
 # revision identifiers, used by Alembic.

@@ -9,7 +9,9 @@ class DatabaseValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates connecting to the database. """
+        """
+        Validates connecting to the database.
+        """
         config = validator_context.config
 
         try:

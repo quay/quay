@@ -12,13 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 class CannotWriteConfigException(Exception):
-    """ Exception raised when the config cannot be written. """
+    """
+    Exception raised when the config cannot be written.
+    """
 
     pass
 
 
 class SetupIncompleteException(Exception):
-    """ Exception raised when attempting to verify config that has not yet been setup. """
+    """
+    Exception raised when attempting to verify config that has not yet been setup.
+    """
 
     pass
 
@@ -63,8 +67,9 @@ def export_yaml(config_obj, config_file):
 
 @add_metaclass(ABCMeta)
 class BaseProvider(object):
-    """ A configuration provider helps to load, save, and handle config override in the application.
-  """
+    """
+    A configuration provider helps to load, save, and handle config override in the application.
+    """
 
     @property
     def provider_id(self):
@@ -72,59 +77,84 @@ class BaseProvider(object):
 
     @abstractmethod
     def update_app_config(self, app_config):
-        """ Updates the given application config object with the loaded override config. """
+        """
+        Updates the given application config object with the loaded override config.
+        """
 
     @abstractmethod
     def get_config(self):
-        """ Returns the contents of the config override file, or None if none. """
+        """
+        Returns the contents of the config override file, or None if none.
+        """
 
     @abstractmethod
     def save_config(self, config_object):
-        """ Updates the contents of the config override file to those given. """
+        """
+        Updates the contents of the config override file to those given.
+        """
 
     @abstractmethod
     def config_exists(self):
-        """ Returns true if a config override file exists in the config volume. """
+        """
+        Returns true if a config override file exists in the config volume.
+        """
 
     @abstractmethod
     def volume_exists(self):
-        """ Returns whether the config override volume exists. """
+        """
+        Returns whether the config override volume exists.
+        """
 
     @abstractmethod
     def volume_file_exists(self, filename):
-        """ Returns whether the file with the given name exists under the config override volume. """
+        """
+        Returns whether the file with the given name exists under the config override volume.
+        """
 
     @abstractmethod
     def get_volume_file(self, filename, mode="r"):
-        """ Returns a Python file referring to the given name under the config override volume. """
+        """
+        Returns a Python file referring to the given name under the config override volume.
+        """
 
     @abstractmethod
     def write_volume_file(self, filename, contents):
-        """ Writes the given contents to the config override volumne, with the given filename. """
+        """
+        Writes the given contents to the config override volumne, with the given filename.
+        """
 
     @abstractmethod
     def remove_volume_file(self, filename):
-        """ Removes the config override volume file with the given filename. """
+        """
+        Removes the config override volume file with the given filename.
+        """
 
     @abstractmethod
     def list_volume_directory(self, path):
-        """ Returns a list of strings representing the names of the files found in the config override
-        directory under the given path. If the path doesn't exist, returns None.
-    """
+        """
+        Returns a list of strings representing the names of the files found in the config override
+        directory under the given path.
+
+        If the path doesn't exist, returns None.
+        """
 
     @abstractmethod
     def save_volume_file(self, filename, flask_file):
-        """ Saves the given flask file to the config override volume, with the given
-        filename.
-    """
+        """
+        Saves the given flask file to the config override volume, with the given filename.
+        """
 
     @abstractmethod
     def requires_restart(self, app_config):
-        """ If true, the configuration loaded into memory for the app does not match that on disk,
+        """
+        If true, the configuration loaded into memory for the app does not match that on disk,
         indicating that this container requires a restart.
-    """
+        """
 
     @abstractmethod
     def get_volume_path(self, directory, filename):
-        """ Helper for constructing file paths, which may differ between providers. For example,
-    kubernetes can't have subfolders in configmaps """
+        """
+        Helper for constructing file paths, which may differ between providers.
+
+        For example, kubernetes can't have subfolders in configmaps
+        """

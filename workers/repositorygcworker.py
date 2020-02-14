@@ -13,8 +13,9 @@ REPOSITORY_GC_TIMEOUT = 6  # 0 * 15  # 15 minutes
 
 
 class RepositoryGCWorker(QueueWorker):
-    """ Worker which cleans up repositories enqueued to be GCed.
-  """
+    """
+    Worker which cleans up repositories enqueued to be GCed.
+    """
 
     def process_queue_item(self, job_details):
         logger.debug("Got repository GC queue item: %s", job_details)

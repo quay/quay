@@ -107,7 +107,9 @@ class _CloudStorage(BaseStorageV2):
             self._initialized = True
 
     def _debug_key(self, key):
-        """Used for debugging only."""
+        """
+        Used for debugging only.
+        """
         orig_meth = key.bucket.connection.make_request
 
         def new_meth(*args, **kwargs):
@@ -212,8 +214,11 @@ class _CloudStorage(BaseStorageV2):
         )
 
     def stream_write(self, path, fp, content_type=None, content_encoding=None):
-        """ Writes the data found in the file-like stream to the given path. Raises an IOError
-        if the write fails. """
+        """
+        Writes the data found in the file-like stream to the given path.
+
+        Raises an IOError if the write fails.
+        """
         _, write_error = self._stream_write_internal(path, fp, content_type, content_encoding)
         if write_error is not None:
             logger.error("Error when trying to stream_write path `%s`: %s", path, write_error)
@@ -228,10 +233,13 @@ class _CloudStorage(BaseStorageV2):
         cancel_on_error=True,
         size=filelike.READ_UNTIL_END,
     ):
-        """ Writes the data found in the file-like stream to the given path, with optional limit
-        on size. Note that this method returns a *tuple* of (bytes_written, write_error) and should
+        """
+        Writes the data found in the file-like stream to the given path, with optional limit on
+        size. Note that this method returns a *tuple* of (bytes_written, write_error) and should.
+
         *not* raise an exception (such as IOError) if a problem uploading occurred. ALWAYS check
-        the returned tuple on calls to this method. """
+        the returned tuple on calls to this method.
+        """
         write_error = None
 
         try:
@@ -318,7 +326,9 @@ class _CloudStorage(BaseStorageV2):
         return k.etag[1:-1][:7]
 
     def copy_to(self, destination, path):
-        """ Copies the given path from this storage to the destination storage. """
+        """
+        Copies the given path from this storage to the destination storage.
+        """
         self._initialize_cloud_conn()
 
         # First try to copy directly via boto, but only if the storages are the
@@ -458,7 +468,9 @@ class _CloudStorage(BaseStorageV2):
 
     @staticmethod
     def _rechunk(chunk, max_chunk_size):
-        """ Rechunks the chunk list to meet maximum chunk size restrictions for the storage engine. """
+        """
+        Rechunks the chunk list to meet maximum chunk size restrictions for the storage engine.
+        """
         if max_chunk_size is None or chunk.length <= max_chunk_size:
             yield chunk
         else:
@@ -637,11 +649,13 @@ class GoogleCloudStorage(_CloudStorage):
         cancel_on_error=True,
         size=filelike.READ_UNTIL_END,
     ):
-        """ Writes the data found in the file-like stream to the given path, with optional limit
-        on size. Note that this method returns a *tuple* of (bytes_written, write_error) and should
+        """
+        Writes the data found in the file-like stream to the given path, with optional limit on
+        size. Note that this method returns a *tuple* of (bytes_written, write_error) and should.
+
         *not* raise an exception (such as IOError) if a problem uploading occurred. ALWAYS check
         the returned tuple on calls to this method.
-    """
+        """
         # Minimum size of upload part size on S3 is 5MB
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -737,15 +751,20 @@ class RadosGWStorage(_CloudStorage):
 
 
 class RHOCSStorage(RadosGWStorage):
-    """ RHOCSStorage implements storage explicitly via RHOCS. For now, this uses the same protocol
-      as RadowsGW, but we create a distinct driver for future additional capabilities.
-  """
+    """
+    RHOCSStorage implements storage explicitly via RHOCS.
+
+    For now, this uses the same protocol as RadowsGW, but we create a distinct driver for future
+    additional capabilities.
+    """
 
     pass
 
 
 class CloudFrontedS3Storage(S3Storage):
-    """ An S3Storage engine that redirects to CloudFront for all requests outside of AWS. """
+    """
+    An S3Storage engine that redirects to CloudFront for all requests outside of AWS.
+    """
 
     def __init__(
         self,
@@ -814,9 +833,10 @@ class CloudFrontedS3Storage(S3Storage):
 
     @lru_cache(maxsize=1)
     def _load_private_key(self, cloudfront_privatekey_filename):
-        """ Returns the private key, loaded from the config provider, used to sign direct
-        download URLs to CloudFront.
-    """
+        """
+        Returns the private key, loaded from the config provider, used to sign direct download URLs
+        to CloudFront.
+        """
         if self._context.config_provider is None:
             return None
 

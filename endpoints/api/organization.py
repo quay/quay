@@ -1,4 +1,6 @@
-""" Manage organizations, members and OAuth applications. """
+"""
+Manage organizations, members and OAuth applications.
+"""
 
 import logging
 import recaptcha2
@@ -91,7 +93,9 @@ def org_view(o, teams):
 
 @resource("/v1/organization/")
 class OrganizationList(ApiResource):
-    """ Resource for creating organizations. """
+    """
+    Resource for creating organizations.
+    """
 
     schemas = {
         "NewOrg": {
@@ -113,7 +117,9 @@ class OrganizationList(ApiResource):
     @nickname("createOrganization")
     @validate_json_request("NewOrg")
     def post(self):
-        """ Create a new organization. """
+        """
+        Create a new organization.
+        """
         user = get_authenticated_user()
         org_data = request.get_json()
         existing = None
@@ -161,7 +167,9 @@ class OrganizationList(ApiResource):
 @path_param("orgname", "The name of the organization")
 @related_user_resource(User)
 class Organization(ApiResource):
-    """ Resource for managing organizations. """
+    """
+    Resource for managing organizations.
+    """
 
     schemas = {
         "UpdateOrg": {
@@ -188,7 +196,9 @@ class Organization(ApiResource):
 
     @nickname("getOrganization")
     def get(self, orgname):
-        """ Get the details for the specified organization """
+        """
+        Get the details for the specified organization.
+        """
         try:
             org = model.organization.get_organization(orgname)
         except model.InvalidOrganizationException:
@@ -205,7 +215,9 @@ class Organization(ApiResource):
     @nickname("changeOrganizationDetails")
     @validate_json_request("UpdateOrg")
     def put(self, orgname):
-        """ Change the details for the specified organization. """
+        """
+        Change the details for the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -248,7 +260,9 @@ class Organization(ApiResource):
     @require_fresh_login
     @nickname("deleteAdminedOrganization")
     def delete(self, orgname):
-        """ Deletes the specified organization. """
+        """
+        Deletes the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -268,12 +282,16 @@ class Organization(ApiResource):
 @related_user_resource(PrivateRepositories)
 @show_if(features.BILLING)
 class OrgPrivateRepositories(ApiResource):
-    """ Custom verb to compute whether additional private repositories are available. """
+    """
+    Custom verb to compute whether additional private repositories are available.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrganizationPrivateAllowed")
     def get(self, orgname):
-        """ Return whether or not this org is allowed to create new private repositories. """
+        """
+        Return whether or not this org is allowed to create new private repositories.
+        """
         permission = CreateRepositoryPermission(orgname)
         if permission.can():
             organization = model.organization.get_organization(orgname)
@@ -301,17 +319,19 @@ class OrgPrivateRepositories(ApiResource):
 @resource("/v1/organization/<orgname>/collaborators")
 @path_param("orgname", "The name of the organization")
 class OrganizationCollaboratorList(ApiResource):
-    """ Resource for listing outside collaborators of an organization.
+    """
+    Resource for listing outside collaborators of an organization.
 
-  Collaborators are users that do not belong to any team in the
-  organiztion, but who have direct permissions on one or more
-  repositories belonging to the organization.
-  """
+    Collaborators are users that do not belong to any team in the organiztion, but who have direct
+    permissions on one or more repositories belonging to the organization.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrganizationCollaborators")
     def get(self, orgname):
-        """ List outside collaborators of the specified organization. """
+        """
+        List outside collaborators of the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can():
             raise Unauthorized()
@@ -350,12 +370,16 @@ class OrganizationCollaboratorList(ApiResource):
 @resource("/v1/organization/<orgname>/members")
 @path_param("orgname", "The name of the organization")
 class OrganizationMemberList(ApiResource):
-    """ Resource for listing the members of an organization. """
+    """
+    Resource for listing the members of an organization.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrganizationMembers")
     def get(self, orgname):
-        """ List the human members of the specified organization. """
+        """
+        List the human members of the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -404,13 +428,16 @@ class OrganizationMemberList(ApiResource):
 @path_param("orgname", "The name of the organization")
 @path_param("membername", "The username of the organization member")
 class OrganizationMember(ApiResource):
-    """ Resource for managing individual organization members. """
+    """
+    Resource for managing individual organization members.
+    """
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrganizationMember")
     def get(self, orgname, membername):
-        """ Retrieves the details of a member of the organization.
-    """
+        """
+        Retrieves the details of a member of the organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             # Lookup the user.
@@ -457,9 +484,10 @@ class OrganizationMember(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("removeOrganizationMember")
     def delete(self, orgname, membername):
-        """ Removes a member from an organization, revoking all its repository
-        priviledges and removing it from all teams in the organization.
-    """
+        """
+        Removes a member from an organization, revoking all its repository priviledges and removing
+        it from all teams in the organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             # Lookup the user.
@@ -482,11 +510,15 @@ class OrganizationMember(ApiResource):
 @resource("/v1/app/<client_id>")
 @path_param("client_id", "The OAuth client ID")
 class ApplicationInformation(ApiResource):
-    """ Resource that returns public information about a registered application. """
+    """
+    Resource that returns public information about a registered application.
+    """
 
     @nickname("getApplicationInformation")
     def get(self, client_id):
-        """ Get information on the specified application. """
+        """
+        Get information on the specified application.
+        """
         application = model.oauth.get_application_for_client_id(client_id)
         if not application:
             raise NotFound()
@@ -525,7 +557,9 @@ def app_view(application):
 @resource("/v1/organization/<orgname>/applications")
 @path_param("orgname", "The name of the organization")
 class OrganizationApplications(ApiResource):
-    """ Resource for managing applications defined by an organization. """
+    """
+    Resource for managing applications defined by an organization.
+    """
 
     schemas = {
         "NewApp": {
@@ -557,7 +591,9 @@ class OrganizationApplications(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrganizationApplications")
     def get(self, orgname):
-        """ List the applications for the specified organization """
+        """
+        List the applications for the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -574,7 +610,9 @@ class OrganizationApplications(ApiResource):
     @nickname("createOrganizationApplication")
     @validate_json_request("NewApp")
     def post(self, orgname):
-        """ Creates a new application under this organization. """
+        """
+        Creates a new application under this organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -606,7 +644,9 @@ class OrganizationApplications(ApiResource):
 @path_param("orgname", "The name of the organization")
 @path_param("client_id", "The OAuth client ID")
 class OrganizationApplicationResource(ApiResource):
-    """ Resource for managing an application defined by an organizations. """
+    """
+    Resource for managing an application defined by an organizations.
+    """
 
     schemas = {
         "UpdateApp": {
@@ -638,7 +678,9 @@ class OrganizationApplicationResource(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("getOrganizationApplication")
     def get(self, orgname, client_id):
-        """ Retrieves the application with the specified client_id under the specified organization """
+        """
+        Retrieves the application with the specified client_id under the specified organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -658,7 +700,9 @@ class OrganizationApplicationResource(ApiResource):
     @nickname("updateOrganizationApplication")
     @validate_json_request("UpdateApp")
     def put(self, orgname, client_id):
-        """ Updates an application under this organization. """
+        """
+        Updates an application under this organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -690,7 +734,9 @@ class OrganizationApplicationResource(ApiResource):
     @require_scope(scopes.ORG_ADMIN)
     @nickname("deleteOrganizationApplication")
     def delete(self, orgname, client_id):
-        """ Deletes the application under this organization. """
+        """
+        Deletes the application under this organization.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:
@@ -717,11 +763,15 @@ class OrganizationApplicationResource(ApiResource):
 @path_param("client_id", "The OAuth client ID")
 @internal_only
 class OrganizationApplicationResetClientSecret(ApiResource):
-    """ Custom verb for resetting the client secret of an application. """
+    """
+    Custom verb for resetting the client secret of an application.
+    """
 
     @nickname("resetOrganizationApplicationClientSecret")
     def post(self, orgname, client_id):
-        """ Resets the client secret of the application. """
+        """
+        Resets the client secret of the application.
+        """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
             try:

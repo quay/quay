@@ -23,9 +23,12 @@ QUAY_CSRF_UPDATED_HEADER_NAME = "X-Next-CSRF-Token"
 
 
 def generate_csrf_token(session_token_name=_QUAY_CSRF_TOKEN_NAME, force=False):
-    """ If not present in the session, generates a new CSRF token with the given name
-      and places it into the session. Returns the generated token.
-  """
+    """
+    If not present in the session, generates a new CSRF token with the given name and places it into
+    the session.
+
+    Returns the generated token.
+    """
     if session_token_name not in session or force:
         session[session_token_name] = base64.b64encode(os.urandom(48))
 
@@ -37,9 +40,10 @@ def verify_csrf(
     request_token_name=_QUAY_CSRF_TOKEN_NAME,
     check_header=True,
 ):
-    """ Verifies that the CSRF token with the given name is found in the session and
-      that the matching token is found in the request args or values.
-  """
+    """
+    Verifies that the CSRF token with the given name is found in the session and that the matching
+    token is found in the request args or values.
+    """
     token = str(session.get(session_token_name, ""))
     found_token = str(request.values.get(request_token_name, ""))
     if check_header and not found_token:

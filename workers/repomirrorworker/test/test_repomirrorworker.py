@@ -70,8 +70,8 @@ def _create_tag(repo, name):
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_successful_mirror(run_skopeo_mock, initialized_db, app):
     """
-  Basic test of successful mirror
-  """
+    Basic test of successful mirror.
+    """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
 
@@ -124,8 +124,8 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
     """
-  Disabled mirrors still allow "sync now"
-  """
+    Disabled mirrors still allow "sync now".
+    """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
     mirror.is_enabled = False
@@ -181,8 +181,8 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, monkeypatch):
     """
-  Basic test of successful mirror with verbose logs turned on
-  """
+    Basic test of successful mirror with verbose logs turned on.
+    """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
 
@@ -238,11 +238,12 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_rollback(run_skopeo_mock, initialized_db, app):
     """
-  Tags in the repo:
-  "updated" - this tag will be updated during the mirror
-  "removed" - this tag will be removed during the mirror
-  "created" - this tag will be created during the mirror
-  """
+    Tags in the repo:
+
+    "updated" - this tag will be updated during the mirror
+    "removed" - this tag will be removed during the mirror
+    "created" - this tag will be created during the mirror
+    """
 
     mirror, repo = create_mirror_repo_robot(["updated", "created", "zzerror"])
     _create_tag(repo, "updated")
@@ -331,9 +332,11 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
 
 def test_remove_obsolete_tags(initialized_db):
     """
-  As part of the mirror, the set of tags on the remote repository is compared to the local
-  existing tags. Those not present on the remote are removed locally.
-  """
+    As part of the mirror, the set of tags on the remote repository is compared to the local
+    existing tags.
+
+    Those not present on the remote are removed locally.
+    """
 
     mirror, repository = create_mirror_repo_robot(["updated", "created"], repo_name="removed")
     manifest = Manifest.get()
@@ -352,8 +355,8 @@ def test_remove_obsolete_tags(initialized_db):
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, monkeypatch):
     """
-  Set REPO_MIRROR_SERVER_HOSTNAME to override SERVER_HOSTNAME config
-  """
+    Set REPO_MIRROR_SERVER_HOSTNAME to override SERVER_HOSTNAME config.
+    """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
 
@@ -412,8 +415,8 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_quote_params(run_skopeo_mock, initialized_db, app):
     """
-  Basic test of successful mirror
-  """
+    Basic test of successful mirror.
+    """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
     mirror.external_reference = "& rm -rf /;/namespace/repository"
@@ -473,8 +476,8 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_quote_params_password(run_skopeo_mock, initialized_db, app):
     """
-  Basic test of successful mirror
-  """
+    Basic test of successful mirror.
+    """
 
     mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
     mirror.external_reference = "& rm -rf /;/namespace/repository"
@@ -535,9 +538,11 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
     """
-  Test for no tag for skopeo inspect. The mirror is processed four times, asserting that the remaining syncs
-  decrement until next sync is bumped to the future, confirming the fourth is never processed.
-  """
+    Test for no tag for skopeo inspect.
+
+    The mirror is processed four times, asserting that the remaining syncs decrement until next sync
+    is bumped to the future, confirming the fourth is never processed.
+    """
 
     def skopeo_test(args, proxy):
         try:

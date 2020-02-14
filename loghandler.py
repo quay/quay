@@ -15,9 +15,10 @@ LOG_FORMAT_REGEXP = re.compile(r"\((.+?)\)", re.IGNORECASE)
 
 def _json_default(obj):
     """
-  Coerce everything to strings.
-  All objects representing time get output as ISO8601.
-  """
+    Coerce everything to strings.
+
+    All objects representing time get output as ISO8601.
+    """
     if isinstance(obj, (datetime.date, datetime.time, datetime.datetime)):
         return obj.isoformat()
 
@@ -60,8 +61,8 @@ RESERVED_ATTRS = set(
 class JsonFormatter(logging.Formatter):
     """
     A custom formatter to format logging records as json strings.
-    extra values will be formatted as str() if nor supported by
-    json default encoder
+
+    extra values will be formatted as str() if nor supported by json default encoder
     """
 
     def __init__(self, *args, **kwargs):
@@ -86,14 +87,16 @@ class JsonFormatter(logging.Formatter):
         self._skip_fields.update(RESERVED_ATTRS)
 
     def _parse_format_string(self):
-        """Parses format string looking for substitutions"""
+        """
+        Parses format string looking for substitutions.
+        """
         standard_formatters = LOG_FORMAT_REGEXP
         return standard_formatters.findall(self._fmt)
 
     def add_fields(self, log_record, record, message_dict):
         """
         Override this method to implement custom logic for adding fields.
-    """
+        """
 
         target = log_record
         if self.prefix_key:
@@ -110,7 +113,9 @@ class JsonFormatter(logging.Formatter):
         target.update(self.default_values)
 
     def format(self, record):
-        """Formats a log record and serializes to json"""
+        """
+        Formats a log record and serializes to json.
+        """
         message_dict = {}
         if isinstance(record.msg, dict):
             message_dict = record.msg

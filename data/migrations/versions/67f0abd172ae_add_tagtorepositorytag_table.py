@@ -1,9 +1,9 @@
-"""Add TagToRepositoryTag table
+"""
+Add TagToRepositoryTag table.
 
 Revision ID: 67f0abd172ae
 Revises: 10f45ee2310b
 Create Date: 2018-10-30 11:31:06.615488
-
 """
 
 # revision identifiers, used by Alembic.

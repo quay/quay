@@ -8,7 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_parent_dir(filepath):
-    """ Ensures that the parent directory of the given file path exists. """
+    """
+    Ensures that the parent directory of the given file path exists.
+    """
     try:
         parentpath = os.path.abspath(os.path.join(filepath, os.pardir))
         if not os.path.isdir(parentpath):
@@ -18,8 +20,9 @@ def _ensure_parent_dir(filepath):
 
 
 class FileConfigProvider(BaseFileProvider):
-    """ Implementation of the config provider that reads and writes the data
-      from/to the file system. """
+    """
+    Implementation of the config provider that reads and writes the data from/to the file system.
+    """
 
     def __init__(self, config_volume, yaml_filename, py_filename):
         super(FileConfigProvider, self).__init__(config_volume, yaml_filename, py_filename)

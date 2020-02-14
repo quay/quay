@@ -3,10 +3,11 @@ from util.validation import MAX_USERNAME_LENGTH
 
 
 class SuperUserManager(object):
-    """ In-memory helper class for quickly accessing (and updating) the valid
-      set of super users. This class communicates across processes to ensure
-      that the shared set is always the same.
-  """
+    """
+    In-memory helper class for quickly accessing (and updating) the valid set of super users.
+
+    This class communicates across processes to ensure that the shared set is always the same.
+    """
 
     def __init__(self, app):
         usernames = app.config.get("SUPER_USERS", [])
@@ -17,14 +18,18 @@ class SuperUserManager(object):
         self._array.value = usernames_str
 
     def is_superuser(self, username):
-        """ Returns if the given username represents a super user. """
+        """
+        Returns if the given username represents a super user.
+        """
         usernames = self._array.value.split(",")
         return username in usernames
 
     def register_superuser(self, username):
-        """ Registers a new username as a super user for the duration of the container.
+        """
+        Registers a new username as a super user for the duration of the container.
+
         Note that this does *not* change any underlying config files.
-    """
+        """
         usernames = self._array.value.split(",")
         usernames.append(username)
         new_string = ",".join(usernames)
@@ -35,5 +40,7 @@ class SuperUserManager(object):
             raise Exception("Maximum superuser count reached. Please report this to support.")
 
     def has_superusers(self):
-        """ Returns whether there are any superusers defined. """
+        """
+        Returns whether there are any superusers defined.
+        """
         return bool(self._array.value)

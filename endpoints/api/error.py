@@ -1,4 +1,6 @@
-""" Error details API """
+"""
+Error details API.
+"""
 from flask import url_for
 
 from endpoints.api import resource, nickname, ApiResource, path_param, define_json_response
@@ -16,7 +18,9 @@ def error_view(error_type):
 @resource("/v1/error/<error_type>")
 @path_param("error_type", "The error code identifying the type of error.")
 class Error(ApiResource):
-    """ Resource for Error Descriptions"""
+    """
+    Resource for Error Descriptions.
+    """
 
     schemas = {
         "ApiErrorDescription": {
@@ -47,7 +51,9 @@ class Error(ApiResource):
     @define_json_response("ApiErrorDescription")
     @nickname("getErrorDescription")
     def get(self, error_type):
-        """ Get a detailed description of the error """
+        """
+        Get a detailed description of the error.
+        """
         if error_type in ERROR_DESCRIPTION.keys():
             return error_view(error_type)
 

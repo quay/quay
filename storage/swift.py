@@ -1,6 +1,7 @@
-""" Swift storage driver.
+"""
+Swift storage driver.
 
-    Uses: http://docs.openstack.org/developer/swift/overview_large_objects.html
+Uses: http://docs.openstack.org/developer/swift/overview_large_objects.html
 """
 import os.path
 import copy
@@ -96,9 +97,10 @@ class SwiftStorage(BaseStorage):
         )
 
     def _normalize_path(self, object_path):
-        """ No matter what inputs we get, we are going to return a path without a leading or trailing
-        '/'
-    """
+        """
+        No matter what inputs we get, we are going to return a path without a leading or trailing
+        '/'.
+        """
         if self._simple_path_concat:
             return (self._storage_path + object_path).rstrip("/")
         else:
@@ -169,9 +171,11 @@ class SwiftStorage(BaseStorage):
 
     @lru_cache(maxsize=1)
     def _get_root_storage_url(self):
-        """ Returns the root storage URL for this Swift storage. Note that since this requires a call
-        to Swift, we cache the result of this function call.
-    """
+        """
+        Returns the root storage URL for this Swift storage.
+
+        Note that since this requires a call to Swift, we cache the result of this function call.
+        """
         storage_url, _ = self._get_connection().get_auth()
         return storage_url
 
@@ -416,9 +420,11 @@ class SwiftStorage(BaseStorage):
         return bytes_written, updated_metadata
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
-        """ Complete the chunked upload and store the final results in the path indicated.
+        """
+        Complete the chunked upload and store the final results in the path indicated.
+
         Returns nothing.
-    """
+        """
         # Check all potentially empty segments against the segments that were uploaded; if the path
         # is still empty, then we queue the segment to be deleted.
         if self._context.chunk_cleanup_queue is not None:
@@ -453,9 +459,11 @@ class SwiftStorage(BaseStorage):
         )
 
     def cancel_chunked_upload(self, uuid, storage_metadata):
-        """ Cancel the chunked upload and clean up any outstanding partially uploaded data.
+        """
+        Cancel the chunked upload and clean up any outstanding partially uploaded data.
+
         Returns nothing.
-    """
+        """
         if not self._context.chunk_cleanup_queue:
             return
 

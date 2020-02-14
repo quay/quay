@@ -66,17 +66,17 @@ _JWS_SIGNING_ALGORITHM = "RS256"
 
 class MalformedSchema1Manifest(ManifestException):
     """
-  Raised when a manifest fails an assertion that should be true according to the Docker Manifest
-  v2.1 Specification.
-  """
+    Raised when a manifest fails an assertion that should be true according to the Docker Manifest
+    v2.1 Specification.
+    """
 
     pass
 
 
 class InvalidSchema1Signature(ManifestException):
     """
-  Raised when there is a failure verifying the signature of a signed Docker 2.1 Manifest.
-  """
+    Raised when there is a failure verifying the signature of a signed Docker 2.1 Manifest.
+    """
 
     pass
 
@@ -88,9 +88,10 @@ class Schema1Layer(
     )
 ):
     """
-  Represents all of the data about an individual layer in a given Manifest.
-  This is the union of the fsLayers (digest) and the history entries (v1_compatibility).
-  """
+    Represents all of the data about an individual layer in a given Manifest.
+
+    This is the union of the fsLayers (digest) and the history entries (v1_compatibility).
+    """
 
 
 class Schema1V1Metadata(
@@ -100,9 +101,9 @@ class Schema1V1Metadata(
     )
 ):
     """
-  Represents the necessary data extracted from the v1 compatibility string in a given layer of a
-  Manifest.
-  """
+    Represents the necessary data extracted from the v1 compatibility string in a given layer of a
+    Manifest.
+    """
 
 
 class DockerSchema1Manifest(ManifestInterface):
@@ -213,14 +214,18 @@ class DockerSchema1Manifest(ManifestInterface):
                 raise InvalidSchema1Signature()
 
     def validate(self, content_retriever):
-        """ Performs validation of required assertions about the manifest. Raises a ManifestException
-        on failure.
-    """
+        """
+        Performs validation of required assertions about the manifest.
+
+        Raises a ManifestException on failure.
+        """
         # Already validated.
 
     @property
     def is_signed(self):
-        """ Returns whether the schema is signed. """
+        """
+        Returns whether the schema is signed.
+        """
         return bool(self._signatures)
 
     @property
@@ -322,8 +327,10 @@ class DockerSchema1Manifest(ManifestInterface):
         return self._layers
 
     def get_layers(self, content_retriever):
-        """ Returns the layers of this manifest, from base to leaf or None if this kind of manifest
-        does not support layers. """
+        """
+        Returns the layers of this manifest, from base to leaf or None if this kind of manifest does
+        not support layers.
+        """
         for layer in self.layers:
             created_datetime = None
             try:
@@ -355,9 +362,11 @@ class DockerSchema1Manifest(ManifestInterface):
         return self.blob_digests
 
     def get_blob_digests_for_translation(self):
-        """ Returns the blob digests for translation of this manifest into another manifest. This
-        method will ignore missing IDs in layers, unlike `blob_digests`.
-    """
+        """
+        Returns the blob digests for translation of this manifest into another manifest.
+
+        This method will ignore missing IDs in layers, unlike `blob_digests`.
+        """
         layers = self._generate_layers(allow_missing_ids=True)
         return [str(layer.digest) for layer in layers]
 
@@ -387,7 +396,9 @@ class DockerSchema1Manifest(ManifestInterface):
         return self._unsigned_builder().build()
 
     def with_tag_name(self, tag_name, json_web_key=None):
-        """ Returns a copy of this manifest, with the tag changed to the given tag name. """
+        """
+        Returns a copy of this manifest, with the tag changed to the given tag name.
+        """
         builder = DockerSchema1ManifestBuilder(
             self._namespace, self._repo_name, tag_name, self._architecture
         )
@@ -398,9 +409,9 @@ class DockerSchema1Manifest(ManifestInterface):
 
     def _generate_layers(self, allow_missing_ids=False):
         """
-    Returns a generator of objects that have the blobSum and v1Compatibility keys in them,
-    starting from the base image and working toward the leaf node.
-    """
+        Returns a generator of objects that have the blobSum and v1Compatibility keys in them,
+        starting from the base image and working toward the leaf node.
+        """
         for blob_sum_obj, history_obj in reversed(
             zip(
                 self._parsed[DOCKER_SCHEMA1_FS_LAYERS_KEY], self._parsed[DOCKER_SCHEMA1_HISTORY_KEY]
@@ -485,9 +496,11 @@ class DockerSchema1Manifest(ManifestInterface):
         return self.layers[-1].v1_metadata.image_id
 
     def get_schema1_manifest(self, namespace_name, repo_name, tag_name, content_retriever):
-        """ Returns the manifest that is compatible with V1, by virtue of being `amd64` and `linux`.
+        """
+        Returns the manifest that is compatible with V1, by virtue of being `amd64` and `linux`.
+
         If none, returns None.
-    """
+        """
         # Note: schema1 *technically* supports non-amd64 architectures, but in practice these were never
         # used, so to ensure full backwards compatibility, we just always return the schema.
         return self
@@ -506,12 +519,12 @@ class DockerSchema1Manifest(ManifestInterface):
 
     def rewrite_invalid_image_ids(self, images_map):
         """
-    Rewrites Docker v1 image IDs and returns a generator of DockerV1Metadata.
+        Rewrites Docker v1 image IDs and returns a generator of DockerV1Metadata.
 
-    If Docker gives us a layer with a v1 image ID that already points to existing
-    content, but the checksums don't match, then we need to rewrite the image ID
-    to something new in order to ensure consistency.
-    """
+        If Docker gives us a layer with a v1 image ID that already points to existing content, but
+        the checksums don't match, then we need to rewrite the image ID to something new in order to
+        ensure consistency.
+        """
 
         # Used to synthesize a new "content addressable" image id
         digest_history = hashlib.sha256()
@@ -572,8 +585,8 @@ class DockerSchema1Manifest(ManifestInterface):
 
 class DockerSchema1ManifestBuilder(object):
     """
-  A convenient abstraction around creating new DockerSchema1Manifests.
-  """
+    A convenient abstraction around creating new DockerSchema1Manifests.
+    """
 
     def __init__(self, namespace_name, repo_name, tag, architecture="amd64"):
         repo_name_key = "{0}/{1}".format(namespace_name, repo_name)
@@ -604,9 +617,10 @@ class DockerSchema1ManifestBuilder(object):
         return self
 
     def with_metadata_removed(self):
-        """ Returns a copy of the builder where every layer but the leaf layer has
-        its metadata stripped down to the bare essentials.
-    """
+        """
+        Returns a copy of the builder where every layer but the leaf layer has its metadata stripped
+        down to the bare essentials.
+        """
         builder = DockerSchema1ManifestBuilder(
             self._namespace_name, self._repo_name, self._tag, self._architecture
         )
@@ -650,8 +664,8 @@ class DockerSchema1ManifestBuilder(object):
 
     def build(self, json_web_key=None, ensure_ascii=True):
         """
-    Builds a DockerSchema1Manifest object, with optional signature.
-    """
+        Builds a DockerSchema1Manifest object, with optional signature.
+        """
         payload = OrderedDict(self._base_payload)
         payload.update(
             {
@@ -701,8 +715,8 @@ class DockerSchema1ManifestBuilder(object):
 
 def _updated_v1_metadata(v1_metadata_json, updated_id_map):
     """
-  Updates v1_metadata with new image IDs.
-  """
+    Updates v1_metadata with new image IDs.
+    """
     parsed = json.loads(v1_metadata_json)
     parsed["id"] = updated_id_map[parsed["id"]]
 

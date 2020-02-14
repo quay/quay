@@ -36,7 +36,9 @@ logger = logging.getLogger(__name__)
 
 
 def get_tag_by_id(tag_id):
-    """ Returns the tag with the given ID, joined with its manifest or None if none. """
+    """
+    Returns the tag with the given ID, joined with its manifest or None if none.
+    """
     try:
         return Tag.select(Tag, Manifest).join(Manifest).where(Tag.id == tag_id).get()
     except Tag.DoesNotExist:
@@ -44,9 +46,12 @@ def get_tag_by_id(tag_id):
 
 
 def get_tag(repository_id, tag_name):
-    """ Returns the alive, non-hidden tag with the given name under the specified repository or
-      None if none. The tag is returned joined with its manifest.
-  """
+    """
+    Returns the alive, non-hidden tag with the given name under the specified repository or None if
+    none.
+
+    The tag is returned joined with its manifest.
+    """
     query = (
         Tag.select(Tag, Manifest)
         .join(Manifest)
@@ -65,9 +70,11 @@ def get_tag(repository_id, tag_name):
 
 
 def lookup_alive_tags_shallow(repository_id, start_pagination_id=None, limit=None):
-    """ Returns a list of the tags alive in the specified repository. Note that the tags returned
-      *only* contain their ID and name. Also note that the Tags are returned ordered by ID.
-  """
+    """
+    Returns a list of the tags alive in the specified repository. Note that the tags returned.
+
+    *only* contain their ID and name. Also note that the Tags are returned ordered by ID.
+    """
     query = Tag.select(Tag.id, Tag.name).where(Tag.repository == repository_id).order_by(Tag.id)
 
     if start_pagination_id is not None:
@@ -80,9 +87,11 @@ def lookup_alive_tags_shallow(repository_id, start_pagination_id=None, limit=Non
 
 
 def list_alive_tags(repository_id):
-    """ Returns a list of all the tags alive in the specified repository.
-      Tag's returned are joined with their manifest.
-  """
+    """
+    Returns a list of all the tags alive in the specified repository.
+
+    Tag's returned are joined with their manifest.
+    """
     query = Tag.select(Tag, Manifest).join(Manifest).where(Tag.repository == repository_id)
 
     return filter_to_alive_tags(query)
@@ -96,13 +105,14 @@ def list_repository_tag_history(
     active_tags_only=False,
     since_time_ms=None,
 ):
-    """ Returns a tuple of the full set of tags found in the specified repository, including those
-      that are no longer alive (unless active_tags_only is True), and whether additional tags exist.
-      If specific_tag_name is given, the tags are further filtered by name. If since is given, tags
-      are further filtered to newer than that date.
+    """
+    Returns a tuple of the full set of tags found in the specified repository, including those that
+    are no longer alive (unless active_tags_only is True), and whether additional tags exist. If
+    specific_tag_name is given, the tags are further filtered by name. If since is given, tags are
+    further filtered to newer than that date.
 
-      Note that the returned Manifest will not contain the manifest contents.
-  """
+    Note that the returned Manifest will not contain the manifest contents.
+    """
     query = (
         Tag.select(Tag, Manifest.id, Manifest.digest, Manifest.media_type)
         .join(Manifest)
@@ -130,7 +140,9 @@ def list_repository_tag_history(
 
 
 def get_legacy_images_for_tags(tags):
-    """ Returns a map from tag ID to the legacy image for the tag. """
+    """
+    Returns a map from tag ID to the legacy image for the tag.
+    """
     if not tags:
         return {}
 
@@ -146,9 +158,12 @@ def get_legacy_images_for_tags(tags):
 
 
 def find_matching_tag(repository_id, tag_names, tag_kinds=None):
-    """ Finds an alive tag in the specified repository with one of the specified tag names and
-      returns it or None if none. Tag's returned are joined with their manifest.
-  """
+    """
+    Finds an alive tag in the specified repository with one of the specified tag names and returns
+    it or None if none.
+
+    Tag's returned are joined with their manifest.
+    """
     assert repository_id
     assert tag_names
 
@@ -171,9 +186,10 @@ def find_matching_tag(repository_id, tag_names, tag_kinds=None):
 
 
 def get_most_recent_tag_lifetime_start(repository_ids):
-    """ Returns a map from repo ID to the timestamp of the most recently pushed alive tag 
-      for each specified repository or None if none. 
-  """
+    """
+    Returns a map from repo ID to the timestamp of the most recently pushed alive tag for each
+    specified repository or None if none.
+    """
     assert len(repository_ids) > 0 and None not in repository_ids
 
     query = (
@@ -187,9 +203,11 @@ def get_most_recent_tag_lifetime_start(repository_ids):
 
 
 def get_most_recent_tag(repository_id):
-    """ Returns the most recently pushed alive tag in the specified repository or None if none.
-      The Tag returned is joined with its manifest.
-  """
+    """
+    Returns the most recently pushed alive tag in the specified repository or None if none.
+
+    The Tag returned is joined with its manifest.
+    """
     assert repository_id
 
     query = (
@@ -208,8 +226,9 @@ def get_most_recent_tag(repository_id):
 
 
 def get_expired_tag(repository_id, tag_name):
-    """ Returns a tag with the given name that is expired in the repository or None if none.
-  """
+    """
+    Returns a tag with the given name that is expired in the repository or None if none.
+    """
     try:
         return (
             Tag.select()
@@ -223,9 +242,10 @@ def get_expired_tag(repository_id, tag_name):
 
 
 def create_temporary_tag_if_necessary(manifest, expiration_sec):
-    """ Creates a temporary tag pointing to the given manifest, with the given expiration in seconds,
-      unless there is an existing tag that will keep the manifest around.
-  """
+    """
+    Creates a temporary tag pointing to the given manifest, with the given expiration in seconds,
+    unless there is an existing tag that will keep the manifest around.
+    """
     tag_name = "$temp-%s" % str(uuid.uuid4())
     now_ms = get_epoch_timestamp_ms()
     end_ms = now_ms + (expiration_sec * 1000)
@@ -259,10 +279,13 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
 
 
 def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_old_model=True):
-    """ Creates or updates a tag with the specified name to point to the given manifest under
-      its repository. If this action is a reversion to a previous manifest, is_reversion
-      should be set to True. Returns the newly created tag row or None on error.
-  """
+    """
+    Creates or updates a tag with the specified name to point to the given manifest under its
+    repository.
+
+    If this action is a reversion to a previous manifest, is_reversion should be set to True.
+    Returns the newly created tag row or None on error.
+    """
     try:
         manifest = (
             Manifest.select(Manifest, MediaType)
@@ -346,9 +369,12 @@ def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_
 
 
 def delete_tag(repository_id, tag_name):
-    """ Deletes the alive tag with the given name in the specified repository and returns the deleted
-      tag. If the tag did not exist, returns None.
-  """
+    """
+    Deletes the alive tag with the given name in the specified repository and returns the deleted
+    tag.
+
+    If the tag did not exist, returns None.
+    """
     tag = get_tag(repository_id, tag_name)
     if tag is None:
         return None
@@ -357,7 +383,9 @@ def delete_tag(repository_id, tag_name):
 
 
 def _delete_tag(tag, now_ms):
-    """ Deletes the given tag by marking it as expired. """
+    """
+    Deletes the given tag by marking it as expired.
+    """
     now_ts = int(now_ms / 1000)
 
     with db_transaction():
@@ -387,9 +415,11 @@ def _delete_tag(tag, now_ms):
 
 
 def delete_tags_for_manifest(manifest):
-    """ Deletes all tags pointing to the given manifest. Returns the list of tags 
-      deleted.
-  """
+    """
+    Deletes all tags pointing to the given manifest.
+
+    Returns the list of tags deleted.
+    """
     query = Tag.select().where(Tag.manifest == manifest)
     query = filter_to_alive_tags(query)
     query = filter_to_visible_tags(query)
@@ -405,16 +435,19 @@ def delete_tags_for_manifest(manifest):
 
 
 def filter_to_visible_tags(query):
-    """ Adjusts the specified Tag query to only return those tags that are visible.
-  """
+    """
+    Adjusts the specified Tag query to only return those tags that are visible.
+    """
     return query.where(Tag.hidden == False)
 
 
 def filter_to_alive_tags(query, now_ms=None, model=Tag):
-    """ Adjusts the specified Tag query to only return those tags alive. If now_ms is specified,
-      the given timestamp (in MS) is used in place of the current timestamp for determining wherther
-      a tag is alive.
-  """
+    """
+    Adjusts the specified Tag query to only return those tags alive.
+
+    If now_ms is specified, the given timestamp (in MS) is used in place of the current timestamp
+    for determining wherther a tag is alive.
+    """
     if now_ms is None:
         now_ms = get_epoch_timestamp_ms()
 
@@ -424,7 +457,9 @@ def filter_to_alive_tags(query, now_ms=None, model=Tag):
 
 
 def set_tag_expiration_sec_for_manifest(manifest_id, expiration_seconds):
-    """ Sets the tag expiration for any tags that point to the given manifest ID. """
+    """
+    Sets the tag expiration for any tags that point to the given manifest ID.
+    """
     query = Tag.select().where(Tag.manifest == manifest_id)
     query = filter_to_alive_tags(query)
     tags = list(query)
@@ -436,7 +471,9 @@ def set_tag_expiration_sec_for_manifest(manifest_id, expiration_seconds):
 
 
 def set_tag_expiration_for_manifest(manifest_id, expiration_datetime):
-    """ Sets the tag expiration for any tags that point to the given manifest ID. """
+    """
+    Sets the tag expiration for any tags that point to the given manifest ID.
+    """
     query = Tag.select().where(Tag.manifest == manifest_id)
     query = filter_to_alive_tags(query)
     tags = list(query)
@@ -448,11 +485,12 @@ def set_tag_expiration_for_manifest(manifest_id, expiration_datetime):
 
 
 def change_tag_expiration(tag_id, expiration_datetime):
-    """ Changes the expiration of the specified tag to the given expiration datetime. If
-      the expiration datetime is None, then the tag is marked as not expiring. Returns
-      a tuple of the previous expiration timestamp in seconds (if any), and whether the
-      operation succeeded.
-  """
+    """
+    Changes the expiration of the specified tag to the given expiration datetime.
+
+    If the expiration datetime is None, then the tag is marked as not expiring. Returns a tuple of
+    the previous expiration timestamp in seconds (if any), and whether the operation succeeded.
+    """
     try:
         tag = Tag.get(id=tag_id)
     except Tag.DoesNotExist:
@@ -478,8 +516,9 @@ def change_tag_expiration(tag_id, expiration_datetime):
 
 
 def lookup_unrecoverable_tags(repo):
-    """ Returns the tags in a repository that are expired and past their time machine recovery
-      period. """
+    """
+    Returns the tags in a repository that are expired and past their time machine recovery period.
+    """
     expired_clause = get_epoch_timestamp_ms() - (Namespace.removed_tag_expiration_s * 1000)
     return (
         Tag.select()
@@ -491,9 +530,11 @@ def lookup_unrecoverable_tags(repo):
 
 
 def set_tag_end_ms(tag, end_ms):
-    """ Sets the end timestamp for a tag. Should only be called by change_tag_expiration
-      or tests.
-  """
+    """
+    Sets the end timestamp for a tag.
+
+    Should only be called by change_tag_expiration or tests.
+    """
 
     with db_transaction():
         updated = (
@@ -523,9 +564,10 @@ def set_tag_end_ms(tag, end_ms):
 
 
 def tags_containing_legacy_image(image):
-    """ Yields all alive Tags containing the given image as a legacy image, somewhere in its
-      legacy image hierarchy.
-  """
+    """
+    Yields all alive Tags containing the given image as a legacy image, somewhere in its legacy
+    image hierarchy.
+    """
     ancestors_str = "%s%s/%%" % (image.ancestors, image.id)
     tags = (
         Tag.select()
@@ -542,9 +584,10 @@ def tags_containing_legacy_image(image):
 
 
 def lookup_notifiable_tags_for_legacy_image(docker_image_id, storage_uuid, event_name):
-    """ Yields any alive Tags found in repositories with an event with the given name registered
-      and whose legacy Image has the given docker image ID and storage UUID.
-  """
+    """
+    Yields any alive Tags found in repositories with an event with the given name registered and
+    whose legacy Image has the given docker image ID and storage UUID.
+    """
     event = ExternalNotificationEvent.get(name=event_name)
     images = (
         Image.select()

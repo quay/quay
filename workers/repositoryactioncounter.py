@@ -21,8 +21,9 @@ class RepositoryActionCountWorker(Worker):
 
     @with_exponential_backoff(backoff_multiplier=10, max_backoff=3600, max_retries=10)
     def _count_repository_actions(self):
-        """ Counts actions and aggregates search scores for a random repository for the
-        previous day. """
+        """
+        Counts actions and aggregates search scores for a random repository for the previous day.
+        """
         to_count = model.repositoryactioncount.find_uncounted_repository()
         if to_count is None:
             logger.debug("No further repositories to count")

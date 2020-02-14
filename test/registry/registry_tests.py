@@ -3266,8 +3266,8 @@ def test_repository_states(
     app_reloader,
 ):
     """
-  Verify the push behavior of the Repository dependent upon its state.
-  """
+    Verify the push behavior of the Repository dependent upon its state.
+    """
     namespace = "devtable"
     repo = "staterepo"
     tag = "latest"

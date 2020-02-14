@@ -28,7 +28,7 @@ Example:
     "Entrypoint": null,
     "OnBuild": null,
     "Labels": {
-      
+
     }
   },
   "container": "b7a43694b435c8e9932615643f61f975a9213e453b15cd6c2a386f144a2d2de9",
@@ -56,7 +56,7 @@ Example:
     "Entrypoint": null,
     "OnBuild": null,
     "Labels": {
-      
+
     }
   },
   "created": "2018-04-16T10:41:19.079522722Z",
@@ -123,9 +123,9 @@ LayerHistory = namedtuple(
 
 class MalformedSchema2Config(ManifestException):
     """
-  Raised when a config fails an assertion that should be true according to the Docker Manifest
-  v2.2 Config Specification.
-  """
+    Raised when a config fails an assertion that should be true according to the Docker Manifest
+    v2.2 Config Specification.
+    """
 
     pass
 
@@ -202,27 +202,37 @@ class DockerSchema2Config(object):
 
     @property
     def digest(self):
-        """ Returns the digest of this config object. """
+        """
+        Returns the digest of this config object.
+        """
         return digest_tools.sha256_digest(self._config_bytes.as_encoded_str())
 
     @property
     def size(self):
-        """ Returns the size of this config object. """
+        """
+        Returns the size of this config object.
+        """
         return len(self._config_bytes.as_encoded_str())
 
     @property
     def bytes(self):
-        """ Returns the bytes of this config object. """
+        """
+        Returns the bytes of this config object.
+        """
         return self._config_bytes
 
     @property
     def labels(self):
-        """ Returns a dictionary of all the labels defined in this configuration. """
+        """
+        Returns a dictionary of all the labels defined in this configuration.
+        """
         return self._parsed.get("config", {}).get("Labels", {}) or {}
 
     @property
     def has_empty_layer(self):
-        """ Returns whether this config contains an empty layer. """
+        """
+        Returns whether this config contains an empty layer.
+        """
         for history_entry in self._parsed[DOCKER_SCHEMA2_CONFIG_HISTORY_KEY]:
             if history_entry.get(DOCKER_SCHEMA2_CONFIG_EMPTY_LAYER_KEY, False):
                 return True
@@ -231,7 +241,9 @@ class DockerSchema2Config(object):
 
     @property
     def history(self):
-        """ Returns the history of the image, started at the base layer. """
+        """
+        Returns the history of the image, started at the base layer.
+        """
         for history_entry in self._parsed[DOCKER_SCHEMA2_CONFIG_HISTORY_KEY]:
             created_datetime_str = history_entry.get(DOCKER_SCHEMA2_CONFIG_CREATED_KEY)
             created_datetime = parse_date(created_datetime_str) if created_datetime_str else None
@@ -246,8 +258,9 @@ class DockerSchema2Config(object):
             )
 
     def build_v1_compatibility(self, history, v1_id, v1_parent_id, is_leaf, compressed_size=None):
-        """ Builds the V1 compatibility block for the given layer.
-    """
+        """
+        Builds the V1 compatibility block for the given layer.
+        """
         # If the layer is the leaf, it gets the full config (minus 2 fields). Otherwise, it gets only
         # IDs.
         v1_compatibility = copy.deepcopy(self._parsed) if is_leaf else {}

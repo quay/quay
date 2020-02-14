@@ -136,12 +136,14 @@ class CompletedKeys(object):
 
 
 def yield_random_entries(batch_query, primary_key_field, batch_size, max_id, min_id=0):
-    """ This method will yield items from random blocks in the database. We will track metadata
-      about which keys are available for work, and we will complete the backfill when there is no
-      more work to be done. The method yields tuples of (candidate, Event), and if the work was
-      already done by another worker, the caller should set the event. Batch candidates must have
-      an "id" field which can be inspected.
-  """
+    """
+    This method will yield items from random blocks in the database.
+
+    We will track metadata about which keys are available for work, and we will complete the
+    backfill when there is no more work to be done. The method yields tuples of (candidate, Event),
+    and if the work was already done by another worker, the caller should set the event. Batch
+    candidates must have an "id" field which can be inspected.
+    """
 
     min_id = max(min_id, 0)
     max_id = max(max_id, 1)

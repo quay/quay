@@ -186,8 +186,12 @@ CSRF_TOKEN_KEY = "_csrf_token"
 
 
 class AppConfigChange(object):
-    """ AppConfigChange takes a dictionary that overrides the global app config
-      for a given block of code. The values are restored on exit. """
+    """
+    AppConfigChange takes a dictionary that overrides the global app config for a given block of
+    code.
+
+    The values are restored on exit.
+    """
 
     def __init__(self, changes=None):
         self._changes = changes or {}

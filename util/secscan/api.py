@@ -31,29 +31,40 @@ logger = logging.getLogger(__name__)
 
 
 class AnalyzeLayerException(Exception):
-    """ Exception raised when a layer fails to analyze due to a request issue. """
+    """
+    Exception raised when a layer fails to analyze due to a request issue.
+    """
 
 
 class AnalyzeLayerRetryException(Exception):
-    """ Exception raised when a layer fails to analyze due to a request issue, and the request should
-      be retried.
-  """
+    """
+    Exception raised when a layer fails to analyze due to a request issue, and the request should be
+    retried.
+    """
 
 
 class MissingParentLayerException(AnalyzeLayerException):
-    """ Exception raised when the parent of the layer is missing from the security scanner. """
+    """
+    Exception raised when the parent of the layer is missing from the security scanner.
+    """
 
 
 class InvalidLayerException(AnalyzeLayerException):
-    """ Exception raised when the layer itself cannot be handled by the security scanner. """
+    """
+    Exception raised when the layer itself cannot be handled by the security scanner.
+    """
 
 
 class APIRequestFailure(Exception):
-    """ Exception raised when there is a failure to conduct an API request. """
+    """
+    Exception raised when there is a failure to conduct an API request.
+    """
 
 
 class Non200ResponseException(Exception):
-    """ Exception raised when the upstream API returns a non-200 HTTP status code. """
+    """
+    Exception raised when the upstream API returns a non-200 HTTP status code.
+    """
 
     def __init__(self, response):
         super(Non200ResponseException, self).__init__()
@@ -69,7 +80,9 @@ _API_METHOD_PING = "metrics"
 
 
 def compute_layer_id(layer):
-    """ Returns the ID for the layer in the security scanner. """
+    """
+    Returns the ID for the layer in the security scanner.
+    """
     # NOTE: this is temporary until we switch to Clair V3.
     if isinstance(layer, ManifestDataType):
         if layer._is_tag_manifest:
@@ -89,7 +102,9 @@ def compute_layer_id(layer):
 
 
 class SecurityScannerAPI(object):
-    """ Helper class for talking to the Security Scan service (usually Clair). """
+    """
+    Helper class for talking to the Security Scan service (usually Clair).
+    """
 
     def __init__(
         self,
@@ -128,69 +143,91 @@ class SecurityScannerAPI(object):
 
 @add_metaclass(ABCMeta)
 class SecurityScannerAPIInterface(object):
-    """ Helper class for talking to the Security Scan service (usually Clair). """
+    """
+    Helper class for talking to the Security Scan service (usually Clair).
+    """
 
     @abstractmethod
     def cleanup_layers(self, layers):
-        """ Callback invoked by garbage collection to cleanup any layers that no longer
-        need to be stored in the security scanner.
-    """
+        """
+        Callback invoked by garbage collection to cleanup any layers that no longer need to be
+        stored in the security scanner.
+        """
         pass
 
     @abstractmethod
     def ping(self):
-        """ Calls GET on the metrics endpoint of the security scanner to ensure it is running
-        and properly configured. Returns the HTTP response.
-    """
+        """
+        Calls GET on the metrics endpoint of the security scanner to ensure it is running and
+        properly configured.
+
+        Returns the HTTP response.
+        """
         pass
 
     @abstractmethod
     def delete_layer(self, layer):
-        """ Calls DELETE on the given layer in the security scanner, removing it from
-        its database.
-    """
+        """
+        Calls DELETE on the given layer in the security scanner, removing it from its database.
+        """
         pass
 
     @abstractmethod
     def analyze_layer(self, layer):
-        """ Posts the given layer to the security scanner for analysis, blocking until complete.
+        """
+        Posts the given layer to the security scanner for analysis, blocking until complete.
+
         Returns the analysis version on success or raises an exception deriving from
         AnalyzeLayerException on failure. Callers should handle all cases of AnalyzeLayerException.
-    """
+        """
         pass
 
     @abstractmethod
     def check_layer_vulnerable(self, layer_id, cve_name):
-        """ Checks to see if the layer with the given ID is vulnerable to the specified CVE. """
+        """
+        Checks to see if the layer with the given ID is vulnerable to the specified CVE.
+        """
         pass
 
     @abstractmethod
     def get_notification(self, notification_name, layer_limit=100, page=None):
-        """ Gets the data for a specific notification, with optional page token.
+        """
+        Gets the data for a specific notification, with optional page token.
+
         Returns a tuple of the data (None on failure) and whether to retry.
-    """
+        """
         pass
 
     @abstractmethod
     def mark_notification_read(self, notification_name):
-        """ Marks a security scanner notification as read. """
+        """
+        Marks a security scanner notification as read.
+        """
         pass
 
     @abstractmethod
     def get_layer_data(self, layer, include_features=False, include_vulnerabilities=False):
-        """ Returns the layer data for the specified layer. On error, returns None. """
+        """
+        Returns the layer data for the specified layer.
+
+        On error, returns None.
+        """
         pass
 
 
 @nooper
 class NoopSecurityScannerAPI(SecurityScannerAPIInterface):
-    """ No-op version of the security scanner API. """
+    """
+    No-op version of the security scanner API.
+    """
 
     pass
 
 
 class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
-    """ Helper class for talking to the Security Scan service (Clair). """
+    """
+    Helper class for talking to the Security Scan service (Clair).
+    """
 
     # TODO refactor this to not take an app config, and instead just the things it needs as a config object
     def __init__(
@@ -206,10 +243,12 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         self._uri_creator = uri_creator
 
     def _get_image_url_and_auth(self, image):
-        """ Returns a tuple of the url and the auth header value that must be used
-        to fetch the layer data itself. If the image can't be addressed, we return
-        None.
-    """
+        """
+        Returns a tuple of the url and the auth header value that must be used to fetch the layer
+        data itself.
+
+        If the image can't be addressed, we return None.
+        """
         if self._instance_keys is None:
             raise Exception("No Instance keys provided to Security Scanner API")
 
@@ -251,9 +290,11 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         return uri, auth_header
 
     def _new_analyze_request(self, layer):
-        """ Create the request body to submit the given layer for analysis. If the layer's URL cannot
-        be found, returns None.
-    """
+        """
+        Create the request body to submit the given layer for analysis.
+
+        If the layer's URL cannot be found, returns None.
+        """
         layer_id = compute_layer_id(layer)
         if layer_id is None:
             return None
@@ -282,16 +323,20 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         }
 
     def cleanup_layers(self, layers):
-        """ Callback invoked by garbage collection to cleanup any layers that no longer
-        need to be stored in the security scanner.
-    """
+        """
+        Callback invoked by garbage collection to cleanup any layers that no longer need to be
+        stored in the security scanner.
+        """
         for layer in layers:
             self.delete_layer(layer)
 
     def ping(self):
-        """ Calls GET on the metrics endpoint of the security scanner to ensure it is running
-        and properly configured. Returns the HTTP response.
-    """
+        """
+        Calls GET on the metrics endpoint of the security scanner to ensure it is running and
+        properly configured.
+
+        Returns the HTTP response.
+        """
         try:
             return self._call("GET", _API_METHOD_PING)
         except requests.exceptions.Timeout as tie:
@@ -311,9 +356,9 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             raise Exception(msg)
 
     def delete_layer(self, layer):
-        """ Calls DELETE on the given layer in the security scanner, removing it from
-        its database.
-    """
+        """
+        Calls DELETE on the given layer in the security scanner, removing it from its database.
+        """
         layer_id = compute_layer_id(layer)
         if layer_id is None:
             return None
@@ -335,10 +380,12 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             return False
 
     def analyze_layer(self, layer):
-        """ Posts the given layer to the security scanner for analysis, blocking until complete.
+        """
+        Posts the given layer to the security scanner for analysis, blocking until complete.
+
         Returns the analysis version on success or raises an exception deriving from
         AnalyzeLayerException on failure. Callers should handle all cases of AnalyzeLayerException.
-    """
+        """
 
         def _response_json(request, response):
             try:
@@ -398,7 +445,9 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         return _response_json(request, response)["Layer"]["IndexedByVersion"]
 
     def check_layer_vulnerable(self, layer_id, cve_name):
-        """ Checks to see if the layer with the given ID is vulnerable to the specified CVE. """
+        """
+        Checks to see if the layer with the given ID is vulnerable to the specified CVE.
+        """
         layer_data = self._get_layer_data(layer_id, include_vulnerabilities=True)
         if layer_data is None or "Layer" not in layer_data or "Features" not in layer_data["Layer"]:
             return False
@@ -411,9 +460,11 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         return False
 
     def get_notification(self, notification_name, layer_limit=100, page=None):
-        """ Gets the data for a specific notification, with optional page token.
+        """
+        Gets the data for a specific notification, with optional page token.
+
         Returns a tuple of the data (None on failure) and whether to retry.
-    """
+        """
         try:
             params = {"limit": layer_limit}
 
@@ -441,7 +492,9 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         return json_response, False
 
     def mark_notification_read(self, notification_name):
-        """ Marks a security scanner notification as read. """
+        """
+        Marks a security scanner notification as read.
+        """
         try:
             self._call("DELETE", _API_METHOD_MARK_NOTIFICATION_READ % notification_name)
             return True
@@ -452,7 +505,11 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             return False
 
     def get_layer_data(self, layer, include_features=False, include_vulnerabilities=False):
-        """ Returns the layer data for the specified layer. On error, returns None. """
+        """
+        Returns the layer data for the specified layer.
+
+        On error, returns None.
+        """
         layer_id = compute_layer_id(layer)
         if layer_id is None:
             return None
@@ -509,7 +566,9 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             raise APIRequestFailure()
 
     def _request(self, method, endpoint, path, body, params, timeout):
-        """ Issues an HTTP request to the security endpoint. """
+        """
+        Issues an HTTP request to the security endpoint.
+        """
         url = _join_api_url(endpoint, self._config.get("SECURITY_SCANNER_API_VERSION", "v1"), path)
         signer_proxy_url = self._config.get("JWTPROXY_SIGNER", "localhost:8081")
 
@@ -529,9 +588,10 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         return resp
 
     def _call(self, method, path, params=None, body=None):
-        """ Issues an HTTP request to the security endpoint handling the logic of using an alternative
+        """
+        Issues an HTTP request to the security endpoint handling the logic of using an alternative
         BATCH endpoint for non-GET requests and failover for GET requests.
-    """
+        """
         timeout = self._config.get("SECURITY_SCANNER_API_TIMEOUT_SECONDS", 1)
         endpoint = self._config["SECURITY_SCANNER_ENDPOINT"]
 
@@ -564,7 +624,9 @@ def _join_api_url(endpoint, api_version, path):
 
 @failover
 def _failover_read_request(request_fn, endpoint, path, body, params, timeout):
-    """ This function auto-retries read-only requests until they return a 2xx status code. """
+    """
+    This function auto-retries read-only requests until they return a 2xx status code.
+    """
     try:
         return request_fn("GET", endpoint, path, body, params, timeout)
     except (requests.exceptions.RequestException, Non200ResponseException) as ex:

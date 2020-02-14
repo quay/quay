@@ -27,7 +27,9 @@ def _logs_query(
     id_range=None,
     namespace_id=None,
 ):
-    """ Returns a query for selecting logs from the table, with various options and filters. """
+    """
+    Returns a query for selecting logs from the table, with various options and filters.
+    """
     if namespace is not None:
         assert namespace_id is None
 
@@ -75,8 +77,9 @@ def _latest_logs_query(
     model=LogEntry3,
     size=None,
 ):
-    """ Returns a query for selecting the latest logs from the table, with various options and
-      filters. """
+    """
+    Returns a query for selecting the latest logs from the table, with various options and filters.
+    """
     query = model.select(*selections).switch(model)
 
     if repository:
@@ -129,7 +132,9 @@ def get_aggregated_logs(
     ignore=None,
     model=LogEntry3,
 ):
-    """ Returns the count of logs, by kind and day, for the logs matching the given filters. """
+    """
+    Returns the count of logs, by kind and day, for the logs matching the given filters.
+    """
     date = db.extract_date("day", model.datetime)
     selections = [model.kind, date.alias("day"), fn.Count(model.id).alias("count")]
     query = _logs_query(
@@ -149,7 +154,9 @@ def get_logs_query(
     model=LogEntry3,
     id_range=None,
 ):
-    """ Returns the logs matching the given filters. """
+    """
+    Returns the logs matching the given filters.
+    """
     Performer = User.alias()
     Account = User.alias()
     selections = [model, Performer]
@@ -184,7 +191,9 @@ def get_logs_query(
 def get_latest_logs_query(
     performer=None, repository=None, namespace=None, ignore=None, model=LogEntry3, size=None
 ):
-    """ Returns the latest logs matching the given filters. """
+    """
+    Returns the latest logs matching the given filters.
+    """
     Performer = User.alias()
     Account = User.alias()
     selections = [model, Performer]
@@ -223,7 +232,9 @@ def log_action(
     metadata={},
     timestamp=None,
 ):
-    """ Logs an entry in the LogEntry table. """
+    """
+    Logs an entry in the LogEntry table.
+    """
     if not timestamp:
         timestamp = datetime.today()
 
@@ -264,7 +275,9 @@ def log_action(
 
 
 def get_stale_logs_start_id(model):
-    """ Gets the oldest log entry. """
+    """
+    Gets the oldest log entry.
+    """
     try:
         return (model.select(fn.Min(model.id)).tuples())[0][0]
     except IndexError:
@@ -272,28 +285,35 @@ def get_stale_logs_start_id(model):
 
 
 def get_stale_logs(start_id, end_id, model, cutoff_date):
-    """ Returns all the logs with IDs between start_id and end_id inclusively. """
+    """
+    Returns all the logs with IDs between start_id and end_id inclusively.
+    """
     return model.select().where(
         (model.id >= start_id), (model.id <= end_id), model.datetime <= cutoff_date
     )
 
 
 def delete_stale_logs(start_id, end_id, model):
-    """ Deletes all the logs with IDs between start_id and end_id. """
+    """
+    Deletes all the logs with IDs between start_id and end_id.
+    """
     model.delete().where((model.id >= start_id), (model.id <= end_id)).execute()
 
 
 def get_repository_action_counts(repo, start_date):
-    """ Returns the daily aggregated action counts for the given repository, starting at the given
-      start date.
-  """
+    """
+    Returns the daily aggregated action counts for the given repository, starting at the given start
+    date.
+    """
     return RepositoryActionCount.select().where(
         RepositoryActionCount.repository == repo, RepositoryActionCount.date >= start_date
     )
 
 
 def get_repositories_action_sums(repository_ids):
-    """ Returns a map from repository ID to total actions within that repository in the last week. """
+    """
+    Returns a map from repository ID to total actions within that repository in the last week.
+    """
     if not repository_ids:
         return {}
 
@@ -317,9 +337,10 @@ def get_repositories_action_sums(repository_ids):
 
 
 def get_minimum_id_for_logs(start_time, repository_id=None, namespace_id=None, model=LogEntry3):
-    """ Returns the minimum ID for logs matching the given repository or namespace in
-      the logs table, starting at the given start time.
-  """
+    """
+    Returns the minimum ID for logs matching the given repository or namespace in the logs table,
+    starting at the given start time.
+    """
     # First try bounded by a day. Most repositories will meet this criteria, and therefore
     # can make a much faster query.
     day_after = start_time + timedelta(days=1)
@@ -340,9 +361,10 @@ def get_minimum_id_for_logs(start_time, repository_id=None, namespace_id=None, m
 
 
 def get_maximum_id_for_logs(end_time, repository_id=None, namespace_id=None, model=LogEntry3):
-    """ Returns the maximum ID for logs matching the given repository or namespace in
-      the logs table, ending at the given end time.
-  """
+    """
+    Returns the maximum ID for logs matching the given repository or namespace in the logs table,
+    ending at the given end time.
+    """
     # First try bounded by a day. Most repositories will meet this criteria, and therefore
     # can make a much faster query.
     day_before = end_time - timedelta(days=1)

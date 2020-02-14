@@ -85,7 +85,9 @@ class DelegateUserfiles(object):
         return os.path.join(self._prefix or "", os.path.basename(file_id))
 
     def prepare_for_drop(self, mime_type, requires_cors=True):
-        """ Returns a signed URL to upload a file to our bucket. """
+        """
+        Returns a signed URL to upload a file to our bucket.
+        """
         logger.debug("Requested upload url with content type: %s" % mime_type)
         file_id = str(uuid4())
         path = self.get_file_id_path(file_id)

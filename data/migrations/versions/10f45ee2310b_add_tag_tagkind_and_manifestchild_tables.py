@@ -1,9 +1,9 @@
-"""Add Tag, TagKind and ManifestChild tables
+"""
+Add Tag, TagKind and ManifestChild tables.
 
 Revision ID: 10f45ee2310b
 Revises: 13411de1c0ff
 Create Date: 2018-10-29 15:22:53.552216
-
 """
 
 # revision identifiers, used by Alembic.

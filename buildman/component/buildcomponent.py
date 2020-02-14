@@ -35,7 +35,9 @@ logger = logging.getLogger(__name__)
 
 
 class ComponentStatus(object):
-    """ ComponentStatus represents the possible states of a component. """
+    """
+    ComponentStatus represents the possible states of a component.
+    """
 
     JOINING = "joining"
     WAITING = "waiting"
@@ -45,7 +47,9 @@ class ComponentStatus(object):
 
 
 class BuildComponent(BaseComponent):
-    """ An application session component which conducts one (or more) builds. """
+    """
+    An application session component which conducts one (or more) builds.
+    """
 
     def __init__(self, config, realm=None, token=None, **kwargs):
         self.expected_token = token
@@ -85,7 +89,9 @@ class BuildComponent(BaseComponent):
 
     @trollius.coroutine
     def start_build(self, build_job):
-        """ Starts a build. """
+        """
+        Starts a build.
+        """
         if self._component_status not in (ComponentStatus.WAITING, ComponentStatus.RUNNING):
             logger.debug(
                 "Could not start build for component %s (build %s, worker version: %s): %s",
@@ -191,7 +197,9 @@ class BuildComponent(BaseComponent):
         logger.debug("With Arguments: %s", build_arguments)
 
         def build_complete_callback(result):
-            """ This function is used to execute a coroutine as the callback. """
+            """
+            This function is used to execute a coroutine as the callback.
+            """
             trollius.ensure_future(self._build_complete(result))
 
         self.call("io.quay.builder.build", **build_arguments).add_done_callback(
@@ -218,14 +226,18 @@ class BuildComponent(BaseComponent):
 
     @staticmethod
     def _commit_sha(build_config):
-        """ Determines whether the metadata is using an old schema or not and returns the commit. """
+        """
+        Determines whether the metadata is using an old schema or not and returns the commit.
+        """
         commit_sha = build_config["trigger_metadata"].get("commit", "")
         old_commit_sha = build_config["trigger_metadata"].get("commit_sha", "")
         return commit_sha or old_commit_sha
 
     @staticmethod
     def name_and_path(subdir):
-        """ Returns the dockerfile path and name """
+        """
+        Returns the dockerfile path and name.
+        """
         if subdir.endswith("/"):
             subdir += "Dockerfile"
         elif not subdir.endswith("Dockerfile"):
@@ -234,7 +246,9 @@ class BuildComponent(BaseComponent):
 
     @staticmethod
     def _total_completion(statuses, total_images):
-        """ Returns the current amount completion relative to the total completion of a build. """
+        """
+        Returns the current amount completion relative to the total completion of a build.
+        """
         percentage_with_sizes = float(len(statuses.values())) / total_images
         sent_bytes = sum([status["current"] for status in statuses.values()])
         total_bytes = sum([status["total"] for status in statuses.values()])
@@ -242,7 +256,9 @@ class BuildComponent(BaseComponent):
 
     @staticmethod
     def _process_pushpull_status(status_dict, current_phase, docker_data, images):
-        """ Processes the status of a push or pull by updating the provided status_dict and images. """
+        """
+        Processes the status of a push or pull by updating the provided status_dict and images.
+        """
         if not docker_data:
             return
 
@@ -271,7 +287,9 @@ class BuildComponent(BaseComponent):
 
     @trollius.coroutine
     def _on_log_message(self, phase, json_data):
-        """ Tails log messages and updates the build status. """
+        """
+        Tails log messages and updates the build status.
+        """
         # Update the heartbeat.
         self._last_heartbeat = datetime.datetime.utcnow()
 
@@ -355,7 +373,9 @@ class BuildComponent(BaseComponent):
 
     @trollius.coroutine
     def _build_failure(self, error_message, exception=None):
-        """ Handles and logs a failed build. """
+        """
+        Handles and logs a failed build.
+        """
         yield From(
             self._build_status.set_error(
                 error_message, {"internal_error": str(exception) if exception else None}
@@ -370,7 +390,11 @@ class BuildComponent(BaseComponent):
 
     @trollius.coroutine
     def _build_complete(self, result):
-        """ Wraps up a completed build. Handles any errors and calls self._build_finished. """
+        """
+        Wraps up a completed build.
+
+        Handles any errors and calls self._build_finished.
+        """
         build_id = self._current_job.repo_build.uuid
 
         try:
@@ -451,7 +475,9 @@ class BuildComponent(BaseComponent):
 
     @trollius.coroutine
     def _build_finished(self, job_status):
-        """ Alerts the parent that a build has completed and sets the status back to running. """
+        """
+        Alerts the parent that a build has completed and sets the status back to running.
+        """
         yield From(self.parent_manager.job_completed(self._current_job, job_status, self))
 
         # Set the component back to a running state.
@@ -459,7 +485,9 @@ class BuildComponent(BaseComponent):
 
     @staticmethod
     def _ping():
-        """ Ping pong. """
+        """
+        Ping pong.
+        """
         return "pong"
 
     @trollius.coroutine
@@ -499,7 +527,9 @@ class BuildComponent(BaseComponent):
         self._component_status = phase
 
     def _on_heartbeat(self):
-        """ Updates the last known heartbeat. """
+        """
+        Updates the last known heartbeat.
+        """
         if self._component_status == ComponentStatus.TIMED_OUT:
             return
 
@@ -508,10 +538,12 @@ class BuildComponent(BaseComponent):
 
     @trollius.coroutine
     def _heartbeat(self):
-        """ Coroutine that runs every HEARTBEAT_TIMEOUT seconds, both checking the worker's heartbeat
-        and updating the heartbeat in the build status dictionary (if applicable). This allows
-        the build system to catch crashes from either end.
-    """
+        """
+        Coroutine that runs every HEARTBEAT_TIMEOUT seconds, both checking the worker's heartbeat
+        and updating the heartbeat in the build status dictionary (if applicable).
+
+        This allows the build system to catch crashes from either end.
+        """
         yield From(trollius.sleep(INITIAL_TIMEOUT))
 
         while True:

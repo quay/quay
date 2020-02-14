@@ -4,11 +4,15 @@ from util.failover import failover, FailoverException
 
 
 class FinishedException(Exception):
-    """ Exception raised at the end of every iteration to force failover. """
+    """
+    Exception raised at the end of every iteration to force failover.
+    """
 
 
 class Counter(object):
-    """ Wraps a counter in an object so that it'll be passed by reference. """
+    """
+    Wraps a counter in an object so that it'll be passed by reference.
+    """
 
     def __init__(self):
         self.calls = 0
@@ -19,7 +23,9 @@ class Counter(object):
 
 @failover
 def my_failover_func(i, should_raise=None):
-    """ Increments a counter and raises an exception when told. """
+    """
+    Increments a counter and raises an exception when told.
+    """
     i.increment()
     if should_raise is not None:
         raise should_raise()
@@ -28,10 +34,10 @@ def my_failover_func(i, should_raise=None):
 
 @pytest.mark.parametrize("stop_on,exception", [(10, None), (5, IndexError),])
 def test_readonly_failover(stop_on, exception):
-    """ Generates failover arguments and checks against a counter to ensure that
-      the failover function has been called the proper amount of times and stops
-      at unhandled exceptions.
-  """
+    """
+    Generates failover arguments and checks against a counter to ensure that the failover function
+    has been called the proper amount of times and stops at unhandled exceptions.
+    """
     counter = Counter()
     arg_sets = []
     for i in xrange(stop_on):

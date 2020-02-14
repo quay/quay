@@ -1,13 +1,16 @@
 class NoopIsANoopException(TypeError):
-    """ Raised if the nooper decorator is unnecessary on a class. """
+    """
+    Raised if the nooper decorator is unnecessary on a class.
+    """
 
     pass
 
 
 def nooper(cls):
-    """ Decorates a class that derives from an ABCMeta, filling in any unimplemented methods with
-      no-ops.
-  """
+    """
+    Decorates a class that derives from an ABCMeta, filling in any unimplemented methods with no-
+    ops.
+    """
 
     def empty_func(*args, **kwargs):
         # pylint: disable=unused-argument

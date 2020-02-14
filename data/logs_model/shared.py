@@ -18,10 +18,12 @@ class SharedModel:
         callback_email=None,
         filter_kinds=None,
     ):
-        """ Queues logs between the start_datetime and end_time, filtered by a repository or namespace,
-        for export to the specified URL and/or email address. Returns the ID of the export job
-        queued or None if error.
-    """
+        """
+        Queues logs between the start_datetime and end_time, filtered by a repository or namespace,
+        for export to the specified URL and/or email address.
+
+        Returns the ID of the export job queued or None if error.
+        """
         export_id = str(uuid.uuid4())
         namespace = model.user.get_namespace_user(namespace_name)
         if namespace is None:
@@ -59,8 +61,11 @@ def epoch_ms(dt):
 
 
 def get_kinds_filter(kinds):
-    """ Given a list of kinds, return the set of kinds not that are not part of that list.
-      i.e Returns the list of kinds to be filtered out. """
+    """
+    Given a list of kinds, return the set of kinds not that are not part of that list.
+
+    i.e Returns the list of kinds to be filtered out.
+    """
     kind_map = model.log.get_log_entry_kinds()
     kind_map = {key: kind_map[key] for key in kind_map if not isinstance(key, int)}
     return [kind_name for kind_name in kind_map if kind_name not in kinds]

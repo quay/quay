@@ -23,7 +23,9 @@ def _ensure_sha256_header(digest):
 
 
 def get_app_release(repo, tag_name, media_type, models_ref):
-    """ Returns (tag, manifest, blob) given a repo object, tag_name, and media_type). """
+    """
+    Returns (tag, manifest, blob) given a repo object, tag_name, and media_type).
+    """
     ManifestListManifest = models_ref.ManifestListManifest
     Manifest = models_ref.Manifest
     Blob = models_ref.Blob
@@ -88,12 +90,13 @@ def delete_app_release(repo, tag_name, media_type, models_ref):
 
 
 def create_app_release(repo, tag_name, manifest_data, digest, models_ref, force=False):
-    """ Create a new application release, it includes creating a new Tag, ManifestList,
-      ManifestListManifests, Manifest, ManifestBlob.
+    """
+    Create a new application release, it includes creating a new Tag, ManifestList,
+    ManifestListManifests, Manifest, ManifestBlob.
 
-      To deduplicate the ManifestList, the manifestlist_json is kept ordered by the manifest.id.
-      To find the insert point in the ManifestList it uses bisect on the manifest-ids list.
-  """
+    To deduplicate the ManifestList, the manifestlist_json is kept ordered by the manifest.id. To
+    find the insert point in the ManifestList it uses bisect on the manifest-ids list.
+    """
     ManifestList = models_ref.ManifestList
     ManifestListManifest = models_ref.ManifestListManifest
     Blob = models_ref.Blob
@@ -160,7 +163,9 @@ def create_app_release(repo, tag_name, manifest_data, digest, models_ref, force=
 
 
 def get_release_objs(repo, models_ref, media_type=None):
-    """ Returns an array of Tag for a repo, with optional filtering by media_type. """
+    """
+    Returns an array of Tag for a repo, with optional filtering by media_type.
+    """
     Tag = models_ref.Tag
 
     release_query = Tag.select().where(
@@ -173,5 +178,7 @@ def get_release_objs(repo, models_ref, media_type=None):
 
 
 def get_releases(repo, model_refs, media_type=None):
-    """ Returns an array of Tag.name for a repo, can filter by media_type. """
+    """
+    Returns an array of Tag.name for a repo, can filter by media_type.
+    """
     return [t.name for t in get_release_objs(repo, model_refs, media_type)]

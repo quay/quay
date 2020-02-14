@@ -28,11 +28,12 @@ class K8sApiException(Exception):
 
 def _deployment_rollout_status_message(deployment, deployment_name):
     """
-  Gets the friendly human readable message of the current state of the deployment rollout
-  :param deployment: python dict matching: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#deployment-v1-apps
-  :param deployment_name: string
-  :return: DeploymentRolloutStatus
-  """
+    Gets the friendly human readable message of the current state of the deployment rollout.
+
+    :param deployment: python dict matching: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#deployment-v1-apps
+    :param deployment_name: string
+    :return: DeploymentRolloutStatus
+    """
     # Logic for rollout status pulled from the `kubectl rollout status` command:
     # https://github.com/kubernetes/kubernetes/blob/d9ba19c751709c8608e09a0537eea98973f3a796/pkg/kubectl/rollout_status.go#L62
     if deployment["metadata"]["generation"] <= deployment["status"]["observedGeneration"]:
@@ -88,7 +89,9 @@ def _deployment_rollout_status_message(deployment, deployment_name):
 
 
 class KubernetesAccessorSingleton(object):
-    """ Singleton allowing access to kubernetes operations """
+    """
+    Singleton allowing access to kubernetes operations.
+    """
 
     _instance = None
 
@@ -102,10 +105,11 @@ class KubernetesAccessorSingleton(object):
     @classmethod
     def get_instance(cls, kube_config=None):
         """
-    Singleton getter implementation, returns the instance if one exists, otherwise creates the
-    instance and ties it to the class.
-    :return: KubernetesAccessorSingleton
-    """
+        Singleton getter implementation, returns the instance if one exists, otherwise creates the
+        instance and ties it to the class.
+
+        :return: KubernetesAccessorSingleton
+        """
         if cls._instance is None:
             return cls(kube_config)
 
@@ -113,9 +117,10 @@ class KubernetesAccessorSingleton(object):
 
     def save_secret_to_directory(self, dir_path):
         """
-    Saves all files in the kubernetes secret to a local directory.
-    Assumes the directory is empty.
-    """
+        Saves all files in the kubernetes secret to a local directory.
+
+        Assumes the directory is empty.
+        """
         secret = self._lookup_secret()
 
         secret_data = secret.get("data", {})
@@ -143,8 +148,8 @@ class KubernetesAccessorSingleton(object):
 
     def replace_qe_secret(self, new_secret_data):
         """
-    Removes the old config and replaces it with the new_secret_data as one action
-    """
+        Removes the old config and replaces it with the new_secret_data as one action.
+        """
         # Check first that the namespace for Red Hat Quay exists. If it does not, report that
         # as an error, as it seems to be a common issue.
         namespace_url = "namespaces/%s" % (self.kube_config.qe_namespace)
@@ -183,10 +188,11 @@ class KubernetesAccessorSingleton(object):
         self._assert_success(self._execute_k8s_api("PUT", secret_url, secret))
 
     def get_deployment_rollout_status(self, deployment_name):
-        """"
-    Returns the status of a rollout of a given deployment
-    :return _DeploymentRolloutStatus
-    """
+        """
+        " Returns the status of a rollout of a given deployment.
+
+        :return _DeploymentRolloutStatus
+        """
         deployment_selector_url = "namespaces/%s/deployments/%s" % (
             self.kube_config.qe_namespace,
             deployment_name,
@@ -203,9 +209,9 @@ class KubernetesAccessorSingleton(object):
         return _deployment_rollout_status_message(deployment, deployment_name)
 
     def get_qe_deployments(self):
-        """"
-    Returns all deployments matching the label selector provided in the KubeConfig
-    """
+        """
+        " Returns all deployments matching the label selector provided in the KubeConfig.
+        """
         deployment_selector_url = "namespaces/%s/deployments?labelSelector=%s%%3D%s" % (
             self.kube_config.qe_namespace,
             QE_DEPLOYMENT_LABEL,
@@ -220,9 +226,9 @@ class KubernetesAccessorSingleton(object):
         return json.loads(response.text)
 
     def cycle_qe_deployments(self, deployment_names):
-        """"
-    Triggers a rollout of all desired deployments in the qe namespace
-    """
+        """
+        " Triggers a rollout of all desired deployments in the qe namespace.
+        """
 
         for name in deployment_names:
             logger.debug("Cycling deployment %s", name)

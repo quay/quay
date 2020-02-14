@@ -36,19 +36,19 @@ from types import GeneratorType
 
 class StreamingJSONEncoder(json.JSONEncoder):
     def iterencode(self, o, _one_shot=False):
-        """Encode the given object and yield each string
-    representation as available.
+        """
+        Encode the given object and yield each string representation as available.
 
-    For example::
+        For example::
 
-      for chunk in StreamingJSONEncoder().iterencode(bigobject):
-        mysocket.write(chunk)
+          for chunk in StreamingJSONEncoder().iterencode(bigobject):
+            mysocket.write(chunk)
 
-    This method is a verbatim copy of
-    :meth:`json.JSONEncoder.iterencode`.  It is
-    needed because we need to call our patched
-    :func:`streamingjsonencoder._make_iterencode`.
-    """
+        This method is a verbatim copy of
+        :meth:`json.JSONEncoder.iterencode`.  It is
+        needed because we need to call our patched
+        :func:`streamingjsonencoder._make_iterencode`.
+        """
         if self.check_circular:
             markers = {}
         else:

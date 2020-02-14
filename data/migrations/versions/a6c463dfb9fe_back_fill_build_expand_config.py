@@ -1,9 +1,9 @@
-"""back fill build expand_config
+"""
+back fill build expand_config.
 
 Revision ID: a6c463dfb9fe
 Revises: b4df55dea4b3
 Create Date: 2017-03-17 10:00:19.739858
-
 """
 
 # revision identifiers, used by Alembic.
@@ -71,7 +71,9 @@ def create_dockerfile_path(current_subdir):
 
 
 def get_config_expand(config):
-    """ A function to transform old records into new records """
+    """
+    A function to transform old records into new records.
+    """
     if not config:
         return config
 
@@ -89,7 +91,9 @@ def get_config_expand(config):
 
 
 def get_config_contract(config):
-    """ A function to delete context and dockerfile_path from config """
+    """
+    A function to delete context and dockerfile_path from config.
+    """
     if not config:
         return config
 

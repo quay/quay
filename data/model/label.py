@@ -51,7 +51,9 @@ def _get_media_type_id(name):
 
 
 def create_manifest_label(tag_manifest, key, value, source_type_name, media_type_name=None):
-    """ Creates a new manifest label on a specific tag manifest. """
+    """
+    Creates a new manifest label on a specific tag manifest.
+    """
     if not key:
         raise InvalidLabelKeyException("Missing key on label")
 
@@ -101,7 +103,9 @@ def create_manifest_label(tag_manifest, key, value, source_type_name, media_type
 
 
 def list_manifest_labels(tag_manifest, prefix_filter=None):
-    """ Lists all labels found on the given tag manifest. """
+    """
+    Lists all labels found on the given tag manifest.
+    """
     query = (
         Label.select(Label, MediaType)
         .join(MediaType)
@@ -119,7 +123,9 @@ def list_manifest_labels(tag_manifest, prefix_filter=None):
 
 
 def get_manifest_label(label_uuid, tag_manifest):
-    """ Retrieves the manifest label on the tag manifest with the given ID. """
+    """
+    Retrieves the manifest label on the tag manifest with the given ID.
+    """
     try:
         return (
             Label.select(Label, LabelSourceType)
@@ -135,7 +141,9 @@ def get_manifest_label(label_uuid, tag_manifest):
 
 
 def delete_manifest_label(label_uuid, tag_manifest):
-    """ Deletes the manifest label on the tag manifest with the given ID. """
+    """
+    Deletes the manifest label on the tag manifest with the given ID.
+    """
 
     # Find the label itself.
     label = get_manifest_label(label_uuid, tag_manifest)

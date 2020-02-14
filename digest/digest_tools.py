@@ -27,7 +27,9 @@ class Digest(object):
 
     @staticmethod
     def parse_digest(digest):
-        """ Returns the digest parsed out to its components. """
+        """
+        Returns the digest parsed out to its components.
+        """
         match = Digest.DIGEST_REGEX.match(digest)
         if match is None or match.end() != len(digest):
             raise InvalidDigestException("Not a valid digest: %s", digest)
@@ -44,7 +46,9 @@ class Digest(object):
 
 
 def content_path(digest):
-    """ Returns a relative path to the parsed digest. """
+    """
+    Returns a relative path to the parsed digest.
+    """
     parsed = Digest.parse_digest(digest)
     components = []
 
@@ -58,7 +62,9 @@ def content_path(digest):
 
 
 def sha256_digest(content):
-    """ Returns a sha256 hash of the content bytes in digest form. """
+    """
+    Returns a sha256 hash of the content bytes in digest form.
+    """
 
     def single_chunk_generator():
         yield content
@@ -67,8 +73,9 @@ def sha256_digest(content):
 
 
 def sha256_digest_from_generator(content_generator):
-    """ Reads all of the data from the iterator and creates a sha256 digest from the content
-  """
+    """
+    Reads all of the data from the iterator and creates a sha256 digest from the content.
+    """
     digest = hashlib.sha256()
     for chunk in content_generator:
         digest.update(chunk)
@@ -80,6 +87,7 @@ def sha256_digest_from_hashlib(sha256_hash_obj):
 
 
 def digests_equal(lhs_digest_string, rhs_digest_string):
-    """ Parse and compare the two digests, returns True if the digests are equal, False otherwise.
-  """
+    """
+    Parse and compare the two digests, returns True if the digests are equal, False otherwise.
+    """
     return Digest.parse_digest(lhs_digest_string) == Digest.parse_digest(rhs_digest_string)

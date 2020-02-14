@@ -1,9 +1,9 @@
-"""Add new fields and tables for encrypted tokens
+"""
+Add new fields and tables for encrypted tokens.
 
 Revision ID: c13c8052f7a6
 Revises: 5248ddf35167
 Create Date: 2019-08-19 15:59:36.269155
-
 """
 
 # revision identifiers, used by Alembic.

@@ -71,9 +71,10 @@ def wrap_with_handler(in_fp, handler):
 
 
 class FilelikeStreamConcat(object):
-    """ A file-like object which concats all the file-like objects in the specified generator into
-      a single stream.
-  """
+    """
+    A file-like object which concats all the file-like objects in the specified generator into a
+    single stream.
+    """
 
     def __init__(self, file_generator):
         self._file_generator = file_generator
@@ -111,9 +112,12 @@ class FilelikeStreamConcat(object):
 
 
 class StreamSlice(BaseStreamFilelike):
-    """ A file-like object which returns a file-like object that represents a slice of the data in
-      the specified file obj. All methods will act as if the slice is its own file.
-  """
+    """
+    A file-like object which returns a file-like object that represents a slice of the data in the
+    specified file obj.
+
+    All methods will act as if the slice is its own file.
+    """
 
     def __init__(self, fileobj, start_offset=0, end_offset_exclusive=READ_UNTIL_END):
         super(StreamSlice, self).__init__(fileobj)
@@ -153,10 +157,12 @@ class StreamSlice(BaseStreamFilelike):
 
 
 class LimitingStream(StreamSlice):
-    """ A file-like object which mimics the specified file stream being limited to the given number
-      of bytes. All calls after that limit (if specified) will act as if the file has no additional
-      data.
-  """
+    """
+    A file-like object which mimics the specified file stream being limited to the given number of
+    bytes.
+
+    All calls after that limit (if specified) will act as if the file has no additional data.
+    """
 
     def __init__(self, fileobj, read_limit=READ_UNTIL_END, seekable=True):
         super(LimitingStream, self).__init__(fileobj, 0, read_limit)

@@ -91,9 +91,9 @@ def _catch_timeouts_and_errors(func):
 
 
 def _paginated_iterator(func, exc, **kwargs):
-    """ Returns an iterator over invocations of the given function, automatically handling
-      pagination.
-  """
+    """
+    Returns an iterator over invocations of the given function, automatically handling pagination.
+    """
     page = 1
     while True:
         result = func(page=page, per_page=_PER_PAGE_COUNT, **kwargs)
@@ -114,9 +114,11 @@ def _paginated_iterator(func, exc, **kwargs):
 def get_transformed_webhook_payload(
     gl_payload, default_branch=None, lookup_user=None, lookup_commit=None
 ):
-    """ Returns the Gitlab webhook JSON payload transformed into our own payload
-      format. If the gl_payload is not valid, returns None.
-  """
+    """
+    Returns the Gitlab webhook JSON payload transformed into our own payload format.
+
+    If the gl_payload is not valid, returns None.
+    """
     try:
         validate(gl_payload, GITLAB_WEBHOOK_PAYLOAD_SCHEMA)
     except Exception as exc:
@@ -182,8 +184,8 @@ def get_transformed_webhook_payload(
 
 class GitLabBuildTrigger(BuildTriggerHandler):
     """
-  BuildTrigger for GitLab.
-  """
+    BuildTrigger for GitLab.
+    """
 
     @classmethod
     def service_name(cls):

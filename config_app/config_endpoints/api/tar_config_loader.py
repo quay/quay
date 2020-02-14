@@ -19,8 +19,8 @@ from config_app.config_util.tar import (
 @resource("/v1/configapp/initialization")
 class ConfigInitialization(ApiResource):
     """
-  Resource for dealing with any initialization logic for the config app
-  """
+    Resource for dealing with any initialization logic for the config app.
+    """
 
     @nickname("scStartNewConfig")
     def post(self):
@@ -31,9 +31,9 @@ class ConfigInitialization(ApiResource):
 @resource("/v1/configapp/tarconfig")
 class TarConfigLoader(ApiResource):
     """
-  Resource for dealing with configuration as a tarball,
-  including loading and generating functions
-  """
+    Resource for dealing with configuration as a tarball, including loading and generating
+    functions.
+    """
 
     @nickname("scGetConfigTarball")
     def get(self):
@@ -50,7 +50,9 @@ class TarConfigLoader(ApiResource):
 
     @nickname("scUploadTarballConfig")
     def put(self):
-        """ Loads tarball config into the config provider """
+        """
+        Loads tarball config into the config provider.
+        """
         # Generate a new empty dir to load the config into
         config_provider.new_config_dir()
         input_stream = request.stream

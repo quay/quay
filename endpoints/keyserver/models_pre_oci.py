@@ -9,9 +9,9 @@ from endpoints.keyserver.models_interface import (
 
 class PreOCIModel(KeyServerDataInterface):
     """
-  PreOCIModel implements the data model for JWT key service using a database schema before it was
-  changed to support the OCI specification.
-  """
+    PreOCIModel implements the data model for JWT key service using a database schema before it was
+    changed to support the OCI specification.
+    """
 
     def list_service_keys(self, service):
         return data.model.service_keys.list_service_keys(service)
@@ -54,8 +54,8 @@ pre_oci_model = PreOCIModel()
 
 def _db_key_to_servicekey(key):
     """
-  Converts the Pre-OCI database model of a service key into a ServiceKey.
-  """
+    Converts the Pre-OCI database model of a service key into a ServiceKey.
+    """
     return ServiceKey(
         name=key.name,
         kid=key.kid,

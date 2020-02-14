@@ -26,7 +26,9 @@ class ServiceKeyWorker(Worker):
         )
 
     def _refresh_service_key(self):
-        """ Refreshes the instance's active service key so it doesn't get garbage collected. """
+        """
+        Refreshes the instance's active service key so it doesn't get garbage collected.
+        """
         expiration_time = timedelta(minutes=instance_keys.service_key_expiration)
         new_expiration = datetime.utcnow() + expiration_time
 

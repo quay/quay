@@ -9,7 +9,9 @@ from util.security.secret import convert_secret_key
 
 
 class DecryptionFailureException(Exception):
-    """ Exception raised if a field could not be decrypted. """
+    """
+    Exception raised if a field could not be decrypted.
+    """
 
 
 EncryptionVersion = namedtuple("EncryptionVersion", ["prefix", "encrypt", "decrypt"])
@@ -56,9 +58,10 @@ _RESERVED_FIELD_SPACE = len(_SEPARATOR) + max([len(k) for k in _VERSIONS.keys()]
 
 
 class FieldEncrypter(object):
-    """ Helper object for defining how fields are encrypted and decrypted between the database
-      and the application.
-  """
+    """
+    Helper object for defining how fields are encrypted and decrypted between the database and the
+    application.
+    """
 
     def __init__(self, secret_key, version="v0"):
         # NOTE: secret_key will be None when the system is being first initialized, so we allow that
@@ -68,7 +71,9 @@ class FieldEncrypter(object):
         self._encryption_version = _VERSIONS[version]
 
     def encrypt_value(self, value, field_max_length=None):
-        """ Encrypts the value using the current version of encryption. """
+        """
+        Encrypts the value using the current version of encryption.
+        """
         assert self._secret_key is not None
         encrypted_value = self._encryption_version.encrypt(
             self._secret_key, value, field_max_length
@@ -76,9 +81,11 @@ class FieldEncrypter(object):
         return "%s%s%s" % (self._encryption_version.prefix, _SEPARATOR, encrypted_value)
 
     def decrypt_value(self, value):
-        """ Decrypts the value, returning it. If the value cannot be decrypted
-        raises a DecryptionFailureException.
-    """
+        """
+        Decrypts the value, returning it.
+
+        If the value cannot be decrypted raises a DecryptionFailureException.
+        """
         assert self._secret_key is not None
         if _SEPARATOR not in value:
             raise DecryptionFailureException("Invalid encrypted value")

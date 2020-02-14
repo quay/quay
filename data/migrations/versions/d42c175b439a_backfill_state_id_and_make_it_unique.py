@@ -1,9 +1,9 @@
-"""Backfill state_id and make it unique
+"""
+Backfill state_id and make it unique.
 
 Revision ID: d42c175b439a
 Revises: 3e8cc74a1e7b
 Create Date: 2017-01-18 15:11:01.635632
-
 """
 
 # revision identifiers, used by Alembic.

@@ -1,9 +1,9 @@
-"""Add ability for build triggers to be disabled
+"""
+Add ability for build triggers to be disabled.
 
 Revision ID: 61cadbacb9fc
 Revises: b4c2d45bc132
 Create Date: 2017-10-18 12:07:26.190901
-
 """
 
 # revision identifiers, used by Alembic.

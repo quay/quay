@@ -1,9 +1,9 @@
-"""Remove unencrypted fields and data
+"""
+Remove unencrypted fields and data.
 
 Revision ID: c059b952ed76
 Revises: 49e1138ed12d
 Create Date: 2019-08-19 16:31:00.952773
-
 """
 
 # revision identifiers, used by Alembic.

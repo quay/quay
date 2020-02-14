@@ -6,8 +6,8 @@ from six import add_metaclass
 @add_metaclass(ABCMeta)
 class InitDataInterface(object):
     """
-  Interface that represents all data store interactions required by __init__.
-  """
+    Interface that represents all data store interactions required by __init__.
+    """
 
     @abstractmethod
     def is_app_repository(self, namespace_name, repository_name):

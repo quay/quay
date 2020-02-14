@@ -1,4 +1,6 @@
-""" Manage the manifests of a repository. """
+"""
+Manage the manifests of a repository.
+"""
 import json
 import logging
 
@@ -98,7 +100,9 @@ def _manifest_dict(manifest):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("manifestref", "The digest of the manifest")
 class RepositoryManifest(RepositoryParamResource):
-    """ Resource for retrieving a specific repository manifest. """
+    """
+    Resource for retrieving a specific repository manifest.
+    """
 
     @require_repo_read
     @nickname("getRepoManifest")
@@ -121,7 +125,9 @@ class RepositoryManifest(RepositoryParamResource):
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("manifestref", "The digest of the manifest")
 class RepositoryManifestLabels(RepositoryParamResource):
-    """ Resource for listing the labels on a specific repository manifest. """
+    """
+    Resource for listing the labels on a specific repository manifest.
+    """
 
     schemas = {
         "AddLabel": {
@@ -171,7 +177,9 @@ class RepositoryManifestLabels(RepositoryParamResource):
     @disallow_for_non_normal_repositories
     @validate_json_request("AddLabel")
     def post(self, namespace_name, repository_name, manifestref):
-        """ Adds a new label into the tag manifest. """
+        """
+        Adds a new label into the tag manifest.
+        """
         label_data = request.get_json()
 
         # Check for any reserved prefixes.
@@ -236,13 +244,17 @@ class RepositoryManifestLabels(RepositoryParamResource):
 @path_param("manifestref", "The digest of the manifest")
 @path_param("labelid", "The ID of the label")
 class ManageRepositoryManifestLabel(RepositoryParamResource):
-    """ Resource for managing the labels on a specific repository manifest. """
+    """
+    Resource for managing the labels on a specific repository manifest.
+    """
 
     @require_repo_read
     @nickname("getManifestLabel")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, manifestref, labelid):
-        """ Retrieves the label with the specific ID under the manifest. """
+        """
+        Retrieves the label with the specific ID under the manifest.
+        """
         repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
         if repo_ref is None:
             raise NotFound()
@@ -262,7 +274,9 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     def delete(self, namespace_name, repository_name, manifestref, labelid):
-        """ Deletes an existing label from a manifest. """
+        """
+        Deletes an existing label from a manifest.
+        """
         repo_ref = registry_model.lookup_repository(namespace_name, repository_name)
         if repo_ref is None:
             raise NotFound()

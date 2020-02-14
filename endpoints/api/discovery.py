@@ -1,5 +1,7 @@
 # TODO to extract the discovery stuff into a util at the top level and then use it both here and config_app discovery.py
-""" API discovery information. """
+"""
+API discovery information.
+"""
 
 import re
 import logging
@@ -316,12 +318,16 @@ def swagger_route_data(include_internal=False, compact=False):
 
 @resource("/v1/discovery")
 class DiscoveryResource(ApiResource):
-    """Ability to inspect the API for usage information and documentation."""
+    """
+    Ability to inspect the API for usage information and documentation.
+    """
 
     @parse_args()
     @query_param("internal", "Whether to include internal APIs.", type=truthy_bool, default=False)
     @nickname("discovery")
     @anon_allowed
     def get(self, parsed_args):
-        """ List all of the API endpoints available in the swagger API format."""
+        """
+        List all of the API endpoints available in the swagger API format.
+        """
         return swagger_route_data(parsed_args["internal"])

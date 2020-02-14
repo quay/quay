@@ -1,4 +1,6 @@
-""" Various decorators for endpoint and API handlers. """
+"""
+Various decorators for endpoint and API handlers.
+"""
 
 import os
 import logging
@@ -29,9 +31,10 @@ def parse_repository_name(
     tag_kwarg_name="tag_name",
     incoming_repo_kwarg="repository",
 ):
-    """ Decorator which parses the repository name found in the incoming_repo_kwarg argument,
-      and applies its pieces to the decorated function.
-  """
+    """
+    Decorator which parses the repository name found in the incoming_repo_kwarg argument, and
+    applies its pieces to the decorated function.
+    """
 
     def inner(func):
         @wraps(func)
@@ -59,10 +62,12 @@ def parse_repository_name(
 
 
 def param_required(param_name, allow_body=False):
-    """ Marks a route as requiring a parameter with the given name to exist in the request's arguments
-      or (if allow_body=True) in its body values. If the parameter is not present, the request will
-      fail with a 400.
-  """
+    """
+    Marks a route as requiring a parameter with the given name to exist in the request's arguments
+    or (if allow_body=True) in its body values.
+
+    If the parameter is not present, the request will fail with a 400.
+    """
 
     def wrapper(wrapped):
         @wraps(wrapped)
@@ -78,27 +83,35 @@ def param_required(param_name, allow_body=False):
 
 
 def readonly_call_allowed(func):
-    """ Marks a method as allowing for invocation when the registry is in a read only state.
-      Only necessary on non-GET methods.
-  """
+    """
+    Marks a method as allowing for invocation when the registry is in a read only state.
+
+    Only necessary on non-GET methods.
+    """
     func.__readonly_call_allowed = True
     return func
 
 
 def anon_allowed(func):
-    """ Marks a method to allow anonymous access where it would otherwise be disallowed. """
+    """
+    Marks a method to allow anonymous access where it would otherwise be disallowed.
+    """
     func.__anon_allowed = True
     return func
 
 
 def anon_protect(func):
-    """ Marks a method as requiring some form of valid user auth before it can be executed. """
+    """
+    Marks a method as requiring some form of valid user auth before it can be executed.
+    """
     func.__anon_protected = True
     return check_anon_protection(func)
 
 
 def check_anon_protection(func):
-    """ Validates a method as requiring some form of valid user auth before it can be executed. """
+    """
+    Validates a method as requiring some form of valid user auth before it can be executed.
+    """
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -116,9 +129,10 @@ def check_anon_protection(func):
 
 
 def check_readonly(func):
-    """ Validates that a non-GET method is not invoked when the registry is in read-only mode,
-      unless explicitly marked as being allowed.
-  """
+    """
+    Validates that a non-GET method is not invoked when the registry is in read-only mode, unless
+    explicitly marked as being allowed.
+    """
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -140,7 +154,9 @@ def check_readonly(func):
 
 
 def route_show_if(value):
-    """ Adds/shows the decorated route if the given value is True. """
+    """
+    Adds/shows the decorated route if the given value is True.
+    """
 
     def decorator(f):
         @wraps(f)
@@ -156,9 +172,10 @@ def route_show_if(value):
 
 
 def require_xhr_from_browser(func):
-    """ Requires that API GET calls made from browsers are made via XHR, in order to prevent
-      reflected text attacks.
-  """
+    """
+    Requires that API GET calls made from browsers are made via XHR, in order to prevent reflected
+    text attacks.
+    """
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -183,10 +200,12 @@ def require_xhr_from_browser(func):
 
 
 def check_region_blacklisted(error_class=None, namespace_name_kwarg=None):
-    """ Decorator which checks if the incoming request is from a region geo IP blocked
-      for the current namespace. The first argument to the wrapped function must be
-      the namespace name.
-  """
+    """
+    Decorator which checks if the incoming request is from a region geo IP blocked for the current
+    namespace.
+
+    The first argument to the wrapped function must be the namespace name.
+    """
 
     def wrapper(wrapped):
         @wraps(wrapped)
@@ -226,12 +245,12 @@ def check_repository_state(f):
     @wraps(f)
     def wrapper(namespace_name, repo_name, *args, **kwargs):
         """
-    Conditionally allow changes depending on the Repository's state.
-    NORMAL    -> Pass
-    READ_ONLY -> Block all POST/PUT/DELETE
-    MIRROR    -> Same as READ_ONLY, except treat the Mirroring Robot User as Normal
-    MARKED_FOR_DELETION -> Block everything as a 404
-    """
+        Conditionally allow changes depending on the Repository's state.
+
+        NORMAL    -> Pass READ_ONLY -> Block all POST/PUT/DELETE MIRROR    -> Same as READ_ONLY,
+        except treat the Mirroring Robot User as Normal MARKED_FOR_DELETION -> Block everything as a
+        404
+        """
         user = get_authenticated_user()
         if user is None:
             # NOTE: Remaining auth checks will be handled by subsequent decorators.

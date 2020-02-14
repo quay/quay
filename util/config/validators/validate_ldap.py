@@ -12,7 +12,9 @@ class LDAPValidator(BaseValidator):
 
     @classmethod
     def validate(cls, validator_context):
-        """ Validates the LDAP connection. """
+        """
+        Validates the LDAP connection.
+        """
         config = validator_context.config
         config_provider = validator_context.config_provider
         init_scripts_location = validator_context.init_scripts_location

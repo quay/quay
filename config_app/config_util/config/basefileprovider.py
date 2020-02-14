@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class BaseFileProvider(BaseProvider):
-    """ Base implementation of the config provider that reads the data from the file system. """
+    """
+    Base implementation of the config provider that reads the data from the file system.
+    """
 
     def __init__(self, config_volume, yaml_filename, py_filename):
         self.config_volume = config_volume

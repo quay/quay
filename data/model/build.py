@@ -209,7 +209,9 @@ def _get_build_row(build_uuid):
 
 
 def update_phase_then_close(build_uuid, phase):
-    """ A function to change the phase of a build """
+    """
+    A function to change the phase of a build.
+    """
     with UseThenDisconnect(config.app_config):
         try:
             build = _get_build_row(build_uuid)
@@ -230,7 +232,9 @@ def update_phase_then_close(build_uuid, phase):
 
 
 def create_cancel_build_in_queue(build_phase, build_queue_id, build_queue):
-    """ A function to cancel a build before it leaves the queue """
+    """
+    A function to cancel a build before it leaves the queue.
+    """
 
     def cancel_build():
         cancelled = False
@@ -247,7 +251,9 @@ def create_cancel_build_in_queue(build_phase, build_queue_id, build_queue):
 
 
 def create_cancel_build_in_manager(build_phase, build_uuid, build_canceller):
-    """ A function to cancel the build before it starts to push """
+    """
+    A function to cancel the build before it starts to push.
+    """
 
     def cancel_build():
         if build_phase in PHASES_NOT_ALLOWED_TO_CANCEL_FROM:
@@ -259,8 +265,10 @@ def create_cancel_build_in_manager(build_phase, build_uuid, build_canceller):
 
 
 def cancel_repository_build(build, build_queue):
-    """ This tries to cancel the build returns true if request is successful false
-      if it can't be cancelled """
+    """
+    This tries to cancel the build returns true if request is successful false if it can't be
+    cancelled.
+    """
     from app import build_canceller
     from buildman.jobutil.buildjob import BuildJobNotifier
 
@@ -306,8 +314,9 @@ def get_archivable_build():
 
 
 def mark_build_archived(build_uuid):
-    """ Mark a build as archived, and return True if we were the ones who actually
-      updated the row. """
+    """
+    Mark a build as archived, and return True if we were the ones who actually updated the row.
+    """
     return (
         RepositoryBuild.update(logs_archived=True)
         .where(RepositoryBuild.uuid == build_uuid, RepositoryBuild.logs_archived == False)
@@ -316,7 +325,9 @@ def mark_build_archived(build_uuid):
 
 
 def toggle_build_trigger(trigger, enabled, reason=TRIGGER_DISABLE_REASON.USER_TOGGLED):
-    """ Toggles the enabled status of a build trigger. """
+    """
+    Toggles the enabled status of a build trigger.
+    """
     trigger.enabled = enabled
 
     if not enabled:
@@ -327,11 +338,14 @@ def toggle_build_trigger(trigger, enabled, reason=TRIGGER_DISABLE_REASON.USER_TO
 
 
 def update_trigger_disable_status(trigger, final_phase):
-    """ Updates the disable status of the given build trigger. If the build trigger had a
-      failure, then the counter is increased and, if we've reached the limit, the trigger is
-      automatically disabled. Otherwise, if the trigger succeeded, it's counter is reset. This
-      ensures that triggers that continue to error are eventually automatically disabled.
-  """
+    """
+    Updates the disable status of the given build trigger.
+
+    If the build trigger had a failure, then the counter is increased and, if we've reached the
+    limit, the trigger is automatically disabled. Otherwise, if the trigger succeeded, it's counter
+    is reset. This ensures that triggers that continue to error are eventually automatically
+    disabled.
+    """
     with db_transaction():
         try:
             trigger = RepositoryBuildTrigger.get(id=trigger.id)

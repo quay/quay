@@ -88,7 +88,9 @@ class EphemeralBuilderTestCase(unittest.TestCase):
 
 
 class TestEphemeralLifecycle(EphemeralBuilderTestCase):
-    """ Tests the various lifecycles of the ephemeral builder and its interaction with etcd. """
+    """
+    Tests the various lifecycles of the ephemeral builder and its interaction with etcd.
+    """
 
     def __init__(self, *args, **kwargs):
         super(TestEphemeralLifecycle, self).__init__(*args, **kwargs)
@@ -420,9 +422,10 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
 
 
 class TestEphemeral(EphemeralBuilderTestCase):
-    """ Simple unit tests for the ephemeral builder around config management, starting and stopping
-      jobs.
-  """
+    """
+    Simple unit tests for the ephemeral builder around config management, starting and stopping
+    jobs.
+    """
 
     def setUp(self):
         super(TestEphemeral, self).setUp()

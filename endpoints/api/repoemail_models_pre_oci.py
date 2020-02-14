@@ -16,9 +16,9 @@ def _return_none_or_data(func, namespace_name, repository_name, email):
 
 class PreOCIModel(RepoEmailDataInterface):
     """
-  PreOCIModel implements the data model for the Repo Email using a database schema
-  before it was changed to support the OCI specification.
-  """
+    PreOCIModel implements the data model for the Repo Email using a database schema before it was
+    changed to support the OCI specification.
+    """
 
     def get_email_authorized_for_repo(self, namespace_name, repository_name, email):
         return _return_none_or_data(

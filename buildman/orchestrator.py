@@ -46,13 +46,13 @@ REDIS_EXPIRED_KEYSPACE_REGEX = re.compile(REDIS_EXPIRED_KEYSPACE_PATTERN % (r"(\
 
 def orchestrator_from_config(manager_config, canceller_only=False):
     """
-  Allocates a new Orchestrator from the 'ORCHESTRATOR' block from provided manager config.
-  Checks for legacy configuration prefixed with 'ETCD_' when the 'ORCHESTRATOR' is not present.
+    Allocates a new Orchestrator from the 'ORCHESTRATOR' block from provided manager config. Checks
+    for legacy configuration prefixed with 'ETCD_' when the 'ORCHESTRATOR' is not present.
 
-  :param manager_config: the configuration for the orchestrator
-  :type manager_config: dict
-  :rtype: :class: Orchestrator
-  """
+    :param manager_config: the configuration for the orchestrator
+    :type manager_config: dict
+    :rtype: :class: Orchestrator
+    """
     # Legacy codepath only knows how to configure etcd.
     if manager_config.get("ORCHESTRATOR") is None:
         manager_config["ORCHESTRATOR"] = {
@@ -130,25 +130,24 @@ class KeyChange(namedtuple("KeyChange", ["event", "key", "value"])):
 @add_metaclass(ABCMeta)
 class Orchestrator(object):
     """
-  Orchestrator is the interface that is used to synchronize the build states
-  across build managers.
+    Orchestrator is the interface that is used to synchronize the build states across build
+    managers.
 
-  This interface assumes that storage is being done by a key-value store
-  that supports watching for events on keys.
+    This interface assumes that storage is being done by a key-value store
+    that supports watching for events on keys.
 
-  Missing keys should return KeyError; otherwise, errors should raise an
-  OrchestratorError.
+    Missing keys should return KeyError; otherwise, errors should raise an
+    OrchestratorError.
 
-  :param key_prefix: the prefix of keys being watched
-  :type key_prefix: str
-  """
+    :param key_prefix: the prefix of keys being watched
+    :type key_prefix: str
+    """
 
     @abstractmethod
     def on_key_change(self, key, callback, restarter=None):
         """
-
-    The callback parameter takes in a KeyChange object as a parameter.
-    """
+        The callback parameter takes in a KeyChange object as a parameter.
+        """
         pass
 
     @abstractmethod
@@ -187,47 +186,47 @@ class Orchestrator(object):
     @abstractmethod
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-    set_key, but without trollius coroutines.
-    """
+        set_key, but without trollius coroutines.
+        """
         pass
 
     @abstractmethod
     def delete_key(self, key):
         """
-    Deletes a key that has been set in the orchestrator.
+        Deletes a key that has been set in the orchestrator.
 
-    :param key: the identifier for the key
-    :type key: str
-    """
+        :param key: the identifier for the key
+        :type key: str
+        """
         pass
 
     @abstractmethod
     def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
         """
-    Takes a lock for synchronizing exclusive operations cluster-wide.
+        Takes a lock for synchronizing exclusive operations cluster-wide.
 
-    :param key: the identifier for the lock
-    :type key: str
-    :param expiration: the duration until the lock expires
-    :type expiration: :class:`datetime.timedelta` or int (seconds)
-    :returns: whether or not the lock was acquired
-    :rtype: bool
-    """
+        :param key: the identifier for the lock
+        :type key: str
+        :param expiration: the duration until the lock expires
+        :type expiration: :class:`datetime.timedelta` or int (seconds)
+        :returns: whether or not the lock was acquired
+        :rtype: bool
+        """
         pass
 
         @abstractmethod
         def shutdown():
             """
-      This function should shutdown any final resources allocated by the Orchestrator.
-      """
+            This function should shutdown any final resources allocated by the Orchestrator.
+            """
             pass
 
 
 def _sleep_orchestrator():
     """
-  This function blocks the trollius event loop by sleeping in order to backoff if a failure
-  such as a ConnectionError has occurred.
-  """
+    This function blocks the trollius event loop by sleeping in order to backoff if a failure such
+    as a ConnectionError has occurred.
+    """
     logger.exception(
         "Connecting to etcd failed; sleeping for %s and then trying again",
         ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION,
@@ -240,7 +239,9 @@ def _sleep_orchestrator():
 
 
 class EtcdAction(object):
-    """ Enumeration of the various kinds of etcd actions we can observe via a watch. """
+    """
+    Enumeration of the various kinds of etcd actions we can observe via a watch.
+    """
 
     GET = "get"
     SET = "set"
@@ -287,9 +288,10 @@ class Etcd2Orchestrator(Orchestrator):
     @staticmethod
     def _sanity_check_ttl(ttl):
         """
-    A TTL of < 0 in etcd results in the key *never being expired*.
-    We use a max here to ensure that if the TTL is < 0, the key will expire immediately.
-    """
+        A TTL of < 0 in etcd results in the key *never being expired*.
+
+        We use a max here to ensure that if the TTL is < 0, the key will expire immediately.
+        """
         return max(ttl, 0)
 
     def _watch_etcd(self, key, callback, restarter=None, start_index=None):
@@ -511,8 +513,8 @@ class MemoryOrchestrator(Orchestrator):
 
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         """
-    set_key, but without trollius coroutines.
-    """
+        set_key, but without trollius coroutines.
+        """
         preexisting_key = "key" in self.state
         if preexisting_key and not overwrite:
             raise KeyError
@@ -683,9 +685,10 @@ class RedisOrchestrator(Orchestrator):
     @staticmethod
     def _is_expired_keyspace_event(event_result):
         """
-    Sanity check that this isn't an unrelated keyspace event.
-    There could be a more efficient keyspace event config to avoid this client-side filter.
-    """
+        Sanity check that this isn't an unrelated keyspace event.
+
+        There could be a more efficient keyspace event config to avoid this client-side filter.
+        """
         if event_result is None:
             return False
 

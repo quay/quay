@@ -95,7 +95,9 @@ def __get_org_admin_users(org):
 
 
 def get_admin_users(org):
-    """ Returns the owner users for the organization. """
+    """
+    Returns the owner users for the organization.
+    """
     return __get_org_admin_users(org)
 
 
@@ -127,9 +129,10 @@ def remove_organization_member(org, user_obj):
 
 
 def get_organization_member_set(org, include_robots=False, users_filter=None):
-    """ Returns the set of all member usernames under the given organization, with optional
-      filtering by robots and/or by a specific set of User objects.
-  """
+    """
+    Returns the set of all member usernames under the given organization, with optional filtering by
+    robots and/or by a specific set of User objects.
+    """
     Org = User.alias()
     org_users = (
         User.select(User.username)

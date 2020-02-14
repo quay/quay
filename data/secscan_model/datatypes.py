@@ -25,7 +25,9 @@ class ScanLookupStatus(IntEnum):
 
 
 class SecurityInformationLookupResult(object):
-    """ Represents the result of calling to lookup security information for a manifest/image. """
+    """
+    Represents the result of calling to lookup security information for a manifest/image.
+    """
 
     def __init__(self, status, security_information=None, indexing_error=None, request_error=None):
         self._status = status
@@ -49,24 +51,33 @@ class SecurityInformationLookupResult(object):
 
     @property
     def security_information(self):
-        """ The loaded security information for the manifest/image, in dictionary form. """
+        """
+        The loaded security information for the manifest/image, in dictionary form.
+        """
         return self._security_information
 
     @property
     def status(self):
-        """ The ScanLookupStatus of this requested lookup. """
+        """
+        The ScanLookupStatus of this requested lookup.
+        """
         return self._status
 
     @property
     def indexing_error(self):
-        """ Returns the string of the error message describing why the manifest/image failed to index.
-            May be empty or None if there was no error.
+        """
+        Returns the string of the error message describing why the manifest/image failed to index.
+
+        May be empty or None if there was no error.
         """
         return self._indexing_error
 
     @property
     def scanner_request_error(self):
-        """ Returns the string of the error message when trying to load the security information
-            from the downstream scanner. None otherwise.
+        """
+        Returns the string of the error message when trying to load the security information from
+        the downstream scanner.
+
+        None otherwise.
         """
         return self._request_error

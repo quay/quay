@@ -1,4 +1,6 @@
-""" Superuser Config API. """
+"""
+Superuser Config API.
+"""
 
 import logging
 import os
@@ -19,7 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 def database_is_valid():
-    """ Returns whether the database, as configured, is valid. """
+    """
+    Returns whether the database, as configured, is valid.
+    """
     if app.config["TESTING"]:
         return False
 
@@ -27,7 +31,9 @@ def database_is_valid():
 
 
 def database_has_users():
-    """ Returns whether the database has any users defined. """
+    """
+    Returns whether the database has any users defined.
+    """
     return model.has_users()
 
 
@@ -35,14 +41,17 @@ def database_has_users():
 @internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserRegistryStatus(ApiResource):
-    """ Resource for determining the status of the registry, such as if config exists,
-      if a database is configured, and if it has any defined users.
-  """
+    """
+    Resource for determining the status of the registry, such as if config exists, if a database is
+    configured, and if it has any defined users.
+    """
 
     @nickname("scRegistryStatus")
     @verify_not_prod
     def get(self):
-        """ Returns the status of the registry. """
+        """
+        Returns the status of the registry.
+        """
         # If we have SETUP_COMPLETE, then we're ready to go!
         if app.config.get("SETUP_COMPLETE", False):
             return {"provider_id": config_provider.provider_id, "status": "ready"}
@@ -61,7 +70,8 @@ class _AlembicLogHandler(logging.Handler):
 
 # From: https://stackoverflow.com/a/44712205
 def get_process_id(name):
-    """Return process ids found by (partial) name or regex.
+    """
+    Return process ids found by (partial) name or regex.
 
     >>> get_process_id('kthreadd')
     [2]
@@ -79,12 +89,16 @@ def get_process_id(name):
 @internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserShutdown(ApiResource):
-    """ Resource for sending a shutdown signal to the container. """
+    """
+    Resource for sending a shutdown signal to the container.
+    """
 
     @verify_not_prod
     @nickname("scShutdownContainer")
     def post(self):
-        """ Sends a signal to the phusion init system to shut down the container. """
+        """
+        Sends a signal to the phusion init system to shut down the container.
+        """
         # Note: This method is called to set the database configuration before super users exists,
         # so we also allow it to be called if there is no valid registry configuration setup.
         if app.config["TESTING"] or not database_has_users() or SuperUserPermission().can():

@@ -121,7 +121,9 @@ def truthy_bool(param):
 
 
 def format_date(date):
-    """ Output an RFC822 date format. """
+    """
+    Output an RFC822 date format.
+    """
     if date is None:
         return None
     return formatdate(timegm(date.utctimetuple()))
@@ -189,10 +191,12 @@ def query_param(name, help_str, type=reqparse.text_type, default=None, choices=(
 
 def page_support(page_token_kwarg="page_token", parsed_args_kwarg="parsed_args"):
     def inner(func):
-        """ Adds pagination support to an API endpoint. The decorated API will have an
-        added query parameter named 'next_page'. Works in tandem with the
-        modelutil paginate method.
-    """
+        """
+        Adds pagination support to an API endpoint.
+
+        The decorated API will have an added query parameter named 'next_page'. Works in tandem with
+        the modelutil paginate method.
+        """
 
         @wraps(func)
         @query_param("next_page", "The page token for the next page", type=str)

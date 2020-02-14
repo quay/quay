@@ -1,5 +1,7 @@
 class WorkerError(object):
-    """ Helper class which represents errors raised by a build worker. """
+    """
+    Helper class which represents errors raised by a build worker.
+    """
 
     def __init__(self, error_code, base_message=None):
         self._error_code = error_code

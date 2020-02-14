@@ -32,22 +32,25 @@ logger = logging.getLogger(__name__)
 
 class OCIModel(SharedModel, RegistryDataInterface):
     """
-  OCIModel implements the data model for the registry API using a database schema
-  after it was changed to support the OCI specification.
-  """
+    OCIModel implements the data model for the registry API using a database schema after it was
+    changed to support the OCI specification.
+    """
 
     def __init__(self, oci_model_only=True):
         self.oci_model_only = oci_model_only
 
     def supports_schema2(self, namespace_name):
-        """ Returns whether the implementation of the data interface supports schema 2 format
-        manifests. """
+        """
+        Returns whether the implementation of the data interface supports schema 2 format manifests.
+        """
         return True
 
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
-        """ Returns the legacy image ID for the tag with a legacy images in
-        the repository. Returns None if None.
-    """
+        """
+        Returns the legacy image ID for the tag with a legacy images in the repository.
+
+        Returns None if None.
+        """
         tag = self.get_repo_tag(repository_ref, tag_name, include_legacy_image=True)
         if tag is None:
             return None
@@ -64,9 +67,12 @@ class OCIModel(SharedModel, RegistryDataInterface):
         return None
 
     def get_legacy_tags_map(self, repository_ref, storage):
-        """ Returns a map from tag name to its legacy image ID, for all tags with legacy images in
-        the repository. Note that this can be a *very* heavy operation.
-    """
+        """
+        Returns a map from tag name to its legacy image ID, for all tags with legacy images in the
+        repository.
+
+        Note that this can be a *very* heavy operation.
+        """
         tags = oci.tag.list_alive_tags(repository_ref._db_id)
         legacy_images_map = oci.tag.get_legacy_images_for_tags(tags)
 
@@ -115,23 +121,28 @@ class OCIModel(SharedModel, RegistryDataInterface):
         return model.image.get_image(manifest_obj.repository_id, v1_id)
 
     def find_matching_tag(self, repository_ref, tag_names):
-        """ Finds an alive tag in the repository matching one of the given tag names and returns it
-        or None if none.
-    """
+        """
+        Finds an alive tag in the repository matching one of the given tag names and returns it or
+        None if none.
+        """
         found_tag = oci.tag.find_matching_tag(repository_ref._db_id, tag_names)
         assert found_tag is None or not found_tag.hidden
         return Tag.for_tag(found_tag)
 
     def get_most_recent_tag(self, repository_ref):
-        """ Returns the most recently pushed alive tag in the repository, if any. If none, returns
-        None.
-    """
+        """
+        Returns the most recently pushed alive tag in the repository, if any.
+
+        If none, returns None.
+        """
         found_tag = oci.tag.get_most_recent_tag(repository_ref._db_id)
         assert found_tag is None or not found_tag.hidden
         return Tag.for_tag(found_tag)
 
     def get_manifest_for_tag(self, tag, backfill_if_necessary=False, include_legacy_image=False):
-        """ Returns the manifest associated with the given tag. """
+        """
+        Returns the manifest associated with the given tag.
+        """
         legacy_image = None
         if include_legacy_image:
             legacy_image = oci.shared.get_legacy_image_for_manifest(tag._manifest)
@@ -146,8 +157,10 @@ class OCIModel(SharedModel, RegistryDataInterface):
         include_legacy_image=False,
         require_available=False,
     ):
-        """ Looks up the manifest with the given digest under the given repository and returns it
-        or None if none. """
+        """
+        Looks up the manifest with the given digest under the given repository and returns it or
+        None if none.
+        """
         manifest = oci.manifest.lookup_manifest(
             repository_ref._db_id,
             manifest_digest,
@@ -172,7 +185,9 @@ class OCIModel(SharedModel, RegistryDataInterface):
         return Manifest.for_manifest(manifest, legacy_image)
 
     def create_manifest_label(self, manifest, key, value, source_type_name, media_type_name=None):
-        """ Creates a label on the manifest with the given key and value. """
+        """
+        Creates a label on the manifest with the given key and value.
+        """
         label_data = dict(
             key=key, value=value, source_type_name=source_type_name, media_type_name=media_type_name
         )
@@ -196,11 +211,12 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
     @contextmanager
     def batch_create_manifest_labels(self, manifest):
-        """ Returns a context manager for batch creation of labels on a manifest.
+        """
+        Returns a context manager for batch creation of labels on a manifest.
 
-        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending
-        on the validation errors.
-    """
+        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending on the validation
+        errors.
+        """
         labels_to_add = []
 
         def add_label(key, value, source_type_name, media_type_name=None):
@@ -226,36 +242,46 @@ class OCIModel(SharedModel, RegistryDataInterface):
                 apply_label_to_manifest(label_data, manifest, self)
 
     def list_manifest_labels(self, manifest, key_prefix=None):
-        """ Returns all labels found on the manifest. If specified, the key_prefix will filter the
-        labels returned to those keys that start with the given prefix.
-    """
+        """
+        Returns all labels found on the manifest.
+
+        If specified, the key_prefix will filter the labels returned to those keys that start with
+        the given prefix.
+        """
         labels = oci.label.list_manifest_labels(manifest._db_id, prefix_filter=key_prefix)
         return [Label.for_label(l) for l in labels]
 
     def get_manifest_label(self, manifest, label_uuid):
-        """ Returns the label with the specified UUID on the manifest or None if none. """
+        """
+        Returns the label with the specified UUID on the manifest or None if none.
+        """
         return Label.for_label(oci.label.get_manifest_label(label_uuid, manifest._db_id))
 
     def delete_manifest_label(self, manifest, label_uuid):
-        """ Delete the label with the specified UUID on the manifest. Returns the label deleted
-        or None if none.
-    """
+        """
+        Delete the label with the specified UUID on the manifest.
+
+        Returns the label deleted or None if none.
+        """
         return Label.for_label(oci.label.delete_manifest_label(label_uuid, manifest._db_id))
 
     def lookup_active_repository_tags(self, repository_ref, start_pagination_id, limit):
         """
-    Returns a page of actvie tags in a repository. Note that the tags returned by this method
-    are ShallowTag objects, which only contain the tag name.
-    """
+        Returns a page of actvie tags in a repository.
+
+        Note that the tags returned by this method are ShallowTag objects, which only contain the
+        tag name.
+        """
         tags = oci.tag.lookup_alive_tags_shallow(repository_ref._db_id, start_pagination_id, limit)
         return [ShallowTag.for_tag(tag) for tag in tags]
 
     def list_all_active_repository_tags(self, repository_ref, include_legacy_images=False):
         """
-    Returns a list of all the active tags in the repository. Note that this is a *HEAVY*
-    operation on repositories with a lot of tags, and should only be used for testing or
-    where other more specific operations are not possible.
-    """
+        Returns a list of all the active tags in the repository.
+
+        Note that this is a *HEAVY* operation on repositories with a lot of tags, and should only be
+        used for testing or where other more specific operations are not possible.
+        """
         tags = list(oci.tag.list_alive_tags(repository_ref._db_id))
         legacy_images_map = {}
         if include_legacy_images:
@@ -276,9 +302,11 @@ class OCIModel(SharedModel, RegistryDataInterface):
         since_time_ms=None,
     ):
         """
-    Returns the history of all tags in the repository (unless filtered). This includes tags that
-    have been made in-active due to newer versions of those tags coming into service.
-    """
+        Returns the history of all tags in the repository (unless filtered).
+
+        This includes tags that have been made in-active due to newer versions of those tags coming
+        into service.
+        """
         tags, has_more = oci.tag.list_repository_tag_history(
             repository_ref._db_id, page, size, specific_tag_name, active_tags_only, since_time_ms
         )
@@ -295,15 +323,16 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
     def has_expired_tag(self, repository_ref, tag_name):
         """
-    Returns true if and only if the repository contains a tag with the given name that is expired.
-    """
+        Returns true if and only if the repository contains a tag with the given name that is
+        expired.
+        """
         return bool(oci.tag.get_expired_tag(repository_ref._db_id, tag_name))
 
     def get_most_recent_tag_lifetime_start(self, repository_refs):
-        """ 
-    Returns a map from repository ID to the last modified time (in s) for each repository in the
-    given repository reference list.
-    """
+        """
+        Returns a map from repository ID to the last modified time (in s) for each repository in the
+        given repository reference list.
+        """
         if not repository_refs:
             return {}
 
@@ -314,9 +343,9 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
     def get_repo_tag(self, repository_ref, tag_name, include_legacy_image=False):
         """
-    Returns the latest, *active* tag found in the repository, with the matching name
-    or None if none.
-    """
+        Returns the latest, *active* tag found in the repository, with the matching name or None if
+        none.
+        """
         assert isinstance(tag_name, basestring)
 
         tag = oci.tag.get_tag(repository_ref._db_id, tag_name)
@@ -333,7 +362,8 @@ class OCIModel(SharedModel, RegistryDataInterface):
     def create_manifest_and_retarget_tag(
         self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
     ):
-        """ Creates a manifest in a repository, adding all of the necessary data in the model.
+        """
+        Creates a manifest in a repository, adding all of the necessary data in the model.
 
         The `manifest_interface_instance` parameter must be an instance of the manifest
         interface as returned by the image/docker package.
@@ -344,7 +374,7 @@ class OCIModel(SharedModel, RegistryDataInterface):
         Returns a reference to the (created manifest, tag) or (None, None) on error, unless
         raise_on_error is set to True, in which case a CreateManifestException may also be
         raised.
-    """
+        """
         # Get or create the manifest itself.
         created_manifest = oci.manifest.get_or_create_manifest(
             repository_ref._db_id,
@@ -387,10 +417,12 @@ class OCIModel(SharedModel, RegistryDataInterface):
         is_reversion=False,
     ):
         """
-    Creates, updates or moves a tag to a new entry in history, pointing to the manifest or
-    legacy image specified. If is_reversion is set to True, this operation is considered a
-    reversion over a previous tag move operation. Returns the updated Tag or None on error.
-    """
+        Creates, updates or moves a tag to a new entry in history, pointing to the manifest or
+        legacy image specified.
+
+        If is_reversion is set to True, this operation is considered a reversion over a previous tag
+        move operation. Returns the updated Tag or None on error.
+        """
         assert legacy_manifest_key is not None
         manifest_id = manifest_or_legacy_image._db_id
         if isinstance(manifest_or_legacy_image, LegacyImage):
@@ -447,8 +479,8 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
     def delete_tag(self, repository_ref, tag_name):
         """
-    Deletes the latest, *active* tag with the given name in the repository.
-    """
+        Deletes the latest, *active* tag with the given name in the repository.
+        """
         deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name)
         if deleted_tag is None:
             # TODO: This is only needed because preoci raises an exception. Remove and fix
@@ -460,21 +492,27 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
     def delete_tags_for_manifest(self, manifest):
         """
-    Deletes all tags pointing to the given manifest, making the manifest inaccessible for pulling.
-    Returns the tags deleted, if any. Returns None on error.
-    """
+        Deletes all tags pointing to the given manifest, making the manifest inaccessible for
+        pulling.
+
+        Returns the tags deleted, if any. Returns None on error.
+        """
         deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
         return [Tag.for_tag(tag) for tag in deleted_tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):
-        """ Sets the expiration date of the tag under the matching repository to that given. If the
-        expiration date is None, then the tag will not expire. Returns a tuple of the previous
-        expiration timestamp in seconds (if any), and whether the operation succeeded.
-    """
+        """
+        Sets the expiration date of the tag under the matching repository to that given.
+
+        If the expiration date is None, then the tag will not expire. Returns a tuple of the
+        previous expiration timestamp in seconds (if any), and whether the operation succeeded.
+        """
         return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
 
     def get_legacy_images_owned_by_tag(self, tag):
-        """ Returns all legacy images *solely owned and used* by the given tag. """
+        """
+        Returns all legacy images *solely owned and used* by the given tag.
+        """
         tag_obj = oci.tag.get_tag_by_id(tag._db_id)
         if tag_obj is None:
             return None
@@ -526,7 +564,9 @@ class OCIModel(SharedModel, RegistryDataInterface):
         return [LegacyImage.for_image(image, images_map=images_map) for image in images]
 
     def get_security_status(self, manifest_or_legacy_image):
-        """ Returns the security status for the given manifest or legacy image or None if none. """
+        """
+        Returns the security status for the given manifest or legacy image or None if none.
+        """
         image = None
 
         if isinstance(manifest_or_legacy_image, Manifest):
@@ -547,9 +587,10 @@ class OCIModel(SharedModel, RegistryDataInterface):
         return SecurityScanStatus.QUEUED
 
     def reset_security_status(self, manifest_or_legacy_image):
-        """ Resets the security status for the given manifest or legacy image, ensuring that it will
-        get re-indexed.
-    """
+        """
+        Resets the security status for the given manifest or legacy image, ensuring that it will get
+        re-indexed.
+        """
         image = None
 
         if isinstance(manifest_or_legacy_image, Manifest):
@@ -568,12 +609,13 @@ class OCIModel(SharedModel, RegistryDataInterface):
         image.save()
 
     def backfill_manifest_for_tag(self, tag):
-        """ Backfills a manifest for the V1 tag specified.
-        If a manifest already exists for the tag, returns that manifest.
+        """
+        Backfills a manifest for the V1 tag specified. If a manifest already exists for the tag,
+        returns that manifest.
 
         NOTE: This method will only be necessary until we've completed the backfill, at which point
         it should be removed.
-    """
+        """
         # Nothing to do for OCI tags.
         manifest = tag.manifest
         if manifest is None:
@@ -603,9 +645,9 @@ class OCIModel(SharedModel, RegistryDataInterface):
         self, manifest, verb, storage, varying_metadata=None, include_placements=False
     ):
         """
-    Looks up the derived image for the given manifest, verb and optional varying metadata and
-    returns it or None if none.
-    """
+        Looks up the derived image for the given manifest, verb and optional varying metadata and
+        returns it or None if none.
+        """
         legacy_image = self._get_legacy_compatible_image_for_manifest(manifest, storage)
         if legacy_image is None:
             return None
@@ -623,9 +665,11 @@ class OCIModel(SharedModel, RegistryDataInterface):
         include_placements=False,
     ):
         """
-    Looks up the derived image for the given maniest, verb and optional varying metadata
-    and returns it. If none exists, a new derived image is created.
-    """
+        Looks up the derived image for the given maniest, verb and optional varying metadata and
+        returns it.
+
+        If none exists, a new derived image is created.
+        """
         legacy_image = self._get_legacy_compatible_image_for_manifest(manifest, storage)
         if legacy_image is None:
             return None
@@ -637,12 +681,14 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
     def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
         """
-    Sets the expiration on all tags that point to the given manifest to that specified.
-    """
+        Sets the expiration on all tags that point to the given manifest to that specified.
+        """
         oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
 
     def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
-        """ Returns the schema 1 manifest for this manifest, or None if none. """
+        """
+        Returns the schema 1 manifest for this manifest, or None if none.
+        """
         try:
             parsed = manifest.get_parsed_manifest()
         except ManifestException:
@@ -677,9 +723,11 @@ class OCIModel(SharedModel, RegistryDataInterface):
     def create_manifest_with_temp_tag(
         self, repository_ref, manifest_interface_instance, expiration_sec, storage
     ):
-        """ Creates a manifest under the repository and sets a temporary tag to point to it.
+        """
+        Creates a manifest under the repository and sets a temporary tag to point to it.
+
         Returns the manifest object created or None on error.
-    """
+        """
         # Get or create the manifest itself. get_or_create_manifest will take care of the
         # temporary tag work.
         created_manifest = oci.manifest.get_or_create_manifest(
@@ -697,10 +745,11 @@ class OCIModel(SharedModel, RegistryDataInterface):
 
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
-    Returns the blob in the repository with the given digest, if any or None if none. Note that
-    there may be multiple records in the same repository for the same blob digest, so the return
-    value of this function may change.
-    """
+        Returns the blob in the repository with the given digest, if any or None if none.
+
+        Note that there may be multiple records in the same repository for the same blob digest, so
+        the return value of this function may change.
+        """
         image_storage = self._get_shared_storage(blob_digest)
         if image_storage is None:
             image_storage = oci.blob.get_repository_blob_by_digest(
@@ -724,10 +773,11 @@ class OCIModel(SharedModel, RegistryDataInterface):
     def list_parsed_manifest_layers(
         self, repository_ref, parsed_manifest, storage, include_placements=False
     ):
-        """ Returns an *ordered list* of the layers found in the parsed manifest, starting at the base
-        and working towards the leaf, including the associated Blob and its placements
-        (if specified).
-    """
+        """
+        Returns an *ordered list* of the layers found in the parsed manifest, starting at the base
+        and working towards the leaf, including the associated Blob and its placements (if
+        specified).
+        """
         return self._list_manifest_layers(
             repository_ref._db_id,
             parsed_manifest,
@@ -737,7 +787,9 @@ class OCIModel(SharedModel, RegistryDataInterface):
         )
 
     def get_manifest_local_blobs(self, manifest, include_placements=False):
-        """ Returns the set of local blobs for the given manifest or None if none. """
+        """
+        Returns the set of local blobs for the given manifest or None if none.
+        """
         try:
             manifest_row = database.Manifest.get(id=manifest._db_id)
         except database.Manifest.DoesNotExist:
@@ -748,10 +800,12 @@ class OCIModel(SharedModel, RegistryDataInterface):
         )
 
     def yield_tags_for_vulnerability_notification(self, layer_id_pairs):
-        """ Yields tags that contain one (or more) of the given layer ID pairs, in repositories
-        which have been registered for vulnerability_found notifications. Returns an iterator
-        of LikelyVulnerableTag instances.
-    """
+        """
+        Yields tags that contain one (or more) of the given layer ID pairs, in repositories which
+        have been registered for vulnerability_found notifications.
+
+        Returns an iterator of LikelyVulnerableTag instances.
+        """
         for docker_image_id, storage_uuid in layer_id_pairs:
             tags = oci.tag.lookup_notifiable_tags_for_legacy_image(
                 docker_image_id, storage_uuid, "vulnerability_found"

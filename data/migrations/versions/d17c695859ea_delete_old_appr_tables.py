@@ -1,9 +1,9 @@
-"""Delete old Appr tables
+"""
+Delete old Appr tables.
 
 Revision ID: d17c695859ea
 Revises: 5d463ea1e8a8
 Create Date: 2018-07-16 15:21:11.593040
-
 """
 
 # revision identifiers, used by Alembic.

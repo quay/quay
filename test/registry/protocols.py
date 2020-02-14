@@ -48,7 +48,9 @@ def layer_bytes_for_contents(contents, mode="|gz", other_files=None, empty=False
 
 @unique
 class Failures(Enum):
-    """ Defines the various forms of expected failure. """
+    """
+    Defines the various forms of expected failure.
+    """
 
     UNAUTHENTICATED = "unauthenticated"
     UNAUTHORIZED = "unauthorized"
@@ -95,13 +97,17 @@ class ProtocolOptions(object):
 
 @add_metaclass(ABCMeta)
 class RegistryProtocol(object):
-    """ Interface for protocols. """
+    """
+    Interface for protocols.
+    """
 
     FAILURE_CODES = {}
 
     @abstractmethod
     def login(self, session, username, password, scopes, expect_success):
-        """ Performs the login flow with the given credentials, over the given scopes. """
+        """
+        Performs the login flow with the given credentials, over the given scopes.
+        """
 
     @abstractmethod
     def pull(
@@ -115,9 +121,10 @@ class RegistryProtocol(object):
         expected_failure=None,
         options=None,
     ):
-        """ Pulls the given tag via the given session, using the given credentials, and
-        ensures the given images match.
-    """
+        """
+        Pulls the given tag via the given session, using the given credentials, and ensures the
+        given images match.
+        """
 
     @abstractmethod
     def push(
@@ -131,9 +138,10 @@ class RegistryProtocol(object):
         expected_failure=None,
         options=None,
     ):
-        """ Pushes the specified images as the given tag via the given session, using
-        the given credentials.
-    """
+        """
+        Pushes the specified images as the given tag via the given session, using the given
+        credentials.
+        """
 
     @abstractmethod
     def delete(
@@ -146,7 +154,9 @@ class RegistryProtocol(object):
         expected_failure=None,
         options=None,
     ):
-        """ Deletes some tags. """
+        """
+        Deletes some tags.
+        """
 
     def repo_name(self, namespace, repo_name):
         if namespace:
