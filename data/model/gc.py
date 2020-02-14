@@ -26,6 +26,7 @@ from data.database import (
     BlobUpload,
     RepoMirrorConfig,
     RepositoryPermission,
+    RepositoryAuthorizedEmail,
 )
 from data.database import RepositoryTag, TagManifest, Image, DerivedStorageForImage
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
@@ -105,6 +106,7 @@ def purge_repository(repo, force=False):
     _chunk_delete_all(repo, RepositoryNotification, force=force)
     _chunk_delete_all(repo, BlobUpload, force=force)
     _chunk_delete_all(repo, RepoMirrorConfig, force=force)
+    _chunk_delete_all(repo, RepositoryAuthorizedEmail, force=force)
 
     # Delete any marker rows for the repository.
     DeletedRepository.delete().where(DeletedRepository.repository == repo).execute()
