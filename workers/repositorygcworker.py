@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 POLL_PERIOD_SECONDS = 60
-REPOSITORY_GC_TIMEOUT = 6  # 0 * 15  # 15 minutes
+REPOSITORY_GC_TIMEOUT = 60 * 15  # 15 minutes
 
 
 class RepositoryGCWorker(QueueWorker):
