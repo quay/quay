@@ -1,7 +1,8 @@
 from datetime import timedelta
 
+
 def convert_to_timedelta(time_val):
-  """
+    """
   From: code.activestate.com/recipes/577894-convert-strings-like-5d-and-60s-to-timedelta-objec
 
   Given a *time_val* (string) such as '5d', returns a timedelta object
@@ -29,16 +30,16 @@ def convert_to_timedelta(time_val):
       >>> convert_to_timedelta('120s')
       datetime.timedelta(0, 120)
   """
-  num = int(time_val[:-1])
-  if time_val.endswith('s'):
-    return timedelta(seconds=num)
-  elif time_val.endswith('m'):
-    return timedelta(minutes=num)
-  elif time_val.endswith('h'):
-    return timedelta(hours=num)
-  elif time_val.endswith('d'):
-    return timedelta(days=num)
-  elif time_val.endswith('w'):
-    return timedelta(days=num*7)
-  else:
-    raise ValueError('Unknown suffix on timedelta: %s' % time_val)
+    num = int(time_val[:-1])
+    if time_val.endswith("s"):
+        return timedelta(seconds=num)
+    elif time_val.endswith("m"):
+        return timedelta(minutes=num)
+    elif time_val.endswith("h"):
+        return timedelta(hours=num)
+    elif time_val.endswith("d"):
+        return timedelta(days=num)
+    elif time_val.endswith("w"):
+        return timedelta(days=num * 7)
+    else:
+        raise ValueError("Unknown suffix on timedelta: %s" % time_val)

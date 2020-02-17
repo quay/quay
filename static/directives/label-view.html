@@ -1,8 +1,20 @@
-<a class="label-view-element" ng-click="viewLabelValue()">
-  <span class="kind">{{ getKind(label) }}</span>
-  <span class="label-value">
+<span class="label-view-element">
+  <a class="label-view-element-link" ng-click="viewLabelValue()" ng-if="!isUrl(label.value)">
+    <span class="kind" ng-show="getKind(label)">{{ getKind(label) }}</span>
+    <span class="label-value">
+        <span class="key">{{ label.key }}</span>
+        <span class="equals">=</span>
+        <span class="value">{{ label.value }}</span>
+    </span>
+  </a>
+  <a class="label-view-element-link is-link"
+     ng-if="isUrl(label.value)"
+     ng-href="{{ label.value }}"
+     rel="nofollow noopener"
+     target="_blank">
+     <span class="label-value">
       <span class="key">{{ label.key }}</span>
-      <span class="equals">=</span>
       <span class="value">{{ label.value }}</span>
-  </span>
+    </span>
 </a>
+</span>

@@ -24,6 +24,21 @@ export POSTGRES_PASSWORD="quay"
 export POSTGRES_DB="quay_ci"
 
 
+run_black() {
+    # https://issues.redhat.com/browse/PROJQUAY-92
+    # https://github.com/psf/black/issues/1207#issuecomment-566249522
+    pip install black --no-binary=regex
+    black --line-length 100 --target-version py27 --check --diff .
+}
+
+
+run_flake8() {
+    pip install flake8  # TODO (cclauss): Remove on the line --exit-zero below
+    flake8 . --count --exit-zero --max-line-length=100 --select=E9,F63,F7,F82 \
+             --show-source --statistics
+}
+
+
 build_image() {
     # Build the image and save it to the shared cache.
     docker build -t "${IMAGE}:${IMAGE_TAG}" .
@@ -90,7 +105,7 @@ gunicorn_test() {
     echo "Sleeping for CI image start"
     if ! (sleep 120 && quay_ping); then
         echo "Quay container logs:"
-        docker log quay-gunicorn-test
+        docker logs quay-gunicorn-test
         echo "Quay failed to respond in time."
         exit 1
     fi
@@ -179,6 +194,11 @@ postgres() {
 
 
 case "$1" in
+    lint)
+        run_black
+        run_flake8
+        ;;
+
     build)
         build_image
         ;;

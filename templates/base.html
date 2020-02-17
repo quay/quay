@@ -131,6 +131,8 @@ b._i.push([a,e,d])};b.__SV=1.2}})(document,window.mixpanel||[]);
 mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug }} });</script><!-- end Mixpanel -->
 {% endif %}
 
+  <link rel="search" type="application/opensearchdescription+xml" title="{{ config_set['REGISTRY_TITLE'] }}" href="/opensearch.xml" />
+
   </head>
   <body ng-class="pageClass + ' ' + (user.anonymous ? 'anon' : 'signedin')" class="co-img-bg-network">
     <div id="co-l-footer-wrapper">

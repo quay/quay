@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting chunk cleanup worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.chunkcleanupworker 2>&1
-
-echo 'Chunk cleanup worker exited'

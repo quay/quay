@@ -1,0 +1,16 @@
+<div class="new-repo-state btn-group btn-group-sm">
+  <div class="dropdown" style="text-align: left;">
+    <button class="btn btn-default" ng-class="$ctrl.selectedState.value" data-toggle="dropdown">
+      <span ng-if="$ctrl.selectedState" class="repo-state-title">{{ $ctrl.selectedState.title }}</span>
+      <span ng-if="!$ctrl.selectedState">(Select)</span>
+      <span class="caret"></span>
+    </button>
+    <ul class="dropdown-menu">
+      <li ng-repeat="option in $ctrl.options" ng-class="option.value">
+        <a ng-click="$ctrl.onChange.emit({state: option})">{{ option.title }}
+          <div class="repo-state-help-text">{{ option.description }}</div>
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>

@@ -1,0 +1,72 @@
+.new-repo-state .btn {
+  width: 95px;
+  position: relative;
+  text-align: left;
+
+  padding: 4px;
+  padding-left: 10px;
+}
+
+.repo-state.small .btn {
+  padding: 2px;
+  padding-left: 10px;
+}
+
+.new-repo-state .btn .caret {
+  position: absolute;
+  top: 13px;
+  right: 7px;
+}
+
+.repo-state.small .btn .caret {
+  top: 11px;
+}
+
+.new-repo-state .repo-state-help-text {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
+.new-repo-state .btn {
+  border-left: 4px solid #ccc;
+}
+
+.new-repo-state .btn.NORMAL {
+  border-left-color: #5cb85c;
+}
+
+.new-repo-state .btn.READ_ONLY {
+  border-left-color: #ccc;
+}
+
+.new-repo-state .btn.MIRROR {
+  border-left-color: #337ab7;
+}
+
+.new-repo-state li a {
+  vertical-align: middle;
+}
+
+.new-repo-state li a:before {
+  content: "";
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  background: #ccc;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.new-repo-state li.NORMAL a:before {
+  background-color: #5cb85c;
+}
+
+.new-repo-state li.READ_ONLY a:before {
+  background-color: #ccc;
+}
+
+.new-repo-state li.MIRROR a:before {
+  background-color: #337ab7;
+}

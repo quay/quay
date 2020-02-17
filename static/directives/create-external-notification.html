@@ -1,8 +1,5 @@
 <div class="create-external-notification-element">
   <form id="createForm" name="createForm" ng-submit="createNotification()">
-    <!-- Creating spinner -->
-    <div class="cor-loader" ng-show="status == 'creating'"></div>
-
     <!-- Event -->
     <table class="help-table">
       <tr>
@@ -130,21 +127,18 @@
                          allowed-entities="['user', 'team', 'org']"
                          ng-switch-when="entity"></div>
 
-                    <div ng-if="getHelpUrl(field, currentConfig)"
-                         style="margin-top: 10px;  margin-bottom: 10px">
-                      See: <a href="{{ getHelpUrl(field, currentConfig) }}" ng-safenewtab>{{ getHelpUrl(field, currentConfig) }}</a>
-                    </div>
+                    <!-- Template -->
+                    <textarea class="form-control"
+                              rows="10"
+                              style="font-family: monospace"
+                              ng-model="currentConfig[field.name]"
+                              ng-switch-when="template"></textarea>
+                  </div>
 
-                    <div class="help-text" ng-if="currentMethod.id == 'webhook'"
-                         style="margin-top: 6px; margin-bottom: 0px">
-                      JSON metadata representing the event will be <b>POST</b>ed to the URL. All requests made to TLS-enabled URLs will be signed with the <span class="registry-name"></span> key.
-                      <br><br>
-                      The contents for each event can be found in the user guide:
-                      <a href="http://docs.quay.io/guides/notifications.html#webhook{{ currentEvent.id ? '_' + currentEvent.id : '' }}"
-                         ng-safenewtab>
-                        http://docs.quay.io/guides/notifications.html
-                      </a>
-                    </div>
+                  <!-- Help url -->
+                  <div ng-if="getHelpUrl(field, currentConfig)"
+                        style="margin-top: 10px;  margin-bottom: 10px">
+                    See: <a href="{{ getHelpUrl(field, currentConfig) }}" ng-safenewtab>{{ getHelpUrl(field, currentConfig) }}</a>
                   </div>
 
                   <!-- Help text -->
@@ -185,6 +179,14 @@
 
     <!-- Buttons -->
     <div class="button-bar">
+      <!-- Creating spinner -->
+      <div class="cor-loader" ng-show="status == 'creating'"></div>
+
+      <!-- Error message -->
+      <div class="co-alert co-alert-danger" ng-show="status == 'error'">
+        {{ errorMessage }}
+      </div>
+      
       <button type="submit" class="btn btn-primary"
               ng-disabled="createForm.$invalid || !currentMethod.id || !currentEvent.id || creating">
         Create Notification

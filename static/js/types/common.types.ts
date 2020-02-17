@@ -49,6 +49,7 @@ export type Local = {
   selectedNamespace?: Namespace;
   selectedRepository?: Repository;
   triggerAnalysis?: any;
+  currentTagTemplate?: string;
   triggerOptions?: {
     [key: string]: any;
   };
@@ -120,6 +121,9 @@ export type TriggerConfig = {
   dockerfile_path?: string;
   context?: string;
   branchtag_regex?: string;
+  default_tag_from_ref?: boolean;
+  latest_for_default_branch?: boolean;
+  tag_templates?: string[];
 };
 
 

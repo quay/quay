@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting Expired app specific token GC worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.expiredappspecifictokenworker 2>&1
-
-echo 'Expired app specific token  GC exited'

@@ -40,7 +40,7 @@ if [ -f $CERTDIR ]; then
 fi
 
 # Add extra trusted certificates (prefixed)
-for f in $(find $QUAYCONFIG/ -maxdepth 1 -type f -name "extra_ca*")
+for f in $(find -L $QUAYCONFIG/ -maxdepth 1 -type f -name "extra_ca*")
 do
  echo "Installing extra cert $f"
  cp "$f" ${SYSTEM_CERTDIR}

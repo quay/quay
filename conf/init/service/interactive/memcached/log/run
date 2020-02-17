@@ -1,7 +1,0 @@
-#!/bin/sh
-
-# Ensure dependencies start before the logger
-sv check syslog-ng > /dev/null || exit 1
-
-# Start the logger
-exec logger -i -t memcached

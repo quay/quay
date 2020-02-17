@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting label backfill worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.labelbackfillworker 2>&1
-
-echo 'Repository label backfill exited'

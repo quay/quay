@@ -258,8 +258,6 @@
           <div class="co-alert co-alert-info" ng-if="config.FEATURE_REPO_MIRROR" style="margin-top: 20px;">
             A repository mirror service must be running to use this feature. Documentation
             on setting up and running this service can be found at <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#repository-mirroring" ng-safenewtab>Running Repository Mirroring Service</a>.
-            <br><br>
-            Repository mirroring is provided as <a href="https://access.redhat.com/support/offerings/techpreview" ng-safenewtab>Technology Preview</a> in this release of Quay.
           </div>
 
           <div class="config-bool-field" binding="config.REPO_MIRROR_TLS_VERIFY" ng-if="config.FEATURE_REPO_MIRROR">
@@ -333,7 +331,7 @@
                   <td>
                     <select class="form-control" ng-class="storageConfigError[$index].engine ? 'ng-invalid' : ''"
                       ng-model="sc.data[0]">
-                      <option value="RHOCSStorage">NooBaa S3</option>
+                      <option value="RHOCSStorage">Red Hat OpenShift Container Storage (NooBaa S3)</option>
                       <option value="LocalStorage">Locally mounted directory</option>
                       <option value="S3Storage">Amazon S3</option>
                       <option value="AzureStorage">Azure Blob Storage</option>
@@ -531,12 +529,17 @@
         </div>
       </div>
 
-      <!-- BitTorrent pull -->
-      <div class="co-panel">
+      <!-- BitTorrent pull (DEPRECATED) -->
+      <div class="co-panel" ng-show="originalConfig.FEATURE_BITTORRENT">
         <div class="co-panel-heading">
-          <i class="fas fa-cloud-download-alt"></i> BitTorrent-based download
+          <i class="fas fa-cloud-download-alt"></i> BitTorrent-based download (DEPRECATED)
         </div>
         <div class="co-panel-body">
+          <div class="co-alert co-alert-warning" style="margin-bottom: 20px">
+            BitTorrent support has been <strong>officially deprecated</strong> by Quay and support will be
+            removed in the next version. It is <strong>strongly</strong> suggested to disable this feature now.
+          </div>
+
           <div class="description">
             <p>If enabled, all images in the registry can be downloaded using the <a
                                                                                     href="http://github.com/coreos/quayctl" ng-safenewtab>quayctl</a> tool via the BitTorrent protocol. A
@@ -569,14 +572,19 @@
         </div>
       </div>
 
-      <!-- ACI Conversion -->
-      <div class="co-panel">
+      <!-- ACI Conversion (DEPRECATED) -->
+      <div class="co-panel" ng-show="originalConfig.FEATURE_ACI_CONVERSION">
         <div class="co-panel-heading">
           <i class="fa rocket-icon"
             style="width: 20px; height: 20px; background-size: cover; vertical-align: middle;"></i> <a
                                                                                                        href="http://github.com/coreos/rkt" ng-safenewtab>rkt</a> Conversion (DEPRECATED)
         </div>
         <div class="co-panel-body">
+          <div class="co-alert co-alert-warning" style="margin-bottom: 20px">
+            ACI conversion support has been <strong>officially deprecated</strong> by Quay and support will be
+            removed in the next version. It is <strong>strongly</strong> suggested to disable this feature now.
+          </div>
+
           <div class="description">
             <p>If enabled, all images in the registry can be fetched via <code>rkt fetch</code> or any other <a
                                                                                                                href="https://github.com/appc/spec/blob/master/spec/discovery.md" ng-safenewtab>AppC
@@ -1550,7 +1558,7 @@
         <div class="co-panel-body">
           <div class="co-alert co-alert-warning" style="margin-bottom: 20px">
             Docker V1 protocol support has been <strong>officially deprecated</strong> by Quay and support will be
-            removed in the next major version. It is <strongly>strongly</strongly> suggested to have this
+            removed in the next major version. It is <strong>strongly</strong> suggested to have this
             flag enabled and to restrict access to V1 push.
           </div>
           <div class="config-bool-field" binding="config.FEATURE_RESTRICTED_V1_PUSH">

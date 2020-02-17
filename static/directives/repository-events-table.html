@@ -5,8 +5,8 @@
 
       <div class="heading-controls hidden-sm hidden-xs">
         <a href="/repository/{{ repository.namespace }}/{{ repository.name }}/create-notification"
-           class="btn btn-primary" ng-show="repository.can_write && !inReadOnlyMode">
-          <i class="fa fa-plus"></i> Create Notification
+           class="btn btn-primary" ng-show="canCreateNotification()">
+           <span class="create-notification-btn"><i class="fa fa-plus"></i> Create Notification</span>
         </a>
       </div>
     </div>
@@ -16,7 +16,7 @@
 
           <div class="empty" ng-if="!notifications.length">
             <div class="empty-primary-msg">No notifications have been setup for this repository.</div>
-            <div class="empty-secondary-msg hidden-sm hidden-xs" ng-if="repository.can_write && !inReadOnlyMode">
+            <div class="empty-secondary-msg hidden-sm hidden-xs" ng-if="canCreateNotification()">
               Click the "Create Notification" button above to add a new notification for a repository event.
             </div>
             <div class="empty-secondary-msg visible-sm visible-xs" ng-if="repository.can_write">
@@ -70,6 +70,29 @@
                     <i class="fa fa-lg" ng-class="getMethodInfo(notification).icon"></i>
                     {{ getMethodInfo(notification).title }}
                   </span>
+                  <ul class="notification-event-fields" ng-if="getMethodInfo(notification).fields.length">
+                    <li ng-repeat="field in getMethodInfo(notification).fields" ng-if="notification.config[field.name]">
+                      {{ field.title }}:
+                      <span ng-switch on="field.type">
+                        <span ng-switch-when="enum">
+                          {{ findEnumValue(field.values, notification.config[field.name]).title }}
+                        </span>
+                        <code ng-switch-when="regex">
+                          {{ notification.config[field.name] }}
+                        </code>
+                        <code ng-switch-when="entity">
+                          {{ notification.config[field.name].name }}
+                        </code>
+                        <code ng-switch-when="url">
+                          {{ notification.config[field.name] }}
+                        </code>
+                        <textarea class="form-control" ng-switch-when="template" rows="3" readonly>{{ notification.config[field.name] }}</textarea>
+                        <span ng-switch-default>
+                        {{ notification.config[field.name] }}
+                        </span>
+                      </span>
+                    </li>
+                  </ul>
                 </td>
 
                 <td>
@@ -78,7 +101,7 @@
                 </td>
 
                 <td>
-                  <span class="cor-options-menu" ng-show="!inReadOnlyMode">
+                  <span class="cor-options-menu" ng-show="canCreateNotification()">
                     <span class="cor-option" option-click="testNotification(notification)">
                       <i class="fa fa-send"></i> Test Notification
                     </span>

@@ -15,6 +15,7 @@ angular.module('quay').directive('manifestLabelList', function () {
     },
     controller: function($scope, $element, ApiService) {
       $scope.labels = null;
+      $scope.loadingLabels = false;
 
       var loadLabels = function() {
         if (!$scope.repository) {
@@ -30,6 +31,11 @@ angular.module('quay').directive('manifestLabelList', function () {
           return;
         }
 
+        if ($scope.loadingLabels) {
+          return;
+        }
+
+        $scope.loadingLabels = true;
         $scope.labels = null;
         $scope.loadError = false;
 
@@ -41,8 +47,10 @@ angular.module('quay').directive('manifestLabelList', function () {
         ApiService.listManifestLabels(null, params).then(function(resp) {
           $scope.labels = resp['labels'];
           $scope.cache[$scope.manifestDigest] = resp['labels'];
+          $scope.loadingLabels = false;
         }, function() {
           $scope.loadError = true;
+          $scope.loadingLabels = false;
         });
       };
 

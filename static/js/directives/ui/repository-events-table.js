@@ -15,7 +15,11 @@ angular.module('quay').directive('repositoryEventsTable', function () {
     },
     controller: function($scope, $element, $timeout, ApiService, Restangular, UtilService,
                          ExternalNotificationData, $location, StateService) {
-      $scope.inReadOnlyMode = StateService.inReadOnlyMode();
+      $scope.canCreateNotification = function() {
+        return StateService.inReadOnlyMode()
+          ? false
+          : $scope.repository.state === 'MIRROR' || $scope.repository.can_write;
+      };
       $scope.showNewNotificationCounter = 0;
       $scope.newNotificationData = {};
 

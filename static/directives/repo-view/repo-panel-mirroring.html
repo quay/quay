@@ -89,6 +89,7 @@
                     skip-permissions="true"
                     placeholder="'Select a ' + (repository.is_organization ? 'team or ' : '') + 'user...'"
                     current-entity="vm.robot"
+                    allowed-entities="['robot']"
                     pull-right="true"></span>
             </td>
           </tr>
@@ -361,124 +362,127 @@
 
     <!-- Modal: Change mirroring sync date dialog -->
     <div class="cor-confirm-dialog"
-         dialog-context="vm.syncStartDateChanges"
-         dialog-action="vm.changeSyncStartDate(info, callback)"
-         dialog-title="Update next synchronization date"
-         dialog-action-title="Update"
-         dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      Next Synchronization Date:
-      <span id="change_sync_start_date"
-            class="datetime-picker"
-            datetime="vm.syncStartDateChanges.values.sync_start_date"></span>
-    </form>
-  </div>
+          dialog-context="vm.syncStartDateChanges"
+          dialog-action="vm.changeSyncStartDate(info, callback)"
+          dialog-title="Update next synchronization date"
+          dialog-action-title="Update"
+          dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        Next Synchronization Date:
+        <span id="change_sync_start_date"
+              class="datetime-picker"
+              datetime="vm.syncStartDateChanges.values.sync_start_date"></span>
+      </form>
+    </div>
 
-  <!-- Modal: Change mirroring sync interval -->
-  <div class="cor-confirm-dialog"
-       dialog-context="vm.syncIntervalChanges"
-       dialog-action="vm.changeConfig(info, callback)"
-       dialog-title="Update next synchronization date"
-       dialog-action-title="Update"
-       dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      <label>Synchronization Interval</label>
-      <div>
-        <span class="interval-input" seconds="vm.syncIntervalChanges.values.sync_interval"></span>
-      </div>
-    </form>
-  </div>
+    <!-- Modal: Change mirroring sync interval -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.syncIntervalChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update next synchronization date"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label>Synchronization Interval</label>
+        <div>
+          <span class="interval-input" seconds="vm.syncIntervalChanges.values.sync_interval"></span>
+        </div>
+      </form>
+    </div>
 
-  <!-- Modal: Change external repository -->
-  <div class="cor-confirm-dialog"
-       dialog-context="vm.externalRepositoryChanges"
-       dialog-action="vm.changeConfig(info, callback)"
-       dialog-title="Update external repository"
-       dialog-action-title="Update"
-       dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      External Repository
-      <input type="text"
-             class="form-control"
-             ng-model="vm.externalRepositoryChanges.values.external_reference">
-    </form>
-  </div>
+    <!-- Modal: Change external repository -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.externalRepositoryChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update external repository"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        External Repository
+        <input type="text"
+              class="form-control"
+              ng-model="vm.externalRepositoryChanges.values.external_reference">
+      </form>
+    </div>
 
-  <!-- Modal: Change Credentials -->
-  <div class="cor-confirm-dialog"
-       dialog-context="vm.credentialsChanges"
-       dialog-action="vm.changeConfig(info, callback)"
-       dialog-title="Update Credentials"
-       dialog-action-title="Update"
-       dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      <label>Username</label>
-      <input type="text"
-             class="form-control"
-             ng-model="vm.credentialsChanges.values.external_registry_username">
-      <label>Password</label>
-      <input type="password"
-             class="form-control"
-             ng-model="vm.credentialsChanges.values.external_registry_password">
-    </form>
-  </div>
+    <!-- Modal: Change Credentials -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.credentialsChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update Credentials"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label>Username</label>
+        <input type="text"
+               class="form-control"
+               ng-model="vm.credentialsChanges.values.external_registry_username"
+               autocomplete="new-username">
+        <label>Password</label>
+        <input type="password"
+               class="form-control"
+               ng-model="vm.credentialsChanges.values.external_registry_password"
+               autocomplete="new-password">
+      </form>
+    </div>
 
-  <!-- Modal: Change Tag Pattern -->
-  <div class="cor-confirm-dialog"
-       dialog-context="vm.tagChanges"
-       dialog-action="vm.changeTagRules(info, callback)"
-       dialog-title="Update Tag Filter"
-       dialog-action-title="Update"
-       dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      <label>Tags</label>
-      <input type="text" class="form-control" ng-model="vm.tagChanges.values.rule_value">
-    </form>
-  </div>
+    <!-- Modal: Change Tag Pattern -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.tagChanges"
+        dialog-action="vm.changeTagRules(info, callback)"
+        dialog-title="Update Tag Filter"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label>Tags</label>
+        <input type="text" class="form-control" ng-model="vm.tagChanges.values.rule_value">
+      </form>
+    </div>
 
-  <!-- Modal: Change "HTTP Proxy" -->
-  <div class="cor-confirm-dialog"
-       dialog-context="vm.httpProxyChanges"
-       dialog-action="vm.changeConfig(info, callback)"
-       dialog-title="Update HTTP Proxy"
-       dialog-action-title="Update"
-       dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      <label>HTTP_PROXY</label>
-      <input type="text"
-             class="form-control"
-             ng-model="vm.httpProxyChanges.values.external_registry_config.proxy.http_proxy">
-    </form>
-  </div>
+    <!-- Modal: Change "HTTP Proxy" -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.httpProxyChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update HTTP Proxy"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label>HTTP_PROXY</label>
+        <input type="text"
+              class="form-control"
+              ng-model="vm.httpProxyChanges.values.external_registry_config.proxy.http_proxy">
+      </form>
+    </div>
 
-  <!-- Modal: Change "HTTPs Proxy" -->
-  <div class="cor-confirm-dialog"
-       dialog-context="vm.httpsProxyChanges"
-       dialog-action="vm.changeConfig(info, callback)"
-       dialog-title="Update HTTP Proxy"
-       dialog-action-title="Update"
-       dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      <label>HTTPS_PROXY</label>
-      <input type="text"
-             class="form-control"
-             ng-model="vm.httpsProxyChanges.values.external_registry_config.proxy.https_proxy">
-    </form>
-  </div>
+    <!-- Modal: Change "HTTPs Proxy" -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.httpsProxyChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update HTTP Proxy"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label>HTTPS_PROXY</label>
+        <input type="text"
+              class="form-control"
+              ng-model="vm.httpsProxyChanges.values.external_registry_config.proxy.https_proxy">
+      </form>
+    </div>
 
-  <!-- Modal: Change "No Proxy" -->
-  <div class="cor-confirm-dialog"
-       dialog-context="vm.noProxyChanges"
-       dialog-action="vm.changeConfig(info, callback)"
-       dialog-title="Update HTTP Proxy"
-       dialog-action-title="Update"
-       dialog-form="context.mirroringform">
-    <form name="context.mirroringform" class="co-single-field-dialog">
-      <label>NO_PROXY</label>
-      <input type="text"
-             class="form-control"
-             ng-model="vm.noProxyChanges.values.external_registry_config.proxy.no_proxy">
-    </form>
-  </div>
+    <!-- Modal: Change "No Proxy" -->
+    <div class="cor-confirm-dialog"
+        dialog-context="vm.noProxyChanges"
+        dialog-action="vm.changeConfig(info, callback)"
+        dialog-title="Update HTTP Proxy"
+        dialog-action-title="Update"
+        dialog-form="context.mirroringform">
+      <form name="context.mirroringform" class="co-single-field-dialog">
+        <label>NO_PROXY</label>
+        <input type="text"
+              class="form-control"
+              ng-model="vm.noProxyChanges.values.external_registry_config.proxy.no_proxy">
+      </form>
+    </div>
 
+  </div>
 </div>

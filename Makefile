@@ -43,25 +43,25 @@ conf/stack/license: $(QUAY_CONFIG)/local/license
 	ln -s $(QUAY_CONFIG)/local/license conf/stack/license
 
 unit-test:
-	ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields TEST=true PYTHONPATH="." py.test \
+	TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose -x \
 	./
 
 registry-test:
-	TEST=true ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields PYTHONPATH="." py.test  \
+	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	test/registry/registry_tests.py
 
 registry-test-old:
-	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields py.test  \
+	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	./test/registry_tests.py
 
 buildman-test:
-	TEST=true PYTHONPATH="." ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields py.test \
+	TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
 	--timeout=3600 --verbose --show-count -x \
 	./buildman/
@@ -71,8 +71,8 @@ certs-test:
 
 full-db-test: ensure-test-db
 	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
-	ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields alembic upgrade head
-	TEST=true PYTHONPATH=. ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE=remove-old-fields \
+	alembic upgrade head
+	TEST=true PYTHONPATH=. \
 	SKIP_DB_SCHEMA=true py.test --timeout=7200 \
 	--verbose --show-count -x --ignore=endpoints/appr/test/ \
 	./
@@ -140,14 +140,11 @@ docker-build: pkgs build
 	git checkout $(NAME)
 	echo $(TAG)
 
-app-sre-docker-build:
-	# get named head (ex: branch, tag, etc..)
-	export NAME=$(shell git rev-parse --abbrev-ref HEAD)
-	# checkout commit so .git/HEAD points to full sha (used in Dockerfile)
-	echo "$(SHA)"
-	git checkout $(SHA)
-	$(BUILD_CMD) -t ${IMG} .
-	git checkout $(NAME)
+app-sre-docker-build-rhel7:
+	$(BUILD_CMD) -t ${IMG} -f Dockerfile.osbs .
+
+app-sre-docker-build-centos7:
+	$(BUILD_CMD) -t ${IMG} -f Dockerfile.centos7.osbs .
 
 run: license
 	goreman start
@@ -178,3 +175,7 @@ yapf-diff:
 
 yapf-test:
 	if [ `yapf -d -p $(MODIFIED_FILES) | wc -l` -gt 0 ] ; then false ; else true ;fi
+
+
+black:
+	black --line-length 100 --target-version py27 .

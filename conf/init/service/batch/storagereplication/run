@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting storage replication worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.storagereplication 2>&1
-
-echo 'Repository storage replication exited'

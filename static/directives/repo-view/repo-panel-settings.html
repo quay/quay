@@ -70,21 +70,13 @@
           <i class="fa fa-refresh lock-icon" quay-show="Features.REPO_MIRROR && repository.state == 'MIRROR'" ng-show="repository.state == 'MIRROR'"></i>
 
           <div>
-            This <span class="repository-title" repository="repository"></span> state is currently <b>{{ repository.state }}</b>.
+            This <span class="repository-title" repository="repository"></span> state is currently <b>{{ selectedState.title }}</b>.
             <span ng-show="repository.state == 'NORMAL'">Standard permissions apply.</span>
             <span ng-show="repository.state == 'READ_ONLY'">Users will not be able to push or modify images.</span>
             <span ng-show="repository.state == 'MIRROR'" quay-show="Features.REPO_MIRROR && repository.state == 'MIRROR'">The images and tags are maintained by Quay and Users can not push or modify them.</span>
           </div>
 
-          <!-- TODO: Enhance the appearance of this. Move style to .css file. -->
-          <div style="margin-top: 1em">
-            <form>
-              <select ng-options="option for option in repoStates"
-                      ng-model="selectedState"
-                      ng-change="changeState()"></select>
-            </form>
-          </div>
-
+          <repo-state options="repoStates" selected-state="selectedState" on-change="changeState($event)"></repo-state>
         </div>
       </div>
     </div>

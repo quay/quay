@@ -11,3 +11,19 @@
   color: #888;
   margin-bottom: 0px;
 }
+
+.create-notification-btn {
+  color: #fff;
+}
+
+.repository-events-table-element .permissions td {
+  vertical-align: top;
+}
+
+.repository-events-table-element .notification-event-fields li {
+  margin-bottom: 4px;
+}
+
+.repository-events-table-element .notification-event-fields textarea {
+  font-family: monospace;
+}

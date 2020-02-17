@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting GC worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.gc.gcworker 2>&1
-
-echo 'Repository GC exited'

@@ -211,6 +211,7 @@ angular.module("quay-config")
         };
 
         $scope.config = null;
+        $scope.originalConfig = null;
         $scope.mapped = {
           '$hasChanges': false
         };
@@ -727,6 +728,7 @@ angular.module("quay-config")
 
           ApiService.scGetConfig().then(function(resp) {
             $scope.config = resp['config'] || {};
+            $scope.originalConfig = Object.assign({}, resp['config'] || {});;
             initializeMappedLogic($scope.config);
             initializeStorageConfig($scope);
             $scope.mapped['$hasChanges'] = false;

@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.com/quay/quay.svg?token=pWvEz2TeyDsVn69Hkiwq&branch=master)](https://travis-ci.com/quay/quay)
 
+[![Container Repository on Quay](https://quay.io/repository/projectquay/quay/status "Container Repository on Quay")](https://quay.io/repository/projectquay/quay)
+
 :warning: The `master` branch may be in an *unstable or even broken state* during development.
 Please use [releases] instead of the `master` branch in order to get stable software.
 
@@ -58,12 +60,12 @@ High-level features include:
 
 ## Community
 
-* Mailing List: [quay-dev@googlegroups.com]
+* Mailing List: [quay-sig@googlegroups.com]
 * IRC: #quay on [freenode.net]
 * Bug tracking: [JBoss JIRA]
 * Security Issues: [security@redhat.com]
 
-[quay-dev@googlegroups.com]: https://groups.google.com/forum/#!forum/quay-dev
+[quay-sig@googlegroups.com]: https://groups.google.com/forum/#!forum/quay-sig
 [freenode.net]: https://webchat.freenode.net
 [JBoss JIRA]: https://issues.jboss.org/projects/PROJQUAY
 [security@redhat.com]: mailto:security@redhat.com

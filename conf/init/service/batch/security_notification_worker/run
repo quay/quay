@@ -1,9 +1,0 @@
-#! /bin/bash
-
-echo 'Starting security scanner notification worker'
-
-QUAYPATH=${QUAYPATH:-"."}
-cd ${QUAYDIR:-"/"}
-PYTHONPATH=$QUAYPATH venv/bin/python -m workers.security_notification_worker 2>&1
-
-echo 'Security scanner notification worker exited'

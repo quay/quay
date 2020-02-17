@@ -182,7 +182,16 @@ function(Config, Features, VulnerabilityService) {
         {
           'name': 'url',
           'type': 'url',
-          'title': 'Webhook URL'
+          'title': 'Webhook URL',
+          'help_text': 'JSON metadata representing the event will be POSTed to this URL.',
+          'help_url': 'https://docs.quay.io/guides/notifications.html'
+        },
+        {
+          'name': 'template',
+          'type': 'template',
+          'title': 'POST body template (optional)',
+          'help_text': 'If specified, a JSON template for formatting the body of the POST',
+          'help_url': 'https://docs.quay.io/guides/webhook-template.html'
         }
       ]
     },

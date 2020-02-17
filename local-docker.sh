@@ -38,11 +38,6 @@ initdb)
 fulldbtest)
 	d bash /src/quay/test/fulldbtest.sh
 	;;
-prom)
-	R=quay.io/quay/prom-monitor
-	docker build -t $R prom_aggregator
-	docker run --rm -it --net=host $R -loglevel=debug
-	;;
 *)
 	echo "unknown option"
 	exit 1

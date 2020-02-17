@@ -1,168 +1,132 @@
-import datetime
-import json
 import logging
+import os
+import socket
+import sys
+import threading
+import time
+import urllib2
 
-from Queue import Queue, Full, Empty
-from threading import Thread
+from cachetools.func import lru_cache
 
-import requests
+from flask import g, request
+from prometheus_client import push_to_gateway, REGISTRY, Histogram
 
 
 logger = logging.getLogger(__name__)
 
-QUEUE_MAX = 1000
-MAX_BATCH_SIZE = 100
-REGISTER_WAIT = datetime.timedelta(hours=1)
 
-class PrometheusPlugin(object):
-  """ Application plugin for reporting metrics to Prometheus. """
-  def __init__(self, app=None):
-    self.app = app
-    if app is not None:
-      self.state = self.init_app(app)
-    else:
-      self.state = None
-
-  def init_app(self, app):
-    prom_url = app.config.get('PROMETHEUS_AGGREGATOR_URL')
-    prom_namespace = app.config.get('PROMETHEUS_NAMESPACE')
-    logger.debug('Initializing prometheus with aggregator url: %s', prom_url)
-    prometheus = Prometheus(prom_url, prom_namespace)
-
-    # register extension with app
-    app.extensions = getattr(app, 'extensions', {})
-    app.extensions['prometheus'] = prometheus
-    return prometheus
-
-  def __getattr__(self, name):
-    return getattr(self.state, name, None)
+request_duration = Histogram(
+    "quay_request_duration_seconds",
+    "seconds taken to process a request",
+    labelnames=["method", "route", "status"],
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+)
 
 
-class Prometheus(object):
-  """ Aggregator for collecting stats that are reported to Prometheus. """
-  def __init__(self, url=None, namespace=None):
-    self._metric_collectors = []
-    self._url = url
-    self._namespace = namespace or ''
-
-    if url is not None:
-      self._queue = Queue(QUEUE_MAX)
-      self._sender = _QueueSender(self._queue, url, self._metric_collectors)
-      self._sender.start()
-      logger.debug('Prometheus aggregator sending to %s', url)
-    else:
-      self._queue = None
-      logger.debug('Prometheus aggregator disabled')
-
-  def enqueue(self, call, data):
-    if not self._queue:
-      return
-
-    v = json.dumps({
-      'Call': call,
-      'Data': data,
-    })
-
-    if call == 'register':
-      self._metric_collectors.append(v)
-      return
-
-    try:
-      self._queue.put_nowait(v)
-    except Full:
-      # If the queue is full, it is because 1) no aggregator was enabled or 2)
-      # the aggregator is taking a long time to respond to requests. In the case
-      # of 1, it's probably enterprise mode and we don't care. In the case of 2,
-      # the response timeout error is printed inside the queue handler. In either case,
-      # we don't need to print an error here.
-      pass
-
-  def create_gauge(self, *args, **kwargs):
-    return self._create_collector('Gauge', args, kwargs)
-
-  def create_counter(self, *args, **kwargs):
-    return self._create_collector('Counter', args, kwargs)
-
-  def create_summary(self, *args, **kwargs):
-    return self._create_collector('Summary', args, kwargs)
-
-  def create_histogram(self, *args, **kwargs):
-    return self._create_collector('Histogram', args, kwargs)
-
-  def create_untyped(self, *args, **kwargs):
-    return self._create_collector('Untyped', args, kwargs)
-
-  def _create_collector(self, collector_type, args, kwargs):
-    kwargs['namespace'] = kwargs.get('namespace', self._namespace)
-    return _Collector(self.enqueue, collector_type, *args, **kwargs)
+PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
+ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
-class _QueueSender(Thread):
-  """ Helper class which uses a thread to asynchronously send metrics to the local Prometheus
-      aggregator. """
-  def __init__(self, queue, url, metric_collectors):
-    Thread.__init__(self)
-    self.daemon = True
-    self.next_register = datetime.datetime.now()
-    self._queue = queue
-    self._url = url
-    self._metric_collectors = metric_collectors
+@lru_cache(maxsize=1)
+def process_grouping_key():
+    """
+    Implements a grouping key based on the last argument used to run the current process.
 
-  def run(self):
-    while True:
-      reqs = []
-      reqs.append(self._queue.get())
-
-      while len(reqs) < MAX_BATCH_SIZE:
-        try:
-          req = self._queue.get_nowait()
-          reqs.append(req)
-        except Empty:
-          break
-
-      try:
-        resp = requests.post(self._url + '/call', '\n'.join(reqs))
-        if resp.status_code == 500 and self.next_register <= datetime.datetime.now():
-          resp = requests.post(self._url + '/call', '\n'.join(self._metric_collectors))
-          self.next_register = datetime.datetime.now() + REGISTER_WAIT
-          logger.debug('Register returned %s for %s metrics; setting next to %s', resp.status_code,
-                       len(self._metric_collectors), self.next_register)
-        elif resp.status_code != 200:
-          logger.debug('Failed sending to prometheus: %s: %s: %s', resp.status_code, resp.text,
-                       ', '.join(reqs))
-        else:
-          logger.debug('Sent %d prometheus metrics', len(reqs))
-      except:
-        logger.exception('Failed to write to prometheus aggregator: %s', reqs)
-
-
-class _Collector(object):
-  """ Collector for a Prometheus metric. """
-  def __init__(self, enqueue_method, collector_type, collector_name, collector_help,
-               namespace='', subsystem='', **kwargs):
-    self._enqueue_method = enqueue_method
-    self._base_args = {
-      'Name': collector_name,
-      'Namespace': namespace,
-      'Subsystem': subsystem,
-      'Type': collector_type,
+    https://github.com/prometheus/client_python#exporting-to-a-pushgateway
+    """
+    return {
+        "host": socket.gethostname(),
+        "process_name": os.path.basename(sys.argv[-1]),
+        "pid": str(os.getpid()),
     }
 
-    registration_params = dict(kwargs)
-    registration_params.update(self._base_args)
-    registration_params['Help'] = collector_help
 
-    self._enqueue_method('register', registration_params)
+class PrometheusPlugin(object):
+    """
+    Application plugin for reporting metrics to Prometheus.
+    """
 
-  def __getattr__(self, method):
-    def f(value=0, labelvalues=()):
-      data = dict(self._base_args)
-      data.update({
-        'Value': value,
-        'LabelValues': [str(i) for i in labelvalues],
-        'Method': method,
-      })
+    def __init__(self, app=None):
+        self.app = app
+        if app is not None:
+            self.state = self.init_app(app)
+        else:
+            self.state = None
 
-      self._enqueue_method('put', data)
+    def init_app(self, app):
+        pusher = ThreadPusher(app)
+        pusher.start()
 
-    return f
+        # register extension with app
+        app.extensions = getattr(app, "extensions", {})
+        app.extensions["prometheus"] = pusher
+        return pusher
+
+    def __getattr__(self, name):
+        return getattr(self.state, name, None)
+
+
+class ThreadPusher(threading.Thread):
+    def __init__(self, app):
+        super(ThreadPusher, self).__init__()
+        self.daemon = True
+        self._app = app
+
+    def run(self):
+        agg_url = self._app.config.get("PROMETHEUS_PUSHGATEWAY_URL")
+        while True:
+            # Practically disable this worker, if there is no pushgateway.
+            if agg_url is None or os.getenv("TEST", "false").lower() == "true":
+                time.sleep(ONE_DAY_IN_SECONDS)
+                continue
+
+            time.sleep(PROMETHEUS_PUSH_INTERVAL_SECONDS)
+            try:
+                push_to_gateway(
+                    agg_url,
+                    job=self._app.config.get("PROMETHEUS_NAMESPACE", "quay"),
+                    registry=REGISTRY,
+                    grouping_key=process_grouping_key(),
+                )
+                logger.debug(
+                    "pushed registry to pushgateway at %s with grouping key %s",
+                    agg_url,
+                    process_grouping_key(),
+                )
+            except urllib2.URLError:
+                # There are many scenarios when the gateway might not be running.
+                # These could be testing scenarios or simply processes racing to start.
+                # Rather than try to guess all of them, keep it simple and let it fail.
+                if os.getenv("DEBUGLOG", "false").lower() == "true":
+                    logger.exception(
+                        "failed to push registry to pushgateway at %s with grouping key %s",
+                        agg_url,
+                        process_grouping_key(),
+                    )
+                else:
+                    pass
+
+
+def timed_blueprint(bp):
+    """
+    Decorates a blueprint to have its request duration tracked by Prometheus.
+    """
+
+    def _time_before_request():
+        g._request_start_time = time.time()
+
+    bp.before_request(_time_before_request)
+
+    def _time_after_request():
+        def f(r):
+            start = getattr(g, "_request_start_time", None)
+            if start is None:
+                return r
+            dur = time.time() - start
+            request_duration.labels(request.method, request.endpoint, r.status_code).observe(dur)
+            return r
+
+        return f
+
+    bp.after_request(_time_after_request())
+    return bp

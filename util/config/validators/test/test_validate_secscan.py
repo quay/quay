@@ -8,41 +8,56 @@ from util.secscan.fake import fake_security_scanner
 
 from test.fixtures import *
 
-@pytest.mark.parametrize('unvalidated_config', [
-  ({'DISTRIBUTED_STORAGE_PREFERENCE': []}),
-])
+
+@pytest.mark.parametrize("unvalidated_config", [({"DISTRIBUTED_STORAGE_PREFERENCE": []}),])
 def test_validate_noop(unvalidated_config, app):
 
-  unvalidated_config = ValidatorContext(unvalidated_config, feature_sec_scanner=False, is_testing=True,
-                                        http_client=build_requests_session(),
-                                        url_scheme_and_hostname=URLSchemeAndHostname('http', 'localhost:5000'))
+    unvalidated_config = ValidatorContext(
+        unvalidated_config,
+        feature_sec_scanner=False,
+        is_testing=True,
+        http_client=build_requests_session(),
+        url_scheme_and_hostname=URLSchemeAndHostname("http", "localhost:5000"),
+    )
 
-  SecurityScannerValidator.validate(unvalidated_config)
+    SecurityScannerValidator.validate(unvalidated_config)
 
 
-@pytest.mark.parametrize('unvalidated_config, expected_error', [
-  ({
-    'TESTING': True,
-    'DISTRIBUTED_STORAGE_PREFERENCE': [],
-    'FEATURE_SECURITY_SCANNER': True,
-    'SECURITY_SCANNER_ENDPOINT': 'http://invalidhost',
-  }, Exception),
-
-  ({
-    'TESTING': True,
-    'DISTRIBUTED_STORAGE_PREFERENCE': [],
-    'FEATURE_SECURITY_SCANNER': True,
-    'SECURITY_SCANNER_ENDPOINT': 'http://fakesecurityscanner',
-  }, None),
-])
+@pytest.mark.parametrize(
+    "unvalidated_config, expected_error",
+    [
+        (
+            {
+                "TESTING": True,
+                "DISTRIBUTED_STORAGE_PREFERENCE": [],
+                "FEATURE_SECURITY_SCANNER": True,
+                "SECURITY_SCANNER_ENDPOINT": "http://invalidhost",
+            },
+            Exception,
+        ),
+        (
+            {
+                "TESTING": True,
+                "DISTRIBUTED_STORAGE_PREFERENCE": [],
+                "FEATURE_SECURITY_SCANNER": True,
+                "SECURITY_SCANNER_ENDPOINT": "http://fakesecurityscanner",
+            },
+            None,
+        ),
+    ],
+)
 def test_validate(unvalidated_config, expected_error, app):
-  unvalidated_config = ValidatorContext(unvalidated_config, feature_sec_scanner=True, is_testing=True,
-                                        http_client=build_requests_session(),
-                                        url_scheme_and_hostname=URLSchemeAndHostname('http', 'localhost:5000'))
+    unvalidated_config = ValidatorContext(
+        unvalidated_config,
+        feature_sec_scanner=True,
+        is_testing=True,
+        http_client=build_requests_session(),
+        url_scheme_and_hostname=URLSchemeAndHostname("http", "localhost:5000"),
+    )
 
-  with fake_security_scanner(hostname='fakesecurityscanner'):
-    if expected_error is not None:
-      with pytest.raises(expected_error):
-        SecurityScannerValidator.validate(unvalidated_config)
-    else:
-      SecurityScannerValidator.validate(unvalidated_config)
+    with fake_security_scanner(hostname="fakesecurityscanner"):
+        if expected_error is not None:
+            with pytest.raises(expected_error):
+                SecurityScannerValidator.validate(unvalidated_config)
+        else:
+            SecurityScannerValidator.validate(unvalidated_config)

@@ -103,6 +103,9 @@ angular.module('quay').directive('createExternalNotification', function () {
         ApiService.createRepoNotification(data, params).then(function(resp) {
           $scope.status = '';
           $scope.notificationCreated({'notification': resp});
+        }, function(resp) {
+          $scope.status = 'error';
+          $scope.errorMessage = ApiService.getErrorMessage(resp, 'Could not create notification');
         });
       };
 
