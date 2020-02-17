@@ -4,6 +4,7 @@ from image.docker.interfaces import ContentRetriever
 from data.database import Manifest
 from data.model.oci.blob import get_repository_blob_by_digest
 from data.model.storage import get_layer_path
+from util.bytes import Bytes
 
 RETRY_COUNT = 5
 RETRY_DELAY = 0.3  # seconds
@@ -34,7 +35,7 @@ class RepositoryContentRetriever(ContentRetriever):
         )
 
         try:
-            return query.get().manifest_bytes
+            return Bytes.for_string_or_unicode(query.get().manifest_bytes).as_encoded_str()
         except Manifest.DoesNotExist:
             return None
 

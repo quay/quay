@@ -73,7 +73,7 @@ def create_manifest_for_testing(repository, differentiation_field="1"):
 
     remote_digest = sha256_digest("something")
     builder = DockerSchema2ManifestBuilder()
-    builder.set_config_digest(config_digest, len(layer_json))
+    builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
     builder.add_layer(remote_digest, 1234, urls=["http://hello/world" + differentiation_field])
     manifest = builder.build()
 
@@ -114,6 +114,7 @@ def test_lookup_manifest_child_tag(initialized_db):
 
 
 def _populate_blob(content):
+    content = Bytes.for_string_or_unicode(content).as_encoded_str()
     digest = str(sha256_digest(content))
     location = ImageStorageLocation.get(name="local_us")
     blob = store_blob_record_and_temp_link(
@@ -160,8 +161,8 @@ def test_get_or_create_manifest(schema_version, initialized_db):
         sample_manifest_instance = builder.build(docker_v2_signing_key)
     elif schema_version == 2:
         builder = DockerSchema2ManifestBuilder()
-        builder.set_config_digest(config_digest, len(layer_json))
-        builder.add_layer(random_digest, len(random_data))
+        builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+        builder.add_layer(random_digest, len(random_data.encode("utf-8")))
         sample_manifest_instance = builder.build()
 
     # Create a new manifest.
@@ -264,8 +265,8 @@ def test_get_or_create_manifest_list(initialized_db):
     v1_manifest = v1_builder.build(docker_v2_signing_key).unsigned()
 
     v2_builder = DockerSchema2ManifestBuilder()
-    v2_builder.set_config_digest(config_digest, len(layer_json))
-    v2_builder.add_layer(random_digest, len(random_data))
+    v2_builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    v2_builder.add_layer(random_digest, len(random_data.encode("utf-8")))
     v2_manifest = v2_builder.build()
 
     # Write the manifests.
@@ -336,8 +337,8 @@ def test_get_or_create_manifest_list_duplicate_child_manifest(initialized_db):
 
     # Build the manifest.
     v2_builder = DockerSchema2ManifestBuilder()
-    v2_builder.set_config_digest(config_digest, len(layer_json))
-    v2_builder.add_layer(random_digest, len(random_data))
+    v2_builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    v2_builder.add_layer(random_digest, len(random_data.encode("utf-8")))
     v2_manifest = v2_builder.build()
 
     # Write the manifest.
@@ -396,12 +397,12 @@ def test_get_or_create_manifest_with_remote_layers(initialized_db):
     random_data = "hello world"
     _, random_digest = _populate_blob(random_data)
 
-    remote_digest = sha256_digest("something")
+    remote_digest = sha256_digest(b"something")
 
     builder = DockerSchema2ManifestBuilder()
-    builder.set_config_digest(config_digest, len(layer_json))
+    builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
     builder.add_layer(remote_digest, 1234, urls=["http://hello/world"])
-    builder.add_layer(random_digest, len(random_data))
+    builder.add_layer(random_digest, len(random_data.encode("utf-8")))
     manifest = builder.build()
 
     assert remote_digest in manifest.blob_digests
@@ -444,9 +445,9 @@ def create_manifest_for_testing(repository, differentiation_field="1", include_s
     # Add a blob containing the config.
     _, config_digest = _populate_blob(layer_json)
 
-    remote_digest = sha256_digest("something")
+    remote_digest = sha256_digest(b"something")
     builder = DockerSchema2ManifestBuilder()
-    builder.set_config_digest(config_digest, len(layer_json))
+    builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
     builder.add_layer(remote_digest, 1234, urls=["http://hello/world" + differentiation_field])
 
     if include_shared_blob:
@@ -485,12 +486,12 @@ def test_retriever(initialized_db):
     other_random_data = "hi place"
     _, other_random_digest = _populate_blob(other_random_data)
 
-    remote_digest = sha256_digest("something")
+    remote_digest = sha256_digest(b"something")
 
     builder = DockerSchema2ManifestBuilder()
-    builder.set_config_digest(config_digest, len(layer_json))
-    builder.add_layer(other_random_digest, len(other_random_data))
-    builder.add_layer(random_digest, len(random_data))
+    builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    builder.add_layer(other_random_digest, len(other_random_data.encode("utf-8")))
+    builder.add_layer(random_digest, len(random_data.encode("utf-8")))
     manifest = builder.build()
 
     assert config_digest in manifest.blob_digests
@@ -570,11 +571,11 @@ def test_create_manifest_cannot_load_config_blob(initialized_db):
     random_data = "hello world"
     _, random_digest = _populate_blob(random_data)
 
-    remote_digest = sha256_digest("something")
+    remote_digest = sha256_digest(b"something")
 
     builder = DockerSchema2ManifestBuilder()
-    builder.set_config_digest(config_digest, len(layer_json))
-    builder.add_layer(random_digest, len(random_data))
+    builder.set_config_digest(config_digest, len(layer_json.encode("utf-8")))
+    builder.add_layer(random_digest, len(random_data.encode("utf-8")))
     manifest = builder.build()
 
     broken_retriever = BrokenRetriever()

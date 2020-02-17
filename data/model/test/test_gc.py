@@ -68,7 +68,7 @@ def create_image(docker_image_id, repository_obj, username):
     try:
         database.TorrentInfo.get(storage=image.storage)
     except database.TorrentInfo.DoesNotExist:
-        model.storage.save_torrent_info(image.storage, 1, "helloworld")
+        model.storage.save_torrent_info(image.storage, 1, b"helloworld")
 
     # Add some additional placements to the image.
     for location_name in ["local_eu"]:
@@ -618,7 +618,7 @@ def test_image_with_cas(default_tag_policy, initialized_db):
         repository = create_repository()
 
         # Create an image storage record under CAS.
-        content = "hello world"
+        content = b"hello world"
         digest = "sha256:" + hashlib.sha256(content).hexdigest()
         preferred = storage.preferred_locations[0]
         storage.put_content({preferred}, storage.blob_path(digest), content)
@@ -664,7 +664,7 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         repository = create_repository()
 
         # Create two image storage records with the same content checksum.
-        content = "hello world"
+        content = b"hello world"
         digest = "sha256:" + hashlib.sha256(content).hexdigest()
         preferred = storage.preferred_locations[0]
         storage.put_content({preferred}, storage.blob_path(digest), content)
@@ -725,7 +725,7 @@ def test_images_shared_cas_with_new_blob_table(default_tag_policy, initialized_d
         repository = create_repository()
 
         # Create two image storage records with the same content checksum.
-        content = "hello world"
+        content = b"hello world"
         digest = "sha256:" + hashlib.sha256(content).hexdigest()
         preferred = storage.preferred_locations[0]
         storage.put_content({preferred}, storage.blob_path(digest), content)

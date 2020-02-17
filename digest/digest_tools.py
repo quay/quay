@@ -68,6 +68,7 @@ def sha256_digest(content):
     """
     Returns a sha256 hash of the content bytes in digest form.
     """
+    assert isinstance(content, bytes)
 
     def single_chunk_generator():
         yield content

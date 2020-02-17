@@ -154,7 +154,7 @@ def _chunk_iterate_for_deletion(query, chunk_size=10):
     while True:
         results = list(query.limit(chunk_size))
         if not results:
-            raise StopIteration
+            return
 
         yield results
 

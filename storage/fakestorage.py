@@ -1,4 +1,4 @@
-import io as StringIO
+from io import BytesIO
 import hashlib
 
 from collections import defaultdict
@@ -6,14 +6,14 @@ from uuid import uuid4
 
 from storage.basestorage import BaseStorageV2
 
-_GLOBAL_FAKE_STORAGE_MAP = defaultdict(StringIO.StringIO)
+_GLOBAL_FAKE_STORAGE_MAP = defaultdict(BytesIO)
 
 
 class FakeStorage(BaseStorageV2):
     def __init__(self, context):
         super(FakeStorage, self).__init__()
         self._fake_storage_map = (
-            defaultdict(StringIO.StringIO) if context == "local" else _GLOBAL_FAKE_STORAGE_MAP
+            defaultdict(BytesIO) if context == "local" else _GLOBAL_FAKE_STORAGE_MAP
         )
 
     def _init_path(self, path=None, create=False):
@@ -53,7 +53,7 @@ class FakeStorage(BaseStorageV2):
             yield buf
 
     def stream_read_file(self, path):
-        return StringIO.StringIO(self.get_content(path))
+        return BytesIO(self.get_content(path))
 
     def stream_write(self, path, fp, content_type=None, content_encoding=None):
         out_fp = self._fake_storage_map[path]
