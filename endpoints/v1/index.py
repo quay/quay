@@ -279,14 +279,14 @@ def update_images(namespace_name, repo_name):
         )
         if repository_ref is None:
             # Make sure the repo actually exists.
-            image_pushes.labels("v1", 404).inc()
+            image_pushes.labels("v1", 404, "").inc()
             abort(404, message="Unknown repository", issue="unknown-repo")
 
         builder = lookup_manifest_builder(
             repository_ref, session.get("manifest_builder"), storage, docker_v2_signing_key
         )
         if builder is None:
-            image_pushes.labels("v1", 400).inc()
+            image_pushes.labels("v1", 400, "").inc()
             abort(400)
 
         # Generate a job for each notification that has been added to this repo
@@ -299,10 +299,10 @@ def update_images(namespace_name, repo_name):
 
         track_and_log("push_repo", repository_ref)
         spawn_notification(repository_ref, "repo_push", event_data)
-        image_pushes.labels("v1", 204).inc()
+        image_pushes.labels("v1", 204, "").inc()
         return make_response("Updated", 204)
 
-    image_pushes.labels("v1", 403).inc()
+    image_pushes.labels("v1", 403, "").inc()
     abort(403)
 
 

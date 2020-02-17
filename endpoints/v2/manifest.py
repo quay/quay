@@ -47,7 +47,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        image_pulls.labels("v2_1", "tag", 404).inc()
+        image_pulls.labels("v2", "tag", 404).inc()
         raise NameUnknown()
 
     tag = registry_model.get_repo_tag(repository_ref, manifest_ref)
@@ -59,23 +59,23 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
             msg = (
                 "Tag %s was deleted or has expired. To pull, revive via time machine" % manifest_ref
             )
-            image_pulls.labels("v2_1", "tag", 404).inc()
+            image_pulls.labels("v2", "tag", 404).inc()
             raise TagExpired(msg)
 
-        image_pulls.labels("v2_1", "tag", 404).inc()
+        image_pulls.labels("v2", "tag", 404).inc()
         raise ManifestUnknown()
 
     manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
     if manifest is None:
         # Something went wrong.
-        image_pulls.labels("v2_1", "tag", 400).inc()
+        image_pulls.labels("v2", "tag", 400).inc()
         raise ManifestInvalid()
 
     manifest_bytes, manifest_digest, manifest_media_type = _rewrite_schema_if_necessary(
         namespace_name, repo_name, manifest_ref, manifest
     )
     if manifest_bytes is None:
-        image_pulls.labels("v2_1", "tag", 404).inc()
+        image_pulls.labels("v2", "tag", 404).inc()
         raise ManifestUnknown()
 
     track_and_log(
@@ -85,7 +85,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
         analytics_sample=0.01,
         tag=manifest_ref,
     )
-    image_pulls.labels("v2_1", "tag", 200).inc()
+    image_pulls.labels("v2", "tag", 200).inc()
 
     return Response(
         manifest_bytes.as_unicode(),
@@ -102,16 +102,16 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        image_pulls.labels("v2_1", "manifest", 404).inc()
+        image_pulls.labels("v2", "manifest", 404).inc()
         raise NameUnknown()
 
     manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
     if manifest is None:
-        image_pulls.labels("v2_1", "manifest", 404).inc()
+        image_pulls.labels("v2", "manifest", 404).inc()
         raise ManifestUnknown()
 
     track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
-    image_pulls.labels("v2_1", "manifest", 200).inc()
+    image_pulls.labels("v2", "manifest", 200).inc()
 
     return Response(
         manifest.internal_manifest_bytes.as_unicode(),
@@ -207,7 +207,7 @@ def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     parsed = _parse_manifest()
     if parsed.digest != manifest_ref:
-        image_pushes.labels("v2_invalid", 400).inc()
+        image_pushes.labels("v2", 400, "").inc()
         raise ManifestInvalid(detail={"message": "manifest digest mismatch"})
 
     if parsed.schema_version != 2:
@@ -218,7 +218,7 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     # manifest with a temporary tag, as it is being pushed as part of a call for a manifest list.
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        image_pushes.labels("v2_2", 404).inc()
+        image_pushes.labels("v2", 404, "").inc()
         raise NameUnknown()
 
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
@@ -226,10 +226,10 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         repository_ref, parsed, expiration_sec, storage
     )
     if manifest is None:
-        image_pushes.labels("v2_2", 400).inc()
+        image_pushes.labels("v2", 400, "").inc()
         raise ManifestInvalid()
 
-    image_pushes.labels("v2_2", 202).inc()
+    image_pushes.labels("v2", 202, manifest.media_type).inc()
     return Response(
         "OK",
         status=202,
@@ -305,7 +305,7 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
 
     track_and_log("push_repo", repository_ref, tag=tag_name)
     spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
-    image_pushes.labels("v2_1", 202).inc()
+    image_pushes.labels("v2", 202, manifest.media_type).inc()
 
     return Response(
         "OK",
