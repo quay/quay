@@ -4,6 +4,9 @@ from collections import namedtuple
 
 from peewee import Model, SENTINEL, OperationalError, Proxy
 
+from data.decorators import is_deprecated_model
+
+
 ReadOnlyConfig = namedtuple("ReadOnlyConfig", ["is_readonly", "read_replicas"])
 
 
@@ -107,7 +110,7 @@ class ReadReplicaSupportedModel(Model):
 
     @classmethod
     def insert(cls, *args, **kwargs):
-        if hasattr(cls, "__deprecated_model"):
+        if is_deprecated_model(cls):
             raise Exception("Attempt to write to deprecated model %s" % cls)
 
         query = super(ReadReplicaSupportedModel, cls).insert(*args, **kwargs)
@@ -137,7 +140,7 @@ class ReadReplicaSupportedModel(Model):
         elif cls._in_readonly_mode():
             raise ReadOnlyModeException()
         elif query._sql.lower().startswith("insert "):
-            if hasattr(cls, "__deprecated_model"):
+            if is_deprecated_model(cls):
                 raise Exception("Attempt to write to deprecated model %s" % cls)
 
         return query

@@ -57,6 +57,7 @@ from data.database import (
     RepositoryState,
 )
 from data import model
+from data.decorators import is_deprecated_model
 from data.fields import Credential
 from data.logs_model import logs_model
 from data.queue import WorkQueue
@@ -80,6 +81,8 @@ logger = logging.getLogger(__name__)
 TEST_STRIPE_ID = "cus_2tmnh3PkXQS8NG"
 
 IS_TESTING_REAL_DATABASE = bool(os.environ.get("TEST_DATABASE_URI"))
+
+TEMP_BLOB_EXPIRATION = 120  # seconds
 
 
 def __generate_service_key(
@@ -131,7 +134,7 @@ def _populate_blob(repo, content):
     digest = str(sha256_digest(content))
     location = ImageStorageLocation.get(name="local_us")
     blob = model.blob.store_blob_record_and_temp_link_in_repo(
-        repo, digest, location, len(content), 120
+        repo, digest, location, len(content), TEMP_BLOB_EXPIRATION
     )
     return blob, digest
 
@@ -1249,8 +1252,8 @@ def find_models_missing_data():
         try:
             one_model.select().get()
         except one_model.DoesNotExist:
-            if one_model.__name__ not in WHITELISTED_EMPTY_MODELS and not hasattr(
-                one_model, "__deprecated_model"
+            if one_model.__name__ not in WHITELISTED_EMPTY_MODELS and not is_deprecated_model(
+                one_model
             ):
                 models_missing_data.add(one_model.__name__)
 
