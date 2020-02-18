@@ -26,7 +26,7 @@ def create_mirror_repo_robot(rules, repo_name="repo"):
     except model.InvalidRobotException:
         robot, _ = create_robot("robot", user)
 
-    repo = create_repository("mirror", repo_name, None, repo_kind="image", visibility="public")
+    repo = model.repository.create_repository("mirror", repo_name, None, repo_kind="image", visibility="public")
     repo.save()
 
     rule = model.repo_mirror.create_mirroring_rule(repo, rules)
@@ -38,7 +38,7 @@ def create_mirror_repo_robot(rules, repo_name="repo"):
         "external_reference": "registry.example.com/namespace/repository",
         "sync_interval": timedelta(days=1).total_seconds(),
     }
-    mirror = enable_mirroring_for_repository(**mirror_kwargs)
+    mirror = model.repo_mirror.enable_mirroring_for_repository(**mirror_kwargs)
     mirror.sync_status = RepoMirrorStatus.NEVER_RUN
     mirror.sync_start_date = datetime.utcnow() - timedelta(days=1)
     mirror.sync_retries_remaining = 3

@@ -68,4 +68,4 @@ EMPTY_LAYER_BYTES = "".join(
             0,
         ],
     )
-)
+).encode("utf-8")

@@ -39,6 +39,7 @@ from data.model.tag import (
 from data.model.image import find_create_or_link_image
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from util.timedeltastring import convert_to_timedelta
+from util.bytes import Bytes
 
 from test.fixtures import *
 
@@ -334,9 +335,10 @@ def test_store_tag_manifest(get_storages, initialized_db):
 
     # Ensure we have the new-model expected rows.
     mapping_row = TagManifestToManifest.get(tag_manifest=tag_manifest)
+    manifest_bytes = Bytes.for_string_or_unicode(mapping_row.manifest.manifest_bytes).as_encoded_str()
 
     assert mapping_row.manifest is not None
-    assert mapping_row.manifest.manifest_bytes == manifest.bytes.as_encoded_str()
+    assert manifest_bytes == manifest.bytes.as_encoded_str()
     assert mapping_row.manifest.digest == str(manifest.digest)
 
     blob_rows = {

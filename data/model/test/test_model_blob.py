@@ -40,10 +40,10 @@ def test_store_blob(initialized_db):
 
 
 def test_get_or_create_shared_blob(initialized_db):
-    shared = model.blob.get_or_create_shared_blob("sha256:abcdef", "somecontent", storage)
+    shared = model.blob.get_or_create_shared_blob("sha256:abcdef", b"somecontent", storage)
     assert shared.content_checksum == "sha256:abcdef"
 
-    again = model.blob.get_or_create_shared_blob("sha256:abcdef", "somecontent", storage)
+    again = model.blob.get_or_create_shared_blob("sha256:abcdef", b"somecontent", storage)
     assert shared == again
 
 
