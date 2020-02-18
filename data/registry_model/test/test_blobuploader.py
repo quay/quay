@@ -35,7 +35,7 @@ def test_basic_upload_blob(chunk_count, subchunk, pre_oci_model):
     settings = BlobUploadSettings("2M", 512 * 1024, 3600)
     app_config = {"TESTING": True}
 
-    data = ""
+    data = b""
     with upload_blob(repository_ref, storage, settings) as manager:
         assert manager
         assert manager.blob_upload_id
@@ -72,7 +72,7 @@ def test_cancel_upload(pre_oci_model):
         blob_upload_id = manager.blob_upload_id
         assert pre_oci_model.lookup_blob_upload(repository_ref, blob_upload_id) is not None
 
-        manager.upload_chunk(app_config, BytesIO("hello world"))
+        manager.upload_chunk(app_config, BytesIO(b"hello world"))
 
     # Since the blob was not comitted, the upload should be deleted.
     assert blob_upload_id
@@ -94,11 +94,11 @@ def test_extra_blob_stream_handlers(pre_oci_model):
     handler1_result = []
     handler2_result = []
 
-    def handler1(bytes):
-        handler1_result.append(bytes)
+    def handler1(bytes_data):
+        handler1_result.append(bytes_data)
 
-    def handler2(bytes):
-        handler2_result.append(bytes)
+    def handler2(bytes_data):
+        handler2_result.append(bytes_data)
 
     repository_ref = pre_oci_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
@@ -108,14 +108,15 @@ def test_extra_blob_stream_handlers(pre_oci_model):
     with upload_blob(
         repository_ref, storage, settings, extra_blob_stream_handlers=[handler1, handler2]
     ) as manager:
-        manager.upload_chunk(app_config, BytesIO("hello "))
-        manager.upload_chunk(app_config, BytesIO("world"))
+        manager.upload_chunk(app_config, BytesIO(b"hello "))
+        manager.upload_chunk(app_config, BytesIO(b"world"))
 
-    assert "".join(handler1_result) == "hello world"
-    assert "".join(handler2_result) == "hello world"
+    assert b"".join(handler1_result) == b"hello world"
+    assert b"".join(handler2_result) == b"hello world"
 
 
 def valid_tar_gz(contents):
+    assert isinstance(contents, bytes)
     with closing(BytesIO()) as layer_data:
         with closing(tarfile.open(fileobj=layer_data, mode="w|gz")) as tar_file:
             tar_file_info = tarfile.TarInfo(name="somefile")
@@ -135,7 +136,7 @@ def test_uncompressed_size(pre_oci_model):
     app_config = {"TESTING": True}
 
     with upload_blob(repository_ref, storage, settings) as manager:
-        manager.upload_chunk(app_config, BytesIO(valid_tar_gz("hello world")))
+        manager.upload_chunk(app_config, BytesIO(valid_tar_gz(b"hello world")))
 
         blob = manager.commit_to_blob(app_config)
 

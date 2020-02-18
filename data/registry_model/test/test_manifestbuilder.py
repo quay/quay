@@ -33,9 +33,9 @@ def fake_session():
 @pytest.mark.parametrize(
     "layers",
     [
-        pytest.param([("someid", None, "some data")], id="Single layer"),
+        pytest.param([("someid", None, b"some data")], id="Single layer"),
         pytest.param(
-            [("parentid", None, "some parent data"), ("someid", "parentid", "some data")],
+            [("parentid", None, b"some parent data"), ("someid", "parentid", b"some data")],
             id="Multi layer",
         ),
     ],

@@ -658,7 +658,7 @@ def test_manifest_remote_layers(oci_model):
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
-        upload.upload_chunk(app_config, BytesIO(config_json))
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
 
     # Create the manifest in the repo.
@@ -771,7 +771,7 @@ def test_derived_image_for_manifest_list(oci_model):
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
-        upload.upload_chunk(app_config, BytesIO(config_json))
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
 
     # Create the manifest in the repo.
@@ -821,24 +821,24 @@ def test_torrent_info(registry_model):
     assert blobs
 
     assert registry_model.get_torrent_info(blobs[0]) is None
-    registry_model.set_torrent_info(blobs[0], 2, "foo")
+    registry_model.set_torrent_info(blobs[0], 2, b"foo")
 
     # Set it again exactly, which should be a no-op.
-    registry_model.set_torrent_info(blobs[0], 2, "foo")
+    registry_model.set_torrent_info(blobs[0], 2, b"foo")
 
     # Check the information we've set.
     torrent_info = registry_model.get_torrent_info(blobs[0])
     assert torrent_info is not None
     assert torrent_info.piece_length == 2
-    assert torrent_info.pieces == "foo"
+    assert torrent_info.pieces == b"foo"
 
     # Try setting it again. Nothing should happen.
-    registry_model.set_torrent_info(blobs[0], 3, "bar")
+    registry_model.set_torrent_info(blobs[0], 3, b"bar")
 
     torrent_info = registry_model.get_torrent_info(blobs[0])
     assert torrent_info is not None
     assert torrent_info.piece_length == 2
-    assert torrent_info.pieces == "foo"
+    assert torrent_info.pieces == b"foo"
 
 
 def test_blob_uploads(registry_model):
@@ -858,7 +858,7 @@ def test_blob_uploads(registry_model):
     assert registry_model.update_blob_upload(
         blob_upload,
         1,
-        "the-pieces_hash",
+        b"the-pieces_hash",
         blob_upload.piece_sha_state,
         {"new": "metadata"},
         2,
@@ -869,7 +869,7 @@ def test_blob_uploads(registry_model):
     updated = registry_model.lookup_blob_upload(repository_ref, blob_upload.upload_id)
     assert updated
     assert updated.uncompressed_byte_count == 1
-    assert updated.piece_hashes == "the-pieces_hash"
+    assert updated.piece_hashes == b"the-pieces_hash"
     assert updated.storage_metadata == {"new": "metadata"}
     assert updated.byte_count == 2
     assert updated.chunk_count == 3
@@ -888,7 +888,7 @@ def test_commit_blob_upload(registry_model):
     )
 
     # Commit the blob upload and make sure it is written as a blob.
-    digest = "sha256:" + hashlib.sha256("hello").hexdigest()
+    digest = "sha256:" + hashlib.sha256(b"hello").hexdigest()
     blob = registry_model.commit_blob_upload(blob_upload, digest, 60)
     assert blob.digest == digest
 
