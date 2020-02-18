@@ -35,6 +35,8 @@ from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
 
+GC_CANDIDATE_COUNT = 500  # repositories
+
 
 class RetargetTagException(Exception):
     """ Exception raised when re-targetting a tag fails and explicit exception
@@ -610,7 +612,7 @@ def get_tags_for_legacy_image(image_id):
     )
 
 
-def filter_has_repository_event(query, event):
+def _filter_has_repository_event(query, event):
     """ Filters the query by ensuring the repositories returned have the given event.
     
         NOTE: This is for legacy support in the old security notification worker and should
@@ -630,7 +632,7 @@ def filter_tags_have_repository_event(query, event):
         NOTE: This is for legacy support in the old security notification worker and should
         be removed once that code is no longer necessary.
     """
-    query = filter_has_repository_event(query, event)
+    query = _filter_has_repository_event(query, event)
     query = query.switch(Tag).order_by(Tag.lifetime_start_ms.desc())
     return query
 
@@ -651,7 +653,7 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
                 (Tag.lifetime_end_ms <= expiration_timestamp),
                 (Namespace.removed_tag_expiration_s == limit_to_gc_policy_s),
             )
-            .limit(500)
+            .limit(GC_CANDIDATE_COUNT)
             .distinct()
             .alias("candidates")
         )
