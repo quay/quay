@@ -32,6 +32,7 @@ from image.docker.squashed import SquashedDockerImageFormatter
 from storage import Storage
 from util.audit import track_and_log, wrap_repository
 from util.http import exact_abort
+from util.metrics.prometheus import timed_blueprint
 from util.registry.filelike import wrap_with_handler
 from util.registry.queuefile import QueueFile
 from util.registry.queueprocess import QueueProcess
@@ -46,7 +47,7 @@ from util.registry.torrent import (
 
 
 logger = logging.getLogger(__name__)
-verbs = Blueprint("verbs", __name__)
+verbs = timed_blueprint(Blueprint("verbs", __name__))
 
 
 verb_stream_passes = Counter(
