@@ -1,17 +1,17 @@
 -e git+https://github.com/app-registry/appr-server.git@c2ef3b88afe926a92ef5f2e11e7d4a259e286a17#egg=cnr_server
 -e git+https://github.com/coreos/py-bitbucket.git@55a1ada645f2fb6369147996ec71edd7828d91c8#egg=py_bitbucket
 -e git+https://github.com/coreos/resumablehashlib.git@b1b631249589b07adf40e0ee545b323a501340b4#egg=resumablehashlib
--e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
--e git+https://github.com/DevTable/anunidecode.git@d59236a822e578ba3a0e5e5abbd3855873fa7a88#egg=anunidecode
--e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
--e git+https://github.com/DevTable/container-cloud-config.git@44e06879a710661f01054b300dc78a12a268b6b5#egg=container_cloud_config
--e git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
--e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
+-e git+https://github.com/devtable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
+-e git+https://github.com/devtable/anunidecode.git@d59236a822e578ba3a0e5e5abbd3855873fa7a88#egg=anunidecode
+-e git+https://github.com/devtable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
+-e git+https://github.com/devtable/container-cloud-config.git@44e06879a710661f01054b300dc78a12a268b6b5#egg=container_cloud_config
+-e git+https://github.com/devtable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
+-e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=flask_testing
 -e git+https://github.com/jepcastelein/marketo-rest-python.git@d151205aaa70fa69c14cf3ed5d8f3162e99b8236#egg=marketorestpython
--e git+https://github.com/NateFerrero/oauth2lib.git@d161b010f8a596826050a09e5e94d59443cc12d9#egg=oauth2lib
+-e git+https://github.com/nateferrero/oauth2lib.git@d161b010f8a596826050a09e5e94d59443cc12d9#egg=oauth2lib
 aiowsgi==0.7
 alembic==1.1.0
-APScheduler==3.6.1
+apscheduler==3.6.1
 asn1crypto==0.24.0
 attrs==19.1.0
 autobahn==0.9.3.post3
@@ -22,7 +22,7 @@ azure-nspkg==2.0.0
 azure-storage-blob==1.1.0
 azure-storage-common==1.1.0
 azure-storage-nspkg==3.0.0
-Babel==2.7.0
+babel==2.7.0
 backoff==1.8.0
 backports.functools-lru-cache==1.5
 backports.ssl-match-hostname==3.7.0.1
@@ -40,25 +40,25 @@ certifi==2019.6.16
 cffi==1.12.3
 cfn-lint==0.24.1
 chardet==3.0.4
-Click==7.0
+click==7.0
 contextlib2==0.5.5
 cookies==2.2.1
 cryptography==2.7
-DateTime==4.3
+datetime==4.3
 debtcollector==1.22.0
 decorator==4.4.0
-Deprecated==1.2.6
+deprecated==1.2.6
 docker==4.0.2
 ecdsa==0.13.3
 elasticsearch-dsl==7.0.0
 elasticsearch==7.0.4
 enum34==1.1.6
-Flask-Cors==3.0.8
-Flask-Login==0.4.1
-Flask-Mail==0.9.1
-Flask-Principal==0.4.0
-Flask-RESTful==0.3.7
-Flask==1.1.1
+flask-cors==3.0.8
+flask-login==0.4.1
+flask-mail==0.9.1
+flask-principal==0.4.0
+flask-restful==0.3.7
+flask==1.1.1
 funcparserlib==0.3.6
 funcsigs==1.0.2
 functools32==3.2.3.post2
@@ -77,7 +77,7 @@ idna==2.8
 ipaddress==1.0.22
 iso8601==0.1.12
 itsdangerous==1.1.0
-Jinja2==2.10.1
+jinja2==2.10.1
 jmespath==0.9.4
 jsondiff==1.1.2
 jsonpatch==1.24
@@ -87,9 +87,9 @@ jsonpointer==2.0
 jsonschema==3.0.2
 kafka-python==1.4.6
 keystoneauth1==3.17.1
-Mako==1.1.0
+mako==1.1.0
 marisa-trie==0.7.5
-MarkupSafe==1.1.1
+markupsafe==1.1.1
 maxminddb==1.4.1
 meld3==2.0.0
 mixpanel==4.5.0
@@ -111,7 +111,7 @@ pathlib2==2.3.4
 pathvalidate==0.29.0
 pbr==5.4.3
 peewee==3.11.2
-Pillow==6.1.0
+pillow==6.1.0
 ply==3.11
 prometheus-client==0.7.1
 psutil==5.6.3
@@ -122,15 +122,15 @@ pyasn1==0.4.7
 pycparser==2.19
 pycryptodome==3.9.0
 pycryptodomex==3.9.0
-PyGithub==1.45
+pygithub==1.45
 pygpgme==0.3
 pyjwkest==1.4.2
-PyJWT==1.7.1
+pyjwt==1.7.1
 pymemcache==2.2.2
-PyMySQL==0.9.3
-pyOpenSSL==19.0.0
+pymysql==0.9.3
+pyopenssl==19.0.0
 pyparsing==2.4.2
-PyPDF2==1.26.0
+pypdf2==1.26.0
 pyrsistent==0.15.4
 python-dateutil==2.8.0
 python-editor==1.0.4
@@ -141,7 +141,7 @@ python-ldap==3.2.0
 python-magic==0.4.15
 python-swiftclient==3.8.0
 pytz==2019.2
-PyYAML==5.1.2
+pyyaml==5.1.2
 raven==6.10.0
 recaptcha2==0.1
 redis==3.3.8
@@ -159,7 +159,7 @@ scandir==1.10.0
 semantic-version==2.8.2
 six==1.12.0
 soupsieve==1.9.3
-SQLAlchemy==1.3.8
+sqlalchemy==1.3.8
 sshpubkeys==3.1.0
 stevedore==1.31.0
 stringscore==0.1.0
@@ -173,9 +173,9 @@ trollius==2.2.post1
 tzlocal==2.0.0
 urllib3==1.25.3
 waitress==1.4.2
-WebOb==1.8.5
+webob==1.8.5
 websocket-client==0.56.0
-Werkzeug==0.15.6
+werkzeug==0.15.6
 wrapt==1.11.2
 xhtml2pdf==0.2.3
 xmltodict==0.12.0
