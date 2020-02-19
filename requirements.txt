@@ -49,7 +49,6 @@ debtcollector==1.22.0
 decorator==4.4.0
 Deprecated==1.2.6
 docker==4.0.2
-# docutils==0.15.2  # Disabled due to build conflict and GPL
 ecdsa==0.13.3
 elasticsearch-dsl==7.0.0
 elasticsearch==7.0.4
