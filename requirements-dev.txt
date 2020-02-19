@@ -1,8 +1,12 @@
 -e git+https://github.com/ant31/pytest-sugar.git#egg=pytest-sugar
+-e git+https://github.com/coreos/mockldap.git@59a46efbe8c7cd8146a87a7c4f2b09746b953e11#egg=mockldap
 black
 freezegun==0.3.12
+httmock==1.3.0
 ipdb
 ipython
+mock==3.0.5
+mockredispy==2.9.3
 pytest
 pytest-cov
 pytest-flask
