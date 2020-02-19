@@ -50,8 +50,8 @@ Deprecated==1.2.7
 docker==4.1.0
 docutils==0.15.2
 ecdsa==0.15
-elasticsearch==7.5.1
-elasticsearch-dsl==7.1.0
+elasticsearch==7.0.4
+elasticsearch-dsl==7.0.0
 enum34==1.1.6
 fakeredis==1.1.0
 Flask==1.1.1
