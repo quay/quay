@@ -159,10 +159,9 @@ class GithubBuildTrigger(BuildTriggerHandler):
         Returns an authenticated client for talking to the GitHub API.
         """
         return Github(
-            self.auth_token,
             base_url=github_trigger.api_endpoint(),
-            client_id=github_trigger.client_id(),
-            client_secret=github_trigger.client_secret(),
+            login_or_token=self.auth_token if self.auth_token else github_trigger.client_id(),
+            password=None if self.auth_token else github_trigger.client_secret(),
             timeout=5,
         )
 
