@@ -1,7 +1,13 @@
-ipython
-pylint
-ipdb
-tqdm
-yapf==0.15.2
-ffctl>=0.1.2
+-e git+https://github.com/ant31/pytest-sugar.git#egg=pytest-sugar
 black
+freezegun==0.3.12
+ipdb
+ipython
+pytest
+pytest-cov
+pytest-flask
+pytest-runner
+pytest-timeout
+pytest-xdist
+python-coveralls
+tqdm
