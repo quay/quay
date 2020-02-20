@@ -154,9 +154,9 @@ class AzureStorage(BaseStorage):
             self._blob_service.create_blob_from_stream(
                 self._azure_container, blob_name, fp, content_settings=content_settings
             )
-        except AzureException:
+        except AzureException as ae:
             logger.exception("Exception when trying to stream_write path %s", path)
-            raise IOError("Exception when trying to stream_write path")
+            raise IOError("Exception when trying to stream_write path", ae)
 
     def exists(self, path):
         blob_name = self._blob_name_from_path(path)
