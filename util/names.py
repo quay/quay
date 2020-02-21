@@ -5,7 +5,7 @@ import anunidecode  # Don't listen to pylint's lies. This import is required for
 
 from uuid import uuid4
 
-REPOSITORY_NAME_REGEX = re.compile(r"^[\.a-zA-Z0-9_-]{1,255}$")
+REPOSITORY_NAME_REGEX = re.compile(r"^[\.a-z0-9_-]{1,255}$")
 
 VALID_TAG_PATTERN = r"[\w][\w.-]{0,127}"
 FULL_TAG_PATTERN = r"^[\w][\w.-]{0,127}$"
