@@ -13,38 +13,7 @@ generated-members = "REQUEST,acl_users,aq_parent,DoesNotExist,id,can"
 max-line-length = 100
 
 [tool.coverage.run]
-branch = True
+branch = true
 
 [tool.coverage.report]
 omit = ['test/**', 'venv/**', '**/test/**']
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py27-{unit,registry,legacy-registry}
-skipsdist = True
-
-[pytest]
-norecursedirs = node_modules
-testpaths = ./
-python_files = **/test/test*.py
-confcutdir = test
-
-[testenv]
-deps =
-    -r{toxinidir}/requirements.txt
-    -r{toxinidir}/requirements-dev.txt
-setenv =
-    PYTHONPATH = {toxinidir}:{toxinidir}
-    TEST = true
-    legacy-registry: FILE="test/registry_tests.py"
-    registry: FILE="test/registry/registry_tests.py"
-    unit: FILE=""
-commands = py.test --timeout=3600 \
-                   --cov-report=html \
-                   --cov-report=term-missing \
-                   --verbose \
-                   -x \
-                   -vv \
-                   {posargs}
-"""
