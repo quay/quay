@@ -214,6 +214,11 @@
   font-family: FontAwesome;
 }
 
+.repo-tag-history-element .history-entry.delete.future .history-icon:before {
+  content: "\f017";
+  font-family: FontAwesome;
+}
+
 .repo-tag-history-element .history-entry.current.revert .history-icon {
   background-color: #F0C577;
 }
@@ -232,6 +237,10 @@
 
 .repo-tag-history-element .history-entry.current.delete .history-icon {
   background-color: #ff9896;
+}
+
+.repo-tag-history-element .history-entry.current.delete.future .history-icon {
+  background-color: #cc8655;
 }
 
 .repo-tag-history-element .history-entry .history-icon .fa-tag {
@@ -267,4 +276,12 @@
 
 .repo-tag-history-element .history-entry .history-datetime {
   font-size: 13px;
+}
+
+.repo-tag-history-element .co-filter-box label {
+  margin-right: 6px;
+}
+
+.repo-tag-history-element .co-filter-box label input {
+  margin-right: 4px;
 }

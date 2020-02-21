@@ -9,7 +9,7 @@ image_pulls = Counter(
 image_pushes = Counter(
     "quay_registry_image_pushes_total",
     "number of images that have been uploaded via the registry",
-    labelnames=["protocol", "status"],
+    labelnames=["protocol", "status", "media_type"],
 )
 
 image_pulled_bytes = Counter(

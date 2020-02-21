@@ -20,6 +20,10 @@ angular.module('quay').directive('repoTagHistory', function () {
       $scope.tagHistoryData = null;
       $scope.tagHistoryLeaves = {};
 
+      $scope.options = {
+        'showFuture': false
+      };
+
       // A delete followed by a create of a tag within this threshold is considered a move.
       var MOVE_THRESHOLD = 2;
 
@@ -31,12 +35,17 @@ angular.module('quay').directive('repoTagHistory', function () {
         };
 
         ApiService.listRepoTags(null, params).then(function(resp) {
+          $scope.cachedFullTags = resp.tags;
           processTags(resp.tags);
         });
       };
 
       $scope.$watch('isEnabled', loadTimeline);
       $scope.$watch('repositoryTags', loadTimeline);
+      $scope.$watch('options.showFuture', function() {
+        if (!$scope.cachedFullTags) { return; }
+        processTags($scope.cachedFullTags);
+      });
 
       var processTags = function(tags) {
         var entries = [];
@@ -73,6 +82,10 @@ angular.module('quay').directive('repoTagHistory', function () {
               'old_manifest_digest': opt_old_manifest_digest || null
             };
 
+            if (!$scope.options.showFuture && time && (time * 1000) >= new Date().getTime()) {
+              return;
+            }
+  
             tagEntries[tagName].push(entry);
             entries.push(entry);
           };
@@ -150,12 +163,21 @@ angular.module('quay').directive('repoTagHistory', function () {
         }
       };
 
+      $scope.isFuture = function(entry) {
+        if (!entry) { return false; }
+        return entry.time >= new Date().getTime();
+      };
+
       $scope.getEntryClasses = function(entry, historyFilter) {
         if (!entry.action) { return ''; }
 
         var classes = entry.action + ' ';
         if ($scope.historyEntryMap[entry.tag_name][0] == entry) {
           classes += ' current ';
+        }
+
+        if ($scope.isFuture(entry)) {
+          classes += ' future ';
         }
 
         if (!historyFilter || !entry.action) {
