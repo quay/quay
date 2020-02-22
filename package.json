@@ -14,7 +14,7 @@
     "analyze": "npm run clean && NODE_ENV=production webpack --profile --mode=production --json > static/build/stats.json && webpack-bundle-analyzer --mode static -r static/build/report.html static/build/stats.json",
     "clean": "rm -f static/build/*",
     "clean-config-app": "rm -f config_app/static/build/*",
-    "watch-config-app": "npm run clean-config-app && cd config_app && webpack --watch",
+    "watch-config-app": "npm run clean-config-app && cd config_app && webpack --watch --mode=development",
     "build-config-app": "npm run clean-config-app && cd config_app && NODE_ENV=production webpack --mode=production --progress"
   },
   "repository": {
