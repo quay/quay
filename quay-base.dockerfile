@@ -85,10 +85,10 @@ RUN curl -fsSL https://github.com/prometheus/pushgateway/releases/download/$(PUS
     chmod +x /usr/local/bin/pushgateway
 
 # Install python dependencies
-COPY requirements.txt requirements-tests.txt ./
+COPY requirements.txt requirements-dev.txt ./
 RUN virtualenv --distribute venv \
     && venv/bin/pip install -r requirements.txt \
-    && venv/bin/pip install -r requirements-tests.txt \
+    && venv/bin/pip install -r requirements-dev.txt \
     && venv/bin/pip freeze
 
 # Install front-end dependencies
