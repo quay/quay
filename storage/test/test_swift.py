@@ -1,4 +1,4 @@
-import io
+import _pyio as io
 import pytest
 import hashlib
 import copy
@@ -6,9 +6,11 @@ import copy
 from collections import defaultdict
 from mock import MagicMock, patch
 
+from swiftclient.client import ClientException, ReadableToIterable
+
 from storage import StorageContext
 from storage.swift import SwiftStorage, _EMPTY_SEGMENTS_KEY
-from swiftclient.client import ClientException
+from util.registry.generatorfile import GeneratorFile
 
 base_args = {
     "context": StorageContext("nyc", None, None, None),
@@ -32,6 +34,7 @@ class MockSwiftStorage(SwiftStorage):
 class FakeSwiftStorage(SwiftStorage):
     def __init__(self, fail_checksum=False, connection=None, *args, **kwargs):
         super(FakeSwiftStorage, self).__init__(*args, **kwargs)
+        self._retry_count=kwargs.get("retry_count") or 5
         self._connection = connection or FakeSwift(
             fail_checksum=fail_checksum, temp_url_key=kwargs.get("temp_url_key")
         )
@@ -73,11 +76,18 @@ class FakeSwift(object):
     def put_object(
         self, container, path, content, chunk_size=None, content_type=None, headers=None
     ):
-        if not isinstance(content, str):
+        digest = None
+        if not isinstance(content, bytes):
             if hasattr(content, "read"):
                 content = content.read()
+                digest = hashlib.md5()
+                digest.update(content)
+                digest = digest.hexdigest()
+            elif isinstance(content, ReadableToIterable):
+                digest = content.get_md5sum()
+                content = content.content.read()
             else:
-                content = "".join(content)
+                raise ValueError("Only bytes or file-like objects yielding bytes are valid")
 
         self.containers[container][path] = {
             "content": content,
@@ -86,9 +96,7 @@ class FakeSwift(object):
             "headers": headers or {"is": True},
         }
 
-        digest = hashlib.md5()
-        digest.update(content)
-        return digest.hexdigest() if not self.fail_checksum else "invalid"
+        return digest if not self.fail_checksum else "invalid"
 
     def get_object(self, container, path, resp_chunk_size=None):
         data = self.containers[container].get(path, {})
@@ -102,7 +110,7 @@ class FakeSwift(object):
             new_contents.sort(key=lambda value: value[0])
 
             data = dict(data)
-            data["content"] = "".join([nc[1] for nc in new_contents])
+            data["content"] = b"".join([nc[1] for nc in new_contents])
             return bool(data), data.get("content")
 
         return bool(data), data.get("content")
@@ -151,19 +159,19 @@ def test_simple_put_get():
     swift = FakeSwiftStorage(**base_args)
     assert not swift.exists("somepath")
 
-    swift.put_content("somepath", "hello world!")
+    swift.put_content("somepath", b"hello world!")
     assert swift.exists("somepath")
-    assert swift.get_content("somepath") == "hello world!"
+    assert swift.get_content("somepath") == b"hello world!"
 
 
 def test_stream_read_write():
     swift = FakeSwiftStorage(**base_args)
     assert not swift.exists("somepath")
 
-    swift.stream_write("somepath", io.BytesIO("some content here"))
+    swift.stream_write("somepath", io.BytesIO(b"some content here"))
     assert swift.exists("somepath")
-    assert swift.get_content("somepath") == "some content here"
-    assert "".join(list(swift.stream_read("somepath"))) == "some content here"
+    assert swift.get_content("somepath") == b"some content here"
+    assert b"".join([chr(c).encode("ascii") for c in swift.stream_read("somepath")]) == b"some content here"
 
 
 def test_stream_read_write_invalid_checksum():
@@ -171,14 +179,14 @@ def test_stream_read_write_invalid_checksum():
     assert not swift.exists("somepath")
 
     with pytest.raises(IOError):
-        swift.stream_write("somepath", io.BytesIO("some content here"))
+        swift.stream_write("somepath", io.BytesIO(b"some content here"))
 
 
 def test_remove():
     swift = FakeSwiftStorage(**base_args)
     assert not swift.exists("somepath")
 
-    swift.put_content("somepath", "hello world!")
+    swift.put_content("somepath", b"hello world!")
     assert swift.exists("somepath")
 
     swift.remove("somepath")
@@ -193,14 +201,14 @@ def test_copy_to():
 
     another_swift = FakeSwiftStorage(connection=swift._connection, **modified_args)
 
-    swift.put_content("somepath", "some content here")
+    swift.put_content("somepath", b"some content here")
     swift.copy_to(another_swift, "somepath")
 
     assert swift.exists("somepath")
     assert another_swift.exists("somepath")
 
-    assert swift.get_content("somepath") == "some content here"
-    assert another_swift.get_content("somepath") == "some content here"
+    assert swift.get_content("somepath") == b"some content here"
+    assert another_swift.get_content("somepath") == b"some content here"
 
 
 def test_copy_to_different():
@@ -212,19 +220,19 @@ def test_copy_to_different():
 
     another_swift = FakeSwiftStorage(**modified_args)
 
-    swift.put_content("somepath", "some content here")
+    swift.put_content("somepath", b"some content here")
     swift.copy_to(another_swift, "somepath")
 
     assert swift.exists("somepath")
     assert another_swift.exists("somepath")
 
-    assert swift.get_content("somepath") == "some content here"
-    assert another_swift.get_content("somepath") == "some content here"
+    assert swift.get_content("somepath") == b"some content here"
+    assert another_swift.get_content("somepath") == b"some content here"
 
 
 def test_checksum():
     swift = FakeSwiftStorage(**base_args)
-    swift.put_content("somepath", "hello world!")
+    swift.put_content("somepath", b"hello world!")
     assert swift.get_checksum("somepath") is not None
 
 
@@ -233,9 +241,9 @@ def test_checksum():
 @pytest.mark.parametrize(
     "chunks",
     [
-        (["this", "is", "some", "chunked", "data", ""]),
-        (["this is a very large chunk of data", ""]),
-        (["h", "e", "l", "l", "o", ""]),
+        ([b"this", b"is", b"some", b"chunked", b"data", b""]),
+        ([b"this is a very large chunk of data", b""]),
+        ([b"h", b"e", b"l", b"l", b"o", b""]),
     ],
 )
 def test_chunked_upload(chunks, max_chunk_size, read_until_end):
@@ -255,7 +263,7 @@ def test_chunked_upload(chunks, max_chunk_size, read_until_end):
             offset += len(chunk)
 
         swift.complete_chunked_upload(uuid, "somepath", metadata)
-        assert swift.get_content("somepath") == "".join(chunks)
+        assert swift.get_content("somepath") == b"".join(chunks)
 
         # Ensure each of the segments exist.
         for segment in metadata["segments"]:
@@ -278,7 +286,7 @@ def test_cancel_chunked_upload():
     swift = FakeSwiftStorage(**args)
     uuid, metadata = swift.initiate_chunked_upload()
 
-    chunks = ["this", "is", "some", "chunked", "data", ""]
+    chunks = [b"this", b"is", b"some", b"chunked", b"data", b""]
     offset = 0
     for chunk in chunks:
         bytes_written, metadata, error = swift.stream_upload_chunk(
@@ -302,7 +310,7 @@ def test_empty_chunks_queued_for_deletion():
     swift = FakeSwiftStorage(**args)
     uuid, metadata = swift.initiate_chunked_upload()
 
-    chunks = ["this", "", "is", "some", "", "chunked", "data", ""]
+    chunks = [b"this", b"", b"is", b"some", b"", b"chunked", b"data", b""]
     offset = 0
     for chunk in chunks:
         length = len(chunk)
@@ -317,7 +325,7 @@ def test_empty_chunks_queued_for_deletion():
         offset += len(chunk)
 
     swift.complete_chunked_upload(uuid, "somepath", metadata)
-    assert "".join(chunks) == swift.get_content("somepath")
+    assert b"".join(chunks) == swift.get_content("somepath")
 
     # Check the chunk deletion queue and ensure we have the last chunk queued.
     found = chunk_cleanup_queue.get()
@@ -332,5 +340,5 @@ def test_empty_chunks_queued_for_deletion():
 )
 def test_get_direct_download_url(temp_url_key, expects_url):
     swift = FakeSwiftStorage(temp_url_key=temp_url_key, **base_args)
-    swift.put_content("somepath", "hello world!")
+    swift.put_content("somepath", b"hello world!")
     assert (swift.get_direct_download_url("somepath") is not None) == expects_url

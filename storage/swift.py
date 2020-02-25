@@ -10,7 +10,7 @@ import string
 import logging
 import json
 
-from _pyio import BufferedReader
+from _pyio import BufferedReader, BufferedIOBase
 
 from collections import namedtuple
 from hashlib import sha1
@@ -120,6 +120,13 @@ class SwiftStorage(BaseStorage):
     def _put_object(
         self, path, content, chunk=None, content_type=None, content_encoding=None, headers=None
     ):
+        # ReadableToIterable supports both file-like objects yielding str or bytes,
+        # and will try utf-8 encode the result if it is a string.
+        # The following assertion make sure that the content is either some bytes or
+        # a file-like stream of bytes, for consistency across all storage implementations.
+        assert isinstance(content, bytes) or \
+            issubclass(type(content), (BufferedIOBase, GeneratorFile, ReadableToIterable))
+
         path = self._normalize_path(path)
         headers = headers or {}
 
@@ -455,7 +462,7 @@ class SwiftStorage(BaseStorage):
         contained_segments_prefix_path = "%s/%s" % (self._swift_container, segments_prefix_path)
 
         self._put_object(
-            final_path, "", headers={"X-Object-Manifest": contained_segments_prefix_path}
+            final_path, b"", headers={"X-Object-Manifest": contained_segments_prefix_path}
         )
 
     def cancel_chunked_upload(self, uuid, storage_metadata):
