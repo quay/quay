@@ -14,7 +14,7 @@ LOCAL_PATH = "/static/ldn/"
 MAX_RETRY_COUNT = 3
 
 EXTERNAL_JS = [
-    "code.jquery.com/jquery.js",
+    "code.jquery.com/jquery-1.12.4.min.js",
     "netdna.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js",
     "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular.min.js",
     "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-route.min.js",
