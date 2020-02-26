@@ -9,6 +9,7 @@ node_modules
 static/ldn
 static/fonts
 static/build
+static/webfonts
 stack_local
 test/data/registry/
 GIT_HEAD
