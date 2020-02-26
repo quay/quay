@@ -3,7 +3,9 @@ from collections import namedtuple
 from six import add_metaclass
 
 
-class BlobUpload(namedtuple("BlobUpload", ["uuid", "storage_metadata", "location_name"])):
+class BlobUpload(
+    namedtuple("BlobUpload", ["uuid", "storage_metadata", "location_name", "created"])
+):
     """
     BlobUpload represents a single upload of a blob in progress or previously started.
     """

@@ -14,7 +14,12 @@ class PreOCIModel(BlobUploadCleanupWorkerDataInterface):
         if blob_upload is None:
             return None
 
-        return BlobUpload(blob_upload.uuid, blob_upload.storage_metadata, blob_upload.location.name)
+        return BlobUpload(
+            blob_upload.uuid,
+            blob_upload.storage_metadata,
+            blob_upload.location.name,
+            blob_upload.created,
+        )
 
     def delete_blob_upload(self, blob_upload):
         blob_upload = model.blob.get_blob_upload_by_uuid(blob_upload.uuid)
@@ -30,7 +35,12 @@ class PreOCIModel(BlobUploadCleanupWorkerDataInterface):
         blob_upload = model.blob.initiate_upload("devtable", "simple", "foobarbaz", "local_us", {})
         blob_upload.created = datetime.now() - timedelta(days=60)
         blob_upload.save()
-        return BlobUpload(blob_upload.uuid, blob_upload.storage_metadata, blob_upload.location.name)
+        return BlobUpload(
+            blob_upload.uuid,
+            blob_upload.storage_metadata,
+            blob_upload.location.name,
+            blob_upload.created,
+        )
 
     def blob_upload_exists(self, upload_uuid):
         blob_upload = model.blob.get_blob_upload_by_uuid(upload_uuid)
