@@ -88,14 +88,6 @@ autostart = {{ config['globalpromstats']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:labelbackfillworker]
-environment=
-  PYTHONPATH=%(ENV_QUAYDIR)s
-command=python -m workers.labelbackfillworker
-autostart = {{ config['labelbackfillworker']['autostart'] }}
-stdout_events_enabled = true
-stderr_events_enabled = true
-
 [program:logrotateworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s

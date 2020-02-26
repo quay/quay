@@ -23,7 +23,6 @@ def default_services():
         "exportactionlogsworker": {"autostart": "true"},
         "gcworker": {"autostart": "true"},
         "globalpromstats": {"autostart": "true"},
-        "labelbackfillworker": {"autostart": "true"},
         "logrotateworker": {"autostart": "true"},
         "namespacegcworker": {"autostart": "true"},
         "repositorygcworker": {"autostart": "true"},
