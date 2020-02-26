@@ -21,6 +21,8 @@ from data.database import (
     Image,
     RepositoryKind,
     db_for_update,
+    db_count_estimator,
+    db,
 )
 
 logger = logging.getLogger(__name__)
@@ -222,3 +224,10 @@ def update_last_accessed(token_or_user):
             logger.exception("update last_accessed for token/user failed", extra=data)
         else:
             raise
+
+
+def estimated_row_count(model_cls):
+    """ Returns the estimated number of rows in the given model. If available, uses engine-specific
+        estimation (which is very fast) and otherwise falls back to .count()
+    """
+    return db_count_estimator(model_cls, db)

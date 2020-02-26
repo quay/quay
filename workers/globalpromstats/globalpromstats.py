@@ -4,10 +4,10 @@ import time
 from prometheus_client import Gauge
 
 from app import app
+from data import model
 from data.database import UseThenDisconnect
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
-from workers.globalpromstats.models_pre_oci import pre_oci_model as model
 from workers.worker import Worker
 
 
@@ -20,6 +20,22 @@ robot_rows = Gauge("quay_robot_rows", "number of robot accounts in the database"
 
 
 WORKER_FREQUENCY = app.config.get("GLOBAL_PROMETHEUS_STATS_FREQUENCY", 60 * 60)
+
+
+def get_repository_count(self):
+    return model.repository.get_estimated_repository_count()
+
+
+def get_active_user_count(self):
+    return model.user.get_active_user_count()
+
+
+def get_active_org_count(self):
+    return model.organization.get_active_org_count()
+
+
+def get_robot_count(self):
+    return model.user.get_estimated_robot_count()
 
 
 class GlobalPrometheusStatsWorker(Worker):
@@ -44,10 +60,10 @@ class GlobalPrometheusStatsWorker(Worker):
     def _report_stats(self):
         logger.debug("Reporting global stats")
         with UseThenDisconnect(app.config):
-            repository_rows.set(model.get_repository_count())
-            user_rows.set(model.get_active_user_count())
-            org_rows.set(model.get_active_org_count())
-            robot_rows.set(model.get_robot_count())
+            repository_rows.set(get_repository_count())
+            user_rows.set(get_active_user_count())
+            org_rows.set(get_active_org_count())
+            robot_rows.set(get_robot_count())
 
 
 def main():

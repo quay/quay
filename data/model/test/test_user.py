@@ -13,6 +13,7 @@ from data.model.user import mark_namespace_for_deletion, delete_namespace_via_ma
 from data.model.user import create_robot, lookup_robot, list_namespace_robots
 from data.model.user import get_pull_credentials, retrieve_robot_token, verify_robot
 from data.model.user import InvalidRobotException, delete_robot, get_matching_users
+from data.model.user import get_estimated_robot_count, RobotAccountToken
 from data.model.repository import create_repository
 from data.fields import Credential
 from data.queue import WorkQueue
@@ -196,3 +197,7 @@ def test_robot(initialized_db):
 
     with pytest.raises(InvalidRobotException):
         assert verify_robot("foobar+unknownbot", token)
+
+
+def test_get_estimated_robot_count(initialized_db):
+    assert get_estimated_robot_count() >= RobotAccountToken.select().count()

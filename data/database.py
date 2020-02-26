@@ -40,6 +40,7 @@ from data.fields import (
 from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
 from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig
+from data.estimate import mysql_estimate_row_count, normal_row_count
 from util.names import urn_generator
 from util.validation import validate_postgres_precondition
 
@@ -79,6 +80,15 @@ SCHEME_RANDOM_FUNCTION = {
     "sqlite": fn.Random,
     "postgresql": fn.Random,
     "postgresql+psycopg2": fn.Random,
+}
+
+
+SCHEME_ESTIMATOR_FUNCTION = {
+    "mysql": mysql_estimate_row_count,
+    "mysql+pymysql": mysql_estimate_row_count,
+    "sqlite": normal_row_count,
+    "postgresql": normal_row_count,
+    "postgresql+psycopg2": normal_row_count,
 }
 
 
@@ -295,6 +305,7 @@ db_for_update = CallableProxy()
 db_transaction = CallableProxy()
 db_concat_func = CallableProxy()
 db_encrypter = Proxy()
+db_count_estimator = CallableProxy()
 ensure_under_transaction = CallableProxy()
 
 
@@ -415,6 +426,7 @@ def configure(config_object, testing=False):
         SCHEME_SPECIALIZED_CONCAT.get(parsed_write_uri.drivername, function_concat)
     )
     db_encrypter.initialize(FieldEncrypter(config_object.get("DATABASE_SECRET_KEY")))
+    db_count_estimator.initialize(SCHEME_ESTIMATOR_FUNCTION[parsed_write_uri.drivername])
 
     read_replicas = config_object.get("DB_READ_REPLICAS", None)
     is_read_only = config_object.get("REGISTRY_STATE", "normal") == "readonly"
