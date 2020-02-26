@@ -16,4 +16,5 @@ pytest-timeout
 pytest-xdist
 python-coveralls
 tox
+tox-docker
 tqdm
