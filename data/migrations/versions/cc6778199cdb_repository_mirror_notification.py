@@ -10,14 +10,11 @@ Create Date: 2019-10-03 17:41:23.316914
 revision = "cc6778199cdb"
 down_revision = "c059b952ed76"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
 
     op.bulk_insert(
         tables.notificationkind,
@@ -37,8 +34,7 @@ def upgrade(tables, tester, progress_reporter):
     )
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
 
     op.execute(
         tables.notificationkind.delete().where(

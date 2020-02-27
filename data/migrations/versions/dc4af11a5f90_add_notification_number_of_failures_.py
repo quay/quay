@@ -11,12 +11,9 @@ revision = "dc4af11a5f90"
 down_revision = "53e2ac668296"
 
 import sqlalchemy as sa
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     op.add_column(
         "repositorynotification",
         sa.Column("number_of_failures", sa.Integer(), nullable=False, server_default="0"),
@@ -30,8 +27,7 @@ def upgrade(tables, tester, progress_reporter):
     # ### end population of test data ### #
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     op.drop_column("repositorynotification", "number_of_failures")
     op.execute(
         tables.logentrykind.delete().where(

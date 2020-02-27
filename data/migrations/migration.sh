@@ -75,7 +75,7 @@ down_postgres() {
 
 gen_migrate() {
   # Generate a database with the schema as defined by the existing alembic model.
-  QUAY_OVERRIDE_CONFIG=$1 PYTHONPATH=. alembic upgrade head
+  QUAY_OVERRIDE_CONFIG=$1 PYTHONPATH=. alembic -x writemigrations=true upgrade head
 
 
   # Generate the migration to the current model.

@@ -10,13 +10,10 @@ Create Date: 2018-08-19 23:30:24.969549
 revision = "13411de1c0ff"
 down_revision = "654e6df88b71"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     # Note: Because of a restriction in MySQL, we cannot simply remove the index and re-add
     # it without the unique=False, nor can we simply alter the index. To make it work, we'd have to
     # remove the primary key on the field, so instead we simply drop the table entirely and
@@ -63,6 +60,5 @@ def upgrade(tables, tester, progress_reporter):
     )
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     pass

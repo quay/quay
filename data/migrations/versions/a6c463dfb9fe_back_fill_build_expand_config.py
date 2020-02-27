@@ -17,16 +17,13 @@ from data.database import BaseModel
 revision = "a6c463dfb9fe"
 down_revision = "b4df55dea4b3"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 
 
 class RepositoryBuildTrigger(BaseModel):
     config = TextField(default="{}")
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     if not app.config.get("SETUP_COMPLETE", False):
         return
 
@@ -37,8 +34,7 @@ def upgrade(tables, tester, progress_reporter):
         repositoryBuildTrigger.save()
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     if not app.config.get("SETUP_COMPLETE", False):
         return
 
