@@ -169,31 +169,18 @@ def _temp_link_blob(repository_id, storage, link_expiration_s):
 
 def get_stale_blob_upload(stale_timespan):
     """
-    Returns a random blob upload which was created before the stale timespan.
+    Returns a blob upload which was created before the stale timespan.
     """
     stale_threshold = datetime.now() - stale_timespan
 
     try:
         candidates = (
-            BlobUpload.select()
-            .where(BlobUpload.created <= stale_threshold)
-            .limit(500)
-            .distinct()
-            .alias("candidates")
-        )
-
-        found = (
-            BlobUpload.select(candidates.c.id).from_(candidates).order_by(db_random_func()).get()
-        )
-        if not found:
-            return None
-
-        return (
             BlobUpload.select(BlobUpload, ImageStorageLocation)
             .join(ImageStorageLocation)
-            .where(BlobUpload.id == found.id)
-            .get()
+            .where(BlobUpload.created <= stale_threshold)
         )
+
+        return candidates.get()
     except BlobUpload.DoesNotExist:
         return None
 
