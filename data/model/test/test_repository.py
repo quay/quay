@@ -2,9 +2,10 @@ from datetime import timedelta
 
 import pytest
 
+from data.database import Repository
 from data.model.gc import purge_repository
 from data.model.repository import create_repository, is_empty
-from data.model.repository import get_filtered_matching_repositories
+from data.model.repository import get_filtered_matching_repositories, get_estimated_repository_count
 from test.fixtures import *
 
 
@@ -49,3 +50,7 @@ def test_search_pagination(query, authed_username, initialized_db):
     )
     assert repositories[0].id != next_repos[0].id
     assert repositories[1].id == next_repos[0].id
+
+
+def test_get_estimated_repository_count(initialized_db):
+    assert get_estimated_repository_count() >= Repository.select().count()

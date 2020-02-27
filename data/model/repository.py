@@ -64,8 +64,8 @@ def get_repo_kind_name(repo):
     return Repository.kind.get_name(repo.kind_id)
 
 
-def get_repository_count():
-    return Repository.select().count()
+def get_estimated_repository_count():
+    return _basequery.estimated_row_count(Repository)
 
 
 def get_public_repo_visibility():

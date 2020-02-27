@@ -1076,9 +1076,10 @@ def get_active_users(disabled=True, deleted=False):
 
     if not disabled:
         query = query.where(User.enabled == True)
-
-    if not deleted:
-        query = query.where(User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)))
+    else:
+        # NOTE: Deleted users are already disabled, so we don't need this extra check.
+        if not deleted:
+            query = query.where(User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)))
 
     return query
 
@@ -1087,8 +1088,8 @@ def get_active_user_count():
     return get_active_users().count()
 
 
-def get_robot_count():
-    return User.select().where(User.robot == True).count()
+def get_estimated_robot_count():
+    return _basequery.estimated_row_count(RobotAccountToken)
 
 
 def detach_external_login(user, service_name):
