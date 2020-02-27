@@ -32,7 +32,6 @@ from endpoints.api import (
     require_scope,
     path_param,
     query_param,
-    truthy_bool,
     parse_args,
     require_user_admin,
     show_if,
@@ -43,6 +42,7 @@ from endpoints.api import (
 from endpoints.exception import Unauthorized, NotFound, InvalidRequest
 from util.useremails import send_org_invite_email
 from util.names import parse_robot_username
+from util.parsing import truthy_bool
 
 
 def permission_view(permission):

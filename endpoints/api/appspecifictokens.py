@@ -27,9 +27,10 @@ from endpoints.api import (
     show_if,
     query_param,
     parse_args,
-    truthy_bool,
 )
+from util.parsing import truthy_bool
 from util.timedeltastring import convert_to_timedelta
+
 
 logger = logging.getLogger(__name__)
 

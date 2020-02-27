@@ -18,7 +18,6 @@ from endpoints.api import (
     path_param,
     parse_args,
     query_param,
-    truthy_bool,
     disallow_for_app_repositories,
     format_date,
     disallow_for_non_normal_repositories,
@@ -26,6 +25,7 @@ from endpoints.api import (
 from endpoints.api.image import image_dict
 from endpoints.exception import NotFound, InvalidRequest
 from util.names import TAG_ERROR, TAG_REGEX
+from util.parsing import truthy_bool
 
 
 def _tag_dict(tag):

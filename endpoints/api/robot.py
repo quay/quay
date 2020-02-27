@@ -12,7 +12,6 @@ from endpoints.api import (
     require_scope,
     path_param,
     parse_args,
-    truthy_bool,
     query_param,
     validate_json_request,
     max_json_size,
@@ -23,6 +22,7 @@ from auth.permissions import AdministerOrganizationPermission, OrganizationMembe
 from auth.auth_context import get_authenticated_user
 from auth import scopes
 from util.names import format_robot_username
+from util.parsing import truthy_bool
 from flask import abort, request
 
 

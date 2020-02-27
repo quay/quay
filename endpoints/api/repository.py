@@ -30,7 +30,6 @@ from endpoints.api import (
     path_param,
     page_support,
     query_param,
-    truthy_bool,
     show_if,
 )
 from endpoints.api.repository_models_pre_oci import pre_oci_model as model
@@ -53,6 +52,7 @@ from auth.permissions import (
 from auth.auth_context import get_authenticated_user
 from auth import scopes
 from util.names import REPOSITORY_NAME_REGEX
+from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)
 
