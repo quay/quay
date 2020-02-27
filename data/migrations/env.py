@@ -97,7 +97,7 @@ def report_success(ctx=None, step=None, heads=None, run_args=None):
 
 
 def finish_migration(migration, ctx=None, step=None, heads=None, run_args=None):
-    write_migration(migration, step.up_revision.revision, step.up_revision.down_revision)
+    write_dba_operator_migration(migration, step.up_revision.revision, step.up_revision.down_revision)
 
 
 def run_migrations_offline():
@@ -141,7 +141,7 @@ def run_migrations_online():
 
     migration = Migration()
     version_apply_callback = report_success
-    if truthy_bool(context.get_x_argument(as_dictionary=True).get('writemigrations', None)):
+    if truthy_bool(context.get_x_argument(as_dictionary=True).get("generatedbaopmigrations", None)):
         op = OpLogger(alembic_op, migration)
         version_apply_callback = partial(finish_migration, migration)
 
@@ -188,14 +188,14 @@ def run_migrations_online():
         connection.close()
 
     for (revision, previous_revision), migration in revision_to_migration.items():
-        write_migration(migration, revision, previous_revision)
+        write_dba_operator_migration(migration, revision, previous_revision)
 
 
-def write_migration(migration, revision, previous_revision):
-    migration_filename = '{}-databasemigration.yaml'.format(revision)
-    output_filename = os.path.join('data', 'migrations', 'dba_operator', migration_filename)
-    with open(output_filename, 'w') as migration_file:
-        migration_file.write('\n---\n')
+def write_dba_operator_migration(migration, revision, previous_revision):
+    migration_filename = "{}-databasemigration.yaml".format(revision)
+    output_filename = os.path.join("data", "migrations", "dba_operator", migration_filename)
+    with open(output_filename, "w") as migration_file:
+        migration_file.write("\n---\n")
         migration.dump_yaml_and_reset(migration_file, revision, previous_revision)
 
 

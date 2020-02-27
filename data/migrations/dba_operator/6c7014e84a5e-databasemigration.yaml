@@ -1,0 +1,52 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 6c7014e84a5e
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 6c7014e84a5e
+    image: quay.io/quaymigrations/realtest
+    name: 6c7014e84a5e
+  previous: c156deb8845d
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: userpromptkind
+  - columns: []
+    indexName: userpromptkind
+    indexType: index
+    operation: createIndex
+    table: userpromptkind_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: user_id
+      nullable: false
+    - name: kind_id
+      nullable: false
+    operation: createTable
+    table: userprompt
+  - columns: []
+    indexName: userprompt
+    indexType: index
+    operation: createIndex
+    table: userprompt_kind_id
+  - columns: []
+    indexName: userprompt
+    indexType: index
+    operation: createIndex
+    table: userprompt_user_id
+  - columns: []
+    indexName: userprompt
+    indexType: unique
+    operation: createIndex
+    table: userprompt_user_id_kind_id

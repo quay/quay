@@ -1,0 +1,55 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 7367229b38d9
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 7367229b38d9
+    image: quay.io/quaymigrations/realtest
+    name: 7367229b38d9
+  previous: d8989249f8f6
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: user_id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: title
+      nullable: false
+    - name: token_code
+      nullable: false
+    - name: created
+      nullable: false
+    - name: expiration
+      nullable: true
+    - name: last_accessed
+      nullable: true
+    operation: createTable
+    table: appspecificauthtoken
+  - columns: []
+    indexName: appspecificauthtoken
+    indexType: unique
+    operation: createIndex
+    table: appspecificauthtoken_token_code
+  - columns: []
+    indexName: appspecificauthtoken
+    indexType: index
+    operation: createIndex
+    table: appspecificauthtoken_user_id
+  - columns: []
+    indexName: appspecificauthtoken
+    indexType: index
+    operation: createIndex
+    table: appspecificauthtoken_user_id_expiration
+  - columns: []
+    indexName: appspecificauthtoken
+    indexType: index
+    operation: createIndex
+    table: appspecificauthtoken_uuid

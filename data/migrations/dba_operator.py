@@ -1,3 +1,12 @@
+""" DBA Operator Migration Generator
+
+This module supports instrumenting, harvesting, and writing migrations for the
+[DBA operator](https://github.com/quay/dba-operator) from the Alembic migrations.
+The module generates instances of the `databasemigration` Kubernetes custom resource,
+which defines the parameters for synthesizing a Kubernetes job to connect to and
+migrate a relational database.
+"""
+
 import yaml
 import logging
 
@@ -110,33 +119,33 @@ class Migration(object):
 
 
 class OpLogger(object):
-  def __init__(self, delegate_module, migration):
-    self._delegate_module = delegate_module
-    # self._migration = migration
+    def __init__(self, delegate_module, migration):
+        self._delegate_module = delegate_module
 
-    self._collectors = {
-      'add_column': partial(migration.hint_add_column),
-      'create_table': partial(migration.hint_create_table),
-      'drop_table': partial(migration.hint_drop_table),
-      'create_index': partial(migration.hint_create_index),
-      'drop_index': partial(migration.hint_drop_index),
-    }
+        self._collectors = {
+            "add_column": partial(migration.hint_add_column),
+            "create_table": partial(migration.hint_create_table),
+            "drop_table": partial(migration.hint_drop_table),
+            "create_index": partial(migration.hint_create_index),
+            "drop_index": partial(migration.hint_drop_index),
+        }
 
-  def __getattr__(self, attr_name):
-     # Will raise proper attribute error
-    maybe_callable = self._delegate_module.__dict__[attr_name]
-    if callable(maybe_callable) and attr_name in self._collectors:
-      # Build a callable which when executed places the request
-      # onto a queue
-      collector = self._collectors[attr_name]
-      @wraps(maybe_callable)
-      def wrapped_method(*args, **kwargs):
-        result = maybe_callable(*args, **kwargs)
-        collector(*args, **kwargs)
-        return result
+    def __getattr__(self, attr_name):
+        # Will raise proper attribute error
+        maybe_callable = self._delegate_module.__dict__[attr_name]
+        if callable(maybe_callable) and attr_name in self._collectors:
+            # Build a callable which when executed places the request
+            # onto a queue
+            collector = self._collectors[attr_name]
 
-      return wrapped_method
-    return maybe_callable
+            @wraps(maybe_callable)
+            def wrapped_method(*args, **kwargs):
+                result = maybe_callable(*args, **kwargs)
+                collector(*args, **kwargs)
+                return result
+
+            return wrapped_method
+        return maybe_callable
 
 
 def _quoted_string_representer(dumper, data):

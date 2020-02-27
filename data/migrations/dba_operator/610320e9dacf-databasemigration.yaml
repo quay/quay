@@ -1,0 +1,262 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 610320e9dacf
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 610320e9dacf
+    image: quay.io/quaymigrations/realtest
+    name: 610320e9dacf
+  previous: 5cbbfc95bac7
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: apprblobplacementlocation
+  - columns: []
+    indexName: apprblobplacementlocation
+    indexType: unique
+    operation: createIndex
+    table: apprblobplacementlocation_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: apprtagkind
+  - columns: []
+    indexName: apprtagkind
+    indexType: unique
+    operation: createIndex
+    table: apprtagkind_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: digest
+      nullable: false
+    - name: media_type_id
+      nullable: false
+    - name: size
+      nullable: false
+    - name: uncompressed_size
+      nullable: true
+    operation: createTable
+    table: apprblob
+  - columns: []
+    indexName: apprblob
+    indexType: unique
+    operation: createIndex
+    table: apprblob_digest
+  - columns: []
+    indexName: apprblob
+    indexType: index
+    operation: createIndex
+    table: apprblob_media_type_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: digest
+      nullable: false
+    - name: media_type_id
+      nullable: false
+    - name: manifest_json
+      nullable: false
+    operation: createTable
+    table: apprmanifest
+  - columns: []
+    indexName: apprmanifest
+    indexType: unique
+    operation: createIndex
+    table: apprmanifest_digest
+  - columns: []
+    indexName: apprmanifest
+    indexType: index
+    operation: createIndex
+    table: apprmanifest_media_type_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: digest
+      nullable: false
+    - name: manifest_list_json
+      nullable: false
+    - name: schema_version
+      nullable: false
+    - name: media_type_id
+      nullable: false
+    operation: createTable
+    table: apprmanifestlist
+  - columns: []
+    indexName: apprmanifestlist
+    indexType: unique
+    operation: createIndex
+    table: apprmanifestlist_digest
+  - columns: []
+    indexName: apprmanifestlist
+    indexType: index
+    operation: createIndex
+    table: apprmanifestlist_media_type_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: blob_id
+      nullable: false
+    - name: location_id
+      nullable: false
+    operation: createTable
+    table: apprblobplacement
+  - columns: []
+    indexName: apprblobplacement
+    indexType: index
+    operation: createIndex
+    table: apprblobplacement_blob_id
+  - columns: []
+    indexName: apprblobplacement
+    indexType: unique
+    operation: createIndex
+    table: apprblobplacement_blob_id_location_id
+  - columns: []
+    indexName: apprblobplacement
+    indexType: index
+    operation: createIndex
+    table: apprblobplacement_location_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: blob_id
+      nullable: false
+    operation: createTable
+    table: apprmanifestblob
+  - columns: []
+    indexName: apprmanifestblob
+    indexType: index
+    operation: createIndex
+    table: apprmanifestblob_blob_id
+  - columns: []
+    indexName: apprmanifestblob
+    indexType: index
+    operation: createIndex
+    table: apprmanifestblob_manifest_id
+  - columns: []
+    indexName: apprmanifestblob
+    indexType: unique
+    operation: createIndex
+    table: apprmanifestblob_manifest_id_blob_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: manifest_list_id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: operating_system
+      nullable: true
+    - name: architecture
+      nullable: true
+    - name: platform_json
+      nullable: true
+    - name: media_type_id
+      nullable: false
+    operation: createTable
+    table: apprmanifestlistmanifest
+  - columns: []
+    indexName: apprmanifestlistmanifest
+    indexType: index
+    operation: createIndex
+    table: apprmanifestlistmanifest_manifest_id
+  - columns: []
+    indexName: apprmanifestlistmanifest
+    indexType: index
+    operation: createIndex
+    table: apprmanifestlistmanifest_manifest_list_id
+  - columns: []
+    indexName: apprmanifestlistmanifest
+    indexType: index
+    operation: createIndex
+    table: apprmanifestlistmanifest_manifest_list_id_media_type_id
+  - columns: []
+    indexName: apprmanifestlistmanifest
+    indexType: index
+    operation: createIndex
+    table: apprmanifestlistmanifest_manifest_list_id_operating_system_arch
+  - columns: []
+    indexName: apprmanifestlistmanifest
+    indexType: index
+    operation: createIndex
+    table: apprmanifestlistmanifest_media_type_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: manifest_list_id
+      nullable: true
+    - name: lifetime_start
+      nullable: false
+    - name: lifetime_end
+      nullable: true
+    - name: hidden
+      nullable: false
+    - name: reverted
+      nullable: false
+    - name: protected
+      nullable: false
+    - name: tag_kind_id
+      nullable: false
+    - name: linked_tag_id
+      nullable: true
+    operation: createTable
+    table: apprtag
+  - columns: []
+    indexName: apprtag
+    indexType: index
+    operation: createIndex
+    table: apprtag_lifetime_end
+  - columns: []
+    indexName: apprtag
+    indexType: index
+    operation: createIndex
+    table: apprtag_linked_tag_id
+  - columns: []
+    indexName: apprtag
+    indexType: index
+    operation: createIndex
+    table: apprtag_manifest_list_id
+  - columns: []
+    indexName: apprtag
+    indexType: index
+    operation: createIndex
+    table: apprtag_repository_id
+  - columns: []
+    indexName: apprtag
+    indexType: index
+    operation: createIndex
+    table: apprtag_repository_id_name
+  - columns: []
+    indexName: apprtag
+    indexType: index
+    operation: createIndex
+    table: apprtag_repository_id_name_hidden
+  - columns: []
+    indexName: apprtag
+    indexType: unique
+    operation: createIndex
+    table: apprtag_repository_id_name_lifetime_end
+  - columns: []
+    indexName: apprtag
+    indexType: index
+    operation: createIndex
+    table: apprtag_tag_kind_id

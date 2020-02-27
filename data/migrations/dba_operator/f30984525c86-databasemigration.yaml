@@ -1,0 +1,37 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: f30984525c86
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - f30984525c86
+    image: quay.io/quaymigrations/realtest
+    name: f30984525c86
+  previous: be8d1c402ce0
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: score
+      nullable: false
+    - name: last_updated
+      nullable: true
+    operation: createTable
+    table: repositorysearchscore
+  - columns: []
+    indexName: repositorysearchscore
+    indexType: unique
+    operation: createIndex
+    table: repositorysearchscore_repository_id
+  - columns: []
+    indexName: repositorysearchscore
+    indexType: index
+    operation: createIndex
+    table: repositorysearchscore_score
