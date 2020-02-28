@@ -10,7 +10,7 @@ spec:
     - /quay-registry/quay-entrypoint.sh
     - migrate
     - d42c175b439a
-    image: quay.io/quaymigrations/realtest
+    image: quay.io/quay/quay
     name: d42c175b439a
   previous: 3e8cc74a1e7b
   schemaHints:

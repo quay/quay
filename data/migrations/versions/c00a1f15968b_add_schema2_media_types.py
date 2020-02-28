@@ -13,7 +13,6 @@ revision = "c00a1f15968b"
 down_revision = "67f0abd172ae"
 
 
-
 def upgrade(op, tables, tester):
     for media_type in DOCKER_SCHEMA2_CONTENT_TYPES:
         op.bulk_insert(tables.mediatype, [{"name": media_type},])

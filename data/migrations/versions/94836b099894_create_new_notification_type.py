@@ -11,7 +11,6 @@ revision = "94836b099894"
 down_revision = "faf752bd2e0a"
 
 
-
 def upgrade(op, tables, tester):
     op.bulk_insert(tables.externalnotificationevent, [{"name": "build_cancelled"},])
 

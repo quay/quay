@@ -18,7 +18,6 @@ revision = "a6c463dfb9fe"
 down_revision = "b4df55dea4b3"
 
 
-
 class RepositoryBuildTrigger(BaseModel):
     config = TextField(default="{}")
 

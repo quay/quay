@@ -10,7 +10,7 @@ spec:
     - /quay-registry/quay-entrypoint.sh
     - migrate
     - c13c8052f7a6
-    image: quay.io/quaymigrations/realtest
+    image: quay.io/quay/quay
     name: c13c8052f7a6
   previous: 5248ddf35167
   schemaHints:

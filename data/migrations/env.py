@@ -97,7 +97,9 @@ def report_success(ctx=None, step=None, heads=None, run_args=None):
 
 
 def finish_migration(migration, ctx=None, step=None, heads=None, run_args=None):
-    write_dba_operator_migration(migration, step.up_revision.revision, step.up_revision.down_revision)
+    write_dba_operator_migration(
+        migration, step.up_revision.revision, step.up_revision.down_revision
+    )
 
 
 def run_migrations_offline():
@@ -114,7 +116,7 @@ def run_migrations_offline():
     """
     url = unquote(DB_URI)
     context.configure(url=url, target_metadata=target_metadata, transactional_ddl=True)
-    context.config.attributes['progress_reporter'] = progress_reporter
+    context.config.attributes["progress_reporter"] = progress_reporter
     op = ProgressWrapper(alembic_op, NullReporter())
 
     with context.begin_transaction():
@@ -128,15 +130,12 @@ def run_migrations_online():
     In this scenario we need to create an Engine and associate a connection with the context.
     """
 
-    if (
-        isinstance(db.obj, SqliteDatabase)
-        and not "DB_URI" in os.environ
-    ):
+    if isinstance(db.obj, SqliteDatabase) and not "DB_URI" in os.environ:
         print "Skipping Sqlite migration!"
         return
 
     progress_reporter = get_progress_reporter()
-    context.config.attributes['progress_reporter'] = progress_reporter
+    context.config.attributes["progress_reporter"] = progress_reporter
     op = ProgressWrapper(alembic_op, progress_reporter)
 
     migration = Migration()
@@ -150,6 +149,7 @@ def run_migrations_online():
     )
 
     revision_to_migration = {}
+
     def process_revision_directives(context, revision, directives):
         script = directives[0]
         migration = Migration()
