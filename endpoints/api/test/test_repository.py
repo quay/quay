@@ -103,6 +103,7 @@ def test_list_repositories_last_modified(client):
         pytest.param("x" * 255, 201, id="Maximum allowed length"),
         pytest.param("x" * 256, 400, id="Over allowed length"),
         pytest.param("a|b", 400, id="Invalid name"),
+        pytest.param("UpperCase", 400, id="Uppercase Not Allowed"),
     ],
 )
 def test_create_repository(repo_name, expected_status, client):
