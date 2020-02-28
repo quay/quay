@@ -13,8 +13,8 @@ def test_render_email():
     html, plain = render_email(
         "Test App", "test.quay", "foo@example.com", "Hello There!", "emailchanged", params
     )
-    assert "https://quay.io/contact/" in html
-    assert "https://quay.io/contact/" in plain
+    assert "https://access.redhat.com/articles/quayio-help" in html
+    assert "https://access.redhat.com/articles/quayio-help" in plain
 
 
 @pytest.mark.parametrize(

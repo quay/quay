@@ -168,7 +168,7 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
           <li quay-require="['BILLING']"><a href="/security/" target="_self">Security</a></li>
           <li quay-require="['BILLING']"><a href="/about/" target="_self">About</a></li>
           {% if has_contact %}
-          <li><b><a href="{{ contact_href or '/contact/' }}" target="_self">Contact</a></b></li>
+          <li><b><a href="{{ contact_href or 'https://access.redhat.com/articles/quayio-help' }}" target="_self">Contact</a></b></li>
           {% endif %}
           <li quay-require="['BILLING']">
             <span class="quay-service-status"></span>
@@ -186,7 +186,7 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
             <h4 class="modal-title">Uh Oh...</h4>
           </div>
           <div class="modal-body">
-            Something went wrong when trying to load Quay! Please report this to <a href="mailto:support@quay.io">support@quay.io</a>.
+            Something went wrong when trying to load Quay! Please report this to <a href="https://access.redhat.com/articles/quayio-help">Quay.io Support</a>.
           </div>
           <div class="modal-footer">
           </div>
