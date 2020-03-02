@@ -14,13 +14,13 @@ LOCAL_PATH = "/static/ldn/"
 MAX_RETRY_COUNT = 3
 
 EXTERNAL_JS = [
-    "code.jquery.com/jquery-1.12.4.min.js",
-    "stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-route.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-sanitize.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-animate.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-cookies.min.js",
+    "code.jquery.com/jquery.js",
+    "netdna.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular.min.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-route.min.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-sanitize.min.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-animate.min.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-cookies.min.js",
     "cdn.jsdelivr.net/g/momentjs",
     "cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/js/bootstrap-datepicker.min.js",
     "cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/js/bootstrap-datetimepicker.min.js",
@@ -35,7 +35,7 @@ EXTERNAL_JS = [
 EXTERNAL_CSS = [
     "use.fontawesome.com/releases/v5.0.4/css/all.css",
     "netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.css",
-    "stackpath.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css",
+    "netdna.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css",
     "fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700",
     "s3.amazonaws.com/cdn.core-os.net/icons/core-icons.css",
     "cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/css/bootstrap-datetimepicker.min.css",
@@ -49,11 +49,11 @@ EXTERNAL_FONTS = [
     "netdna.bootstrapcdn.com/font-awesome/4.7.0/fonts/fontawesome-webfont.woff2?v=4.7.0",
     "netdna.bootstrapcdn.com/font-awesome/4.7.0/fonts/fontawesome-webfont.ttf?v=4.7.0",
     "netdna.bootstrapcdn.com/font-awesome/4.7.0/fonts/fontawesome-webfont.svg?v=4.7.0",
-    "stackpath.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.eot",
-    "stackpath.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.woff2",
-    "stackpath.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.woff",
-    "stackpath.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.ttf",
-    "stackpath.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.svg",
+    "netdna.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.eot",
+    "netdna.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.woff2",
+    "netdna.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.woff",
+    "netdna.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.ttf",
+    "netdna.bootstrapcdn.com/bootstrap/3.3.2/fonts/glyphicons-halflings-regular.svg",
 ]
 
 EXTERNAL_WEBFONTS = [
