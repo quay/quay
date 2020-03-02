@@ -7,7 +7,6 @@ ipdb
 ipython
 mock==3.0.5
 mockredispy==2.9.3
-pylint
 pytest
 pytest-cov
 pytest-flask
