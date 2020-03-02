@@ -163,8 +163,8 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
           <li><a href="{{ config_set['BRANDING']['footer_url'] }}" ng-safenewtab><img src="{{ config_set['BRANDING']['footer_img'] }}"></a></li>
           {% endif %}
           <li quay-require="['BILLING']"><a href="https://docs.quay.io" ng-safenewtab>Documentation</a></li>
-          <li quay-require="['BILLING']"><a href="/tos" target="_self">Terms</a></li>
-          <li quay-require="['BILLING']"><a href="/privacy" target="_self">Privacy</a></li>
+          <li quay-require="['BILLING']"><a href="https://www.openshift.com/legal/terms" target="_blank">Terms</a></li>
+          <li quay-require="['BILLING']"><a href="https://www.redhat.com/en/about/privacy-policy" target="_blank">Privacy</a></li>
           <li quay-require="['BILLING']"><a href="/security/" target="_self">Security</a></li>
           <li quay-require="['BILLING']"><a href="/about/" target="_self">About</a></li>
           {% if has_contact %}
