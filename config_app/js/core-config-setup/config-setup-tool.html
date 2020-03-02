@@ -421,6 +421,132 @@
         </div>
       </div>
 
+      <!-- Action log Storage Configuration -->
+      <div class="co-panel">
+        <div class="co-panel-heading">
+          <i class="fa fa-archive"></i> Action Log Storage Configuration
+        </div>
+        <div class="co-panel-body">
+          <div class="description">
+            <p>
+              Action logs can be stored in the database or Elasticsearch.
+              In the latter case, the actions logs can (optionally) be sent to a data stream first.
+            </p>
+          </div>
+          <table class="config-table">
+            <tr>
+              <td>Logs storage:</td>
+              <td>
+                <select class="form-control" ng-model="mapped.LOGS_MODEL">
+                  <option value="elasticsearch">Elasticsearch</option>
+                  <option value="database">Database</option>
+                </select>
+              </td>
+          </table>
+
+          <table class="config-table" ng-if="mapped.LOGS_MODEL == 'elasticsearch'">
+            <tr>
+              <td><strong>Elasticsearch config</strong></td>
+            </tr>
+            <tr>
+              <td>Elasticsearch hostname:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.host" placeholder="The Elasticsearch server hostname"
+                      pattern="{{ HOSTNAME_REGEX }}" validator="validateHostname(value)"></span>
+              </td>
+            </tr>
+            <tr>
+              <td>Elasticsearch port:</td>
+              <td>
+                <span class="config-numeric-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.port" default-value="9200"></span>
+                <div class="help-text">
+                  Access to this port and hostname must be allowed from all hosts running
+                  the enterprise registry
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Elasticsearch access key:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.access_key"
+                      placeholder="The Elasticsearch access key"
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>Elasticsearch secret key:</td>
+              <td>
+                <span class="config-password-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.secret_key"
+                      placeholder="The Elasticsearch secret key"
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>AWS region:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.aws_region"
+                      placeholder="The AWS region (optional)" is-optional="true"
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>Index prefix:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.index_prefix"
+                      default-value="logentry_" placeholder="The Elasticsearch index_prefix"
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td class="non-input">Logs Producer:</td>
+              <td>
+                <select class="form-control" ng-model="mapped.LOGS_MODEL_CONFIG.producer">
+                  <option value="kinesis_stream">Kinesis</option>
+                  <option value="elasticsearch">Elasticsearch</option>
+                </select>
+              </td>
+            </tr>
+          </table>
+          <table class="config-table" ng-if="mapped.LOGS_MODEL_CONFIG.producer == 'kinesis_stream'">
+            <tr>
+              <td><strong>Logs producer options</strong></td>
+            </tr>
+            <tr>
+              <td>Stream name:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.stream_name"
+                      placeholder="The Kinesis stream name"
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>AWS access key:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_access_key"
+                      placeholder="The AWS access key"
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>AWS secret key:</td>
+              <td>
+                <span class="config-password-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_secret_key"
+                      placeholder="The AWS secret key"
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td>AWS region:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_region"
+                      placeholder="The AWS region"
+                </span>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
       <!-- Action log archiving -->
       <div class="co-panel">
         <div class="co-panel-heading">
