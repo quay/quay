@@ -44,10 +44,13 @@ EOF
 # The gunicorn-registry process DB_CONNECTION_POOLING must default to true
 export DB_CONNECTION_POOLING_REGISTRY=${DB_CONNECTION_POOLING:-"true"}
 
+# Forcibly export the scl environment
+eval "$(scl enable python27 rh-nginx112 'export -p')"
+
 case "$QUAYENTRY" in
     "shell")
         echo "Entering shell mode"
-        exec /usr/bin/scl enable python27 rh-nginx112 /bin/bash
+        exec /bin/bash
         ;;
     "config")
         echo "Entering config mode, only copying config-app entrypoints"
@@ -64,38 +67,33 @@ case "$QUAYENTRY" in
             openssl passwd -apr1 "$2" >> $QUAYDIR/config_app/conf/htpasswd
         fi
 
-        /usr/bin/scl enable python27 rh-nginx112 "${QUAYPATH}/config_app/init/certs_create.sh"
-        /usr/bin/scl enable python27 rh-nginx112 "supervisord -c ${QUAYPATH}/config_app/conf/supervisord.conf 2>&1"
+        "${QUAYPATH}/config_app/init/certs_create.sh" || exit
+        exec supervisord -c "${QUAYPATH}/config_app/conf/supervisord.conf" 2>&1
         ;;
     "migrate")
-        echo "Entering migration mode to version: ${2}"
-        exec /usr/bin/scl enable python27 rh-nginx112 "PYTHONPATH=${QUAYPATH} alembic upgrade ${2}"
+        : "${MIGRATION_VERSION:=$2}"
+        : "${MIGRATION_VERSION:?Missing version argument}"
+        echo "Entering migration mode to version: ${MIGRATION_VERSION}"
+        PYTHONPATH="${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
         ;;
     "repomirror")
         echo "Entering repository mirroring mode"
-        if [ -z "${QUAY_SERVICES}" ]
-        then
-            export QUAY_SERVICES=repomirrorworker,pushgateway
-        else
-            export QUAY_SERVICES=${QUAY_SERVICES},repomirrorworker,pushgateway
-        fi
+        export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}repomirrorworker,pushgateway"
         ;&
     "registry")
-        if [ -z "${QUAY_SERVICES}" ]
-        then
+        if [ -z "${QUAY_SERVICES}" ]; then
             echo "Running all default registry services"
         else
             echo "Running services ${QUAY_SERVICES}"
         fi
-        for f in $(ls ${QUAYCONF}/init/*.sh); do
+        for f in "${QUAYCONF}"/init/*.sh; do
             echo "Running init script '$f'"
-            /usr/bin/scl enable python27 rh-nginx112 "$f" || exit -1;
+            "$f" || exit
         done
-        /usr/bin/scl enable python27 rh-nginx112 "supervisord -c ${QUAYCONF}/supervisord.conf 2>&1"
+        exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
     *)
         echo "Running '$QUAYENTRY'"
-        /usr/bin/scl enable python27 rh-nginx112 "$QUAYENTRY" || exit -1;
+        eval exec "$@"
         ;;
 esac
-
