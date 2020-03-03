@@ -288,6 +288,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether Google login is supported.
     FEATURE_GOOGLE_LOGIN = False
 
+    # Feature Flag: Whether OpenShift integrated login is supported.
+    FEATURE_OPENSHIFT_LOGIN = False
+
     # Feature Flag: Whether to support GitHub build triggers.
     FEATURE_GITHUB_BUILD = False
 
