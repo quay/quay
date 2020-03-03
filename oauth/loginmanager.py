@@ -1,10 +1,12 @@
 from oauth.services.github import GithubOAuthService
 from oauth.services.google import GoogleOAuthService
+from oauth.services.openshift import OpenshiftOAuthService
 from oauth.oidc import OIDCLoginService
 
 CUSTOM_LOGIN_SERVICES = {
     "GITHUB_LOGIN_CONFIG": GithubOAuthService,
     "GOOGLE_LOGIN_CONFIG": GoogleOAuthService,
+    "OPENSHIFT_LOGIN_CONFIG": OpenshiftOAuthService,
 }
 
 PREFIX_BLACKLIST = ["ldap", "jwt", "keystone"]

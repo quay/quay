@@ -755,6 +755,11 @@ CONFIG_SCHEMA = {
             "description": "Whether Google login is supported. Defaults to False",
             "x-example": False,
         },
+        "FEATURE_OPENSHIFT_LOGIN": {
+            "type": "boolean",
+            "description": "Whether OpenShift integrated login is supported. Defaults to False",
+            "x-example": False,
+        },
         # Recaptcha
         "FEATURE_RECAPTCHA": {
             "type": "boolean",
