@@ -191,6 +191,7 @@ def get_most_recent_tag_lifetime_start(repository_ids):
     specified repository or None if none.
     """
     assert len(repository_ids) > 0 and None not in repository_ids
+    assert len(repository_ids) <= 100
 
     query = (
         Tag.select(Tag.repository, fn.Max(Tag.lifetime_start_ms))

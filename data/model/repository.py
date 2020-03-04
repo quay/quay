@@ -386,8 +386,10 @@ def get_filtered_matching_repositories(
         if filter_user is None:
             return []
 
+        # NOTE: We add the offset to the limit here to ensure we have enough results
+        # for the take's we conduct below.
         iterator = _filter_repositories_visible_to_user(
-            unfiltered_query, filter_user.id, limit, repo_kind
+            unfiltered_query, filter_user.id, offset + limit, repo_kind
         )
         if offset > 0:
             take(offset, iterator)

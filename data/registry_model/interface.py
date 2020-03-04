@@ -204,8 +204,9 @@ class RegistryDataInterface(object):
     @abstractmethod
     def get_most_recent_tag_lifetime_start(self, repository_refs):
         """
-        Returns a map from repository ID to the last modified time ( seconds from epoch, UTC) for
-        each repository in the given repository reference list.
+        Returns a map from repository ID to the last modified time (seconds from epoch, UTC) for
+        each repository in the given repository reference list. There can be a maximum of 100
+        repositories specified, as this is a VERY heavy operation.
         """
 
     @abstractmethod
