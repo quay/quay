@@ -422,5 +422,5 @@ def delete_expired(expiration_threshold, deletion_threshold, batch_size):
         return 0
 
     QueueItem.delete().where(QueueItem.id << to_delete).execute()
-    queue_item_deletes.inc(to_delete)
+    queue_item_deletes.inc(len(to_delete))
     return len(to_delete)

@@ -22,19 +22,19 @@ robot_rows = Gauge("quay_robot_rows", "number of robot accounts in the database"
 WORKER_FREQUENCY = app.config.get("GLOBAL_PROMETHEUS_STATS_FREQUENCY", 60 * 60)
 
 
-def get_repository_count(self):
+def get_repository_count():
     return model.repository.get_estimated_repository_count()
 
 
-def get_active_user_count(self):
+def get_active_user_count():
     return model.user.get_active_user_count()
 
 
-def get_active_org_count(self):
+def get_active_org_count():
     return model.organization.get_active_org_count()
 
 
-def get_robot_count(self):
+def get_robot_count():
     return model.user.get_estimated_robot_count()
 
 
@@ -55,7 +55,6 @@ class GlobalPrometheusStatsWorker(Worker):
                 self._report_stats()
         except LockNotAcquiredException:
             logger.debug("Could not acquire global lock for global prometheus stats")
-            return
 
     def _report_stats(self):
         logger.debug("Reporting global stats")
