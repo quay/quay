@@ -168,17 +168,21 @@ def get_all_repo_users_transitive_via_teams(namespace_name, repository_name):
     )
 
 
-def get_organizations(deleted=False):
+def get_organizations(disabled=True, deleted=False):
     query = User.select().where(User.organization == True, User.robot == False)
 
-    if not deleted:
-        query = query.where(User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)))
+    if not disabled:
+        query = query.where(User.enabled == True)
+    else:
+        # NOTE: Deleted users are already disabled, so we don't need this extra check.
+        if not deleted:
+            query = query.where(User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)))
 
     return query
 
 
 def get_active_org_count():
-    return get_organizations().count()
+    return get_organizations(disabled=False).count()
 
 
 def add_user_as_admin(user_obj, org_obj):
