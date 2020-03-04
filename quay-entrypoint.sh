@@ -54,18 +54,9 @@ case "$QUAYENTRY" in
         ;;
     "config")
         echo "Entering config mode, only copying config-app entrypoints"
-        if [ -z "$2" ]
-        then
-            if [ -z "${CONFIG_APP_PASSWORD}" ]
-            then
-                echo "Missing password for configuration tool"
-                exit
-            else
-                openssl passwd -apr1 "${CONFIG_APP_PASSWORD}" >> $QUAYDIR/config_app/conf/htpasswd
-            fi
-        else
-            openssl passwd -apr1 "$2" >> $QUAYDIR/config_app/conf/htpasswd
-        fi
+        : ${CONFIG_APP_PASSWORD:=$2}
+        : ${CONFIG_APP_PASSWORD:?Missing password argument for configuration tool}
+        openssl passwd -apr1 -- "${CONFIG_APP_PASSWORD}" > "$QUAYDIR/config_app/conf/htpasswd"
 
         "${QUAYPATH}/config_app/init/certs_create.sh" || exit
         exec supervisord -c "${QUAYPATH}/config_app/conf/supervisord.conf" 2>&1
