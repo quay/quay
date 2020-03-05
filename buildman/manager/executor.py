@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 
+from abc import ABCMeta, abstractmethod
 from functools import partial, wraps
 
 import boto.ec2
@@ -82,6 +83,10 @@ class BuilderExecutor(object):
 
         default_websocket_scheme = "wss" if app.config["PREFERRED_URL_SCHEME"] == "https" else "ws"
         self.websocket_scheme = executor_config.get("WEBSOCKET_SCHEME", default_websocket_scheme)
+
+    @abstractmethod
+    def validate(self, executor_config):
+        """ Validates the given config, returning a tuple of (okay, err_msg). """
 
     @property
     def name(self):
@@ -191,6 +196,31 @@ class EC2Executor(BuilderExecutor):
     def __init__(self, *args, **kwargs):
         self._loop = get_event_loop()
         super(EC2Executor, self).__init__(*args, **kwargs)
+
+    def validate(self, executor_config):
+        if "EC2_REGION" not in executor_config:
+            return False, "Missing `EC2_REGION` in config"
+
+        if "AWS_ACCESS_KEY" not in executor_config:
+            return False, "Missing `AWS_ACCESS_KEY` in config"
+
+        if "AWS_SECRET_KEY" not in executor_config:
+            return False, "Missing `AWS_SECRET_KEY` in config"
+
+        try:
+            conn = boto.ec2.connect_to_region(
+                executor_config["EC2_REGION"],
+                aws_access_key_id=executor_config["AWS_ACCESS_KEY"],
+                aws_secret_access_key=executor_config["AWS_SECRET_KEY"],
+            )
+            if conn is None:
+                return False, "Could not connect to specified EC2 region with specified credentials"
+
+            # Call a function on the connection to verify we have permissions.
+            conn.get_all_classic_link_instances(max_results=1)
+            return True, None
+        except Exception as e:
+            return False, str(e)
 
     def _get_conn(self):
         """
@@ -333,6 +363,9 @@ class PopenExecutor(BuilderExecutor):
         self._jobs = {}
         super(PopenExecutor, self).__init__(executor_config, manager_hostname)
 
+    def validate(self, executor_config):
+        raise NotImplementedError("Not supported for real installations")
+
     @coroutine
     @async_observe(build_start_duration, "fork")
     def start_builder(self, realm, token, build_uuid):
@@ -390,17 +423,30 @@ class KubernetesExecutor(BuilderExecutor):
             "BUILDER_VM_CONTAINER_IMAGE", "quay.io/quay/quay-builder-qemu-coreos:stable"
         )
 
+    def validate(self, executor_config):
+        try:
+            create_job = self._build_request(executor_config, "POST", self._jobs_path(), json={})
+            if create_job.status_code != 400:
+                return False, "Could not create test job: %s" % create_job.text
+
+            return True, None
+        except Exception as ex:
+            return False, str(ex)
+
     @coroutine
     def _request(self, method, path, **kwargs):
         request_options = dict(kwargs)
+        res = self._build_request(self.executor_config, method, path, **kwargs)
+        raise Return(res)
 
-        tls_cert = self.executor_config.get("K8S_API_TLS_CERT")
-        tls_key = self.executor_config.get("K8S_API_TLS_KEY")
-        tls_ca = self.executor_config.get("K8S_API_TLS_CA")
-        service_account_token = self.executor_config.get("SERVICE_ACCOUNT_TOKEN")
+    def _build_request(self, executor_config, method, path, **kwargs):
+        tls_cert = executor_config.get("K8S_API_TLS_CERT")
+        tls_key = executor_config.get("K8S_API_TLS_KEY")
+        tls_ca = executor_config.get("K8S_API_TLS_CA")
+        service_account_token = executor_config.get("SERVICE_ACCOUNT_TOKEN")
 
         if "timeout" not in request_options:
-            request_options["timeout"] = self.executor_config.get("K8S_API_TIMEOUT", 20)
+            request_options["timeout"] = executor_config.get("K8S_API_TIMEOUT", 20)
 
         if service_account_token:
             scheme = "https"
@@ -415,14 +461,14 @@ class KubernetesExecutor(BuilderExecutor):
         else:
             scheme = "http"
 
-        server = self.executor_config.get("K8S_API_SERVER", "localhost:8080")
+        server = executor_config.get("K8S_API_SERVER", "localhost:8080")
         url = "%s://%s%s" % (scheme, server, path)
 
-        logger.debug("Executor config: %s", self.executor_config)
+        logger.debug("Executor config: %s", executor_config)
         logger.debug("Kubernetes request: %s %s: %s", method, url, request_options)
         res = requests.request(method, url, **request_options)
         logger.debug("Kubernetes response: %s: %s", res.status_code, res.text)
-        raise Return(res)
+        return res
 
     def _jobs_path(self):
         return "/apis/batch/v1/namespaces/%s/jobs" % self.namespace

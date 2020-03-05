@@ -77,7 +77,12 @@ class NoopIPResolver(IPResolverInterface):
 class IPResolver(IPResolverInterface):
     def __init__(self, app):
         self.app = app
-        self.geoip_db = geoip2.database.Reader("util/ipresolver/GeoLite2-Country.mmdb")
+
+        try:
+            self.geoip_db = geoip2.database.Reader("util/ipresolver/GeoLite2-Country.mmdb")
+        except:
+            logger.exception("Could not load geoip database")
+
         self.amazon_ranges = None
         self.sync_token = None
 
@@ -139,7 +144,7 @@ class IPResolver(IPResolverInterface):
 
         # Try geoip classification
         try:
-            geoinfo = self.geoip_db.country(ip_address)
+            geoinfo = self.geoip_db.country(ip_address) if self.geoip_db else None
         except geoip2.errors.AddressNotFoundError:
             geoinfo = None
 

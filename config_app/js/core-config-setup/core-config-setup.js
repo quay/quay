@@ -109,6 +109,10 @@ angular.module("quay-config")
           {'id': 'repomirroring', 'title': 'Repository Mirroring', 'condition': function(config) {
             return config.FEATURE_REPOSITORY_MIRRORING;
           }},
+
+          {'id': 'ephemeral-builder', 'title': 'Build System', 'condition': function(config) {
+            return config.FEATURE_BUILD_SUPPORT && config['BUILD_MANAGER'][0] == 'ephemeral';
+          }},
         ];
 
         $scope.STORAGE_CONFIG_FIELDS = {
@@ -219,6 +223,19 @@ angular.module("quay-config")
         $scope.hasfile = {};
         $scope.validating = null;
         $scope.savingConfiguration = false;
+
+        $scope.addBuildCluster = function() {
+          $scope.mapped.BUILD_MANAGER_CONFIG['EXECUTORS'] = $scope.mapped.BUILD_MANAGER_CONFIG['EXECUTORS'] || [];
+          $scope.mapped.BUILD_MANAGER_CONFIG['EXECUTORS'].push({
+            'EXECUTOR': 'kubernetes',
+            'KUBERNETES_DISTRIBUTION': 'openshift',
+            'NAME': `build-cluster-${$scope.mapped.BUILD_MANAGER_CONFIG['EXECUTORS'].length + 1}`
+          });
+        };
+
+        $scope.removeBuildCluster = function(index) {
+          $scope.mapped.BUILD_MANAGER_CONFIG['EXECUTORS'].splice(index, 1);
+        };
 
         $scope.removeOIDCProvider = function(provider) {
           delete $scope.config[provider];
@@ -577,6 +594,16 @@ angular.module("quay-config")
               $scope.mapped['TLS_SETTING'] = 'internal-tls';
             }
           }
+
+          $scope.mapped['BUILD_MANAGER_KIND'] = 'enterprise';
+          if (config['BUILD_MANAGER']) {
+            $scope.mapped['BUILD_MANAGER_KIND'] = config['BUILD_MANAGER'][0];
+          }
+
+          $scope.mapped['BUILD_MANAGER_CONFIG'] = {};
+          if (config['BUILD_MANAGER']) {
+            $scope.mapped['BUILD_MANAGER_CONFIG'] = config['BUILD_MANAGER'][1];
+          }
         };
 
         var tlsSetter = function(value) {
@@ -632,6 +659,44 @@ angular.module("quay-config")
         $scope.$watch('mapped.redis.host', redisSetter('host'));
         $scope.$watch('mapped.redis.port', redisSetter('port'));
         $scope.$watch('mapped.redis.password', redisSetter('password'));
+
+        var updateBuildConfig = function() {
+          if (!$scope.config) { return; }
+
+          $scope.config['BUILD_MANAGER'] = $scope.config['BUILD_MANAGER'] || ['enterprise', {}];
+          $scope.config['BUILD_MANAGER'][0] = $scope['mapped']['BUILD_MANAGER_KIND'] || 'enterprise';
+
+          if ($scope.config['BUILD_MANAGER'][0] == 'enterprise') {
+            $scope.config['BUILD_MANAGER'][1] = {};
+          } else {
+            $scope['mapped']['BUILD_MANAGER_CONFIG'] = $scope['mapped']['BUILD_MANAGER_CONFIG'] || {};
+
+            var buildManagerConfig = $scope['mapped']['BUILD_MANAGER_CONFIG'];
+            buildManagerConfig['ORCHESTRATOR_PREFIX'] = buildManagerConfig['ORCHESTRATOR_PREFIX'] || 'buildman/';
+
+            if (!buildManagerConfig['ORCHESTRATOR']) {
+              buildManagerConfig['ORCHESTRATOR'] = {
+                'REDIS_HOST': $scope.mapped.redis.host
+              };
+
+              if ($scope.mapped.redis.password) {
+                buildManagerConfig['ORCHESTRATOR']['REDIS_PASSWORD'] = $scope.mapped.redis.password;
+              }
+
+              if ($scope.mapped.redis.port) {
+                buildManagerConfig['ORCHESTRATOR']['REDIS_PORT'] = $scope.mapped.redis.port;
+              }
+            }
+          }
+        };
+
+        $scope.$watch('mapped.BUILD_MANAGER_KIND', updateBuildConfig);
+        $scope.$watch('mapped.BUILD_MANAGER_CONFIG', updateBuildConfig, true);
+
+        // Also watch Redis for build config.
+        $scope.$watch('mapped.redis.host', updateBuildConfig);
+        $scope.$watch('mapped.redis.port', updateBuildConfig);
+        $scope.$watch('mapped.redis.password', updateBuildConfig);
 
         // Remove extra extra fields (which are not allowed) from storage config.
         var updateFields = function(sc) {
@@ -710,7 +775,7 @@ angular.module("quay-config")
         });
 
         $scope.$watch('config.FEATURE_USER_CREATION', function(value) {
-          if (!value) {
+          if (!value && $scope.config) {
             $scope.config['FEATURE_INVITE_ONLY_USER_CREATION'] = false;
           }
         });

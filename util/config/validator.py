@@ -24,6 +24,7 @@ from util.config.validators.validate_timemachine import TimeMachineValidator
 from util.config.validators.validate_access import AccessSettingsValidator
 from util.config.validators.validate_actionlog_archiving import ActionLogArchivingValidator
 from util.config.validators.validate_apptokenauth import AppTokenAuthValidator
+from util.config.validators.validate_ephemeral_builder import EphemeralBuilderValidator
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,7 @@ VALIDATORS = {
     AccessSettingsValidator.name: AccessSettingsValidator.validate,
     ActionLogArchivingValidator.name: ActionLogArchivingValidator.validate,
     AppTokenAuthValidator.name: AppTokenAuthValidator.validate,
+    EphemeralBuilderValidator.name: EphemeralBuilderValidator.validate,
 }
 
 

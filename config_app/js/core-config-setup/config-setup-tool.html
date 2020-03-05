@@ -1590,11 +1590,193 @@
             If enabled, users can submit Dockerfile's to be built and pushed by <span class="registry-name"></span>.
           </div>
 
-          <div class="config-bool-field" binding="config.FEATURE_BUILD_SUPPORT">
+          <div class="config-bool-field" binding="config.FEATURE_BUILD_SUPPORT"
+               style="margin-top: 10px;">
             Enable Dockerfile Build
           </div>
 
-          <div ng-if="config.FEATURE_BUILD_SUPPORT" style="margin-top: 10px">
+          <table class="config-table" ng-if="config.FEATURE_BUILD_SUPPORT">
+            <tr>
+              <td>Build System:</td>
+              <td>
+                <select class="form-control" ng-model="mapped.BUILD_MANAGER_KIND">
+                  <option value="enterprise">Enterprise Build System</option>
+                  <option value="ephemeral" selected>Kubernetes-Based Build System (Experimental)</option>
+                </select>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Kubernetes -->
+          <table class="config-table" ng-if="config.FEATURE_BUILD_SUPPORT && mapped.BUILD_MANAGER_KIND == 'ephemeral'">
+            <tr>
+              <td>Maximum Concurrent Builds:</td>
+              <td>
+                <span class="config-numeric-field" binding="mapped.BUILD_MANAGER_CONFIG.ALLOWED_WORKER_COUNT" default-value="50"></span>
+                <div class="help-text">
+                  The number of concurrent build jobs allowed. Depends on the resources of
+                  the registered build cluster(s).
+                </div>                
+              </td>
+            </tr>
+
+            <tr>
+              <td>Clusters:</td>
+              <td>
+                <div class="co-alert co-alert-warning" ng-if="!mapped.BUILD_MANAGER_CONFIG.EXECUTORS">
+                  At least one supported Kubernetes Cluster must be registered to run builds.
+                </div>
+
+                <div class="co-alert co-alert-info" ng-if="mapped.BUILD_MANAGER_CONFIG.EXECUTORS">
+                  <strong>Note: Any Kubernetes Cluster used for building must be bare-metal or support
+                  nested virtualization</strong>
+                </div>
+      
+                <!-- Clusters -->
+                <div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;"
+                     ng-repeat="cluster_config in mapped.BUILD_MANAGER_CONFIG.EXECUTORS track by cluster_config.name">
+
+                  <div style="text-align: right; margin-bottom: 10px;">
+                    <button class="btn btn-danger" ng-click="removeBuildCluster($index)">Delete Cluster</button>
+                  </div>
+
+                  <table class="config-table">
+                    <tr>
+                      <td>Name:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.NAME"
+                              placeholder="Cluster unique name">
+                        </span>
+                        <div class="help-text">
+                          The unique name for this cluster.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Cluster Kind:</td>
+                      <td>
+                        <select class="form-control" ng-model="cluster_config.KUBERNETES_DISTRIBUTION">
+                          <option value="openshift" selected>OpenShift</option>
+                          <option value="basic">Kubernetes</option>
+                        </select>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>API Server Endpoint:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.K8S_API_SERVER"
+                              placeholder="Kubernetes API server endpoint">
+                        </span>
+                        <div class="help-text">
+                          The endpoint of the Kubernetes API server. Must be network-accessible from all <span class="registry-name"></span> nodes.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Service Account Name:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.SERVICE_ACCOUNT_NAME"
+                              placeholder="Service account name">
+                        </span>
+                        <div class="help-text">
+                          The name of the service account on the cluster with permissions to start
+                          build jobs.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Service Account Token:</td>
+                      <td>
+                        <span class="config-password-field" binding="cluster_config.SERVICE_ACCOUNT_TOKEN">
+                        </span>
+                        <div class="help-text">
+                          The token of the service account on the cluster with permissions to start
+                          build jobs.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Build node selector label key:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.NODE_SELECTOR_LABEL_KEY"
+                              default-value="node.kubernetes.io/instance-type">
+                        </span>
+                        <div class="help-text">
+                          The name of the <a href="https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector">node selector label</a> used to select nodes on which to run builds.
+                          This selector should filter down to nodes that are bare metal or support nested virtualization.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Build node selector label value:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.NODE_SELECTOR_LABEL_VALUE"
+                              placeholder="some.instance.type">
+                        </span>
+                        <div class="help-text">
+                          The value of the node selector label for build nodes in the cluster.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Build worker image:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.BUILDER_VM_CONTAINER_IMAGE"
+                              placeholder="thisregistry/somenamespace/build-worker-image">
+                        </span>
+                        <div class="help-text">
+                          The registry path of the container image for the build worker. This image should be
+                          downloaded from
+                          <a href="https://quay.io/projectquay/quay-kubernetes-build-worker" target="_blank">quay.io/projectquay/quay-kubernetes-build-worker</a>
+                          and pushed into this path.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Build worker image tag:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.WORKER_TAG"
+                              placeholder="latest">
+                        </span>
+                        <div class="help-text">
+                          The tag of the build worker image
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Build worker image username/robot account:</td>
+                      <td>
+                        <span class="config-string-field" binding="cluster_config.QUAY_USERNAME"
+                              placeholder="somenamespace+robotaccount">
+                        </span>
+                        <div class="help-text">
+                          The username or robot account that has access to the Build worker image's
+                          repository.
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Build worker image password/token:</td>
+                      <td>
+                        <span class="config-password-field" binding="cluster_config.QUAY_PASSWORD">
+                        </span>
+                        <div class="help-text">
+                          The password/token of the account that has access to the Build worker image's
+                          repository.
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+      
+                <!-- Add Cluster -->
+                <a class="btn btn-default" ng-click="addBuildCluster()">Add Build Cluster</a>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Enterprise -->
+          <div class="co-alert co-alert-info" ng-if="config.FEATURE_BUILD_SUPPORT && mapped.BUILD_MANAGER_KIND == 'enterprise'" style="margin-top: 10px">
             <strong>Note: Build workers are required for this feature.</strong>
             See <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#set-up-the-build-workers" ng-safenewtab>Adding Build
               Workers</a> for instructions on how to setup build workers.
@@ -1817,8 +1999,8 @@
                 <i class="fa fa-lg fa-warning" ng-show="serviceInfo.status == 'error'"></i>
                 <span class="service-title">{{ serviceInfo.service.title }}</span>
 
-                <div class="service-verification-error" ng-show="serviceInfo.status == 'error'">
-                  {{ serviceInfo.errorMessage }}</div>
+                <!-- NOTE: Indentation is important in this element, as it is display:pre -->
+                <div class="service-verification-error" ng-show="serviceInfo.status == 'error'">{{ serviceInfo.errorMessage }}</div>
               </div>
             </div>
           </div>
