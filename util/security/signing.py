@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from io import StringIO
+from io import BytesIO
 
 
 class GPG2Signer(object):
@@ -51,7 +51,7 @@ class GPG2Signer(object):
         except:
             raise Exception("Invalid private key name")
 
-        signature = StringIO()
+        signature = BytesIO()
         indata = gpg.core.Data(file=stream)
         outdata = gpg.core.Data(file=signature)
         ctx.op_sign(indata, outdata, gpg.constants.sig.DETACH)
