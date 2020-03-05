@@ -147,8 +147,8 @@ class TarLayerFormat(object):
             self.reporter.report_pass(2 if len(dangling_hard_links) > 0 else 1)
 
         # Last two records are empty in TAR spec.
-        yield "\0" * 512
-        yield "\0" * 512
+        yield b"\0" * 512
+        yield b"\0" * 512
 
     @abstractmethod
     def is_skipped_file(self, filename):
@@ -199,4 +199,4 @@ class TarLayerFormat(object):
 
             # Files must be padding to 512 byte multiples.
             if length % 512 != 0:
-                yield "\0" * (512 - (length % 512))
+                yield b"\0" * (512 - (length % 512))

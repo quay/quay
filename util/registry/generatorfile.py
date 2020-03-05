@@ -67,7 +67,7 @@ class GeneratorFile(object):
         buf = self._buf
         while size < 0 or len(buf) < size:
             try:
-                buf = buf + chr(next(self._generator)).encode("ascii")
+                buf = buf + next(self._generator)
             except StopIteration:
                 break
 
