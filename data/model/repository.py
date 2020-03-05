@@ -466,7 +466,7 @@ def _get_sorted_matching_repositories(
             Repository.select(*select_fields)
             .join(RepositorySearchScore)
             .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
-            .order_by(RepositorySearchScore.score.desc())
+            .order_by(RepositorySearchScore.score.desc(), RepositorySearchScore.id)
         )
     else:
         if search_fields is None:
@@ -491,7 +491,7 @@ def _get_sorted_matching_repositories(
             .join(RepositorySearchScore)
             .where(clause)
             .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
-            .order_by(SQL("score").desc())
+            .order_by(SQL("score").desc(), RepositorySearchScore.id)
         )
 
     if repo_kind is not None:

@@ -1,41 +1,8 @@
 <div class="repo-list-view-element">
-  <!-- Toggle -->
-  <div class="repo-list-toggleb btn-group" ng-show="!loading && optionAllowed">
-    <i class="btn btn-default fa fa-th-large" ng-class="!showAsList ? 'active' : ''"
-       ng-click="setShowAsList(false)" title="Grid View" data-container="body" bs-tooltip></i>
-    <i class="btn btn-default fa fa-th-list" ng-class="showAsList ? 'active' : ''"
-       ng-click="setShowAsList(true)" title="List View" data-container="body" bs-tooltip></i>
-  </div>
-
   <div ng-transclude/>
 
-  <!-- Table View -->
-  <div ng-if="showAsList">
-    <div class="repo-list-table" repositories-resources="resources" namespaces="namespaces"
-               star-toggled="starToggled({'repository': repository})"
-               repo-kind="{{ repoKind }}">
-    </div>
-  </div>
-
-  <!-- Grid View -->
-  <div ng-if="!showAsList">
-    <!-- Starred Repository Listing -->
-    <div class="repo-list-grid" repositories-resource="starredRepositories"
-         starred="true"
-         star-toggled="starToggled({'repository': repository})"
-         ng-if="starredRepositories"
-         repo-kind="{{ repoKind }}">
-    </div>
-
-    <!-- User and Org Repository Listings -->
-    <div ng-repeat="namespace in namespaces">
-      <div class="repo-list-grid" repositories-resource="namespace.repositories"
-           starred="false" namespace="namespace"
-           star-toggled="starToggled({'repository': repository})"
-           hide-title="namespaces.length == 1"
-           hide-namespaces="true"
-           repo-kind="{{ repoKind }}">
-      </div>
-    </div>
+  <div class="repo-list-table" repositories-resources="resources" namespaces="namespaces"
+              star-toggled="starToggled({'repository': repository})"
+              repo-kind="{{ repoKind }}">
   </div>
 </div>

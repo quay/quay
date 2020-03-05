@@ -56,7 +56,6 @@ from util.names import REPOSITORY_NAME_REGEX
 
 logger = logging.getLogger(__name__)
 
-REPOS_PER_PAGE = 100
 MAX_DAYS_IN_3_MONTHS = 92
 
 

@@ -18,7 +18,6 @@ angular.module('quay').directive('repoListView', function () {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.resources = [];
       $scope.loading = true;
-      $scope.showAsList = CookieService.get('quay.repoview') == 'list';
       $scope.optionAllowed = true;
 
       $scope.$watch('namespaces', function(namespaces) {
@@ -34,17 +33,7 @@ angular.module('quay').directive('repoListView', function () {
             }
           }
         });
-
-        $scope.optionAllowed = $scope.resources.length <= 250;
-        if (!$scope.optionAllowed) {
-          $scope.showAsList = true;
-        }
       }, true);
-
-      $scope.setShowAsList = function(value) {
-        $scope.showAsList = value;
-        CookieService.putPermanent('quay.repoview', value ? 'list' : 'grid');
-      };
     }
   };
   return directiveDefinitionObject;

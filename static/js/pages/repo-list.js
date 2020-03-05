@@ -106,7 +106,7 @@
           'public': namespace.public
         };
 
-        namespace.repositories = ApiService.listReposAsResource().withOptions(options).get(function(resp) {
+        namespace.repositories = ApiService.listReposAsResource().withPagination('repositories').withOptions(options).get(function(resp) {
           return resp.repositories.map(findDuplicateRepo);
         });
 

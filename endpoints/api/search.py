@@ -408,7 +408,9 @@ class ConductRepositorySearch(ApiResource):
     @parse_args()
     @query_param("query", "The search query.", type=str, default="")
     @query_param("page", "The page.", type=int, default=1)
-    @query_param("includeUsage", "Whether to include usage metadata", type=truthy_bool, default=False)
+    @query_param(
+        "includeUsage", "Whether to include usage metadata", type=truthy_bool, default=False
+    )
     @nickname("conductRepoSearch")
     def get(self, parsed_args):
         """

@@ -122,7 +122,7 @@ class PreOCIModel(RepositoryDataInterface):
             )
 
         repos = list(repos)
-        assert len(repos) <= REPOS_PER_PAGE + 1
+        assert len(repos) <= REPOS_PER_PAGE
 
         # Collect the IDs of the repositories found for subsequent lookup of popularity
         # and/or last modified.
