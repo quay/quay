@@ -70,7 +70,7 @@ def test_create_mirror_sets_permissions(existing_robot_permission, expected_perm
     assert permissions[0].role.name == expected_permission
 
     config = model.repo_mirror.get_mirror(model.repository.get_repository("devtable", "simple"))
-    assert config.root_rule.rule_value == ["latest", "foo", "bar"]
+    assert config.root_rule.rule_value.sort() == ["bar", "latest", "foo"].sort()
 
 
 def test_get_mirror_does_not_exist(client):
@@ -188,6 +188,10 @@ def test_change_config(key, value, expected_status, client):
             assert resp.json["external_registry_config"]["verify_tls"] == value
         elif key in ("http_proxy", "https_proxy", "no_proxy"):
             assert resp.json["external_registry_config"]["proxy"][key] == value
+        elif key == "root_rule":
+            resp.json["root_rule"]["rule_value"].sort()
+            value["rule_value"].sort()
+            assert resp.json["root_rule"] == value
         else:
             assert resp.json[key] == value
     else:

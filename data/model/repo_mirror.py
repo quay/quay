@@ -527,6 +527,23 @@ def validate_rule(rule_type, rule_value):
         )
 
 
+def clean_rule(rule_type, rule_value):
+    if rule_type != RepoMirrorRuleType.TAG_GLOB_CSV:
+        return rule_value
+
+    cleaned_rule_value = []
+    for value in rule_value:
+        value = value.strip()
+        if value == "":
+            cleaned_rule_value.append("*")
+        else:
+            cleaned_rule_value.append(value)
+
+    cleaned_rule_value = list(dict.fromkeys(cleaned_rule_value))  # remove duplicates
+
+    return cleaned_rule_value
+
+
 def create_rule(
     repository,
     rule_value,
@@ -538,6 +555,7 @@ def create_rule(
     Create a new Rule for mirroring a Repository.
     """
 
+    rule_value = clean_rule(rule_type, rule_value)
     validate_rule(rule_type, rule_value)
 
     rule_kwargs = {
@@ -576,6 +594,7 @@ def change_rule(repository, rule_type, rule_value):
     Update the value of an existing rule.
     """
 
+    rule_value = clean_rule(rule_type, rule_value)
     validate_rule(rule_type, rule_value)
 
     mirrorRule = get_root_rule(repository)

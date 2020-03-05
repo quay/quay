@@ -2,7 +2,9 @@
 from __future__ import absolute_import
 from jsonschema import ValidationError
 
-from data.database import RepoMirrorConfig, RepoMirrorStatus, User
+import pytest
+
+from data.database import RepoMirrorConfig, RepoMirrorRuleType, RepoMirrorStatus, User
 from data import model
 from data.model.repo_mirror import (
     create_mirroring_rule,
@@ -10,6 +12,7 @@ from data.model.repo_mirror import (
     update_sync_status_to_cancel,
     MAX_SYNC_RETRIES,
     release_mirror,
+    clean_rule,
 )
 
 from test.fixtures import *
@@ -245,3 +248,10 @@ def test_release_mirror(initialized_db):
     mirror = release_mirror(mirror, RepoMirrorStatus.FAIL)
     assert mirror.sync_retries_remaining == 3
     assert mirror.sync_start_date > original_sync_start_date
+
+
+@pytest.mark.parametrize(
+    "rule_value, cleaned_rule_value", [(["", " 1.1 ", "", "1.1"], ["*", "1.1"])]
+)
+def test_clean_rule(rule_value, cleaned_rule_value):
+    assert clean_rule(RepoMirrorRuleType.TAG_GLOB_CSV, rule_value) == cleaned_rule_value
