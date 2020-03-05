@@ -27,7 +27,7 @@ class GzipInputStream(object):
         self._file = fileobj
         self._zip = zlib.decompressobj(WINDOW_BUFFER_SIZE)
         self._offset = 0  # position in unzipped stream
-        self._data = ""
+        self._data = b""
 
     def __fill(self, num_bytes):
         """
@@ -77,7 +77,7 @@ class GzipInputStream(object):
             self._data = self._data[size:]
         else:
             data = self._data
-            self._data = ""
+            self._data = b""
 
         self._offset = self._offset + len(data)
         return data
@@ -90,10 +90,10 @@ class GzipInputStream(object):
 
     def readline(self):
         # make sure we have an entire line
-        while self._zip and "\n" not in self._data:
+        while self._zip and b"\n" not in self._data:
             self.__fill(len(self._data) + 512)
 
-        pos = string.find(self._data, "\n") + 1
+        pos = self._data.find("\n") + 1
         if pos <= 0:
             return self.read()
 

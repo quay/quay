@@ -30,7 +30,7 @@ class StreamLayerMerger(TarLayerFormat):
 
     @staticmethod
     def _normalize_path(path):
-        return os.path.relpath(path.decode("utf-8"), "./")
+        return os.path.relpath(path, "./")
 
     def _check_deleted(self, absolute):
         ubsolute = str(absolute)
