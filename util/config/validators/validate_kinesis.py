@@ -39,7 +39,10 @@ class KinesisValidator(BaseValidator):
 
         try:
             producer.describe_stream(StreamName=stream_name)
-        except (producer.exceptions.ClientError, producer.exceptions.ResourceNotFoundException) as e:
+        except (
+            producer.exceptions.ClientError,
+            producer.exceptions.ResourceNotFoundException,
+        ) as e:
             raise ConfigValidationException("Unable to connect to Kinesis with config: %s", e)
         except Exception:
             raise ConfigValidationException("Unable to connect to Kinesis")
