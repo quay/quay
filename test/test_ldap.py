@@ -11,7 +11,7 @@ from mock import patch
 from contextlib import contextmanager
 
 
-def _create_ldap(requires_email=True):
+def _create_ldap(requires_email=True, user_filter=None):
     base_dn = ["dc=quay", "dc=io"]
     admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
     admin_passwd = "password"
@@ -30,12 +30,13 @@ def _create_ldap(requires_email=True):
         email_attr,
         secondary_user_rdns=secondary_user_rdns,
         requires_email=requires_email,
+        ldap_user_filter=user_filter,
     )
     return ldap
 
 
 @contextmanager
-def mock_ldap(requires_email=True):
+def mock_ldap(requires_email=True, user_filter=None):
     mock_data = {
         "dc=quay,dc=io": {"dc": ["quay", "io"]},
         "ou=employees,dc=quay,dc=io": {"dc": ["quay", "io"], "ou": "employees"},
@@ -48,6 +49,7 @@ def mock_ldap(requires_email=True):
             "userPassword": ["password"],
             "mail": ["bar@baz.com"],
             "memberOf": ["cn=AwesomeFolk,dc=quay,dc=io", "cn=*Guys,dc=quay,dc=io"],
+            "filterField": ["somevalue"],
         },
         "uid=someuser,ou=employees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -56,12 +58,14 @@ def mock_ldap(requires_email=True):
             "userPassword": ["somepass"],
             "mail": ["foo@bar.com"],
             "memberOf": ["cn=AwesomeFolk,dc=quay,dc=io", "cn=*Guys,dc=quay,dc=io"],
+            "filterField": ["somevalue"],
         },
         "uid=nomail,ou=employees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
             "ou": "employees",
             "uid": ["nomail"],
             "userPassword": ["somepass"],
+            "filterField": ["somevalue"],
         },
         "uid=cool.user,ou=employees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -69,6 +73,7 @@ def mock_ldap(requires_email=True):
             "uid": ["cool.user", "referred"],
             "userPassword": ["somepass"],
             "mail": ["foo@bar.com"],
+            "filterField": ["somevalue"],
         },
         "uid=referred,ou=employees,dc=quay,dc=io": {
             "uid": ["referred"],
@@ -82,10 +87,12 @@ def mock_ldap(requires_email=True):
             "uid": ["multientry"],
             "mail": ["foo@bar.com"],
             "userPassword": ["somepass"],
+            "filterField": ["somevalue"],
         },
         "uid=multientry,ou=subgroup2,ou=employees,dc=quay,dc=io": {
             "uid": ["multientry"],
             "another": ["key"],
+            "filterField": ["somevalue"],
         },
         "uid=secondaryuser,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -93,6 +100,7 @@ def mock_ldap(requires_email=True):
             "uid": ["secondaryuser"],
             "userPassword": ["somepass"],
             "mail": ["foosecondary@bar.com"],
+            "filterField": ["somevalue"],
         },
         # Feature: Email Blacklisting
         "uid=blacklistedcom,ou=otheremployees,dc=quay,dc=io": {
@@ -101,6 +109,7 @@ def mock_ldap(requires_email=True):
             "uid": ["blacklistedcom"],
             "userPassword": ["somepass"],
             "mail": ["foo@blacklisted.com"],
+            "filterField": ["somevalue"],
         },
         "uid=blacklistednet,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -108,6 +117,7 @@ def mock_ldap(requires_email=True):
             "uid": ["blacklistednet"],
             "userPassword": ["somepass"],
             "mail": ["foo@blacklisted.net"],
+            "filterField": ["somevalue"],
         },
         "uid=blacklistedorg,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -115,6 +125,7 @@ def mock_ldap(requires_email=True):
             "uid": ["blacklistedorg"],
             "userPassword": ["somepass"],
             "mail": ["foo@blacklisted.org"],
+            "filterField": ["somevalue"],
         },
         "uid=notblacklistedcom,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -122,6 +133,7 @@ def mock_ldap(requires_email=True):
             "uid": ["notblacklistedcom"],
             "userPassword": ["somepass"],
             "mail": ["foo@notblacklisted.com"],
+            "filterField": ["somevalue"],
         },
     }
 
@@ -249,7 +261,7 @@ def mock_ldap(requires_email=True):
 
     mockldap.start()
     with patch("ldap.initialize", new=initializer):
-        yield _create_ldap(requires_email=requires_email)
+        yield _create_ldap(requires_email=requires_email, user_filter=user_filter)
     mockldap.stop()
 
 
@@ -601,6 +613,36 @@ class TestLDAP(unittest.TestCase):
             (response, err_msg) = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertTrue(response)
+
+    def test_ldap_user_filtering_no_users(self):
+        no_user_filter = "filterField=anothervalue"
+        with mock_ldap(user_filter=no_user_filter) as ldap:
+            # Verify we cannot login.
+            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            assert response is None
+
+            (it, err) = ldap.iterate_group_members(
+                {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
+            )
+            self.assertIsNone(err)
+
+            results = list(it)
+            self.assertEquals(0, len(results))
+
+    def test_ldap_user_filtering_valid_users(self):
+        valid_user_filter = "filterField=somevalue"
+        with mock_ldap(user_filter=valid_user_filter) as ldap:
+            # Verify we can login.
+            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            self.assertEquals(response.username, "someuser")
+
+            (it, err) = ldap.iterate_group_members(
+                {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
+            )
+            self.assertIsNone(err)
+
+            results = list(it)
+            self.assertEquals(2, len(results))
 
 
 if __name__ == "__main__":

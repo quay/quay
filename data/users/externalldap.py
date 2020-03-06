@@ -101,6 +101,7 @@ class LDAPUsers(FederatedUsers):
         timeout=None,
         network_timeout=None,
         force_no_pagination=False,
+        ldap_user_filter=None,
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
@@ -113,6 +114,7 @@ class LDAPUsers(FederatedUsers):
         self._allow_tls_fallback = allow_tls_fallback
         self._requires_email = requires_email
         self._force_no_pagination = force_no_pagination
+        self._ldap_user_filter = ldap_user_filter
 
         # Note: user_rdn is a list of RDN pieces (for historical reasons), and secondary_user_rds
         # is a list of RDN strings.
@@ -145,10 +147,18 @@ class LDAPUsers(FederatedUsers):
         referral_dn = referral_uri[len("ldap:///") :]
         return referral_dn
 
+    def _add_user_filter(self, query):
+        if not self._ldap_user_filter:
+            return query
+
+        return u"(&({0}){1})".format(self._ldap_user_filter, query)
+
     def _ldap_user_search_with_rdn(self, conn, username_or_email, user_search_dn, suffix=""):
         query = u"(|({0}={2}{3})({1}={2}{3}))".format(
             self._uid_attr, self._email_attr, escape_filter_chars(username_or_email), suffix
         )
+        query = self._add_user_filter(query)
+
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
         try:
             return (conn.search_s(user_search_dn, ldap.SCOPE_SUBTREE, query.encode("utf-8")), None)
@@ -159,6 +169,7 @@ class LDAPUsers(FederatedUsers):
 
             try:
                 subquery = u"(%s=%s)" % (self._uid_attr, username_or_email)
+                subquery = self._add_user_filter(subquery)
                 return (conn.search_s(referral_dn, ldap.SCOPE_BASE, subquery), None)
             except ldap.LDAPError:
                 logger.debug("LDAP referral search exception")
@@ -386,6 +397,8 @@ class LDAPUsers(FederatedUsers):
         has_pagination = not (self._force_no_pagination or disable_pagination)
         with self._ldap.get_connection() as conn:
             search_flt = filter_format("(memberOf=%s,%s)", (group_dn, self._base_dn))
+            search_flt = self._add_user_filter(search_flt)
+
             attributes = [self._uid_attr, self._email_attr]
 
             for user_search_dn in self._user_dns:
