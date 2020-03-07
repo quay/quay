@@ -1,7 +1,7 @@
 import json
 import logging
 
-from app import get_app_url
+from app import app, get_app_url
 from auth.decorators import require_session_login
 from auth.auth_context import get_authenticated_user
 from flask import Blueprint, make_response, redirect
@@ -20,12 +20,14 @@ def app_capabilities():
     manifest_security = "%s/api/v1/repository/{namespace}/{reponame}/manifest/{digest}/security"
     manifest_security_tmpl = manifest_security % get_app_url()
 
+    app_name = ".".join(app.config["SERVER_HOSTNAME"].split(".")[::-1])
+
     metadata = {
-        "appName": "io.quay",
+        "appName": app_name,
         "capabilities": {
-            "io.quay.view-image": {"url-template": view_image_tmpl,},
-            "io.quay.image-security": {"rest-api-template": image_security_tmpl,},
-            "io.quay.manifest-security": {"rest-api-template": manifest_security_tmpl,},
+            app_name + ".view-image": {"url-template": view_image_tmpl,},
+            app_name + ".image-security": {"rest-api-template": image_security_tmpl,},
+            app_name + ".manifest-security": {"rest-api-template": manifest_security_tmpl,},
         },
     }
 
