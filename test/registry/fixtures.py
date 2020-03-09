@@ -42,7 +42,7 @@ def registry_server_executor(app):
 
     def set_supports_direct_download(enabled):
         storage.put_content(
-            ["local_us"], "supports_direct_download", "true" if enabled else "false"
+            ["local_us"], "supports_direct_download", b"true" if enabled else b"false"
         )
         return "OK"
 
