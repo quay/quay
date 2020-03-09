@@ -363,7 +363,7 @@ angular.module('quay').directive('repoPanelMirror', function () {
         if (Array.isArray(csv)) {
           patterns = csv;
         } else {
-          patterns = csv.split(',');
+          patterns = csv.split(',').map(s => s.trim());
         }
 
 
