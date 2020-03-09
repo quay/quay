@@ -1,11 +1,10 @@
-import io as StringIO
 import os
 import logging
 import copy
 
 from collections import namedtuple
 from datetime import datetime, timedelta
-from io import BufferedIOBase
+from io import BufferedIOBase, StringIO, BytesIO
 from itertools import chain
 from uuid import uuid4
 
@@ -249,7 +248,7 @@ class _CloudStorage(BaseStorageV2):
             return 0, e
 
         # We are going to reuse this but be VERY careful to only read the number of bytes written to it
-        buf = StringIO.StringIO()
+        buf = BytesIO()
 
         num_part = 1
         total_bytes_written = 0
@@ -474,7 +473,7 @@ class _CloudStorage(BaseStorageV2):
         if max_chunk_size is None or chunk.length <= max_chunk_size:
             yield chunk
         else:
-            newchunk_length = chunk.length / 2
+            newchunk_length = chunk.length // 2
             first_subchunk = _PartUploadMetadata(chunk.path, chunk.offset, newchunk_length)
             second_subchunk = _PartUploadMetadata(
                 chunk.path, chunk.offset + newchunk_length, chunk.length - newchunk_length

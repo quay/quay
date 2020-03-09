@@ -169,7 +169,7 @@ def test_stream_read_write():
     swift.stream_write("somepath", io.BytesIO(b"some content here"))
     assert swift.exists("somepath")
     assert swift.get_content("somepath") == b"some content here"
-    assert b"".join([c for c in swift.stream_read("somepath")]) == b"some content here"
+    assert b"".join([c for c in swift.stream_read("somepath")]) == b"some content here"gs
 
 
 def test_stream_read_write_invalid_checksum():

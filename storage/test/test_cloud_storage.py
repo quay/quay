@@ -1,6 +1,6 @@
 import os
 
-from io import StringIO
+from io import BytesIO
 
 import pytest
 
@@ -8,6 +8,7 @@ import moto
 import boto
 
 from moto import mock_s3_deprecated as mock_s3
+from moto.s3 import s3_backend
 
 from storage import S3Storage, StorageContext
 from storage.cloud import _CloudStorage, _PartUploadMetadata
@@ -83,7 +84,7 @@ def test_copy_with_error(storage_engine):
 
 def test_stream_read(storage_engine):
     # Read the streaming content.
-    data = "".join(storage_engine.stream_read(_TEST_PATH))
+    data = b"".join(storage_engine.stream_read(_TEST_PATH))
     assert data == _TEST_CONTENT
 
 
@@ -94,7 +95,7 @@ def test_stream_read_file(storage_engine):
 
 def test_stream_write(storage_engine):
     new_data = os.urandom(4096)
-    storage_engine.stream_write(_TEST_PATH, StringIO(new_data), content_type="Cool/Type")
+    storage_engine.stream_write(_TEST_PATH, BytesIO(new_data), content_type="Cool/Type")
     assert storage_engine.get_content(_TEST_PATH) == new_data
 
 
@@ -105,7 +106,7 @@ def test_stream_write_error():
 
         # Attempt to write to the uncreated bucket, which should raise an error.
         with pytest.raises(IOError):
-            engine.stream_write(_TEST_PATH, StringIO("hello world"), content_type="Cool/Type")
+            engine.stream_write(_TEST_PATH, BytesIO(b"hello world"), content_type="Cool/Type")
 
         assert not engine.exists(_TEST_PATH)
 
@@ -117,13 +118,13 @@ def test_chunk_upload(storage_engine, chunk_count, force_client_side):
         return
 
     upload_id, metadata = storage_engine.initiate_chunked_upload()
-    final_data = ""
+    final_data = b""
 
     for index in range(0, chunk_count):
         chunk_data = os.urandom(1024)
         final_data = final_data + chunk_data
         bytes_written, new_metadata, error = storage_engine.stream_upload_chunk(
-            upload_id, 0, len(chunk_data), StringIO(chunk_data), metadata
+            upload_id, 0, len(chunk_data), BytesIO(chunk_data), metadata
         )
         metadata = new_metadata
 
@@ -147,7 +148,7 @@ def test_cancel_chunked_upload(storage_engine, chunk_count):
     for _ in range(0, chunk_count):
         chunk_data = os.urandom(1024)
         _, new_metadata, _ = storage_engine.stream_upload_chunk(
-            upload_id, 0, len(chunk_data), StringIO(chunk_data), metadata
+            upload_id, 0, len(chunk_data), BytesIO(chunk_data), metadata
         )
         metadata = new_metadata
 
@@ -168,7 +169,7 @@ def test_large_chunks_upload(storage_engine):
     # Write a "super large" chunk, to ensure that it is broken into smaller chunks.
     chunk_data = os.urandom(int(storage_engine.maximum_chunk_size * 2.5))
     bytes_written, new_metadata, _ = storage_engine.stream_upload_chunk(
-        upload_id, 0, -1, StringIO(chunk_data), metadata
+        upload_id, 0, -1, BytesIO(chunk_data), metadata
     )
     assert len(chunk_data) == bytes_written
 
@@ -187,11 +188,11 @@ def test_large_chunks_with_ragged_edge(storage_engine):
     upload_id, metadata = storage_engine.initiate_chunked_upload()
 
     # Write a few "super large" chunks, to ensure that it is broken into smaller chunks.
-    all_data = ""
+    all_data = b""
     for _ in range(0, 2):
         chunk_data = os.urandom(int(storage_engine.maximum_chunk_size) + 20)
         bytes_written, new_metadata, _ = storage_engine.stream_upload_chunk(
-            upload_id, 0, -1, StringIO(chunk_data), metadata
+            upload_id, 0, -1, BytesIO(chunk_data), metadata
         )
         assert len(chunk_data) == bytes_written
         all_data = all_data + chunk_data
