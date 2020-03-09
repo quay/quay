@@ -23,7 +23,7 @@ class FakeStorage(BaseStorageV2):
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
     ):
         try:
-            if self.get_content("supports_direct_download") == "true":
+            if self.get_content("supports_direct_download") == b"true":
                 return "http://somefakeurl?goes=here"
         except:
             pass

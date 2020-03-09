@@ -9,6 +9,7 @@ import hmac
 import string
 import logging
 import json
+import sys
 
 from _pyio import BufferedReader, BufferedIOBase
 
@@ -257,7 +258,7 @@ class SwiftStorage(BaseStorage):
 
     def stream_read(self, path):
         for data in self._get_object(path, self.buffer_size):
-            yield data
+            yield data.to_bytes(1, sys.byteorder)
 
     def stream_read_file(self, path):
         return GeneratorFile(self.stream_read(path))

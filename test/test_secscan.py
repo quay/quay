@@ -45,10 +45,10 @@ def _delete_tag(namespace, repo, tag):
 class TestSecurityScanner(unittest.TestCase):
     def setUp(self):
         # Enable direct download in fake storage.
-        storage.put_content(["local_us"], "supports_direct_download", "true")
+        storage.put_content(["local_us"], "supports_direct_download", b"true")
 
         # Have fake storage say all files exist for the duration of the test.
-        storage.put_content(["local_us"], "all_files_exist", "true")
+        storage.put_content(["local_us"], "all_files_exist", b"true")
 
         # Setup the database with fake storage.
         setup_database_for_testing(self)
@@ -114,7 +114,7 @@ class TestSecurityScanner(unittest.TestCase):
         """
 
         # Disable direct download in fake storage.
-        storage.put_content(["local_us"], "supports_direct_download", "false")
+        storage.put_content(["local_us"], "supports_direct_download", b"false")
 
         try:
             app.register_blueprint(v2_bp, url_prefix="/v2")
