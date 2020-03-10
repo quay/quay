@@ -28,12 +28,27 @@ config_provider = get_config_provider(
 )
 
 
-def _get_version_number_changelog():
-    try:
-        with open(os.path.join(ROOT_DIR, "CHANGELOG.md")) as f:
-            return re.search(r"(v[0-9]+\.[0-9]+\.[0-9]+)", f.readline()).group(0)
-    except IOError:
-        return ""
+def _get_version():
+    """
+    Version is determined in following order:
+    1. First non-blank line VERSION file
+    2. environment variable QUAY_VERSION
+    3. GIT_HEAD file
+    4. git rev-parse HEAD
+    """
+    version = ""
+    if os.path.exists(os.path.join(ROOT_DIR, "VERSION")):
+        with open(os.path.join(ROOT_DIR, "VERSION")) as f:
+            for line in f:
+                if line != "":
+                    version = line.strip()
+                    break
+    if not version or version == "":
+        version = os.environ.get("QUAY_VERSION", "")
+    if not version or version == "":
+        version = _get_git_sha()
+
+    return version
 
 
 def _get_git_sha():
@@ -48,5 +63,5 @@ def _get_git_sha():
     return "unknown"
 
 
-__version__ = _get_version_number_changelog()
+__version__ = _get_version()
 __gitrev__ = _get_git_sha()

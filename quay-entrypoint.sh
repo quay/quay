@@ -10,7 +10,7 @@ if ! whoami &> /dev/null; then
 fi
 
 display_usage() {
-    echo "Usage: ${0} <registry|config|migrate|repomirror|shell|help>"
+    echo "Usage: ${0} <version|registry|config|migrate|repomirror|shell|help>"
     echo
     echo "If the first argument isn't one of the above modes,"
     echo "the arguments will be exec'd directly, i.e.:"
@@ -33,10 +33,9 @@ cat << "EOF"
 \ \  \ \  / /  | |__| | | |__| | / ____ \  | |
  \ \/ \ \/ /   \_  ___/  \____/ /_/    \_\ |_|
   \__/ \__/      \ \__
-                  \___\ by Red Hat
+                  \___\
 
  Build, Store, and Distribute your Containers
-
 
 EOF
 
@@ -48,6 +47,10 @@ export DB_CONNECTION_POOLING_REGISTRY=${DB_CONNECTION_POOLING:-"true"}
 eval "$(scl enable python27 rh-nginx112 'export -p')"
 
 case "$QUAYENTRY" in
+    "version")
+        echo "Version: " `sed '/[^[:blank:]]/q;d' VERSION`
+        exit 0
+        ;;
     "shell")
         echo "Entering shell mode"
         exec /bin/bash

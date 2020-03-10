@@ -7,8 +7,6 @@ screenshots
 tools
 test/data/registry
 venv
-.git
-!.git/HEAD
 .gitignore
 .github
 Bobfile

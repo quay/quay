@@ -1,3 +1,31 @@
+# Builder
+
+FROM centos:7 as builder
+
+ENV QUAYDIR /quay-registry
+
+RUN mkdir $QUAYDIR
+WORKDIR $QUAYDIR
+
+RUN INSTALL_PKGS="\
+        git \
+        " && \
+    yum install -y yum-utils && \
+    yum install -y epel-release centos-release-scl && \
+    yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
+    yum -y update && \
+    yum -y clean all
+
+COPY . .
+
+ARG QUAY_VERSION
+RUN echo $QUAY_VERSION > VERSION && \
+    git describe --tags >> VERSION && \
+    find . -name ".git" -exec rm -rf -- {} +
+
+
+# Quay
+
 FROM centos:7
 LABEL maintainer "thomasmckay@redhat.com"
 
@@ -18,6 +46,8 @@ ENV QUAYPATH "."
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
+COPY --from=builder /quay-registry /quay-registry
+
 RUN INSTALL_PKGS="\
         python27 \
         python27-python-pip \
@@ -37,8 +67,6 @@ RUN INSTALL_PKGS="\
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
-
-COPY . .
 
 RUN scl enable python27 "\
     pip install --upgrade setuptools==44 pip && \
