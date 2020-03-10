@@ -13,6 +13,7 @@ from data.database import (
     RepositoryTag,
     ImageStorage,
     Repository,
+    RepositoryState,
     Manifest,
     ManifestBlob,
     ManifestLegacyImage,
@@ -352,11 +353,20 @@ def test_get_most_recent_tag(initialized_db):
     # Create a hidden tag that is the most recent.
     repo = model.repository.get_repository("devtable", "simple")
     image = model.tag.get_tag_image("devtable", "simple", "latest")
-    model.tag.create_temporary_hidden_tag(repo, image, 10000000)
+    assert model.tag.create_temporary_hidden_tag(repo, image, 10000000) is not None
 
     # Ensure we find a non-hidden tag.
     found = model.tag.get_most_recent_tag(repo)
     assert not found.hidden
+
+
+def test_create_temp_tag_deleted_repo(initialized_db):
+    repo = model.repository.get_repository("devtable", "simple")
+    repo.state = RepositoryState.MARKED_FOR_DELETION
+    repo.save()
+
+    image = model.tag.get_tag_image("devtable", "simple", "latest")
+    assert model.tag.create_temporary_hidden_tag(repo, image, 10000000) is None
 
 
 def test_get_active_tag_for_repo(initialized_db):
