@@ -201,21 +201,31 @@ def _purge_repository_contents(repo):
         if not found:
             break
 
+    assert Tag.select().where(Tag.repository == repo).count() == 0
+    assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
+    assert Manifest.select().where(Manifest.repository == repo).count() == 0
+    assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+
     # Add all remaining images to a new context. We do this here to minimize the number of images
     # we need to load.
     while True:
         found_image = False
         image_context = _GarbageCollectorContext(repo)
+
+        existing_count = Image.select().where(Image.repository == repo).count()
+        if not existing_count:
+            break
+
         for image in Image.select().where(Image.repository == repo):
             found_image = True
-            logger.debug("Deleting image %s under repository %s", image, repo)
+            logger.debug("Trying to delete image %s under repository %s", image, repo)
             assert image.repository_id == repo.id
             image_context.add_legacy_image_id(image.id)
 
         _run_garbage_collection(image_context)
-
-        if not found_image:
-            break
+        new_count = Image.select().where(Image.repository == repo).count()
+        if new_count >= existing_count:
+            raise Exception("GC purge bug! Please report this to support!")
 
 
 def garbage_collect_repo(repo):
