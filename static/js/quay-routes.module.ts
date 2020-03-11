@@ -131,12 +131,6 @@ function provideRoutes($routeProvider: ng.route.IRouteProvider,
     // Security
     .route('/security/', 'security')
 
-    // TOS
-    .route('/tos', 'tos')
-
-    // Privacy
-    .route('/privacy', 'privacy')
-
     // Change username
     .route('/updateuser', 'update-user')
 
