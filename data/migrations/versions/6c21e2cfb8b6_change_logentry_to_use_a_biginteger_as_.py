@@ -10,13 +10,10 @@ Create Date: 2018-07-27 16:30:02.877346
 revision = "6c21e2cfb8b6"
 down_revision = "d17c695859ea"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     op.alter_column(
         table_name="logentry",
         column_name="id",
@@ -26,8 +23,7 @@ def upgrade(tables, tester, progress_reporter):
     )
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     op.alter_column(
         table_name="logentry",
         column_name="id",

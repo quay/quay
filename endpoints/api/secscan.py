@@ -20,11 +20,11 @@ from endpoints.api import (
     show_if,
     parse_args,
     query_param,
-    truthy_bool,
     disallow_for_app_repositories,
 )
 from endpoints.exception import NotFound, DownstreamIssue
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
+from util.parsing import truthy_bool
 
 
 @unique

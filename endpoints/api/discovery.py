@@ -18,11 +18,11 @@ from endpoints.api import (
     resource,
     method_metadata,
     nickname,
-    truthy_bool,
     parse_args,
     query_param,
 )
 from endpoints.decorators import anon_allowed
+from util.parsing import truthy_bool
 
 
 logger = logging.getLogger(__name__)

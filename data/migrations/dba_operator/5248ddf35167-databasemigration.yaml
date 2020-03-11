@@ -1,0 +1,141 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 5248ddf35167
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 5248ddf35167
+    image: quay.io/quay/quay
+    name: 5248ddf35167
+  previous: b918abdbee43
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: creation_date
+      nullable: false
+    - name: rule_type
+      nullable: false
+    - name: rule_value
+      nullable: false
+    - name: left_child_id
+      nullable: true
+    - name: right_child_id
+      nullable: true
+    operation: createTable
+    table: repomirrorrule
+  - columns: []
+    indexName: repomirrorrule
+    indexType: index
+    operation: createIndex
+    table: repomirrorrule_left_child_id
+  - columns: []
+    indexName: repomirrorrule
+    indexType: index
+    operation: createIndex
+    table: repomirrorrule_repository_id
+  - columns: []
+    indexName: repomirrorrule
+    indexType: index
+    operation: createIndex
+    table: repomirrorrule_right_child_id
+  - columns: []
+    indexName: repomirrorrule
+    indexType: index
+    operation: createIndex
+    table: repomirrorrule_rule_type
+  - columns: []
+    indexName: repomirrorrule
+    indexType: unique
+    operation: createIndex
+    table: repomirrorrule_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: creation_date
+      nullable: false
+    - name: is_enabled
+      nullable: false
+    - name: mirror_type
+      nullable: false
+    - name: internal_robot_id
+      nullable: false
+    - name: external_registry
+      nullable: false
+    - name: external_namespace
+      nullable: false
+    - name: external_repository
+      nullable: false
+    - name: external_registry_username
+      nullable: true
+    - name: external_registry_password
+      nullable: true
+    - name: external_registry_config
+      nullable: false
+    - name: sync_interval
+      nullable: false
+    - name: sync_start_date
+      nullable: true
+    - name: sync_expiration_date
+      nullable: true
+    - name: sync_retries_remaining
+      nullable: false
+    - name: sync_status
+      nullable: false
+    - name: sync_transaction_id
+      nullable: true
+    - name: root_rule_id
+      nullable: false
+    operation: createTable
+    table: repomirrorconfig
+  - columns: []
+    indexName: repomirrorconfig
+    indexType: index
+    operation: createIndex
+    table: repomirrorconfig_mirror_type
+  - columns: []
+    indexName: repomirrorconfig
+    indexType: unique
+    operation: createIndex
+    table: repomirrorconfig_repository_id
+  - columns: []
+    indexName: repomirrorconfig
+    indexType: index
+    operation: createIndex
+    table: repomirrorconfig_root_rule_id
+  - columns: []
+    indexName: repomirrorconfig
+    indexType: index
+    operation: createIndex
+    table: repomirrorconfig_sync_status
+  - columns: []
+    indexName: repomirrorconfig
+    indexType: index
+    operation: createIndex
+    table: repomirrorconfig_sync_transaction_id
+  - columns: []
+    indexName: repomirrorconfig
+    indexType: index
+    operation: createIndex
+    table: repomirrorconfig_internal_robot_id
+  - columns:
+    - name: state
+      nullable: false
+    operation: addColumn
+    table: !!python/unicode 'repository'
+  - columns: []
+    indexName: repository
+    indexType: index
+    operation: createIndex
+    table: repository_state

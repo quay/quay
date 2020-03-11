@@ -1,0 +1,26 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 17aff2e1354e
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 17aff2e1354e
+    image: quay.io/quay/quay
+    name: 17aff2e1354e
+  previous: 61cadbacb9fc
+  schemaHints:
+  - columns:
+    - name: successive_failure_count
+      nullable: false
+    operation: addColumn
+    table: repositorybuildtrigger
+  - columns:
+    - name: successive_internal_error_count
+      nullable: false
+    operation: addColumn
+    table: repositorybuildtrigger

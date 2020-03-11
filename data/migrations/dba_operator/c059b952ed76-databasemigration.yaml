@@ -1,0 +1,19 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: c059b952ed76
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - c059b952ed76
+    image: quay.io/quay/quay
+    name: c059b952ed76
+  previous: 49e1138ed12d
+  schemaHints:
+  - indexName: oauthaccesstoken_refresh_token
+    operation: dropIndex
+    table: oauthaccesstoken

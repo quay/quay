@@ -35,7 +35,6 @@ from endpoints.api import (
     page_support,
     log_action,
     format_date,
-    truthy_bool,
     InvalidRequest,
     NotFound,
     Unauthorized,
@@ -49,6 +48,7 @@ from endpoints.api.superuser_models_pre_oci import (
     InvalidRepositoryBuildException,
 )
 from endpoints.api.logs import _validate_logs_arguments
+from util.parsing import truthy_bool
 from util.request import get_request_ip
 from util.useremails import send_confirmation_email, send_recovery_email
 from util.validation import validate_service_key_name

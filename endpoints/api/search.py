@@ -8,7 +8,6 @@ from endpoints.api import (
     ApiResource,
     parse_args,
     query_param,
-    truthy_bool,
     nickname,
     resource,
     require_scope,
@@ -35,6 +34,7 @@ from flask import abort
 from operator import itemgetter
 from stringscore import liquidmetal
 from util.names import parse_robot_username
+from util.parsing import truthy_bool
 
 import anunidecode  # Don't listen to pylint's lies. This import is required.
 import math

@@ -10,9 +10,6 @@ Create Date: 2019-10-07 13:11:20.424715
 revision = "34c8ef052ec9"
 down_revision = "cc6778199cdb"
 
-from alembic import op
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
@@ -85,8 +82,7 @@ def _iterate(model_class, clause):
             break
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     from app import app
 
     logger.info("Migrating to external_reference from existing columns")
@@ -154,8 +150,7 @@ def upgrade(tables, tester, progress_reporter):
     tester.populate_column("repomirrorconfig", "external_reference", tester.TestDataType.String)
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
 
     """
   This will downgrade existing data but may not exactly match previous data structure. If the

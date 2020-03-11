@@ -9,13 +9,10 @@ Create Date: 2019-08-19 16:07:48.109889
 revision = "49e1138ed12d"
 down_revision = "703298a825c2"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
 
     # Adjust existing fields to be nullable.
     op.alter_column("accesstoken", "code", nullable=True, existing_type=sa.String(length=255))
@@ -62,8 +59,7 @@ def upgrade(tables, tester, progress_reporter):
     )
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
 
     op.alter_column("accesstoken", "token_name", nullable=True, existing_type=sa.String(length=255))
     op.alter_column("accesstoken", "token_code", nullable=True, existing_type=sa.String(length=255))

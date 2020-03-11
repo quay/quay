@@ -10,14 +10,11 @@ Create Date: 2017-03-19 12:59:41.484430
 revision = "b4df55dea4b3"
 down_revision = "b8ae68ad3e52"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     op.create_table(
         "repositorykind",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -47,8 +44,7 @@ def upgrade(tables, tester, progress_reporter):
     # ### end population of test data ### #
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     op.drop_constraint(
         op.f("fk_repository_kind_id_repositorykind"), "repository", type_="foreignkey"
     )
