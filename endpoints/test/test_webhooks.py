@@ -4,7 +4,7 @@ import pytest
 from flask import url_for
 
 from data import model
-from endpoints.test.shared import conduct_call
+from endpoints.test.shared import conduct_call, gen_basic_auth
 from test.fixtures import *
 
 
@@ -18,7 +18,7 @@ def test_start_build_disabled_trigger(app, client):
     }
 
     headers = {
-        "Authorization": "Basic " + base64.b64encode("devtable:password"),
+        "Authorization": gen_basic_auth("devtable", "password"),
     }
 
     conduct_call(

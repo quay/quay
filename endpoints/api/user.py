@@ -575,7 +575,7 @@ class ClientKey(ApiResource):
         if not result:
             raise request_error(message=error_message)
 
-        return {"key": authentication.encrypt_user_password(password)}
+        return {"key": authentication.encrypt_user_password(password).decode("ascii")}
 
 
 def conduct_signin(username_or_email, password, invite_code=None):

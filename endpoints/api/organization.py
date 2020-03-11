@@ -122,6 +122,7 @@ class OrganizationList(ApiResource):
         """
         user = get_authenticated_user()
         org_data = request.get_json()
+        print("REQUEST:", org_data)
         existing = None
 
         try:
@@ -141,10 +142,14 @@ class OrganizationList(ApiResource):
 
         # If recaptcha is enabled, then verify the user is a human.
         if features.RECAPTCHA:
+            print("TEST CAPTCHA", app.config["RECAPTCHA_SECRET_KEY"])
             recaptcha_response = org_data.get("recaptcha_response", "")
+            print("TEST CAPTCHA RESPONSE", recaptcha_response)
             result = recaptcha2.verify(
                 app.config["RECAPTCHA_SECRET_KEY"], recaptcha_response, get_request_ip()
             )
+
+            print("TEST CAPTCHA RESULT:", result)
 
             if not result["success"]:
                 return {"message": "Are you a bot? If not, please revalidate the captcha."}, 400

@@ -159,7 +159,9 @@ def user_view(user, password=None):
     }
 
     if password is not None:
-        user_data["encrypted_password"] = authentication.encrypt_user_password(password)
+        user_data["encrypted_password"] = authentication.encrypt_user_password(password).decode(
+            "ascii"
+        )
 
     return user_data
 
@@ -288,7 +290,9 @@ class SuperUserList(ApiResource):
                 "username": username,
                 "email": email,
                 "password": password,
-                "encrypted_password": authentication.encrypt_user_password(password),
+                "encrypted_password": authentication.encrypt_user_password(password).decode(
+                    "ascii"
+                ),
             }
 
         raise Unauthorized()
@@ -438,7 +442,9 @@ class SuperUserManagement(ApiResource):
             return_value = user.to_dict()
             if user_data.get("password") is not None:
                 password = user_data.get("password")
-                return_value["encrypted_password"] = authentication.encrypt_user_password(password)
+                return_value["encrypted_password"] = authentication.encrypt_user_password(
+                    password
+                ).decode("ascii")
             if user_data.get("email") is not None:
                 return_value["email"] = user_data.get("email")
 
@@ -670,8 +676,8 @@ class SuperUserServiceKeyManagement(ApiResource):
                     "kid": key_id,
                     "name": key_name,
                     "service": body["service"],
-                    "public_key": private_key.publickey().exportKey("PEM"),
-                    "private_key": private_key.exportKey("PEM"),
+                    "public_key": private_key.publickey().exportKey("PEM").decode("ascii"),
+                    "private_key": private_key.exportKey("PEM").decode("ascii"),
                 }
             )
 

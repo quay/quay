@@ -4,7 +4,7 @@ from flask import url_for
 
 from app import instance_keys, app as original_app
 from data.model.user import regenerate_robot_token, get_robot_and_metadata, get_user
-from endpoints.test.shared import conduct_call
+from endpoints.test.shared import conduct_call, gen_basic_auth
 from util.security.registry_jwt import decode_bearer_token, CLAIM_TUF_ROOTS
 
 from test.fixtures import *
@@ -181,7 +181,7 @@ def test_generate_registry_jwt(
 
     headers = {}
     if username and password:
-        headers["Authorization"] = "Basic %s" % (base64.b64encode("%s:%s" % (username, password)))
+        headers["Authorization"] = gen_basic_auth(username, password)
 
     resp = conduct_call(
         client,

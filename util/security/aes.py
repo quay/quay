@@ -16,6 +16,7 @@ class AESCipher(object):
         self.key = key
 
     def encrypt(self, raw):
+        assert isinstance(raw, bytes)
         raw = self._pad(raw)
         iv = Random.new().read(AES.block_size)
         cipher = AES.new(self.key, AES.MODE_CBC, iv)
@@ -28,7 +29,7 @@ class AESCipher(object):
         return self._unpad(cipher.decrypt(enc[AES.block_size :])).decode("utf-8")
 
     def _pad(self, s):
-        return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
+        return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs).encode("ascii")
 
     @staticmethod
     def _unpad(s):

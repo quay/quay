@@ -10,7 +10,7 @@ REPOSITORY_NAME_REGEX = re.compile(r"^[a-z0-9][\.a-z0-9_-]{0,254}$")
 VALID_TAG_PATTERN = r"[\w][\w.-]{0,127}"
 FULL_TAG_PATTERN = r"^[\w][\w.-]{0,127}$"
 
-TAG_REGEX = re.compile(FULL_TAG_PATTERN)
+TAG_REGEX = re.compile(FULL_TAG_PATTERN, re.ASCII)
 TAG_ERROR = (
     'Invalid tag: must match [A-Za-z0-9_.-], NOT start with "." or "-", '
     "and can contain 1-128 characters"
