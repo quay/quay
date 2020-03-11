@@ -101,7 +101,7 @@ from jsonschema import validate as validate_schema, ValidationError
 from dateutil.parser import parse as parse_date
 
 from digest import digest_tools
-from image.docker import ManifestException
+from image.shared import ManifestException
 from util.bytes import Bytes
 
 

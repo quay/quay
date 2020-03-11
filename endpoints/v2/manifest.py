@@ -22,10 +22,10 @@ from endpoints.v2.errors import (
     TagExpired,
     NameUnknown,
 )
-from image.docker import ManifestException
+from image.shared import ManifestException
+from image.shared.schemas import parse_manifest_from_bytes
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE, DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES, OCI_CONTENT_TYPES
-from image.docker.schemas import parse_manifest_from_bytes
 from notifications import spawn_notification
 from util.audit import track_and_log
 from util.bytes import Bytes

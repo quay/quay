@@ -28,10 +28,9 @@ from data.registry_model.datatypes import (
     ManifestLayer,
 )
 from data.registry_model.label_handlers import apply_label_to_manifest
-from image.docker import ManifestException
+from image.shared import ManifestException
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
-    ManifestException,
     DockerSchema1ManifestBuilder,
 )
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE

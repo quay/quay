@@ -6,9 +6,9 @@ from collections import namedtuple
 from jsonschema import validate as validate_schema, ValidationError
 
 from digest import digest_tools
-from image.docker import ManifestException
-from image.docker.interfaces import ManifestInterface
-from image.docker.types import ManifestImageLayer
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestInterface
+from image.shared.types import ManifestImageLayer
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,

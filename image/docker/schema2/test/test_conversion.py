@@ -5,7 +5,7 @@ import pytest
 
 from image.docker.schema1 import DockerSchema1Manifest, DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2.manifest import DockerSchema2Manifest
-from image.docker.schemautil import ContentRetrieverForTesting
+from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 
 

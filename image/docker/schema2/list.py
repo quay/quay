@@ -5,8 +5,8 @@ from cachetools.func import lru_cache
 from jsonschema import validate as validate_schema, ValidationError
 
 from digest import digest_tools
-from image.docker import ManifestException
-from image.docker.interfaces import ManifestInterface
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestInterface
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema1 import DockerSchema1Manifest
 from image.docker.schema2 import (

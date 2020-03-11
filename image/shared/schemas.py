@@ -1,4 +1,4 @@
-from image.docker import ManifestException
+from image.shared import ManifestException
 from image.docker.schema1 import DockerSchema1Manifest, DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,

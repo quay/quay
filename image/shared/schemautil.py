@@ -1,6 +1,6 @@
 import json
 
-from image.docker.interfaces import ContentRetriever
+from image.shared.interfaces import ContentRetriever
 
 
 class ContentRetrieverForTesting(ContentRetriever):

@@ -27,7 +27,7 @@ from endpoints.decorators import (
 from endpoints.metrics import image_pulls, image_pulled_bytes
 from endpoints.v2.blob import BLOB_DIGEST_ROUTE
 from image.appc import AppCImageFormatter
-from image.docker import ManifestException
+from image.shared import ManifestException
 from image.docker.squashed import SquashedDockerImageFormatter
 from storage import Storage
 from util.audit import track_and_log, wrap_repository

@@ -15,7 +15,7 @@ from image.docker.schema2.list import (
     MismatchManifestException,
 )
 from image.docker.schema2.test.test_manifest import MANIFEST_BYTES as v22_bytes
-from image.docker.schemautil import ContentRetrieverForTesting
+from image.shared.schemautil import ContentRetrieverForTesting
 from image.docker.test.test_schema1 import MANIFEST_BYTES as v21_bytes
 from util.bytes import Bytes
 

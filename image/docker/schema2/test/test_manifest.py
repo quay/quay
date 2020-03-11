@@ -18,7 +18,7 @@ from image.docker.schema2.manifest import (
 )
 from image.docker.schema2.config import DockerSchema2Config
 from image.docker.schema2.test.test_config import CONFIG_BYTES
-from image.docker.schemautil import ContentRetrieverForTesting
+from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 
 

@@ -35,7 +35,7 @@ from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from digest.digest_tools import sha256_digest
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
-from image.docker.schemas import parse_manifest_from_bytes
+from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
 
 from test.fixtures import *

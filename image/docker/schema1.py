@@ -19,11 +19,11 @@ from jwkest.jws import SIGNER_ALGS, keyrep, BadSignature
 from jwt.utils import base64url_encode, base64url_decode
 
 from digest import digest_tools
-from image.docker import ManifestException
-from image.docker.types import ManifestImageLayer
-from image.docker.interfaces import ManifestInterface
+from image.shared import ManifestException
+from image.shared.types import ManifestImageLayer
+from image.shared.interfaces import ManifestInterface
+from image.shared.schemautil import to_canonical_json
 from image.docker.v1 import DockerV1Metadata
-from image.docker.schemautil import to_canonical_json
 from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)

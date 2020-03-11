@@ -34,7 +34,7 @@ from data.registry_model.registry_oci_model import OCIModel
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
 from data.model.blob import store_blob_record_and_temp_link
-from image.docker.types import ManifestImageLayer
+from image.shared.types import ManifestImageLayer
 from image.docker.schema1 import (
     DockerSchema1ManifestBuilder,
     DOCKER_SCHEMA1_CONTENT_TYPES,

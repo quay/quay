@@ -12,7 +12,7 @@ from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.config import DockerSchema2Config
 from image.docker.schema2.list import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
-from image.docker.schemas import parse_manifest_from_bytes
+from image.shared.schemas import parse_manifest_from_bytes
 from test.registry.protocols import (
     RegistryProtocol,
     Failures,
