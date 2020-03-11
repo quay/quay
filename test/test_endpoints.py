@@ -28,6 +28,7 @@ from endpoints.keyserver import jwk_with_kid
 from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
 from endpoints.web import web as web_bp
 from endpoints.webhooks import webhooks as webhooks_bp
+from endpoints.test.shared import gen_basic_auth
 from initdb import setup_database_for_testing, finished_database_for_testing
 from test.helpers import assert_action_logged
 from util.security.token import encode_public_private_token
@@ -103,7 +104,7 @@ class EndpointTestCase(unittest.TestCase):
         headers = headers or {}
         rv = self.app.delete(url_for(resource_name, **kwargs), headers=headers)
         self.assertEqual(rv.status_code, expected_code)
-        self.assertEqual(rv.data, "")  # ensure response body empty
+        self.assertEqual(rv.data, b"")  # ensure response body empty
         return
 
     def putResponse(self, resource_name, headers=None, data=None, expected_code=200, **kwargs):
@@ -227,7 +228,7 @@ class WebhookEndpointTestCase(EndpointTestCase):
         )
 
     def test_valid_build_trigger_webhook_missing_payload(self):
-        auth_header = "Basic %s" % (base64.b64encode("devtable:password"))
+        auth_header = gen_basic_auth("devtable", "password")
         trigger = list(model.build.list_build_triggers("devtable", "building"))[0]
         self.postResponse(
             "webhooks.build_trigger_webhook",
@@ -237,7 +238,7 @@ class WebhookEndpointTestCase(EndpointTestCase):
         )
 
     def test_valid_build_trigger_webhook_invalid_payload(self):
-        auth_header = "Basic %s" % (base64.b64encode("devtable:password"))
+        auth_header = gen_basic_auth("devtable", "password")
         trigger = list(model.build.list_build_triggers("devtable", "building"))[0]
         self.postResponse(
             "webhooks.build_trigger_webhook",
@@ -501,7 +502,7 @@ class OAuthTestCase(EndpointTestCase):
             "scope": "user:admin",
         }
 
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:invalidpassword"))
+        headers = dict(authorization=gen_basic_auth("devtable", "invalidpassword"))
         self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -519,7 +520,7 @@ class OAuthTestCase(EndpointTestCase):
         }
 
         # Try without the client id being in the whitelist.
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:password"))
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
         self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -531,7 +532,7 @@ class OAuthTestCase(EndpointTestCase):
         # Add the client ID to the whitelist and try again.
         app.config["DIRECT_OAUTH_CLIENTID_WHITELIST"] = ["deadbeef"]
 
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:password"))
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
         resp = self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -550,7 +551,7 @@ class OAuthTestCase(EndpointTestCase):
         }
 
         # Try without the client id being in the whitelist a few times, making sure we eventually get rate limited.
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:invalidpassword"))
+        headers = dict(authorization=gen_basic_auth("devtable", "invalidpassword"))
         self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -653,7 +654,10 @@ class KeyServerTestCase(EndpointTestCase):
             "key_server.put_service_key",
             service="sample service",
             kid="kid420",
-            headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+            headers={
+                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Content-Type": "application/json",
+            },
             data=jwk,
             expected_code=400,
         )
@@ -664,7 +668,10 @@ class KeyServerTestCase(EndpointTestCase):
                 "key_server.put_service_key",
                 service="sample_service",
                 kid="kid420",
-                headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+                headers={
+                    "Authorization": "Bearer %s" % token.decode("ascii"),
+                    "Content-Type": "application/json",
+                },
                 data=jwk,
                 expected_code=202,
             )
@@ -682,7 +689,10 @@ class KeyServerTestCase(EndpointTestCase):
             "key_server.put_service_key",
             service="sample_service",
             kid="kid6969",
-            headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+            headers={
+                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Content-Type": "application/json",
+            },
             data=jwk,
             expected_code=403,
         )
@@ -701,7 +711,10 @@ class KeyServerTestCase(EndpointTestCase):
                 "key_server.put_service_key",
                 service="sample_service",
                 kid="kid6969",
-                headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+                headers={
+                    "Authorization": "Bearer %s" % token.decode("ascii"),
+                    "Content-Type": "application/json",
+                },
                 data=jwk,
                 expected_code=200,
             )
@@ -716,7 +729,10 @@ class KeyServerTestCase(EndpointTestCase):
             "key_server.put_service_key",
             service="sample_service",
             kid="kid6969",
-            headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+            headers={
+                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Content-Type": "application/json",
+            },
             data=jwk,
             expected_code=403,
         )
@@ -735,7 +751,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our key, attempt to delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token},
+            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
             expected_code=400,
             service="sample_service",
             kid="first",
@@ -765,7 +781,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our second key, attempt to delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token},
+            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
             expected_code=403,
             service="sample_service",
             kid="second",
@@ -777,7 +793,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="second",
@@ -806,7 +822,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="unapprovedkeyhere",
@@ -835,7 +851,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our second key, attempt tp delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token},
+            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
             expected_code=403,
             service="sample_service",
             kid="kid321",
@@ -850,7 +866,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="kid321",
@@ -865,7 +881,7 @@ class KeyServerTestCase(EndpointTestCase):
         )
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % bad_token},
+            headers={"Authorization": "Bearer %s" % bad_token.decode("ascii")},
             expected_code=403,
             service="sample_service",
             kid="kid123",
@@ -875,7 +891,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="kid123",

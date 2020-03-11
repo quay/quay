@@ -310,7 +310,7 @@ class ApiTestCase(unittest.TestCase):
     def deleteEmptyResponse(self, resource_name, params={}, expected_code=204):
         rv = self.app.delete(self.url_for(resource_name, params))
         self.assertEqual(rv.status_code, expected_code)
-        self.assertEqual(rv.data, "")  # ensure response body empty
+        self.assertEqual(rv.data, b"")  # ensure response body empty
         return
 
     def postJsonResponse(self, resource_name, params={}, data={}, expected_code=200):
@@ -325,7 +325,7 @@ class ApiTestCase(unittest.TestCase):
 
         self.assertEqual(rv.status_code, expected_code)
         data = rv.data
-        parsed = py_json.loads(data)
+        parsed = py_json.loads(data.decode("utf-8"))
         return parsed
 
     def putJsonResponse(
@@ -348,7 +348,7 @@ class ApiTestCase(unittest.TestCase):
 
         self.assertEqual(rv.status_code, expected_code)
         data = rv.data
-        parsed = py_json.loads(data)
+        parsed = py_json.loads(data.decode("utf-8"))
         return parsed
 
     def assertNotInTeam(self, data, membername):
@@ -1240,7 +1240,7 @@ class TestCreateOrganization(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEqual('"Created"', data.strip())
+        self.assertEqual(b'"Created"', data.strip())
 
         # Ensure the org was created.
         organization = model.organization.get_organization("neworg")
@@ -1280,7 +1280,7 @@ class TestCreateOrganization(ApiTestCase):
             expected_code=201,
         )
 
-        self.assertEqual('"Created"', data.strip())
+        self.assertEqual(b'"Created"', data.strip())
 
 
 class TestGetOrganization(ApiTestCase):

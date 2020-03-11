@@ -328,7 +328,7 @@ class RepositoryBuildList(RepositoryParamResource):
             build_name = (
                 user_files.get_file_checksum(dockerfile_id)
                 if dockerfile_id
-                else hashlib.sha224(archive_url).hexdigest()[0:7]
+                else hashlib.sha224(archive_url.encode("ascii")).hexdigest()[0:7]
             )
         except IOError:
             raise InvalidRequest("File %s could not be found or is invalid" % dockerfile_id)

@@ -679,7 +679,7 @@ def create_confirm_email_code(user, new_email=None):
     code = EmailConfirmation.create(
         user=user, email_confirm=True, new_email=new_email, verification_code=verification_code
     )
-    return encode_public_private_token(code.code, unhashed)
+    return encode_public_private_token(code.code, unhashed).decode("ascii")
 
 
 def confirm_user_email(token):
@@ -981,9 +981,10 @@ def verify_user(username_or_email, password):
             )
 
     # Hash the given password and compare it to the specified password.
-    if fetched.password_hash and hash_password(
-        password, fetched.password_hash
-    ) == fetched.password_hash:
+    if (
+        fetched.password_hash
+        and hash_password(password, fetched.password_hash) == fetched.password_hash
+    ):
         # If the user previously had any invalid login attempts, clear them out now.
         if fetched.invalid_login_attempts > 0:
             try:
