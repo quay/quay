@@ -154,7 +154,7 @@ class UserAuthentication(object):
         """
         data = {"password": password}
 
-        message = json.dumps(data)
+        message = json.dumps(data).encode("utf-8")
         cipher = AESCipher(self.secret_key)
         return cipher.encrypt(message)
 
