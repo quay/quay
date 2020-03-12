@@ -1,0 +1,1612 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: c156deb8845d
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - c156deb8845d
+    image: quay.io/quay/quay
+    name: c156deb8845d
+  previous: null
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: accesstokenkind
+  - columns: []
+    indexName: accesstokenkind
+    indexType: unique
+    operation: createIndex
+    table: accesstokenkind_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: buildtriggerservice
+  - columns: []
+    indexName: buildtriggerservice
+    indexType: unique
+    operation: createIndex
+    table: buildtriggerservice_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: externalnotificationevent
+  - columns: []
+    indexName: externalnotificationevent
+    indexType: unique
+    operation: createIndex
+    table: externalnotificationevent_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: externalnotificationmethod
+  - columns: []
+    indexName: externalnotificationmethod
+    indexType: unique
+    operation: createIndex
+    table: externalnotificationmethod_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: checksum
+      nullable: true
+    - name: image_size
+      nullable: true
+    - name: uncompressed_size
+      nullable: true
+    - name: uploading
+      nullable: true
+    - name: cas_path
+      nullable: false
+    - name: content_checksum
+      nullable: true
+    operation: createTable
+    table: imagestorage
+  - columns: []
+    indexName: imagestorage
+    indexType: index
+    operation: createIndex
+    table: imagestorage_content_checksum
+  - columns: []
+    indexName: imagestorage
+    indexType: unique
+    operation: createIndex
+    table: imagestorage_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: imagestoragelocation
+  - columns: []
+    indexName: imagestoragelocation
+    indexType: unique
+    operation: createIndex
+    table: imagestoragelocation_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: imagestoragesignaturekind
+  - columns: []
+    indexName: imagestoragesignaturekind
+    indexType: unique
+    operation: createIndex
+    table: imagestoragesignaturekind_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: imagestoragetransformation
+  - columns: []
+    indexName: imagestoragetransformation
+    indexType: unique
+    operation: createIndex
+    table: imagestoragetransformation_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    - name: mutable
+      nullable: false
+    operation: createTable
+    table: labelsourcetype
+  - columns: []
+    indexName: labelsourcetype
+    indexType: unique
+    operation: createIndex
+    table: labelsourcetype_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: logentrykind
+  - columns: []
+    indexName: logentrykind
+    indexType: unique
+    operation: createIndex
+    table: logentrykind_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: loginservice
+  - columns: []
+    indexName: loginservice
+    indexType: unique
+    operation: createIndex
+    table: loginservice_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: mediatype
+  - columns: []
+    indexName: mediatype
+    indexType: unique
+    operation: createIndex
+    table: mediatype_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: content
+      nullable: false
+    - name: uuid
+      nullable: true
+    operation: createTable
+    table: messages
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: notificationkind
+  - columns: []
+    indexName: notificationkind
+    indexType: unique
+    operation: createIndex
+    table: notificationkind_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: quayregion
+  - columns: []
+    indexName: quayregion
+    indexType: unique
+    operation: createIndex
+    table: quayregion_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: quayservice
+  - columns: []
+    indexName: quayservice
+    indexType: unique
+    operation: createIndex
+    table: quayservice_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: queue_name
+      nullable: false
+    - name: body
+      nullable: false
+    - name: available_after
+      nullable: false
+    - name: available
+      nullable: false
+    - name: processing_expires
+      nullable: true
+    - name: retries_remaining
+      nullable: false
+    operation: createTable
+    table: queueitem
+  - columns: []
+    indexName: queueitem
+    indexType: index
+    operation: createIndex
+    table: queueitem_available
+  - columns: []
+    indexName: queueitem
+    indexType: index
+    operation: createIndex
+    table: queueitem_available_after
+  - columns: []
+    indexName: queueitem
+    indexType: index
+    operation: createIndex
+    table: queueitem_processing_expires
+  - columns: []
+    indexName: queueitem
+    indexType: index
+    operation: createIndex
+    table: queueitem_queue_name
+  - columns: []
+    indexName: queueitem
+    indexType: index
+    operation: createIndex
+    table: queueitem_retries_remaining
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: role
+  - columns: []
+    indexName: role
+    indexType: unique
+    operation: createIndex
+    table: role_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: approver_id
+      nullable: true
+    - name: approval_type
+      nullable: false
+    - name: approved_date
+      nullable: false
+    - name: notes
+      nullable: false
+    operation: createTable
+    table: servicekeyapproval
+  - columns: []
+    indexName: servicekeyapproval
+    indexType: index
+    operation: createIndex
+    table: servicekeyapproval_approval_type
+  - columns: []
+    indexName: servicekeyapproval
+    indexType: index
+    operation: createIndex
+    table: servicekeyapproval_approver_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: teamrole
+  - columns: []
+    indexName: teamrole
+    indexType: index
+    operation: createIndex
+    table: teamrole_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: true
+    - name: username
+      nullable: false
+    - name: password_hash
+      nullable: true
+    - name: email
+      nullable: false
+    - name: verified
+      nullable: false
+    - name: stripe_id
+      nullable: true
+    - name: organization
+      nullable: false
+    - name: robot
+      nullable: false
+    - name: invoice_email
+      nullable: false
+    - name: invalid_login_attempts
+      nullable: false
+    - name: last_invalid_login
+      nullable: false
+    - name: removed_tag_expiration_s
+      nullable: false
+    - name: enabled
+      nullable: false
+    - name: invoice_email_address
+      nullable: true
+    operation: createTable
+    table: user
+  - columns: []
+    indexName: user
+    indexType: unique
+    operation: createIndex
+    table: user_email
+  - columns: []
+    indexName: user
+    indexType: index
+    operation: createIndex
+    table: user_invoice_email_address
+  - columns: []
+    indexName: user
+    indexType: index
+    operation: createIndex
+    table: user_organization
+  - columns: []
+    indexName: user
+    indexType: index
+    operation: createIndex
+    table: user_robot
+  - columns: []
+    indexName: user
+    indexType: index
+    operation: createIndex
+    table: user_stripe_id
+  - columns: []
+    indexName: user
+    indexType: unique
+    operation: createIndex
+    table: user_username
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    operation: createTable
+    table: visibility
+  - columns: []
+    indexName: visibility
+    indexType: unique
+    operation: createIndex
+    table: visibility_name
+  - columns:
+    - name: id
+      nullable: false
+    - name: code
+      nullable: false
+    - name: user_id
+      nullable: false
+    - name: pw_reset
+      nullable: false
+    - name: new_email
+      nullable: true
+    - name: email_confirm
+      nullable: false
+    - name: created
+      nullable: false
+    operation: createTable
+    table: emailconfirmation
+  - columns: []
+    indexName: emailconfirmation
+    indexType: unique
+    operation: createIndex
+    table: emailconfirmation_code
+  - columns: []
+    indexName: emailconfirmation
+    indexType: index
+    operation: createIndex
+    table: emailconfirmation_user_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: user_id
+      nullable: false
+    - name: service_id
+      nullable: false
+    - name: service_ident
+      nullable: false
+    - name: metadata_json
+      nullable: false
+    operation: createTable
+    table: federatedlogin
+  - columns: []
+    indexName: federatedlogin
+    indexType: index
+    operation: createIndex
+    table: federatedlogin_service_id
+  - columns: []
+    indexName: federatedlogin
+    indexType: unique
+    operation: createIndex
+    table: federatedlogin_service_id_service_ident
+  - columns: []
+    indexName: federatedlogin
+    indexType: unique
+    operation: createIndex
+    table: federatedlogin_service_id_user_id
+  - columns: []
+    indexName: federatedlogin
+    indexType: index
+    operation: createIndex
+    table: federatedlogin_user_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: storage_id
+      nullable: false
+    - name: location_id
+      nullable: false
+    operation: createTable
+    table: imagestorageplacement
+  - columns: []
+    indexName: imagestorageplacement
+    indexType: index
+    operation: createIndex
+    table: imagestorageplacement_location_id
+  - columns: []
+    indexName: imagestorageplacement
+    indexType: index
+    operation: createIndex
+    table: imagestorageplacement_storage_id
+  - columns: []
+    indexName: imagestorageplacement
+    indexType: unique
+    operation: createIndex
+    table: imagestorageplacement_storage_id_location_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: storage_id
+      nullable: false
+    - name: kind_id
+      nullable: false
+    - name: signature
+      nullable: true
+    - name: uploading
+      nullable: true
+    operation: createTable
+    table: imagestoragesignature
+  - columns: []
+    indexName: imagestoragesignature
+    indexType: index
+    operation: createIndex
+    table: imagestoragesignature_kind_id
+  - columns: []
+    indexName: imagestoragesignature
+    indexType: unique
+    operation: createIndex
+    table: imagestoragesignature_kind_id_storage_id
+  - columns: []
+    indexName: imagestoragesignature
+    indexType: index
+    operation: createIndex
+    table: imagestoragesignature_storage_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: key
+      nullable: false
+    - name: value
+      nullable: false
+    - name: media_type_id
+      nullable: false
+    - name: source_type_id
+      nullable: false
+    operation: createTable
+    table: label
+  - columns: []
+    indexName: label
+    indexType: index
+    operation: createIndex
+    table: label_key
+  - columns: []
+    indexName: label
+    indexType: index
+    operation: createIndex
+    table: label_media_type_id
+  - columns: []
+    indexName: label
+    indexType: index
+    operation: createIndex
+    table: label_source_type_id
+  - columns: []
+    indexName: label
+    indexType: unique
+    operation: createIndex
+    table: label_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: kind_id
+      nullable: false
+    - name: account_id
+      nullable: false
+    - name: performer_id
+      nullable: true
+    - name: repository_id
+      nullable: true
+    - name: datetime
+      nullable: false
+    - name: ip
+      nullable: true
+    - name: metadata_json
+      nullable: false
+    operation: createTable
+    table: logentry
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_account_id
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_account_id_datetime
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_datetime
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_kind_id
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_performer_id
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_performer_id_datetime
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_repository_id
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_repository_id_datetime
+  - columns: []
+    indexName: logentry
+    indexType: index
+    operation: createIndex
+    table: logentry_repository_id_datetime_kind_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: kind_id
+      nullable: false
+    - name: target_id
+      nullable: false
+    - name: metadata_json
+      nullable: false
+    - name: created
+      nullable: false
+    - name: dismissed
+      nullable: false
+    - name: lookup_path
+      nullable: true
+    operation: createTable
+    table: notification
+  - columns: []
+    indexName: notification
+    indexType: index
+    operation: createIndex
+    table: notification_created
+  - columns: []
+    indexName: notification
+    indexType: index
+    operation: createIndex
+    table: notification_kind_id
+  - columns: []
+    indexName: notification
+    indexType: index
+    operation: createIndex
+    table: notification_lookup_path
+  - columns: []
+    indexName: notification
+    indexType: index
+    operation: createIndex
+    table: notification_target_id
+  - columns: []
+    indexName: notification
+    indexType: index
+    operation: createIndex
+    table: notification_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: client_id
+      nullable: false
+    - name: client_secret
+      nullable: false
+    - name: redirect_uri
+      nullable: false
+    - name: application_uri
+      nullable: false
+    - name: organization_id
+      nullable: false
+    - name: name
+      nullable: false
+    - name: description
+      nullable: false
+    - name: gravatar_email
+      nullable: true
+    operation: createTable
+    table: oauthapplication
+  - columns: []
+    indexName: oauthapplication
+    indexType: index
+    operation: createIndex
+    table: oauthapplication_client_id
+  - columns: []
+    indexName: oauthapplication
+    indexType: index
+    operation: createIndex
+    table: oauthapplication_organization_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: service_id
+      nullable: false
+    - name: version
+      nullable: false
+    - name: region_id
+      nullable: false
+    - name: reverted
+      nullable: false
+    - name: created
+      nullable: false
+    operation: createTable
+    table: quayrelease
+  - columns: []
+    indexName: quayrelease
+    indexType: index
+    operation: createIndex
+    table: quayrelease_created
+  - columns: []
+    indexName: quayrelease
+    indexType: index
+    operation: createIndex
+    table: quayrelease_region_id
+  - columns: []
+    indexName: quayrelease
+    indexType: index
+    operation: createIndex
+    table: quayrelease_service_id
+  - columns: []
+    indexName: quayrelease
+    indexType: index
+    operation: createIndex
+    table: quayrelease_service_id_region_id_created
+  - columns: []
+    indexName: quayrelease
+    indexType: unique
+    operation: createIndex
+    table: quayrelease_service_id_version_region_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: namespace_user_id
+      nullable: true
+    - name: name
+      nullable: false
+    - name: visibility_id
+      nullable: false
+    - name: description
+      nullable: true
+    - name: badge_token
+      nullable: false
+    operation: createTable
+    table: repository
+  - columns: []
+    indexName: repository
+    indexType: index
+    operation: createIndex
+    table: repository_namespace_user_id
+  - columns: []
+    indexName: repository
+    indexType: unique
+    operation: createIndex
+    table: repository_namespace_user_id_name
+  - columns: []
+    indexName: repository
+    indexType: index
+    operation: createIndex
+    table: repository_visibility_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    - name: kid
+      nullable: false
+    - name: service
+      nullable: false
+    - name: jwk
+      nullable: false
+    - name: metadata
+      nullable: false
+    - name: created_date
+      nullable: false
+    - name: expiration_date
+      nullable: true
+    - name: rotation_duration
+      nullable: true
+    - name: approval_id
+      nullable: true
+    operation: createTable
+    table: servicekey
+  - columns: []
+    indexName: servicekey
+    indexType: index
+    operation: createIndex
+    table: servicekey_approval_id
+  - columns: []
+    indexName: servicekey
+    indexType: unique
+    operation: createIndex
+    table: servicekey_kid
+  - columns: []
+    indexName: servicekey
+    indexType: index
+    operation: createIndex
+    table: servicekey_service
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    - name: organization_id
+      nullable: false
+    - name: role_id
+      nullable: false
+    - name: description
+      nullable: false
+    operation: createTable
+    table: team
+  - columns: []
+    indexName: team
+    indexType: index
+    operation: createIndex
+    table: team_name
+  - columns: []
+    indexName: team
+    indexType: unique
+    operation: createIndex
+    table: team_name_organization_id
+  - columns: []
+    indexName: team
+    indexType: index
+    operation: createIndex
+    table: team_organization_id
+  - columns: []
+    indexName: team
+    indexType: index
+    operation: createIndex
+    table: team_role_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: storage_id
+      nullable: false
+    - name: piece_length
+      nullable: false
+    - name: pieces
+      nullable: false
+    operation: createTable
+    table: torrentinfo
+  - columns: []
+    indexName: torrentinfo
+    indexType: index
+    operation: createIndex
+    table: torrentinfo_storage_id
+  - columns: []
+    indexName: torrentinfo
+    indexType: unique
+    operation: createIndex
+    table: torrentinfo_storage_id_piece_length
+  - columns:
+    - name: id
+      nullable: false
+    - name: user_id
+      nullable: false
+    - name: location_id
+      nullable: false
+    operation: createTable
+    table: userregion
+  - columns: []
+    indexName: userregion
+    indexType: index
+    operation: createIndex
+    table: userregion_location_id
+  - columns: []
+    indexName: userregion
+    indexType: index
+    operation: createIndex
+    table: userregion_user_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: friendly_name
+      nullable: true
+    - name: code
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: created
+      nullable: false
+    - name: role_id
+      nullable: false
+    - name: temporary
+      nullable: false
+    - name: kind_id
+      nullable: true
+    operation: createTable
+    table: accesstoken
+  - columns: []
+    indexName: accesstoken
+    indexType: unique
+    operation: createIndex
+    table: accesstoken_code
+  - columns: []
+    indexName: accesstoken
+    indexType: index
+    operation: createIndex
+    table: accesstoken_kind_id
+  - columns: []
+    indexName: accesstoken
+    indexType: index
+    operation: createIndex
+    table: accesstoken_repository_id
+  - columns: []
+    indexName: accesstoken
+    indexType: index
+    operation: createIndex
+    table: accesstoken_role_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: byte_count
+      nullable: false
+    - name: sha_state
+      nullable: true
+    - name: location_id
+      nullable: false
+    - name: storage_metadata
+      nullable: true
+    - name: chunk_count
+      nullable: false
+    - name: uncompressed_byte_count
+      nullable: true
+    - name: created
+      nullable: false
+    - name: piece_sha_state
+      nullable: true
+    - name: piece_hashes
+      nullable: true
+    operation: createTable
+    table: blobupload
+  - columns: []
+    indexName: blobupload
+    indexType: index
+    operation: createIndex
+    table: blobupload_created
+  - columns: []
+    indexName: blobupload
+    indexType: index
+    operation: createIndex
+    table: blobupload_location_id
+  - columns: []
+    indexName: blobupload
+    indexType: index
+    operation: createIndex
+    table: blobupload_repository_id
+  - columns: []
+    indexName: blobupload
+    indexType: unique
+    operation: createIndex
+    table: blobupload_repository_id_uuid
+  - columns: []
+    indexName: blobupload
+    indexType: unique
+    operation: createIndex
+    table: blobupload_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: docker_image_id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: ancestors
+      nullable: true
+    - name: storage_id
+      nullable: true
+    - name: created
+      nullable: true
+    - name: comment
+      nullable: true
+    - name: command
+      nullable: true
+    - name: aggregate_size
+      nullable: true
+    - name: v1_json_metadata
+      nullable: true
+    - name: v1_checksum
+      nullable: true
+    - name: security_indexed
+      nullable: false
+    - name: security_indexed_engine
+      nullable: false
+    - name: parent_id
+      nullable: true
+    operation: createTable
+    table: image
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_ancestors
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_docker_image_id
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_parent_id
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_repository_id
+  - columns: []
+    indexName: image
+    indexType: unique
+    operation: createIndex
+    table: image_repository_id_docker_image_id
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_security_indexed
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_security_indexed_engine
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_security_indexed_engine_security_indexed
+  - columns: []
+    indexName: image
+    indexType: index
+    operation: createIndex
+    table: image_storage_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: application_id
+      nullable: false
+    - name: authorized_user_id
+      nullable: false
+    - name: scope
+      nullable: false
+    - name: access_token
+      nullable: false
+    - name: token_type
+      nullable: false
+    - name: expires_at
+      nullable: false
+    - name: refresh_token
+      nullable: true
+    - name: data
+      nullable: false
+    operation: createTable
+    table: oauthaccesstoken
+  - columns: []
+    indexName: oauthaccesstoken
+    indexType: index
+    operation: createIndex
+    table: oauthaccesstoken_access_token
+  - columns: []
+    indexName: oauthaccesstoken
+    indexType: index
+    operation: createIndex
+    table: oauthaccesstoken_application_id
+  - columns: []
+    indexName: oauthaccesstoken
+    indexType: index
+    operation: createIndex
+    table: oauthaccesstoken_authorized_user_id
+  - columns: []
+    indexName: oauthaccesstoken
+    indexType: index
+    operation: createIndex
+    table: oauthaccesstoken_refresh_token
+  - columns: []
+    indexName: oauthaccesstoken
+    indexType: index
+    operation: createIndex
+    table: oauthaccesstoken_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: application_id
+      nullable: false
+    - name: code
+      nullable: false
+    - name: scope
+      nullable: false
+    - name: data
+      nullable: false
+    operation: createTable
+    table: oauthauthorizationcode
+  - columns: []
+    indexName: oauthauthorizationcode
+    indexType: index
+    operation: createIndex
+    table: oauthauthorizationcode_application_id
+  - columns: []
+    indexName: oauthauthorizationcode
+    indexType: index
+    operation: createIndex
+    table: oauthauthorizationcode_code
+  - columns:
+    - name: id
+      nullable: false
+    - name: org_id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: activating_user_id
+      nullable: true
+    - name: delegate_user_id
+      nullable: true
+    - name: delegate_team_id
+      nullable: true
+    - name: role_id
+      nullable: false
+    operation: createTable
+    table: permissionprototype
+  - columns: []
+    indexName: permissionprototype
+    indexType: index
+    operation: createIndex
+    table: permissionprototype_activating_user_id
+  - columns: []
+    indexName: permissionprototype
+    indexType: index
+    operation: createIndex
+    table: permissionprototype_delegate_team_id
+  - columns: []
+    indexName: permissionprototype
+    indexType: index
+    operation: createIndex
+    table: permissionprototype_delegate_user_id
+  - columns: []
+    indexName: permissionprototype
+    indexType: index
+    operation: createIndex
+    table: permissionprototype_org_id
+  - columns: []
+    indexName: permissionprototype
+    indexType: index
+    operation: createIndex
+    table: permissionprototype_org_id_activating_user_id
+  - columns: []
+    indexName: permissionprototype
+    indexType: index
+    operation: createIndex
+    table: permissionprototype_role_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: count
+      nullable: false
+    - name: date
+      nullable: false
+    operation: createTable
+    table: repositoryactioncount
+  - columns: []
+    indexName: repositoryactioncount
+    indexType: index
+    operation: createIndex
+    table: repositoryactioncount_date
+  - columns: []
+    indexName: repositoryactioncount
+    indexType: index
+    operation: createIndex
+    table: repositoryactioncount_repository_id
+  - columns: []
+    indexName: repositoryactioncount
+    indexType: unique
+    operation: createIndex
+    table: repositoryactioncount_repository_id_date
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: email
+      nullable: false
+    - name: code
+      nullable: false
+    - name: confirmed
+      nullable: false
+    operation: createTable
+    table: repositoryauthorizedemail
+  - columns: []
+    indexName: repositoryauthorizedemail
+    indexType: unique
+    operation: createIndex
+    table: repositoryauthorizedemail_code
+  - columns: []
+    indexName: repositoryauthorizedemail
+    indexType: unique
+    operation: createIndex
+    table: repositoryauthorizedemail_email_repository_id
+  - columns: []
+    indexName: repositoryauthorizedemail
+    indexType: index
+    operation: createIndex
+    table: repositoryauthorizedemail_repository_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: event_id
+      nullable: false
+    - name: method_id
+      nullable: false
+    - name: title
+      nullable: true
+    - name: config_json
+      nullable: false
+    - name: event_config_json
+      nullable: false
+    operation: createTable
+    table: repositorynotification
+  - columns: []
+    indexName: repositorynotification
+    indexType: index
+    operation: createIndex
+    table: repositorynotification_event_id
+  - columns: []
+    indexName: repositorynotification
+    indexType: index
+    operation: createIndex
+    table: repositorynotification_method_id
+  - columns: []
+    indexName: repositorynotification
+    indexType: index
+    operation: createIndex
+    table: repositorynotification_repository_id
+  - columns: []
+    indexName: repositorynotification
+    indexType: index
+    operation: createIndex
+    table: repositorynotification_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: team_id
+      nullable: true
+    - name: user_id
+      nullable: true
+    - name: repository_id
+      nullable: false
+    - name: role_id
+      nullable: false
+    operation: createTable
+    table: repositorypermission
+  - columns: []
+    indexName: repositorypermission
+    indexType: index
+    operation: createIndex
+    table: repositorypermission_repository_id
+  - columns: []
+    indexName: repositorypermission
+    indexType: index
+    operation: createIndex
+    table: repositorypermission_role_id
+  - columns: []
+    indexName: repositorypermission
+    indexType: index
+    operation: createIndex
+    table: repositorypermission_team_id
+  - columns: []
+    indexName: repositorypermission
+    indexType: unique
+    operation: createIndex
+    table: repositorypermission_team_id_repository_id
+  - columns: []
+    indexName: repositorypermission
+    indexType: index
+    operation: createIndex
+    table: repositorypermission_user_id
+  - columns: []
+    indexName: repositorypermission
+    indexType: unique
+    operation: createIndex
+    table: repositorypermission_user_id_repository_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: user_id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: created
+      nullable: false
+    operation: createTable
+    table: star
+  - columns: []
+    indexName: star
+    indexType: index
+    operation: createIndex
+    table: star_repository_id
+  - columns: []
+    indexName: star
+    indexType: index
+    operation: createIndex
+    table: star_user_id
+  - columns: []
+    indexName: star
+    indexType: unique
+    operation: createIndex
+    table: star_user_id_repository_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: user_id
+      nullable: false
+    - name: team_id
+      nullable: false
+    operation: createTable
+    table: teammember
+  - columns: []
+    indexName: teammember
+    indexType: index
+    operation: createIndex
+    table: teammember_team_id
+  - columns: []
+    indexName: teammember
+    indexType: index
+    operation: createIndex
+    table: teammember_user_id
+  - columns: []
+    indexName: teammember
+    indexType: unique
+    operation: createIndex
+    table: teammember_user_id_team_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: user_id
+      nullable: true
+    - name: email
+      nullable: true
+    - name: team_id
+      nullable: false
+    - name: inviter_id
+      nullable: false
+    - name: invite_token
+      nullable: false
+    operation: createTable
+    table: teammemberinvite
+  - columns: []
+    indexName: teammemberinvite
+    indexType: index
+    operation: createIndex
+    table: teammemberinvite_inviter_id
+  - columns: []
+    indexName: teammemberinvite
+    indexType: index
+    operation: createIndex
+    table: teammemberinvite_team_id
+  - columns: []
+    indexName: teammemberinvite
+    indexType: index
+    operation: createIndex
+    table: teammemberinvite_user_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: source_image_id
+      nullable: false
+    - name: derivative_id
+      nullable: false
+    - name: transformation_id
+      nullable: false
+    - name: uniqueness_hash
+      nullable: true
+    operation: createTable
+    table: derivedstorageforimage
+  - columns: []
+    indexName: derivedstorageforimage
+    indexType: index
+    operation: createIndex
+    table: derivedstorageforimage_derivative_id
+  - columns: []
+    indexName: derivedstorageforimage
+    indexType: index
+    operation: createIndex
+    table: derivedstorageforimage_source_image_id
+  - columns: []
+    indexName: derivedstorageforimage
+    indexType: unique
+    operation: createIndex
+    table: uniqueness_index
+  - columns: []
+    indexName: derivedstorageforimage
+    indexType: index
+    operation: createIndex
+    table: derivedstorageforimage_transformation_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: service_id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: connected_user_id
+      nullable: false
+    - name: auth_token
+      nullable: true
+    - name: private_key
+      nullable: true
+    - name: config
+      nullable: false
+    - name: write_token_id
+      nullable: true
+    - name: pull_robot_id
+      nullable: true
+    operation: createTable
+    table: repositorybuildtrigger
+  - columns: []
+    indexName: repositorybuildtrigger
+    indexType: index
+    operation: createIndex
+    table: repositorybuildtrigger_connected_user_id
+  - columns: []
+    indexName: repositorybuildtrigger
+    indexType: index
+    operation: createIndex
+    table: repositorybuildtrigger_pull_robot_id
+  - columns: []
+    indexName: repositorybuildtrigger
+    indexType: index
+    operation: createIndex
+    table: repositorybuildtrigger_repository_id
+  - columns: []
+    indexName: repositorybuildtrigger
+    indexType: index
+    operation: createIndex
+    table: repositorybuildtrigger_service_id
+  - columns: []
+    indexName: repositorybuildtrigger
+    indexType: index
+    operation: createIndex
+    table: repositorybuildtrigger_write_token_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: name
+      nullable: false
+    - name: image_id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: lifetime_start_ts
+      nullable: false
+    - name: lifetime_end_ts
+      nullable: true
+    - name: hidden
+      nullable: false
+    - name: reversion
+      nullable: false
+    operation: createTable
+    table: repositorytag
+  - columns: []
+    indexName: repositorytag
+    indexType: index
+    operation: createIndex
+    table: repositorytag_image_id
+  - columns: []
+    indexName: repositorytag
+    indexType: index
+    operation: createIndex
+    table: repositorytag_lifetime_end_ts
+  - columns: []
+    indexName: repositorytag
+    indexType: index
+    operation: createIndex
+    table: repositorytag_repository_id
+  - columns: []
+    indexName: repositorytag
+    indexType: index
+    operation: createIndex
+    table: repositorytag_repository_id_name
+  - columns: []
+    indexName: repositorytag
+    indexType: unique
+    operation: createIndex
+    table: repositorytag_repository_id_name_lifetime_end_ts
+  - columns:
+    - name: id
+      nullable: false
+    - name: uuid
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: access_token_id
+      nullable: false
+    - name: resource_key
+      nullable: true
+    - name: job_config
+      nullable: false
+    - name: phase
+      nullable: false
+    - name: started
+      nullable: false
+    - name: display_name
+      nullable: false
+    - name: trigger_id
+      nullable: true
+    - name: pull_robot_id
+      nullable: true
+    - name: logs_archived
+      nullable: false
+    - name: queue_id
+      nullable: true
+    operation: createTable
+    table: repositorybuild
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_access_token_id
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_pull_robot_id
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_queue_id
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_repository_id
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_repository_id_started_phase
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_resource_key
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_started
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_started_logs_archived_phase
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_trigger_id
+  - columns: []
+    indexName: repositorybuild
+    indexType: index
+    operation: createIndex
+    table: repositorybuild_uuid
+  - columns:
+    - name: id
+      nullable: false
+    - name: tag_id
+      nullable: false
+    - name: digest
+      nullable: false
+    - name: json_data
+      nullable: false
+    operation: createTable
+    table: tagmanifest
+  - columns: []
+    indexName: tagmanifest
+    indexType: index
+    operation: createIndex
+    table: tagmanifest_digest
+  - columns: []
+    indexName: tagmanifest
+    indexType: unique
+    operation: createIndex
+    table: tagmanifest_tag_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: annotated_id
+      nullable: false
+    - name: label_id
+      nullable: false
+    operation: createTable
+    table: tagmanifestlabel
+  - columns: []
+    indexName: tagmanifestlabel
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabel_annotated_id
+  - columns: []
+    indexName: tagmanifestlabel
+    indexType: unique
+    operation: createIndex
+    table: tagmanifestlabel_annotated_id_label_id
+  - columns: []
+    indexName: tagmanifestlabel
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabel_label_id
+  - columns: []
+    indexName: tagmanifestlabel
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabel_repository_id

@@ -9,14 +9,11 @@ Create Date: 2019-06-25 16:22:36.310532
 revision = "5248ddf35167"
 down_revision = "b918abdbee43"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     op.create_table(
         "repomirrorrule",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -178,8 +175,7 @@ def upgrade(tables, tester, progress_reporter):
     )
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     op.drop_column(u"repository", "state")
 
     op.drop_table("repomirrorconfig")

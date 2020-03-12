@@ -56,6 +56,12 @@
             <tr>
               <td>Server Hostname:</td>
               <td>
+                <div class="co-alert co-alert-danger" ng-if="config.SERVER_HOSTNAME.indexOf('quay.io') >=0 "
+                     style="margin-bottom: 10px;">
+                  The domain name <code>quay.io</code> is reserved for legacy reasons and cannot be used in
+                  <span class="registry-name"></span> installations.
+                </div>
+
                 <span class="config-string-field" binding="config.SERVER_HOSTNAME"
                   placeholder="Hostname (and optional port if non-standard)" pattern="{{ HOSTNAME_REGEX }}"></span>
                 <div class="help-text">
@@ -73,12 +79,13 @@
                   <option value="none">None (Not For Production)</option>
                 </select>
 
-                <div class="co-alert co-alert-danger" ng-if="mapped.TLS_SETTING == 'none'" style="margin-bottom: 20px">
+                <div class="co-alert co-alert-danger" ng-if="mapped.TLS_SETTING == 'none'"
+                     style="margin-bottom: 20px; margin-top: 10px;">
                   Running without TLS should not be used for production workloads!
                 </div>
 
                 <div class="co-alert co-alert-warning" ng-if="mapped.TLS_SETTING == 'external-tls'"
-                  style="margin-bottom: 20px">
+                  style="margin-bottom: 20px; margin-top: 10px;">
                   Terminating TLS outside of Red Hat Quay can result in unusual behavior if the external load balancer
                   is not
                   configured properly. <strong>This option is not recommended for simple setups</strong>. Please contact
@@ -87,7 +94,7 @@
                 </div>
 
                 <div class="co-alert co-alert-info" ng-if="mapped.TLS_SETTING == 'internal-tls'"
-                  style="margin-bottom: 20px">
+                  style="margin-bottom: 20px; margin-top: 10px;">
                   Enabling TLS also enables <a href="https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security">HTTP
                     Strict Transport Security</a>.<br />
                   This prevents downgrade attacks and cookie theft, but browsers will reject all future insecure

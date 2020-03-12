@@ -10,16 +10,13 @@ Create Date: 2017-01-24 16:25:52.170277
 revision = "7a525c68eb13"
 down_revision = "e2894a3a3c19"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 from sqlalchemy.sql import table, column
 from util.migrate import UTF8LongText, UTF8CharField
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     op.create_table(
         "tagkind",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -484,8 +481,7 @@ def upgrade(tables, tester, progress_reporter):
     )
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     op.drop_table("manifestlayerscan")
     op.drop_table("manifestlayerdockerv1")
     op.drop_table("tag")

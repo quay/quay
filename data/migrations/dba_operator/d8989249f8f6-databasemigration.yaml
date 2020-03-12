@@ -1,0 +1,16 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: d8989249f8f6
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - d8989249f8f6
+    image: quay.io/quay/quay
+    name: d8989249f8f6
+  previous: dc4af11a5f90
+  schemaHints: []

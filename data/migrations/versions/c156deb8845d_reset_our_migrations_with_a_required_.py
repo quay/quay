@@ -10,15 +10,12 @@ Create Date: 2016-11-08 11:58:11.110762
 revision = "c156deb8845d"
 down_revision = None
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 from util.migrate import UTF8LongText, UTF8CharField
 from datetime import datetime
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     now = datetime.now().strftime("'%Y-%m-%d %H:%M:%S'")
 
     op.create_table(
@@ -1823,8 +1820,7 @@ def upgrade(tables, tester, progress_reporter):
     # ### end population of test data ### #
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     op.drop_table("tagmanifestlabel")
     op.drop_table("tagmanifest")
     op.drop_table("repositorybuild")

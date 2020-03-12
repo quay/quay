@@ -1,0 +1,34 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: d17c695859ea
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - d17c695859ea
+    image: quay.io/quay/quay
+    name: d17c695859ea
+  previous: 5d463ea1e8a8
+  schemaHints:
+  - operation: dropTable
+    table: tag
+  - operation: dropTable
+    table: manifestlistmanifest
+  - operation: dropTable
+    table: manifestlist
+  - operation: dropTable
+    table: manifestblob
+  - operation: dropTable
+    table: manifest
+  - operation: dropTable
+    table: blobplacement
+  - operation: dropTable
+    table: blob
+  - operation: dropTable
+    table: blobplacementlocation
+  - operation: dropTable
+    table: tagkind

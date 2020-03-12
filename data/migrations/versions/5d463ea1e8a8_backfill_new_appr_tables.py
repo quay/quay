@@ -10,14 +10,11 @@ Create Date: 2018-07-08 10:01:19.756126
 revision = "5d463ea1e8a8"
 down_revision = "610320e9dacf"
 
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 from util.migrate.table_ops import copy_table_contents
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
     conn = op.get_bind()
 
     copy_table_contents("blob", "apprblob", conn)
@@ -29,6 +26,5 @@ def upgrade(tables, tester, progress_reporter):
     copy_table_contents("tag", "apprtag", conn)
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     pass

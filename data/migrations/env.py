@@ -3,8 +3,9 @@ import os
 
 from logging.config import fileConfig
 from urllib import unquote
+from functools import partial
 
-from alembic import context
+from alembic import context, op as alembic_op
 from alembic.script.revision import ResolutionError
 from alembic.util import CommandError
 from sqlalchemy import engine_from_config, pool
@@ -15,7 +16,9 @@ from data.migrations.tester import NoopTester, PopulateTestDataTester
 from data.model.sqlalchemybridge import gen_sqlalchemy_metadata
 from release import GIT_HEAD, REGION, SERVICE
 from util.morecollections import AttrDict
-from data.migrations.progress import PrometheusReporter, NullReporter
+from util.parsing import truthy_bool
+from data.migrations.progress import PrometheusReporter, NullReporter, ProgressWrapper
+from data.migrations.dba_operator import Migration, OpLogger
 
 
 config = context.config
@@ -89,8 +92,14 @@ def get_progress_reporter():
 
 
 def report_success(ctx=None, step=None, heads=None, run_args=None):
-    progress_reporter = run_args["progress_reporter"]
+    progress_reporter = ctx.config.attributes["progress_reporter"]
     progress_reporter.report_version_complete(success=True)
+
+
+def finish_migration(migration, ctx=None, step=None, heads=None, run_args=None):
+    write_dba_operator_migration(
+        migration, step.up_revision.revision, step.up_revision.down_revision
+    )
 
 
 def run_migrations_offline():
@@ -107,9 +116,11 @@ def run_migrations_offline():
     """
     url = unquote(DB_URI)
     context.configure(url=url, target_metadata=target_metadata, transactional_ddl=True)
+    context.config.attributes["progress_reporter"] = progress_reporter
+    op = ProgressWrapper(alembic_op, NullReporter())
 
     with context.begin_transaction():
-        context.run_migrations(tables=tables, tester=get_tester(), progress_reporter=NullReporter())
+        context.run_migrations(op=op, tables=tables, tester=get_tester())
 
 
 def run_migrations_online():
@@ -119,33 +130,45 @@ def run_migrations_online():
     In this scenario we need to create an Engine and associate a connection with the context.
     """
 
-    if (
-        isinstance(db.obj, SqliteDatabase)
-        and not "GENMIGRATE" in os.environ
-        and not "DB_URI" in os.environ
-    ):
+    if isinstance(db.obj, SqliteDatabase) and not "DB_URI" in os.environ:
         print "Skipping Sqlite migration!"
         return
 
     progress_reporter = get_progress_reporter()
+    context.config.attributes["progress_reporter"] = progress_reporter
+    op = ProgressWrapper(alembic_op, progress_reporter)
+
+    migration = Migration()
+    version_apply_callback = report_success
+    if truthy_bool(context.get_x_argument(as_dictionary=True).get("generatedbaopmigrations", None)):
+        op = OpLogger(alembic_op, migration)
+        version_apply_callback = partial(finish_migration, migration)
+
     engine = engine_from_config(
         config.get_section(config.config_ini_section), prefix="sqlalchemy.", poolclass=pool.NullPool
     )
+
+    revision_to_migration = {}
+
+    def process_revision_directives(context, revision, directives):
+        script = directives[0]
+        migration = Migration()
+        revision_to_migration[(script.rev_id, revision)] = migration
+        migration.add_hints_from_ops(script.upgrade_ops)
 
     connection = engine.connect()
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
         transactional_ddl=False,
-        on_version_apply=report_success,
+        on_version_apply=version_apply_callback,
+        process_revision_directives=process_revision_directives,
     )
 
     try:
         with context.begin_transaction():
             try:
-                context.run_migrations(
-                    tables=tables, tester=get_tester(), progress_reporter=progress_reporter
-                )
+                context.run_migrations(op=op, tables=tables, tester=get_tester())
             except (CommandError, ResolutionError) as ex:
                 if "No such revision" not in str(ex):
                     raise
@@ -163,6 +186,17 @@ def run_migrations_online():
                     raise
     finally:
         connection.close()
+
+    for (revision, previous_revision), migration in revision_to_migration.items():
+        write_dba_operator_migration(migration, revision, previous_revision)
+
+
+def write_dba_operator_migration(migration, revision, previous_revision):
+    migration_filename = "{}-databasemigration.yaml".format(revision)
+    output_filename = os.path.join("data", "migrations", "dba_operator", migration_filename)
+    with open(output_filename, "w") as migration_file:
+        migration_file.write("\n---\n")
+        migration.dump_yaml_and_reset(migration_file, revision, previous_revision)
 
 
 if context.is_offline_mode():

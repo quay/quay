@@ -1,0 +1,222 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 9093adccc784
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 9093adccc784
+    image: quay.io/quay/quay
+    name: 9093adccc784
+  previous: 6c21e2cfb8b6
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: digest
+      nullable: false
+    - name: media_type_id
+      nullable: false
+    - name: manifest_bytes
+      nullable: false
+    operation: createTable
+    table: manifest
+  - columns: []
+    indexName: manifest
+    indexType: index
+    operation: createIndex
+    table: manifest_digest
+  - columns: []
+    indexName: manifest
+    indexType: index
+    operation: createIndex
+    table: manifest_media_type_id
+  - columns: []
+    indexName: manifest
+    indexType: index
+    operation: createIndex
+    table: manifest_repository_id
+  - columns: []
+    indexName: manifest
+    indexType: unique
+    operation: createIndex
+    table: manifest_repository_id_digest
+  - columns: []
+    indexName: manifest
+    indexType: index
+    operation: createIndex
+    table: manifest_repository_id_media_type_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: blob_id
+      nullable: false
+    - name: blob_index
+      nullable: false
+    operation: createTable
+    table: manifestblob
+  - columns: []
+    indexName: manifestblob
+    indexType: index
+    operation: createIndex
+    table: manifestblob_blob_id
+  - columns: []
+    indexName: manifestblob
+    indexType: index
+    operation: createIndex
+    table: manifestblob_manifest_id
+  - columns: []
+    indexName: manifestblob
+    indexType: unique
+    operation: createIndex
+    table: manifestblob_manifest_id_blob_id
+  - columns: []
+    indexName: manifestblob
+    indexType: unique
+    operation: createIndex
+    table: manifestblob_manifest_id_blob_index
+  - columns: []
+    indexName: manifestblob
+    indexType: index
+    operation: createIndex
+    table: manifestblob_repository_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: label_id
+      nullable: false
+    operation: createTable
+    table: manifestlabel
+  - columns: []
+    indexName: manifestlabel
+    indexType: index
+    operation: createIndex
+    table: manifestlabel_label_id
+  - columns: []
+    indexName: manifestlabel
+    indexType: index
+    operation: createIndex
+    table: manifestlabel_manifest_id
+  - columns: []
+    indexName: manifestlabel
+    indexType: unique
+    operation: createIndex
+    table: manifestlabel_manifest_id_label_id
+  - columns: []
+    indexName: manifestlabel
+    indexType: index
+    operation: createIndex
+    table: manifestlabel_repository_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: image_id
+      nullable: false
+    operation: createTable
+    table: manifestlegacyimage
+  - columns: []
+    indexName: manifestlegacyimage
+    indexType: index
+    operation: createIndex
+    table: manifestlegacyimage_image_id
+  - columns: []
+    indexName: manifestlegacyimage
+    indexType: unique
+    operation: createIndex
+    table: manifestlegacyimage_manifest_id
+  - columns: []
+    indexName: manifestlegacyimage
+    indexType: index
+    operation: createIndex
+    table: manifestlegacyimage_repository_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: tag_manifest_id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: broken
+      nullable: false
+    operation: createTable
+    table: tagmanifesttomanifest
+  - columns: []
+    indexName: tagmanifesttomanifest
+    indexType: index
+    operation: createIndex
+    table: tagmanifesttomanifest_broken
+  - columns: []
+    indexName: tagmanifesttomanifest
+    indexType: unique
+    operation: createIndex
+    table: tagmanifesttomanifest_manifest_id
+  - columns: []
+    indexName: tagmanifesttomanifest
+    indexType: unique
+    operation: createIndex
+    table: tagmanifesttomanifest_tag_manifest_id
+  - columns:
+    - name: id
+      nullable: false
+    - name: tag_manifest_id
+      nullable: false
+    - name: manifest_id
+      nullable: true
+    - name: label_id
+      nullable: false
+    - name: tag_manifest_label_id
+      nullable: false
+    - name: manifest_label_id
+      nullable: true
+    - name: broken_manifest
+      nullable: false
+    operation: createTable
+    table: tagmanifestlabelmap
+  - columns: []
+    indexName: tagmanifestlabelmap
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabelmap_broken_manifest
+  - columns: []
+    indexName: tagmanifestlabelmap
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabelmap_label_id
+  - columns: []
+    indexName: tagmanifestlabelmap
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabelmap_manifest_id
+  - columns: []
+    indexName: tagmanifestlabelmap
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabelmap_manifest_label_id
+  - columns: []
+    indexName: tagmanifestlabelmap
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabelmap_tag_manifest_id
+  - columns: []
+    indexName: tagmanifestlabelmap
+    indexType: index
+    operation: createIndex
+    table: tagmanifestlabelmap_tag_manifest_label_id

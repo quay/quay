@@ -116,10 +116,6 @@ def hide_if(value):
     return f
 
 
-def truthy_bool(param):
-    return param not in {False, "false", "False", "0", "FALSE", "", "null"}
-
-
 def format_date(date):
     """
     Output an RFC822 date format.

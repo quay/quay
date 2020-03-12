@@ -24,8 +24,6 @@ from peewee import (
     TextField,
     IntegerField,
 )
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 
 import sqlalchemy as sa
 
@@ -127,8 +125,7 @@ class OAuthApplication(BaseModel):
     client_secret = CharField(default=random_string_generator(length=40))
 
 
-def upgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def upgrade(op, tables, tester):
 
     # NOTE: Disconnects the Alembic database connection. We do this because the Peewee calls below
     # use a *different* connection, and if we leave the alembic connection open, it'll time out.
@@ -313,6 +310,5 @@ def upgrade(tables, tester, progress_reporter):
         ) == 0
 
 
-def downgrade(tables, tester, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def downgrade(op, tables, tester):
     pass

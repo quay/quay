@@ -1,0 +1,21 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 152bb29a1bb3
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 152bb29a1bb3
+    image: quay.io/quay/quay
+    name: 152bb29a1bb3
+  previous: cbc8177760d9
+  schemaHints:
+  - columns:
+    - name: maximum_queued_builds_count
+      nullable: true
+    operation: addColumn
+    table: user

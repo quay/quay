@@ -12,8 +12,6 @@ import json
 import logging
 from alembic.script.revision import RevisionError
 from alembic.util import CommandError
-from alembic import op as original_op
-from data.migrations.progress import ProgressWrapper
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
@@ -23,8 +21,7 @@ down_revision = "ed01e313d3cb"
 log = logging.getLogger(__name__)
 
 
-def run_migration(migrate_function, progress_reporter):
-    op = ProgressWrapper(original_op, progress_reporter)
+def run_migration(migrate_function, op):
     conn = op.get_bind()
     triggers = conn.execute("SELECT id, config FROM repositorybuildtrigger")
     for trigger in triggers:
@@ -37,12 +34,12 @@ def run_migration(migrate_function, progress_reporter):
             log.warning("Failed to update build trigger %s with exception: ", trigger[0], e)
 
 
-def upgrade(tables, tester, progress_reporter):
-    run_migration(delete_subdir, progress_reporter)
+def upgrade(op, tables, tester):
+    run_migration(delete_subdir, op)
 
 
-def downgrade(tables, tester, progress_reporter):
-    run_migration(add_subdir, progress_reporter)
+def downgrade(op, tables, tester):
+    run_migration(add_subdir, op)
 
 
 def delete_subdir(config):

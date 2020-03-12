@@ -22,7 +22,7 @@ from util.log import logfile_path
 logger = logging.getLogger(__name__)
 
 
-def upgrade(tables, tester, progress_reporter):
+def upgrade(op, tables, tester):
     if not app.config.get("SETUP_COMPLETE", False):
         return
 
@@ -69,6 +69,6 @@ def upgrade(tables, tester, progress_reporter):
             backfill_tag(t)
 
 
-def downgrade(tables, tester, progress_reporter):
+def downgrade(op, tables, tester):
     # Nothing to do.
     pass
