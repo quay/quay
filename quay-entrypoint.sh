@@ -54,9 +54,9 @@ case "$QUAYENTRY" in
         ;;
     "config")
         echo "Entering config mode, only copying config-app entrypoints"
-        : ${CONFIG_APP_PASSWORD:=$2}
-        : ${CONFIG_APP_PASSWORD:?Missing password argument for configuration tool}
-        openssl passwd -apr1 -- "${CONFIG_APP_PASSWORD}" > "$QUAYDIR/config_app/conf/htpasswd"
+        : "${CONFIG_APP_PASSWORD:=$2}"
+        : "${CONFIG_APP_PASSWORD:?Missing password argument for configuration tool}"
+        printf '%s' "${CONFIG_APP_PASSWORD}" | openssl passwd -apr1 -stdin >> "$QUAYDIR/config_app/conf/htpasswd"
 
         "${QUAYPATH}/config_app/init/certs_create.sh" || exit
         exec supervisord -c "${QUAYPATH}/config_app/conf/supervisord.conf" 2>&1
