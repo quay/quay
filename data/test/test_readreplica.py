@@ -5,7 +5,7 @@ import pytest
 
 from peewee import OperationalError
 
-from data.database import configure, User, read_only_config
+from data.database import configure, User, read_only_config, db_disallow_replica_use
 from data.readreplica import ReadOnlyModeException
 from test.testconfig import FakeTransaction
 from test.fixtures import *
@@ -45,6 +45,15 @@ def test_readreplica(init_db_path, tmpdir_factory):
     assert not read_only_config.obj.is_readonly
     assert read_only_config.obj.read_replicas
 
+    devtable_user = User.get(username="devtable")
+    assert devtable_user.username == "devtable"
+
+    # Force us to hit the master and ensure it doesn't work.
+    with db_disallow_replica_use():
+        with pytest.raises(OperationalError):
+            User.get(username="devtable")
+
+    # Test read replica again.
     devtable_user = User.get(username="devtable")
     assert devtable_user.username == "devtable"
 

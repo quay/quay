@@ -1,6 +1,7 @@
 import random
 
 from collections import namedtuple
+from contextlib import contextmanager
 
 from peewee import Model, SENTINEL, OperationalError, Proxy
 
@@ -14,6 +15,26 @@ class ReadOnlyModeException(Exception):
     """
     Exception raised if a write operation was attempted when in read only mode.
     """
+
+
+_FORCE_MASTER_COUNTER_ATTRIBUTE = "_force_master_nesting"
+
+
+@contextmanager
+def disallow_replica_use(db):
+    """ When used, any queries run under this context manager will hit the master
+        node and be disallowed from using the read replica(s). NOTE: This means if
+        the master node is unavailable, the underlying queries will *fail*.
+    """
+    database = db.obj
+    counter = getattr(database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, 0)
+    setattr(database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, counter + 1)
+    try:
+        yield
+    finally:
+        counter = getattr(database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, 0)
+        assert counter > 0
+        setattr(database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, counter - 1)
 
 
 class AutomaticFailoverWrapper(object):
@@ -95,6 +116,10 @@ class ReadReplicaSupportedModel(Model):
 
         # Select the master DB if we're ever under a transaction.
         if cls._meta.database.transaction_depth() > 0:
+            return cls._meta.database
+
+        # Select if forced.
+        if getattr(cls._meta.database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, 0) > 0:
             return cls._meta.database
 
         # Otherwise, return a read replica database with auto-retry onto the main database.
