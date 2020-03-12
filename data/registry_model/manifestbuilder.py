@@ -135,7 +135,11 @@ class _ManifestBuilder(object):
             created = model.image.find_create_or_link_image(
                 layer_id, repository, calling_user, {}, location_name
             )
-            model.tag.create_temporary_hidden_tag(repository, created, temp_tag_expiration)
+            temp_tag_name = model.tag.create_temporary_hidden_tag(
+                repository, created, temp_tag_expiration
+            )
+            if temp_tag_name is None:
+                return None
 
             # Save its V1 metadata.
             command_list = v1_metadata.get("container_config", {}).get("Cmd", None)

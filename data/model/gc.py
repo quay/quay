@@ -77,6 +77,10 @@ def purge_repository(repo, force=False):
     """
     assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
 
+    # Update the repo state to ensure nothing else is written to it.
+    repo.state = RepositoryState.MARKED_FOR_DELETION
+    repo.save()
+
     # Delete the repository of all Appr-referenced entries.
     # Note that new-model Tag's must be deleted in *two* passes, as they can reference parent tags,
     # and MySQL is... particular... about such relationships when deleting.
