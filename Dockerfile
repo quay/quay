@@ -19,9 +19,12 @@ RUN INSTALL_PKGS="\
 COPY . .
 
 ARG QUAY_VERSION
-RUN echo $QUAY_VERSION > VERSION && \
-    git describe --tags >> VERSION && \
-    find . -name ".git" -exec rm -rf -- {} +
+### RUN echo $QUAY_VERSION > VERSION && \
+###     git describe --tags >> VERSION && \
+###     find . -name ".git" -exec rm -rf -- {} +
+RUN echo $QUAY_VERSION > VERSION
+RUN git describe --tags >> VERSION
+RUN find . -name ".git" -exec rm -rf -- {} +
 
 
 # Quay
