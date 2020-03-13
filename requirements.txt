@@ -119,7 +119,7 @@ peewee==3.11.2
 Pillow==6.1.0
 ply==3.11
 prometheus-client==0.7.1
-psutil==5.6.3
+psutil==5.6.6
 psycopg2-binary==2.8.3
 py-bcrypt==0.4
 pyasn1-modules==0.2.6
