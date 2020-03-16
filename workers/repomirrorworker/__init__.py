@@ -10,6 +10,7 @@ import features
 
 from app import app
 from data import database
+from data.encryption import DecryptionFailureException
 from data.model.repo_mirror import claim_mirror, release_mirror
 from data.model.user import retrieve_robot_token
 from data.logs_model import logs_model
@@ -153,16 +154,23 @@ def perform_mirror(skopeo, mirror):
     try:
         delete_obsolete_tags(mirror, tags)
 
-        username = (
-            mirror.external_registry_username.decrypt()
-            if mirror.external_registry_username
-            else None
-        )
-        password = (
-            mirror.external_registry_password.decrypt()
-            if mirror.external_registry_password
-            else None
-        )
+        try:
+            username = (
+                mirror.external_registry_username.decrypt()
+                if mirror.external_registry_username
+                else None
+            )
+            password = (
+                mirror.external_registry_password.decrypt()
+                if mirror.external_registry_password
+                else None
+            )
+        except DecryptionFailureException:
+            logger.exception(
+                "Failed to decrypt username or password for mirroring %s", mirror.repository
+            )
+            raise
+
         dest_server = (
             app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
         )
