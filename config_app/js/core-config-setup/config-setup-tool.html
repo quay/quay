@@ -978,6 +978,34 @@
               </td>
             </tr>
             <tr>
+              <td>Additional User Filter Expression:</td>
+              <td>
+                <div class="co-alert co-alert-warning" style="margin-bottom: 10px;">
+                  <strong>NOTE:</strong> This query is added <strong>unescaped</strong> to user
+                  lookups, so be VERY careful with the query you specify.
+                </div>
+                <span class="config-string-field" binding="config.LDAP_USER_FILTER" is-optional="true"
+                      placeholder="someOtherField=someOtherValue"></span>
+                <div class="help-text">
+                  If specified, the additional filter used for all user lookup queries. Note that all
+                  Distinguished Names used in the filter must be <strong>full</strong> paths; the <code>base_dn</code>
+                  is <strong>not</strong> added automatically here.
+                </div>
+                <div class="help-text">
+                  Example: someOtherField=someOtherValue
+                </div>
+                <div class="help-text">
+                  Example: memberOf=some.full.path.to.a.group
+                </div>
+                <div class="help-text">
+                  Example: (|(someFirstField=someValue)(someOtherField=someOtherValue))
+                </div>
+                <div class="help-text">
+                  Example: (&(someFirstField=someValue)(someOtherField=someOtherValue))
+                </div>
+              </td>
+            </tr>
+            <tr>
               <td>Administrator DN:</td>
               <td><span class="config-string-field" binding="config.LDAP_ADMIN_DN"></span>
                 <div class="help-text">
