@@ -321,10 +321,11 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
                 registry_model.delete_tags_for_manifest(manifest)
 
         # Make sure the tag is no longer found.
-        # TODO: Uncomment once we're done with the SplitModel.
-        # with assert_query_count(1):
-        found_tag = registry_model.get_repo_tag(repository_ref, tag.name, include_legacy_image=True)
-        assert found_tag is None
+        with assert_query_count(1):
+            found_tag = registry_model.get_repo_tag(
+                repository_ref, tag.name, include_legacy_image=True
+            )
+            assert found_tag is None
 
     # Ensure all tags have been deleted.
     tags = registry_model.list_all_active_repository_tags(repository_ref)
