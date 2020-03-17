@@ -9,7 +9,14 @@ from deprecated import deprecated
 from data.database import UseThenDisconnect
 
 from data.secscan_model.interface import SecurityScannerInterface
-from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformationLookupResult
+from data.secscan_model.datatypes import (
+    ScanLookupStatus,
+    SecurityInformationLookupResult,
+    SecurityInformation,
+    Layer,
+    Feature,
+    Vulnerability,
+)
 
 from data.registry_model import registry_model
 from data.registry_model.datatypes import SecurityScanStatus
@@ -143,7 +150,7 @@ class V2SecurityScanner(SecurityScannerInterface):
 
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
-        return SecurityInformationLookupResult.for_data(data)
+        return SecurityInformationLookupResult.for_data(SecurityInformation.from_dict(data))
 
     def _candidates_to_scan(self, start_token=None):
         target_version = self._target_version

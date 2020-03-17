@@ -4,13 +4,23 @@ import itertools
 from collections import namedtuple
 from math import log10
 from peewee import fn, JOIN
+from enum import Enum
 
 from data.secscan_model.interface import SecurityScannerInterface
-from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformationLookupResult
+from data.secscan_model.datatypes import (
+    ScanLookupStatus,
+    SecurityInformationLookupResult,
+    SecurityInformation,
+    Feature,
+    Layer,
+    Vulnerability,
+)
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
+from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure
+from util.secscan import PRIORITY_LEVELS
 from util.config import URLSchemeAndHostname
 
 from data.database import (
@@ -20,13 +30,16 @@ from data.database import (
     IndexStatus,
     Repository,
     User,
+    db_transaction,
 )
 
 
 logger = logging.getLogger(__name__)
 
-# TODO(alecmerdler): Retrieve `/state` from security scanner API
-indexer_state = ""
+
+IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(
+    "IndexFinished", "IndexError"
+)
 
 
 class ScanToken(namedtuple("NextScanToken", ["min_id"])):
@@ -45,6 +58,7 @@ class V4SecurityScanner(SecurityScannerInterface):
 
     def __init__(self, app, instance_keys, storage):
         self.app = app
+        self.storage = storage
 
         validator = V4SecurityConfigValidator(
             app.config.get("FEATURE_SECURITY_SCANNER", False),
@@ -54,6 +68,12 @@ class V4SecurityScanner(SecurityScannerInterface):
         if not validator.valid():
             logger.warning("Failed to validate security scanner V4 configuration")
             return
+
+        self._secscan_api = ClairSecurityScannerAPI(
+            endpoint=app.config.get("SECURITY_SCANNER_V4_ENDPOINT"),
+            client=app.config.get("HTTPCLIENT"),
+            storage=storage,
+        )
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
         if not isinstance(manifest_or_legacy_image, ManifestDataType):
@@ -68,30 +88,41 @@ class V4SecurityScanner(SecurityScannerInterface):
         if status.index_status == IndexStatus.FAILED:
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.FAILED_TO_INDEX)
 
-        if status.index_status == IndexStatus.UNSUPPORTED:
+        if status.index_status == IndexStatus.MANIFEST_UNSUPPORTED:
             return SecurityInformationLookupResult.with_status(
                 ScanLookupStatus.UNSUPPORTED_FOR_INDEXING
             )
 
-        if status.index_status in [
-            IndexStatus.TIMED_OUT,
-            IndexStatus.WAITING,
-            IndexStatus.IN_PROGRESS,
-        ]:
+        if status.index_status == IndexStatus.IN_PROGRESS:
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
         assert status.index_status == IndexStatus.COMPLETED
 
-        # TODO(alecmerdler): Fetch data from Clair API
-        return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
+        try:
+            report = self._secscan_api.vulnerability_report(manifest_or_legacy_image.digest)
+        except APIRequestFailure as arf:
+            return SecurityInformationLookupResult.for_request_error(str(arf))
+
+        if report is None:
+            return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
+
+        # TODO(alecmerdler): Provide a way to indicate the current scan is outdated (`report.state != status.indexer_hash`)
+
+        return SecurityInformationLookupResult.for_data(
+            SecurityInformation(Layer(features_for(report)))
+        )
 
     def perform_indexing(self, start_token=None):
         whitelisted_namespaces = self.app.config.get("SECURITY_SCANNER_V4_NAMESPACE_WHITELIST", [])
+        try:
+            indexer_state = self._secscan_api.state()
+        except APIRequestFailure:
+            print(
+                "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+            )
+            return None
 
         def eligible_manifests(base_query):
-            if len(whitelisted_namespaces) == 0:
-                return base_query
-
             return (
                 base_query.join(Repository)
                 .join(User)
@@ -108,7 +139,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         if max_id is None or min_id is None or min_id > max_id:
             return None
 
-        # FIXME(alecmerdler): Filter out any `Manifests` that are still being uploaded
+        # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
             return (
                 eligible_manifests(Manifest.select())
@@ -149,9 +180,37 @@ class V4SecurityScanner(SecurityScannerInterface):
         )
 
         for candidate, abt, num_remaining in iterator:
-            # TODO(alecmerdler): Call out to Clair v4 to `/index` the manifest
-            logger.info("Clair v4 client not yet implemented, passing for now")
-            pass
+            manifest = ManifestDataType.for_manifest(candidate, None)
+            layers = registry_model.list_manifest_layers(manifest, self.storage, True)
+
+            logger.debug(
+                "Indexing %s/%s@%s"
+                % (candidate.repository.namespace_user, candidate.repository.name, manifest.digest)
+            )
+
+            try:
+                (report, state) = self._secscan_api.index(manifest, layers)
+            except APIRequestFailure:
+                logger.exception("Failed to perform indexing, security scanner API error")
+                return None
+
+            with db_transaction():
+                ManifestSecurityStatus.delete().where(
+                    ManifestSecurityStatus.manifest == candidate
+                ).execute()
+                ManifestSecurityStatus.create(
+                    manifest=candidate,
+                    repository=candidate.repository,
+                    error_json=report["err"],
+                    index_status=(
+                        IndexStatus.FAILED
+                        if report["state"] == IndexReportState.Index_Error
+                        else IndexStatus.COMPLETED
+                    ),
+                    indexer_hash=state,
+                    indexer_version=IndexerVersion.V4,
+                    metadata_json={},
+                )
 
         return ScanToken(max_id + 1)
 
@@ -161,3 +220,44 @@ class V4SecurityScanner(SecurityScannerInterface):
     @property
     def legacy_api_handler(self):
         raise NotImplementedError("Unsupported for this security scanner version")
+
+
+def features_for(report):
+    """
+    Transforms a Clair v4 `VulnerabilityReport` dict into the standard shape of a 
+    Quay Security scanner response.
+    """
+
+    features = []
+    for pkg_id, pkg in report["packages"].items():
+        pkg_env = report["environments"][pkg_id][0]
+        pkg_vulns = [
+            report["vulnerabilities"][vuln_id]
+            for vuln_id in report["package_vulnerabilities"].get(pkg_id, [])
+        ]
+
+        features.append(
+            Feature(
+                pkg["name"],
+                "",
+                "",
+                pkg_env["introduced_in"],
+                pkg["version"],
+                [
+                    Vulnerability(
+                        vuln["normalized_severity"]
+                        if vuln["normalized_severity"]
+                        else PRIORITY_LEVELS["Unknown"]["value"],
+                        "",
+                        vuln["links"],
+                        vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",
+                        vuln["description"],
+                        vuln["name"],
+                        None,
+                    )
+                    for vuln in pkg_vulns
+                ],
+            )
+        )
+
+    return features

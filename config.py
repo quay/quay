@@ -455,7 +455,7 @@ class DefaultConfig(ImmutableConfig):
     SECURITY_SCANNER_ENDPOINT = "http://192.168.99.101:6060"
 
     # The endpoint for the V4 security scanner.
-    SECURITY_SCANNER_V4_ENDPOINT = ""
+    SECURITY_SCANNER_V4_ENDPOINT = "http://192.168.99.101:6060"
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
