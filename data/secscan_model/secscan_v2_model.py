@@ -23,7 +23,7 @@ from data.model.image import (
 
 from util.migrate.allocator import yield_random_entries
 from util.config import URLSchemeAndHostname
-from util.secscan.api import SecurityConfigValidator, SecurityScannerAPI, APIRequestFailure
+from util.secscan.api import V2SecurityConfigValidator, SecurityScannerAPI, APIRequestFailure
 from util.secscan.secscan_util import get_blob_download_uri_getter
 
 
@@ -59,7 +59,7 @@ class V2SecurityScanner(SecurityScannerInterface):
         self.app = app
         self._legacy_secscan_api = None
 
-        validator = SecurityConfigValidator(
+        validator = V2SecurityConfigValidator(
             app.config.get("FEATURE_SECURITY_SCANNER", False),
             app.config.get("SECURITY_SCANNER_ENDPOINT"),
         )

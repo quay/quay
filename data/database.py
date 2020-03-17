@@ -653,6 +653,7 @@ class User(BaseModel):
                     DeletedNamespace,
                     RepoMirrorRule,
                     NamespaceGeoRestriction,
+                    ManifestSecurityStatus,
                 }
                 | appr_classes
                 | v22_classes
@@ -855,6 +856,7 @@ class Repository(BaseModel):
                 RepoMirrorConfig,
                 RepoMirrorRule,
                 DeletedRepository,
+                ManifestSecurityStatus,
             }
             | appr_classes
             | v22_classes
@@ -1903,6 +1905,46 @@ class RepoMirrorConfig(BaseModel):
 
     # Tag-Matching Rules
     root_rule = ForeignKeyField(RepoMirrorRule)
+
+
+@unique
+class IndexStatus(IntEnum):
+    """
+    Possible statuses of manifest security scan progress.
+    """
+
+    MANIFEST_UNSUPPORTED = -2
+    FAILED = -1
+    IN_PROGRESS = 1
+    COMPLETED = 2
+
+
+@unique
+class IndexerVersion(IntEnum):
+    """
+    Possible versions of security indexers.
+    """
+
+    V2 = 2
+    V4 = 4
+
+
+class ManifestSecurityStatus(BaseModel):
+    """
+    Represents the security scan status for a particular container image manifest. 
+
+    Intended to replace the `security_indexed` and `security_indexed_engine` fields 
+    on the `Image` model.
+    """
+
+    manifest = ForeignKeyField(Manifest, unique=True)
+    repository = ForeignKeyField(Repository)
+    index_status = ClientEnumField(IndexStatus)
+    error_json = JSONField(default={})
+    last_indexed = DateTimeField(default=datetime.utcnow, index=True)
+    indexer_hash = CharField(max_length=128, index=True)
+    indexer_version = ClientEnumField(IndexerVersion)
+    metadata_json = JSONField(default={})
 
 
 appr_classes = set(

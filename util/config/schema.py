@@ -49,6 +49,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "JWTPROXY_AUDIENCE",
     "JWTPROXY_SIGNER",
     "SECURITY_SCANNER_INDEXING_MIN_ID",
+    "SECURITY_SCANNER_V4_NAMESPACE_WHITELIST",
     "STATIC_SITE_BUCKET",
     "LABEL_KEY_RESERVED_PREFIXES",
     "TEAM_SYNC_WORKER_FREQUENCY",
@@ -678,7 +679,13 @@ CONFIG_SCHEMA = {
         "SECURITY_SCANNER_ENDPOINT": {
             "type": "string",
             "pattern": "^http(s)?://(.)+$",
-            "description": "The endpoint for the security scanner",
+            "description": "The endpoint for the V2 security scanner",
+            "x-example": "http://192.168.99.101:6060",
+        },
+        "SECURITY_SCANNER_V4_ENDPOINT": {
+            "type": "string",
+            "pattern": "^http(s)?://(.)+$",
+            "description": "The endpoint for the V4 security scanner",
             "x-example": "http://192.168.99.101:6060",
         },
         "SECURITY_SCANNER_INDEXING_INTERVAL": {

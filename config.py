@@ -451,8 +451,11 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SECURITY_SCANNER = False
     FEATURE_SECURITY_NOTIFICATIONS = False
 
-    # The endpoint for the security scanner.
+    # The endpoint for the (deprecated) V2 security scanner.
     SECURITY_SCANNER_ENDPOINT = "http://192.168.99.101:6060"
+
+    # The endpoint for the V4 security scanner.
+    SECURITY_SCANNER_V4_ENDPOINT = ""
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
@@ -471,6 +474,9 @@ class DefaultConfig(ImmutableConfig):
 
     # The version of the API to use for the security scanner.
     SECURITY_SCANNER_API_VERSION = "v1"
+
+    # Namespace whitelist for security scanner.
+    SECURITY_SCANNER_V4_NAMESPACE_WHITELIST = []
 
     # API call timeout for the security scanner.
     SECURITY_SCANNER_API_TIMEOUT_SECONDS = 10
