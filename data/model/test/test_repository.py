@@ -4,7 +4,7 @@ import pytest
 
 from data.database import Repository
 from data.model.gc import purge_repository
-from data.model.repository import create_repository, is_empty
+from data.model.repository import create_repository
 from data.model.repository import get_filtered_matching_repositories, get_estimated_repository_count
 from test.fixtures import *
 
@@ -15,13 +15,6 @@ def test_duplicate_repository_different_kinds(initialized_db):
 
     # Try to create an app repo with the same name, which should fail.
     assert not create_repository("devtable", "somenewrepo", None, repo_kind="application")
-
-
-def test_is_empty(initialized_db):
-    create_repository("devtable", "somenewrepo", None, repo_kind="image")
-
-    assert is_empty("devtable", "somenewrepo")
-    assert not is_empty("devtable", "simple")
 
 
 @pytest.mark.skipif(

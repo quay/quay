@@ -109,33 +109,6 @@ app.config.update(environ_config)
 if app.config.get("PROXY_COUNT", 1):
     app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=app.config.get("PROXY_COUNT", 1))
 
-# Ensure the V3 upgrade key is specified correctly. If not, simply fail.
-# TODO: Remove for V3.1.
-if not is_testing and not is_building and app.config.get("SETUP_COMPLETE", False):
-    v3_upgrade_mode = app.config.get("V3_UPGRADE_MODE")
-    if v3_upgrade_mode is None:
-        raise Exception(
-            "Configuration flag `V3_UPGRADE_MODE` must be set. Please check the upgrade docs"
-        )
-
-    if (
-        v3_upgrade_mode != "background"
-        and v3_upgrade_mode != "complete"
-        and v3_upgrade_mode != "production-transition"
-        and v3_upgrade_mode != "post-oci-rollout"
-        and v3_upgrade_mode != "post-oci-roll-back-compat"
-    ):
-        raise Exception("Invalid value for config `V3_UPGRADE_MODE`. Please check the upgrade docs")
-
-# Split the registry model based on config.
-# TODO: Remove once we are fully on the OCI data model.
-registry_model.setup_split(
-    app.config.get("OCI_NAMESPACE_PROPORTION") or 0,
-    app.config.get("OCI_NAMESPACE_WHITELIST") or set(),
-    app.config.get("V22_NAMESPACE_WHITELIST") or set(),
-    app.config.get("V3_UPGRADE_MODE"),
-)
-
 # Allow user to define a custom storage preference for the local instance.
 _distributed_storage_preference = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
 if _distributed_storage_preference:

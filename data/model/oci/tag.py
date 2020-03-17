@@ -21,6 +21,7 @@ from data.database import (
     Namespace,
     RepositoryNotification,
     ExternalNotificationEvent,
+    db_random_func,
 )
 from data.model.oci.shared import get_legacy_image_for_manifest
 from data.model import config
@@ -33,6 +34,13 @@ from util.bytes import Bytes
 from util.timedeltastring import convert_to_timedelta
 
 logger = logging.getLogger(__name__)
+
+GC_CANDIDATE_COUNT = 500  # repositories
+
+
+class RetargetTagException(Exception):
+    """ Exception raised when re-targetting a tag fails and explicit exception
+      raising is requested. """
 
 
 def get_tag_by_id(tag_id):
@@ -278,7 +286,9 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
         )
 
 
-def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_old_model=True):
+def retarget_tag(
+    tag_name, manifest_id, is_reversion=False, now_ms=None, raise_on_error=False,
+):
     """
     Creates or updates a tag with the specified name to point to the given manifest under its
     repository.
@@ -294,6 +304,9 @@ def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_
             .get()
         )
     except Manifest.DoesNotExist:
+        if raise_on_error:
+            raise RetargetTagException("Manifest requested no longer exists")
+
         return None
 
     # CHECK: Make sure that we are not mistargeting a schema 1 manifest to a tag with a different
@@ -310,8 +323,11 @@ def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_
                     tag_name,
                 )
                 return None
-        except MalformedSchema1Manifest:
+        except MalformedSchema1Manifest as msme:
             logger.exception("Could not parse schema1 manifest")
+            if raise_on_error:
+                raise RetargetTagException(msme)
+
             return None
 
     legacy_image = get_legacy_image_for_manifest(manifest)
@@ -338,32 +354,6 @@ def retarget_tag(tag_name, manifest_id, is_reversion=False, now_ms=None, adjust_
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
         )
-
-        # TODO: Remove the linkage code once RepositoryTag is gone.
-        # If this is a schema 1 manifest, then add a TagManifest linkage to it. Otherwise, it will only
-        # be pullable via the new OCI model.
-        if adjust_old_model:
-            if (
-                manifest.media_type.name in DOCKER_SCHEMA1_CONTENT_TYPES
-                and legacy_image is not None
-            ):
-                old_style_tag = RepositoryTag.create(
-                    repository=manifest.repository_id,
-                    image=legacy_image,
-                    name=tag_name,
-                    lifetime_start_ts=now_ts,
-                    reversion=is_reversion,
-                )
-                TagToRepositoryTag.create(
-                    tag=created, repository_tag=old_style_tag, repository=manifest.repository_id
-                )
-
-                tag_manifest = TagManifest.create(
-                    tag=old_style_tag, digest=manifest.digest, json_data=manifest.manifest_bytes
-                )
-                TagManifestToManifest.create(
-                    tag_manifest=tag_manifest, manifest=manifest, repository=manifest.repository_id
-                )
 
         return created
 
@@ -605,3 +595,81 @@ def lookup_notifiable_tags_for_legacy_image(docker_image_id, storage_uuid, event
         # If found in a repository with the valid event, yield the tag(s) that contains the image.
         for tag in tags_containing_legacy_image(image):
             yield tag
+
+
+def get_tags_for_legacy_image(image_id):
+    """ Returns the Tag's that have the associated legacy image. 
+    
+        NOTE: This is for legacy support in the old security notification worker and should
+        be removed once that code is no longer necessary.
+    """
+    return filter_to_alive_tags(
+        Tag.select()
+        .distinct()
+        .join(Manifest)
+        .join(ManifestLegacyImage)
+        .where(ManifestLegacyImage.image == image_id)
+    )
+
+
+def _filter_has_repository_event(query, event):
+    """ Filters the query by ensuring the repositories returned have the given event.
+    
+        NOTE: This is for legacy support in the old security notification worker and should
+        be removed once that code is no longer necessary.
+    """
+    return (
+        query.join(Repository)
+        .join(RepositoryNotification)
+        .where(RepositoryNotification.event == event)
+    )
+
+
+def filter_tags_have_repository_event(query, event):
+    """ Filters the query by ensuring the tags live in a repository that has the given
+        event. Also orders the results by lifetime_start_ms.
+    
+        NOTE: This is for legacy support in the old security notification worker and should
+        be removed once that code is no longer necessary.
+    """
+    query = _filter_has_repository_event(query, event)
+    query = query.switch(Tag).order_by(Tag.lifetime_start_ms.desc())
+    return query
+
+
+def find_repository_with_garbage(limit_to_gc_policy_s):
+    """ Returns a repository that has garbage (defined as an expired Tag that is past
+        the repo's namespace's expiration window) or None if none.
+    """
+    expiration_timestamp = get_epoch_timestamp_ms() - (limit_to_gc_policy_s * 1000)
+
+    try:
+        candidates = (
+            Tag.select(Tag.repository)
+            .join(Repository)
+            .join(Namespace, on=(Repository.namespace_user == Namespace.id))
+            .where(
+                ~(Tag.lifetime_end_ms >> None),
+                (Tag.lifetime_end_ms <= expiration_timestamp),
+                (Namespace.removed_tag_expiration_s == limit_to_gc_policy_s),
+            )
+            .limit(GC_CANDIDATE_COUNT)
+            .distinct()
+            .alias("candidates")
+        )
+
+        found = (
+            Tag.select(candidates.c.repository_id)
+            .from_(candidates)
+            .order_by(db_random_func())
+            .get()
+        )
+
+        if found is None:
+            return
+
+        return Repository.get(Repository.id == found.repository_id)
+    except Tag.DoesNotExist:
+        return None
+    except Repository.DoesNotExist:
+        return None

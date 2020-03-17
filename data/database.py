@@ -37,6 +37,7 @@ from data.fields import (
     EncryptedCharField,
     CredentialField,
 )
+from data.decorators import deprecated_model
 from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
 from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig
@@ -1776,29 +1777,22 @@ class ManifestLegacyImage(BaseModel):
     image = ForeignKeyField(Image)
 
 
+@deprecated_model
 class TagManifest(BaseModel):
-    """
-    TO BE DEPRECATED: The manifest for a tag.
-    """
-
     tag = ForeignKeyField(RepositoryTag, unique=True)
     digest = CharField(index=True)
     json_data = TextField()
 
 
+@deprecated_model
 class TagManifestToManifest(BaseModel):
-    """ NOTE: Only used for the duration of the migrations. """
-
     tag_manifest = ForeignKeyField(TagManifest, index=True, unique=True)
     manifest = ForeignKeyField(Manifest, index=True)
     broken = BooleanField(index=True, default=False)
 
 
+@deprecated_model
 class TagManifestLabel(BaseModel):
-    """
-    TO BE DEPRECATED: Mapping from a tag manifest to a label.
-    """
-
     repository = ForeignKeyField(Repository, index=True)
     annotated = ForeignKeyField(TagManifest, index=True)
     label = ForeignKeyField(Label)
@@ -1809,9 +1803,8 @@ class TagManifestLabel(BaseModel):
         indexes = ((("annotated", "label"), True),)
 
 
+@deprecated_model
 class TagManifestLabelMap(BaseModel):
-    """ NOTE: Only used for the duration of the migrations. """
-
     tag_manifest = ForeignKeyField(TagManifest, index=True)
     manifest = ForeignKeyField(Manifest, null=True, index=True)
 
@@ -1823,9 +1816,8 @@ class TagManifestLabelMap(BaseModel):
     broken_manifest = BooleanField(index=True, default=False)
 
 
+@deprecated_model
 class TagToRepositoryTag(BaseModel):
-    """ NOTE: Only used for the duration of the migrations. """
-
     repository = ForeignKeyField(Repository, index=True)
     tag = ForeignKeyField(Tag, index=True, unique=True)
     repository_tag = ForeignKeyField(RepositoryTag, index=True, unique=True)

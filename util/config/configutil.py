@@ -15,9 +15,6 @@ def add_enterprise_config_defaults(config_obj, current_secret_key):
     config_obj["TESTING"] = False
     config_obj["USE_CDN"] = False
 
-    # Default for V3 upgrade.
-    config_obj["V3_UPGRADE_MODE"] = config_obj.get("V3_UPGRADE_MODE", "complete")
-
     # Defaults for Red Hat Quay.
     config_obj["REGISTRY_TITLE"] = config_obj.get("REGISTRY_TITLE", "Red Hat Quay")
     config_obj["REGISTRY_TITLE_SHORT"] = config_obj.get("REGISTRY_TITLE_SHORT", "Red Hat Quay")

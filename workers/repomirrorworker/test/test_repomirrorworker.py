@@ -7,6 +7,7 @@ from app import storage
 from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from data.registry_model import registry_model
+from data.registry_model.datatypes import RepositoryReference
 from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from data.model.user import retrieve_robot_token
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
@@ -14,8 +15,6 @@ from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 from workers.repomirrorworker import delete_obsolete_tags
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 from io import BytesIO
-from data.model.image import find_create_or_link_image
-from data.model.tag import create_or_update_tag_for_repo
 from util.repomirror.skopeomirror import SkopeoResults, SkopeoMirror
 
 from test.fixtures import *
@@ -38,7 +37,8 @@ def disable_existing_mirrors(func):
 
 
 def _create_tag(repo, name):
-    repo_ref = registry_model.lookup_repository("mirror", "repo")
+    repo_ref = RepositoryReference.for_repo_obj(repo)
+
     with upload_blob(repo_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
         app_config = {"TESTING": True}
         config_json = json.dumps(
@@ -339,11 +339,8 @@ def test_remove_obsolete_tags(initialized_db):
     """
 
     mirror, repository = create_mirror_repo_robot(["updated", "created"], repo_name="removed")
-    manifest = Manifest.get()
-    image = find_create_or_link_image("removed", repository, None, {}, "local_us")
-    tag = create_or_update_tag_for_repo(
-        repository, "oldtag", image.docker_image_id, oci_manifest=manifest, reversion=True
-    )
+
+    _create_tag(repository, "oldtag")
 
     incoming_tags = ["one", "two"]
     deleted_tags = delete_obsolete_tags(mirror, incoming_tags)

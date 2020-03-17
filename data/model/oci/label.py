@@ -60,9 +60,7 @@ def get_manifest_label(label_uuid, manifest):
         return None
 
 
-def create_manifest_label(
-    manifest_id, key, value, source_type_name, media_type_name=None, adjust_old_model=True
-):
+def create_manifest_label(manifest_id, key, value, source_type_name, media_type_name=None):
     """
     Creates a new manifest label on a specific tag manifest.
     """
@@ -100,20 +98,6 @@ def create_manifest_label(
 
     repository = manifest.repository
 
-    # TODO: Remove this code once the TagManifest table is gone.
-    tag_manifest = None
-    if adjust_old_model:
-        try:
-            mapping_row = (
-                TagManifestToManifest.select(TagManifestToManifest, TagManifest)
-                .join(TagManifest)
-                .where(TagManifestToManifest.manifest == manifest)
-                .get()
-            )
-            tag_manifest = mapping_row.tag_manifest
-        except TagManifestToManifest.DoesNotExist:
-            tag_manifest = None
-
     with db_transaction():
         label = Label.create(
             key=key, value=value, source_type=source_type_id, media_type=media_type_id
@@ -121,20 +105,6 @@ def create_manifest_label(
         manifest_label = ManifestLabel.create(
             manifest=manifest_id, label=label, repository=repository
         )
-
-        # If there exists a mapping to a TagManifest, add the old-style label.
-        # TODO: Remove this code once the TagManifest table is gone.
-        if tag_manifest:
-            tag_manifest_label = TagManifestLabel.create(
-                annotated=tag_manifest, label=label, repository=repository
-            )
-            TagManifestLabelMap.create(
-                manifest_label=manifest_label,
-                tag_manifest_label=tag_manifest_label,
-                label=label,
-                manifest=manifest,
-                tag_manifest=tag_manifest,
-            )
 
     return label
 

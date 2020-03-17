@@ -15,7 +15,7 @@ from data.registry_model.blobuploader import (
     BlobTooLargeException,
     BlobUploadSettings,
 )
-from data.registry_model.registry_pre_oci_model import PreOCIModel
+from data.registry_model.registry_oci_model import OCIModel
 
 from storage.distributedstorage import DistributedStorage
 from storage.fakestorage import FakeStorage
@@ -23,14 +23,14 @@ from test.fixtures import *
 
 
 @pytest.fixture()
-def pre_oci_model(initialized_db):
-    return PreOCIModel()
+def registry_model(initialized_db):
+    return OCIModel()
 
 
 @pytest.mark.parametrize("chunk_count", [0, 1, 2, 10,])
 @pytest.mark.parametrize("subchunk", [True, False,])
-def test_basic_upload_blob(chunk_count, subchunk, pre_oci_model):
-    repository_ref = pre_oci_model.lookup_repository("devtable", "complex")
+def test_basic_upload_blob(chunk_count, subchunk, registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
     settings = BlobUploadSettings("2M", 512 * 1024, 3600)
     app_config = {"TESTING": True}
@@ -61,8 +61,8 @@ def test_basic_upload_blob(chunk_count, subchunk, pre_oci_model):
     assert storage.get_content(["local_us"], blob.storage_path) == data
 
 
-def test_cancel_upload(pre_oci_model):
-    repository_ref = pre_oci_model.lookup_repository("devtable", "complex")
+def test_cancel_upload(registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
     settings = BlobUploadSettings("2M", 512 * 1024, 3600)
     app_config = {"TESTING": True}
@@ -70,17 +70,17 @@ def test_cancel_upload(pre_oci_model):
     blob_upload_id = None
     with upload_blob(repository_ref, storage, settings) as manager:
         blob_upload_id = manager.blob_upload_id
-        assert pre_oci_model.lookup_blob_upload(repository_ref, blob_upload_id) is not None
+        assert registry_model.lookup_blob_upload(repository_ref, blob_upload_id) is not None
 
         manager.upload_chunk(app_config, BytesIO("hello world"))
 
     # Since the blob was not comitted, the upload should be deleted.
     assert blob_upload_id
-    assert pre_oci_model.lookup_blob_upload(repository_ref, blob_upload_id) is None
+    assert registry_model.lookup_blob_upload(repository_ref, blob_upload_id) is None
 
 
-def test_too_large(pre_oci_model):
-    repository_ref = pre_oci_model.lookup_repository("devtable", "complex")
+def test_too_large(registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
     settings = BlobUploadSettings("1K", 512 * 1024, 3600)
     app_config = {"TESTING": True}
@@ -90,7 +90,7 @@ def test_too_large(pre_oci_model):
             manager.upload_chunk(app_config, BytesIO(os.urandom(1024 * 1024 * 2)))
 
 
-def test_extra_blob_stream_handlers(pre_oci_model):
+def test_extra_blob_stream_handlers(registry_model):
     handler1_result = []
     handler2_result = []
 
@@ -100,7 +100,7 @@ def test_extra_blob_stream_handlers(pre_oci_model):
     def handler2(bytes):
         handler2_result.append(bytes)
 
-    repository_ref = pre_oci_model.lookup_repository("devtable", "complex")
+    repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
     settings = BlobUploadSettings("1K", 512 * 1024, 3600)
     app_config = {"TESTING": True}
@@ -128,8 +128,8 @@ def valid_tar_gz(contents):
     return layer_bytes
 
 
-def test_uncompressed_size(pre_oci_model):
-    repository_ref = pre_oci_model.lookup_repository("devtable", "complex")
+def test_uncompressed_size(registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
     settings = BlobUploadSettings("1K", 512 * 1024, 3600)
     app_config = {"TESTING": True}

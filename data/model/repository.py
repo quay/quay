@@ -11,10 +11,10 @@ from cachetools.func import ttl_cache
 from data.model import (
     config,
     DataModelException,
-    tag,
     db_transaction,
     storage,
     permission,
+    oci,
     _basequery,
 )
 from data.database import (
@@ -160,41 +160,6 @@ def get_random_gc_policy():
         return None
 
     return random.choice(policies)
-
-
-def find_repository_with_garbage(limit_to_gc_policy_s):
-    expiration_timestamp = get_epoch_timestamp() - limit_to_gc_policy_s
-
-    try:
-        candidates = (
-            RepositoryTag.select(RepositoryTag.repository)
-            .join(Repository)
-            .join(Namespace, on=(Repository.namespace_user == Namespace.id))
-            .where(
-                ~(RepositoryTag.lifetime_end_ts >> None),
-                (RepositoryTag.lifetime_end_ts <= expiration_timestamp),
-                (Namespace.removed_tag_expiration_s == limit_to_gc_policy_s),
-            )
-            .limit(500)
-            .distinct()
-            .alias("candidates")
-        )
-
-        found = (
-            RepositoryTag.select(candidates.c.repository_id)
-            .from_(candidates)
-            .order_by(db_random_func())
-            .get()
-        )
-
-        if found is None:
-            return
-
-        return Repository.get(Repository.id == found.repository_id)
-    except RepositoryTag.DoesNotExist:
-        return None
-    except Repository.DoesNotExist:
-        return None
 
 
 def star_repository(user, repository):
@@ -590,19 +555,6 @@ def confirm_email_authorization_for_repo(code):
     found.save()
 
     return found
-
-
-def is_empty(namespace_name, repository_name):
-    """
-    Returns if the repository referenced by the given namespace and name is empty.
-
-    If the repo doesn't exist, returns True.
-    """
-    try:
-        tag.list_repository_tags(namespace_name, repository_name).limit(1).get()
-        return False
-    except RepositoryTag.DoesNotExist:
-        return True
 
 
 def get_repository_state(namespace_name, repository_name):

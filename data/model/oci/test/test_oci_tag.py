@@ -208,7 +208,7 @@ def test_delete_tag(initialized_db):
         assert get_tag(repo, tag.name) == tag
         assert tag.lifetime_end_ms is None
 
-        with assert_query_count(4):
+        with assert_query_count(3):
             assert delete_tag(repo, tag.name) == tag
 
         assert get_tag(repo, tag.name) is None
@@ -222,7 +222,7 @@ def test_delete_tags_for_manifest(initialized_db):
         repo = tag.repository
         assert get_tag(repo, tag.name) == tag
 
-        with assert_query_count(5):
+        with assert_query_count(4):
             assert delete_tags_for_manifest(tag.manifest) == [tag]
 
         assert get_tag(repo, tag.name) is None
@@ -356,13 +356,6 @@ def test_retarget_tag(initialized_db):
     assert results[2].lifetime_end_ms is not None
 
     assert results[0] == created
-
-    # Verify old-style tables.
-    repository_tag = TagToRepositoryTag.get(tag=created).repository_tag
-    assert repository_tag.lifetime_start_ts == int(created.lifetime_start_ms / 1000)
-
-    tag_manifest = TagManifest.get(tag=repository_tag)
-    assert TagManifestToManifest.get(tag_manifest=tag_manifest).manifest == created.manifest
 
 
 def test_retarget_tag_wrong_name(initialized_db):

@@ -11,7 +11,6 @@ from app import docker_v2_signing_key
 
 from data.registry_model.blobuploader import BlobUploadSettings, upload_blob
 from data.registry_model.manifestbuilder import create_manifest_builder, lookup_manifest_builder
-from data.registry_model.registry_pre_oci_model import PreOCIModel
 from data.registry_model.registry_oci_model import OCIModel
 
 from storage.distributedstorage import DistributedStorage
@@ -19,7 +18,7 @@ from storage.fakestorage import FakeStorage
 from test.fixtures import *
 
 
-@pytest.fixture(params=[PreOCIModel, OCIModel])
+@pytest.fixture(params=[OCIModel])
 def registry_model(request, initialized_db):
     return request.param()
 

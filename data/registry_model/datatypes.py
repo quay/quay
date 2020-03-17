@@ -499,7 +499,7 @@ class LegacyImage(
         if not tags:
             return []
 
-        return [Tag.for_repository_tag(tag) for tag in tags]
+        return [Tag.for_tag(tag) for tag in tags]
 
 
 @unique

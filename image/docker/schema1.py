@@ -607,6 +607,14 @@ class DockerSchema1ManifestBuilder(object):
         self._tag = tag
         self._architecture = architecture
 
+    def clone(self, tag_name=None):
+        builder = DockerSchema1ManifestBuilder(
+            self._namespace_name, self._repo_name, tag_name or self._tag, self._architecture
+        )
+        builder._fs_layer_digests = list(self._fs_layer_digests)
+        builder._history = list(self._history)
+        return builder
+
     def add_layer(self, layer_digest, v1_json_metadata):
         self._fs_layer_digests.append(
             {DOCKER_SCHEMA1_BLOB_SUM_KEY: layer_digest,}
@@ -614,6 +622,11 @@ class DockerSchema1ManifestBuilder(object):
         self._history.append(
             {DOCKER_SCHEMA1_V1_COMPAT_KEY: v1_json_metadata or "{}",}
         )
+        return self
+
+    def insert_layer(self, layer_digest, v1_json_metadata):
+        self._fs_layer_digests.insert(0, {DOCKER_SCHEMA1_BLOB_SUM_KEY: layer_digest,})
+        self._history.insert(0, {DOCKER_SCHEMA1_V1_COMPAT_KEY: v1_json_metadata or "{}",})
         return self
 
     def with_metadata_removed(self):

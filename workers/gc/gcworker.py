@@ -4,8 +4,9 @@ import time
 import features
 
 from app import app
-from data.database import UseThenDisconnect
-from data.model.repository import find_repository_with_garbage, get_random_gc_policy
+from data.database import UseThenDisconnect, Repository
+from data.registry_model import registry_model
+from data.model.repository import get_random_gc_policy
 from data.model.gc import garbage_collect_repo
 from workers.worker import Worker
 
@@ -30,12 +31,17 @@ class GarbageCollectionWorker(Worker):
                 logger.debug("No GC policies found")
                 return
 
-            repository = find_repository_with_garbage(policy)
-            if repository is None:
+            repo_ref = registry_model.find_repository_with_garbage(policy)
+            if repo_ref is None:
                 logger.debug("No repository with garbage found")
                 return
 
             assert features.GARBAGE_COLLECTION
+
+            try:
+                repository = Repository.get(id=repo_ref.id)
+            except Repository.DoesNotExist:
+                return
 
             logger.debug("Starting GC of repository #%s (%s)", repository.id, repository.name)
             garbage_collect_repo(repository)
@@ -45,15 +51,6 @@ class GarbageCollectionWorker(Worker):
 if __name__ == "__main__":
     if not features.GARBAGE_COLLECTION:
         logger.debug("Garbage collection is disabled; skipping")
-        while True:
-            time.sleep(100000)
-
-    if (
-        (app.config.get("V3_UPGRADE_MODE") == "production-transition")
-        or (app.config.get("V3_UPGRADE_MODE") == "post-oci-rollout")
-        or (app.config.get("V3_UPGRADE_MODE") == "post-oci-roll-back-compat")
-    ):
-        logger.debug("GC worker disabled for production transition; skipping")
         while True:
             time.sleep(100000)
 

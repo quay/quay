@@ -443,6 +443,12 @@ class DockerSchema2ManifestBuilder(object):
         self.config = None
         self.filesystem_layers = []
 
+    def clone(self):
+        cloned = DockerSchema2ManifestBuilder()
+        cloned.config = self.config
+        cloned.filesystem_layers = list(self.filesystem_layers)
+        return cloned
+
     def set_config(self, schema2_config):
         """
         Sets the configuration for the manifest being built.

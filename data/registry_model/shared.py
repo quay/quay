@@ -355,10 +355,14 @@ class SharedModel:
         all_images = model.image.get_repository_images_without_placements(repo)
         all_images_map = {image.id: image for image in all_images}
 
-        all_tags = model.tag.list_repository_tags(repo.namespace_user.username, repo.name)
+        all_tags = model.oci.tag.list_alive_tags(repo)
         tags_by_image_id = defaultdict(list)
         for tag in all_tags:
-            tags_by_image_id[tag.image_id].append(tag)
+            try:
+                mli = database.ManifestLegacyImage.get(manifest=tag.manifest_id)
+                tags_by_image_id[mli.image_id].append(tag)
+            except database.ManifestLegacyImage.DoesNotExist:
+                continue
 
         return [
             LegacyImage.for_image(image, images_map=all_images_map, tags_map=tags_by_image_id)

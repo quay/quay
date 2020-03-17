@@ -110,5 +110,3 @@ class TestConfig(DefaultConfig):
     }
 
     FEATURE_REPO_MIRROR = True
-
-    V3_UPGRADE_MODE = "complete"
