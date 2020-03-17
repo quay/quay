@@ -164,7 +164,9 @@ def _temp_link_blob(repository_id, storage, link_expiration_s):
     image = Image.create(
         storage=storage, docker_image_id=random_image_name, repository=repository_id
     )
-    tag.create_temporary_hidden_tag(repository_id, image, link_expiration_s)
+    temp_tag = tag.create_temporary_hidden_tag(repository_id, image, link_expiration_s)
+    if temp_tag is None:
+        image.delete_instance()
 
 
 def get_stale_blob_upload(stale_timespan):

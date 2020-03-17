@@ -12,6 +12,7 @@ import features
 from auth.auth_context import get_authenticated_user
 from data import model
 from data.database import RepoMirrorRuleType
+from data.encryption import DecryptionFailureException
 from endpoints.api import (
     RepositoryParamResource,
     nickname,
@@ -230,9 +231,19 @@ class RepoMirrorResource(RepositoryParamResource):
         if not mirror:
             raise NotFound()
 
+        try:
+            username = self._decrypt_username(mirror.external_registry_username)
+        except DecryptionFailureException as dfe:
+            logger.warning(
+                "Failed to decrypt username for repository %s/%s: %s",
+                namespace_name,
+                repository_name,
+                dfe,
+            )
+            username = "(invalid. please re-enter)"
+
         # Transformations
         rules = mirror.root_rule.rule_value
-        username = self._decrypt_username(mirror.external_registry_username)
         sync_start_date = self._dt_to_string(mirror.sync_start_date)
         sync_expiration_date = self._dt_to_string(mirror.sync_expiration_date)
         robot = mirror.internal_robot.username if mirror.internal_robot is not None else None

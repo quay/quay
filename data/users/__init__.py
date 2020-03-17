@@ -60,6 +60,7 @@ def get_users_handler(config, _, override_config_dir):
         secondary_user_rdns = config.get("LDAP_SECONDARY_USER_RDNS", [])
         timeout = config.get("LDAP_TIMEOUT")
         network_timeout = config.get("LDAP_NETWORK_TIMEOUT")
+        ldap_user_filter = config.get("LDAP_USER_FILTER", None)
 
         allow_tls_fallback = config.get("LDAP_ALLOW_INSECURE_FALLBACK", False)
         return LDAPUsers(
@@ -75,6 +76,7 @@ def get_users_handler(config, _, override_config_dir):
             requires_email=features.MAILING,
             timeout=timeout,
             network_timeout=network_timeout,
+            ldap_user_filter=ldap_user_filter,
         )
 
     if authentication_type == "JWT":

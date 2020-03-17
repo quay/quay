@@ -59,7 +59,8 @@ class LDAPValidator(BaseValidator):
         user_rdn = config.get("LDAP_USER_RDN", [])
         uid_attr = config.get("LDAP_UID_ATTR", "uid")
         email_attr = config.get("LDAP_EMAIL_ATTR", "mail")
-        requires_email = config.get("FEATURE_MAILING", True)
+        email_attr = config.get("LDAP_EMAIL_ATTR", "mail")
+        ldap_user_filter = config.get("LDAP_USER_FILTER", None)
 
         users = LDAPUsers(
             ldap_uri,
@@ -70,7 +71,7 @@ class LDAPValidator(BaseValidator):
             uid_attr,
             email_attr,
             allow_tls_fallback,
-            requires_email=requires_email,
+            ldap_user_filter=ldap_user_filter,
         )
 
         # Ensure at least one user exists to verify the connection is setup properly.
