@@ -31,6 +31,8 @@ SEARCH_BUCKETS = [
     search_bucket(timedelta(days=183), 152, 0.71028),
 ]
 
+RAC_RETENTION_PERIOD = timedelta(days=365)
+
 
 def find_uncounted_repository():
     """
@@ -157,3 +159,28 @@ def update_repository_score(repo):
     except IntegrityError:
         logger.debug("RepositorySearchScore row already existed; skipping")
         return False
+
+
+def delete_expired_entries(repo, limit=100):
+    """ Deletes expired entries from the RepositoryActionCount table for a specific repository.
+        Returns the number of entries removed.
+    """
+    threshold_date = datetime.today() - RAC_RETENTION_PERIOD
+    found = list(
+        RepositoryActionCount.select().where(
+            RepositoryActionCount.repository == repo, RepositoryActionCount.date < threshold_date
+        )
+    )
+
+    if not found:
+        return 0
+
+    count_removed = 0
+    for entry in found:
+        try:
+            entry.delete_instance(recursive=False)
+            count_removed += 1
+        except IntegrityError:
+            continue
+
+    return count_removed
