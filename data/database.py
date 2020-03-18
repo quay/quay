@@ -145,11 +145,12 @@ def delete_instance_filtered(instance, model_class, delete_nullable, skip_transi
 
     Callers *must* ensure that any models listed in the skip_transitive_deletes must be capable
     of being directly deleted when the instance is deleted (with automatic sorting handling
-    dependency order).
+    dependency order) - for example, the Manifest and ManifestBlob tables for Repository will
+    always refer to the *same* repository when Manifest references ManifestBlob, so we can safely
+    skip transitive deletion for the Manifest table.
 
-    For example, the RepositoryTag and Image tables for Repository will always refer to the
-    *same* repository when RepositoryTag references Image, so we can safely skip
-    transitive deletion for the RepositoryTag table.
+    Callers *must* catch IntegrityError's raised, as this method will *not* delete the instance
+    under a transaction, to avoid locking the database.
     """
     # We need to sort the ops so that models get cleaned in order of their dependencies
     ops = reversed(list(instance.dependencies(delete_nullable)))
@@ -181,15 +182,17 @@ def delete_instance_filtered(instance, model_class, delete_nullable, skip_transi
 
     filtered_ops.sort(key=sorted_model_key)
 
-    with db_transaction():
-        for query, fk in filtered_ops:
-            _model = fk.model
-            if fk.null and not delete_nullable:
-                _model.update(**{fk.name: None}).where(query).execute()
-            else:
-                _model.delete().where(query).execute()
+    # NOTE: We do not use a transaction here, as it can be a VERY long transaction, potentially
+    # locking up the database. Instead, we expect cleanup code to have run before this point, and
+    # if this fails with an IntegrityError, callers are expected to catch and retry.
+    for query, fk in filtered_ops:
+        _model = fk.model
+        if fk.null and not delete_nullable:
+            _model.update(**{fk.name: None}).where(query).execute()
+        else:
+            _model.delete().where(query).execute()
 
-        return instance.delete().where(instance._pk_expr()).execute()
+    return instance.delete().where(instance._pk_expr()).execute()
 
 
 SCHEME_SPECIALIZED_FOR_UPDATE = {

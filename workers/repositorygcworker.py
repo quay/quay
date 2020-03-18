@@ -28,7 +28,8 @@ class RepositoryGCWorker(QueueWorker):
             return
 
         logger.debug("Purging repository %s", marker.repository)
-        model.gc.purge_repository(marker.repository)
+        if not model.gc.purge_repository(marker.repository):
+            raise Exception("GC interrupted; will retry")
 
 
 if __name__ == "__main__":
