@@ -77,12 +77,12 @@ Change the web resources to devel location:
 ```
 cd /quay-registry
 mv static static.bak
-ln -s $QUAY_DEVEL_HOME/static
+ln -s $QUAY_DEVEL_HOME/quay/static
 ```
 
 Build web assets:
 ```
-cd $QUAY_DEVEL_HOME
+cd $QUAY_DEVEL_HOME/quay
 mkdir -p static/webfonts
 mkdir -p static/fonts
 mkdir -p static/ldn
@@ -97,25 +97,25 @@ If `$QUAY_DEVEL_HOME/quay`, which presumably has your local code changes, has mi
 
 To run a migration:
 ```
-cd $QUAY_DEVEL_HOME
+cd $QUAY_DEVEL_HOME/quay
 PYTHONPATH=. alembic upgrade 5248ddf35167
 ```
 
 To revert a migration:
 ```
-cd $QUAY_DEVEL_HOME
+cd $QUAY_DEVEL_HOME/quay
 PYTHONPATH=. alembic downgrade -1
 ```
 
 ### Web UI Assets
 
 ```
-cd $QUAY_DEVEL_HOME
+cd $QUAY_DEVEL_HOME/quay
 yarn build && npm run watch
 ```
 
 ### Run Web Server
 ```
-cd $QUAY_DEVEL_HOME
+cd $QUAY_DEVEL_HOME/quay
 PYTHONPATH=. gunicorn -c conf/gunicorn_web.py web:application
 ```
