@@ -24,19 +24,22 @@ class RepositoryActionCountWorker(Worker):
         """
         Counts actions and aggregates search scores for a random repository for the previous day.
         """
+        # Select a repository that needs its actions for the last day updated.
         to_count = model.repositoryactioncount.find_uncounted_repository()
         if to_count is None:
             logger.debug("No further repositories to count")
             return False
 
-        yesterday = date.today() - timedelta(days=1)
-
         logger.debug("Found repository #%s to count", to_count.id)
+
+        # Count the number of actions that occurred yesterday for the repository.
+        yesterday = date.today() - timedelta(days=1)
         daily_count = logs_model.count_repository_actions(to_count, yesterday)
         if daily_count is None:
             logger.debug("Could not load count for repository #%s", to_count.id)
             return False
 
+        # Store the count for the repository.
         was_counted = model.repositoryactioncount.store_repository_action_count(
             to_count, yesterday, daily_count
         )
@@ -44,6 +47,7 @@ class RepositoryActionCountWorker(Worker):
             logger.debug("Repository #%s was counted by another worker", to_count.id)
             return False
 
+        # Update the search score for the repository now that its actions have been counted.
         logger.debug("Updating search score for repository #%s", to_count.id)
         was_updated = model.repositoryactioncount.update_repository_score(to_count)
         if not was_updated:
@@ -53,6 +57,14 @@ class RepositoryActionCountWorker(Worker):
             return False
 
         logger.debug("Repository #%s search score updated", to_count.id)
+
+        # Delete any entries older than the retention period for the repository.
+        while True:
+            found = model.repositoryactioncount.delete_expired_entries(to_count, 30)
+            if found <= 0:
+                break
+
+        logger.debug("Repository #%s old entries removed", to_count.id)
         return True
 
 
