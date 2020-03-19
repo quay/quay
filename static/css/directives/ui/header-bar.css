@@ -3,28 +3,28 @@ nav.navbar {
   border-radius: 0px;
 }
 
-nav.navbar .navbar-toggle {
+nav.navbar .navbar-toggler {
   padding: 0px;
   padding-left: 10px;
   padding-right: 10px;
   font-size: 22px;
 }
 
-nav.navbar-default .navbar-nav>li>a {
+nav.navbar-light .navbar-nav>li>a {
   letter-spacing: 0.5px;
   color: #428bca;
   font-size: 16px;
 }
 
-nav.navbar-default .navbar-nav>li>a.active {
+nav.navbar-light .navbar-nav>li>a.active {
   color: #f04c5c;
 }
 
-.navbar-default .navbar-nav>li>a:hover, .navbar-default .navbar-nav>li>a:focus {
+.navbar-light .navbar-nav>li>a:hover, .navbar-light .navbar-nav>li>a:focus {
     background: #eee;
 }
 
-.navbar-default .navbar-nav>.open>a, .navbar-default .navbar-nav>.open>a:hover, .navbar-default .navbar-nav>.open>a:focus {
+.navbar-light .navbar-nav>.open>a, .navbar-light .navbar-nav>.open>a:hover, .navbar-light .navbar-nav>.open>a:focus {
   cursor: pointer;
   background: rgba(255, 255, 255, 0.4) !important;
 }

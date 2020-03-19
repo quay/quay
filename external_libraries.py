@@ -14,33 +14,34 @@ LOCAL_PATH = "/static/ldn/"
 MAX_RETRY_COUNT = 3
 
 EXTERNAL_JS = [
-    "code.jquery.com/jquery-1.12.4.min.js",
-    "stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-route.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-sanitize.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-animate.min.js",
-    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-cookies.min.js",
+    "code.jquery.com/jquery-1.12.4.js",
+    "stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-route.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-sanitize.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-animate.js",
+    "ajax.googleapis.com/ajax/libs/angularjs/1.7.9/angular-cookies.js",
     "cdn.jsdelivr.net/g/momentjs",
-    "cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/js/bootstrap-datepicker.min.js",
+    "cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/js/bootstrap-datepicker.js",
     "cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/js/bootstrap-datetimepicker.min.js",
-    "cdn.jsdelivr.net/g/bootbox@4.1.0,underscorejs@1.5.2,restangular@1.2.0,d3js@3.3.3",
-    "cdn.ravenjs.com/3.1.0/angular/raven.min.js",
-    "cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.min.js",
-    "cdnjs.cloudflare.com/ajax/libs/angular-recaptcha/4.1.3/angular-recaptcha.min.js",
-    "cdnjs.cloudflare.com/ajax/libs/ng-tags-input/3.1.1/ng-tags-input.min.js",
-    "cdnjs.cloudflare.com/ajax/libs/corejs-typeahead/1.1.1/typeahead.bundle.min.js",
+    "cdnjs.cloudflare.com/ajax/libs/bootbox.js/5.4.0/bootbox.min.js",
+    "cdn.jsdelivr.net/g/underscorejs@1.5.2,restangular@1.2.0,d3js@3.3.3",
+    "cdn.ravenjs.com/3.1.0/angular/raven.js",
+    "cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.js",
+    "cdnjs.cloudflare.com/ajax/libs/angular-recaptcha/4.1.3/angular-recaptcha.js",
+    "cdnjs.cloudflare.com/ajax/libs/ng-tags-input/3.1.1/ng-tags-input.js",
+    "cdnjs.cloudflare.com/ajax/libs/corejs-typeahead/1.1.1/typeahead.bundle.js",
 ]
 
 EXTERNAL_CSS = [
     "use.fontawesome.com/releases/v5.0.4/css/all.css",
     "netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.css",
-    "stackpath.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css",
+    "stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.css",
     "fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700",
     "s3.amazonaws.com/cdn.core-os.net/icons/core-icons.css",
-    "cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/css/bootstrap-datetimepicker.min.css",
+    "cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/css/bootstrap-datetimepicker.css",
     "cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.css",
-    "cdnjs.cloudflare.com/ajax/libs/ng-tags-input/3.1.1/ng-tags-input.min.css",
+    "cdnjs.cloudflare.com/ajax/libs/ng-tags-input/3.1.1/ng-tags-input.css",
 ]
 
 EXTERNAL_FONTS = [

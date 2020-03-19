@@ -3782,14 +3782,14 @@ i.mesos-icon {
     padding-left: 10px;
   }
   
-  nav.navbar-default .navbar-nav > li > a {
+  nav.navbar-light .navbar-nav > li > a {
     font-size: 13px;
     text-transform: uppercase;
     padding: 25px 5px;
     color: #252525;
   }
   
-  body.signedin nav.navbar-default .navbar-nav > li > a.user-view{
+  body.signedin nav.navbar-light .navbar-nav > li > a.user-view{
     padding: 19px 5px;
     text-transform: initial;
     width: 150px;
@@ -3818,7 +3818,7 @@ i.mesos-icon {
     align-items: center;
   }
   
-  .navbar-default .navbar-collapse{
+  .navbar-light .navbar-collapse{
     width: 100%;
   }
   
@@ -3840,12 +3840,12 @@ i.mesos-icon {
     padding-left: 15px;
   }
   
-  nav.navbar-default .navbar-nav > li > a {
+  nav.navbar-light .navbar-nav > li > a {
     font-size: 15px;
     padding: 25px 15px;
   }
   
-  body.signedin nav.navbar-default .navbar-nav > li > a.user-view{
+  body.signedin nav.navbar-light .navbar-nav > li > a.user-view{
     padding: 19px 15px;
   }
 }
