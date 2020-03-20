@@ -95,6 +95,7 @@ class ProtocolOptions(object):
         self.ensure_ascii = True
         self.attempt_pull_without_token = False
         self.with_broken_manifest_config = False
+        self.require_matching_manifest_type = False
 
 
 @add_metaclass(ABCMeta)

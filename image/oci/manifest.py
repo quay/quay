@@ -48,11 +48,14 @@ from digest import digest_tools
 from image.shared import ManifestException
 from image.shared.interfaces import ManifestInterface
 from image.shared.types import ManifestImageLayer
+from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_SIZE
 from image.oci import (
     OCI_IMAGE_MANIFEST_CONTENT_TYPE,
     OCI_IMAGE_CONFIG_CONTENT_TYPE,
     OCI_IMAGE_LAYER_CONTENT_TYPES,
     OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES,
+    OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
+    OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
 )
 from image.oci.config import OCIConfig
 from image.oci.descriptor import get_descriptor_schema
@@ -416,3 +419,84 @@ class OCIManifest(ManifestInterface):
                 is_remote=is_remote,
                 urls=layer.get(OCI_MANIFEST_URLS_KEY),
             )
+
+
+class OCIManifestBuilder(object):
+    """
+    A convenient abstraction around creating new OCIManifest.
+    """
+
+    def __init__(self):
+        self.config = None
+        self.filesystem_layers = []
+
+    def clone(self):
+        cloned = OCIManifestBuilder()
+        cloned.config = self.config
+        cloned.filesystem_layers = list(self.filesystem_layers)
+        return cloned
+
+    def set_config(self, schema2_config):
+        """
+        Sets the configuration for the manifest being built.
+        """
+        self.set_config_digest(schema2_config.digest, schema2_config.size)
+
+    def set_config_digest(self, config_digest, config_size):
+        """
+        Sets the digest and size of the configuration layer.
+        """
+        self.config = OCIManifestConfig(size=config_size, digest=config_digest)
+
+    def add_layer(self, digest, size, urls=None):
+        """
+        Adds a filesystem layer to the manifest.
+        """
+        self.filesystem_layers.append(
+            OCIManifestLayer(
+                index=len(self.filesystem_layers),
+                digest=digest,
+                compressed_size=size,
+                urls=urls,
+                is_remote=bool(urls),
+            )
+        )
+
+    def build(self, ensure_ascii=True):
+        """
+        Builds and returns the OCIManifest.
+        """
+        assert self.filesystem_layers
+        assert self.config
+
+        def _build_layer(layer):
+            if layer.urls:
+                return {
+                    OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,                    OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
+                    OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
+                    OCI_MANIFEST_URLS_KEY: layer.urls,
+                }
+
+            return {
+                OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
+                OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
+                OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
+            }
+
+        manifest_dict = {
+            OCI_MANIFEST_VERSION_KEY: 2,
+            OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+            # Config
+            OCI_MANIFEST_CONFIG_KEY: {
+                OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_CONFIG_CONTENT_TYPE,
+                OCI_MANIFEST_SIZE_KEY: self.config.size,
+                OCI_MANIFEST_DIGEST_KEY: str(self.config.digest),
+            },
+            # Layers
+            OCI_MANIFEST_LAYERS_KEY: [
+                _build_layer(layer) for layer in self.filesystem_layers
+            ],
+        }
+
+        json_str = json.dumps(manifest_dict, ensure_ascii=ensure_ascii, indent=3)
+        return OCIManifest(Bytes.for_string_or_unicode(json_str))

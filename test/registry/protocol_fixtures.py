@@ -219,8 +219,13 @@ def v2_protocol(request, jwk):
 
 
 @pytest.fixture()
+def v21_protocol(request, jwk):
+    return V2Protocol(jwk, schema='schema1')
+
+
+@pytest.fixture()
 def v22_protocol(request, jwk):
-    return V2Protocol(jwk, schema2=True)
+    return V2Protocol(jwk, schema='schema2')
 
 
 @pytest.fixture(params=[V1Protocol])
@@ -228,18 +233,21 @@ def v1_protocol(request, jwk):
     return request.param(jwk)
 
 
-@pytest.fixture(params=["schema1", "schema2"])
+@pytest.fixture(params=["schema1", "schema2", "oci"])
 def manifest_protocol(request, data_model, jwk):
-    return V2Protocol(jwk, schema2=(request == "schema2"))
+    return V2Protocol(jwk, schema=request.param)
 
 
-@pytest.fixture(params=["v1", "v2_1", "v2_2"])
+@pytest.fixture(params=["v1", "v2_1", "v2_2", "oci"])
 def pusher(request, data_model, jwk):
     if request.param == "v1":
         return V1Protocol(jwk)
 
     if request.param == "v2_2":
-        return V2Protocol(jwk, schema2=True)
+        return V2Protocol(jwk, schema="schema2")
+
+    if request.param == "oci":
+        return V2Protocol(jwk, schema="oci")
 
     return V2Protocol(jwk)
 
@@ -260,13 +268,16 @@ def legacy_pusher(request, data_model, jwk):
     return V2Protocol(jwk)
 
 
-@pytest.fixture(params=["v1", "v2_1", "v2_2"])
+@pytest.fixture(params=["v1", "v2_1", "v2_2", "oci"])
 def puller(request, data_model, jwk):
     if request.param == "v1":
         return V1Protocol(jwk)
 
     if request.param == "v2_2":
-        return V2Protocol(jwk, schema2=True)
+        return V2Protocol(jwk, schema="schema2")
+
+    if request.param == "oci":
+        return V2Protocol(jwk, schema="oci")
 
     return V2Protocol(jwk)
 

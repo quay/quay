@@ -185,9 +185,13 @@ def test_basic_push_pull_by_manifest(
     )
 
     # Pull the repository by digests to verify.
+    options = ProtocolOptions()
+    options.require_matching_manifest_type = True
+
     digests = [str(manifest.digest) for manifest in result.manifests.values()]
     manifest_protocol.pull(
-        liveserver_session, "devtable", "newrepo", digests, basic_images, credentials=credentials
+        liveserver_session, "devtable", "newrepo", digests, basic_images, credentials=credentials,
+        options=options
     )
 
 
@@ -211,10 +215,35 @@ def test_basic_push_by_manifest_digest(
         options=options,
     )
 
+    # If this is not schema 1, then verify we cannot pull.
+    expected_failure = None if manifest_protocol.schema == "schema1" else Failures.UNKNOWN_TAG
+
     # Pull the repository by digests to verify.
     digests = [str(manifest.digest) for manifest in result.manifests.values()]
     manifest_protocol.pull(
-        liveserver_session, "devtable", "newrepo", digests, basic_images, credentials=credentials
+        liveserver_session, "devtable", "newrepo", digests, basic_images, credentials=credentials,
+        expected_failure=expected_failure
+    )
+
+
+def test_manifest_down_conversion(
+    manifest_protocol, v21_protocol, basic_images, liveserver_session, app_reloader
+):
+    """ Test: Push using a new protocol and ensure down-conversion. """
+    credentials = ("devtable", "password")
+
+    # Push a new repository.
+    result = manifest_protocol.push(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
+    )
+
+    # Pull the repository with down conversion.
+    options = ProtocolOptions()
+
+    v21_protocol.pull(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images,
+        credentials=credentials,
+        options=options
     )
 
 
@@ -1225,8 +1254,7 @@ def test_blob_caching(
 
     # Pull each blob, which should succeed due to caching. If caching is broken, this will
     # fail when it attempts to hit the database.
-    for layer in result.manifests["latest"].layers:
-        blob_id = str(layer.digest)
+    for blob_id in result.manifests["latest"].local_blob_digests:
         r = liveserver_session.get(
             "/v2/devtable/newrepo/blobs/%s" % blob_id, headers=result.headers
         )
@@ -1242,11 +1270,11 @@ def test_blob_caching(
         [(0, 10), (10, 20), (20, None)],
         [(0, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, None)],
         # Overlapping chunks.
-        [(0, 1024), (10, None)],
+        [(0, 90), (10, None)],
     ],
 )
 def test_chunked_blob_uploading(
-    chunks, random_layer_data, manifest_protocol, puller, liveserver_session, app_reloader
+    chunks, random_layer_data, v21_protocol, puller, liveserver_session, app_reloader
 ):
     """ Test: Uploading of blobs as chunks. """
     credentials = ("devtable", "password")
@@ -1263,7 +1291,7 @@ def test_chunked_blob_uploading(
     options.chunks_for_upload = adjusted_chunks
 
     # Push the image, using the specified chunking.
-    manifest_protocol.push(
+    v21_protocol.push(
         liveserver_session,
         "devtable",
         "newrepo",
@@ -1280,7 +1308,7 @@ def test_chunked_blob_uploading(
 
 
 def test_chunked_uploading_mismatched_chunks(
-    manifest_protocol, random_layer_data, liveserver_session, app_reloader
+    v21_protocol, random_layer_data, liveserver_session, app_reloader
 ):
     """ Test: Attempt to upload chunks with data missing. """
     credentials = ("devtable", "password")
@@ -1294,7 +1322,7 @@ def test_chunked_uploading_mismatched_chunks(
     options.chunks_for_upload = [(0, 100), (101, len(random_layer_data), 416)]
 
     # Attempt to push, with the chunked upload failing.
-    manifest_protocol.push(
+    v21_protocol.push(
         liveserver_session,
         "devtable",
         "newrepo",

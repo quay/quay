@@ -12,6 +12,9 @@ from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.config import DockerSchema2Config
 from image.docker.schema2.list import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from image.oci import OCI_CONTENT_TYPES
+from image.oci.manifest import OCIManifestBuilder
+from image.oci.config import OCIConfig
 from image.shared.schemas import parse_manifest_from_bytes
 from test.registry.protocols import (
     RegistryProtocol,
@@ -99,9 +102,9 @@ class V2Protocol(RegistryProtocol):
         },
     }
 
-    def __init__(self, jwk, schema2=False):
+    def __init__(self, jwk, schema="schema1"):
         self.jwk = jwk
-        self.schema2 = schema2
+        self.schema = schema
 
     def ping(self, session):
         result = session.get("/v2/")
@@ -324,6 +327,53 @@ class V2Protocol(RegistryProtocol):
 
         return PushResult(manifests=None, headers=headers)
 
+    def build_oci(self, images, blobs, options):
+        builder = OCIManifestBuilder()
+        for image in images:
+            checksum = "sha256:" + hashlib.sha256(image.bytes).hexdigest()
+
+            if image.urls is None:
+                blobs[checksum] = image.bytes
+
+            # If invalid blob references were requested, just make it up.
+            if options.manifest_invalid_blob_references:
+                checksum = "sha256:" + hashlib.sha256("notarealthing").hexdigest()
+
+            if not image.is_empty:
+                builder.add_layer(checksum, len(image.bytes), urls=image.urls)
+
+        def history_for_image(image):
+            history = {
+                "created": "2018-04-03T18:37:09.284840891Z",
+                "created_by": (
+                    ("/bin/sh -c #(nop) ENTRYPOINT %s" % image.config["Entrypoint"])
+                    if image.config and image.config.get("Entrypoint")
+                    else "/bin/sh -c #(nop) %s" % image.id
+                ),
+            }
+
+            if image.is_empty:
+                history["empty_layer"] = True
+
+            return history
+
+        config = {
+            "os": "linux",
+            "architecture": "amd64",
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [history_for_image(image) for image in images],
+        }
+
+        if images[-1].config:
+            config["config"] = images[-1].config
+
+        config_json = json.dumps(config, ensure_ascii=options.ensure_ascii)
+        oci_config = OCIConfig(Bytes.for_string_or_unicode(config_json))
+        builder.set_config(oci_config)
+
+        blobs[oci_config.digest] = oci_config.bytes.as_encoded_str()
+        return builder.build(ensure_ascii=options.ensure_ascii)
+
     def build_schema2(self, images, blobs, options):
         builder = DockerSchema2ManifestBuilder()
         for image in images:
@@ -456,12 +506,16 @@ class V2Protocol(RegistryProtocol):
         manifests = {}
         blobs = {}
         for tag_name in tag_names:
-            if self.schema2:
+            if self.schema == 'oci':
+                manifests[tag_name] = self.build_oci(images, blobs, options)
+            elif self.schema == 'schema2':
                 manifests[tag_name] = self.build_schema2(images, blobs, options)
-            else:
+            elif self.schema == 'schema1':
                 manifests[tag_name] = self.build_schema1(
                     namespace, repo_name, tag_name, images, blobs, options
                 )
+            else:
+                raise NotImplementedError(self.schema)
 
         # Push the blob data.
         if not self._push_blobs(
@@ -562,6 +616,7 @@ class V2Protocol(RegistryProtocol):
                         patch_headers.update(headers)
 
                         contents_chunk = blob_bytes[start_byte:end_byte]
+                        assert len(contents_chunk) == (end_byte - start_byte), '%s vs %s' % (len(contents_chunk), end_byte - start_byte)
                         self.conduct(
                             session,
                             "PATCH",
@@ -582,7 +637,7 @@ class V2Protocol(RegistryProtocol):
                             session, "GET", status_url, expected_status=204, headers=headers
                         )
                         assert response.headers["Docker-Upload-UUID"] == upload_uuid
-                        assert response.headers["Range"] == "bytes=0-%s" % end_byte
+                        assert response.headers["Range"] == "bytes=0-%s" % end_byte, "%s vs %s" % (response.headers["Range"], "bytes=0-%s" % end_byte)
 
                 if options.cancel_blob_upload:
                     self.conduct(
@@ -716,7 +771,13 @@ class V2Protocol(RegistryProtocol):
                 "Authorization": "Bearer " + token,
             }
 
-        if self.schema2:
+        if self.schema == 'oci':
+            headers["Accept"] = ",".join(
+                options.accept_mimetypes
+                if options.accept_mimetypes is not None
+                else OCI_CONTENT_TYPES
+            )
+        elif self.schema == 'schema2':
             headers["Accept"] = ",".join(
                 options.accept_mimetypes
                 if options.accept_mimetypes is not None
@@ -743,8 +804,18 @@ class V2Protocol(RegistryProtocol):
 
             # Ensure the manifest returned by us is valid.
             ct = response.headers["Content-Type"]
-            if not self.schema2:
+            if self.schema == 'schema1':
                 assert ct in DOCKER_SCHEMA1_CONTENT_TYPES
+
+            if options.require_matching_manifest_type:
+                if self.schema == 'schema1':
+                    assert ct in DOCKER_SCHEMA1_CONTENT_TYPES
+
+                if self.schema == 'schema2':
+                    assert ct in DOCKER_SCHEMA2_CONTENT_TYPES
+
+                if self.schema == 'oci':
+                    assert ct in OCI_CONTENT_TYPES
 
             manifest = parse_manifest_from_bytes(Bytes.for_string_or_unicode(response.text), ct)
             manifests[tag_name] = manifest
@@ -780,7 +851,7 @@ class V2Protocol(RegistryProtocol):
 
             assert (len(blob_digests) + empty_count) >= len(
                 images
-            )  # Schema 2 has 1 extra for config
+            )  # OCI/Schema 2 has 1 extra for config
 
         return PullResult(manifests=manifests, image_ids=image_ids)
 
