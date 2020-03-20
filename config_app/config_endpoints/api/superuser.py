@@ -1,8 +1,9 @@
 import logging
 import pathvalidate
 import os
-import subprocess
+
 from datetime import datetime
+from subprocess import Popen, PIPE
 
 from flask import request, jsonify, make_response
 
@@ -49,8 +50,8 @@ class SuperUserCustomCertificate(ApiResource):
 
         logger.debug("Saving custom certificate %s", certpath)
         cert_full_path = config_provider.get_volume_path(EXTRA_CA_DIRECTORY, certpath)
-        config_provider.save_volume_file(cert_full_path, uploaded_file)
-        logger.debug("Saved custom certificate %s", certpath)
+        filename = config_provider.save_volume_file(cert_full_path, uploaded_file)
+        logger.debug("Saved custom certificate %s to %s", certpath, filename)
 
         # Validate the certificate.
         try:
@@ -65,16 +66,36 @@ class SuperUserCustomCertificate(ApiResource):
             return "", 204
 
         # Call the update script with config dir location to install the certificate immediately.
+        # This is needed by the configuration application to verify connections to external services
+        # which require a self-signed or otherwise user-managed certificate.
         if not app.config["TESTING"]:
-            cert_dir = os.path.join(config_provider.get_config_dir_path(), EXTRA_CA_DIRECTORY)
-            if (
-                subprocess.call(
-                    [os.path.join(INIT_SCRIPTS_LOCATION, "certs_install.sh")],
-                    env={"CERTDIR": cert_dir},
-                )
-                != 0
-            ):
-                raise Exception("Could not install certificates")
+
+            try:
+                cert_dir = os.path.join(config_provider.get_config_dir_path(), EXTRA_CA_DIRECTORY)
+                script_env = {"CERTDIR": cert_dir}
+                logger.debug("Installing certificates from the directory: %s" % cert_dir)
+
+                script_filename = os.path.join(INIT_SCRIPTS_LOCATION, "certs_install.sh")
+                logger.debug("Running script to install all certificates: %s", script_filename)
+
+                process = Popen([script_filename], stderr=PIPE, stdout=PIPE, env=script_env)
+                output, err = process.communicate()
+                return_code = process.returncode
+
+                if return_code != 0:
+                    raise Exception("Could not install certificates. Output: %s" % output)
+                else:
+                    logger.debug("Successfully installed certificates. Output: %s", output)
+
+            except Exception as e:
+                logger.exception("Unable to install certificates. Unexpected error: %s", e)
+
+        else:
+            msg = (
+                "Quay is using the test configuration. Certificates will not be installed. "
+                "This may break the configuration app's ability to verify certificates."
+            )
+            logger.warning(msg)
 
         return "", 204
 

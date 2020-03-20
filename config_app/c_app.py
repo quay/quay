@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 OVERRIDE_CONFIG_DIRECTORY = os.path.join(ROOT_DIR, "config_app/conf/stack")
 INIT_SCRIPTS_LOCATION = "/conf/init/"
 
-is_testing = "TEST" in os.environ
+is_testing = "TEST" in os.environ and os.environ["TEST"].lower() != "false"
+
 is_kubernetes = IS_KUBERNETES
 
-logger.debug("Configuration is on a kubernetes deployment: %s" % IS_KUBERNETES)
+logger.debug("Configuration is on a kubernetes deployment: %s", IS_KUBERNETES)
 
 config_provider = get_config_provider(
     OVERRIDE_CONFIG_DIRECTORY, "config.yaml", "config.py", testing=is_testing
@@ -30,13 +31,23 @@ config_provider = get_config_provider(
 if is_testing:
     from test.testconfig import TestConfig
 
-    logger.debug("Loading test config.")
     app.config.from_object(TestConfig())
+    logger.debug("Quay-Config is using the `Test` configuration.")
+
 else:
     from config import DefaultConfig
 
-    logger.debug("Loading default config.")
+    config = DefaultConfig()
     app.config.from_object(DefaultConfig())
+    logger.debug("Quay-Config is using the `Default` configuration.")
+
+    # Note that DefaultConfig sets `TESTING=True`. However, in this case the
+    # configuration application is not actually ran under test circumstances.
+    # This can cause issues with certain conditionals in the configuration app
+    # as no config has been generated at this point. Therefore, `TESTING=False`
+    # must be manually set.
+    app.config["TESTING"] = False
+
     app.teardown_request(database.close_db_filter)
 
 # Load the override config via the provider.
