@@ -1,6 +1,6 @@
 import pytest
 
-from image.docker.schemas import parse_manifest_from_bytes
+from image.shared.schemas import parse_manifest_from_bytes
 from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE

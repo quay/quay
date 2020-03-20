@@ -1,6 +1,6 @@
 import pytest
 
-from image.docker.schemautil import to_canonical_json
+from image.shared.schemautil import to_canonical_json
 
 
 @pytest.mark.parametrize(

@@ -24,8 +24,8 @@ from data.model.repository import get_repository, create_repository
 from data.model.image import find_create_or_link_image
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.storage import get_layer_path
-from image.docker.interfaces import ContentRetriever
-from image.docker.schemas import parse_manifest_from_bytes
+from image.shared.interfaces import ContentRetriever
+from image.shared.schemas import parse_manifest_from_bytes
 from image.docker.schema1 import DockerSchema1ManifestBuilder, DockerSchema1Manifest
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder, DockerSchema2Manifest
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
