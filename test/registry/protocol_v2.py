@@ -506,11 +506,11 @@ class V2Protocol(RegistryProtocol):
         manifests = {}
         blobs = {}
         for tag_name in tag_names:
-            if self.schema == 'oci':
+            if self.schema == "oci":
                 manifests[tag_name] = self.build_oci(images, blobs, options)
-            elif self.schema == 'schema2':
+            elif self.schema == "schema2":
                 manifests[tag_name] = self.build_schema2(images, blobs, options)
-            elif self.schema == 'schema1':
+            elif self.schema == "schema1":
                 manifests[tag_name] = self.build_schema1(
                     namespace, repo_name, tag_name, images, blobs, options
                 )
@@ -616,7 +616,10 @@ class V2Protocol(RegistryProtocol):
                         patch_headers.update(headers)
 
                         contents_chunk = blob_bytes[start_byte:end_byte]
-                        assert len(contents_chunk) == (end_byte - start_byte), '%s vs %s' % (len(contents_chunk), end_byte - start_byte)
+                        assert len(contents_chunk) == (end_byte - start_byte), "%s vs %s" % (
+                            len(contents_chunk),
+                            end_byte - start_byte,
+                        )
                         self.conduct(
                             session,
                             "PATCH",
@@ -637,7 +640,10 @@ class V2Protocol(RegistryProtocol):
                             session, "GET", status_url, expected_status=204, headers=headers
                         )
                         assert response.headers["Docker-Upload-UUID"] == upload_uuid
-                        assert response.headers["Range"] == "bytes=0-%s" % end_byte, "%s vs %s" % (response.headers["Range"], "bytes=0-%s" % end_byte)
+                        assert response.headers["Range"] == "bytes=0-%s" % end_byte, "%s vs %s" % (
+                            response.headers["Range"],
+                            "bytes=0-%s" % end_byte,
+                        )
 
                 if options.cancel_blob_upload:
                     self.conduct(
@@ -771,13 +777,13 @@ class V2Protocol(RegistryProtocol):
                 "Authorization": "Bearer " + token,
             }
 
-        if self.schema == 'oci':
+        if self.schema == "oci":
             headers["Accept"] = ",".join(
                 options.accept_mimetypes
                 if options.accept_mimetypes is not None
                 else OCI_CONTENT_TYPES
             )
-        elif self.schema == 'schema2':
+        elif self.schema == "schema2":
             headers["Accept"] = ",".join(
                 options.accept_mimetypes
                 if options.accept_mimetypes is not None
@@ -804,17 +810,17 @@ class V2Protocol(RegistryProtocol):
 
             # Ensure the manifest returned by us is valid.
             ct = response.headers["Content-Type"]
-            if self.schema == 'schema1':
+            if self.schema == "schema1":
                 assert ct in DOCKER_SCHEMA1_CONTENT_TYPES
 
             if options.require_matching_manifest_type:
-                if self.schema == 'schema1':
+                if self.schema == "schema1":
                     assert ct in DOCKER_SCHEMA1_CONTENT_TYPES
 
-                if self.schema == 'schema2':
+                if self.schema == "schema2":
                     assert ct in DOCKER_SCHEMA2_CONTENT_TYPES
 
-                if self.schema == 'oci':
+                if self.schema == "oci":
                     assert ct in OCI_CONTENT_TYPES
 
             manifest = parse_manifest_from_bytes(Bytes.for_string_or_unicode(response.text), ct)

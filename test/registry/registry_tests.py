@@ -190,8 +190,13 @@ def test_basic_push_pull_by_manifest(
 
     digests = [str(manifest.digest) for manifest in result.manifests.values()]
     manifest_protocol.pull(
-        liveserver_session, "devtable", "newrepo", digests, basic_images, credentials=credentials,
-        options=options
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        digests,
+        basic_images,
+        credentials=credentials,
+        options=options,
     )
 
 
@@ -221,8 +226,13 @@ def test_basic_push_by_manifest_digest(
     # Pull the repository by digests to verify.
     digests = [str(manifest.digest) for manifest in result.manifests.values()]
     manifest_protocol.pull(
-        liveserver_session, "devtable", "newrepo", digests, basic_images, credentials=credentials,
-        expected_failure=expected_failure
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        digests,
+        basic_images,
+        credentials=credentials,
+        expected_failure=expected_failure,
     )
 
 
@@ -241,9 +251,13 @@ def test_manifest_down_conversion(
     options = ProtocolOptions()
 
     v21_protocol.pull(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images,
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "latest",
+        basic_images,
         credentials=credentials,
-        options=options
+        options=options,
     )
 
 

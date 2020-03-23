@@ -9,11 +9,12 @@ Create Date: 2020-03-23 16:03:39.789177
 """
 
 # revision identifiers, used by Alembic.
-revision = '04b9d2191450'
-down_revision = '8e6a363784bb'
+revision = "04b9d2191450"
+down_revision = "8e6a363784bb"
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
+
 
 def upgrade(op, tables, tester):
     for media_type in OCI_CONTENT_TYPES:

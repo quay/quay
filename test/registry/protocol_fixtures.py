@@ -220,12 +220,12 @@ def v2_protocol(request, jwk):
 
 @pytest.fixture()
 def v21_protocol(request, jwk):
-    return V2Protocol(jwk, schema='schema1')
+    return V2Protocol(jwk, schema="schema1")
 
 
 @pytest.fixture()
 def v22_protocol(request, jwk):
-    return V2Protocol(jwk, schema='schema2')
+    return V2Protocol(jwk, schema="schema2")
 
 
 @pytest.fixture(params=[V1Protocol])

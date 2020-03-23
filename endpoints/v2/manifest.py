@@ -172,12 +172,18 @@ def _reject_manifest2_schema2(func):
                 detail={"message": "manifest schema version not supported"}, http_status_code=415
             )
 
-        if namespace_name not in app.config.get(
-            "V22_NAMESPACE_BLACKLIST", []
-        ):
-            return func(*args, **kwargs)
+        if namespace_name not in app.config.get("V22_NAMESPACE_BLACKLIST", []):
+            if request.content_type in OCI_CONTENT_TYPES:
+                if (
+                    namespace_name not in app.config.get("OCI_NAMESPACE_WHITELIST", [])
+                    and not features.GENERAL_OCI_SUPPORT
+                ):
+                    raise ManifestInvalid(
+                        detail={"message": "manifest schema version not supported"},
+                        http_status_code=415,
+                    )
 
-        # TODO: Add namespace filter for OCI support.
+            return func(*args, **kwargs)
 
         if (
             _doesnt_accept_schema_v1()

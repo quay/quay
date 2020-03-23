@@ -10,8 +10,12 @@ OCI_IMAGE_DISTRIBUTABLE_LAYER_CONTENT_TYPES = [
     OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
 ]
 
-OCI_IMAGE_TAR_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE = "application/vnd.oci.image.layer.nondistributable.v1.tar"
-OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE = "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip"
+OCI_IMAGE_TAR_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE = (
+    "application/vnd.oci.image.layer.nondistributable.v1.tar"
+)
+OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE = (
+    "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip"
+)
 
 OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES = [
     OCI_IMAGE_TAR_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,

@@ -472,7 +472,8 @@ class OCIManifestBuilder(object):
         def _build_layer(layer):
             if layer.urls:
                 return {
-                    OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,                    OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
+                    OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
+                    OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
                     OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
                     OCI_MANIFEST_URLS_KEY: layer.urls,
                 }
@@ -493,9 +494,7 @@ class OCIManifestBuilder(object):
                 OCI_MANIFEST_DIGEST_KEY: str(self.config.digest),
             },
             # Layers
-            OCI_MANIFEST_LAYERS_KEY: [
-                _build_layer(layer) for layer in self.filesystem_layers
-            ],
+            OCI_MANIFEST_LAYERS_KEY: [_build_layer(layer) for layer in self.filesystem_layers],
         }
 
         json_str = json.dumps(manifest_dict, ensure_ascii=ensure_ascii, indent=3)
