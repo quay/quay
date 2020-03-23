@@ -2526,14 +2526,12 @@ class TestGetRepository(ApiTestCase):
     def test_get_largerepo(self):
         self.login(ADMIN_ACCESS_USER)
 
-        offset = 0 if registry_model.supports_schema2(ADMIN_ACCESS_USER) else 2
-
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + offset + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + 1):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + offset + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + 1):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )

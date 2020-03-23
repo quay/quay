@@ -48,12 +48,6 @@ class OCIModel(RegistryDataInterface):
     changed to support the OCI specification.
     """
 
-    def supports_schema2(self, namespace_name):
-        """
-        Returns whether the implementation of the data interface supports schema 2 format manifests.
-        """
-        return True
-
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
         """
         Returns the legacy image ID for the tag with a legacy images in the repository.

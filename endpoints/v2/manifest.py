@@ -172,7 +172,7 @@ def _reject_manifest2_schema2(func):
                 detail={"message": "manifest schema version not supported"}, http_status_code=415
             )
 
-        if registry_model.supports_schema2(namespace_name) and namespace_name not in app.config.get(
+        if namespace_name not in app.config.get(
             "V22_NAMESPACE_BLACKLIST", []
         ):
             return func(*args, **kwargs)
