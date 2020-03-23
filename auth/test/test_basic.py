@@ -133,7 +133,9 @@ def test_invalid_unicode_2(app):
 
 def test_invalid_unicode_3(app):
     token = "sometoken"
-    header = "basic " + b64encode("“devtable+somerobot”:%s" % token)
+    auth = "“devtable+somerobot”:" + token
+    auth = auth.encode("utf-8")
+    header = "basic " + b64encode(auth).decode("ascii")
     result = validate_basic_auth(header)
     assert result == ValidateResult(
         AuthKind.basic, error_message="Could not find robot with specified username",

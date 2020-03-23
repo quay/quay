@@ -54,7 +54,7 @@ def _create_tag(repo, name):
                 ],
             }
         )
-        upload.upload_chunk(app_config, BytesIO(config_json))
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
     builder = DockerSchema2ManifestBuilder()
     builder.set_config_digest(blob.digest, blob.compressed_size)
@@ -347,7 +347,7 @@ def test_remove_obsolete_tags(initialized_db):
     incoming_tags = ["one", "two"]
     deleted_tags = delete_obsolete_tags(mirror, incoming_tags)
 
-    assert [tag.name for tag in deleted_tags] == [tag.name]
+    assert [tag.name for tag in deleted_tags] == ["oldtag"]
 
 
 @disable_existing_mirrors

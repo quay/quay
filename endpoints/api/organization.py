@@ -122,7 +122,6 @@ class OrganizationList(ApiResource):
         """
         user = get_authenticated_user()
         org_data = request.get_json()
-        print("REQUEST:", org_data)
         existing = None
 
         try:
