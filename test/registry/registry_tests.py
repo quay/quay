@@ -218,6 +218,20 @@ def test_basic_push_by_manifest_digest(
     )
 
 
+def test_empty_manifest(v22_protocol, liveserver_session, app_reloader):
+    credentials = ("devtable", "password")
+
+    # Push an empty manifest.
+    v22_protocol.push(
+        liveserver_session, "devtable", "simple", "latest", [], credentials=credentials,
+    )
+
+    # Pull the empty manifest.
+    v22_protocol.pull(
+        liveserver_session, "devtable", "simple", "latest", [], credentials=credentials
+    )
+
+
 def test_push_invalid_credentials(pusher, basic_images, liveserver_session, app_reloader):
     """ Test: Ensure we get auth errors when trying to push with invalid credentials. """
     invalid_credentials = ("devtable", "notcorrectpassword")

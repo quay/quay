@@ -359,7 +359,7 @@ class V2Protocol(RegistryProtocol):
             "history": [history_for_image(image) for image in images],
         }
 
-        if images[-1].config:
+        if images and images[-1].config:
             config["config"] = images[-1].config
 
         config_json = json.dumps(config, ensure_ascii=options.ensure_ascii)

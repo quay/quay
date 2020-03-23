@@ -318,8 +318,13 @@ class DockerSchema2Manifest(ManifestInterface):
                 blob_index += 1
 
     @property
+    def is_empty_manifest(self):
+        """ Returns whether this manifest is empty. """
+        return len(self._parsed[DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY]) == 0
+
+    @property
     def has_legacy_image(self):
-        return not self.has_remote_layer
+        return not self.has_remote_layer and not self.is_empty_manifest
 
     def generate_legacy_layers(self, images_map, content_retriever):
         assert not self.has_remote_layer
@@ -479,7 +484,6 @@ class DockerSchema2ManifestBuilder(object):
         """
         Builds and returns the DockerSchema2Manifest.
         """
-        assert self.filesystem_layers
         assert self.config
 
         def _build_layer(layer):

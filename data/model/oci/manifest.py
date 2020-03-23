@@ -436,4 +436,5 @@ def _populate_legacy_image(
 
         return None
 
+    assert rewritten_images
     return rewritten_images[-1].image_id
