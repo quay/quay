@@ -60,12 +60,6 @@ class StreamingJSONEncoder(json.JSONEncoder):
             _encoder = encode_basestring_ascii
         else:
             _encoder = encode_basestring
-        if self.encoding != "utf-8":
-
-            def _encoder(o, _orig_encoder=_encoder, _encoding=self.encoding):
-                if isinstance(o, str):
-                    o = o.decode(_encoding)
-                return _orig_encoder(o)
 
         def floatstr(
             o, allow_nan=self.allow_nan, _repr=FLOAT_REPR, _inf=INFINITY, _neginf=-INFINITY
