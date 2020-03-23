@@ -135,7 +135,7 @@ def test_logrotateworker_with_cutoff(logs_model):
     assert len(logs) == days
 
     # Set the cutoff datetime to be the midpoint of the logs
-    midpoint = logs[0 : len(logs) / 2]
+    midpoint = logs[0 : len(logs) // 2]
     assert midpoint
     assert len(midpoint) < len(logs)
 
@@ -155,7 +155,7 @@ def test_logrotateworker_with_cutoff(logs_model):
 
     # If current model uses ES, check that the indices were also deleted
     if isinstance(logs_model, DocumentLogsModel):
-        assert len(logs_model.list_indices()) == days - (len(logs) / 2)
+        assert len(logs_model.list_indices()) == days - (len(logs) // 2)
         for index in logs_model.list_indices():
             dt = datetime.strptime(index[len(INDEX_NAME_PREFIX) :], INDEX_DATE_FORMAT)
             assert dt >= cutoff_date

@@ -49,7 +49,7 @@ class ArchiveBuildLogsWorker(Worker):
                 with SpooledTemporaryFile(MEMORY_TEMPFILE_SIZE) as tempfile:
                     with GzipFile("testarchive", fileobj=tempfile) as zipstream:
                         for chunk in StreamingJSONEncoder().iterencode(to_encode):
-                            zipstream.write(chunk)
+                            zipstream.write(chunk.encode("utf-8"))
 
                     tempfile.seek(0)
                     log_archive.store_file(

@@ -112,7 +112,7 @@ def _write_logs(filename, logs, log_archive):
     with SpooledTemporaryFile(MEMORY_TEMPFILE_SIZE) as tempfile:
         with GzipFile("temp_action_log_rotate", fileobj=tempfile, compresslevel=1) as zipstream:
             for chunk in StreamingJSONEncoder().iterencode(logs):
-                zipstream.write(chunk)
+                zipstream.write(chunk.encode("utf-8"))
 
         tempfile.seek(0)
         log_archive.store_file(tempfile, JSON_MIMETYPE, content_encoding="gzip", file_id=filename)
