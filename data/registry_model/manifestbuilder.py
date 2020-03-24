@@ -9,13 +9,13 @@ from flask import session
 from data import model
 from data.database import db_transaction, ImageStorage, ImageStoragePlacement
 from data.registry_model import registry_model
-from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST
+from image.docker.schema1 import DockerSchema1ManifestBuilder
 
 logger = logging.getLogger(__name__)
 
-ManifestLayer = namedtuple("ManifestLayer", ["layer_id", "v1_metadata_string", "db_id"])
+ManifestLayer = namedtuple("ManifestLayer", ["layer_id", "v1_metadata_string"])
 _BuilderState = namedtuple(
-    "_BuilderState", ["builder_id", "images", "tags", "checksums", "temp_storages"]
+    "_BuilderState", ["builder_id", "tags", "image_metadata", "image_blobs", "image_checksums"]
 )
 
 _SESSION_KEY = "__manifestbuilder"
@@ -30,7 +30,7 @@ def create_manifest_builder(repository_ref, storage, legacy_signing_key):
     """
     builder_id = str(uuid.uuid4())
     builder = _ManifestBuilder(
-        repository_ref, _BuilderState(builder_id, {}, {}, {}, []), storage, legacy_signing_key
+        repository_ref, _BuilderState(builder_id, {}, {}, {}, {}), storage, legacy_signing_key
     )
     builder._save_to_session()
     return builder
@@ -100,67 +100,30 @@ class _ManifestBuilder(object):
         try:
             v1_metadata = json.loads(v1_metadata_string)
         except ValueError:
-            logger.exception(
-                "Exception when trying to parse V1 metadata JSON for layer %s", layer_id
-            )
+            logger.warning("Exception when trying to parse V1 metadata JSON for layer %s", layer_id)
             return None
         except TypeError:
-            logger.exception(
-                "Exception when trying to parse V1 metadata JSON for layer %s", layer_id
-            )
+            logger.warning("Exception when trying to parse V1 metadata JSON for layer %s", layer_id)
             return None
 
         # Sanity check that the ID matches the v1 metadata.
         if layer_id != v1_metadata["id"]:
             return None
 
-        # Ensure the parent already exists in the repository.
+        # Ensure the parent already exists in the builder.
         parent_id = v1_metadata.get("parent", None)
         parent_image = None
 
         if parent_id is not None:
-            parent_image = model.image.get_repo_image(namespace_name, repo_name, parent_id)
-            if parent_image is None:
+            if parent_id not in self._builder_state.image_metadata:
+                logger.warning("Missing parent %s for layer %s", parent_id, layer_id)
                 return None
 
-        # Check to see if this layer already exists in the repository. If so, we can skip the creation.
-        existing_image = registry_model.get_legacy_image(self._repository_ref, layer_id)
-        if existing_image is not None:
-            self._builder_state.images[layer_id] = existing_image.id
-            self._save_to_session()
-            return ManifestLayer(layer_id, v1_metadata_string, existing_image.id)
-
-        with db_transaction():
-            # Otherwise, create a new legacy image and point a temporary tag at it.
-            created = model.image.find_create_or_link_image(
-                layer_id, repository, calling_user, {}, location_name
-            )
-            temp_tag_name = model.tag.create_temporary_hidden_tag(
-                repository, created, temp_tag_expiration
-            )
-            if temp_tag_name is None:
-                return None
-
-            # Save its V1 metadata.
-            command_list = v1_metadata.get("container_config", {}).get("Cmd", None)
-            command = json.dumps(command_list) if command_list else None
-
-            model.image.set_image_metadata(
-                layer_id,
-                namespace_name,
-                repo_name,
-                v1_metadata.get("created"),
-                v1_metadata.get("comment"),
-                command,
-                v1_metadata_string,
-                parent=parent_image,
-            )
-
-        # Save the changes to the builder.
-        self._builder_state.images[layer_id] = created.id
+        # Add the image to the session.
+        self._builder_state.image_metadata[layer_id] = v1_metadata_string
         self._save_to_session()
 
-        return ManifestLayer(layer_id, v1_metadata_string, created.id)
+        return ManifestLayer(layer_id, v1_metadata_string)
 
     def lookup_layer(self, layer_id):
         """
@@ -168,14 +131,11 @@ class _ManifestBuilder(object):
 
         If none exists, returns None.
         """
-        if layer_id not in self._builder_state.images:
+        v1_metadata_string = self._builder_state.image_metadata.get(layer_id)
+        if v1_metadata_string is None:
             return None
 
-        image = model.image.get_image_by_db_id(self._builder_state.images[layer_id])
-        if image is None:
-            return None
-
-        return ManifestLayer(layer_id, image.v1_json_metadata, image.id)
+        return ManifestLayer(layer_id, v1_metadata_string)
 
     def assign_layer_blob(self, layer, blob, computed_checksums):
         """
@@ -184,19 +144,12 @@ class _ManifestBuilder(object):
         assert blob
         assert not blob.uploading
 
-        repo_image = model.image.get_image_by_db_id(layer.db_id)
-        if repo_image is None:
+        image_metadata = self._builder_state.image_metadata.get(layer.layer_id)
+        if image_metadata is None:
             return None
 
-        with db_transaction():
-            existing_storage = repo_image.storage
-            repo_image.storage = blob._db_id
-            repo_image.save()
-
-            if existing_storage.uploading:
-                self._builder_state.temp_storages.append(existing_storage.id)
-
-        self._builder_state.checksums[layer.layer_id] = computed_checksums
+        self._builder_state.image_checksums[layer.layer_id] = computed_checksums
+        self._builder_state.image_blobs[layer.layer_id] = blob.digest
         self._save_to_session()
         return True
 
@@ -210,15 +163,15 @@ class _ManifestBuilder(object):
         """
         Returns the registered defined for the layer, if any.
         """
-        return self._builder_state.checksums.get(layer.layer_id) or []
+        return self._builder_state.image_checksums.get(layer.layer_id) or []
 
     def save_precomputed_checksum(self, layer, checksum):
         """
         Saves a precomputed checksum for a layer.
         """
-        checksums = self._builder_state.checksums.get(layer.layer_id) or []
+        checksums = self._builder_state.image_checksums.get(layer.layer_id) or []
         checksums.append(checksum)
-        self._builder_state.checksums[layer.layer_id] = checksums
+        self._builder_state.image_checksums[layer.layer_id] = checksums
         self._save_to_session()
 
     def commit_tag_and_manifest(self, tag_name, layer):
@@ -226,12 +179,46 @@ class _ManifestBuilder(object):
         Commits a new tag + manifest for that tag to the repository with the given name, pointing to
         the given layer.
         """
-        legacy_image = registry_model.get_legacy_image(self._repository_ref, layer.layer_id)
-        if legacy_image is None:
+        # Lookup the top layer.
+        image_metadata = self._builder_state.image_metadata.get(layer.layer_id)
+        if image_metadata is None:
             return None
 
-        tag = registry_model.retarget_tag(
-            self._repository_ref, tag_name, legacy_image, self._storage, self._legacy_signing_key
+        # For each layer/image, add it to the manifest builder.
+        builder = DockerSchema1ManifestBuilder(
+            self._repository_ref.namespace_name, self._repository_ref.name, tag_name
+        )
+
+        current_layer_id = layer.layer_id
+        while True:
+            v1_metadata_string = self._builder_state.image_metadata.get(current_layer_id)
+            if v1_metadata_string is None:
+                logger.warning("Missing metadata for layer %s", current_layer_id)
+                return None
+
+            v1_metadata = json.loads(v1_metadata_string)
+            parent_id = v1_metadata.get("parent", None)
+            if parent_id is not None and parent_id not in self._builder_state.image_metadata:
+                logger.warning("Missing parent for layer %s", current_layer_id)
+                return None
+
+            blob_digest = self._builder_state.image_blobs.get(current_layer_id)
+            if blob_digest is None:
+                logger.warning("Missing blob for layer %s", current_layer_id)
+                return None
+
+            builder.add_layer(blob_digest, v1_metadata_string)
+            if not parent_id:
+                break
+
+            current_layer_id = parent_id
+
+        # Build the manifest.
+        manifest_instance = builder.build(self._legacy_signing_key)
+
+        # Target the tag at the manifest.
+        manifest, tag = registry_model.create_manifest_and_retarget_tag(
+            self._repository_ref, manifest_instance, tag_name, self._storage
         )
         if tag is None:
             return None
@@ -247,21 +234,6 @@ class _ManifestBuilder(object):
         This call is optional and it is expected manifest builders will eventually time out if
         unused for an extended period of time.
         """
-        temp_storages = self._builder_state.temp_storages
-        for storage_id in temp_storages:
-            try:
-                storage = ImageStorage.get(id=storage_id)
-                if storage.uploading and storage.content_checksum != EMPTY_LAYER_BLOB_DIGEST:
-                    # Delete all the placements pointing to the storage.
-                    ImageStoragePlacement.delete().where(
-                        ImageStoragePlacement.storage == storage
-                    ).execute()
-
-                    # Delete the storage.
-                    storage.delete_instance()
-            except ImageStorage.DoesNotExist:
-                pass
-
         session.pop(_SESSION_KEY, None)
 
     def _save_to_session(self):
