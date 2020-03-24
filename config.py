@@ -714,3 +714,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether to clear expired RepositoryActionCount entries.
     FEATURE_CLEAR_EXPIRED_RAC_ENTRIES = False
+
+    # Whether OCI manifest support should be enabled generally.
+    FEATURE_GENERAL_OCI_SUPPORT = False

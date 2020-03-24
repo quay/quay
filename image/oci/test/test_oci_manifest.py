@@ -94,7 +94,7 @@ def test_parse_basic_manifest():
 
     assert not manifest.has_remote_layer
     assert manifest.has_legacy_image
-    assert manifest.annotations == {u"com.example.key1": u"value1", u"com.example.key2": u"value2"}
+    assert manifest.annotations == {"com.example.key1": "value1", "com.example.key2": "value2"}
 
 
 def test_parse_basic_remote_manifest():
@@ -148,8 +148,8 @@ def test_get_schema1_manifest():
 
     manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
     assert manifest.get_manifest_labels(retriever) == {
-        u"com.example.key1": u"value1",
-        u"com.example.key2": u"value2",
+        "com.example.key1": "value1",
+        "com.example.key2": "value2",
         "foo": "bar",
     }
 
