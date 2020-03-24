@@ -325,7 +325,7 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 
     # Write the response to the client.
     return Response(
-        status=204,
+        status=202,
         headers={
             "Location": _current_request_url(),
             "Range": _render_range(uploader.blob_upload.byte_count, with_bytes_prefix=False),

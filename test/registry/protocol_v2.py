@@ -300,7 +300,7 @@ class V2Protocol(RegistryProtocol):
                 "PUT",
                 "/v2/%s/manifests/%s" % (self.repo_name(namespace, repo_name), manifest.digest),
                 data=manifest.bytes.as_encoded_str(),
-                expected_status=(202, expected_failure, V2ProtocolSteps.PUT_MANIFEST),
+                expected_status=(201, expected_failure, V2ProtocolSteps.PUT_MANIFEST),
                 headers=manifest_headers,
             )
 
@@ -317,7 +317,7 @@ class V2Protocol(RegistryProtocol):
                 "PUT",
                 "/v2/%s/manifests/%s" % (self.repo_name(namespace, repo_name), tag_name),
                 data=manifestlist.bytes.as_encoded_str(),
-                expected_status=(202, expected_failure, V2ProtocolSteps.PUT_MANIFEST_LIST),
+                expected_status=(201, expected_failure, V2ProtocolSteps.PUT_MANIFEST_LIST),
                 headers=manifest_headers,
             )
 
@@ -463,8 +463,8 @@ class V2Protocol(RegistryProtocol):
             manifest = manifests[tag_name]
 
             # Write the manifest. If we expect it to be invalid, we expect a 404 code. Otherwise, we
-            # expect a 202 response for success.
-            put_code = 404 if options.manifest_invalid_blob_references else 202
+            # expect a 201 response for success.
+            put_code = 404 if options.manifest_invalid_blob_references else 201
             manifest_headers = {"Content-Type": manifest.media_type}
             manifest_headers.update(headers)
 
@@ -534,7 +534,7 @@ class V2Protocol(RegistryProtocol):
                         "PATCH",
                         location,
                         data=blob_bytes,
-                        expected_status=204,
+                        expected_status=202,
                         headers=headers,
                     )
                 else:
@@ -545,7 +545,7 @@ class V2Protocol(RegistryProtocol):
                             (start_byte, end_byte, expected_code) = chunk_data
                         else:
                             (start_byte, end_byte) = chunk_data
-                            expected_code = 204
+                            expected_code = 202
 
                         patch_headers = {"Range": "bytes=%s-%s" % (start_byte, end_byte)}
                         patch_headers.update(headers)
@@ -559,7 +559,7 @@ class V2Protocol(RegistryProtocol):
                             expected_status=expected_code,
                             headers=patch_headers,
                         )
-                        if expected_code != 204:
+                        if expected_code != 202:
                             return False
 
                         # Retrieve the upload status at each point, and ensure it is valid.

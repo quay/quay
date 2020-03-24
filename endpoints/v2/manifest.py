@@ -240,10 +240,10 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         image_pushes.labels("v2", 400, "").inc()
         raise ManifestInvalid()
 
-    image_pushes.labels("v2", 202, manifest.media_type).inc()
+    image_pushes.labels("v2", 201, manifest.media_type).inc()
     return Response(
         "OK",
-        status=202,
+        status=201,
         headers={
             "Docker-Content-Digest": manifest.digest,
             "Location": url_for(
@@ -316,11 +316,11 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
 
     track_and_log("push_repo", repository_ref, tag=tag_name)
     spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
-    image_pushes.labels("v2", 202, manifest.media_type).inc()
+    image_pushes.labels("v2", 201, manifest.media_type).inc()
 
     return Response(
         "OK",
-        status=202,
+        status=201,
         headers={
             "Docker-Content-Digest": manifest.digest,
             "Location": url_for(

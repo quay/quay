@@ -45,7 +45,7 @@ def test_e2e_query_count_manifest_norewrite(client, app):
         url_for,
         "PUT",
         params,
-        expected_code=202,
+        expected_code=201,
         headers=headers,
         raw_body=manifest.internal_manifest_bytes.as_encoded_str(),
     )
@@ -65,7 +65,7 @@ def test_e2e_query_count_manifest_norewrite(client, app):
                 url_for,
                 "PUT",
                 params,
-                expected_code=202,
+                expected_code=201,
                 headers=headers,
                 raw_body=manifest.internal_manifest_bytes.as_encoded_str(),
             )
