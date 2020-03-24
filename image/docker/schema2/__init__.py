@@ -26,9 +26,8 @@ DOCKER_SCHEMA2_CONTENT_TYPES = {
 # https://github.com/docker/distribution/blob/749f6afb4572201e3c37325d0ffedb6f32be8950/manifest/schema1/config_builder.go#L22
 EMPTY_LAYER_BLOB_DIGEST = "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
 EMPTY_LAYER_SIZE = 32
-EMPTY_LAYER_BYTES = "".join(
-    map(
-        chr,
+EMPTY_LAYER_BYTES = bytes(
+    bytearray(
         [
             31,
             139,
@@ -62,6 +61,6 @@ EMPTY_LAYER_BYTES = "".join(
             4,
             0,
             0,
-        ],
+        ]
     )
-).encode("utf-8")
+)
