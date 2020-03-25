@@ -1,0 +1,62 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: e8e27f36f87d
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - e8e27f36f87d
+    image: quay.io/quay/quay
+    name: e8e27f36f87d
+  previous: !!python/tuple
+  - 8e6a363784bb
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: source_manifest_id
+      nullable: false
+    - name: derivative_id
+      nullable: false
+    - name: transformation_id
+      nullable: false
+    - name: uniqueness_hash
+      nullable: true
+    operation: createTable
+    table: derivedstorageformanifest
+  - columns:
+    - name: derivative_id
+      nullable: false
+    indexName: derivedstorageformanifest_derivative_id
+    indexType: index
+    operation: createIndex
+    table: derivedstorageformanifest
+  - columns:
+    - name: source_manifest_id
+      nullable: false
+    indexName: derivedstorageformanifest_source_manifest_id
+    indexType: index
+    operation: createIndex
+    table: derivedstorageformanifest
+  - columns:
+    - name: source_manifest_id
+      nullable: false
+    - name: transformation_id
+      nullable: false
+    - name: uniqueness_hash
+      nullable: true
+    indexName: derivedstorageformanifest_source_manifest_id_transform_265d78f6
+    indexType: unique
+    operation: createIndex
+    table: derivedstorageformanifest
+  - columns:
+    - name: transformation_id
+      nullable: false
+    indexName: derivedstorageformanifest_transformation_id
+    indexType: index
+    operation: createIndex
+    table: derivedstorageformanifest

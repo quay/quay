@@ -70,7 +70,7 @@ class VerbReporter(TarLayerFormatterReporter):
             verb_stream_passes.labels(self.kind).inc(pass_count)
 
 
-def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, reporter):
+def _open_stream(formatter, tag, schema1_manifest, derived_storage_id, handlers, reporter):
     """
     This method generates a stream of data which will be replicated and read from the queue files.
 
@@ -103,7 +103,7 @@ def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, r
     stream = formatter.build_stream(
         tag,
         schema1_manifest,
-        derived_image_id,
+        derived_storage_id,
         layers,
         tar_stream_getter_iterator,
         reporter=reporter,
@@ -115,7 +115,7 @@ def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, r
     return stream.read
 
 
-def _sign_derived_image(verb, derived_image, queue_file):
+def _sign_derived_storage(verb, derived_storage, queue_file):
     """
     Read from the queue file and sign the contents which are generated.
 
@@ -125,18 +125,18 @@ def _sign_derived_image(verb, derived_image, queue_file):
     try:
         signature = signer.detached_sign(queue_file)
     except:
-        logger.exception("Exception when signing %s deriving image %s", verb, derived_image)
+        logger.exception("Exception when signing %s deriving storage %s", verb, derived_storage)
         return
 
     # Setup the database (since this is a new process) and then disconnect immediately
     # once the operation completes.
     if not queue_file.raised_exception:
         with database.UseThenDisconnect(app.config):
-            registry_model.set_derived_image_signature(derived_image, signer.name, signature)
+            registry_model.set_derived_storage_signature(derived_storage, signer.name, signature)
 
 
-def _write_derived_image_to_storage(
-    verb, derived_image, queue_file, namespace, repository, tag_name
+def _write_derived_storage_to_storage(
+    verb, derived_storage, queue_file, namespace, repository, tag_name
 ):
     """
     Read from the generated stream and write it back to the storage engine.
@@ -146,9 +146,9 @@ def _write_derived_image_to_storage(
 
     def handle_exception(ex):
         logger.debug(
-            "Exception when building %s derived image %s (%s/%s:%s): %s",
+            "Exception when building %s derived storage %s (%s/%s:%s): %s",
             verb,
-            derived_image,
+            derived_storage,
             namespace,
             repository,
             tag_name,
@@ -156,7 +156,7 @@ def _write_derived_image_to_storage(
         )
 
         with database.UseThenDisconnect(app.config):
-            registry_model.delete_derived_image(derived_image)
+            registry_model.delete_derived_storage(derived_storage)
 
     queue_file.add_exception_handler(handle_exception)
 
@@ -165,13 +165,13 @@ def _write_derived_image_to_storage(
 
     try:
         store.stream_write(
-            derived_image.blob.placements, derived_image.blob.storage_path, queue_file
+            derived_storage.blob.placements, derived_storage.blob.storage_path, queue_file
         )
     except IOError as ex:
         logger.error(
-            "Exception when writing %s derived image %s (%s/%s:%s): %s",
+            "Exception when writing %s derived storage %s (%s/%s:%s): %s",
             verb,
-            derived_image,
+            derived_storage,
             namespace,
             repository,
             tag_name,
@@ -179,7 +179,7 @@ def _write_derived_image_to_storage(
         )
 
         with database.UseThenDisconnect(app.config):
-            registry_model.delete_derived_image(derived_image)
+            registry_model.delete_derived_storage(derived_storage)
 
     queue_file.close()
 
@@ -248,15 +248,15 @@ def _torrent_repo_verb(repository, tag, manifest, verb, **kwargs):
 
     # Lookup an *existing* derived storage for the verb. If the verb's image storage doesn't exist,
     # we cannot create it here, so we 406.
-    derived_image = registry_model.lookup_derived_image(
+    derived_storage = registry_model.lookup_derived_storage(
         manifest, verb, storage, varying_metadata={"tag": tag.name}, include_placements=True
     )
-    if derived_image is None:
+    if derived_storage is None:
         abort(406)
 
     # Return the torrent.
     torrent = _torrent_for_blob(
-        derived_image.blob, model.repository.is_repository_public(repository)
+        derived_storage.blob, model.repository.is_repository_public(repository)
     )
 
     # Log the action.
@@ -348,12 +348,12 @@ def _repo_verb_signature(namespace, repository, tag_name, verb, checker=None, **
     # Verify that the tag exists and that we have access to it.
     tag, manifest, _ = _verify_repo_verb(storage, namespace, repository, tag_name, verb, checker)
 
-    # Find the derived image storage for the verb.
-    derived_image = registry_model.lookup_derived_image(
+    # Find the derived storage for the verb.
+    derived_storage = registry_model.lookup_derived_storage(
         manifest, verb, storage, varying_metadata={"tag": tag.name}
     )
 
-    if derived_image is None or derived_image.blob.uploading:
+    if derived_storage is None or derived_storage.blob.uploading:
         return make_response("", 202)
 
     # Check if we have a valid signer configured.
@@ -361,7 +361,7 @@ def _repo_verb_signature(namespace, repository, tag_name, verb, checker=None, **
         abort(404)
 
     # Lookup the signature for the verb.
-    signature_value = registry_model.get_derived_image_signature(derived_image, signer.name)
+    signature_value = registry_model.get_derived_storage_signature(derived_storage, signer.name)
     if signature_value is None:
         abort(404)
 
@@ -401,13 +401,13 @@ def _repo_verb(
 
     is_readonly = app.config.get("REGISTRY_STATE", "normal") == "readonly"
 
-    # Lookup/create the derived image for the verb and repo image.
+    # Lookup/create the derived storage for the verb and repo manifest.
     if is_readonly:
-        derived_image = registry_model.lookup_derived_image(
+        derived_storage = registry_model.lookup_derived_storage(
             manifest, verb, storage, varying_metadata={"tag": tag.name}, include_placements=True
         )
     else:
-        derived_image = registry_model.lookup_or_create_derived_image(
+        derived_storage = registry_model.lookup_or_create_derived_storage(
             manifest,
             verb,
             storage.preferred_locations[0],
@@ -415,31 +415,33 @@ def _repo_verb(
             varying_metadata={"tag": tag.name},
             include_placements=True,
         )
-        if derived_image is None:
-            logger.error("Could not create or lookup a derived image for manifest %s", manifest)
+        if derived_storage is None:
+            logger.error("Could not create or lookup a derived storage for manifest %s", manifest)
             abort(400)
 
-    if derived_image is not None and not derived_image.blob.uploading:
-        logger.debug("Derived %s image %s exists in storage", verb, derived_image)
+    if derived_storage is not None and not derived_storage.blob.uploading:
+        logger.debug("Derived %s storage %s exists in storage", verb, derived_storage)
         is_head_request = request.method == "HEAD"
 
-        if derived_image.blob.compressed_size:
-            image_pulled_bytes.labels("verbs").inc(derived_image.blob.compressed_size)
+        if derived_storage.blob.compressed_size:
+            image_pulled_bytes.labels("verbs").inc(derived_storage.blob.compressed_size)
 
         download_url = storage.get_direct_download_url(
-            derived_image.blob.placements, derived_image.blob.storage_path, head=is_head_request
+            derived_storage.blob.placements, derived_storage.blob.storage_path, head=is_head_request
         )
         if download_url:
-            logger.debug("Redirecting to download URL for derived %s image %s", verb, derived_image)
+            logger.debug(
+                "Redirecting to download URL for derived %s storage %s", verb, derived_storage
+            )
             return redirect(download_url)
 
         # Close the database handle here for this process before we send the long download.
         database.close_db_filter(None)
 
-        logger.debug("Sending cached derived %s image %s", verb, derived_image)
+        logger.debug("Sending cached derived %s storage %s", verb, derived_storage)
         return send_file(
             storage.stream_read_file(
-                derived_image.blob.placements, derived_image.blob.storage_path
+                derived_storage.blob.placements, derived_storage.blob.storage_path
             ),
             mimetype=LAYER_MIMETYPE,
         )
@@ -463,15 +465,17 @@ def _repo_verb(
 
         with database.UseThenDisconnect(app.config):
             registry_model.set_torrent_info(
-                derived_image.blob, app.config["BITTORRENT_PIECE_SIZE"], hasher.final_piece_hashes()
+                derived_storage.blob,
+                app.config["BITTORRENT_PIECE_SIZE"],
+                hasher.final_piece_hashes(),
             )
-            registry_model.set_derived_image_size(derived_image, hasher.hashed_bytes)
+            registry_model.set_derived_storage_size(derived_storage, hasher.hashed_bytes)
 
     # Create a queue process to generate the data. The queue files will read from the process
     # and send the results to the client and storage.
     unique_id = (
-        derived_image.unique_id
-        if derived_image is not None
+        derived_storage.unique_id
+        if derived_storage is not None
         else hashlib.sha256("%s:%s" % (verb, uuid.uuid4())).hexdigest()
     )
     handlers = [hasher.update]
@@ -506,12 +510,12 @@ def _repo_verb(
 
     # Start the storage saving.
     if not is_readonly:
-        storage_args = (verb, derived_image, storage_queue_file, namespace, repository, tag_name)
-        QueueProcess.run_process(_write_derived_image_to_storage, storage_args, finished=_cleanup)
+        storage_args = (verb, derived_storage, storage_queue_file, namespace, repository, tag_name)
+        QueueProcess.run_process(_write_derived_storage_to_storage, storage_args, finished=_cleanup)
 
         if sign and signer.name:
-            signing_args = (verb, derived_image, signing_queue_file)
-            QueueProcess.run_process(_sign_derived_image, signing_args, finished=_cleanup)
+            signing_args = (verb, derived_storage, signing_queue_file)
+            QueueProcess.run_process(_sign_derived_storage, signing_args, finished=_cleanup)
 
     # Close the database handle here for this process before we send the long download.
     database.close_db_filter(None)
