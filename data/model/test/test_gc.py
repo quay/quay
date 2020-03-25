@@ -38,6 +38,7 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.shared.schemas import parse_manifest_from_bytes
 from util.bytes import Bytes
 
+from test.helpers import check_transitive_modifications
 from test.fixtures import *
 
 
@@ -203,7 +204,8 @@ def assert_gc_integrity(expect_storage_removed=True):
     existing_manifest_count = _get_dangling_manifest_count()
 
     # Yield to the GC test.
-    yield
+    with check_transitive_modifications():
+        yield
 
     # Ensure the number of dangling storages, manifests and labels has not changed.
     updated_storage_count = _get_dangling_storage_count()
