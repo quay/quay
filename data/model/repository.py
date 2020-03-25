@@ -32,7 +32,6 @@ from data.database import (
     RepositoryActionCount,
     Role,
     RepositoryAuthorizedEmail,
-    DerivedStorageForImage,
     Label,
     db_for_update,
     get_epoch_timestamp,

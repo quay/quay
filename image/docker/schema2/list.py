@@ -249,6 +249,19 @@ class DockerSchema2ManifestList(ManifestInterface):
             for m in manifests
         ]
 
+    @property
+    def amd64_linux_manifest_digest(self):
+        """ Returns the digest of the AMD64+Linux manifest in this list, if any, or None
+            if none.
+        """
+        for manifest_ref in self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MANIFESTS_KEY]:
+            platform = manifest_ref[DOCKER_SCHEMA2_MANIFESTLIST_PLATFORM_KEY]
+            architecture = platform[DOCKER_SCHEMA2_MANIFESTLIST_ARCHITECTURE_KEY]
+            os = platform[DOCKER_SCHEMA2_MANIFESTLIST_OS_KEY]
+            return manifest_ref[DOCKER_SCHEMA2_MANIFESTLIST_DIGEST_KEY]
+
+        return None
+
     def validate(self, content_retriever):
         """
         Performs validation of required assertions about the manifest.
