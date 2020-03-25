@@ -651,9 +651,11 @@ class User(BaseModel):
                     TeamSync,
                     RepositorySearchScore,
                     DeletedNamespace,
+                    DeletedRepository,
                     RepoMirrorRule,
                     NamespaceGeoRestriction,
                     ManifestSecurityStatus,
+                    RepoMirrorConfig,
                 }
                 | appr_classes
                 | v22_classes

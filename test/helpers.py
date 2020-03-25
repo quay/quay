@@ -1,8 +1,13 @@
 import multiprocessing
 import time
 import socket
+import logging
+import re
 
 from contextlib import contextmanager
+
+from playhouse.test_utils import assert_query_count, _QueryLogHandler
+
 from data.database import LogEntryKind, LogEntry3
 
 
@@ -30,6 +35,53 @@ class assert_action_logged(object):
             updated_count = self._get_log_count()
             error_msg = "Missing new log entry of kind %s" % self.log_kind
             assert self.existing_count == (updated_count - 1), error_msg
+
+
+class log_queries(object):
+    """ Logs all queries that occur under the context. """
+
+    def __init__(self, query_filters=None):
+        self.filters = query_filters
+
+    def get_queries(self):
+        queries = [q.msg[0] for q in self._handler.queries]
+        if not self.filters:
+            return queries
+
+        filtered_queries = []
+        for query_filter in self.filters:
+            filtered_queries.extend([q for q in queries if re.match(query_filter, q)])
+
+        return filtered_queries
+
+    def __enter__(self):
+        logger = logging.getLogger("peewee")
+        self._handler = _QueryLogHandler()
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(self._handler)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        logger = logging.getLogger("peewee")
+        logger.removeHandler(self._handler)
+
+
+class check_transitive_modifications(log_queries):
+    """ Checks for Peewee-generated transition deletion queries and fails if any are found.
+    
+        These kinds of queries (which use subqueries) can lock massively on MySQL, so we detect
+        them and fail.
+    """
+
+    def __init__(self):
+        filters = [r"^DELETE.+IN \(SELECT.+$", r"^UPDATE.+IN \(SELECT.+$"]
+        super(check_transitive_modifications, self).__init__(query_filters=filters)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        super(check_transitive_modifications, self).__exit__(exc_type, exc_val, exc_tb)
+        queries = self.get_queries()
+        if queries:
+            raise Exception("Detected transitive deletion or update in queries: %s" % queries)
 
 
 _LIVESERVER_TIMEOUT = 5
