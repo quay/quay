@@ -1947,6 +1947,15 @@ class ManifestSecurityStatus(BaseModel):
     metadata_json = JSONField(default={})
 
 
+# Defines a map from full-length index names to the legacy names used in our code
+# to meet length restrictions.
+LEGACY_INDEX_MAP = {
+    "derivedstorageforimage_source_image_id_transformation_id_uniqueness_hash": "uniqueness_hash",
+    "queueitem_processing_expires_available_after_queue_name_retries_remaining_available": "queueitem_pe_aafter_qname_rremaining_available",
+    "queueitem_processing_expires_available_after_retries_remaining_available": "queueitem_pexpires_aafter_rremaining_available",
+}
+
+
 appr_classes = set(
     [
         ApprTag,
