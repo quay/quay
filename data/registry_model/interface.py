@@ -320,16 +320,16 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def lookup_derived_image(
+    def lookup_derived_storage(
         self, manifest, verb, storage, varying_metadata=None, include_placements=False
     ):
         """
-        Looks up the derived image for the given manifest, verb and optional varying metadata and
+        Looks up the derived storage for the given manifest, verb and optional varying metadata and
         returns it or None if none.
         """
 
     @abstractmethod
-    def lookup_or_create_derived_image(
+    def lookup_or_create_derived_storage(
         self,
         manifest,
         verb,
@@ -339,35 +339,35 @@ class RegistryDataInterface(object):
         include_placements=False,
     ):
         """
-        Looks up the derived image for the given maniest, verb and optional varying metadata and
+        Looks up the derived storage for the given maniest, verb and optional varying metadata and
         returns it.
 
-        If none exists, a new derived image is created.
+        If none exists, a new derived storage is created.
         """
 
     @abstractmethod
-    def get_derived_image_signature(self, derived_image, signer_name):
+    def get_derived_storage_signature(self, derived_storage, signer_name):
         """
-        Returns the signature associated with the derived image and a specific signer or None if
+        Returns the signature associated with the derived storage and a specific signer or None if
         none.
         """
 
     @abstractmethod
-    def set_derived_image_signature(self, derived_image, signer_name, signature):
+    def set_derived_storage_signature(self, derived_storage, signer_name, signature):
         """
-        Sets the calculated signature for the given derived image and signer to that specified.
-        """
-
-    @abstractmethod
-    def delete_derived_image(self, derived_image):
-        """
-        Deletes a derived image and all of its storage.
+        Sets the calculated signature for the given derived storage and signer to that specified.
         """
 
     @abstractmethod
-    def set_derived_image_size(self, derived_image, compressed_size):
+    def delete_derived_storage(self, derived_storage):
         """
-        Sets the compressed size on the given derived image.
+        Deletes a derived storage and all of its storage.
+        """
+
+    @abstractmethod
+    def set_derived_storage_size(self, derived_storage, compressed_size):
+        """
+        Sets the compressed size on the given derived storage.
         """
 
     @abstractmethod

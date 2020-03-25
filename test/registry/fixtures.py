@@ -16,7 +16,7 @@ from app import storage
 from data.database import (
     close_db_filter,
     configure,
-    DerivedStorageForImage,
+    DerivedStorageForManifest,
     QueueItem,
     Image,
     TagManifest,
@@ -82,7 +82,7 @@ def registry_server_executor(app):
         return jsonify({"old_value": old_value})
 
     def clear_derived_cache():
-        DerivedStorageForImage.delete().execute()
+        DerivedStorageForManifest.delete().execute()
         return "OK"
 
     def clear_uncompressed_size(image_id):

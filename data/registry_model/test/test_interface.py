@@ -23,7 +23,7 @@ from data.database import (
     ManifestLabel,
     TagManifest,
     TagManifestLabel,
-    DerivedStorageForImage,
+    DerivedStorageForManifest,
     Tag,
     TagToRepositoryTag,
     ImageStorageLocation,
@@ -504,75 +504,75 @@ def test_manifest_remote_layers(oci_model):
     assert layers[0].blob is None
 
 
-def test_derived_image(registry_model):
+def test_derived_storage(registry_model):
     # Clear all existing derived storage.
-    DerivedStorageForImage.delete().execute()
+    DerivedStorageForManifest.delete().execute()
 
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
     # Ensure the squashed image doesn't exist.
-    assert registry_model.lookup_derived_image(manifest, "squash", storage, {}) is None
+    assert registry_model.lookup_derived_storage(manifest, "squash", storage, {}) is None
 
     # Create a new one.
-    squashed = registry_model.lookup_or_create_derived_image(
+    squashed = registry_model.lookup_or_create_derived_storage(
         manifest, "squash", "local_us", storage, {}
     )
     assert (
-        registry_model.lookup_or_create_derived_image(manifest, "squash", "local_us", storage, {})
+        registry_model.lookup_or_create_derived_storage(manifest, "squash", "local_us", storage, {})
         == squashed
     )
     assert squashed.unique_id
 
     # Check and set the size.
     assert squashed.blob.compressed_size is None
-    registry_model.set_derived_image_size(squashed, 1234)
+    registry_model.set_derived_storage_size(squashed, 1234)
 
-    found = registry_model.lookup_derived_image(manifest, "squash", storage, {})
+    found = registry_model.lookup_derived_storage(manifest, "squash", storage, {})
     assert found.blob.compressed_size == 1234
     assert found.unique_id == squashed.unique_id
 
     # Ensure its returned now.
     assert found == squashed
 
-    # Ensure different metadata results in a different derived image.
-    found = registry_model.lookup_derived_image(manifest, "squash", storage, {"foo": "bar"})
+    # Ensure different metadata results in a different derived storage.
+    found = registry_model.lookup_derived_storage(manifest, "squash", storage, {"foo": "bar"})
     assert found is None
 
-    squashed_foo = registry_model.lookup_or_create_derived_image(
+    squashed_foo = registry_model.lookup_or_create_derived_storage(
         manifest, "squash", "local_us", storage, {"foo": "bar"}
     )
     assert squashed_foo != squashed
 
-    found = registry_model.lookup_derived_image(manifest, "squash", storage, {"foo": "bar"})
+    found = registry_model.lookup_derived_storage(manifest, "squash", storage, {"foo": "bar"})
     assert found == squashed_foo
 
     assert squashed.unique_id != squashed_foo.unique_id
 
     # Lookup with placements.
-    squashed = registry_model.lookup_or_create_derived_image(
+    squashed = registry_model.lookup_or_create_derived_storage(
         manifest, "squash", "local_us", storage, {}, include_placements=True
     )
     assert squashed.blob.placements
 
-    # Delete the derived image.
-    registry_model.delete_derived_image(squashed)
-    assert registry_model.lookup_derived_image(manifest, "squash", storage, {}) is None
+    # Delete the derived storage.
+    registry_model.delete_derived_storage(squashed)
+    assert registry_model.lookup_derived_storage(manifest, "squash", storage, {}) is None
 
 
-def test_derived_image_signatures(registry_model):
+def test_derived_storage_signatures(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
-    derived = registry_model.lookup_or_create_derived_image(
+    derived = registry_model.lookup_or_create_derived_storage(
         manifest, "squash", "local_us", storage, {}
     )
     assert derived
 
-    registry_model.set_derived_image_signature(derived, "gpg2", "foo")
-    assert registry_model.get_derived_image_signature(derived, "gpg2") == "foo"
+    registry_model.set_derived_storage_signature(derived, "gpg2", "foo")
+    assert registry_model.get_derived_storage_signature(derived, "gpg2") == "foo"
 
 
 @pytest.mark.parametrize(
@@ -584,7 +584,7 @@ def test_derived_image_signatures(registry_model):
 )
 def test_derived_image_for_manifest_list(manifest_builder, list_builder, oci_model):
     # Clear all existing derived storage.
-    DerivedStorageForImage.delete().execute()
+    DerivedStorageForManifest.delete().execute()
 
     # Create a config blob for testing.
     config_json = json.dumps(
@@ -629,18 +629,20 @@ def test_derived_image_for_manifest_list(manifest_builder, list_builder, oci_mod
     assert manifest.get_parsed_manifest().is_manifest_list
 
     # Ensure the squashed image doesn't exist.
-    assert oci_model.lookup_derived_image(manifest, "squash", storage, {}) is None
+    assert oci_model.lookup_derived_storage(manifest, "squash", storage, {}) is None
 
     # Create a new one.
-    squashed = oci_model.lookup_or_create_derived_image(manifest, "squash", "local_us", storage, {})
+    squashed = oci_model.lookup_or_create_derived_storage(
+        manifest, "squash", "local_us", storage, {}
+    )
     assert squashed.unique_id
     assert (
-        oci_model.lookup_or_create_derived_image(manifest, "squash", "local_us", storage, {})
+        oci_model.lookup_or_create_derived_storage(manifest, "squash", "local_us", storage, {})
         == squashed
     )
 
     # Perform lookup.
-    assert oci_model.lookup_derived_image(manifest, "squash", storage, {}) == squashed
+    assert oci_model.lookup_derived_storage(manifest, "squash", storage, {}) == squashed
 
 
 def test_blob_uploads(registry_model):

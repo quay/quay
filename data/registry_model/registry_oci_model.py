@@ -25,7 +25,7 @@ from data.registry_model.datatypes import (
     SecurityScanStatus,
     Blob,
     BlobUpload,
-    DerivedImage,
+    DerivedStorage,
     ShallowTag,
     LikelyVulnerableTag,
     RepositoryReference,
@@ -636,21 +636,45 @@ class OCIModel(RegistryDataInterface):
             manifest_obj.repository_id, parsed, storage, include_placements, by_manifest=True
         )
 
-    def lookup_derived_image(
+    def _manifest_db_id_for_derived(self, manifest):
+        db_id = manifest._db_id
+        if not manifest.is_manifest_list:
+            return manifest._db_id
+
+        # If a manifest list, return the derived storage for the AMD64+Linux manifest,
+        # if any.
+        parsed = manifest.get_parsed_manifest(validate=False)
+        digest = parsed.amd64_linux_manifest_digest
+        if digest is None:
+            return None
+
+        try:
+            manifestlist = database.Manifest.get(id=db_id)
+            amdlinux_manifest = database.Manifest.get(
+                digest=digest, repository=manifestlist.repository
+            )
+            return amdlinux_manifest.id
+        except database.Manifest.DoesNotExist:
+            return None
+
+    def lookup_derived_storage(
         self, manifest, verb, storage, varying_metadata=None, include_placements=False
     ):
         """
-        Looks up the derived image for the given manifest, verb and optional varying metadata and
-        returns it or None if none.
+        Looks up the derived storage for the given manifest, verb and optional varying metadata and
+        returns it or None if none. If the manifest is a list, the derived storage for the
+        amd64+linux manifest is returned. If none, returns None.
         """
-        legacy_image = self._get_legacy_compatible_image_for_manifest(manifest, storage)
-        if legacy_image is None:
+        db_id = self._manifest_db_id_for_derived(manifest)
+        if db_id is None:
             return None
 
-        derived = model.image.find_derived_storage_for_image(legacy_image, verb, varying_metadata)
+        derived = model.oci.manifest.find_derived_storage_for_manifest(
+            db_id, verb, varying_metadata
+        )
         return self._build_derived(derived, verb, varying_metadata, include_placements)
 
-    def lookup_or_create_derived_image(
+    def lookup_or_create_derived_storage(
         self,
         manifest,
         verb,
@@ -660,20 +684,22 @@ class OCIModel(RegistryDataInterface):
         include_placements=False,
     ):
         """
-        Looks up the derived image for the given maniest, verb and optional varying metadata and
-        returns it.
+        Looks up the derived storage for the given manifest, verb and optional varying metadata and
+        returns it. 
 
-        If none exists, a new derived image is created.
+        If none exists, a new derived storage is created.
+
+        If the manifest is a list, the derived storage for the amd64+linux manifest is returned or
+        created. If none, returns None.
         """
-        with db_disallow_replica_use():
-            legacy_image = self._get_legacy_compatible_image_for_manifest(manifest, storage)
-            if legacy_image is None:
-                return None
+        db_id = self._manifest_db_id_for_derived(manifest)
+        if db_id is None:
+            return None
 
-            derived = model.image.find_or_create_derived_storage(
-                legacy_image, verb, storage_location, varying_metadata
-            )
-            return self._build_derived(derived, verb, varying_metadata, include_placements)
+        derived = model.oci.manifest.find_or_create_derived_storage(
+            db_id, verb, storage_location, varying_metadata
+        )
+        return self._build_derived(derived, verb, varying_metadata, include_placements)
 
     def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
         """
@@ -849,14 +875,14 @@ class OCIModel(RegistryDataInterface):
         namespace = model.user.get_namespace_user(namespace_name)
         return namespace is not None and namespace.enabled
 
-    def get_derived_image_signature(self, derived_image, signer_name):
+    def get_derived_storage_signature(self, derived_storage, signer_name):
         """
-        Returns the signature associated with the derived image and a specific signer or None if
+        Returns the signature associated with the derived storage and a specific signer or None if
         none.
         """
         try:
-            derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
-        except database.DerivedStorageForImage.DoesNotExist:
+            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
+        except database.DerivedStorageForManifest.DoesNotExist:
             return None
 
         storage = derived_storage.derivative
@@ -866,15 +892,14 @@ class OCIModel(RegistryDataInterface):
 
         return signature_entry.signature
 
-    def set_derived_image_signature(self, derived_image, signer_name, signature):
+    def set_derived_storage_signature(self, derived_storage, signer_name, signature):
         """
-        Sets the calculated signature for the given derived image and signer to that specified.
+        Sets the calculated signature for the given derived storage and signer to that specified.
         """
-        with db_disallow_replica_use():
-            try:
-                derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
-            except database.DerivedStorageForImage.DoesNotExist:
-                return None
+        try:
+            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
+        except database.DerivedStorageForManifest.DoesNotExist:
+            return None
 
             storage = derived_storage.derivative
             signature_entry = model.storage.find_or_create_storage_signature(storage, signer_name)
@@ -882,27 +907,25 @@ class OCIModel(RegistryDataInterface):
             signature_entry.uploading = False
             signature_entry.save()
 
-    def delete_derived_image(self, derived_image):
+    def delete_derived_storage(self, derived_storage):
         """
-        Deletes a derived image and all of its storage.
+        Deletes a derived storage and all of its storage.
         """
-        with db_disallow_replica_use():
-            try:
-                derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
-            except database.DerivedStorageForImage.DoesNotExist:
-                return None
+        try:
+            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
+        except database.DerivedStorageForManifest.DoesNotExist:
+            return None
 
-            model.image.delete_derived_storage(derived_storage)
+        model.oci.manifest.delete_derived_storage(derived_storage)
 
-    def set_derived_image_size(self, derived_image, compressed_size):
+    def set_derived_storage_size(self, derived_storage, compressed_size):
         """
-        Sets the compressed size on the given derived image.
+        Sets the compressed size on the given derived storage.
         """
-        with db_disallow_replica_use():
-            try:
-                derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
-            except database.DerivedStorageForImage.DoesNotExist:
-                return None
+        try:
+            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
+        except database.DerivedStorageForManifest.DoesNotExist:
+            return None
 
             storage_entry = derived_storage.derivative
             storage_entry.image_size = compressed_size
@@ -1261,7 +1284,7 @@ class OCIModel(RegistryDataInterface):
             placements=placements,
         )
 
-        return DerivedImage.for_derived_storage(derived, verb, varying_metadata, blob)
+        return DerivedStorage.for_derived_storage(derived, verb, varying_metadata, blob)
 
     def _build_manifest_for_legacy_image(self, tag_name, legacy_image_row):
         import features
