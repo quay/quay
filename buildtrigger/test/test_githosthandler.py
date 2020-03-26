@@ -1,8 +1,10 @@
+import copy
+
 import pytest
 
 from buildtrigger.triggerutil import TriggerStartException
 from buildtrigger.test.bitbucketmock import get_bitbucket_trigger
-from buildtrigger.test.githubmock import get_github_trigger
+from buildtrigger.test.githubmock import get_github_trigger, GithubBuildTrigger
 from endpoints.building import PreparedBuild
 
 # Note: This test suite executes a common set of tests against all the trigger types specified
@@ -142,6 +144,12 @@ def test_list_build_source_namespaces():
     ],
 )
 def test_list_build_sources_for_namespace(namespace, expected, githost_trigger):
+    if isinstance(githost_trigger, GithubBuildTrigger):
+        # NOTE: We've disabled the permissions check for GitHub, so cancel them here.
+        expected = copy.deepcopy(expected)
+        for item in expected:
+            item["has_admin_permissions"] = True
+
     assert githost_trigger.list_build_sources_for_namespace(namespace) == expected
 
 
