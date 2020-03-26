@@ -52,7 +52,7 @@ def _token(username, password):
         (
             _token("devtable+somebot", "invalid"),
             ValidateResult(
-                AuthKind.basic, error_message="Could not find robot with username: devtable+somebot"
+                AuthKind.basic, error_message="Could not find robot with specified username"
             ),
         ),
         (
@@ -123,4 +123,13 @@ def test_invalid_unicode_2(app):
     assert result == ValidateResult(
         AuthKind.basic,
         error_message="Could not find robot with username: devtable+somerobot and supplied password.",
+    )
+
+
+def test_invalid_unicode_3(app):
+    token = "sometoken"
+    header = "basic " + b64encode("“devtable+somerobot”:%s" % token)
+    result = validate_basic_auth(header)
+    assert result == ValidateResult(
+        AuthKind.basic, error_message="Could not find robot with specified username",
     )
