@@ -41,7 +41,15 @@ def lookup_manifest_builder(repository_ref, builder_id, storage, legacy_signing_
     Looks up the manifest builder with the given ID under the specified repository and returns it or
     None if none.
     """
-    builder_state_tuple = session.get(_SESSION_KEY)
+    builder_state_json = session.get(_SESSION_KEY)
+    if builder_state_json is None:
+        return None
+
+    try:
+        builder_state_tuple = json.loads(builder_state_json)
+    except ValueError:
+        return None
+
     if builder_state_tuple is None:
         return None
 
@@ -237,4 +245,4 @@ class _ManifestBuilder(object):
         session.pop(_SESSION_KEY, None)
 
     def _save_to_session(self):
-        session[_SESSION_KEY] = self._builder_state
+        session[_SESSION_KEY] = json.dumps(self._builder_state)
