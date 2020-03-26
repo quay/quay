@@ -33,7 +33,6 @@ RUN INSTALL_PKGS="\
         skopeo \
         " && \
     yum install -y yum-utils && \
-    yum-config-manager --quiet --disable "*" >/dev/null && \
     yum-config-manager --quiet --enable \
         rhel-7-server-rpms \
         rhel-server-rhscl-7-rpms \
