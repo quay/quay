@@ -396,7 +396,7 @@ def lookup_robot(robot_username):
     try:
         return User.get(username=robot_username, robot=True)
     except User.DoesNotExist:
-        raise InvalidRobotException("Could not find robot with username: %s" % robot_username)
+        raise InvalidRobotException("Could not find robot with specified username")
 
 
 def lookup_robot_and_metadata(robot_username):
