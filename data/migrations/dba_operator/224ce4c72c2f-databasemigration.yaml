@@ -20,7 +20,7 @@ spec:
     operation: addColumn
     table: user
   - columns: []
-    indexName: user
+    indexName: user_last_accessed
     indexType: index
     operation: createIndex
-    table: user_last_accessed
+    table: user

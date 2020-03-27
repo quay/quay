@@ -34,47 +34,47 @@ spec:
     operation: createTable
     table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_account_id
     indexType: index
     operation: createIndex
-    table: logentry2_account_id
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_account_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry2_account_id_datetime
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_datetime
     indexType: index
     operation: createIndex
-    table: logentry2_datetime
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_kind_id
     indexType: index
     operation: createIndex
-    table: logentry2_kind_id
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_performer_id
     indexType: index
     operation: createIndex
-    table: logentry2_performer_id
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_performer_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry2_performer_id_datetime
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_repository_id
     indexType: index
     operation: createIndex
-    table: logentry2_repository_id
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_repository_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry2_repository_id_datetime
+    table: logentry2
   - columns: []
-    indexName: logentry2
+    indexName: logentry2_repository_id_datetime_kind_id
     indexType: index
     operation: createIndex
-    table: logentry2_repository_id_datetime_kind_id
+    table: logentry2

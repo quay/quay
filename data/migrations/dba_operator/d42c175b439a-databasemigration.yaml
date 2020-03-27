@@ -18,7 +18,7 @@ spec:
     operation: dropIndex
     table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_state_id
     indexType: unique
     operation: createIndex
-    table: queueitem_state_id
+    table: queueitem

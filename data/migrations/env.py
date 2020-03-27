@@ -139,7 +139,9 @@ def run_migrations_online():
 
     migration = Migration()
     version_apply_callback = report_success
-    if truthy_bool(context.get_x_argument(as_dictionary=True).get("generatedbaopmigrations", None)):
+    if truthy_bool(
+        context.get_x_argument(as_dictionary=True).get("generatedbaopmigrations", False)
+    ):
         op = OpLogger(alembic_op, migration)
         version_apply_callback = partial(finish_migration, migration)
 

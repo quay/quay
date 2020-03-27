@@ -25,17 +25,17 @@ spec:
     operation: addColumn
     table: messages
   - columns: []
-    indexName: messages
+    indexName: messages_media_type_id
     indexType: index
     operation: createIndex
-    table: messages_media_type_id
+    table: messages
   - columns: []
-    indexName: messages
+    indexName: messages_severity
     indexType: index
     operation: createIndex
-    table: messages_severity
+    table: messages
   - columns: []
-    indexName: messages
+    indexName: messages_uuid
     indexType: index
     operation: createIndex
-    table: messages_uuid
+    table: messages

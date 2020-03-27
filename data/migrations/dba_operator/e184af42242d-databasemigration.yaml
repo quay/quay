@@ -15,17 +15,17 @@ spec:
   previous: 6ec8726c0ace
   schemaHints:
   - columns: []
-    indexName: permissionprototype
+    indexName: permissionprototype_uuid
     indexType: index
     operation: createIndex
-    table: permissionprototype_uuid
+    table: permissionprototype
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_uuid
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_uuid
+    table: repositorybuildtrigger
   - columns: []
-    indexName: user
+    indexName: user_uuid
     indexType: index
     operation: createIndex
-    table: user_uuid
+    table: user

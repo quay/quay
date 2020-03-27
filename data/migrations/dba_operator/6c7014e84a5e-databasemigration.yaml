@@ -22,10 +22,10 @@ spec:
     operation: createTable
     table: userpromptkind
   - columns: []
-    indexName: userpromptkind
+    indexName: userpromptkind_name
     indexType: index
     operation: createIndex
-    table: userpromptkind_name
+    table: userpromptkind
   - columns:
     - name: id
       nullable: false
@@ -36,17 +36,17 @@ spec:
     operation: createTable
     table: userprompt
   - columns: []
-    indexName: userprompt
+    indexName: userprompt_kind_id
     indexType: index
     operation: createIndex
-    table: userprompt_kind_id
+    table: userprompt
   - columns: []
-    indexName: userprompt
+    indexName: userprompt_user_id
     indexType: index
     operation: createIndex
-    table: userprompt_user_id
+    table: userprompt
   - columns: []
-    indexName: userprompt
+    indexName: userprompt_user_id_kind_id
     indexType: unique
     operation: createIndex
-    table: userprompt_user_id_kind_id
+    table: userprompt

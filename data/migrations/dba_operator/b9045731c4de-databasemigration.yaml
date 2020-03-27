@@ -15,22 +15,22 @@ spec:
   previous: e184af42242d
   schemaHints:
   - columns: []
-    indexName: repositorytag
+    indexName: repositorytag_repository_id_lifetime_end_ts
     indexType: index
     operation: createIndex
-    table: repositorytag_repository_id_lifetime_end_ts
+    table: repositorytag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_lifetime_end_ms
     indexType: index
     operation: createIndex
-    table: tag_repository_id_lifetime_end_ms
+    table: tag
   - columns: []
-    indexName: repositorytag
+    indexName: repositorytag_repository_id_lifetime_start_ts
     indexType: index
     operation: createIndex
-    table: repositorytag_repository_id_lifetime_start_ts
+    table: repositorytag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_lifetime_start_ms
     indexType: index
     operation: createIndex
-    table: tag_repository_id_lifetime_start_ms
+    table: tag

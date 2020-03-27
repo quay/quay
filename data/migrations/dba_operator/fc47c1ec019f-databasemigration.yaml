@@ -20,7 +20,7 @@ spec:
     operation: addColumn
     table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_state_id
     indexType: index
     operation: createIndex
-    table: queueitem_state_id
+    table: queueitem
