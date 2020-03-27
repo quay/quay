@@ -15,7 +15,7 @@ spec:
   previous: b9045731c4de
   schemaHints:
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_logs_archived
     indexType: index
     operation: createIndex
-    table: repositorybuild_logs_archived
+    table: repositorybuild

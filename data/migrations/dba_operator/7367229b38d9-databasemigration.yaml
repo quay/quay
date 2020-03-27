@@ -34,22 +34,22 @@ spec:
     operation: createTable
     table: appspecificauthtoken
   - columns: []
-    indexName: appspecificauthtoken
+    indexName: appspecificauthtoken_token_code
     indexType: unique
     operation: createIndex
-    table: appspecificauthtoken_token_code
+    table: appspecificauthtoken
   - columns: []
-    indexName: appspecificauthtoken
+    indexName: appspecificauthtoken_user_id
     indexType: index
     operation: createIndex
-    table: appspecificauthtoken_user_id
+    table: appspecificauthtoken
   - columns: []
-    indexName: appspecificauthtoken
+    indexName: appspecificauthtoken_user_id_expiration
     indexType: index
     operation: createIndex
-    table: appspecificauthtoken_user_id_expiration
+    table: appspecificauthtoken
   - columns: []
-    indexName: appspecificauthtoken
+    indexName: appspecificauthtoken_uuid
     indexType: index
     operation: createIndex
-    table: appspecificauthtoken_uuid
+    table: appspecificauthtoken

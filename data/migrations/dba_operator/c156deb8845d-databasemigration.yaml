@@ -22,10 +22,10 @@ spec:
     operation: createTable
     table: accesstokenkind
   - columns: []
-    indexName: accesstokenkind
+    indexName: accesstokenkind_name
     indexType: unique
     operation: createIndex
-    table: accesstokenkind_name
+    table: accesstokenkind
   - columns:
     - name: id
       nullable: false
@@ -34,10 +34,10 @@ spec:
     operation: createTable
     table: buildtriggerservice
   - columns: []
-    indexName: buildtriggerservice
+    indexName: buildtriggerservice_name
     indexType: unique
     operation: createIndex
-    table: buildtriggerservice_name
+    table: buildtriggerservice
   - columns:
     - name: id
       nullable: false
@@ -46,10 +46,10 @@ spec:
     operation: createTable
     table: externalnotificationevent
   - columns: []
-    indexName: externalnotificationevent
+    indexName: externalnotificationevent_name
     indexType: unique
     operation: createIndex
-    table: externalnotificationevent_name
+    table: externalnotificationevent
   - columns:
     - name: id
       nullable: false
@@ -58,10 +58,10 @@ spec:
     operation: createTable
     table: externalnotificationmethod
   - columns: []
-    indexName: externalnotificationmethod
+    indexName: externalnotificationmethod_name
     indexType: unique
     operation: createIndex
-    table: externalnotificationmethod_name
+    table: externalnotificationmethod
   - columns:
     - name: id
       nullable: false
@@ -82,15 +82,15 @@ spec:
     operation: createTable
     table: imagestorage
   - columns: []
-    indexName: imagestorage
+    indexName: imagestorage_content_checksum
     indexType: index
     operation: createIndex
-    table: imagestorage_content_checksum
+    table: imagestorage
   - columns: []
-    indexName: imagestorage
+    indexName: imagestorage_uuid
     indexType: unique
     operation: createIndex
-    table: imagestorage_uuid
+    table: imagestorage
   - columns:
     - name: id
       nullable: false
@@ -99,10 +99,10 @@ spec:
     operation: createTable
     table: imagestoragelocation
   - columns: []
-    indexName: imagestoragelocation
+    indexName: imagestoragelocation_name
     indexType: unique
     operation: createIndex
-    table: imagestoragelocation_name
+    table: imagestoragelocation
   - columns:
     - name: id
       nullable: false
@@ -111,10 +111,10 @@ spec:
     operation: createTable
     table: imagestoragesignaturekind
   - columns: []
-    indexName: imagestoragesignaturekind
+    indexName: imagestoragesignaturekind_name
     indexType: unique
     operation: createIndex
-    table: imagestoragesignaturekind_name
+    table: imagestoragesignaturekind
   - columns:
     - name: id
       nullable: false
@@ -123,10 +123,10 @@ spec:
     operation: createTable
     table: imagestoragetransformation
   - columns: []
-    indexName: imagestoragetransformation
+    indexName: imagestoragetransformation_name
     indexType: unique
     operation: createIndex
-    table: imagestoragetransformation_name
+    table: imagestoragetransformation
   - columns:
     - name: id
       nullable: false
@@ -137,10 +137,10 @@ spec:
     operation: createTable
     table: labelsourcetype
   - columns: []
-    indexName: labelsourcetype
+    indexName: labelsourcetype_name
     indexType: unique
     operation: createIndex
-    table: labelsourcetype_name
+    table: labelsourcetype
   - columns:
     - name: id
       nullable: false
@@ -149,10 +149,10 @@ spec:
     operation: createTable
     table: logentrykind
   - columns: []
-    indexName: logentrykind
+    indexName: logentrykind_name
     indexType: unique
     operation: createIndex
-    table: logentrykind_name
+    table: logentrykind
   - columns:
     - name: id
       nullable: false
@@ -161,10 +161,10 @@ spec:
     operation: createTable
     table: loginservice
   - columns: []
-    indexName: loginservice
+    indexName: loginservice_name
     indexType: unique
     operation: createIndex
-    table: loginservice_name
+    table: loginservice
   - columns:
     - name: id
       nullable: false
@@ -173,10 +173,10 @@ spec:
     operation: createTable
     table: mediatype
   - columns: []
-    indexName: mediatype
+    indexName: mediatype_name
     indexType: unique
     operation: createIndex
-    table: mediatype_name
+    table: mediatype
   - columns:
     - name: id
       nullable: false
@@ -194,10 +194,10 @@ spec:
     operation: createTable
     table: notificationkind
   - columns: []
-    indexName: notificationkind
+    indexName: notificationkind_name
     indexType: unique
     operation: createIndex
-    table: notificationkind_name
+    table: notificationkind
   - columns:
     - name: id
       nullable: false
@@ -206,10 +206,10 @@ spec:
     operation: createTable
     table: quayregion
   - columns: []
-    indexName: quayregion
+    indexName: quayregion_name
     indexType: unique
     operation: createIndex
-    table: quayregion_name
+    table: quayregion
   - columns:
     - name: id
       nullable: false
@@ -218,10 +218,10 @@ spec:
     operation: createTable
     table: quayservice
   - columns: []
-    indexName: quayservice
+    indexName: quayservice_name
     indexType: unique
     operation: createIndex
-    table: quayservice_name
+    table: quayservice
   - columns:
     - name: id
       nullable: false
@@ -240,30 +240,30 @@ spec:
     operation: createTable
     table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_available
     indexType: index
     operation: createIndex
-    table: queueitem_available
+    table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_available_after
     indexType: index
     operation: createIndex
-    table: queueitem_available_after
+    table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_processing_expires
     indexType: index
     operation: createIndex
-    table: queueitem_processing_expires
+    table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_queue_name
     indexType: index
     operation: createIndex
-    table: queueitem_queue_name
+    table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_retries_remaining
     indexType: index
     operation: createIndex
-    table: queueitem_retries_remaining
+    table: queueitem
   - columns:
     - name: id
       nullable: false
@@ -272,10 +272,10 @@ spec:
     operation: createTable
     table: role
   - columns: []
-    indexName: role
+    indexName: role_name
     indexType: unique
     operation: createIndex
-    table: role_name
+    table: role
   - columns:
     - name: id
       nullable: false
@@ -290,15 +290,15 @@ spec:
     operation: createTable
     table: servicekeyapproval
   - columns: []
-    indexName: servicekeyapproval
+    indexName: servicekeyapproval_approval_type
     indexType: index
     operation: createIndex
-    table: servicekeyapproval_approval_type
+    table: servicekeyapproval
   - columns: []
-    indexName: servicekeyapproval
+    indexName: servicekeyapproval_approver_id
     indexType: index
     operation: createIndex
-    table: servicekeyapproval_approver_id
+    table: servicekeyapproval
   - columns:
     - name: id
       nullable: false
@@ -307,10 +307,10 @@ spec:
     operation: createTable
     table: teamrole
   - columns: []
-    indexName: teamrole
+    indexName: teamrole_name
     indexType: index
     operation: createIndex
-    table: teamrole_name
+    table: teamrole
   - columns:
     - name: id
       nullable: false
@@ -345,35 +345,35 @@ spec:
     operation: createTable
     table: user
   - columns: []
-    indexName: user
+    indexName: user_email
     indexType: unique
     operation: createIndex
-    table: user_email
+    table: user
   - columns: []
-    indexName: user
+    indexName: user_invoice_email_address
     indexType: index
     operation: createIndex
-    table: user_invoice_email_address
+    table: user
   - columns: []
-    indexName: user
+    indexName: user_organization
     indexType: index
     operation: createIndex
-    table: user_organization
+    table: user
   - columns: []
-    indexName: user
+    indexName: user_robot
     indexType: index
     operation: createIndex
-    table: user_robot
+    table: user
   - columns: []
-    indexName: user
+    indexName: user_stripe_id
     indexType: index
     operation: createIndex
-    table: user_stripe_id
+    table: user
   - columns: []
-    indexName: user
+    indexName: user_username
     indexType: unique
     operation: createIndex
-    table: user_username
+    table: user
   - columns:
     - name: id
       nullable: false
@@ -382,10 +382,10 @@ spec:
     operation: createTable
     table: visibility
   - columns: []
-    indexName: visibility
+    indexName: visibility_name
     indexType: unique
     operation: createIndex
-    table: visibility_name
+    table: visibility
   - columns:
     - name: id
       nullable: false
@@ -404,15 +404,15 @@ spec:
     operation: createTable
     table: emailconfirmation
   - columns: []
-    indexName: emailconfirmation
+    indexName: emailconfirmation_code
     indexType: unique
     operation: createIndex
-    table: emailconfirmation_code
+    table: emailconfirmation
   - columns: []
-    indexName: emailconfirmation
+    indexName: emailconfirmation_user_id
     indexType: index
     operation: createIndex
-    table: emailconfirmation_user_id
+    table: emailconfirmation
   - columns:
     - name: id
       nullable: false
@@ -427,25 +427,25 @@ spec:
     operation: createTable
     table: federatedlogin
   - columns: []
-    indexName: federatedlogin
+    indexName: federatedlogin_service_id
     indexType: index
     operation: createIndex
-    table: federatedlogin_service_id
+    table: federatedlogin
   - columns: []
-    indexName: federatedlogin
+    indexName: federatedlogin_service_id_service_ident
     indexType: unique
     operation: createIndex
-    table: federatedlogin_service_id_service_ident
+    table: federatedlogin
   - columns: []
-    indexName: federatedlogin
+    indexName: federatedlogin_service_id_user_id
     indexType: unique
     operation: createIndex
-    table: federatedlogin_service_id_user_id
+    table: federatedlogin
   - columns: []
-    indexName: federatedlogin
+    indexName: federatedlogin_user_id
     indexType: index
     operation: createIndex
-    table: federatedlogin_user_id
+    table: federatedlogin
   - columns:
     - name: id
       nullable: false
@@ -456,20 +456,20 @@ spec:
     operation: createTable
     table: imagestorageplacement
   - columns: []
-    indexName: imagestorageplacement
+    indexName: imagestorageplacement_location_id
     indexType: index
     operation: createIndex
-    table: imagestorageplacement_location_id
+    table: imagestorageplacement
   - columns: []
-    indexName: imagestorageplacement
+    indexName: imagestorageplacement_storage_id
     indexType: index
     operation: createIndex
-    table: imagestorageplacement_storage_id
+    table: imagestorageplacement
   - columns: []
-    indexName: imagestorageplacement
+    indexName: imagestorageplacement_storage_id_location_id
     indexType: unique
     operation: createIndex
-    table: imagestorageplacement_storage_id_location_id
+    table: imagestorageplacement
   - columns:
     - name: id
       nullable: false
@@ -484,20 +484,20 @@ spec:
     operation: createTable
     table: imagestoragesignature
   - columns: []
-    indexName: imagestoragesignature
+    indexName: imagestoragesignature_kind_id
     indexType: index
     operation: createIndex
-    table: imagestoragesignature_kind_id
+    table: imagestoragesignature
   - columns: []
-    indexName: imagestoragesignature
+    indexName: imagestoragesignature_kind_id_storage_id
     indexType: unique
     operation: createIndex
-    table: imagestoragesignature_kind_id_storage_id
+    table: imagestoragesignature
   - columns: []
-    indexName: imagestoragesignature
+    indexName: imagestoragesignature_storage_id
     indexType: index
     operation: createIndex
-    table: imagestoragesignature_storage_id
+    table: imagestoragesignature
   - columns:
     - name: id
       nullable: false
@@ -514,25 +514,25 @@ spec:
     operation: createTable
     table: label
   - columns: []
-    indexName: label
+    indexName: label_key
     indexType: index
     operation: createIndex
-    table: label_key
+    table: label
   - columns: []
-    indexName: label
+    indexName: label_media_type_id
     indexType: index
     operation: createIndex
-    table: label_media_type_id
+    table: label
   - columns: []
-    indexName: label
+    indexName: label_source_type_id
     indexType: index
     operation: createIndex
-    table: label_source_type_id
+    table: label
   - columns: []
-    indexName: label
+    indexName: label_uuid
     indexType: unique
     operation: createIndex
-    table: label_uuid
+    table: label
   - columns:
     - name: id
       nullable: false
@@ -553,50 +553,50 @@ spec:
     operation: createTable
     table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_account_id
     indexType: index
     operation: createIndex
-    table: logentry_account_id
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_account_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry_account_id_datetime
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_datetime
     indexType: index
     operation: createIndex
-    table: logentry_datetime
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_kind_id
     indexType: index
     operation: createIndex
-    table: logentry_kind_id
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_performer_id
     indexType: index
     operation: createIndex
-    table: logentry_performer_id
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_performer_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry_performer_id_datetime
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_repository_id
     indexType: index
     operation: createIndex
-    table: logentry_repository_id
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_repository_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry_repository_id_datetime
+    table: logentry
   - columns: []
-    indexName: logentry
+    indexName: logentry_repository_id_datetime_kind_id
     indexType: index
     operation: createIndex
-    table: logentry_repository_id_datetime_kind_id
+    table: logentry
   - columns:
     - name: id
       nullable: false
@@ -617,30 +617,30 @@ spec:
     operation: createTable
     table: notification
   - columns: []
-    indexName: notification
+    indexName: notification_created
     indexType: index
     operation: createIndex
-    table: notification_created
+    table: notification
   - columns: []
-    indexName: notification
+    indexName: notification_kind_id
     indexType: index
     operation: createIndex
-    table: notification_kind_id
+    table: notification
   - columns: []
-    indexName: notification
+    indexName: notification_lookup_path
     indexType: index
     operation: createIndex
-    table: notification_lookup_path
+    table: notification
   - columns: []
-    indexName: notification
+    indexName: notification_target_id
     indexType: index
     operation: createIndex
-    table: notification_target_id
+    table: notification
   - columns: []
-    indexName: notification
+    indexName: notification_uuid
     indexType: index
     operation: createIndex
-    table: notification_uuid
+    table: notification
   - columns:
     - name: id
       nullable: false
@@ -663,15 +663,15 @@ spec:
     operation: createTable
     table: oauthapplication
   - columns: []
-    indexName: oauthapplication
+    indexName: oauthapplication_client_id
     indexType: index
     operation: createIndex
-    table: oauthapplication_client_id
+    table: oauthapplication
   - columns: []
-    indexName: oauthapplication
+    indexName: oauthapplication_organization_id
     indexType: index
     operation: createIndex
-    table: oauthapplication_organization_id
+    table: oauthapplication
   - columns:
     - name: id
       nullable: false
@@ -688,30 +688,30 @@ spec:
     operation: createTable
     table: quayrelease
   - columns: []
-    indexName: quayrelease
+    indexName: quayrelease_created
     indexType: index
     operation: createIndex
-    table: quayrelease_created
+    table: quayrelease
   - columns: []
-    indexName: quayrelease
+    indexName: quayrelease_region_id
     indexType: index
     operation: createIndex
-    table: quayrelease_region_id
+    table: quayrelease
   - columns: []
-    indexName: quayrelease
+    indexName: quayrelease_service_id
     indexType: index
     operation: createIndex
-    table: quayrelease_service_id
+    table: quayrelease
   - columns: []
-    indexName: quayrelease
+    indexName: quayrelease_service_id_region_id_created
     indexType: index
     operation: createIndex
-    table: quayrelease_service_id_region_id_created
+    table: quayrelease
   - columns: []
-    indexName: quayrelease
+    indexName: quayrelease_service_id_version_region_id
     indexType: unique
     operation: createIndex
-    table: quayrelease_service_id_version_region_id
+    table: quayrelease
   - columns:
     - name: id
       nullable: false
@@ -728,20 +728,20 @@ spec:
     operation: createTable
     table: repository
   - columns: []
-    indexName: repository
+    indexName: repository_namespace_user_id
     indexType: index
     operation: createIndex
-    table: repository_namespace_user_id
+    table: repository
   - columns: []
-    indexName: repository
+    indexName: repository_namespace_user_id_name
     indexType: unique
     operation: createIndex
-    table: repository_namespace_user_id_name
+    table: repository
   - columns: []
-    indexName: repository
+    indexName: repository_visibility_id
     indexType: index
     operation: createIndex
-    table: repository_visibility_id
+    table: repository
   - columns:
     - name: id
       nullable: false
@@ -766,20 +766,20 @@ spec:
     operation: createTable
     table: servicekey
   - columns: []
-    indexName: servicekey
+    indexName: servicekey_approval_id
     indexType: index
     operation: createIndex
-    table: servicekey_approval_id
+    table: servicekey
   - columns: []
-    indexName: servicekey
+    indexName: servicekey_kid
     indexType: unique
     operation: createIndex
-    table: servicekey_kid
+    table: servicekey
   - columns: []
-    indexName: servicekey
+    indexName: servicekey_service
     indexType: index
     operation: createIndex
-    table: servicekey_service
+    table: servicekey
   - columns:
     - name: id
       nullable: false
@@ -794,25 +794,25 @@ spec:
     operation: createTable
     table: team
   - columns: []
-    indexName: team
+    indexName: team_name
     indexType: index
     operation: createIndex
-    table: team_name
+    table: team
   - columns: []
-    indexName: team
+    indexName: team_name_organization_id
     indexType: unique
     operation: createIndex
-    table: team_name_organization_id
+    table: team
   - columns: []
-    indexName: team
+    indexName: team_organization_id
     indexType: index
     operation: createIndex
-    table: team_organization_id
+    table: team
   - columns: []
-    indexName: team
+    indexName: team_role_id
     indexType: index
     operation: createIndex
-    table: team_role_id
+    table: team
   - columns:
     - name: id
       nullable: false
@@ -825,15 +825,15 @@ spec:
     operation: createTable
     table: torrentinfo
   - columns: []
-    indexName: torrentinfo
+    indexName: torrentinfo_storage_id
     indexType: index
     operation: createIndex
-    table: torrentinfo_storage_id
+    table: torrentinfo
   - columns: []
-    indexName: torrentinfo
+    indexName: torrentinfo_storage_id_piece_length
     indexType: unique
     operation: createIndex
-    table: torrentinfo_storage_id_piece_length
+    table: torrentinfo
   - columns:
     - name: id
       nullable: false
@@ -844,15 +844,15 @@ spec:
     operation: createTable
     table: userregion
   - columns: []
-    indexName: userregion
+    indexName: userregion_location_id
     indexType: index
     operation: createIndex
-    table: userregion_location_id
+    table: userregion
   - columns: []
-    indexName: userregion
+    indexName: userregion_user_id
     indexType: index
     operation: createIndex
-    table: userregion_user_id
+    table: userregion
   - columns:
     - name: id
       nullable: false
@@ -873,25 +873,25 @@ spec:
     operation: createTable
     table: accesstoken
   - columns: []
-    indexName: accesstoken
+    indexName: accesstoken_code
     indexType: unique
     operation: createIndex
-    table: accesstoken_code
+    table: accesstoken
   - columns: []
-    indexName: accesstoken
+    indexName: accesstoken_kind_id
     indexType: index
     operation: createIndex
-    table: accesstoken_kind_id
+    table: accesstoken
   - columns: []
-    indexName: accesstoken
+    indexName: accesstoken_repository_id
     indexType: index
     operation: createIndex
-    table: accesstoken_repository_id
+    table: accesstoken
   - columns: []
-    indexName: accesstoken
+    indexName: accesstoken_role_id
     indexType: index
     operation: createIndex
-    table: accesstoken_role_id
+    table: accesstoken
   - columns:
     - name: id
       nullable: false
@@ -920,30 +920,30 @@ spec:
     operation: createTable
     table: blobupload
   - columns: []
-    indexName: blobupload
+    indexName: blobupload_created
     indexType: index
     operation: createIndex
-    table: blobupload_created
+    table: blobupload
   - columns: []
-    indexName: blobupload
+    indexName: blobupload_location_id
     indexType: index
     operation: createIndex
-    table: blobupload_location_id
+    table: blobupload
   - columns: []
-    indexName: blobupload
+    indexName: blobupload_repository_id
     indexType: index
     operation: createIndex
-    table: blobupload_repository_id
+    table: blobupload
   - columns: []
-    indexName: blobupload
+    indexName: blobupload_repository_id_uuid
     indexType: unique
     operation: createIndex
-    table: blobupload_repository_id_uuid
+    table: blobupload
   - columns: []
-    indexName: blobupload
+    indexName: blobupload_uuid
     indexType: unique
     operation: createIndex
-    table: blobupload_uuid
+    table: blobupload
   - columns:
     - name: id
       nullable: false
@@ -976,50 +976,50 @@ spec:
     operation: createTable
     table: image
   - columns: []
-    indexName: image
+    indexName: image_ancestors
     indexType: index
     operation: createIndex
-    table: image_ancestors
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_docker_image_id
     indexType: index
     operation: createIndex
-    table: image_docker_image_id
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_parent_id
     indexType: index
     operation: createIndex
-    table: image_parent_id
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_repository_id
     indexType: index
     operation: createIndex
-    table: image_repository_id
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_repository_id_docker_image_id
     indexType: unique
     operation: createIndex
-    table: image_repository_id_docker_image_id
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_security_indexed
     indexType: index
     operation: createIndex
-    table: image_security_indexed
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_security_indexed_engine
     indexType: index
     operation: createIndex
-    table: image_security_indexed_engine
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_security_indexed_engine_security_indexed
     indexType: index
     operation: createIndex
-    table: image_security_indexed_engine_security_indexed
+    table: image
   - columns: []
-    indexName: image
+    indexName: image_storage_id
     indexType: index
     operation: createIndex
-    table: image_storage_id
+    table: image
   - columns:
     - name: id
       nullable: false
@@ -1044,30 +1044,30 @@ spec:
     operation: createTable
     table: oauthaccesstoken
   - columns: []
-    indexName: oauthaccesstoken
+    indexName: oauthaccesstoken_access_token
     indexType: index
     operation: createIndex
-    table: oauthaccesstoken_access_token
+    table: oauthaccesstoken
   - columns: []
-    indexName: oauthaccesstoken
+    indexName: oauthaccesstoken_application_id
     indexType: index
     operation: createIndex
-    table: oauthaccesstoken_application_id
+    table: oauthaccesstoken
   - columns: []
-    indexName: oauthaccesstoken
+    indexName: oauthaccesstoken_authorized_user_id
     indexType: index
     operation: createIndex
-    table: oauthaccesstoken_authorized_user_id
+    table: oauthaccesstoken
   - columns: []
-    indexName: oauthaccesstoken
+    indexName: oauthaccesstoken_refresh_token
     indexType: index
     operation: createIndex
-    table: oauthaccesstoken_refresh_token
+    table: oauthaccesstoken
   - columns: []
-    indexName: oauthaccesstoken
+    indexName: oauthaccesstoken_uuid
     indexType: index
     operation: createIndex
-    table: oauthaccesstoken_uuid
+    table: oauthaccesstoken
   - columns:
     - name: id
       nullable: false
@@ -1082,15 +1082,15 @@ spec:
     operation: createTable
     table: oauthauthorizationcode
   - columns: []
-    indexName: oauthauthorizationcode
+    indexName: oauthauthorizationcode_application_id
     indexType: index
     operation: createIndex
-    table: oauthauthorizationcode_application_id
+    table: oauthauthorizationcode
   - columns: []
-    indexName: oauthauthorizationcode
+    indexName: oauthauthorizationcode_code
     indexType: index
     operation: createIndex
-    table: oauthauthorizationcode_code
+    table: oauthauthorizationcode
   - columns:
     - name: id
       nullable: false
@@ -1109,35 +1109,35 @@ spec:
     operation: createTable
     table: permissionprototype
   - columns: []
-    indexName: permissionprototype
+    indexName: permissionprototype_activating_user_id
     indexType: index
     operation: createIndex
-    table: permissionprototype_activating_user_id
+    table: permissionprototype
   - columns: []
-    indexName: permissionprototype
+    indexName: permissionprototype_delegate_team_id
     indexType: index
     operation: createIndex
-    table: permissionprototype_delegate_team_id
+    table: permissionprototype
   - columns: []
-    indexName: permissionprototype
+    indexName: permissionprototype_delegate_user_id
     indexType: index
     operation: createIndex
-    table: permissionprototype_delegate_user_id
+    table: permissionprototype
   - columns: []
-    indexName: permissionprototype
+    indexName: permissionprototype_org_id
     indexType: index
     operation: createIndex
-    table: permissionprototype_org_id
+    table: permissionprototype
   - columns: []
-    indexName: permissionprototype
+    indexName: permissionprototype_org_id_activating_user_id
     indexType: index
     operation: createIndex
-    table: permissionprototype_org_id_activating_user_id
+    table: permissionprototype
   - columns: []
-    indexName: permissionprototype
+    indexName: permissionprototype_role_id
     indexType: index
     operation: createIndex
-    table: permissionprototype_role_id
+    table: permissionprototype
   - columns:
     - name: id
       nullable: false
@@ -1150,20 +1150,20 @@ spec:
     operation: createTable
     table: repositoryactioncount
   - columns: []
-    indexName: repositoryactioncount
+    indexName: repositoryactioncount_date
     indexType: index
     operation: createIndex
-    table: repositoryactioncount_date
+    table: repositoryactioncount
   - columns: []
-    indexName: repositoryactioncount
+    indexName: repositoryactioncount_repository_id
     indexType: index
     operation: createIndex
-    table: repositoryactioncount_repository_id
+    table: repositoryactioncount
   - columns: []
-    indexName: repositoryactioncount
+    indexName: repositoryactioncount_repository_id_date
     indexType: unique
     operation: createIndex
-    table: repositoryactioncount_repository_id_date
+    table: repositoryactioncount
   - columns:
     - name: id
       nullable: false
@@ -1178,20 +1178,20 @@ spec:
     operation: createTable
     table: repositoryauthorizedemail
   - columns: []
-    indexName: repositoryauthorizedemail
+    indexName: repositoryauthorizedemail_code
     indexType: unique
     operation: createIndex
-    table: repositoryauthorizedemail_code
+    table: repositoryauthorizedemail
   - columns: []
-    indexName: repositoryauthorizedemail
+    indexName: repositoryauthorizedemail_email_repository_id
     indexType: unique
     operation: createIndex
-    table: repositoryauthorizedemail_email_repository_id
+    table: repositoryauthorizedemail
   - columns: []
-    indexName: repositoryauthorizedemail
+    indexName: repositoryauthorizedemail_repository_id
     indexType: index
     operation: createIndex
-    table: repositoryauthorizedemail_repository_id
+    table: repositoryauthorizedemail
   - columns:
     - name: id
       nullable: false
@@ -1212,25 +1212,25 @@ spec:
     operation: createTable
     table: repositorynotification
   - columns: []
-    indexName: repositorynotification
+    indexName: repositorynotification_event_id
     indexType: index
     operation: createIndex
-    table: repositorynotification_event_id
+    table: repositorynotification
   - columns: []
-    indexName: repositorynotification
+    indexName: repositorynotification_method_id
     indexType: index
     operation: createIndex
-    table: repositorynotification_method_id
+    table: repositorynotification
   - columns: []
-    indexName: repositorynotification
+    indexName: repositorynotification_repository_id
     indexType: index
     operation: createIndex
-    table: repositorynotification_repository_id
+    table: repositorynotification
   - columns: []
-    indexName: repositorynotification
+    indexName: repositorynotification_uuid
     indexType: index
     operation: createIndex
-    table: repositorynotification_uuid
+    table: repositorynotification
   - columns:
     - name: id
       nullable: false
@@ -1245,35 +1245,35 @@ spec:
     operation: createTable
     table: repositorypermission
   - columns: []
-    indexName: repositorypermission
+    indexName: repositorypermission_repository_id
     indexType: index
     operation: createIndex
-    table: repositorypermission_repository_id
+    table: repositorypermission
   - columns: []
-    indexName: repositorypermission
+    indexName: repositorypermission_role_id
     indexType: index
     operation: createIndex
-    table: repositorypermission_role_id
+    table: repositorypermission
   - columns: []
-    indexName: repositorypermission
+    indexName: repositorypermission_team_id
     indexType: index
     operation: createIndex
-    table: repositorypermission_team_id
+    table: repositorypermission
   - columns: []
-    indexName: repositorypermission
+    indexName: repositorypermission_team_id_repository_id
     indexType: unique
     operation: createIndex
-    table: repositorypermission_team_id_repository_id
+    table: repositorypermission
   - columns: []
-    indexName: repositorypermission
+    indexName: repositorypermission_user_id
     indexType: index
     operation: createIndex
-    table: repositorypermission_user_id
+    table: repositorypermission
   - columns: []
-    indexName: repositorypermission
+    indexName: repositorypermission_user_id_repository_id
     indexType: unique
     operation: createIndex
-    table: repositorypermission_user_id_repository_id
+    table: repositorypermission
   - columns:
     - name: id
       nullable: false
@@ -1286,20 +1286,20 @@ spec:
     operation: createTable
     table: star
   - columns: []
-    indexName: star
+    indexName: star_repository_id
     indexType: index
     operation: createIndex
-    table: star_repository_id
+    table: star
   - columns: []
-    indexName: star
+    indexName: star_user_id
     indexType: index
     operation: createIndex
-    table: star_user_id
+    table: star
   - columns: []
-    indexName: star
+    indexName: star_user_id_repository_id
     indexType: unique
     operation: createIndex
-    table: star_user_id_repository_id
+    table: star
   - columns:
     - name: id
       nullable: false
@@ -1310,20 +1310,20 @@ spec:
     operation: createTable
     table: teammember
   - columns: []
-    indexName: teammember
+    indexName: teammember_team_id
     indexType: index
     operation: createIndex
-    table: teammember_team_id
+    table: teammember
   - columns: []
-    indexName: teammember
+    indexName: teammember_user_id
     indexType: index
     operation: createIndex
-    table: teammember_user_id
+    table: teammember
   - columns: []
-    indexName: teammember
+    indexName: teammember_user_id_team_id
     indexType: unique
     operation: createIndex
-    table: teammember_user_id_team_id
+    table: teammember
   - columns:
     - name: id
       nullable: false
@@ -1340,20 +1340,20 @@ spec:
     operation: createTable
     table: teammemberinvite
   - columns: []
-    indexName: teammemberinvite
+    indexName: teammemberinvite_inviter_id
     indexType: index
     operation: createIndex
-    table: teammemberinvite_inviter_id
+    table: teammemberinvite
   - columns: []
-    indexName: teammemberinvite
+    indexName: teammemberinvite_team_id
     indexType: index
     operation: createIndex
-    table: teammemberinvite_team_id
+    table: teammemberinvite
   - columns: []
-    indexName: teammemberinvite
+    indexName: teammemberinvite_user_id
     indexType: index
     operation: createIndex
-    table: teammemberinvite_user_id
+    table: teammemberinvite
   - columns:
     - name: id
       nullable: false
@@ -1368,25 +1368,25 @@ spec:
     operation: createTable
     table: derivedstorageforimage
   - columns: []
-    indexName: derivedstorageforimage
+    indexName: derivedstorageforimage_derivative_id
     indexType: index
     operation: createIndex
-    table: derivedstorageforimage_derivative_id
+    table: derivedstorageforimage
   - columns: []
-    indexName: derivedstorageforimage
+    indexName: derivedstorageforimage_source_image_id
     indexType: index
     operation: createIndex
-    table: derivedstorageforimage_source_image_id
+    table: derivedstorageforimage
   - columns: []
-    indexName: derivedstorageforimage
+    indexName: uniqueness_index
     indexType: unique
     operation: createIndex
-    table: uniqueness_index
+    table: derivedstorageforimage
   - columns: []
-    indexName: derivedstorageforimage
+    indexName: derivedstorageforimage_transformation_id
     indexType: index
     operation: createIndex
-    table: derivedstorageforimage_transformation_id
+    table: derivedstorageforimage
   - columns:
     - name: id
       nullable: false
@@ -1411,30 +1411,30 @@ spec:
     operation: createTable
     table: repositorybuildtrigger
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_connected_user_id
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_connected_user_id
+    table: repositorybuildtrigger
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_pull_robot_id
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_pull_robot_id
+    table: repositorybuildtrigger
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_repository_id
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_repository_id
+    table: repositorybuildtrigger
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_service_id
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_service_id
+    table: repositorybuildtrigger
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_write_token_id
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_write_token_id
+    table: repositorybuildtrigger
   - columns:
     - name: id
       nullable: false
@@ -1455,30 +1455,30 @@ spec:
     operation: createTable
     table: repositorytag
   - columns: []
-    indexName: repositorytag
+    indexName: repositorytag_image_id
     indexType: index
     operation: createIndex
-    table: repositorytag_image_id
+    table: repositorytag
   - columns: []
-    indexName: repositorytag
+    indexName: repositorytag_lifetime_end_ts
     indexType: index
     operation: createIndex
-    table: repositorytag_lifetime_end_ts
+    table: repositorytag
   - columns: []
-    indexName: repositorytag
+    indexName: repositorytag_repository_id
     indexType: index
     operation: createIndex
-    table: repositorytag_repository_id
+    table: repositorytag
   - columns: []
-    indexName: repositorytag
+    indexName: repositorytag_repository_id_name
     indexType: index
     operation: createIndex
-    table: repositorytag_repository_id_name
+    table: repositorytag
   - columns: []
-    indexName: repositorytag
+    indexName: repositorytag_repository_id_name_lifetime_end_ts
     indexType: unique
     operation: createIndex
-    table: repositorytag_repository_id_name_lifetime_end_ts
+    table: repositorytag
   - columns:
     - name: id
       nullable: false
@@ -1509,55 +1509,55 @@ spec:
     operation: createTable
     table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_access_token_id
     indexType: index
     operation: createIndex
-    table: repositorybuild_access_token_id
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_pull_robot_id
     indexType: index
     operation: createIndex
-    table: repositorybuild_pull_robot_id
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_queue_id
     indexType: index
     operation: createIndex
-    table: repositorybuild_queue_id
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_repository_id
     indexType: index
     operation: createIndex
-    table: repositorybuild_repository_id
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_repository_id_started_phase
     indexType: index
     operation: createIndex
-    table: repositorybuild_repository_id_started_phase
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_resource_key
     indexType: index
     operation: createIndex
-    table: repositorybuild_resource_key
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_started
     indexType: index
     operation: createIndex
-    table: repositorybuild_started
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_started_logs_archived_phase
     indexType: index
     operation: createIndex
-    table: repositorybuild_started_logs_archived_phase
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_trigger_id
     indexType: index
     operation: createIndex
-    table: repositorybuild_trigger_id
+    table: repositorybuild
   - columns: []
-    indexName: repositorybuild
+    indexName: repositorybuild_uuid
     indexType: index
     operation: createIndex
-    table: repositorybuild_uuid
+    table: repositorybuild
   - columns:
     - name: id
       nullable: false
@@ -1570,15 +1570,15 @@ spec:
     operation: createTable
     table: tagmanifest
   - columns: []
-    indexName: tagmanifest
+    indexName: tagmanifest_digest
     indexType: index
     operation: createIndex
-    table: tagmanifest_digest
+    table: tagmanifest
   - columns: []
-    indexName: tagmanifest
+    indexName: tagmanifest_tag_id
     indexType: unique
     operation: createIndex
-    table: tagmanifest_tag_id
+    table: tagmanifest
   - columns:
     - name: id
       nullable: false
@@ -1591,22 +1591,22 @@ spec:
     operation: createTable
     table: tagmanifestlabel
   - columns: []
-    indexName: tagmanifestlabel
+    indexName: tagmanifestlabel_annotated_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabel_annotated_id
+    table: tagmanifestlabel
   - columns: []
-    indexName: tagmanifestlabel
+    indexName: tagmanifestlabel_annotated_id_label_id
     indexType: unique
     operation: createIndex
-    table: tagmanifestlabel_annotated_id_label_id
+    table: tagmanifestlabel
   - columns: []
-    indexName: tagmanifestlabel
+    indexName: tagmanifestlabel_label_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabel_label_id
+    table: tagmanifestlabel
   - columns: []
-    indexName: tagmanifestlabel
+    indexName: tagmanifestlabel_repository_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabel_repository_id
+    table: tagmanifestlabel

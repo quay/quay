@@ -28,30 +28,30 @@ spec:
     operation: createTable
     table: manifest
   - columns: []
-    indexName: manifest
+    indexName: manifest_digest
     indexType: index
     operation: createIndex
-    table: manifest_digest
+    table: manifest
   - columns: []
-    indexName: manifest
+    indexName: manifest_media_type_id
     indexType: index
     operation: createIndex
-    table: manifest_media_type_id
+    table: manifest
   - columns: []
-    indexName: manifest
+    indexName: manifest_repository_id
     indexType: index
     operation: createIndex
-    table: manifest_repository_id
+    table: manifest
   - columns: []
-    indexName: manifest
+    indexName: manifest_repository_id_digest
     indexType: unique
     operation: createIndex
-    table: manifest_repository_id_digest
+    table: manifest
   - columns: []
-    indexName: manifest
+    indexName: manifest_repository_id_media_type_id
     indexType: index
     operation: createIndex
-    table: manifest_repository_id_media_type_id
+    table: manifest
   - columns:
     - name: id
       nullable: false
@@ -66,30 +66,30 @@ spec:
     operation: createTable
     table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_blob_id
     indexType: index
     operation: createIndex
-    table: manifestblob_blob_id
+    table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestblob_manifest_id
+    table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_manifest_id_blob_id
     indexType: unique
     operation: createIndex
-    table: manifestblob_manifest_id_blob_id
+    table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_manifest_id_blob_index
     indexType: unique
     operation: createIndex
-    table: manifestblob_manifest_id_blob_index
+    table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_repository_id
     indexType: index
     operation: createIndex
-    table: manifestblob_repository_id
+    table: manifestblob
   - columns:
     - name: id
       nullable: false
@@ -102,25 +102,25 @@ spec:
     operation: createTable
     table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_label_id
     indexType: index
     operation: createIndex
-    table: manifestlabel_label_id
+    table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestlabel_manifest_id
+    table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_manifest_id_label_id
     indexType: unique
     operation: createIndex
-    table: manifestlabel_manifest_id_label_id
+    table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_repository_id
     indexType: index
     operation: createIndex
-    table: manifestlabel_repository_id
+    table: manifestlabel
   - columns:
     - name: id
       nullable: false
@@ -133,20 +133,20 @@ spec:
     operation: createTable
     table: manifestlegacyimage
   - columns: []
-    indexName: manifestlegacyimage
+    indexName: manifestlegacyimage_image_id
     indexType: index
     operation: createIndex
-    table: manifestlegacyimage_image_id
+    table: manifestlegacyimage
   - columns: []
-    indexName: manifestlegacyimage
+    indexName: manifestlegacyimage_manifest_id
     indexType: unique
     operation: createIndex
-    table: manifestlegacyimage_manifest_id
+    table: manifestlegacyimage
   - columns: []
-    indexName: manifestlegacyimage
+    indexName: manifestlegacyimage_repository_id
     indexType: index
     operation: createIndex
-    table: manifestlegacyimage_repository_id
+    table: manifestlegacyimage
   - columns:
     - name: id
       nullable: false
@@ -159,20 +159,20 @@ spec:
     operation: createTable
     table: tagmanifesttomanifest
   - columns: []
-    indexName: tagmanifesttomanifest
+    indexName: tagmanifesttomanifest_broken
     indexType: index
     operation: createIndex
-    table: tagmanifesttomanifest_broken
+    table: tagmanifesttomanifest
   - columns: []
-    indexName: tagmanifesttomanifest
+    indexName: tagmanifesttomanifest_manifest_id
     indexType: unique
     operation: createIndex
-    table: tagmanifesttomanifest_manifest_id
+    table: tagmanifesttomanifest
   - columns: []
-    indexName: tagmanifesttomanifest
+    indexName: tagmanifesttomanifest_tag_manifest_id
     indexType: unique
     operation: createIndex
-    table: tagmanifesttomanifest_tag_manifest_id
+    table: tagmanifesttomanifest
   - columns:
     - name: id
       nullable: false
@@ -191,32 +191,32 @@ spec:
     operation: createTable
     table: tagmanifestlabelmap
   - columns: []
-    indexName: tagmanifestlabelmap
+    indexName: tagmanifestlabelmap_broken_manifest
     indexType: index
     operation: createIndex
-    table: tagmanifestlabelmap_broken_manifest
+    table: tagmanifestlabelmap
   - columns: []
-    indexName: tagmanifestlabelmap
+    indexName: tagmanifestlabelmap_label_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabelmap_label_id
+    table: tagmanifestlabelmap
   - columns: []
-    indexName: tagmanifestlabelmap
+    indexName: tagmanifestlabelmap_manifest_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabelmap_manifest_id
+    table: tagmanifestlabelmap
   - columns: []
-    indexName: tagmanifestlabelmap
+    indexName: tagmanifestlabelmap_manifest_label_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabelmap_manifest_label_id
+    table: tagmanifestlabelmap
   - columns: []
-    indexName: tagmanifestlabelmap
+    indexName: tagmanifestlabelmap_tag_manifest_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabelmap_tag_manifest_id
+    table: tagmanifestlabelmap
   - columns: []
-    indexName: tagmanifestlabelmap
+    indexName: tagmanifestlabelmap_tag_manifest_label_id
     indexType: index
     operation: createIndex
-    table: tagmanifestlabelmap_tag_manifest_label_id
+    table: tagmanifestlabelmap

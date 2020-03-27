@@ -26,12 +26,12 @@ spec:
     operation: createTable
     table: repositorysearchscore
   - columns: []
-    indexName: repositorysearchscore
+    indexName: repositorysearchscore_repository_id
     indexType: unique
     operation: createIndex
-    table: repositorysearchscore_repository_id
+    table: repositorysearchscore
   - columns: []
-    indexName: repositorysearchscore
+    indexName: repositorysearchscore_score
     indexType: index
     operation: createIndex
-    table: repositorysearchscore_score
+    table: repositorysearchscore

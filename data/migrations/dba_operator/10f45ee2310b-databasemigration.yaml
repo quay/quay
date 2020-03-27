@@ -22,10 +22,10 @@ spec:
     operation: createTable
     table: tagkind
   - columns: []
-    indexName: tagkind
+    indexName: tagkind_name
     indexType: unique
     operation: createIndex
-    table: tagkind_name
+    table: tagkind
   - columns:
     - name: id
       nullable: false
@@ -38,40 +38,40 @@ spec:
     operation: createTable
     table: manifestchild
   - columns: []
-    indexName: manifestchild
+    indexName: manifestchild_child_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestchild_child_manifest_id
+    table: manifestchild
   - columns: []
-    indexName: manifestchild
+    indexName: manifestchild_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestchild_manifest_id
+    table: manifestchild
   - columns: []
-    indexName: manifestchild
+    indexName: manifestchild_manifest_id_child_manifest_id
     indexType: unique
     operation: createIndex
-    table: manifestchild_manifest_id_child_manifest_id
+    table: manifestchild
   - columns: []
-    indexName: manifestchild
+    indexName: manifestchild_repository_id
     indexType: index
     operation: createIndex
-    table: manifestchild_repository_id
+    table: manifestchild
   - columns: []
-    indexName: manifestchild
+    indexName: manifestchild_repository_id_child_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestchild_repository_id_child_manifest_id
+    table: manifestchild
   - columns: []
-    indexName: manifestchild
+    indexName: manifestchild_repository_id_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestchild_repository_id_manifest_id
+    table: manifestchild
   - columns: []
-    indexName: manifestchild
+    indexName: manifestchild_repository_id_manifest_id_child_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestchild_repository_id_manifest_id_child_manifest_id
+    table: manifestchild
   - columns:
     - name: id
       nullable: false
@@ -96,47 +96,47 @@ spec:
     operation: createTable
     table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_lifetime_end_ms
     indexType: index
     operation: createIndex
-    table: tag_lifetime_end_ms
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_linked_tag_id
     indexType: index
     operation: createIndex
-    table: tag_linked_tag_id
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_manifest_id
     indexType: index
     operation: createIndex
-    table: tag_manifest_id
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id
     indexType: index
     operation: createIndex
-    table: tag_repository_id
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_name
     indexType: index
     operation: createIndex
-    table: tag_repository_id_name
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_name_hidden
     indexType: index
     operation: createIndex
-    table: tag_repository_id_name_hidden
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_name_lifetime_end_ms
     indexType: unique
     operation: createIndex
-    table: tag_repository_id_name_lifetime_end_ms
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_name_tag_kind_id
     indexType: index
     operation: createIndex
-    table: tag_repository_id_name_tag_kind_id
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_tag_kind_id
     indexType: index
     operation: createIndex
-    table: tag_tag_kind_id
+    table: tag

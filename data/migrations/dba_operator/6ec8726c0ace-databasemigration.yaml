@@ -34,22 +34,22 @@ spec:
     operation: createTable
     table: logentry3
   - columns: []
-    indexName: logentry3
+    indexName: logentry3_account_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry3_account_id_datetime
+    table: logentry3
   - columns: []
-    indexName: logentry3
+    indexName: logentry3_datetime
     indexType: index
     operation: createIndex
-    table: logentry3_datetime
+    table: logentry3
   - columns: []
-    indexName: logentry3
+    indexName: logentry3_performer_id_datetime
     indexType: index
     operation: createIndex
-    table: logentry3_performer_id_datetime
+    table: logentry3
   - columns: []
-    indexName: logentry3
+    indexName: logentry3_repository_id_datetime_kind_id
     indexType: index
     operation: createIndex
-    table: logentry3_repository_id_datetime_kind_id
+    table: logentry3

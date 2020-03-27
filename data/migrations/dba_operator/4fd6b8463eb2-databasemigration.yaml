@@ -28,17 +28,17 @@ spec:
     operation: createTable
     table: deletedrepository
   - columns: []
-    indexName: deletedrepository
+    indexName: deletedrepository_original_name
     indexType: index
     operation: createIndex
-    table: deletedrepository_original_name
+    table: deletedrepository
   - columns: []
-    indexName: deletedrepository
+    indexName: deletedrepository_queue_id
     indexType: index
     operation: createIndex
-    table: deletedrepository_queue_id
+    table: deletedrepository
   - columns: []
-    indexName: deletedrepository
+    indexName: deletedrepository_repository_id
     indexType: unique
     operation: createIndex
-    table: deletedrepository_repository_id
+    table: deletedrepository

@@ -22,10 +22,10 @@ spec:
     operation: createTable
     table: tagkind
   - columns: []
-    indexName: tagkind
+    indexName: tagkind_name
     indexType: unique
     operation: createIndex
-    table: tagkind_name
+    table: tagkind
   - columns:
     - name: id
       nullable: false
@@ -34,10 +34,10 @@ spec:
     operation: createTable
     table: blobplacementlocation
   - columns: []
-    indexName: blobplacementlocation
+    indexName: blobplacementlocation_name
     indexType: unique
     operation: createIndex
-    table: blobplacementlocation_name
+    table: blobplacementlocation
   - columns:
     - name: id
       nullable: false
@@ -52,15 +52,15 @@ spec:
     operation: createTable
     table: blob
   - columns: []
-    indexName: blob
+    indexName: blob_digest
     indexType: unique
     operation: createIndex
-    table: blob_digest
+    table: blob
   - columns: []
-    indexName: blob
+    indexName: blob_media_type_id
     indexType: index
     operation: createIndex
-    table: blob_media_type_id
+    table: blob
   - columns:
     - name: id
       nullable: false
@@ -71,15 +71,15 @@ spec:
     operation: createTable
     table: blobplacementlocationpreference
   - columns: []
-    indexName: blobplacementlocationpreference
+    indexName: blobplacementlocationpreference_location_id
     indexType: index
     operation: createIndex
-    table: blobplacementlocationpreference_location_id
+    table: blobplacementlocationpreference
   - columns: []
-    indexName: blobplacementlocationpreference
+    indexName: blobplacementlocationpreference_user_id
     indexType: index
     operation: createIndex
-    table: blobplacementlocationpreference_user_id
+    table: blobplacementlocationpreference
   - columns:
     - name: id
       nullable: false
@@ -92,15 +92,15 @@ spec:
     operation: createTable
     table: manifest
   - columns: []
-    indexName: manifest
+    indexName: manifest_digest
     indexType: unique
     operation: createIndex
-    table: manifest_digest
+    table: manifest
   - columns: []
-    indexName: manifest
+    indexName: manifest_media_type_id
     indexType: index
     operation: createIndex
-    table: manifest_media_type_id
+    table: manifest
   - columns:
     - name: id
       nullable: false
@@ -115,15 +115,15 @@ spec:
     operation: createTable
     table: manifestlist
   - columns: []
-    indexName: manifestlist
+    indexName: manifestlist_digest
     indexType: unique
     operation: createIndex
-    table: manifestlist_digest
+    table: manifestlist
   - columns: []
-    indexName: manifestlist
+    indexName: manifestlist_media_type_id
     indexType: index
     operation: createIndex
-    table: manifestlist_media_type_id
+    table: manifestlist
   - columns:
     - name: id
       nullable: false
@@ -136,15 +136,15 @@ spec:
     operation: createTable
     table: bittorrentpieces
   - columns: []
-    indexName: bittorrentpieces
+    indexName: bittorrentpieces_blob_id
     indexType: index
     operation: createIndex
-    table: bittorrentpieces_blob_id
+    table: bittorrentpieces
   - columns: []
-    indexName: bittorrentpieces
+    indexName: bittorrentpieces_blob_id_piece_length
     indexType: unique
     operation: createIndex
-    table: bittorrentpieces_blob_id_piece_length
+    table: bittorrentpieces
   - columns:
     - name: id
       nullable: false
@@ -155,20 +155,20 @@ spec:
     operation: createTable
     table: blobplacement
   - columns: []
-    indexName: blobplacement
+    indexName: blobplacement_blob_id
     indexType: index
     operation: createIndex
-    table: blobplacement_blob_id
+    table: blobplacement
   - columns: []
-    indexName: blobplacement
+    indexName: blobplacement_blob_id_location_id
     indexType: unique
     operation: createIndex
-    table: blobplacement_blob_id_location_id
+    table: blobplacement
   - columns: []
-    indexName: blobplacement
+    indexName: blobplacement_location_id
     indexType: index
     operation: createIndex
-    table: blobplacement_location_id
+    table: blobplacement
   - columns:
     - name: id
       nullable: false
@@ -197,30 +197,30 @@ spec:
     operation: createTable
     table: blobuploading
   - columns: []
-    indexName: blobuploading
+    indexName: blobuploading_created
     indexType: index
     operation: createIndex
-    table: blobuploading_created
+    table: blobuploading
   - columns: []
-    indexName: blobuploading
+    indexName: blobuploading_location_id
     indexType: index
     operation: createIndex
-    table: blobuploading_location_id
+    table: blobuploading
   - columns: []
-    indexName: blobuploading
+    indexName: blobuploading_repository_id
     indexType: index
     operation: createIndex
-    table: blobuploading_repository_id
+    table: blobuploading
   - columns: []
-    indexName: blobuploading
+    indexName: blobuploading_repository_id_uuid
     indexType: unique
     operation: createIndex
-    table: blobuploading_repository_id_uuid
+    table: blobuploading
   - columns: []
-    indexName: blobuploading
+    indexName: blobuploading_uuid
     indexType: unique
     operation: createIndex
-    table: blobuploading_uuid
+    table: blobuploading
   - columns:
     - name: id
       nullable: false
@@ -241,45 +241,45 @@ spec:
     operation: createTable
     table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_blob_id
     indexType: index
     operation: createIndex
-    table: derivedimage_blob_id
+    table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_media_type_id
     indexType: index
     operation: createIndex
-    table: derivedimage_media_type_id
+    table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_signature_blob_id
     indexType: index
     operation: createIndex
-    table: derivedimage_signature_blob_id
+    table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_source_manifest_id
     indexType: index
     operation: createIndex
-    table: derivedimage_source_manifest_id
+    table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_source_manifest_id_blob_id
     indexType: unique
     operation: createIndex
-    table: derivedimage_source_manifest_id_blob_id
+    table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_source_manifest_id_media_type_id_uniqueness_hash
     indexType: unique
     operation: createIndex
-    table: derivedimage_source_manifest_id_media_type_id_uniqueness_hash
+    table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_uniqueness_hash
     indexType: unique
     operation: createIndex
-    table: derivedimage_uniqueness_hash
+    table: derivedimage
   - columns: []
-    indexName: derivedimage
+    indexName: derivedimage_uuid
     indexType: unique
     operation: createIndex
-    table: derivedimage_uuid
+    table: derivedimage
   - columns:
     - name: id
       nullable: false
@@ -290,20 +290,20 @@ spec:
     operation: createTable
     table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_blob_id
     indexType: index
     operation: createIndex
-    table: manifestblob_blob_id
+    table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestblob_manifest_id
+    table: manifestblob
   - columns: []
-    indexName: manifestblob
+    indexName: manifestblob_manifest_id_blob_id
     indexType: unique
     operation: createIndex
-    table: manifestblob_manifest_id_blob_id
+    table: manifestblob
   - columns:
     - name: id
       nullable: false
@@ -316,25 +316,25 @@ spec:
     operation: createTable
     table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_annotated_id
     indexType: index
     operation: createIndex
-    table: manifestlabel_annotated_id
+    table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_label_id
     indexType: index
     operation: createIndex
-    table: manifestlabel_label_id
+    table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_repository_id
     indexType: index
     operation: createIndex
-    table: manifestlabel_repository_id
+    table: manifestlabel
   - columns: []
-    indexName: manifestlabel
+    indexName: manifestlabel_repository_id_annotated_id_label_id
     indexType: unique
     operation: createIndex
-    table: manifestlabel_repository_id_annotated_id_label_id
+    table: manifestlabel
   - columns:
     - name: id
       nullable: false
@@ -349,25 +349,25 @@ spec:
     operation: createTable
     table: manifestlayer
   - columns: []
-    indexName: manifestlayer
+    indexName: manifestlayer_blob_id
     indexType: index
     operation: createIndex
-    table: manifestlayer_blob_id
+    table: manifestlayer
   - columns: []
-    indexName: manifestlayer
+    indexName: manifestlayer_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestlayer_manifest_id
+    table: manifestlayer
   - columns: []
-    indexName: manifestlayer
+    indexName: manifestlayer_manifest_id_manifest_index
     indexType: unique
     operation: createIndex
-    table: manifestlayer_manifest_id_manifest_index
+    table: manifestlayer
   - columns: []
-    indexName: manifestlayer
+    indexName: manifestlayer_manifest_index
     indexType: index
     operation: createIndex
-    table: manifestlayer_manifest_index
+    table: manifestlayer
   - columns:
     - name: id
       nullable: false
@@ -386,30 +386,30 @@ spec:
     operation: createTable
     table: manifestlistmanifest
   - columns: []
-    indexName: manifestlistmanifest
+    indexName: manifestlistmanifest_manifest_id
     indexType: index
     operation: createIndex
-    table: manifestlistmanifest_manifest_id
+    table: manifestlistmanifest
   - columns: []
-    indexName: manifestlistmanifest
+    indexName: manifestlistmanifest_manifest_list_id
     indexType: index
     operation: createIndex
-    table: manifestlistmanifest_manifest_list_id
+    table: manifestlistmanifest
   - columns: []
-    indexName: manifestlistmanifest
+    indexName: manifestlistmanifest_manifest_listid_os_arch_mtid
     indexType: index
     operation: createIndex
-    table: manifestlistmanifest_manifest_listid_os_arch_mtid
+    table: manifestlistmanifest
   - columns: []
-    indexName: manifestlistmanifest
+    indexName: manifestlistmanifest_manifest_listid_mtid
     indexType: index
     operation: createIndex
-    table: manifestlistmanifest_manifest_listid_mtid
+    table: manifestlistmanifest
   - columns: []
-    indexName: manifestlistmanifest
+    indexName: manifestlistmanifest_media_type_id
     indexType: index
     operation: createIndex
-    table: manifestlistmanifest_media_type_id
+    table: manifestlistmanifest
   - columns:
     - name: id
       nullable: false
@@ -436,45 +436,45 @@ spec:
     operation: createTable
     table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_lifetime_end
     indexType: index
     operation: createIndex
-    table: tag_lifetime_end
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_linked_tag_id
     indexType: index
     operation: createIndex
-    table: tag_linked_tag_id
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_manifest_list_id
     indexType: index
     operation: createIndex
-    table: tag_manifest_list_id
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id
     indexType: index
     operation: createIndex
-    table: tag_repository_id
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_name_hidden
     indexType: index
     operation: createIndex
-    table: tag_repository_id_name_hidden
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_name_lifetime_end
     indexType: unique
     operation: createIndex
-    table: tag_repository_id_name_lifetime_end
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_repository_id_name
     indexType: index
     operation: createIndex
-    table: tag_repository_id_name
+    table: tag
   - columns: []
-    indexName: tag
+    indexName: tag_tag_kind_id
     indexType: index
     operation: createIndex
-    table: tag_tag_kind_id
+    table: tag
   - columns:
     - name: id
       nullable: false
@@ -489,15 +489,15 @@ spec:
     operation: createTable
     table: manifestlayerdockerv1
   - columns: []
-    indexName: manifestlayerdockerv1
+    indexName: manifestlayerdockerv1_image_id
     indexType: index
     operation: createIndex
-    table: manifestlayerdockerv1_image_id
+    table: manifestlayerdockerv1
   - columns: []
-    indexName: manifestlayerdockerv1
+    indexName: manifestlayerdockerv1_manifest_layer_id
     indexType: index
     operation: createIndex
-    table: manifestlayerdockerv1_manifest_layer_id
+    table: manifestlayerdockerv1
   - columns:
     - name: id
       nullable: false
@@ -510,7 +510,7 @@ spec:
     operation: createTable
     table: manifestlayerscan
   - columns: []
-    indexName: manifestlayerscan
+    indexName: manifestlayerscan_layer_id
     indexType: unique
     operation: createIndex
-    table: manifestlayerscan_layer_id
+    table: manifestlayerscan

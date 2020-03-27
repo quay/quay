@@ -22,10 +22,10 @@ spec:
     operation: createTable
     table: disablereason
   - columns: []
-    indexName: disablereason
+    indexName: disablereason_name
     indexType: unique
     operation: createIndex
-    table: disablereason_name
+    table: disablereason
   - columns:
     - name: disabled_reason_id
       nullable: true
@@ -37,7 +37,7 @@ spec:
     operation: addColumn
     table: !!python/unicode 'repositorybuildtrigger'
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_disabled_reason_id
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_disabled_reason_id
+    table: repositorybuildtrigger

@@ -22,10 +22,10 @@ spec:
     operation: createTable
     table: apprblobplacementlocation
   - columns: []
-    indexName: apprblobplacementlocation
+    indexName: apprblobplacementlocation_name
     indexType: unique
     operation: createIndex
-    table: apprblobplacementlocation_name
+    table: apprblobplacementlocation
   - columns:
     - name: id
       nullable: false
@@ -34,10 +34,10 @@ spec:
     operation: createTable
     table: apprtagkind
   - columns: []
-    indexName: apprtagkind
+    indexName: apprtagkind_name
     indexType: unique
     operation: createIndex
-    table: apprtagkind_name
+    table: apprtagkind
   - columns:
     - name: id
       nullable: false
@@ -52,15 +52,15 @@ spec:
     operation: createTable
     table: apprblob
   - columns: []
-    indexName: apprblob
+    indexName: apprblob_digest
     indexType: unique
     operation: createIndex
-    table: apprblob_digest
+    table: apprblob
   - columns: []
-    indexName: apprblob
+    indexName: apprblob_media_type_id
     indexType: index
     operation: createIndex
-    table: apprblob_media_type_id
+    table: apprblob
   - columns:
     - name: id
       nullable: false
@@ -73,15 +73,15 @@ spec:
     operation: createTable
     table: apprmanifest
   - columns: []
-    indexName: apprmanifest
+    indexName: apprmanifest_digest
     indexType: unique
     operation: createIndex
-    table: apprmanifest_digest
+    table: apprmanifest
   - columns: []
-    indexName: apprmanifest
+    indexName: apprmanifest_media_type_id
     indexType: index
     operation: createIndex
-    table: apprmanifest_media_type_id
+    table: apprmanifest
   - columns:
     - name: id
       nullable: false
@@ -96,15 +96,15 @@ spec:
     operation: createTable
     table: apprmanifestlist
   - columns: []
-    indexName: apprmanifestlist
+    indexName: apprmanifestlist_digest
     indexType: unique
     operation: createIndex
-    table: apprmanifestlist_digest
+    table: apprmanifestlist
   - columns: []
-    indexName: apprmanifestlist
+    indexName: apprmanifestlist_media_type_id
     indexType: index
     operation: createIndex
-    table: apprmanifestlist_media_type_id
+    table: apprmanifestlist
   - columns:
     - name: id
       nullable: false
@@ -115,20 +115,20 @@ spec:
     operation: createTable
     table: apprblobplacement
   - columns: []
-    indexName: apprblobplacement
+    indexName: apprblobplacement_blob_id
     indexType: index
     operation: createIndex
-    table: apprblobplacement_blob_id
+    table: apprblobplacement
   - columns: []
-    indexName: apprblobplacement
+    indexName: apprblobplacement_blob_id_location_id
     indexType: unique
     operation: createIndex
-    table: apprblobplacement_blob_id_location_id
+    table: apprblobplacement
   - columns: []
-    indexName: apprblobplacement
+    indexName: apprblobplacement_location_id
     indexType: index
     operation: createIndex
-    table: apprblobplacement_location_id
+    table: apprblobplacement
   - columns:
     - name: id
       nullable: false
@@ -139,20 +139,20 @@ spec:
     operation: createTable
     table: apprmanifestblob
   - columns: []
-    indexName: apprmanifestblob
+    indexName: apprmanifestblob_blob_id
     indexType: index
     operation: createIndex
-    table: apprmanifestblob_blob_id
+    table: apprmanifestblob
   - columns: []
-    indexName: apprmanifestblob
+    indexName: apprmanifestblob_manifest_id
     indexType: index
     operation: createIndex
-    table: apprmanifestblob_manifest_id
+    table: apprmanifestblob
   - columns: []
-    indexName: apprmanifestblob
+    indexName: apprmanifestblob_manifest_id_blob_id
     indexType: unique
     operation: createIndex
-    table: apprmanifestblob_manifest_id_blob_id
+    table: apprmanifestblob
   - columns:
     - name: id
       nullable: false
@@ -171,30 +171,30 @@ spec:
     operation: createTable
     table: apprmanifestlistmanifest
   - columns: []
-    indexName: apprmanifestlistmanifest
+    indexName: apprmanifestlistmanifest_manifest_id
     indexType: index
     operation: createIndex
-    table: apprmanifestlistmanifest_manifest_id
+    table: apprmanifestlistmanifest
   - columns: []
-    indexName: apprmanifestlistmanifest
+    indexName: apprmanifestlistmanifest_manifest_list_id
     indexType: index
     operation: createIndex
-    table: apprmanifestlistmanifest_manifest_list_id
+    table: apprmanifestlistmanifest
   - columns: []
-    indexName: apprmanifestlistmanifest
+    indexName: apprmanifestlistmanifest_manifest_list_id_media_type_id
     indexType: index
     operation: createIndex
-    table: apprmanifestlistmanifest_manifest_list_id_media_type_id
+    table: apprmanifestlistmanifest
   - columns: []
-    indexName: apprmanifestlistmanifest
+    indexName: apprmanifestlistmanifest_manifest_list_id_operating_system_arch
     indexType: index
     operation: createIndex
-    table: apprmanifestlistmanifest_manifest_list_id_operating_system_arch
+    table: apprmanifestlistmanifest
   - columns: []
-    indexName: apprmanifestlistmanifest
+    indexName: apprmanifestlistmanifest_media_type_id
     indexType: index
     operation: createIndex
-    table: apprmanifestlistmanifest_media_type_id
+    table: apprmanifestlistmanifest
   - columns:
     - name: id
       nullable: false
@@ -221,42 +221,42 @@ spec:
     operation: createTable
     table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_lifetime_end
     indexType: index
     operation: createIndex
-    table: apprtag_lifetime_end
+    table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_linked_tag_id
     indexType: index
     operation: createIndex
-    table: apprtag_linked_tag_id
+    table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_manifest_list_id
     indexType: index
     operation: createIndex
-    table: apprtag_manifest_list_id
+    table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_repository_id
     indexType: index
     operation: createIndex
-    table: apprtag_repository_id
+    table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_repository_id_name
     indexType: index
     operation: createIndex
-    table: apprtag_repository_id_name
+    table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_repository_id_name_hidden
     indexType: index
     operation: createIndex
-    table: apprtag_repository_id_name_hidden
+    table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_repository_id_name_lifetime_end
     indexType: unique
     operation: createIndex
-    table: apprtag_repository_id_name_lifetime_end
+    table: apprtag
   - columns: []
-    indexName: apprtag
+    indexName: apprtag_tag_kind_id
     indexType: index
     operation: createIndex
-    table: apprtag_tag_kind_id
+    table: apprtag
