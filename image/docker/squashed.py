@@ -122,15 +122,15 @@ class SquashedDockerImageFormatter(TarImageFormatter):
             to_yield = estimated_file_size - yielded_size
             while to_yield > 0:
                 yielded = min(to_yield, GZIP_BUFFER_SIZE)
-                yield "\0" * yielded
+                yield b"\0" * yielded
                 to_yield -= yielded
 
         # Yield any file padding to 512 bytes that is necessary.
         yield self.tar_file_padding(estimated_file_size)
 
         # Last two records are empty in tar spec.
-        yield "\0" * 512
-        yield "\0" * 512
+        yield b"\0" * 512
+        yield b"\0" * 512
 
     @staticmethod
     def _build_layer_json(manifest, synthetic_image_id):

@@ -140,7 +140,6 @@ class RepositoryList(ApiResource):
 
             # Verify that the repository name is valid.
             if not REPOSITORY_NAME_REGEX.match(repository_name):
-                print("TEST INVALID REPO NAME:", repository_name)
                 raise InvalidRequest("Invalid repository name")
 
             kind = req.get("repo_kind", "image") or "image"

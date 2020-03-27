@@ -20,8 +20,8 @@ def basic_images():
     Returns basic images for push and pull testing.
     """
     # Note: order is from base layer down to leaf.
-    parent_bytes = layer_bytes_for_contents("parent contents")
-    image_bytes = layer_bytes_for_contents("some contents")
+    parent_bytes = layer_bytes_for_contents(b"parent contents")
+    image_bytes = layer_bytes_for_contents(b"some contents")
     return [
         Image(id="parentid", bytes=parent_bytes, parent_id=None),
         Image(id="someid", bytes=image_bytes, parent_id="parentid"),
@@ -34,8 +34,8 @@ def unicode_images():
     Returns basic images for push and pull testing that contain unicode in the image metadata.
     """
     # Note: order is from base layer down to leaf.
-    parent_bytes = layer_bytes_for_contents("parent contents")
-    image_bytes = layer_bytes_for_contents("some contents")
+    parent_bytes = layer_bytes_for_contents(b"parent contents")
+    image_bytes = layer_bytes_for_contents(b"some contents")
     return [
         Image(id="parentid", bytes=parent_bytes, parent_id=None),
         Image(
@@ -53,8 +53,8 @@ def different_images():
     Returns different basic images for push and pull testing.
     """
     # Note: order is from base layer down to leaf.
-    parent_bytes = layer_bytes_for_contents("different parent contents")
-    image_bytes = layer_bytes_for_contents("some different contents")
+    parent_bytes = layer_bytes_for_contents(b"different parent contents")
+    image_bytes = layer_bytes_for_contents(b"some different contents")
     return [
         Image(id="anotherparentid", bytes=parent_bytes, parent_id=None),
         Image(id="anothersomeid", bytes=image_bytes, parent_id="anotherparentid"),
@@ -67,8 +67,8 @@ def sized_images():
     Returns basic images (with sizes) for push and pull testing.
     """
     # Note: order is from base layer down to leaf.
-    parent_bytes = layer_bytes_for_contents("parent contents", mode="")
-    image_bytes = layer_bytes_for_contents("some contents", mode="")
+    parent_bytes = layer_bytes_for_contents(b"parent contents", mode="")
+    image_bytes = layer_bytes_for_contents(b"some contents", mode="")
     return [
         Image(
             id="parentid",
@@ -95,23 +95,25 @@ def multi_layer_images():
     """
     # Note: order is from base layer down to leaf.
     layer1_bytes = layer_bytes_for_contents(
-        "layer 1 contents", mode="", other_files={"file1": "from-layer-1",}
+        b"layer 1 contents", mode="", other_files={"file1": b"from-layer-1",}
     )
 
     layer2_bytes = layer_bytes_for_contents(
-        "layer 2 contents", mode="", other_files={"file2": "from-layer-2",}
+        b"layer 2 contents", mode="", other_files={"file2": b"from-layer-2",}
     )
 
     layer3_bytes = layer_bytes_for_contents(
-        "layer 3 contents", mode="", other_files={"file1": "from-layer-3", "file3": "from-layer-3",}
+        b"layer 3 contents",
+        mode="",
+        other_files={"file1": b"from-layer-3", "file3": b"from-layer-3",},
     )
 
     layer4_bytes = layer_bytes_for_contents(
-        "layer 4 contents", mode="", other_files={"file3": "from-layer-4",}
+        b"layer 4 contents", mode="", other_files={"file3": b"from-layer-4",}
     )
 
     layer5_bytes = layer_bytes_for_contents(
-        "layer 5 contents", mode="", other_files={"file4": "from-layer-5",}
+        b"layer 5 contents", mode="", other_files={"file4": b"from-layer-5",}
     )
 
     return [
@@ -159,9 +161,9 @@ def remote_images():
     Returns images with at least one remote layer for push and pull testing.
     """
     # Note: order is from base layer down to leaf.
-    remote_bytes = layer_bytes_for_contents("remote contents")
-    parent_bytes = layer_bytes_for_contents("parent contents")
-    image_bytes = layer_bytes_for_contents("some contents")
+    remote_bytes = layer_bytes_for_contents(b"remote contents")
+    parent_bytes = layer_bytes_for_contents(b"parent contents")
+    image_bytes = layer_bytes_for_contents(b"some contents")
     return [
         Image(id="remoteid", bytes=remote_bytes, parent_id=None, urls=["http://some/url"]),
         Image(id="parentid", bytes=parent_bytes, parent_id="remoteid"),
@@ -175,10 +177,10 @@ def images_with_empty_layer():
     Returns images for push and pull testing that contain an empty layer.
     """
     # Note: order is from base layer down to leaf.
-    parent_bytes = layer_bytes_for_contents("parent contents")
-    empty_bytes = layer_bytes_for_contents("", empty=True)
-    image_bytes = layer_bytes_for_contents("some contents")
-    middle_bytes = layer_bytes_for_contents("middle")
+    parent_bytes = layer_bytes_for_contents(b"parent contents")
+    empty_bytes = layer_bytes_for_contents(b"", empty=True)
+    image_bytes = layer_bytes_for_contents(b"some contents")
+    middle_bytes = layer_bytes_for_contents(b"middle")
 
     return [
         Image(id="parentid", bytes=parent_bytes, parent_id=None),
@@ -195,8 +197,8 @@ def unicode_emoji_images():
     Returns basic images for push and pull testing that contain unicode in the image metadata.
     """
     # Note: order is from base layer down to leaf.
-    parent_bytes = layer_bytes_for_contents("parent contents")
-    image_bytes = layer_bytes_for_contents("some contents")
+    parent_bytes = layer_bytes_for_contents(b"parent contents")
+    image_bytes = layer_bytes_for_contents(b"some contents")
     return [
         Image(id="parentid", bytes=parent_bytes, parent_id=None),
         Image(
@@ -291,4 +293,4 @@ def loginer(request, jwk):
 def random_layer_data():
     size = 4096
     contents = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(size))
-    return layer_bytes_for_contents(contents)
+    return layer_bytes_for_contents(contents.encode("ascii"))

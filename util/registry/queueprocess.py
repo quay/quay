@@ -31,7 +31,7 @@ class QueueProcess(object):
 
         Any queues added will have the data produced appended.
         """
-        queue = Queue(self._max_size / self._chunk_size)
+        queue = Queue(self._max_size // self._chunk_size)
         self._queues.append(queue)
         return queue
 

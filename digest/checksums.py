@@ -64,7 +64,7 @@ def compute_tarsum(fp, json_data):
             hashes.append(h)
         hashes.sort()
     except tarfile.ReadError as e:
-        if e.message != "empty file":
+        if str(e) != "empty file":
             # NOTE(samalba): ignore empty tarfiles but still let the tarsum
             # compute with json data
             raise
@@ -78,7 +78,7 @@ def compute_tarsum(fp, json_data):
 
 
 def simple_checksum_handler(json_data):
-    h = hashlib.sha256(json_data.encode("utf8") + "\n")
+    h = hashlib.sha256(json_data.encode("utf8") + b"\n")
 
     def fn(buf):
         h.update(buf)

@@ -824,7 +824,7 @@ class ExternalLoginInformation(ApiResource):
             return {"auth_url": auth_url}
         except DiscoveryFailureException as dfe:
             logger.exception("Could not discovery OAuth endpoint information")
-            raise DownstreamIssue(dfe.message)
+            raise DownstreamIssue(str(dfe))
 
 
 @resource("/v1/detachexternal/<service_id>")
