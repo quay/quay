@@ -40,7 +40,7 @@ class AppCImageFormatter(TarImageFormatter):
         aci_manifest = json.dumps(
             DockerV1ToACIManifestTranslator.build_manifest(tag, parsed_manifest, synthetic_image_id)
         )
-        yield self.tar_file("manifest", aci_manifest, mtime=image_mtime)
+        yield self.tar_file("manifest", aci_manifest.encode("utf-8"), mtime=image_mtime)
 
         # Yield the merged layer dtaa.
         yield self.tar_folder("rootfs", mtime=image_mtime)

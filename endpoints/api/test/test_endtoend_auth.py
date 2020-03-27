@@ -28,8 +28,6 @@ def requires_email(request):
 
 
 def test_entity_search(auth_engine, requires_email, client):
-    print("TEST:", type(client))
-
     with auth_engine(requires_email=requires_email) as auth:
         with patch("endpoints.api.search.authentication", auth):
             # Try an unknown prefix.

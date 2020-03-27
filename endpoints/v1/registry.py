@@ -421,7 +421,8 @@ def put_image_json(namespace, repository, image_id):
     logger.debug("Parsing image JSON")
     try:
         uploaded_metadata = request.data
-        data = json.loads(uploaded_metadata.decode("utf8"))
+        uploaded_metadata_string = uploaded_metadata.decode("utf-8")
+        data = json.loads(uploaded_metadata_string)
     except ValueError:
         pass
 
@@ -455,7 +456,7 @@ def put_image_json(namespace, repository, image_id):
     username = get_authenticated_user() and get_authenticated_user().username
     layer = builder.start_layer(
         image_id,
-        uploaded_metadata,
+        uploaded_metadata_string,
         location_pref,
         username,
         app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"],
