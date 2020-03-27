@@ -1,6 +1,6 @@
 import json
 
-from io import StringIO
+from io import BytesIO
 from enum import Enum, unique
 
 from digest.checksums import compute_simple, compute_tarsum
@@ -238,6 +238,7 @@ class V1Protocol(RegistryProtocol):
                 image_json_data["created"] = image.created
 
             image_json = json.dumps(image_json_data)
+
             response = self.conduct(
                 session,
                 "PUT",
@@ -250,7 +251,7 @@ class V1Protocol(RegistryProtocol):
                 return
 
             # PUT /v1/images/{imageID}/checksum (old style)
-            old_checksum = compute_tarsum(StringIO(image.bytes), image_json)
+            old_checksum = compute_tarsum(BytesIO(image.bytes), image_json)
             checksum_headers = {"X-Docker-Checksum": old_checksum}
             checksum_headers.update(headers)
 
@@ -263,12 +264,12 @@ class V1Protocol(RegistryProtocol):
                 session,
                 "PUT",
                 "/v1/images/%s/layer" % image.id,
-                data=StringIO(image.bytes),
+                data=BytesIO(image.bytes),
                 headers=headers,
             )
 
             # PUT /v1/images/{imageID}/checksum (new style)
-            checksum = compute_simple(StringIO(image.bytes), image_json)
+            checksum = compute_simple(BytesIO(image.bytes), image_json)
             checksum_headers = {"X-Docker-Checksum-Payload": checksum}
             checksum_headers.update(headers)
 

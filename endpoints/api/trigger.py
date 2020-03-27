@@ -389,7 +389,7 @@ class BuildTriggerAnalyze(RepositoryParamResource):
         except TriggerException as rre:
             return {
                 "status": "error",
-                "message": "Could not analyze the repository: %s" % rre.message,
+                "message": "Could not analyze the repository: %s" % rre,
             }
         except NotImplementedError:
             return {
@@ -452,7 +452,7 @@ class ActivateBuildTrigger(RepositoryParamResource):
             prepared = handler.manual_start(run_parameters=run_parameters)
             build_request = start_build(repo, prepared, pull_robot_name=pull_robot_name)
         except TriggerException as tse:
-            raise InvalidRequest(tse.message)
+            raise InvalidRequest(str(tse)) from tse
         except MaximumBuildsQueuedException:
             abort(429, message="Maximum queued build rate exceeded.")
         except BuildTriggerDisabledException:
@@ -567,7 +567,7 @@ class BuildTriggerSources(RepositoryParamResource):
             try:
                 return {"sources": handler.list_build_sources_for_namespace(namespace)}
             except TriggerException as rre:
-                raise InvalidRequest(rre.message)
+                raise InvalidRequest(str(rre)) from rre
         else:
             raise Unauthorized()
 
@@ -597,6 +597,6 @@ class BuildTriggerSourceNamespaces(RepositoryParamResource):
             try:
                 return {"namespaces": handler.list_build_source_namespaces()}
             except TriggerException as rre:
-                raise InvalidRequest(rre.message)
+                raise InvalidRequest(str(rre)) from rre
         else:
             raise Unauthorized()
