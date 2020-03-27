@@ -87,9 +87,10 @@ class V2Protocol(RegistryProtocol):
             Failures.MIRROR_MISCONFIGURED: 401,
             Failures.MIRROR_ROBOT_MISSING: 401,
             Failures.READONLY_REGISTRY: 405,
+            Failures.INVALID_MANIFEST: 400,
         },
         V2ProtocolSteps.PUT_MANIFEST_LIST: {
-            Failures.INVALID_MANIFEST: 400,
+            Failures.INVALID_MANIFEST_IN_LIST: 400,
             Failures.READ_ONLY: 401,
             Failures.MIRROR_ONLY: 401,
             Failures.MIRROR_MISCONFIGURED: 401,
@@ -359,11 +360,21 @@ class V2Protocol(RegistryProtocol):
             "history": [history_for_image(image) for image in images],
         }
 
+        if options.with_broken_manifest_config:
+            # NOTE: We are missing the history entry on purpose.
+            config = {
+                "os": "linux",
+                "rootfs": {"type": "layers", "diff_ids": []},
+            }
+
         if images and images[-1].config:
             config["config"] = images[-1].config
 
         config_json = json.dumps(config, ensure_ascii=options.ensure_ascii)
-        schema2_config = DockerSchema2Config(Bytes.for_string_or_unicode(config_json))
+        schema2_config = DockerSchema2Config(
+            Bytes.for_string_or_unicode(config_json),
+            skip_validation_for_testing=options.with_broken_manifest_config,
+        )
         builder.set_config(schema2_config)
 
         blobs[schema2_config.digest] = schema2_config.bytes.as_encoded_str()
