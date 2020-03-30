@@ -15,7 +15,7 @@ from data.database import (
 from data.model import BlobDoesNotExist
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
 from data.model.oci.tag import filter_to_alive_tags, create_temporary_tag_if_necessary
-from data.model.oci.label import create_manifest_label
+from data.model.oci.label import batch_create_manifest_labels
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
@@ -268,6 +268,26 @@ def _create_manifest(
             assert shared_blob.content_checksum == EMPTY_LAYER_BLOB_DIGEST
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 
+    # Determine the labels to create.
+    labels = manifest_interface_instance.get_manifest_labels(retriever)
+    labels_to_create = []
+    if labels:
+        for key, value in labels.iteritems():
+            # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
+            # such `labels`, as they don't really mean anything.
+            if not key:
+                continue
+
+            media_type = "application/json" if is_json(value) else "text/plain"
+            labels_to_create.append(
+                {
+                    "key": key,
+                    "value": value,
+                    "media_type_name": media_type,
+                    "source_type_name": "manifest",
+                }
+            )
+
     # Determine and populate the legacy image if necessary. Manifest lists will not have a legacy
     # image.
     legacy_image = None
@@ -351,19 +371,11 @@ def _create_manifest(
         if not for_tagging:
             create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
 
-    # Define the labels for the manifest (if any).
-    # TODO: Once the old data model is gone, turn this into a batch operation and make the label
-    # application to the manifest occur under the transaction.
-    labels = manifest_interface_instance.get_manifest_labels(retriever)
-    if labels:
-        for key, value in labels.iteritems():
-            # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
-            # such `labels`, as they don't really mean anything.
-            if not key:
-                continue
-
-            media_type = "application/json" if is_json(value) else "text/plain"
-            create_manifest_label(manifest, key, value, "manifest", media_type)
+    # Add the labels to the manifest.
+    # NOTE: We keep this outside the transaction due to the number of queries involved. This does
+    # mean there is a (very) slight chance that we save a manifest without its labels.
+    if labels_to_create:
+        batch_create_manifest_labels(manifest.id, labels_to_create)
 
     # Return the dictionary of labels to apply (i.e. those labels that cause an action to be taken
     # on the manifest or its resulting tags). We only return those labels either defined on

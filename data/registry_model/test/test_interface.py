@@ -184,21 +184,6 @@ def test_manifest_label_handlers(registry_model):
     assert updated_tag.lifetime_end_ts == (updated_tag.lifetime_start_ts + (60 * 60 * 2))
 
 
-def test_batch_labels(registry_model):
-    repo = model.repository.get_repository("devtable", "history")
-    repository_ref = RepositoryReference.for_repo_obj(repo)
-    found_tag = registry_model.find_matching_tag(repository_ref, ["latest"])
-    found_manifest = registry_model.get_manifest_for_tag(found_tag)
-
-    with registry_model.batch_create_manifest_labels(found_manifest) as add_label:
-        add_label("foo", "1", "api")
-        add_label("bar", "2", "api")
-        add_label("baz", "3", "api")
-
-    # Ensure we can look them up.
-    assert len(registry_model.list_manifest_labels(found_manifest)) == 3
-
-
 @pytest.mark.parametrize(
     "repo_namespace, repo_name",
     [

@@ -215,38 +215,6 @@ class OCIModel(RegistryDataInterface):
 
         return Label.for_label(label)
 
-    @contextmanager
-    def batch_create_manifest_labels(self, manifest):
-        """
-        Returns a context manager for batch creation of labels on a manifest.
-
-        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending on the validation
-        errors.
-        """
-        labels_to_add = []
-
-        def add_label(key, value, source_type_name, media_type_name=None):
-            labels_to_add.append(
-                dict(
-                    key=key,
-                    value=value,
-                    source_type_name=source_type_name,
-                    media_type_name=media_type_name,
-                )
-            )
-
-        yield add_label
-
-        # TODO: make this truly batch once we've fully transitioned to V2_2 and no longer need
-        # the mapping tables.
-        for label_data in labels_to_add:
-            with db_transaction():
-                # Create the label itself.
-                oci.label.create_manifest_label(manifest._db_id, **label_data)
-
-                # Apply any changes to the manifest that the label prescribes.
-                apply_label_to_manifest(label_data, manifest, self)
-
     def list_manifest_labels(self, manifest, key_prefix=None):
         """
         Returns all labels found on the manifest.

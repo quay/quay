@@ -123,15 +123,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def batch_create_manifest_labels(self, manifest):
-        """
-        Returns a context manager for batch creation of labels on a manifest.
-
-        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending on the validation
-        errors.
-        """
-
-    @abstractmethod
     def list_manifest_labels(self, manifest, key_prefix=None):
         """
         Returns all labels found on the manifest.
