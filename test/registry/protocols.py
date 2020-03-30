@@ -65,6 +65,7 @@ class Failures(Enum):
     MISSING_TAG = "missing-tag"
     INVALID_TAG = "invalid-tag"
     INVALID_MANIFEST = "invalid-manifest"
+    INVALID_MANIFEST_IN_LIST = "invalid-manifest-in-list"
     INVALID_IMAGES = "invalid-images"
     UNSUPPORTED_CONTENT_TYPE = "unsupported-content-type"
     INVALID_BLOB = "invalid-blob"
@@ -93,6 +94,7 @@ class ProtocolOptions(object):
         self.skip_blob_push_checks = False
         self.ensure_ascii = True
         self.attempt_pull_without_token = False
+        self.with_broken_manifest_config = False
 
 
 @add_metaclass(ABCMeta)

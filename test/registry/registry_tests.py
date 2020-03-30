@@ -2507,7 +2507,7 @@ def test_push_manifest_list_missing_manifest(
         blobs,
         credentials=credentials,
         options=options,
-        expected_failure=Failures.INVALID_MANIFEST,
+        expected_failure=Failures.INVALID_MANIFEST_IN_LIST,
     )
 
 
@@ -3050,7 +3050,7 @@ def test_attempt_push_mismatched_manifest(
         blobs,
         credentials=credentials,
         options=options,
-        expected_failure=Failures.INVALID_MANIFEST,
+        expected_failure=Failures.INVALID_MANIFEST_IN_LIST,
     )
 
 
@@ -3284,3 +3284,26 @@ def test_readonly_push_pull(
             basic_images,
             credentials=credentials,
         )
+
+
+def test_malformed_schema2_config(v22_protocol, basic_images, liveserver_session, app_reloader):
+    """
+    Test: Attempt to push a manifest pointing to a config JSON that is missing a required
+    key.
+    """
+    options = ProtocolOptions()
+    options.with_broken_manifest_config = True
+
+    credentials = ("devtable", "password")
+
+    # Attempt to push a new repository. Should raise a 400.
+    v22_protocol.push(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "latest",
+        basic_images,
+        credentials=credentials,
+        options=options,
+        expected_failure=Failures.INVALID_MANIFEST,
+    )
