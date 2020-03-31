@@ -72,7 +72,7 @@ angular.module('quay').directive('manifestFeatureView', function () {
         $scope.loading = true;
         VulnerabilityService.loadManifestVulnerabilities($scope.repository, $scope.manifest.digest, function(resp) {
           $scope.securityStatus = resp.status;
-          $scope.featuresInfo = VulnerabilityService.buildFeaturesInfo($scope.manifest.image, resp);
+          $scope.featuresInfo = VulnerabilityService.buildFeaturesInfo($scope.manifest, resp);
 
           buildOrderedFeatures();
           buildChart();
