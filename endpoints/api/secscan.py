@@ -21,6 +21,7 @@ from endpoints.api import (
     parse_args,
     query_param,
     disallow_for_app_repositories,
+    deprecated,
 )
 from endpoints.exception import NotFound, DownstreamIssue
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
@@ -86,6 +87,7 @@ class RepositoryImageSecurity(RepositoryParamResource):
     @process_basic_auth_no_pass
     @require_repo_read
     @nickname("getRepoImageSecurity")
+    @deprecated()
     @disallow_for_app_repositories
     @parse_args()
     @query_param(
