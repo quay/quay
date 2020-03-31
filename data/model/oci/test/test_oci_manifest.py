@@ -175,7 +175,6 @@ def test_get_or_create_manifest(schema_version, initialized_db):
     assert created.media_type.name == sample_manifest_instance.media_type
     assert created.digest == sample_manifest_instance.digest
     assert created.manifest_bytes == sample_manifest_instance.bytes.as_encoded_str()
-    assert created_manifest.labels_to_apply == expected_labels
 
     # Verify it has a temporary tag pointing to it.
     assert Tag.get(manifest=created, hidden=True).lifetime_end_ms

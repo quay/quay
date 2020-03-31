@@ -27,7 +27,6 @@ from data.model.oci.tag import (
     delete_tag,
     delete_tags_for_manifest,
     change_tag_expiration,
-    set_tag_expiration_for_manifest,
     retarget_tag,
     create_temporary_tag_if_necessary,
     lookup_alive_tags_shallow,
@@ -290,17 +289,6 @@ def test_change_tag_expiration(timedelta, expected_timedelta, initialized_db):
 
     updated_tag = Tag.get(id=tag.id)
     assert updated_tag.lifetime_end_ms is None
-
-
-def test_set_tag_expiration_for_manifest(initialized_db):
-    tag = Tag.get()
-    manifest = tag.manifest
-    assert manifest is not None
-
-    set_tag_expiration_for_manifest(manifest, datetime.utcnow() + timedelta(weeks=1))
-
-    updated_tag = Tag.get(id=tag.id)
-    assert updated_tag.lifetime_end_ms is not None
 
 
 def test_create_temporary_tag_if_necessary(initialized_db):

@@ -167,23 +167,6 @@ def test_manifest_labels(registry_model):
     assert created not in registry_model.list_manifest_labels(found_manifest)
 
 
-def test_manifest_label_handlers(registry_model):
-    repo = model.repository.get_repository("devtable", "simple")
-    repository_ref = RepositoryReference.for_repo_obj(repo)
-    found_tag = registry_model.get_repo_tag(repository_ref, "latest")
-    found_manifest = registry_model.get_manifest_for_tag(found_tag)
-
-    # Ensure the tag has no expiration.
-    assert found_tag.lifetime_end_ts is None
-
-    # Create a new label with an expires-after.
-    registry_model.create_manifest_label(found_manifest, "quay.expires-after", "2h", "api")
-
-    # Ensure the tag now has an expiration.
-    updated_tag = registry_model.get_repo_tag(repository_ref, "latest")
-    assert updated_tag.lifetime_end_ts == (updated_tag.lifetime_start_ts + (60 * 60 * 2))
-
-
 @pytest.mark.parametrize(
     "repo_namespace, repo_name",
     [

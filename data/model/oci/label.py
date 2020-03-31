@@ -22,6 +22,27 @@ from util.validation import is_json
 logger = logging.getLogger(__name__)
 
 
+def lookup_manifest_labels(manifest_id, keys):
+    """
+    Returns all labels found on the given manifest with a key in the key set.
+    """
+    if not keys:
+        return []
+
+    query = (
+        Label.select(Label, MediaType)
+        .join(MediaType)
+        .switch(Label)
+        .join(LabelSourceType)
+        .switch(Label)
+        .join(ManifestLabel)
+        .where(ManifestLabel.manifest == manifest_id)
+        .where(Label.key << list(keys))
+    )
+
+    return query
+
+
 def list_manifest_labels(manifest_id, prefix_filter=None):
     """
     Lists all labels found on the given manifest, with an optional filter by key prefix.

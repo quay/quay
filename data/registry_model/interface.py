@@ -455,12 +455,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
-        """
-        Sets the expiration on all tags that point to the given manifest to that specified.
-        """
-
-    @abstractmethod
     def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
         """
         Returns the schema 1 version of this manifest, or None if none.

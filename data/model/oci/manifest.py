@@ -30,7 +30,7 @@ TEMP_TAG_EXPIRATION_SEC = 300  # 5 minutes
 
 logger = logging.getLogger(__name__)
 
-CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "labels_to_apply"])
+CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created"])
 
 
 class CreateManifestException(Exception):
@@ -125,7 +125,7 @@ def get_or_create_manifest(
         temp_tag_expiration_sec=temp_tag_expiration_sec,
     )
     if existing is not None:
-        return CreatedManifest(manifest=existing, newly_created=False, labels_to_apply=None)
+        return CreatedManifest(manifest=existing, newly_created=False)
 
     return _create_manifest(
         repository_id,
@@ -161,7 +161,6 @@ def _create_manifest(
     # Load, parse and get/create the child manifests, if any.
     child_manifest_refs = manifest_interface_instance.child_manifests(retriever)
     child_manifest_rows = {}
-    child_manifest_label_dicts = []
 
     if child_manifest_refs is not None:
         for child_manifest_ref in child_manifest_refs:
@@ -183,15 +182,6 @@ def _create_manifest(
 
                 return None
 
-            # Retrieve its labels.
-            labels = child_manifest.get_manifest_labels(retriever)
-            if labels is None:
-                if raise_on_error:
-                    raise CreateManifestException("Unable to retrieve manifest labels")
-
-                logger.exception("Could not load manifest labels for child manifest")
-                return None
-
             # Get/create the child manifest in the database.
             child_manifest_info = get_or_create_manifest(
                 repository_id, child_manifest, storage, raise_on_error=raise_on_error
@@ -204,7 +194,6 @@ def _create_manifest(
                 return None
 
             child_manifest_rows[child_manifest_info.manifest.digest] = child_manifest_info.manifest
-            child_manifest_label_dicts.append(labels)
 
     # Ensure all the blobs in the manifest exist.
     digests = set(manifest_interface_instance.local_blob_digests)
@@ -313,7 +302,7 @@ def _create_manifest(
             manifest = Manifest.get(
                 repository=repository_id, digest=manifest_interface_instance.digest
             )
-            return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
+            return CreatedManifest(manifest=manifest, newly_created=False)
         except Manifest.DoesNotExist:
             pass
 
@@ -339,7 +328,7 @@ def _create_manifest(
 
                 return None
 
-            return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
+            return CreatedManifest(manifest=manifest, newly_created=False)
 
         # Insert the blobs.
         blobs_to_insert = [
@@ -377,21 +366,7 @@ def _create_manifest(
     if labels_to_create:
         batch_create_manifest_labels(manifest.id, labels_to_create)
 
-    # Return the dictionary of labels to apply (i.e. those labels that cause an action to be taken
-    # on the manifest or its resulting tags). We only return those labels either defined on
-    # the manifest or shared amongst all the child manifests. We intersect amongst all child manifests
-    # to ensure that any action performed is defined in all manifests.
-    labels_to_apply = labels or {}
-    if child_manifest_label_dicts:
-        labels_to_apply = child_manifest_label_dicts[0].viewitems()
-        for child_manifest_label_dict in child_manifest_label_dicts[1:]:
-            # Intersect the key+values of the labels to ensure we get the exact same result
-            # for all the child manifests.
-            labels_to_apply = labels_to_apply & child_manifest_label_dict.viewitems()
-
-        labels_to_apply = dict(labels_to_apply)
-
-    return CreatedManifest(manifest=manifest, newly_created=True, labels_to_apply=labels_to_apply)
+    return CreatedManifest(manifest=manifest, newly_created=True)
 
 
 def _populate_legacy_image(

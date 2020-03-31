@@ -27,7 +27,7 @@ from data.registry_model.datatypes import (
     TorrentInfo,
     ManifestLayer,
 )
-from data.registry_model.label_handlers import apply_label_to_manifest
+from data.registry_model.label_handlers import apply_label_to_tag, tag_label_action_keys
 from image.shared import ManifestException
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -210,9 +210,6 @@ class OCIModel(RegistryDataInterface):
         if label is None:
             return None
 
-        # Apply any changes to the manifest that the label prescribes.
-        apply_label_to_manifest(label_data, manifest, self)
-
         return Label.for_label(label)
 
     def list_manifest_labels(self, manifest, key_prefix=None):
@@ -367,19 +364,70 @@ class OCIModel(RegistryDataInterface):
         if tag is None:
             return (None, None)
 
+        # Load the legacy image and Manifest datatype.
         legacy_image = oci.shared.get_legacy_image_for_manifest(created_manifest.manifest)
         li = LegacyImage.for_image(legacy_image)
         wrapped_manifest = Manifest.for_manifest(created_manifest.manifest, li)
 
-        # Apply any labels that should modify the created tag.
-        if created_manifest.labels_to_apply:
-            for key, value in created_manifest.labels_to_apply.iteritems():
-                apply_label_to_manifest(dict(key=key, value=value), wrapped_manifest, self)
+        # Apply any action labels to the tag.
+        tag = Tag.for_tag(tag, li)
+        tag = self._apply_labels_to_tag(tag, wrapped_manifest)
+        return (wrapped_manifest, tag)
 
-            # Reload the tag in case any updates were applied.
-            tag = database.Tag.get(id=tag.id)
+    def _translate_to_manifest_for_tagging(
+        self, repository_ref, manifest_or_legacy_image, tag_name, legacy_manifest_key, storage
+    ):
+        # If a legacy image was required, build a new manifest for it.
+        if isinstance(manifest_or_legacy_image, LegacyImage):
+            try:
+                image_row = database.Image.get(id=manifest_or_legacy_image._db_id)
+            except database.Image.DoesNotExist:
+                return None
 
-        return (wrapped_manifest, Tag.for_tag(tag, li))
+            manifest_instance = self._build_manifest_for_legacy_image(tag_name, image_row)
+            if manifest_instance is None:
+                return None
+
+            created = oci.manifest.get_or_create_manifest(
+                repository_ref._db_id, manifest_instance, storage
+            )
+            if created is None:
+                return None
+
+            return Manifest.for_manifest(created.manifest, manifest_or_legacy_image)
+
+        # If the manifest is a schema 1 manifest and its tag name does not match that
+        # specified, then we need to create a new manifest, but with that tag name.
+        if manifest_or_legacy_image.media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
+            try:
+                parsed = manifest_or_legacy_image.get_parsed_manifest()
+            except ManifestException:
+                logger.exception(
+                    "Could not parse manifest `%s` in retarget_tag",
+                    manifest_or_legacy_image._db_id,
+                )
+                return None
+
+            if parsed.tag == tag_name:
+                return manifest_or_legacy_image
+
+            logger.debug(
+                "Rewriting manifest `%s` for tag named `%s`",
+                manifest_or_legacy_image._db_id,
+                tag_name,
+            )
+
+            repository_id = repository_ref._db_id
+            updated = parsed.with_tag_name(tag_name, legacy_manifest_key)
+            assert updated.is_signed
+
+            created = oci.manifest.get_or_create_manifest(repository_id, updated, storage)
+            if created is None:
+                return None
+
+            return Manifest.for_manifest(created.manifest, None)
+
+        return manifest_or_legacy_image
 
     def retarget_tag(
         self,
@@ -398,58 +446,50 @@ class OCIModel(RegistryDataInterface):
         move operation. Returns the updated Tag or None on error.
         """
         assert legacy_manifest_key is not None
-        manifest_id = manifest_or_legacy_image._db_id
-        if isinstance(manifest_or_legacy_image, LegacyImage):
-            # If a legacy image was required, build a new manifest for it and move the tag to that.
+        manifest = self._translate_to_manifest_for_tagging(
+            repository_ref, manifest_or_legacy_image, tag_name, legacy_manifest_key, storage
+        )
+        if manifest is None:
+            return None
+
+        tag = oci.tag.retarget_tag(tag_name, manifest._db_id, is_reversion=is_reversion)
+        if tag is None:
+            return None
+
+        tag = Tag.for_tag(tag, manifest.legacy_image_if_present)
+        if not is_reversion:
+            # Apply any action labels to the tag.
+            tag = self._apply_labels_to_tag(tag, manifest)
+
+        return tag
+
+    def _apply_labels_to_tag(self, tag, manifest):
+        """ Processes any labels found on the manifest and applies them to the given
+            tag. Returns the updated tag (if applicable).
+        """
+        keys = tag_label_action_keys()
+        if not keys:
+            return tag
+
+        # Lookup any labels on the manifest matching the keys.
+        labels_found = list(oci.label.lookup_manifest_labels(manifest._db_id, keys))
+        if not labels_found:
+            return tag
+
+        has_change = False
+        for label in labels_found:
+            result = apply_label_to_tag(dict(key=label.key, value=label.value), tag, self)
+            if result:
+                has_change = True
+
+        if has_change:
+            # Reload the tag for any changes.
             try:
-                image_row = database.Image.get(id=manifest_or_legacy_image._db_id)
-            except database.Image.DoesNotExist:
+                tag = database.Tag.get(id=tag._db_id)
+            except database.Tag.DoesNotExist:
                 return None
 
-            manifest_instance = self._build_manifest_for_legacy_image(tag_name, image_row)
-            if manifest_instance is None:
-                return None
-
-            created = oci.manifest.get_or_create_manifest(
-                repository_ref._db_id, manifest_instance, storage
-            )
-            if created is None:
-                return None
-
-            manifest_id = created.manifest.id
-        else:
-            # If the manifest is a schema 1 manifest and its tag name does not match that
-            # specified, then we need to create a new manifest, but with that tag name.
-            if manifest_or_legacy_image.media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
-                try:
-                    parsed = manifest_or_legacy_image.get_parsed_manifest()
-                except ManifestException:
-                    logger.exception(
-                        "Could not parse manifest `%s` in retarget_tag",
-                        manifest_or_legacy_image._db_id,
-                    )
-                    return None
-
-                if parsed.tag != tag_name:
-                    logger.debug(
-                        "Rewriting manifest `%s` for tag named `%s`",
-                        manifest_or_legacy_image._db_id,
-                        tag_name,
-                    )
-
-                    repository_id = repository_ref._db_id
-                    updated = parsed.with_tag_name(tag_name, legacy_manifest_key)
-                    assert updated.is_signed
-
-                    created = oci.manifest.get_or_create_manifest(repository_id, updated, storage)
-                    if created is None:
-                        return None
-
-                    manifest_id = created.manifest.id
-
-        tag = oci.tag.retarget_tag(tag_name, manifest_id, is_reversion=is_reversion)
-        legacy_image = LegacyImage.for_image(oci.shared.get_legacy_image_for_manifest(manifest_id))
-        return Tag.for_tag(tag, legacy_image)
+        return tag
 
     def delete_tag(self, repository_ref, tag_name):
         """
@@ -652,12 +692,6 @@ class OCIModel(RegistryDataInterface):
             legacy_image, verb, storage_location, varying_metadata
         )
         return self._build_derived(derived, verb, varying_metadata, include_placements)
-
-    def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
-        """
-        Sets the expiration on all tags that point to the given manifest to that specified.
-        """
-        oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
 
     def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
         """
