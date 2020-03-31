@@ -67,17 +67,6 @@
                    ng-show="isAnotherImageTag(toTagImage, tagToCreate)">
                 Note: <span class="label tag label-default">{{ tagToCreate }}</span> is already applied to another image. This will <b>move</b> the tag.
               </div>
-
-              <div class="tag-specific-images-view"
-                   tag="tagToCreate"
-                   repository="repository"
-                   repository-tags="repositoryTags"
-                   image-cutoff="toTagImage"
-                   style="margin: 10px; margin-top: 20px; margin-bottom: -10px;"
-                   ng-show="isAnotherImageTag(toTagImage, tagToCreate)"
-                   image-loader="imageLoader">
-                This will also delete any unattached images and delete the following images:
-              </div>
             </div>
           </div>
           <div class="modal-footer" ng-show="!addingTag">
@@ -143,11 +132,6 @@
        dialog-action-title="Delete Tag">
     Are you sure you want to delete tag
     <span class="label label-default tag">{{ deleteTagInfo.tag }}</span>?
-
-    <div class="tag-specific-images-view" tag="deleteTagInfo.tag" repository="repository" repository-tags="repositoryTags"
-         image-loader="imageLoader" style="margin-top: 20px">
-      The following images and any other images not referenced by a tag will be <span ng-if="repository.tag_expiration_s == 0">deleted</span><span ng-if="repository.tag_expiration_s != 0">unavailable and deleted in {{ getFormattedTimespan(repository.tag_expiration_s) }}</span>:
-    </div>
   </div>
 
   <!-- Restore Tag Confirm -->

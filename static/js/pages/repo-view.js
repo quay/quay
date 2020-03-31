@@ -11,11 +11,9 @@
   }]);
 
   function RepoViewCtrl($scope, $routeParams, $rootScope, $timeout, ApiService,
-                        UserService, AngularPollChannel, ImageLoaderService, UtilService) {
+                        UserService, AngularPollChannel, UtilService) {
     $scope.namespace = $routeParams.namespace;
     $scope.name = $routeParams.name;
-
-    var imageLoader = ImageLoaderService.getLoader($scope.namespace, $scope.name);
 
     // Tab-enabled counters.
     $scope.infoShown = 0;
@@ -29,7 +27,6 @@
     $scope.viewScope = {
       'selectedTags': [],
       'repository': null,
-      'imageLoader': imageLoader,
       'builds': null,
       'historyFilter': '',
       'repositoryTags': null,

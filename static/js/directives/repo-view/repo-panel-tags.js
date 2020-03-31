@@ -14,7 +14,6 @@ angular.module('quay').directive('repoPanelTags', function () {
       'selectedTags': '=selectedTags',
       'historyFilter': '=historyFilter',
       'imagesResource': '=imagesResource',
-      'imageLoader': '=imageLoader',
 
       'isEnabled': '=isEnabled',
 
