@@ -65,7 +65,7 @@ GITHUB_WEBHOOK_PAYLOAD_SCHEMA = {
                     },
                 },
             },
-            "required": ["id", "url", "message", "timestamp"],
+            "required": ["id", "url", "timestamp"],
         },
         "repository": {
             "type": "object",
