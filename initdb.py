@@ -1239,6 +1239,7 @@ WHITELISTED_EMPTY_MODELS = [
     "LogEntry",
     "LogEntry2",
     "ManifestSecurityStatus",
+    "KubernetesClusterAccess",
 ]
 
 

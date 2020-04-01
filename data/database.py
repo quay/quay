@@ -1949,6 +1949,19 @@ class ManifestSecurityStatus(BaseModel):
     metadata_json = JSONField(default={})
 
 
+class KubernetesClusterAccess(BaseModel):
+    """
+    Represents a registered Kubernetes cluster.
+    """
+
+    display_name = CharField()
+    auth_token = EncryptedCharField()
+    user = ForeignKeyField(User)
+    api_endpoint = CharField()
+    console_endpoint = CharField(null=True)
+    creation_date = DateTimeField(default=datetime.utcnow, null=True)
+
+
 # Defines a map from full-length index names to the legacy names used in our code
 # to meet length restrictions.
 LEGACY_INDEX_MAP = {
