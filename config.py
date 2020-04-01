@@ -708,3 +708,6 @@ class DefaultConfig(ImmutableConfig):
 
     # The limit on the number of results returned by app registry listing operations.
     APP_REGISTRY_RESULTS_LIMIT = 100
+
+    # The maximum size of uploaded CNR layers.
+    MAXIMUM_CNR_LAYER_SIZE = "2m"
