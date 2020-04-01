@@ -1954,10 +1954,12 @@ class KubernetesClusterAccess(BaseModel):
     Represents a registered Kubernetes cluster.
     """
 
+    # TODO(alecmerdler): How will Kubernetes cluster access be related to users...?
+
+    uuid = CharField(default=uuid_generator, max_length=36, index=True)
     display_name = CharField()
-    auth_token = EncryptedCharField()
-    user = ForeignKeyField(User)
-    api_endpoint = CharField()
+    auth_token = EncryptedTextField()
+    api_endpoint = CharField(index=True)
     console_endpoint = CharField(null=True)
     creation_date = DateTimeField(default=datetime.utcnow, null=True)
 

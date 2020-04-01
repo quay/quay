@@ -32,7 +32,7 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
 
     def perform_indexing(self, next_token=None):
         if next_token is None:
-            # FIXME(alecmerdler): If no Clair v4, this will fail and block indexing of Clair v2 repos...
+            # FIXME(alecmerdler): If no Clair v4, this will fail and block indexing of Clair v2 rep..
             return SplitScanToken("v4", self._v4_model.perform_indexing())
 
         if next_token.version == "v4" and next_token.token is not None:
