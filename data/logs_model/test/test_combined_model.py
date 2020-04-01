@@ -41,55 +41,59 @@ def test_log_action(first_model, second_model, combined_model, initialized_db):
 
 
 def test_count_repository_actions(first_model, second_model, combined_model, initialized_db):
-    # Write to each model.
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
+    today = date(2019, 1, 1)
 
-    second_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    second_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
+    # Write to the combined model.
+    with freeze_time(today):
+        # Write to each model.
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
 
-    # Ensure the counts match as expected.
-    day = datetime.today() - timedelta(minutes=60)
-    simple_repo = model.repository.get_repository("devtable", "simple")
+        second_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        second_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
 
-    assert first_model.count_repository_actions(simple_repo, day) == 3
-    assert second_model.count_repository_actions(simple_repo, day) == 2
-    assert combined_model.count_repository_actions(simple_repo, day) == 5
+        # Ensure the counts match as expected.
+        simple_repo = model.repository.get_repository("devtable", "simple")
+
+        assert first_model.count_repository_actions(simple_repo, today) == 3
+        assert second_model.count_repository_actions(simple_repo, today) == 2
+        assert combined_model.count_repository_actions(simple_repo, today) == 5
 
 
 def test_yield_logs_for_export(first_model, second_model, combined_model, initialized_db):
     now = datetime.now()
 
-    # Write to each model.
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
+    with freeze_time(now):
+        # Write to each model.
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
 
-    second_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    second_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
+        second_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        second_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
 
-    later = datetime.now()
+    later = now + timedelta(minutes=60)
 
     # Ensure the full set of logs is yielded.
     first_logs = list(first_model.yield_logs_for_export(now, later))[0]
@@ -107,25 +111,26 @@ def test_yield_logs_for_export(first_model, second_model, combined_model, initia
 def test_lookup_logs(first_model, second_model, combined_model, initialized_db):
     now = datetime.now()
 
-    # Write to each model.
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    first_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
+    with freeze_time(now):
+        # Write to each model.
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        first_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
 
-    second_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
-    second_model.log_action(
-        "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
-    )
+        second_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
+        second_model.log_action(
+            "push_repo", namespace_name="devtable", repository_name="simple", ip="1.2.3.4"
+        )
 
-    later = datetime.now()
+    later = now + timedelta(minutes=60)
 
     def _collect_logs(model):
         page_token = None
