@@ -187,7 +187,7 @@ def perform_mirror(skopeo, mirror):
                 result = skopeo.copy(
                     src_image,
                     dest_image,
-                    src_tls_verify=mirror.external_registry_config.get("tls_verify", True),
+                    src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
                     dest_tls_verify=app.config.get(
                         "REPO_MIRROR_TLS_VERIFY", True
                     ),  # TODO: is this a config choice or something else?
@@ -300,7 +300,7 @@ def get_all_tags(skopeo, mirror):
             username=username,
             password=password,
             verbose_logs=verbose_logs,
-            tls_verify=mirror.external_registry_config.get("tls_verify", True),
+            verify_tls=mirror.external_registry_config.get("verify_tls", True),
             proxy=mirror.external_registry_config.get("proxy", {}),
         )
 
