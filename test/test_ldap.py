@@ -7,7 +7,7 @@ from initdb import setup_database_for_testing, finished_database_for_testing
 from data.users import LDAPUsers
 from data import model
 from mockldap import MockLdap
-from mock import patch
+from mock import patch, Mock
 from contextlib import contextmanager
 
 
@@ -643,6 +643,51 @@ class TestLDAP(unittest.TestCase):
 
             results = list(it)
             self.assertEquals(2, len(results))
+
+    def test_ldap_user_filter_clean(self):
+        with mock_ldap() as ldap:
+            self.assertIsNone(ldap._clean_user_filter(None))
+            self.assertEquals(u"(abc=def)", ldap._clean_user_filter("abc=def"))
+            self.assertEquals(u"(abc=def)", ldap._clean_user_filter("(abc=def)"))
+            self.assertEquals(
+                u"(|(abc=def)(ghi=jkl))", ldap._clean_user_filter("|(abc=def)(ghi=jkl)")
+            )
+            self.assertEquals(
+                u"(|(abc=def)(ghi=jkl))", ldap._clean_user_filter("(|(abc=def)(ghi=jkl))")
+            )
+
+            with self.assertRaises(APIRequestFailure):
+                ldap._clean_user_filter("(abc=def")
+            with self.assertRaises(APIRequestFailure):
+                ldap._clean_user_filter("abc=def)")
+
+    def test_at_least_one_user_exists_filter_clean(self):
+        base_dn = ["dc=quay", "dc=io"]
+        admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
+        admin_passwd = "password"
+        user_rdn = ["ou=employees"]
+        uid_attr = "uid"
+        email_attr = "mail"
+        secondary_user_rdns = ["ou=otheremployees"]
+
+        with mock_ldap():
+            ldap = LDAPUsers(
+                "ldap://localhost",
+                base_dn,
+                admin_dn,
+                admin_passwd,
+                user_rdn,
+                uid_attr,
+                email_attr,
+                ldap_user_filter="filterField=somevalue",
+            )
+            mock_clean_user_filter = Mock()
+            mock_clean_user_filter.return_value = "(filterField=somevalue)"
+            ldap._clean_user_filter = mock_clean_user_filter
+            (response, err_msg) = ldap.at_least_one_user_exists()
+            self.assertIsNone(err_msg)
+            self.assertTrue(response)
+            mock_clean_user_filter.assert_called_with("filterField=somevalue")
 
 
 if __name__ == "__main__":

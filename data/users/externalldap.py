@@ -147,11 +147,23 @@ class LDAPUsers(FederatedUsers):
         referral_dn = referral_uri[len("ldap:///") :]
         return referral_dn
 
+    def _clean_user_filter(self, query):
+        if not query:
+            return None
+
+        if query[0] == "(" and query[-1] == ")":
+            return query
+
+        if query[0] == "(" or query[-1] == ")":
+            raise ldap.LDAPError("Filter must be fully enclosed in parenthesis")
+
+        return "(%s)" % query
+
     def _add_user_filter(self, query):
         if not self._ldap_user_filter:
             return query
 
-        return u"(&({0}){1})".format(self._ldap_user_filter, query)
+        return u"(&{0}{1})".format(self._clean_user_filter(self._ldap_user_filter), query)
 
     def _ldap_user_search_with_rdn(self, conn, username_or_email, user_search_dn, suffix=""):
         query = u"(|({0}={2}{3})({1}={2}{3}))".format(
@@ -262,6 +274,11 @@ class LDAPUsers(FederatedUsers):
 
         has_pagination = not self._force_no_pagination
         with self._ldap.get_connection() as conn:
+            try:
+                search_flt = self._clean_user_filter(self._ldap_user_filter)
+            except ldap.LDAPError as lde:
+                return (False, "Error with filter %s: %s" % (self._ldap_user_filter, lde.message))
+
             for user_search_dn in self._user_dns:
                 lc = ldap.controls.libldap.SimplePagedResultsControl(
                     criticality=True, size=1, cookie=""
@@ -269,20 +286,24 @@ class LDAPUsers(FederatedUsers):
                 try:
                     if has_pagination:
                         msgid = conn.search_ext(
-                            user_search_dn, ldap.SCOPE_SUBTREE, serverctrls=[lc]
+                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc],
                         )
                         _, rdata, _, serverctrls = conn.result3(msgid)
                     else:
-                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE)
+                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
                         _, rdata = conn.result(msgid)
 
                     for entry in rdata:  # Handles both lists and iterators.
                         return (True, None)
 
                 except ldap.LDAPError as lde:
-                    return (False, str(lde) or "Could not find DN %s" % user_search_dn)
+                    return (
+                        False,
+                        "Error when trying to search %s with filter %s: %s"
+                        % (user_search_dn, search_flt, lde.message),
+                    )
 
-        return (False, None)
+        return (False, "No results")
 
     def get_user(self, username_or_email):
         """
@@ -421,7 +442,7 @@ class LDAPUsers(FederatedUsers):
                         )
                     else:
                         msgid = conn.search(
-                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes
+                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, attrlist=attributes,
                         )
                 except ldap.LDAPError as lde:
                     logger.exception(
