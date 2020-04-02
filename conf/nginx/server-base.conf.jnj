@@ -99,6 +99,8 @@ location /cnr {
     proxy_read_timeout 120;
     proxy_temp_path /tmp 1 2;
 
+    client_max_body_size {{ maximum_cnr_layer_size }};
+
     {% if enable_rate_limits %}
     limit_req zone=staticauth burst=5 nodelay;
     {% endif %}
