@@ -50,7 +50,7 @@
 
       ApiService.deleteOrganizationApplication(null, params).then(function(resp) {
         $timeout(function() {
-          $location.path('/organization/' + orgname + '/admin');
+          $location.path('/organization/' + orgname).search('tab', 'applications');
         }, 500);
       }, ApiService.errorDisplay('Could not delete application'));
     };
