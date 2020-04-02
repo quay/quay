@@ -12,6 +12,7 @@ from endpoints.api import (
     path_param,
     disallow_for_app_repositories,
     format_date,
+    deprecated,
 )
 from endpoints.exception import NotFound
 
@@ -56,6 +57,7 @@ class RepositoryImageList(RepositoryParamResource):
     @require_repo_read
     @nickname("listRepositoryImages")
     @disallow_for_app_repositories
+    @deprecated()
     def get(self, namespace, repository):
         """
         List the images for the specified repository.
@@ -79,6 +81,7 @@ class RepositoryImage(RepositoryParamResource):
     @require_repo_read
     @nickname("getImage")
     @disallow_for_app_repositories
+    @deprecated()
     def get(self, namespace, repository, image_id):
         """
         Get the information available for the specified image.
