@@ -55,7 +55,7 @@ class SkopeoMirror(object):
         rule_value,
         username=None,
         password=None,
-        tls_verify=True,
+        verify_tls=True,
         proxy=None,
         verbose_logs=False,
     ):
@@ -69,7 +69,7 @@ class SkopeoMirror(object):
         args = ["/usr/bin/skopeo"]
         if verbose_logs:
             args = args + ["--debug"]
-        args = args + ["inspect", "--tls-verify=%s" % tls_verify]
+        args = args + ["inspect", "--tls-verify=%s" % verify_tls]
         args = args + self.external_registry_credentials("--creds", username, password)
 
         if not rule_value:

@@ -73,14 +73,16 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
     Basic test of successful mirror.
     """
 
-    mirror, repo = create_mirror_repo_robot(["latest", "7.1"])
+    mirror, repo = create_mirror_repo_robot(
+        ["latest", "7.1"], external_registry_config={"verify_tls": False}
+    )
 
     skopeo_calls = [
         {
             "args": [
                 "/usr/bin/skopeo",
                 "inspect",
-                "--tls-verify=True",
+                "--tls-verify=False",
                 u"docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
@@ -89,7 +91,7 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
-                "--src-tls-verify=True",
+                "--src-tls-verify=False",
                 "--dest-tls-verify=True",
                 "--dest-creds",
                 "%s:%s"
