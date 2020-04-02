@@ -284,16 +284,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def backfill_manifest_for_tag(self, tag):
-        """
-        Backfills a manifest for the V1 tag specified. If a manifest already exists for the tag,
-        returns that manifest.
-
-        NOTE: This method will only be necessary until we've completed the backfill, at which point
-        it should be removed.
-        """
-
-    @abstractmethod
     def is_existing_disabled_namespace(self, namespace_name):
         """
         Returns whether the given namespace exists and is disabled.
