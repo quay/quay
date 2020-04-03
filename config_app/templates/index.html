@@ -5,6 +5,7 @@
       window.__endpoints = {{ route_data|tojson|safe }}.paths;
       window.__config = {{ config_set|tojson|safe }};
       window.__kubernetes_namespace = {{ kubernetes_namespace|tojson|safe }};
+      window.__read_only_fields = {{ read_only_fields|tojson|safe }};
     </script>
 
     {% for style_url in external_styles %}

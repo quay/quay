@@ -11,6 +11,7 @@ from config_app._init_config import ROOT_DIR, IS_KUBERNETES
 from config_app.config_util.config import get_config_provider
 from util.security.instancekeys import InstanceKeys
 
+
 app = Flask(__name__)
 
 logger = logging.getLogger(__name__)

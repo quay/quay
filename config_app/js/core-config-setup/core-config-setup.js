@@ -37,6 +37,14 @@ angular.module("quay-config")
         $scope.HOSTNAME_REGEX = '^[a-zA-Z-0-9\.]+(:[0-9]+)?$';
         $scope.GITHOST_REGEX = '^https?://([a-zA-Z0-9]+\.?\/?)+$';
 
+        // Determines if a particular field should be marked as "read-only".
+        // The __read_only_fields is populated using environment variables.
+        // This is usually used for the case where an external system is
+        // managing part of the configuration.
+        $scope.isFieldReadonly = function(field) {
+            return window.__read_only_fields.includes(field);
+        }
+
         $scope.SERVICES = [
           {'id': 'redis', 'title': 'Redis'},
 
@@ -1003,6 +1011,7 @@ angular.module("quay-config")
         'binding': '=binding',
         'placeholder': '@placeholder',
         'defaultValue': '@defaultValue',
+        'isReadonly': '=?isReadonly',
       },
       controller: function($scope, $element) {
         $scope.bindinginternal = 0;
@@ -1309,7 +1318,8 @@ angular.module("quay-config")
         'pattern': '@pattern',
         'defaultValue': '@defaultValue',
         'validator': '&validator',
-        'isOptional': '=isOptional'
+        'isOptional': '=isOptional',
+        'isReadonly': '=?isReadonly'
       },
       controller: function($scope, $element) {
         var firstSet = true;
