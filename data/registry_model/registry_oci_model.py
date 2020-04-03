@@ -614,22 +614,6 @@ class OCIModel(RegistryDataInterface):
         image.security_indexed_engine = IMAGE_NOT_SCANNED_ENGINE_VERSION
         image.save()
 
-    def backfill_manifest_for_tag(self, tag):
-        """
-        Backfills a manifest for the V1 tag specified. If a manifest already exists for the tag,
-        returns that manifest.
-
-        NOTE: This method will only be necessary until we've completed the backfill, at which point
-        it should be removed.
-        """
-        # Nothing to do for OCI tags.
-        manifest = tag.manifest
-        if manifest is None:
-            return None
-
-        legacy_image = oci.shared.get_legacy_image_for_manifest(manifest)
-        return Manifest.for_manifest(manifest, LegacyImage.for_image(legacy_image))
-
     def list_manifest_layers(self, manifest, storage, include_placements=False):
         try:
             manifest_obj = database.Manifest.get(id=manifest._db_id)
