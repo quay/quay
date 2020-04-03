@@ -199,6 +199,9 @@ objects:
         - name: quay-app
           image: ${IMAGE}:${IMAGE_TAG}
           imagePullPolicy: ${{IMAGE_PULL_POLICY}}
+          command:
+          - /quay-registry/quay-entrypoint.sh
+          - registry-nomigrate
           ports:
           - containerPort: 8443
           volumeMounts:
