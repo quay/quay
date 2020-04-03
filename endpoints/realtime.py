@@ -15,33 +15,6 @@ logger = logging.getLogger(__name__)
 realtime = Blueprint("realtime", __name__)
 
 
-@realtime.route("/user/")
-@require_session_login
-def index():
-    debug_template = """
-    <html>
-      <head>
-      </head>
-      <body>
-        <h1>Server sent events</h1>
-        <div id="event"></div>
-        <script type="text/javascript">
-
-        var eventOutputContainer = document.getElementById("event");
-        var evtSrc = new EventSource("/realtime/user/subscribe?events=docker-cli");
-
-        evtSrc.onmessage = function(e) {
-            console.log(e.data);
-            eventOutputContainer.innerHTML = e.data;
-        };
-
-        </script>
-      </body>
-    </html>
-    """
-    return debug_template
-
-
 @realtime.route("/user/test")
 @require_session_login
 def user_test():
