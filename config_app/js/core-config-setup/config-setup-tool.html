@@ -23,7 +23,7 @@
               <td>Enterprise Logo URL:</td>
               <td>
                 <span class="config-string-field" binding="config.ENTERPRISE_LOGO_URL"
-                  placeholder="http://example.com/logo.png"></span>
+                      placeholder="http://example.com/logo.png"></span>
                 <div class="help-text">
                   Enter the full URL to your company's logo.
                 </div>
@@ -63,7 +63,7 @@
                 </div>
 
                 <span class="config-string-field" binding="config.SERVER_HOSTNAME"
-                  placeholder="Hostname (and optional port if non-standard)" pattern="{{ HOSTNAME_REGEX }}"></span>
+                      placeholder="Hostname (and optional port if non-standard)" pattern="{{ HOSTNAME_REGEX }}"></span>
                 <div class="help-text">
                   The HTTP host (and optionally the port number if a non-standard HTTP/HTTPS port) of the location
                   where the registry will be accessible on the network
@@ -85,7 +85,7 @@
                 </div>
 
                 <div class="co-alert co-alert-warning" ng-if="mapped.TLS_SETTING == 'external-tls'"
-                  style="margin-bottom: 20px; margin-top: 10px;">
+                     style="margin-bottom: 20px; margin-top: 10px;">
                   Terminating TLS outside of Red Hat Quay can result in unusual behavior if the external load balancer
                   is not
                   configured properly. <strong>This option is not recommended for simple setups</strong>. Please contact
@@ -94,9 +94,9 @@
                 </div>
 
                 <div class="co-alert co-alert-info" ng-if="mapped.TLS_SETTING == 'internal-tls'"
-                  style="margin-bottom: 20px; margin-top: 10px;">
+                     style="margin-bottom: 20px; margin-top: 10px;">
                   Enabling TLS also enables <a href="https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security">HTTP
-                    Strict Transport Security</a>.<br />
+                  Strict Transport Security</a>.<br />
                   This prevents downgrade attacks and cookie theft, but browsers will reject all future insecure
                   connections on this hostname.
                 </div>
@@ -168,15 +168,15 @@
           </div>
           <table class="config-table">
             <!-- This `ng-if` true is *required* to create a new scope so that the <form> inside
-              the config-list-field doesn't try to submit the *outer* form when the Add button
-              is clicked. This is highly stupid, but until we figure out a better way, such it
-              shall be.
-        -->
+                 the config-list-field doesn't try to submit the *outer* form when the Add button
+                 is clicked. This is highly stupid, but until we figure out a better way, such it
+                 shall be.
+            -->
             <tr ng-if="true">
               <td>Allowed expiration periods:</td>
               <td>
                 <span class="config-list-field" item-title="Tag Expiration Period"
-                  binding="config.TAG_EXPIRATION_OPTIONS" item-pattern="[0-9]+(m|w|h|d|s)"></span>
+                      binding="config.TAG_EXPIRATION_OPTIONS" item-pattern="[0-9]+(m|w|h|d|s)"></span>
                 <div class="help-text">
                   The expiration periods allowed for configuration. The default tag expiration *must* be in this list.
                 </div>
@@ -186,7 +186,7 @@
               <td>Default expiration period:</td>
               <td>
                 <span class="config-string-field" binding="config.DEFAULT_TAG_EXPIRATION"
-                  pattern="[0-9]+(m|w|h|d|s)"></span>
+                      pattern="[0-9]+(m|w|h|d|s)"></span>
                 <div class="help-text">
                   The default tag expiration period for all namespaces (users and organizations). Must be expressed in a
                   duration string form: <code>30m</code>, <code>1h</code>, <code>1d</code>, <code>2w</code>.
@@ -225,7 +225,7 @@
               <td>Redis Hostname:</td>
               <td>
                 <span class="config-string-field" binding="mapped.redis.host" placeholder="The redis server hostname"
-                  pattern="{{ HOSTNAME_REGEX }}" validator="validateHostname(value)"></span>
+                      pattern="{{ HOSTNAME_REGEX }}" validator="validateHostname(value)"></span>
               </td>
             </tr>
             <tr>
@@ -242,7 +242,7 @@
               <td>Redis password:</td>
               <td>
                 <input class="form-control" type="password" ng-model="mapped.redis.password"
-                   placeholder="Optional password for connecting to redis">
+                       placeholder="Optional password for connecting to redis">
               </td>
             </tr>
           </table>
@@ -301,7 +301,7 @@
               <div class="help-text">
                 If enabled, replicates storage to other regions. See
                 <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#georeplication-of-storage-in-quay"
-                ng-safenewtab>documentation</a> for more information.
+                   ng-safenewtab>documentation</a> for more information.
               </div>
             </div>
 
@@ -311,8 +311,8 @@
                   <td class="non-input">Location ID:</td>
                   <td>
                     <input class="form-control" ng-if="allowChangeLocationStorageConfig(sc.location)"
-                      ng-class="storageConfigError[$index].location ? 'ng-invalid' : ''" ng-model="sc.location"
-                      ng-pattern="/^[a-zA-Z0-9_-]+$/" required>
+                           ng-class="storageConfigError[$index].location ? 'ng-invalid' : ''" ng-model="sc.location"
+                           ng-pattern="/^[a-zA-Z0-9_-]+$/" required>
                     <div ng-if="!allowChangeLocationStorageConfig(sc.location)">
                       {{ sc.location }}
                     </div>
@@ -320,7 +320,7 @@
                       {{ storageConfigError[$index].location }}
                     </div>
                     <div class="input-util" ng-if="allowRemoveStorageConfig(sc.location)"><a class="remove-link"
-                      ng-click="removeStorageConfig(sc)">Remove</a></div>
+                                                                                             ng-click="removeStorageConfig(sc)">Remove</a></div>
                   </td>
                 </tr>
 
@@ -337,7 +337,7 @@
                   <td class="non-input">Storage Engine:</td>
                   <td>
                     <select class="form-control" ng-class="storageConfigError[$index].engine ? 'ng-invalid' : ''"
-                      ng-model="sc.data[0]">
+                            ng-model="sc.data[0]">
                       <option value="RHOCSStorage">Red Hat OpenShift Container Storage (NooBaa S3)</option>
                       <option value="LocalStorage">Locally mounted directory</option>
                       <option value="S3Storage">Amazon S3</option>
@@ -359,24 +359,24 @@
                   <td>{{ field.title }}:</td>
                   <td>
                     <span class="config-map-field" binding="sc.data[1][field.name]" ng-if="field.kind == 'map'"
-                      keys="field.keys"></span>
+                          keys="field.keys"></span>
                     <span class="config-string-field" binding="sc.data[1][field.name]"
-                      placeholder="{{ field.placeholder }}" pattern="{{ field.pattern }}" ng-if="field.kind == 'text'"
-                      is-optional="field.optional"></span>
+                          placeholder="{{ field.placeholder }}" pattern="{{ field.pattern }}" ng-if="field.kind == 'text'"
+                          is-optional="field.optional"></span>
                     <span class="config-password-field" binding="sc.data[1][field.name]"
-                      placeholder="{{ field.placeholder }}" pattern="{{ field.pattern }}" ng-if="field.kind == 'password'"
-                      is-optional="field.optional"></span>
+                          placeholder="{{ field.placeholder }}" pattern="{{ field.pattern }}" ng-if="field.kind == 'password'"
+                          is-optional="field.optional"></span>
                     <span class="config-bool-field" binding="sc.data[1][field.name]" ng-if="field.kind == 'bool'">
                       {{ field.placeholder }}
                     </span>
                     <span class="config-file-field" filename="{{ sc.location + '-' + field.filesuffix }}"
-                      binding="sc.data[1][field.name]"
-                      has-file="hasfile['contact-' + sc.location + '-' + field.filesuffix]"
-                      ng-if="field.kind == 'file'"></span>
+                          binding="sc.data[1][field.name]"
+                          has-file="hasfile['contact-' + sc.location + '-' + field.filesuffix]"
+                          ng-if="field.kind == 'file'"></span>
                     <div ng-if="field.kind == 'option'">
                       <select class="form-control" ng-model="sc.data[1][field.name]">
                         <option ng-repeat="value in field.values" value="{{ value }}"
-                          ng-selected="sc.data[1][field.name] == value">{{ value }}</option>
+                                ng-selected="sc.data[1][field.name] == value">{{ value }}</option>
                       </select>
                     </div>
                     <div class="help-text" ng-if="field.help_text">
@@ -431,7 +431,7 @@
               <td>Storage path:</td>
               <td>
                 <span class="config-string-field" binding="config.ACTION_LOG_ARCHIVE_PATH"
-                  placeholder="Path under storage to place archived logs"></span>
+                      placeholder="Path under storage to place archived logs"></span>
                 <div class="help-text">
                   The path under the configured storage engine in which to place the archived logs in JSON form.
                 </div>
@@ -441,7 +441,7 @@
               <td>Log Rotation Threshold:</td>
               <td>
                 <span class="config-string-field" binding="config.ACTION_LOG_ROTATION_THRESHOLD"
-                  pattern="[0-9]+(m|w|h|d|s)"></span>
+                      pattern="[0-9]+(m|w|h|d|s)"></span>
                 <div class="help-text">
                   The number of days after which to archive action logs to storage. Must be expressed in a duration
                   string form: <code>30m</code>, <code>1h</code>, <code>1d</code>, <code>2w</code>.
@@ -488,7 +488,7 @@
               <td>Authentication Key:</td>
               <td>
                 <span class="config-service-key-field"
-                  service-name="{{ config.SECURITY_SCANNER_ISSUER_NAME || 'secscan' }}"></span>
+                      service-name="{{ config.SECURITY_SCANNER_ISSUER_NAME || 'secscan' }}"></span>
                 <div class="help-text">
                   The security scanning service requires an authorized service key to speak to Quay. Once setup, the
                   key
@@ -500,13 +500,13 @@
               <td>Security Scanner Endpoint:</td>
               <td>
                 <span class="config-string-field" binding="config.SECURITY_SCANNER_ENDPOINT"
-                  placeholder="Security Scanner API endpoint (Example: http://myhost:6060)"
-                  pattern="http(s)?://.+"></span>
+                      placeholder="Security Scanner API endpoint (Example: http://myhost:6060)"
+                      pattern="http(s)?://.+"></span>
                 <div class="help-text">
                   The HTTP URL at which the security scanner is running.
                 </div>
                 <div class="co-alert co-alert-info" ng-if="config.SECURITY_SCANNER_ENDPOINT.indexOf('https:') == 0"
-                  style="margin-top: 20px;">
+                     style="margin-top: 20px;">
                   Is the security scanner behind a domain signed with a <strong>self-signed TLS certificate</strong>?
                   If so, please make sure to register your SSL CA in the <a href="#custom-ssl">custom certificates
                   panel</a> above.
@@ -563,8 +563,8 @@
               <td>Announce URL:</td>
               <td>
                 <span class="config-string-field" binding="config.BITTORRENT_ANNOUNCE_URL"
-                  placeholder="Announce URL for the torrent tracker (Example: http://mytracker/announce)"
-                  pattern="http(s)?://.+"></span>
+                      placeholder="Announce URL for the torrent tracker (Example: http://mytracker/announce)"
+                      pattern="http(s)?://.+"></span>
                 <div class="help-text">
                   The HTTP URL at which the torrents should be announced. A JWT-compatible tracker such as <a
                                                                                                              href="https://github.com/chihaya/chihaya" ng-safenewtab>Chihaya</a> must be run to ensure proper
@@ -583,7 +583,7 @@
       <div class="co-panel" ng-show="originalConfig.FEATURE_ACI_CONVERSION">
         <div class="co-panel-heading">
           <i class="fa rocket-icon"
-            style="width: 20px; height: 20px; background-size: cover; vertical-align: middle;"></i> <a
+             style="width: 20px; height: 20px; background-size: cover; vertical-align: middle;"></i> <a
                                                                                                        href="http://github.com/coreos/rkt" ng-safenewtab>rkt</a> Conversion (DEPRECATED)
         </div>
         <div class="co-panel-body">
@@ -1880,6 +1880,9 @@
               Configuration Validated
             </span>
 
+            <button class="btn" data-dismiss="modal">
+              Continue Editing
+            </button>
             <button class="btn btn-primary" ng-click="saveConfiguration()" ng-disabled="savingConfiguration">
               Next
             </button>
