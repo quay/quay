@@ -711,3 +711,6 @@ class DefaultConfig(ImmutableConfig):
 
     # The maximum size of uploaded CNR layers.
     MAXIMUM_CNR_LAYER_SIZE = "2m"
+
+    # Feature Flag: Whether to clear expired RepositoryActionCount entries.
+    FEATURE_CLEAR_EXPIRED_RAC_ENTRIES = False
