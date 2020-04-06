@@ -2,6 +2,8 @@ import logging
 
 from datetime import date, timedelta
 
+import features
+
 from app import app  # This is required to initialize the database.
 from data import model
 from data.logs_model import logs_model
@@ -59,12 +61,14 @@ class RepositoryActionCountWorker(Worker):
         logger.debug("Repository #%s search score updated", to_count.id)
 
         # Delete any entries older than the retention period for the repository.
-        while True:
-            found = model.repositoryactioncount.delete_expired_entries(to_count, 30)
-            if found <= 0:
-                break
+        if features.CLEAR_EXPIRED_RAC_ENTRIES:
+            while True:
+                found = model.repositoryactioncount.delete_expired_entries(to_count, 30)
+                if found <= 0:
+                    break
 
-        logger.debug("Repository #%s old entries removed", to_count.id)
+            logger.debug("Repository #%s old entries removed", to_count.id)
+
         return True
 
 
