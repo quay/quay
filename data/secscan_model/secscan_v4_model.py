@@ -117,9 +117,6 @@ class V4SecurityScanner(SecurityScannerInterface):
         try:
             indexer_state = self._secscan_api.state()
         except APIRequestFailure:
-            print(
-                "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-            )
             return None
 
         def eligible_manifests(base_query):
