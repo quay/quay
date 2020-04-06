@@ -201,7 +201,7 @@ objects:
           imagePullPolicy: ${{IMAGE_PULL_POLICY}}
           command:
           - /quay-registry/quay-entrypoint.sh
-          - registry-nomigrate
+          - ${{QUAY_ENTRYPOINT}}
           ports:
           - containerPort: 8443
           volumeMounts:
