@@ -161,19 +161,23 @@ def update_repository_score(repo):
         return False
 
 
-def delete_expired_entries(repo, limit=100):
+def delete_expired_entries(repo, limit=50):
     """ Deletes expired entries from the RepositoryActionCount table for a specific repository.
         Returns the number of entries removed.
     """
     threshold_date = datetime.today() - RAC_RETENTION_PERIOD
     found = list(
-        RepositoryActionCount.select().where(
+        RepositoryActionCount.select()
+        .where(
             RepositoryActionCount.repository == repo, RepositoryActionCount.date < threshold_date
         )
+        .limit(limit)
     )
 
     if not found:
         return 0
+
+    assert len(found) <= limit
 
     count_removed = 0
     for entry in found:
