@@ -261,6 +261,10 @@ parameters:
     value: "latest"
     displayName: quay version
     description: quay version which defaults to latest
+  - name: QUAY_ENTRYPOINT
+    value: "registry-nomigrate"
+    displayName: quay container entrypoint
+    description: the specific container entrypoint that will be run (e.g. registry, registry-nomigrate)
   - name: CLUSTERIP_SERVICE_PORT
     value: "443"
     displayName: clusterip service port
