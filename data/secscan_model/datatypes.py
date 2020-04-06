@@ -64,7 +64,7 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                             for vuln in f.get("Vulnerabilities", [])
                         ],
                     )
-                    for f in data_dict["Layer"]["Features"]
+                    for f in data_dict["Layer"].get("Features", [])
                 ]
             )
         )
