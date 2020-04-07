@@ -1009,17 +1009,18 @@
                   lookups, so be VERY careful with the query you specify.
                 </div>
                 <span class="config-string-field" binding="config.LDAP_USER_FILTER" is-optional="true"
-                      placeholder="someOtherField=someOtherValue"></span>
+                      placeholder="someOtherField=someOtherValue"
+                      pattern="\((.+)\)"></span>
                 <div class="help-text">
                   If specified, the additional filter used for all user lookup queries. Note that all
                   Distinguished Names used in the filter must be <strong>full</strong> paths; the <code>base_dn</code>
-                  is <strong>not</strong> added automatically here.
+                  is <strong>not</strong> added automatically here. <strong>Must</strong> be wrapped in parens.
                 </div>
                 <div class="help-text">
-                  Example: someOtherField=someOtherValue
+                  Example: (someOtherField=someOtherValue)
                 </div>
                 <div class="help-text">
-                  Example: memberOf=some.full.path.to.a.group
+                  Example: (memberOf=some.full.path.to.a.group)
                 </div>
                 <div class="help-text">
                   Example: (|(someFirstField=someValue)(someOtherField=someOtherValue))

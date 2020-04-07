@@ -62,6 +62,10 @@ class LDAPValidator(BaseValidator):
         email_attr = config.get("LDAP_EMAIL_ATTR", "mail")
         ldap_user_filter = config.get("LDAP_USER_FILTER", None)
 
+        if ldap_user_filter:
+            if not ldap_user_filter.startswith("(") or not ldap_user_filter.endswith(")"):
+                raise ConfigValidationException("LDAP user filter must be wrapped in parentheses")
+
         users = LDAPUsers(
             ldap_uri,
             base_dn,
