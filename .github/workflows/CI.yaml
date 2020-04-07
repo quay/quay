@@ -64,26 +64,6 @@ jobs:
     - name: tox
       run: tox -e py27-registry
 
-  legacy-registry:
-    name: Legacy Registry Tests
-    runs-on: ubuntu-latest
-    steps:
-
-    - uses: actions/checkout@v2
-    - name: Set up Python 2.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: 2.7
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
-
-    - name: tox
-      run: tox -e py27-legacy-registry
-
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
