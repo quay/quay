@@ -109,7 +109,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         # TODO(alecmerdler): Provide a way to indicate the current scan is outdated (`report.state != status.indexer_hash`)
 
         return SecurityInformationLookupResult.for_data(
-            SecurityInformation(Layer(features_for(report)))
+            SecurityInformation(Layer(report["manifest_hash"], "", "", 4, features_for(report)))
         )
 
     def perform_indexing(self, start_token=None):
