@@ -32,7 +32,7 @@ Vulnerability = namedtuple(
 Feature = namedtuple(
     "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
 )
-Layer = namedtuple("Layer", ["Features"])
+Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
 
 
 class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
@@ -44,7 +44,11 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
     def from_dict(cls, data_dict):
         return SecurityInformation(
             Layer(
-                [
+                Name=data_dict["Layer"].get("Name", ""),
+                ParentName=data_dict["Layer"].get("ParentName", ""),
+                NamespaceName=data_dict["Layer"].get("NamespaceName", ""),
+                IndexedByVersion=data_dict["Layer"].get("IndexedByVersion", None),
+                Features=[
                     Feature(
                         Name=f["Name"],
                         VersionFormat=f["VersionFormat"],
@@ -65,13 +69,17 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                         ],
                     )
                     for f in data_dict["Layer"].get("Features", [])
-                ]
+                ],
             )
         )
 
     def to_dict(self):
         return {
             "Layer": {
+                "Name": self.Layer.Name,
+                "ParentName": self.Layer.ParentName,
+                "NamespaceName": self.Layer.NamespaceName,
+                "IndexedByVersion": self.Layer.IndexedByVersion,
                 "Features": [
                     {
                         "Name": f.Name,
@@ -93,7 +101,7 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                         ],
                     }
                     for f in self.Layer.Features
-                ]
+                ],
             }
         }
 

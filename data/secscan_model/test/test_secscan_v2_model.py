@@ -100,6 +100,13 @@ def test_load_security_information_api_responses(secscan_api_response, initializ
     security_information = secscan.load_security_information(manifest).security_information
 
     assert isinstance(security_information, SecurityInformation)
+    assert security_information.Layer.Name == secscan_api_response["Layer"].get("Name", "")
+    assert security_information.Layer.ParentName == secscan_api_response["Layer"].get(
+        "ParentName", ""
+    )
+    assert security_information.Layer.IndexedByVersion == secscan_api_response["Layer"].get(
+        "IndexedByVersion", None
+    )
     assert len(security_information.Layer.Features) == len(
         secscan_api_response["Layer"].get("Features", [])
     )

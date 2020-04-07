@@ -127,7 +127,7 @@ def test_load_security_information_success(initialized_db):
     result = secscan.load_security_information(manifest)
 
     assert result.status == ScanLookupStatus.SUCCESS
-    assert result.security_information == SecurityInformation(Layer([]))
+    assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
 
 
 def test_perform_indexing_whitelist(initialized_db):
@@ -296,5 +296,14 @@ def test_features_for():
             security_info = json.load(security_info_file)
 
         assert (
-            SecurityInformation(Layer(features_for(vuln_report))).to_dict() == security_info["data"]
+            SecurityInformation(
+                Layer(
+                    "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
+                    "",
+                    "",
+                    4,
+                    features_for(vuln_report),
+                )
+            ).to_dict()
+            == security_info["data"]
         )

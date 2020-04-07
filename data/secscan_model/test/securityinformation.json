@@ -2,6 +2,10 @@
   "status":"scanned",
   "data":{
      "Layer":{
+        "Name": "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
+        "NamespaceName": "",
+        "IndexedByVersion": 4,
+        "ParentName": "",
         "Features":[
            {
               "Name":"tzdata",
