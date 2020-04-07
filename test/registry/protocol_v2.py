@@ -558,7 +558,7 @@ class V2Protocol(RegistryProtocol):
                             (start_byte, end_byte) = chunk_data
                             expected_code = 202
 
-                        patch_headers = {"Range": "bytes=%s-%s" % (start_byte, end_byte)}
+                        patch_headers = {"Content-Range": "%s-%s" % (start_byte, end_byte)}
                         patch_headers.update(headers)
 
                         contents_chunk = blob_bytes[start_byte:end_byte]

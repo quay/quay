@@ -135,3 +135,49 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
     else:
         with pytest.raises(model.blob.BlobDoesNotExist):
             model.blob.get_repo_blob_by_digest("devtable", "building", mount_digest)
+
+
+def test_blob_upload_offset(client, app):
+    user = model.user.get_user("devtable")
+    access = [{"type": "repository", "name": "devtable/simple", "actions": ["pull", "push"],}]
+
+    context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
+    token = generate_bearer_token(
+        realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
+    )
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+    }
+
+    # Create a blob upload request.
+    params = {
+        "repository": "devtable/simple",
+    }
+    response = conduct_call(
+        client, "v2.start_blob_upload", url_for, "POST", params, expected_code=202, headers=headers
+    )
+
+    upload_uuid = response.headers["Docker-Upload-UUID"]
+
+    # Attempt to start an upload past index zero.
+    params = {
+        "repository": "devtable/simple",
+        "upload_uuid": upload_uuid,
+    }
+
+    headers = {
+        "Authorization": "Bearer %s" % token,
+        "Content-Range": "13-50",
+    }
+
+    conduct_call(
+        client,
+        "v2.upload_chunk",
+        url_for,
+        "PATCH",
+        params,
+        expected_code=416,
+        headers=headers,
+        body="something",
+    )

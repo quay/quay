@@ -1305,6 +1305,32 @@ def test_chunked_uploading_mismatched_chunks(
     )
 
 
+def test_chunked_uploading_missing_first_chunk(
+    v2_protocol, random_layer_data, liveserver_session, app_reloader
+):
+    """ Test: Attempt to upload a chunk with missing data.. """
+    credentials = ("devtable", "password")
+
+    images = [
+        Image(id="theimage", parent_id=None, bytes=random_layer_data),
+    ]
+
+    # Note: First 10 bytes are missing.
+    options = ProtocolOptions()
+    options.chunks_for_upload = [(10, len(random_layer_data), 416)]
+
+    # Attempt to push, with the chunked upload failing.
+    v2_protocol.push(
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "latest",
+        images,
+        credentials=credentials,
+        options=options,
+    )
+
+
 def test_pull_disabled_namespace(
     pusher,
     puller,
