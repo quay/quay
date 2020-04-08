@@ -774,6 +774,7 @@ class CloudFrontedS3Storage(S3Storage):
         cloudfront_privatekey_filename,
         storage_path,
         s3_bucket,
+        cloudfront_force_cf_aws_regions=None,
         *args,
         **kwargs
     ):
@@ -784,6 +785,7 @@ class CloudFrontedS3Storage(S3Storage):
         self.cloudfront_distribution_domain = cloudfront_distribution_domain
         self.cloudfront_key_id = cloudfront_key_id
         self.cloudfront_privatekey = self._load_private_key(cloudfront_privatekey_filename)
+        self.cloudfront_force_cf_aws_regions = set(cloudfront_force_cf_aws_regions or [])
 
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
@@ -802,9 +804,19 @@ class CloudFrontedS3Storage(S3Storage):
         resolved_ip_info = self._context.ip_resolver.resolve_ip(request_ip)
         logger.debug("Resolved IP information for IP %s: %s", request_ip, resolved_ip_info)
         if resolved_ip_info and resolved_ip_info.provider == "aws":
-            return super(CloudFrontedS3Storage, self).get_direct_download_url(
-                path, request_ip, expires_in, requires_cors, head
-            )
+            # If the resolved AWS region falls into the blacklist, we skip the direct S3
+            # URL. This is typically used for regions where pulling from the normal bucket
+            # is considered too slow.
+            skip_direct = False
+            for force_region_name in self.cloudfront_force_cf_aws_regions:
+                if self._context.ip_resolver.is_within_aws_region(request_ip, force_region_name):
+                    skip_direct = True
+                    break
+
+            if not skip_direct:
+                return super(CloudFrontedS3Storage, self).get_direct_download_url(
+                    path, request_ip, expires_in, requires_cors, head
+                )
 
         url = "https://%s/%s" % (self.cloudfront_distribution_domain, path)
         expire_date = datetime.now() + timedelta(seconds=expires_in)

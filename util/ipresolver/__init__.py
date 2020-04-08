@@ -2,7 +2,7 @@ import logging
 import json
 import time
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 from threading import Thread, Lock
 from abc import ABCMeta, abstractmethod
@@ -79,13 +79,18 @@ class IPResolver(IPResolverInterface):
         self.app = app
         self.geoip_db = geoip2.database.Reader("util/ipresolver/GeoLite2-Country.mmdb")
         self.amazon_ranges = None
+        self.amazon_ranges_by_region = None
         self.sync_token = None
 
         logger.info("Loading AWS IP ranges from disk")
         aws_ip_ranges_data = _get_aws_ip_ranges()
         if aws_ip_ranges_data is not None and aws_ip_ranges_data.get("syncToken"):
             logger.info("Building AWS IP ranges")
-            self.amazon_ranges = IPResolver._parse_amazon_ranges(aws_ip_ranges_data)
+
+            amazon_ranges, by_region = IPResolver._parse_amazon_ranges(aws_ip_ranges_data)
+
+            self.amazon_ranges = amazon_ranges
+            self.amazon_ranges_by_region = by_region
             self.sync_token = aws_ip_ranges_data["syncToken"]
             logger.info("Finished building AWS IP ranges")
 
@@ -123,6 +128,22 @@ class IPResolver(IPResolverInterface):
 
         return False
 
+    def is_within_aws_region(self, ip_address, aws_region):
+        """ Returns True if the given IP address is within the given AWS region. """
+        if not ip_address or self.amazon_ranges_by_region is None:
+            return False
+
+        aws_region_set = self.amazon_ranges_by_region.get(aws_region)
+        if aws_region_set is None:
+            return False
+
+        try:
+            parsed_ip = IPAddress(ip_address)
+        except AddrFormatError:
+            return False
+
+        return parsed_ip in aws_region_set
+
     def resolve_ip(self, ip_address):
         """
         Attempts to return resolved information about the specified IP Address.
@@ -158,8 +179,11 @@ class IPResolver(IPResolverInterface):
     @staticmethod
     def _parse_amazon_ranges(ranges):
         all_amazon = IPSet()
+        by_region = defaultdict(IPSet)
         for service_description in ranges["prefixes"]:
             if service_description["service"] in AWS_SERVICES:
-                all_amazon.add(IPNetwork(service_description["ip_prefix"]))
+                net = IPNetwork(service_description["ip_prefix"])
+                all_amazon.add(net)
+                by_region[service_description["region"]].add(net)
 
-        return all_amazon
+        return all_amazon, by_region
