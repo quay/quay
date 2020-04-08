@@ -7,4 +7,5 @@ from app import app as application
 from endpoints.healthy import healthy
 
 
-application.register_blueprint(healthy, url_prefix="/health")
+#application.register_blueprint(healthy, url_prefix="/health")
+application.register_blueprint(healthy)

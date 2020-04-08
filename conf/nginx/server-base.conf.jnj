@@ -25,6 +25,9 @@ location / {
 location /health {
     proxy_pass   http://healthy_app_server;
 }
+location /status {
+    proxy_pass   http://healthy_app_server;
+}
 
 location /push {
     proxy_pass   http://web_app_server;
