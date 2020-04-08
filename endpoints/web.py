@@ -306,80 +306,80 @@ def privacy():
     return index("")
 
 
-@web.route("/health", methods=["GET"])
-@web.route("/health/instance", methods=["GET"])
-@process_auth_or_cookie
-@no_cache
-def instance_health():
-    checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_instance()
-    response = jsonify(dict(data=data, status_code=status_code))
-    response.status_code = status_code
-    return response
+# @web.route("/health", methods=["GET"])
+# @web.route("/health/instance", methods=["GET"])
+# @process_auth_or_cookie
+# @no_cache
+# def instance_health():
+#     checker = get_healthchecker(app, config_provider, instance_keys)
+#     (data, status_code) = checker.check_instance()
+#     response = jsonify(dict(data=data, status_code=status_code))
+#     response.status_code = status_code
+#     return response
 
 
-@web.route("/status", methods=["GET"])
-@web.route("/health/endtoend", methods=["GET"])
-@process_auth_or_cookie
-@no_cache
-def endtoend_health():
-    checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_endtoend()
-    response = jsonify(dict(data=data, status_code=status_code))
-    response.status_code = status_code
-    return response
+# @web.route("/status", methods=["GET"])
+# @web.route("/health/endtoend", methods=["GET"])
+# @process_auth_or_cookie
+# @no_cache
+# def endtoend_health():
+#     checker = get_healthchecker(app, config_provider, instance_keys)
+#     (data, status_code) = checker.check_endtoend()
+#     response = jsonify(dict(data=data, status_code=status_code))
+#     response.status_code = status_code
+#     return response
 
 
-@web.route("/health/warning", methods=["GET"])
-@process_auth_or_cookie
-@no_cache
-def warning_health():
-    checker = get_healthchecker(app, config_provider, instance_keys)
-    (data, status_code) = checker.check_warning()
-    response = jsonify(dict(data=data, status_code=status_code))
-    response.status_code = status_code
-    return response
+# @web.route("/health/warning", methods=["GET"])
+# @process_auth_or_cookie
+# @no_cache
+# def warning_health():
+#     checker = get_healthchecker(app, config_provider, instance_keys)
+#     (data, status_code) = checker.check_warning()
+#     response = jsonify(dict(data=data, status_code=status_code))
+#     response.status_code = status_code
+#     return response
 
 
-@web.route("/health/dbrevision", methods=["GET"])
-@route_show_if(features.BILLING)  # Since this is only used in production.
-@process_auth_or_cookie
-@no_cache
-def dbrevision_health():
-    # Find the revision from the database.
-    result = db.execute_sql("select * from alembic_version limit 1").fetchone()
-    db_revision = result[0]
+# @web.route("/health/dbrevision", methods=["GET"])
+# @route_show_if(features.BILLING)  # Since this is only used in production.
+# @process_auth_or_cookie
+# @no_cache
+# def dbrevision_health():
+#     # Find the revision from the database.
+#     result = db.execute_sql("select * from alembic_version limit 1").fetchone()
+#     db_revision = result[0]
 
-    # Find the local revision from the file system.
-    with open(os.path.join(ROOT_DIR, "ALEMBIC_HEAD"), "r") as f:
-        local_revision = f.readline().split(" ")[0]
+#     # Find the local revision from the file system.
+#     with open(os.path.join(ROOT_DIR, "ALEMBIC_HEAD"), "r") as f:
+#         local_revision = f.readline().split(" ")[0]
 
-    data = {
-        "db_revision": db_revision,
-        "local_revision": local_revision,
-    }
+#     data = {
+#         "db_revision": db_revision,
+#         "local_revision": local_revision,
+#     }
 
-    status_code = 200 if db_revision == local_revision else 400
+#     status_code = 200 if db_revision == local_revision else 400
 
-    response = jsonify(dict(data=data, status_code=status_code))
-    response.status_code = status_code
-    return response
+#     response = jsonify(dict(data=data, status_code=status_code))
+#     response.status_code = status_code
+#     return response
 
 
-@web.route("/health/enabledebug/<secret>", methods=["GET"])
-@no_cache
-def enable_health_debug(secret):
-    if not secret:
-        abort(404)
+# @web.route("/health/enabledebug/<secret>", methods=["GET"])
+# @no_cache
+# def enable_health_debug(secret):
+#     if not secret:
+#         abort(404)
 
-    if not app.config.get("ENABLE_HEALTH_DEBUG_SECRET"):
-        abort(404)
+#     if not app.config.get("ENABLE_HEALTH_DEBUG_SECRET"):
+#         abort(404)
 
-    if app.config.get("ENABLE_HEALTH_DEBUG_SECRET") != secret:
-        abort(404)
+#     if app.config.get("ENABLE_HEALTH_DEBUG_SECRET") != secret:
+#         abort(404)
 
-    session["health_debug"] = True
-    return make_response("Health check debug information enabled")
+#     session["health_debug"] = True
+#     return make_response("Health check debug information enabled")
 
 
 @web.route("/robots.txt", methods=["GET"])

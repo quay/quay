@@ -22,6 +22,10 @@ location / {
     proxy_pass   http://web_app_server;
 }
 
+location /health {
+    proxy_pass   http://healthy_app_server;
+}
+
 location /push {
     proxy_pass   http://web_app_server;
     client_max_body_size 5M;

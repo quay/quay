@@ -28,6 +28,14 @@ test/__pycache__
 __pycache__
 **/__pycache__
 static/build/**
+static/fonts/**
+static/webfonts/**
+static/ldn/**
+config_app/static/build/**
+config_app/static/fonts/**
+config_app/static/webfonts/**
+config_app/static/ldn/**
+src/**
 .gitlab-ci/*
 .gitlab-ci.*
 docker-compose.yaml

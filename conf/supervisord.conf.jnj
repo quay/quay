@@ -208,6 +208,14 @@ autostart = {{ config['gunicorn-web']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:gunicorn-healthy]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command=gunicorn -c %(ENV_QUAYCONF)s/gunicorn_healthy.py healthy:application
+autostart = {{ config['gunicorn-healthy']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:jwtproxy]
 command=/usr/local/bin/jwtproxy --config %(ENV_QUAYCONF)s/jwtproxy_conf.yaml
 autostart = {{ config['jwtproxy']['autostart'] }}

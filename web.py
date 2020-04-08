@@ -14,6 +14,7 @@ from endpoints.realtime import realtime
 from endpoints.web import web
 from endpoints.webhooks import webhooks
 from endpoints.wellknown import wellknown
+from endpoints.healthy import healthy
 
 
 application.register_blueprint(web)
@@ -26,3 +27,4 @@ application.register_blueprint(webhooks, url_prefix="/webhooks")
 application.register_blueprint(realtime, url_prefix="/realtime")
 application.register_blueprint(key_server, url_prefix="/keys")
 application.register_blueprint(wellknown, url_prefix="/.well-known")
+#application.register_blueprint(healthy, url_prefix="/health")

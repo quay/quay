@@ -1,5 +1,6 @@
 *.pyc
 venv
+.venv*
 screenshots/screenshots/
 conf/stack
 */node_modules
@@ -9,6 +10,12 @@ node_modules
 static/ldn
 static/fonts
 static/build
+static/webfonts
+config_app/static/ldn
+config_app/static/fonts
+config_app/static/build
+config_app/static/webfonts
+src
 stack_local
 test/data/registry/
 GIT_HEAD

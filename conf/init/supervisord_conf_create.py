@@ -38,6 +38,7 @@ def default_services():
         "gunicorn-secscan": {"autostart": "true"},
         "gunicorn-verbs": {"autostart": "true"},
         "gunicorn-web": {"autostart": "true"},
+        "gunicorn-healthy": {"autostart": "false"},
         "ip-resolver-update-worker": {"autostart": "true"},
         "jwtproxy": {"autostart": "true"},
         "memcache": {"autostart": "true"},
