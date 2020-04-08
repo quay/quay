@@ -25,6 +25,7 @@ from util.config.validators.validate_access import AccessSettingsValidator
 from util.config.validators.validate_actionlog_archiving import ActionLogArchivingValidator
 from util.config.validators.validate_apptokenauth import AppTokenAuthValidator
 from util.config.validators.validate_elasticsearch import ElasticsearchValidator
+from util.config.validators.validate_kinesis import KinesisValidator
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ VALIDATORS = {
     ActionLogArchivingValidator.name: ActionLogArchivingValidator.validate,
     AppTokenAuthValidator.name: AppTokenAuthValidator.validate,
     ElasticsearchValidator.name: ElasticsearchValidator.validate,
+    KinesisValidator.name: KinesisValidator.validate,
 }
 
 

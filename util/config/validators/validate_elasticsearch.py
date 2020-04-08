@@ -31,4 +31,6 @@ class ElasticsearchValidator(BaseValidator):
 
         resp = requests.get("https://" + host + ":" + port + "/" + index_prefix + "*", auth=auth)
         if resp.status_code != 200:
-            raise ConfigValidationException("Unable to connect to Elasticsearch with config: %s", status_code)
+            raise ConfigValidationException(
+                "Unable to connect to Elasticsearch with config: %s", resp.status_code
+            )
