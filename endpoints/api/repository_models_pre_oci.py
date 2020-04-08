@@ -5,7 +5,11 @@ from datetime import datetime, timedelta
 from auth.permissions import ReadRepositoryPermission
 from data.database import Repository as RepositoryTable, RepositoryState
 from data import model
-from data.appr_model import channel as channel_model, release as release_model
+from data.appr_model import (
+    channel as channel_model,
+    release as release_model,
+    tag as apprtags_model,
+)
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
 from endpoints.appr.models_cnr import model as appr_model
@@ -139,8 +143,12 @@ class PreOCIModel(RepositoryDataInterface):
             repository_ids = [repo.rid for repo in repos]
 
             if last_modified:
-                last_modified_map = registry_model.get_most_recent_tag_lifetime_start(
-                    repository_refs
+                last_modified_map = (
+                    registry_model.get_most_recent_tag_lifetime_start(repository_refs)
+                    if repo_kind == "image"
+                    else apprtags_model.get_most_recent_tag_lifetime_start(
+                        repository_ids, appr_model.models_ref
+                    )
                 )
 
             if popularity:
