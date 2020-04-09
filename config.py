@@ -715,5 +715,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to clear expired RepositoryActionCount entries.
     FEATURE_CLEAR_EXPIRED_RAC_ENTRIES = False
 
-    # Whether OCI manifest support should be enabled generally.
+    # Feature Flag: Whether OCI manifest support should be enabled generally.
     FEATURE_GENERAL_OCI_SUPPORT = False
+
+    # Feature Flag: Whether to allow Helm OCI content types.
+    # See: https://helm.sh/docs/topics/registries/
+    FEATURE_EXPERIMENTAL_HELM_OCI_SUPPORT = False

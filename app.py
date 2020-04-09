@@ -41,6 +41,7 @@ from data.userfiles import Userfiles
 from data.users import UserAuthentication
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
+from image.oci import register_artifact_type
 from path_converters import (
     RegexConverter,
     RepositoryPathConverter,
@@ -128,6 +129,13 @@ if app.config["PREFERRED_URL_SCHEME"] == "https" and not app.config.get(
 
 # Load features from config.
 features.import_features(app.config)
+
+# Register additional experimental artifact types.
+# TODO: extract this into a real, dynamic registration system.
+if features.EXPERIMENTAL_HELM_OCI_SUPPORT:
+    HELM_CHART_CONFIG_TYPE = "application/vnd.cncf.helm.config.v1+json"
+    HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]
+    register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
 
 CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str)).hexdigest()[0:8]
 

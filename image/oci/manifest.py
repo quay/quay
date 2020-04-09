@@ -57,6 +57,7 @@ from image.oci import (
     OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
     OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
     ADDITIONAL_LAYER_CONTENT_TYPES,
+    ALLOWED_ARTIFACT_TYPES,
 )
 from image.oci.config import OCIConfig
 from image.oci.descriptor import get_descriptor_schema
@@ -72,8 +73,6 @@ OCI_MANIFEST_DIGEST_KEY = "digest"
 OCI_MANIFEST_LAYERS_KEY = "layers"
 OCI_MANIFEST_URLS_KEY = "urls"
 OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
-
-ALLOWED_ARTIFACT_TYPES = [OCI_IMAGE_CONFIG_CONTENT_TYPE]
 
 # Named tuples.
 OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest"])
