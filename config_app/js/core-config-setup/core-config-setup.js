@@ -117,6 +117,14 @@ angular.module("quay-config")
           {'id': 'repomirroring', 'title': 'Repository Mirroring', 'condition': function(config) {
             return config.FEATURE_REPOSITORY_MIRRORING;
           }},
+
+          {'id': 'elasticsearch', 'title': 'Elasticsearch', 'condition': function(config) {
+            return config.LOGS_MODEL == 'elasticsearch';
+          }},
+
+          {'id': 'kinesis', 'title': 'Kinesis', 'condition': function(config) {
+            return config.LOGS_MODEL_CONFIG.producer == 'kinesis_stream';
+          }},
         ];
 
         $scope.STORAGE_CONFIG_FIELDS = {
@@ -212,7 +220,7 @@ angular.module("quay-config")
 
         $scope.validateHostname = function(hostname) {
           if (hostname.indexOf('127.0.0.1') == 0 || hostname.indexOf('localhost') == 0) {
-            return 'Please specify a non-localhost hostname. "localhost" will refer to the container, not your machine.'
+            return 'Please specify a non-localhost hostname. "localhost" will refer to the container, not your machine.';
           }
 
           return null;
@@ -585,27 +593,41 @@ angular.module("quay-config")
               $scope.mapped['TLS_SETTING'] = 'internal-tls';
             }
           }
+
+          $scope.mapped['LOGS_MODEL_CONFIG'] = {};
+          $scope.mapped['LOGS_MODEL'] = config['LOGS_MODEL'] || 'database';
+          if (config['LOGS_MODEL'] == 'elasticsearch') {
+            $scope.mapped['LOGS_MODEL_CONFIG']['producer'] = config['LOGS_MODEL_CONFIG']['producer'] || 'elasticsearch';
+
+            if (config['LOGS_MODEL_CONFIG']['kinesis_stream_config']) {
+              $scope.mapped['LOGS_MODEL_CONFIG']['kinesis_stream_config'] = config['LOGS_MODEL_CONFIG']['kinesis_stream_config'];
+            }
+
+            if (config['LOGS_MODEL_CONFIG']['elasticsearch_config']) {
+              $scope.mapped['LOGS_MODEL_CONFIG']['elasticsearch_config'] = config['LOGS_MODEL_CONFIG']['elasticsearch_config'];
+            }
+          }
         };
 
         var tlsSetter = function(value) {
-            if (value == null || !$scope.config) { return; }
+          if (value == null || !$scope.config) { return; }
 
-            switch (value) {
-              case 'none':
-                $scope.config['PREFERRED_URL_SCHEME'] = 'http';
-                delete $scope.config['EXTERNAL_TLS_TERMINATION'];
-                return;
+          switch (value) {
+            case 'none':
+              $scope.config['PREFERRED_URL_SCHEME'] = 'http';
+              delete $scope.config['EXTERNAL_TLS_TERMINATION'];
+              return;
 
-              case 'external-tls':
-                $scope.config['PREFERRED_URL_SCHEME'] = 'https';
-                $scope.config['EXTERNAL_TLS_TERMINATION'] = true;
-                return;
+            case 'external-tls':
+              $scope.config['PREFERRED_URL_SCHEME'] = 'https';
+              $scope.config['EXTERNAL_TLS_TERMINATION'] = true;
+              return;
 
-              case 'internal-tls':
-                $scope.config['PREFERRED_URL_SCHEME'] = 'https';
-                delete $scope.config['EXTERNAL_TLS_TERMINATION'];
-                return;
-            }
+            case 'internal-tls':
+              $scope.config['PREFERRED_URL_SCHEME'] = 'https';
+              delete $scope.config['EXTERNAL_TLS_TERMINATION'];
+              return;
+          }
         };
 
         var redisSetter = function(keyname) {
@@ -631,6 +653,64 @@ angular.module("quay-config")
           };
         };
 
+        var logsModelSelector = function(keyname) {
+          return function(value) {
+            if (!$scope.config) { return; }
+
+            if (!value) { $scope.config['LOGS_MODEL'] = 'database'; };
+
+            if (value == 'elasticsearch') {
+              $scope.config['LOGS_MODEL'] = 'elasticsearch';
+              if (!$scope.config['LOGS_MODEL_CONFIG']) {
+                $scope.config['LOGS_MODEL_CONFIG'] = {};
+              }
+              if (!$scope.config['LOGS_MODEL_CONFIG']['elasticsearch_config']) {
+                $scope.config['LOGS_MODEL_CONFIG']['elasticsearch_config'] = {};
+              }
+              if (!$scope.config['LOGS_MODEL_CONFIG']['producer']) {
+                $scope.mapped['LOGS_MODEL_CONFIG']['producer'] = 'elasticsearch';
+                $scope.config['LOGS_MODEL_CONFIG']['producer'] = 'elasticsearch';
+              }
+            } else if (value == 'database') {
+              $scope.config['LOGS_MODEL'] = 'database';
+              $scope.mapped['LOGS_MODEL_CONFIG'] = {};
+              $scope.config['LOGS_MODEL_CONFIG'] = {};
+            }
+            console.log("TEST:", $scope.config);
+          };
+        };
+
+        var logsProducerSetter = function(value) {
+          if (value == null || !$scope.config ) { return; }
+
+          if (value == 'kinesis_stream') {
+            if (!$scope.config['LOGS_MODEL_CONFIG']['kinesis_stream_config']) {
+              $scope.config['LOGS_MODEL_CONFIG']['kinesis_stream_config'] = {};
+            }
+          } else {
+            delete $scope.mapped['LOGS_MODEL_CONFIG']['kinesis_stream_config'];
+            delete $scope.config['LOGS_MODEL_CONFIG']['kinesis_stream_config'];
+          }
+          
+          $scope.config['LOGS_MODEL_CONFIG']['producer'] = value;
+        };
+
+        var logsModelConfigSetter = function(keyname, configName) {
+          return function(value) {
+            if (value == null || !$scope.config ) { return; }
+
+            if (!$scope.config['LOGS_MODEL_CONFIG'][configName]) {
+              $scope.config['LOGS_MODEL_CONFIG'][configName] = {};
+            }
+
+            if (!value) {
+              delete $scope.config['LOGS_MODEL_CONFIG'][configName][keyname];
+            }
+
+            $scope.config['LOGS_MODEL_CONFIG'][configName][keyname] = value;
+          };
+        };
+
         // Add mapped logic.
         $scope.$watch('mapped.GITHUB_LOGIN_KIND', githubSelector('GITHUB_LOGIN_CONFIG'));
         $scope.$watch('mapped.GITHUB_TRIGGER_KIND', githubSelector('GITHUB_TRIGGER_CONFIG'));
@@ -640,6 +720,20 @@ angular.module("quay-config")
         $scope.$watch('mapped.redis.host', redisSetter('host'));
         $scope.$watch('mapped.redis.port', redisSetter('port'));
         $scope.$watch('mapped.redis.password', redisSetter('password'));
+
+        $scope.$watch('mapped.LOGS_MODEL', logsModelSelector('LOGS_MODEL'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.producer', logsProducerSetter);
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.elasticsearch_config.host', logsModelConfigSetter('host', 'elasticsearch_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.elasticsearch_config.port', logsModelConfigSetter('port', 'elasticsearch_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.elasticsearch_config.access_key', logsModelConfigSetter('access_key', 'elasticsearch_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.elasticsearch_config.secret_key', logsModelConfigSetter('secret_key', 'elasticsearch_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.elasticsearch_config.aws_region', logsModelConfigSetter('aws_region', 'elasticsearch_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.elasticsearch_config.index_prefix', logsModelConfigSetter('index_prefix', 'elasticsearch_config'));
+
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_access_key', logsModelConfigSetter('aws_access_key', 'kinesis_stream_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_secret_key', logsModelConfigSetter('aws_secret_key', 'kinesis_stream_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_region', logsModelConfigSetter('aws_region', 'kinesis_stream_config'));
+        $scope.$watch('mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.stream_name', logsModelConfigSetter('stream_name', 'kinesis_stream_config'));
 
         // Remove extra extra fields (which are not allowed) from storage config.
         var updateFields = function(sc) {
@@ -720,6 +814,12 @@ angular.module("quay-config")
         $scope.$watch('config.FEATURE_USER_CREATION', function(value) {
           if (!value) {
             $scope.config['FEATURE_INVITE_ONLY_USER_CREATION'] = false;
+          }
+        });
+
+        $scope.$watch('config.LOGS_MODEL', function(value) {
+          if (!value) {
+            $scope.config['LOGS_MODEL'] = 'database';
           }
         });
 
