@@ -130,16 +130,13 @@ class GithubOAuthService(OAuthLoginService):
         return user_info["login"]
 
     def get_verified_user_email(self, app_config, http_client, token, user_info):
-        v3_media_type = {"Accept": "application/vnd.github.v3"}
-
-        token_param = {
-            "access_token": token,
+        v3_media_type = {
+            "Accept": "application/vnd.github.v3",
+            "Authorization": "token %s" % token,
         }
 
         # Find the e-mail address for the user: we will accept any email, but we prefer the primary
-        get_email = http_client.get(
-            self.email_endpoint(), params=token_param, headers=v3_media_type
-        )
+        get_email = http_client.get(self.email_endpoint(), headers=v3_media_type)
         if get_email.status_code // 100 != 2:
             raise OAuthLoginException(
                 "Got non-2XX status code for emails endpoint: %s" % get_email.status_code
@@ -156,19 +153,16 @@ class GithubOAuthService(OAuthLoginService):
         return allowed_emails[0]["email"] if len(allowed_emails) > 0 else None
 
     def service_verify_user_info_for_login(self, app_config, http_client, token, user_info):
-        # Retrieve the user's orgnizations (if organization filtering is turned on)
+        # Retrieve the user's organizations (if organization filtering is turned on)
         if self.allowed_organizations() is None:
             return
 
-        moondragon_media_type = {"Accept": "application/vnd.github.moondragon+json"}
-
-        token_param = {
-            "access_token": token,
+        moondragon_media_type = {
+            "Accept": "application/vnd.github.moondragon+json",
+            "Authorization": "token %s" % token,
         }
 
-        get_orgs = http_client.get(
-            self.orgs_endpoint(), params=token_param, headers=moondragon_media_type
-        )
+        get_orgs = http_client.get(self.orgs_endpoint(), headers=moondragon_media_type)
 
         if get_orgs.status_code // 100 != 2:
             logger.debug("get_orgs response: %s", get_orgs.json())
