@@ -98,7 +98,7 @@ class OCIIndex(ManifestInterface):
                         OCI_IMAGE_MANIFEST_CONTENT_TYPE,
                         OCI_IMAGE_INDEX_CONTENT_TYPE,
                     ],
-                    additional_items={
+                    additional_properties={
                         INDEX_PLATFORM_KEY: {
                             "type": "object",
                             "description": "The platform object describes the platform which the image in "

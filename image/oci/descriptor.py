@@ -5,8 +5,10 @@ DESCRIPTOR_URLS_KEY = "urls"
 DESCRIPTOR_ANNOTATIONS_KEY = "annotations"
 
 
-def get_descriptor_schema(allowed_media_types, additional_items=None, additional_required=None):
-    items = {
+def get_descriptor_schema(
+    allowed_media_types, additional_properties=None, additional_required=None
+):
+    properties = {
         DESCRIPTOR_MEDIATYPE_KEY: {
             "type": "string",
             "description": "The MIME type of the referenced manifest",
@@ -35,12 +37,12 @@ def get_descriptor_schema(allowed_media_types, additional_items=None, additional
         },
     }
 
-    if additional_items:
-        items.update(additional_items)
+    if additional_properties:
+        properties.update(additional_properties)
 
     return {
         "type": "object",
-        "items": items,
+        "properties": properties,
         "required": [DESCRIPTOR_MEDIATYPE_KEY, DESCRIPTOR_SIZE_KEY, DESCRIPTOR_DIGEST_KEY,]
         + (additional_required or []),
     }

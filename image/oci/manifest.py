@@ -56,6 +56,7 @@ from image.oci import (
     OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES,
     OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
     OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
+    ADDITIONAL_LAYER_CONTENT_TYPES,
 )
 from image.oci.config import OCIConfig
 from image.oci.descriptor import get_descriptor_schema
@@ -72,6 +73,7 @@ OCI_MANIFEST_LAYERS_KEY = "layers"
 OCI_MANIFEST_URLS_KEY = "urls"
 OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
 
+ALLOWED_ARTIFACT_TYPES = [OCI_IMAGE_CONFIG_CONTENT_TYPE]
 
 # Named tuples.
 OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest"])
@@ -111,11 +113,13 @@ class OCIManifest(ManifestInterface):
                 "description": "The media type of the schema.",
                 "enum": [OCI_IMAGE_MANIFEST_CONTENT_TYPE],
             },
-            OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema([OCI_IMAGE_CONFIG_CONTENT_TYPE]),
+            OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(ALLOWED_ARTIFACT_TYPES),
             OCI_MANIFEST_LAYERS_KEY: {
                 "type": "array",
                 "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
-                "items": get_descriptor_schema(OCI_IMAGE_LAYER_CONTENT_TYPES),
+                "items": get_descriptor_schema(
+                    OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
+                ),
             },
         },
         "required": [OCI_MANIFEST_VERSION_KEY, OCI_MANIFEST_CONFIG_KEY, OCI_MANIFEST_LAYERS_KEY,],
@@ -207,6 +211,10 @@ class OCIManifest(ManifestInterface):
         return False
 
     @property
+    def is_image_manifest(self):
+        return self.manifest_dict["config"]["mediaType"] == OCI_IMAGE_CONFIG_CONTENT_TYPE
+
+    @property
     def blob_digests(self):
         return [str(layer.digest) for layer in self.filesystem_layers] + [str(self.config.digest)]
 
@@ -225,8 +233,13 @@ class OCIManifest(ManifestInterface):
         return self.blob_digests
 
     def get_manifest_labels(self, content_retriever):
+        if not self.is_image_manifest:
+            return dict(self.annotations)
+
+        built_config = self._get_built_config(content_retriever)
+
         labels = {}
-        labels.update(self._get_built_config(content_retriever).labels or {})
+        labels.update(built_config.labels or {})
         labels.update(self.annotations)
         return labels
 
@@ -235,6 +248,9 @@ class OCIManifest(ManifestInterface):
         Returns the layers of this manifest, from base to leaf or None if this kind of manifest does
         not support layers.
         """
+        if not self.is_image_manifest:
+            raise StopIteration()
+
         for image_layer in self._manifest_image_layers(content_retriever):
             is_remote = image_layer.blob_layer.is_remote if image_layer.blob_layer else False
             urls = image_layer.blob_layer.urls if image_layer.blob_layer else None
@@ -259,6 +275,8 @@ class OCIManifest(ManifestInterface):
         return None
 
     def _manifest_image_layers(self, content_retriever):
+        assert self.is_image_manifest
+
         # Retrieve the configuration for the manifest.
         config = self._get_built_config(content_retriever)
         history = list(config.history)
@@ -307,10 +325,11 @@ class OCIManifest(ManifestInterface):
 
     @property
     def has_legacy_image(self):
-        return not self.has_remote_layer and not self.is_empty_manifest
+        return self.is_image_manifest and not self.has_remote_layer and not self.is_empty_manifest
 
     def generate_legacy_layers(self, images_map, content_retriever):
         assert not self.has_remote_layer
+        assert self.is_image_manifest
 
         # NOTE: We use the DockerSchema1ManifestBuilder here because it already contains
         # the logic for generating the DockerV1Metadata. All of this will go away once we get
@@ -322,13 +341,13 @@ class OCIManifest(ManifestInterface):
     def get_leaf_layer_v1_image_id(self, content_retriever):
         # NOTE: If there exists a layer with remote content, then we consider this manifest
         # to not support legacy images.
-        if self.has_remote_layer:
+        if self.has_remote_layer or not self.is_image_manifest:
             return None
 
         return self.get_legacy_image_ids(content_retriever)[-1].v1_id
 
     def get_legacy_image_ids(self, content_retriever):
-        if self.has_remote_layer:
+        if self.has_remote_layer or not self.is_image_manifest:
             return None
 
         return [l.v1_id for l in self._manifest_image_layers(content_retriever)]
@@ -338,6 +357,9 @@ class OCIManifest(ManifestInterface):
     ):
         if self.media_type in allowed_mediatypes:
             return self
+
+        if not self.is_image_manifest:
+            return None
 
         # If this manifest is not on the allowed list, try to convert the schema 1 version (if any)
         schema1 = self.get_schema1_manifest(namespace_name, repo_name, tag_name, content_retriever)
@@ -349,7 +371,7 @@ class OCIManifest(ManifestInterface):
         )
 
     def get_schema1_manifest(self, namespace_name, repo_name, tag_name, content_retriever):
-        if self.has_remote_layer:
+        if self.has_remote_layer or not self.is_image_manifest:
             return None
 
         v1_builder = DockerSchema1ManifestBuilder(namespace_name, repo_name, tag_name)
@@ -360,6 +382,9 @@ class OCIManifest(ManifestInterface):
         return self
 
     def get_requires_empty_layer_blob(self, content_retriever):
+        if not self.is_image_manifest:
+            return False
+
         schema2_config = self._get_built_config(content_retriever)
         if schema2_config is None:
             return None
@@ -371,6 +396,8 @@ class OCIManifest(ManifestInterface):
         Populates a DockerSchema1ManifestBuilder with the layers and config from this schema.
         """
         assert not self.has_remote_layer
+        assert self.is_image_manifest
+
         schema2_config = self._get_built_config(content_retriever)
         layers = list(self._manifest_image_layers(content_retriever))
 
@@ -383,6 +410,8 @@ class OCIManifest(ManifestInterface):
         return v1_builder
 
     def _get_built_config(self, content_retriever):
+        assert self.is_image_manifest
+
         if self._cached_built_config:
             return self._cached_built_config
 
