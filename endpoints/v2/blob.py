@@ -46,12 +46,8 @@ logger = logging.getLogger(__name__)
 
 BASE_BLOB_ROUTE = '/<repopath:repository>/blobs/<regex("{0}"):digest>'
 BLOB_DIGEST_ROUTE = BASE_BLOB_ROUTE.format(digest_tools.DIGEST_PATTERN)
-RANGE_HEADER_REGEX = re.compile(r"^bytes=([0-9]+)-([0-9]+)$")
+RANGE_HEADER_REGEX = re.compile(r"^([0-9]+)-([0-9]+)$")
 BLOB_CONTENT_TYPE = "application/octet-stream"
-
-
-class _InvalidRangeHeader(Exception):
-    pass
 
 
 @v2_bp.route(BLOB_DIGEST_ROUTE, methods=["HEAD"])
@@ -436,26 +432,6 @@ def _abort_range_not_satisfiable(valid_end, upload_uuid):
     )
 
 
-def _parse_range_header(range_header_text):
-    """
-    Parses the range header.
-
-    Returns a tuple of the start offset and the length. If the parse fails, raises
-    _InvalidRangeHeader.
-    """
-    found = RANGE_HEADER_REGEX.match(range_header_text)
-    if found is None:
-        raise _InvalidRangeHeader()
-
-    start = int(found.group(1))
-    length = int(found.group(2)) - start
-
-    if length <= 0:
-        raise _InvalidRangeHeader()
-
-    return (start, length)
-
-
 def _start_offset_and_length(range_header):
     """
     Returns a tuple of the start offset and the length.
@@ -464,9 +440,16 @@ def _start_offset_and_length(range_header):
     """
     start_offset, length = 0, -1
     if range_header is not None:
-        try:
-            start_offset, length = _parse_range_header(range_header)
-        except _InvalidRangeHeader:
+        # Parse the header.
+        found = RANGE_HEADER_REGEX.match(range_header)
+        if found is None:
+            return (None, None)
+
+        # NOTE: Offsets here are *inclusive*.
+        start_offset = int(found.group(1))
+        end_offset = int(found.group(2))
+        length = end_offset - start_offset + 1
+        if length < 0:
             return None, None
 
     return start_offset, length
@@ -493,7 +476,7 @@ def _upload_chunk(blob_uploader, commit_digest=None):
     If commit_digest is specified, the upload is committed to a blob once the stream's data has been
     read and stored.
     """
-    start_offset, length = _start_offset_and_length(request.headers.get("range"))
+    start_offset, length = _start_offset_and_length(request.headers.get("content-range"))
     if None in {start_offset, length}:
         raise InvalidRequest(message="Invalid range header")
 
