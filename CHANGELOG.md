@@ -1,4 +1,8 @@
-### master
+### v3.3.0
+
+- Added: quay container runs as default user instead of root
+- Fixed: Spaces are ignored in repository mirror list of comma-separated tags
+- Fixed: Repository mirror correctly honors TLS verify off
 
 ### v3.2.0
 
