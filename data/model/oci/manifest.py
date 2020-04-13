@@ -272,9 +272,19 @@ def _create_manifest(
     # image.
     legacy_image = None
     if manifest_interface_instance.has_legacy_image:
-        legacy_image_id = _populate_legacy_image(
-            repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error
-        )
+        try:
+            legacy_image_id = _populate_legacy_image(
+                repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error
+            )
+        except ManifestException as me:
+            logger.error("Got manifest error when populating legacy images: %s", me)
+            if raise_on_error:
+                raise CreateManifestException(
+                    "Attempt to create an invalid manifest. Please report this issue."
+                )
+
+            return None
+
         if legacy_image_id is None:
             return None
 

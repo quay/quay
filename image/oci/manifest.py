@@ -1,3 +1,42 @@
+"""
+Implements validation and conversion for the OCI Manifest JSON.
+
+See: https://github.com/opencontainers/image-spec/blob/master/manifest.md
+
+Example:
+
+{
+  "schemaVersion": 2,
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "size": 7023,
+    "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "size": 32654,
+      "digest": "sha256:9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0"
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "size": 16724,
+      "digest": "sha256:3c3a4604a545cdc127456d94e421cd355bca5b528f4a9c1905b15da2eb4a4c6b"
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "size": 73109,
+      "digest": "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736"
+    }
+  ],
+  "annotations": {
+    "com.example.key1": "value1",
+    "com.example.key2": "value2"
+  }
+}
+
+"""
+
 import json
 import logging
 import hashlib
@@ -9,139 +48,80 @@ from digest import digest_tools
 from image.shared import ManifestException
 from image.shared.interfaces import ManifestInterface
 from image.shared.types import ManifestImageLayer
-from image.docker.schema2 import (
-    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-    DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,
-    DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
-    DOCKER_SCHEMA2_REMOTE_LAYER_CONTENT_TYPE,
-    EMPTY_LAYER_BLOB_DIGEST,
-    EMPTY_LAYER_SIZE,
+from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_SIZE
+from image.oci import (
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+    OCI_IMAGE_CONFIG_CONTENT_TYPE,
+    OCI_IMAGE_LAYER_CONTENT_TYPES,
+    OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES,
+    OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
+    OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
+    ADDITIONAL_LAYER_CONTENT_TYPES,
+    ALLOWED_ARTIFACT_TYPES,
 )
+from image.oci.config import OCIConfig
+from image.oci.descriptor import get_descriptor_schema
 from image.docker.schema1 import DockerSchema1ManifestBuilder
-from image.docker.schema2.config import DockerSchema2Config
 from util.bytes import Bytes
 
 # Keys.
-DOCKER_SCHEMA2_MANIFEST_VERSION_KEY = "schemaVersion"
-DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY = "mediaType"
-DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY = "config"
-DOCKER_SCHEMA2_MANIFEST_SIZE_KEY = "size"
-DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY = "digest"
-DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY = "layers"
-DOCKER_SCHEMA2_MANIFEST_URLS_KEY = "urls"
+OCI_MANIFEST_VERSION_KEY = "schemaVersion"
+OCI_MANIFEST_MEDIATYPE_KEY = "mediaType"
+OCI_MANIFEST_CONFIG_KEY = "config"
+OCI_MANIFEST_SIZE_KEY = "size"
+OCI_MANIFEST_DIGEST_KEY = "digest"
+OCI_MANIFEST_LAYERS_KEY = "layers"
+OCI_MANIFEST_URLS_KEY = "urls"
+OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
 
 # Named tuples.
-DockerV2ManifestConfig = namedtuple("DockerV2ManifestConfig", ["size", "digest"])
-DockerV2ManifestLayer = namedtuple(
-    "DockerV2ManifestLayer", ["index", "digest", "is_remote", "urls", "compressed_size"]
+OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest"])
+OCIManifestLayer = namedtuple(
+    "OCIManifestLayer", ["index", "digest", "is_remote", "urls", "compressed_size"]
 )
 
-DockerV2ManifestImageLayer = namedtuple(
-    "DockerV2ManifestImageLayer",
+OCIManifestImageLayer = namedtuple(
+    "OCIManifestImageLayer",
     ["history", "blob_layer", "v1_id", "v1_parent_id", "compressed_size", "blob_digest"],
 )
 
 logger = logging.getLogger(__name__)
 
 
-class MalformedSchema2Manifest(ManifestException):
+class MalformedOCIManifest(ManifestException):
     """
-    Raised when a manifest fails an assertion that should be true according to the Docker Manifest
-    v2.2 Specification.
+    Raised when a manifest fails an assertion that should be true according to the OCI Manifest
+    spec.
     """
 
     pass
 
 
-class DockerSchema2Manifest(ManifestInterface):
+class OCIManifest(ManifestInterface):
     METASCHEMA = {
         "type": "object",
         "properties": {
-            DOCKER_SCHEMA2_MANIFEST_VERSION_KEY: {
+            OCI_MANIFEST_VERSION_KEY: {
                 "type": "number",
                 "description": "The version of the schema. Must always be `2`.",
                 "minimum": 2,
                 "maximum": 2,
             },
-            DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: {
+            OCI_MANIFEST_MEDIATYPE_KEY: {
                 "type": "string",
                 "description": "The media type of the schema.",
-                "enum": [DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE],
+                "enum": [OCI_IMAGE_MANIFEST_CONTENT_TYPE],
             },
-            DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY: {
-                "type": "object",
-                "description": "The config field references a configuration object for a container, "
-                + "by digest. This configuration item is a JSON blob that the runtime "
-                + "uses to set up the container.",
-                "properties": {
-                    DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: {
-                        "type": "string",
-                        "description": "The MIME type of the referenced object. This should generally be "
-                        + "application/vnd.docker.container.image.v1+json",
-                        "enum": [DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE],
-                    },
-                    DOCKER_SCHEMA2_MANIFEST_SIZE_KEY: {
-                        "type": "number",
-                        "description": "The size in bytes of the object. This field exists so that a "
-                        + "client will have an expected size for the content before "
-                        + "validating. If the length of the retrieved content does not "
-                        + "match the specified length, the content should not be trusted.",
-                    },
-                    DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY: {
-                        "type": "string",
-                        "description": "The content addressable digest of the config in the blob store",
-                    },
-                },
-                "required": [
-                    DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY,
-                    DOCKER_SCHEMA2_MANIFEST_SIZE_KEY,
-                    DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY,
-                ],
-            },
-            DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY: {
+            OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(ALLOWED_ARTIFACT_TYPES),
+            OCI_MANIFEST_LAYERS_KEY: {
                 "type": "array",
-                "description": "The layer list is ordered starting from the base "
-                + "image (opposite order of schema1).",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: {
-                            "type": "string",
-                            "description": "The MIME type of the referenced object. This should generally be "
-                            + "application/vnd.docker.image.rootfs.diff.tar.gzip. Layers of type "
-                            + "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip may be "
-                            + "pulled from a remote location but they should never be pushed.",
-                            "enum": [
-                                DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
-                                DOCKER_SCHEMA2_REMOTE_LAYER_CONTENT_TYPE,
-                            ],
-                        },
-                        DOCKER_SCHEMA2_MANIFEST_SIZE_KEY: {
-                            "type": "number",
-                            "description": "The size in bytes of the object. This field exists so that a "
-                            + "client will have an expected size for the content before "
-                            + "validating. If the length of the retrieved content does not "
-                            + "match the specified length, the content should not be trusted.",
-                        },
-                        DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY: {
-                            "type": "string",
-                            "description": "The content addressable digest of the layer in the blob store",
-                        },
-                    },
-                    "required": [
-                        DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY,
-                        DOCKER_SCHEMA2_MANIFEST_SIZE_KEY,
-                        DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY,
-                    ],
-                },
+                "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
+                "items": get_descriptor_schema(
+                    OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
+                ),
             },
         },
-        "required": [
-            DOCKER_SCHEMA2_MANIFEST_VERSION_KEY,
-            DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY,
-            DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY,
-            DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY,
-        ],
+        "required": [OCI_MANIFEST_VERSION_KEY, OCI_MANIFEST_CONFIG_KEY, OCI_MANIFEST_LAYERS_KEY,],
     }
 
     def __init__(self, manifest_bytes, validate=False):
@@ -155,16 +135,16 @@ class DockerSchema2Manifest(ManifestInterface):
         try:
             self._parsed = json.loads(self._payload.as_unicode())
         except ValueError as ve:
-            raise MalformedSchema2Manifest("malformed manifest data: %s" % ve)
+            raise MalformedOCIManifest("malformed manifest data: %s" % ve)
 
         try:
-            validate_schema(self._parsed, DockerSchema2Manifest.METASCHEMA)
+            validate_schema(self._parsed, OCIManifest.METASCHEMA)
         except ValidationError as ve:
-            raise MalformedSchema2Manifest("manifest data does not match schema: %s" % ve)
+            raise MalformedOCIManifest("manifest data does not match schema: %s" % ve)
 
         for layer in self.filesystem_layers:
             if layer.is_remote and not layer.urls:
-                raise MalformedSchema2Manifest("missing `urls` for remote layer")
+                raise MalformedOCIManifest("missing `urls` for remote layer")
 
     def validate(self, content_retriever):
         """
@@ -188,7 +168,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
     @property
     def media_type(self):
-        return self._parsed[DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY]
+        return OCI_IMAGE_MANIFEST_CONTENT_TYPE
 
     @property
     def digest(self):
@@ -196,10 +176,9 @@ class DockerSchema2Manifest(ManifestInterface):
 
     @property
     def config(self):
-        config = self._parsed[DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY]
-        return DockerV2ManifestConfig(
-            size=config[DOCKER_SCHEMA2_MANIFEST_SIZE_KEY],
-            digest=config[DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY],
+        config = self._parsed[OCI_MANIFEST_CONFIG_KEY]
+        return OCIManifestConfig(
+            size=config[OCI_MANIFEST_SIZE_KEY], digest=config[OCI_MANIFEST_DIGEST_KEY],
         )
 
     @property
@@ -231,26 +210,46 @@ class DockerSchema2Manifest(ManifestInterface):
         return False
 
     @property
+    def is_image_manifest(self):
+        return self.manifest_dict["config"]["mediaType"] == OCI_IMAGE_CONFIG_CONTENT_TYPE
+
+    @property
     def blob_digests(self):
         return [str(layer.digest) for layer in self.filesystem_layers] + [str(self.config.digest)]
 
     @property
     def local_blob_digests(self):
-        return [str(layer.digest) for layer in self.filesystem_layers if not layer.urls] + [
+        return [str(layer.digest) for layer in self.filesystem_layers if not layer.is_remote] + [
             str(self.config.digest)
         ]
+
+    @property
+    def annotations(self):
+        """ Returns the annotations on the manifest itself. """
+        return self._parsed.get(OCI_MANIFEST_ANNOTATIONS_KEY) or {}
 
     def get_blob_digests_for_translation(self):
         return self.blob_digests
 
     def get_manifest_labels(self, content_retriever):
-        return self._get_built_config(content_retriever).labels
+        if not self.is_image_manifest:
+            return dict(self.annotations)
+
+        built_config = self._get_built_config(content_retriever)
+
+        labels = {}
+        labels.update(built_config.labels or {})
+        labels.update(self.annotations)
+        return labels
 
     def get_layers(self, content_retriever):
         """
         Returns the layers of this manifest, from base to leaf or None if this kind of manifest does
         not support layers.
         """
+        if not self.is_image_manifest:
+            raise StopIteration()
+
         for image_layer in self._manifest_image_layers(content_retriever):
             is_remote = image_layer.blob_layer.is_remote if image_layer.blob_layer else False
             urls = image_layer.blob_layer.urls if image_layer.blob_layer else None
@@ -275,11 +274,13 @@ class DockerSchema2Manifest(ManifestInterface):
         return None
 
     def _manifest_image_layers(self, content_retriever):
+        assert self.is_image_manifest
+
         # Retrieve the configuration for the manifest.
         config = self._get_built_config(content_retriever)
         history = list(config.history)
         if len(history) < len(self.filesystem_layers):
-            raise MalformedSchema2Manifest("Found less history than layer blobs")
+            raise MalformedOCIManifest("Found less history than layer blobs")
 
         digest_history = hashlib.sha256()
         v1_layer_parent_id = None
@@ -288,7 +289,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
         for history_index, history_entry in enumerate(history):
             if not history_entry.is_empty and blob_index >= len(self.filesystem_layers):
-                raise MalformedSchema2Manifest("Missing history entry #%s" % blob_index)
+                raise MalformedOCIManifest("Missing history entry #%s" % blob_index)
 
             v1_layer_parent_id = v1_layer_id
             blob_layer = None if history_entry.is_empty else self.filesystem_layers[blob_index]
@@ -305,7 +306,7 @@ class DockerSchema2Manifest(ManifestInterface):
             digest_history.update("||")
 
             v1_layer_id = digest_history.hexdigest()
-            yield DockerV2ManifestImageLayer(
+            yield OCIManifestImageLayer(
                 history=history_entry,
                 blob_layer=blob_layer,
                 blob_digest=blob_digest,
@@ -319,15 +320,15 @@ class DockerSchema2Manifest(ManifestInterface):
 
     @property
     def is_empty_manifest(self):
-        """ Returns whether this manifest is empty. """
-        return len(self._parsed[DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY]) == 0
+        return len(self._parsed[OCI_MANIFEST_LAYERS_KEY]) == 0
 
     @property
     def has_legacy_image(self):
-        return not self.has_remote_layer and not self.is_empty_manifest
+        return self.is_image_manifest and not self.has_remote_layer and not self.is_empty_manifest
 
     def generate_legacy_layers(self, images_map, content_retriever):
         assert not self.has_remote_layer
+        assert self.is_image_manifest
 
         # NOTE: We use the DockerSchema1ManifestBuilder here because it already contains
         # the logic for generating the DockerV1Metadata. All of this will go away once we get
@@ -339,13 +340,13 @@ class DockerSchema2Manifest(ManifestInterface):
     def get_leaf_layer_v1_image_id(self, content_retriever):
         # NOTE: If there exists a layer with remote content, then we consider this manifest
         # to not support legacy images.
-        if self.has_remote_layer:
+        if self.has_remote_layer or not self.is_image_manifest:
             return None
 
         return self.get_legacy_image_ids(content_retriever)[-1].v1_id
 
     def get_legacy_image_ids(self, content_retriever):
-        if self.has_remote_layer:
+        if self.has_remote_layer or not self.is_image_manifest:
             return None
 
         return [l.v1_id for l in self._manifest_image_layers(content_retriever)]
@@ -355,6 +356,9 @@ class DockerSchema2Manifest(ManifestInterface):
     ):
         if self.media_type in allowed_mediatypes:
             return self
+
+        if not self.is_image_manifest:
+            return None
 
         # If this manifest is not on the allowed list, try to convert the schema 1 version (if any)
         schema1 = self.get_schema1_manifest(namespace_name, repo_name, tag_name, content_retriever)
@@ -366,7 +370,7 @@ class DockerSchema2Manifest(ManifestInterface):
         )
 
     def get_schema1_manifest(self, namespace_name, repo_name, tag_name, content_retriever):
-        if self.has_remote_layer:
+        if self.has_remote_layer or not self.is_image_manifest:
             return None
 
         v1_builder = DockerSchema1ManifestBuilder(namespace_name, repo_name, tag_name)
@@ -377,6 +381,9 @@ class DockerSchema2Manifest(ManifestInterface):
         return self
 
     def get_requires_empty_layer_blob(self, content_retriever):
+        if not self.is_image_manifest:
+            return False
+
         schema2_config = self._get_built_config(content_retriever)
         if schema2_config is None:
             return None
@@ -388,6 +395,8 @@ class DockerSchema2Manifest(ManifestInterface):
         Populates a DockerSchema1ManifestBuilder with the layers and config from this schema.
         """
         assert not self.has_remote_layer
+        assert self.is_image_manifest
+
         schema2_config = self._get_built_config(content_retriever)
         layers = list(self._manifest_image_layers(content_retriever))
 
@@ -400,48 +409,49 @@ class DockerSchema2Manifest(ManifestInterface):
         return v1_builder
 
     def _get_built_config(self, content_retriever):
+        assert self.is_image_manifest
+
         if self._cached_built_config:
             return self._cached_built_config
 
         config_bytes = content_retriever.get_blob_bytes_with_digest(self.config.digest)
         if config_bytes is None:
-            raise MalformedSchema2Manifest("Could not load config blob for manifest")
+            raise MalformedOCIManifest("Could not load config blob for manifest")
 
         if len(config_bytes) != self.config.size:
             msg = "Size of config does not match that retrieved: %s vs %s" % (
                 len(config_bytes),
                 self.config.size,
             )
-            raise MalformedSchema2Manifest(msg)
+            raise MalformedOCIManifest(msg)
 
-        self._cached_built_config = DockerSchema2Config(Bytes.for_string_or_unicode(config_bytes))
+        self._cached_built_config = OCIConfig(Bytes.for_string_or_unicode(config_bytes))
         return self._cached_built_config
 
     def _generate_filesystem_layers(self):
-        for index, layer in enumerate(self._parsed[DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY]):
-            content_type = layer[DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY]
-            is_remote = content_type == DOCKER_SCHEMA2_REMOTE_LAYER_CONTENT_TYPE
+        for index, layer in enumerate(self._parsed[OCI_MANIFEST_LAYERS_KEY]):
+            content_type = layer[OCI_MANIFEST_MEDIATYPE_KEY]
+            is_remote = content_type in OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES
 
             try:
-                digest = digest_tools.Digest.parse_digest(layer[DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY])
+                digest = digest_tools.Digest.parse_digest(layer[OCI_MANIFEST_DIGEST_KEY])
             except digest_tools.InvalidDigestException:
-                raise MalformedSchema2Manifest(
-                    "could not parse manifest digest: %s"
-                    % layer[DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY]
+                raise MalformedOCIManifest(
+                    "could not parse manifest digest: %s" % layer[OCI_MANIFEST_DIGEST_KEY]
                 )
 
-            yield DockerV2ManifestLayer(
+            yield OCIManifestLayer(
                 index=index,
-                compressed_size=layer[DOCKER_SCHEMA2_MANIFEST_SIZE_KEY],
+                compressed_size=layer[OCI_MANIFEST_SIZE_KEY],
                 digest=digest,
                 is_remote=is_remote,
-                urls=layer.get(DOCKER_SCHEMA2_MANIFEST_URLS_KEY),
+                urls=layer.get(OCI_MANIFEST_URLS_KEY),
             )
 
 
-class DockerSchema2ManifestBuilder(object):
+class OCIManifestBuilder(object):
     """
-    A convenient abstraction around creating new DockerSchema2Manifests.
+    A convenient abstraction around creating new OCIManifest.
     """
 
     def __init__(self):
@@ -449,7 +459,7 @@ class DockerSchema2ManifestBuilder(object):
         self.filesystem_layers = []
 
     def clone(self):
-        cloned = DockerSchema2ManifestBuilder()
+        cloned = OCIManifestBuilder()
         cloned.config = self.config
         cloned.filesystem_layers = list(self.filesystem_layers)
         return cloned
@@ -464,14 +474,14 @@ class DockerSchema2ManifestBuilder(object):
         """
         Sets the digest and size of the configuration layer.
         """
-        self.config = DockerV2ManifestConfig(size=config_size, digest=config_digest)
+        self.config = OCIManifestConfig(size=config_size, digest=config_digest)
 
     def add_layer(self, digest, size, urls=None):
         """
         Adds a filesystem layer to the manifest.
         """
         self.filesystem_layers.append(
-            DockerV2ManifestLayer(
+            OCIManifestLayer(
                 index=len(self.filesystem_layers),
                 digest=digest,
                 compressed_size=size,
@@ -482,39 +492,38 @@ class DockerSchema2ManifestBuilder(object):
 
     def build(self, ensure_ascii=True):
         """
-        Builds and returns the DockerSchema2Manifest.
+        Builds and returns the OCIManifest.
         """
+        assert self.filesystem_layers
         assert self.config
 
         def _build_layer(layer):
             if layer.urls:
                 return {
-                    DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: DOCKER_SCHEMA2_REMOTE_LAYER_CONTENT_TYPE,
-                    DOCKER_SCHEMA2_MANIFEST_SIZE_KEY: layer.compressed_size,
-                    DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY: str(layer.digest),
-                    DOCKER_SCHEMA2_MANIFEST_URLS_KEY: layer.urls,
+                    OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
+                    OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
+                    OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
+                    OCI_MANIFEST_URLS_KEY: layer.urls,
                 }
 
             return {
-                DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: DOCKER_SCHEMA2_LAYER_CONTENT_TYPE,
-                DOCKER_SCHEMA2_MANIFEST_SIZE_KEY: layer.compressed_size,
-                DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY: str(layer.digest),
+                OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
+                OCI_MANIFEST_SIZE_KEY: layer.compressed_size,
+                OCI_MANIFEST_DIGEST_KEY: str(layer.digest),
             }
 
         manifest_dict = {
-            DOCKER_SCHEMA2_MANIFEST_VERSION_KEY: 2,
-            DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+            OCI_MANIFEST_VERSION_KEY: 2,
+            OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_MANIFEST_CONTENT_TYPE,
             # Config
-            DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY: {
-                DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,
-                DOCKER_SCHEMA2_MANIFEST_SIZE_KEY: self.config.size,
-                DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY: str(self.config.digest),
+            OCI_MANIFEST_CONFIG_KEY: {
+                OCI_MANIFEST_MEDIATYPE_KEY: OCI_IMAGE_CONFIG_CONTENT_TYPE,
+                OCI_MANIFEST_SIZE_KEY: self.config.size,
+                OCI_MANIFEST_DIGEST_KEY: str(self.config.digest),
             },
             # Layers
-            DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY: [
-                _build_layer(layer) for layer in self.filesystem_layers
-            ],
+            OCI_MANIFEST_LAYERS_KEY: [_build_layer(layer) for layer in self.filesystem_layers],
         }
 
         json_str = json.dumps(manifest_dict, ensure_ascii=ensure_ascii, indent=3)
-        return DockerSchema2Manifest(Bytes.for_string_or_unicode(json_str))
+        return OCIManifest(Bytes.for_string_or_unicode(json_str))

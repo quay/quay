@@ -17,14 +17,10 @@ DOCKER_SCHEMA2_REMOTE_LAYER_CONTENT_TYPE = (
 
 DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE = "application/vnd.docker.container.image.v1+json"
 
-OCI_MANIFEST_CONTENT_TYPE = "application/vnd.oci.image.manifest.v1+json"
-OCI_MANIFESTLIST_CONTENT_TYPE = "application/vnd.oci.image.index.v1+json"
-
 DOCKER_SCHEMA2_CONTENT_TYPES = {
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 }
-OCI_CONTENT_TYPES = {OCI_MANIFEST_CONTENT_TYPE, OCI_MANIFESTLIST_CONTENT_TYPE}
 
 # The magical digest to be used for "empty" layers.
 # https://github.com/docker/distribution/blob/749f6afb4572201e3c37325d0ffedb6f32be8950/manifest/schema1/config_builder.go#L22

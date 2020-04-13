@@ -70,6 +70,7 @@ from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.config import DockerSchema2Config
+from image.oci import OCI_CONTENT_TYPES
 
 
 from workers import repositoryactioncounter
@@ -487,6 +488,9 @@ def initialize_database():
         MediaType.create(name=media_type)
 
     for media_type in DOCKER_SCHEMA2_CONTENT_TYPES:
+        MediaType.create(name=media_type)
+
+    for media_type in OCI_CONTENT_TYPES:
         MediaType.create(name=media_type)
 
     LabelSourceType.create(name="manifest")

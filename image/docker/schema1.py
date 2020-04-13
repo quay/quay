@@ -437,6 +437,7 @@ class DockerSchema1Manifest(ManifestInterface):
                     "Could not parse metadata string: %s" % metadata_string
                 )
 
+            v1_metadata = v1_metadata or {}
             container_config = v1_metadata.get("container_config") or {}
             command_list = container_config.get("Cmd", None)
             command = to_canonical_json(command_list) if command_list else None
