@@ -17,7 +17,7 @@ show-modified:
 
 all: clean pkgs test build
 
-pkgs: requirements.txt requirements-dev.txt requirements-dev.txt
+pkgs: requirements.txt requirements-dev.txt
 	pip install -r $<
 
 requirements.txt: requirements-nover.txt
