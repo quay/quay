@@ -116,9 +116,11 @@ class Config(object):
 
     def register_image_cleanup_callback(self, callback):
         self.image_cleanup_callbacks.append(callback)
+        return lambda: self.image_cleanup_callbacks.remove(callback)
 
     def register_repo_cleanup_callback(self, callback):
         self.repo_cleanup_callbacks.append(callback)
+        return lambda: self.repo_cleanup_callbacks.remove(callback)
 
 
 config = Config()

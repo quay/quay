@@ -186,7 +186,7 @@ def assert_gc_integrity(expect_storage_removed=True):
 
     # Add a callback for when images are removed.
     removed_image_storages = []
-    model.config.register_image_cleanup_callback(removed_image_storages.extend)
+    remove_callback = model.config.register_image_cleanup_callback(removed_image_storages.extend)
 
     # Store existing storages. We won't verify these for existence because they
     # were likely created as test data.
@@ -205,7 +205,10 @@ def assert_gc_integrity(expect_storage_removed=True):
 
     # Yield to the GC test.
     with check_transitive_modifications():
-        yield
+        try:
+            yield
+        finally:
+            remove_callback()
 
     # Ensure the number of dangling storages, manifests and labels has not changed.
     updated_storage_count = _get_dangling_storage_count()
