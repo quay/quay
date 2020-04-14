@@ -220,8 +220,13 @@ def assert_gc_integrity(expect_storage_removed=True):
     # Ensure that for each call to the image+storage cleanup callback, the image and its
     # storage is not found *anywhere* in the database.
     for removed_image_and_storage in removed_image_storages:
+        assert isinstance(removed_image_and_storage, Image)
         with pytest.raises(Image.DoesNotExist):
-            Image.get(id=removed_image_and_storage.id)
+            found_image = Image.get(id=removed_image_and_storage.id)
+            print(
+                "Found unexpected removed image %s under repo %s" % found_image.id,
+                found_image.repository,
+            )
 
         # Ensure that image storages are only removed if not shared.
         shared = Image.select().where(Image.storage == removed_image_and_storage.storage_id).count()
