@@ -32,7 +32,6 @@ from app import (
     config_provider,
     get_app_url,
     instance_keys,
-    user_analytics,
     storage,
 )
 from auth import scopes
@@ -67,7 +66,6 @@ from health.healthcheck import get_healthchecker
 from util.cache import no_cache
 from util.headers import parse_basic_auth
 from util.invoice import renderInvoiceToPdf
-from util.saas.useranalytics import build_error_callback
 from util.useremails import send_email_changed
 from util.registry.gzipinputstream import GzipInputStream
 from util.request import get_request_ip
@@ -559,8 +557,6 @@ def confirm_email():
 
     if new_email:
         send_email_changed(user.username, old_email, new_email)
-        change_email_future = user_analytics.change_email(old_email, new_email)
-        change_email_future.add_done_callback(build_error_callback("Change email failed"))
 
     success, _ = common_login(user.uuid)
     if not success:
