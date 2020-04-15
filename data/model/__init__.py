@@ -17,10 +17,6 @@ class BlobDoesNotExist(DataModelException):
     pass
 
 
-class TorrentInfoDoesNotExist(DataModelException):
-    pass
-
-
 class InvalidBlobUpload(DataModelException):
     pass
 

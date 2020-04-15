@@ -24,7 +24,6 @@ from data.registry_model.datatypes import (
     ShallowTag,
     LikelyVulnerableTag,
     RepositoryReference,
-    TorrentInfo,
     ManifestLayer,
 )
 from data.registry_model.label_handlers import apply_label_to_manifest
@@ -889,34 +888,6 @@ class OCIModel(RegistryDataInterface):
         storage_entry.uploading = False
         storage_entry.save()
 
-    def get_torrent_info(self, blob):
-        """
-        Returns the torrent information associated with the given blob or None if none.
-        """
-        try:
-            image_storage = database.ImageStorage.get(id=blob._db_id)
-        except database.ImageStorage.DoesNotExist:
-            return None
-
-        try:
-            torrent_info = model.storage.get_torrent_info(image_storage)
-        except model.TorrentInfoDoesNotExist:
-            return None
-
-        return TorrentInfo.for_torrent_info(torrent_info)
-
-    def set_torrent_info(self, blob, piece_length, pieces):
-        """
-        Sets the torrent infomation associated with the given blob to that specified.
-        """
-        try:
-            image_storage = database.ImageStorage.get(id=blob._db_id)
-        except database.ImageStorage.DoesNotExist:
-            return None
-
-        torrent_info = model.storage.save_torrent_info(image_storage, piece_length, pieces)
-        return TorrentInfo.for_torrent_info(torrent_info)
-
     def lookup_cached_active_repository_tags(
         self, model_cache, repository_ref, start_pagination_id, limit
     ):
@@ -1030,8 +1001,6 @@ class OCIModel(RegistryDataInterface):
         self,
         blob_upload,
         uncompressed_byte_count,
-        piece_hashes,
-        piece_sha_state,
         storage_metadata,
         byte_count,
         chunk_count,
@@ -1047,8 +1016,6 @@ class OCIModel(RegistryDataInterface):
             return None
 
         upload_record.uncompressed_byte_count = uncompressed_byte_count
-        upload_record.piece_hashes = piece_hashes
-        upload_record.piece_sha_state = piece_sha_state
         upload_record.storage_metadata = storage_metadata
         upload_record.byte_count = byte_count
         upload_record.chunk_count = chunk_count

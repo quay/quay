@@ -511,13 +511,6 @@ class DefaultConfig(ImmutableConfig):
     # If None, will be calculated off of the SERVER_HOSTNAME (default)
     JWTPROXY_AUDIENCE = None
 
-    # Torrent management flags
-    FEATURE_BITTORRENT = False
-    BITTORRENT_PIECE_SIZE = 512 * 1024
-    BITTORRENT_ANNOUNCE_URL = "https://localhost:6881/announce"
-    BITTORRENT_FILENAME_PEPPER = str(uuid4())
-    BITTORRENT_WEBSEED_LIFETIME = 3600
-
     # "Secret" key for generating encrypted paging tokens. Only needed to be secret to
     # hide the ID range for production (in which this value is overridden). Should *not*
     # be relied upon for secure encryption otherwise.

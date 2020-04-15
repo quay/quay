@@ -370,18 +370,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_torrent_info(self, blob):
-        """
-        Returns the torrent information associated with the given blob or None if none.
-        """
-
-    @abstractmethod
-    def set_torrent_info(self, blob, piece_length, pieces):
-        """
-        Sets the torrent infomation associated with the given blob to that specified.
-        """
-
-    @abstractmethod
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
         Returns the blob in the repository with the given digest, if any or None if none.
@@ -410,8 +398,6 @@ class RegistryDataInterface(object):
         self,
         blob_upload,
         uncompressed_byte_count,
-        piece_hashes,
-        piece_sha_state,
         storage_metadata,
         byte_count,
         chunk_count,

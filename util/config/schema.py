@@ -40,8 +40,6 @@ INTERNAL_ONLY_PROPERTIES = {
     "UNAPPROVED_SERVICE_KEY_TTL_SEC",
     "EXPIRED_SERVICE_KEY_TTL_SEC",
     "REGISTRY_JWT_AUTH_MAX_FRESH_S",
-    "BITTORRENT_FILENAME_PEPPER",
-    "BITTORRENT_WEBSEED_LIFETIME",
     "SERVICE_LOG_ACCOUNT_ID",
     "BUILDLOGS_OPTIONS",
     "LIBRARY_NAMESPACE",
@@ -704,24 +702,6 @@ CONFIG_SCHEMA = {
             "type": "number",
             "description": "The number of seconds between checking for repository mirror candidates. Defaults to 30.",
             "x-example": 30,
-        },
-        # Bittorrent support.
-        "FEATURE_BITTORRENT": {
-            "type": "boolean",
-            "description": "Whether to allow using Bittorrent-based pulls. Defaults to False",
-            "x-example": False,
-            "x-reference": "https://coreos.com/quay-enterprise/docs/latest/bittorrent.html",
-        },
-        "BITTORRENT_PIECE_SIZE": {
-            "type": "number",
-            "description": "The bittorent piece size to use. If not specified, defaults to 512 * 1024.",
-            "x-example": 512 * 1024,
-        },
-        "BITTORRENT_ANNOUNCE_URL": {
-            "type": "string",
-            "pattern": "^http(s)?://(.)+$",
-            "description": "The URL of the announce endpoint on the bittorrent tracker",
-            "x-example": "https://localhost:6881/announce",
         },
         # Build
         "FEATURE_GITHUB_BUILD": {

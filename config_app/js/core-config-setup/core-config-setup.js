@@ -102,10 +102,6 @@ angular.module("quay-config")
             return config.FEATURE_SECURITY_SCANNER;
           }},
 
-          {'id': 'bittorrent', 'title': 'BitTorrent downloads', 'condition': function(config) {
-            return config.FEATURE_BITTORRENT;
-          }},
-
           {'id': 'oidc-login', 'title': 'OIDC Login(s)', 'condition': function(config) {
             return $scope.getOIDCProviders(config).length > 0;
           }},
@@ -691,7 +687,7 @@ angular.module("quay-config")
             delete $scope.mapped['LOGS_MODEL_CONFIG']['kinesis_stream_config'];
             delete $scope.config['LOGS_MODEL_CONFIG']['kinesis_stream_config'];
           }
-          
+
           $scope.config['LOGS_MODEL_CONFIG']['producer'] = value;
         };
 

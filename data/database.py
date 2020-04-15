@@ -1433,6 +1433,7 @@ class QuayRelease(BaseModel):
         )
 
 
+@deprecated_model
 class TorrentInfo(BaseModel):
     storage = ForeignKeyField(ImageStorage)
     piece_length = IntegerField()

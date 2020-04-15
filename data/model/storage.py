@@ -8,7 +8,6 @@ from data.model import (
     config,
     db_transaction,
     InvalidImageException,
-    TorrentInfoDoesNotExist,
     DataModelException,
     _basequery,
 )
@@ -430,23 +429,3 @@ def get_storage_locations(uuid):
     query = ImageStoragePlacement.select().join(ImageStorage).where(ImageStorage.uuid == uuid)
 
     return [get_image_location_for_id(placement.location_id).name for placement in query]
-
-
-def save_torrent_info(storage_object, piece_length, pieces):
-    try:
-        return TorrentInfo.get(storage=storage_object, piece_length=piece_length)
-    except TorrentInfo.DoesNotExist:
-        try:
-            return TorrentInfo.create(
-                storage=storage_object, piece_length=piece_length, pieces=pieces
-            )
-        except IntegrityError:
-            # TorrentInfo already exists for this storage.
-            return TorrentInfo.get(storage=storage_object, piece_length=piece_length)
-
-
-def get_torrent_info(blob):
-    try:
-        return TorrentInfo.select().where(TorrentInfo.storage == blob).get()
-    except TorrentInfo.DoesNotExist:
-        raise TorrentInfoDoesNotExist

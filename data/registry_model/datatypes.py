@@ -596,20 +596,6 @@ class DerivedImage(datatype("DerivedImage", ["verb", "varying_metadata", "blob"]
         return hashlib.sha256("%s:%s" % (self.verb, self._db_id)).hexdigest()
 
 
-class TorrentInfo(datatype("TorrentInfo", ["pieces", "piece_length"])):
-    """
-    TorrentInfo represents information to pull a blob via torrent.
-    """
-
-    @classmethod
-    def for_torrent_info(cls, torrent_info):
-        return TorrentInfo(
-            db_id=torrent_info.id,
-            pieces=torrent_info.pieces,
-            piece_length=torrent_info.piece_length,
-        )
-
-
 class BlobUpload(
     datatype(
         "BlobUpload",
