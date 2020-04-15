@@ -14,7 +14,8 @@ angular.module('quay').directive('externalNotificationView', function () {
       'notification': '=notification',
       'notificationDeleted': '&notificationDeleted'
     },
-    controller: function($scope, $element, ExternalNotificationData, ApiService) {
+    controller: function($scope, $element, ExternalNotificationData, ApiService, DocumentationService) {
+      $scope.DocumentationService = DocumentationService;
       $scope.deleteNotification = function() {
         var params = {
           'repository': $scope.repository.namespace + '/' + $scope.repository.name,

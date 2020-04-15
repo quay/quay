@@ -7,7 +7,7 @@
       </button>
       <ul class="dropdown-menu dropdown-menu-right pull-right">
         <li ng-if="methodInfo.id == 'webhook'">
-          <a href="http://docs.quay.io/guides/notifications.html#webhook_{{ eventInfo.id }}"
+          <a href="{{ DocumentationService.getUrl('notifications.webhook', {'event': eventInfo.id}) }}"
              ng-safenewtab>
             <i class="fa fa-book"></i>
             Webhook Documentation</a>

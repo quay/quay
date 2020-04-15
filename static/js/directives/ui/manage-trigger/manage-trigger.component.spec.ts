@@ -14,6 +14,7 @@ describe("ManageTriggerComponent", () => {
   var triggerServiceMock: Mock<any>;
   var rolesServiceMock: Mock<any>;
   var keyServiceMock: Mock<any>;
+  var documentationServiceMock: Mock<any>;
   var repository: any;
   var $scopeMock: Mock<ng.IScope>;
 
@@ -25,13 +26,14 @@ describe("ManageTriggerComponent", () => {
     keyServiceMock = new Mock<any>();
     $scopeMock = new Mock<ng.IScope>();
     component = new ManageTriggerComponent(apiServiceMock.Object,
-                                           tableServiceMock.Object,
-                                           triggerServiceMock.Object,
-                                           rolesServiceMock.Object,
-                                           keyServiceMock.Object,
-                                           $scopeMock.Object);
-    component.repository = {namespace: "someuser", name: "somerepo"};
-    component.trigger = {id: "2cac6317-754e-47d4-88d3-2a50b3f09ee3", service: "github"};
+      tableServiceMock.Object,
+      triggerServiceMock.Object,
+      rolesServiceMock.Object,
+      keyServiceMock.Object,
+      documentationServiceMock.Object,
+      $scopeMock.Object);
+    component.repository = { namespace: "someuser", name: "somerepo" };
+    component.trigger = { id: "2cac6317-754e-47d4-88d3-2a50b3f09ee3", service: "github" };
   });
 
   describe("ngOnChanges", () => {
@@ -84,10 +86,10 @@ describe("ManageTriggerComponent", () => {
     var event: PathChangeEvent;
 
     beforeEach(() => {
-      event = {path: '/Dockerfile', isValid: true};
-      component.local.selectedRepository = {name: "", full_name: "someorg/somerepo"};
+      event = { path: '/Dockerfile', isValid: true };
+      component.local.selectedRepository = { name: "", full_name: "someorg/somerepo" };
       component.local.dockerContext = '/';
-      component.local.dockerfileLocations = {contextMap: {}};
+      component.local.dockerfileLocations = { contextMap: {} };
       spyOn(component, "analyzeDockerfilePath").and.returnValue(null);
     });
 
@@ -124,7 +126,7 @@ describe("ManageTriggerComponent", () => {
     var event: ContextChangeEvent;
 
     beforeEach(() => {
-      event = {contextDir: '/', isValid: true};
+      event = { contextDir: '/', isValid: true };
     });
   });
 
@@ -132,16 +134,16 @@ describe("ManageTriggerComponent", () => {
     var selectedRepository: Repository;
     var path: string;
     var context: string;
-    var robots: {robots:  {[key: string]: any}[]};
-    var analysis: {[key: string]: any};
+    var robots: { robots: { [key: string]: any }[] };
+    var analysis: { [key: string]: any };
     var orderedRobots: Mock<ViewArray>;
 
     beforeEach(() => {
-      selectedRepository = {name: "", full_name: "someorg/somerepo"};
+      selectedRepository = { name: "", full_name: "someorg/somerepo" };
       path = "/Dockerfile";
       context = "/";
-      robots = {robots: [{name: 'robot'}]};
-      analysis = {'publicbase': true, robots: robots.robots};
+      robots = { robots: [{ name: 'robot' }] };
+      analysis = { 'publicbase': true, robots: robots.robots };
       orderedRobots = new Mock<ViewArray>();
       apiServiceMock.setup(mock => mock.analyzeBuildTrigger).is((data, params) => Promise.resolve(analysis));
       apiServiceMock.setup(mock => mock.getRobots).is((user, arg, params) => Promise.resolve(robots));
@@ -225,9 +227,9 @@ describe("ManageTriggerComponent", () => {
     });
 
     it("does not call roles service if robot is required but robot is not selected", (done) => {
-      component.local.triggerAnalysis = {status: 'requiresrobot', name: 'privatebase', namespace: 'someorg'};
+      component.local.triggerAnalysis = { status: 'requiresrobot', name: 'privatebase', namespace: 'someorg' };
       component.local.robotAccount = null;
-      component.activateTrigger.subscribe((event: {config: any, pull_robot: any}) => {
+      component.activateTrigger.subscribe((event: { config: any, pull_robot: any }) => {
         expect((<Spy>rolesServiceMock.Object.setRepositoryRole)).not.toHaveBeenCalled();
         done();
       });
@@ -236,9 +238,9 @@ describe("ManageTriggerComponent", () => {
     });
 
     it("calls roles service to grant read access to selected robot if robot is required and cannot read", (done) => {
-      component.local.triggerAnalysis = {status: 'requiresrobot', name: 'privatebase', namespace: 'someorg'};
-      component.local.robotAccount = {can_read: false, is_robot: true, kind: 'user', name: 'test-robot'};
-      component.activateTrigger.subscribe((event: {config: any, pull_robot: any}) => {
+      component.local.triggerAnalysis = { status: 'requiresrobot', name: 'privatebase', namespace: 'someorg' };
+      component.local.robotAccount = { can_read: false, is_robot: true, kind: 'user', name: 'test-robot' };
+      component.activateTrigger.subscribe((event: { config: any, pull_robot: any }) => {
         expect((<Spy>rolesServiceMock.Object.setRepositoryRole).calls.argsFor(0)[0]).toEqual({
           name: component.local.triggerAnalysis.name,
           namespace: component.local.triggerAnalysis.namespace,
@@ -252,9 +254,9 @@ describe("ManageTriggerComponent", () => {
     });
 
     it("does not call roles service if robot is required but already has read access", (done) => {
-      component.local.triggerAnalysis = {status: 'requiresrobot', name: 'privatebase', namespace: 'someorg'};
-      component.local.robotAccount = {can_read: true, is_robot: true, kind: 'user', name: 'test-robot'};
-      component.activateTrigger.subscribe((event: {config: any, pull_robot: any}) => {
+      component.local.triggerAnalysis = { status: 'requiresrobot', name: 'privatebase', namespace: 'someorg' };
+      component.local.robotAccount = { can_read: true, is_robot: true, kind: 'user', name: 'test-robot' };
+      component.activateTrigger.subscribe((event: { config: any, pull_robot: any }) => {
         expect((<Spy>rolesServiceMock.Object.setRepositoryRole)).not.toHaveBeenCalled();
         done();
       });
@@ -263,8 +265,8 @@ describe("ManageTriggerComponent", () => {
     });
 
     it("does not call roles service if robot is not required", (done) => {
-      component.local.triggerAnalysis = {status: 'publicbase', name: 'publicrepo', namespace: 'someorg'};
-      component.activateTrigger.subscribe((event: {config: any, pull_robot: any}) => {
+      component.local.triggerAnalysis = { status: 'publicbase', name: 'publicrepo', namespace: 'someorg' };
+      component.activateTrigger.subscribe((event: { config: any, pull_robot: any }) => {
         expect((<Spy>rolesServiceMock.Object.setRepositoryRole)).not.toHaveBeenCalled();
         done();
       });
@@ -273,7 +275,7 @@ describe("ManageTriggerComponent", () => {
     });
 
     it("emits output event with config and pull robot", (done) => {
-      component.activateTrigger.subscribe((event: {config: any, pull_robot: any}) => {
+      component.activateTrigger.subscribe((event: { config: any, pull_robot: any }) => {
         expect(event.config.build_source).toEqual(component.local.selectedRepository.full_name);
         expect(event.config.dockerfile_path).toEqual(component.local.dockerfilePath);
         expect(event.config.context).toEqual(component.local.dockerContext);

@@ -576,6 +576,7 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "DOCUMENTATION_ROOT": {"type": "string", "description": "Root URL for documentation links"},
         # Health.
         "HEALTH_CHECKER": {
             "description": "The configured health check.",
