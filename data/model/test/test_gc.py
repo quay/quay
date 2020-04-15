@@ -186,7 +186,7 @@ def assert_gc_integrity(expect_storage_removed=True):
 
     # Add a callback for when images are removed.
     removed_image_storages = []
-    model.config.register_image_cleanup_callback(removed_image_storages.extend)
+    remove_callback = model.config.register_image_cleanup_callback(removed_image_storages.extend)
 
     # Store existing storages. We won't verify these for existence because they
     # were likely created as test data.
@@ -205,7 +205,10 @@ def assert_gc_integrity(expect_storage_removed=True):
 
     # Yield to the GC test.
     with check_transitive_modifications():
-        yield
+        try:
+            yield
+        finally:
+            remove_callback()
 
     # Ensure the number of dangling storages, manifests and labels has not changed.
     updated_storage_count = _get_dangling_storage_count()
@@ -220,8 +223,13 @@ def assert_gc_integrity(expect_storage_removed=True):
     # Ensure that for each call to the image+storage cleanup callback, the image and its
     # storage is not found *anywhere* in the database.
     for removed_image_and_storage in removed_image_storages:
+        assert isinstance(removed_image_and_storage, Image)
         with pytest.raises(Image.DoesNotExist):
-            Image.get(id=removed_image_and_storage.id)
+            found_image = Image.get(id=removed_image_and_storage.id)
+            print(
+                "Found unexpected removed image %s under repo %s" % found_image.id,
+                found_image.repository,
+            )
 
         # Ensure that image storages are only removed if not shared.
         shared = Image.select().where(Image.storage == removed_image_and_storage.storage_id).count()
