@@ -44,9 +44,9 @@ class APIRequestFailure(Exception):
 @add_metaclass(ABCMeta)
 class SecurityScannerAPIInterface(object):
     @abstractmethod
-    def state(self):
+    def index_state(self):
         """
-        The state endpoint returns a json structure indicating the indexer's internal configuration state. 
+        The index_state endpoint returns a json structure indicating the indexer's internal configuration state. 
         A client may be interested in this as a signal that manifests may need to be re-indexed.
         """
         pass
@@ -79,7 +79,7 @@ class SecurityScannerAPIInterface(object):
 Action = namedtuple("Action", ["name", "payload"])
 
 actions = {
-    "State": lambda: Action("State", ("GET", "state", None)),
+    "IndexState": lambda: Action("State", ("GET", "index_state", None)),
     "Index": lambda manifest: Action("Index", ("POST", "index_report", manifest)),
     "GetIndexReport": lambda manifest_hash: Action(
         "GetIndexReport", ("GET", "index_report/" + manifest_hash, None)
@@ -96,9 +96,9 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         self._storage = storage
         self.secscan_api_endpoint = urljoin(endpoint, "/api/v1/")
 
-    def state(self):
+    def index_state(self):
         try:
-            resp = self._perform(actions["State"]())
+            resp = self._perform(actions["IndexState"]())
         except (Non200ResponseException, IncompatibleAPIResponse) as ex:
             raise APIRequestFailure(ex.message)
 
