@@ -9,11 +9,16 @@ INTERNAL_ONLY_PROPERTIES = {
     "SESSION_COOKIE_SAMESITE",
     "DATABASE_SECRET_KEY",
     "V22_NAMESPACE_BLACKLIST",
+    "MAXIMUM_CNR_LAYER_SIZE",
+    "OCI_NAMESPACE_WHITELIST",
+    "FEATURE_GENERAL_OCI_SUPPORT",
+    "FEATURE_EXPERIMENTAL_HELM_OCI_SUPPORT",
     "TESTING",
     "SEND_FILE_MAX_AGE_DEFAULT",
     "DISABLED_FOR_AUDIT_LOGS",
     "DISABLED_FOR_PULL_LOGS",
     "FEATURE_DISABLE_PULL_LOGS_FOR_FREE_NAMESPACES",
+    "FEATURE_CLEAR_EXPIRED_RAC_ENTRIES",
     "ACTION_LOG_MAX_PAGE",
     "NON_RATE_LIMITED_NAMESPACES",
     "REPLICATION_QUEUE_NAME",
@@ -49,6 +54,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "JWTPROXY_AUDIENCE",
     "JWTPROXY_SIGNER",
     "SECURITY_SCANNER_INDEXING_MIN_ID",
+    "SECURITY_SCANNER_V4_NAMESPACE_WHITELIST",
     "STATIC_SITE_BUCKET",
     "LABEL_KEY_RESERVED_PREFIXES",
     "TEAM_SYNC_WORKER_FREQUENCY",
@@ -87,6 +93,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "LOGS_MODEL",
     "LOGS_MODEL_CONFIG",
     "APP_REGISTRY_RESULTS_LIMIT",
+    "V3_UPGRADE_MODE",  # Deprecated old flag
 }
 
 CONFIG_SCHEMA = {
@@ -105,18 +112,6 @@ CONFIG_SCHEMA = {
         "TAG_EXPIRATION_OPTIONS",
     ],
     "properties": {
-        "V3_UPGRADE_MODE": {
-            "type": "string",
-            "description": "The current stage of the V3 upgrade.",
-            "enum": [
-                "background",
-                "complete",
-                "production-transition",
-                "post-oci-rollout",
-                "post-oci-roll-back-compat",
-            ],
-            "x-example": "background",
-        },
         "REGISTRY_STATE": {
             "type": "string",
             "description": "The state of the registry.",
@@ -689,7 +684,13 @@ CONFIG_SCHEMA = {
         "SECURITY_SCANNER_ENDPOINT": {
             "type": "string",
             "pattern": "^http(s)?://(.)+$",
-            "description": "The endpoint for the security scanner",
+            "description": "The endpoint for the V2 security scanner",
+            "x-example": "http://192.168.99.101:6060",
+        },
+        "SECURITY_SCANNER_V4_ENDPOINT": {
+            "type": "string",
+            "pattern": "^http(s)?://(.)+$",
+            "description": "The endpoint for the V4 security scanner",
             "x-example": "http://192.168.99.101:6060",
         },
         "SECURITY_SCANNER_INDEXING_INTERVAL": {

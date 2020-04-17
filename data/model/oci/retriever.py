@@ -1,6 +1,6 @@
 import time
 
-from image.docker.interfaces import ContentRetriever
+from image.shared.interfaces import ContentRetriever
 from data.database import Manifest
 from data.model.oci.blob import get_repository_blob_by_digest
 from data.model.storage import get_layer_path

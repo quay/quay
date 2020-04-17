@@ -5,8 +5,9 @@ from cachetools.func import lru_cache
 from jsonschema import validate as validate_schema, ValidationError
 
 from digest import digest_tools
-from image.docker import ManifestException
-from image.docker.interfaces import ManifestInterface
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestInterface
+from image.shared.schemautil import LazyManifestLoader
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema1 import DockerSchema1Manifest
 from image.docker.schema2 import (
@@ -50,48 +51,6 @@ class MismatchManifestException(MalformedSchema2ManifestList):
     """
 
     pass
-
-
-class LazyManifestLoader(object):
-    def __init__(self, manifest_data, content_retriever):
-        self._manifest_data = manifest_data
-        self._content_retriever = content_retriever
-        self._loaded_manifest = None
-
-    @property
-    def manifest_obj(self):
-        if self._loaded_manifest is not None:
-            return self._loaded_manifest
-
-        self._loaded_manifest = self._load_manifest()
-        return self._loaded_manifest
-
-    def _load_manifest(self):
-        digest = self._manifest_data[DOCKER_SCHEMA2_MANIFESTLIST_DIGEST_KEY]
-        size = self._manifest_data[DOCKER_SCHEMA2_MANIFESTLIST_SIZE_KEY]
-        manifest_bytes = self._content_retriever.get_manifest_bytes_with_digest(digest)
-        if manifest_bytes is None:
-            raise MalformedSchema2ManifestList(
-                "Could not find child manifest with digest `%s`" % digest
-            )
-
-        if len(manifest_bytes) != size:
-            raise MalformedSchema2ManifestList(
-                "Size of manifest does not match that retrieved: %s vs %s",
-                len(manifest_bytes),
-                size,
-            )
-
-        content_type = self._manifest_data[DOCKER_SCHEMA2_MANIFESTLIST_MEDIATYPE_KEY]
-        if content_type == DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE:
-            return DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
-
-        if content_type == DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE:
-            return DockerSchema1Manifest(
-                Bytes.for_string_or_unicode(manifest_bytes), validate=False
-            )
-
-        raise MalformedSchema2ManifestList("Unknown manifest content type")
 
 
 class DockerSchema2ManifestList(ManifestInterface):
@@ -275,7 +234,20 @@ class DockerSchema2ManifestList(ManifestInterface):
         Returns the manifests in the list.
         """
         manifests = self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MANIFESTS_KEY]
-        return [LazyManifestLoader(m, content_retriever) for m in manifests]
+        supported_types = {}
+        supported_types[DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE] = DockerSchema1Manifest
+        supported_types[DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE] = DockerSchema2Manifest
+        return [
+            LazyManifestLoader(
+                m,
+                content_retriever,
+                supported_types,
+                DOCKER_SCHEMA2_MANIFESTLIST_DIGEST_KEY,
+                DOCKER_SCHEMA2_MANIFESTLIST_SIZE_KEY,
+                DOCKER_SCHEMA2_MANIFESTLIST_MEDIATYPE_KEY,
+            )
+            for m in manifests
+        ]
 
     def validate(self, content_retriever):
         """

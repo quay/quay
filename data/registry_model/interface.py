@@ -12,12 +12,6 @@ class RegistryDataInterface(object):
     """
 
     @abstractmethod
-    def supports_schema2(self, namespace_name):
-        """
-        Returns whether the implementation of the data interface supports schema 2 format manifests.
-        """
-
-    @abstractmethod
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
         """
         Returns the legacy image ID for the tag with a legacy images in the repository.
@@ -284,16 +278,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def backfill_manifest_for_tag(self, tag):
-        """
-        Backfills a manifest for the V1 tag specified. If a manifest already exists for the tag,
-        returns that manifest.
-
-        NOTE: This method will only be necessary until we've completed the backfill, at which point
-        it should be removed.
-        """
-
-    @abstractmethod
     def is_existing_disabled_namespace(self, namespace_name):
         """
         Returns whether the given namespace exists and is disabled.
@@ -510,4 +494,10 @@ class RegistryDataInterface(object):
         have been registered for vulnerability_found notifications.
 
         Returns an iterator of LikelyVulnerableTag instances.
+        """
+
+    @abstractmethod
+    def find_repository_with_garbage(self, limit_to_gc_policy_s):
+        """ Returns a repository reference to a repository that contains garbage for collection
+            or None if none.
         """

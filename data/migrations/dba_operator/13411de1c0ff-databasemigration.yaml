@@ -28,17 +28,17 @@ spec:
     operation: createTable
     table: tagmanifesttomanifest
   - columns: []
-    indexName: tagmanifesttomanifest
+    indexName: tagmanifesttomanifest_broken
     indexType: index
     operation: createIndex
-    table: tagmanifesttomanifest_broken
+    table: tagmanifesttomanifest
   - columns: []
-    indexName: tagmanifesttomanifest
+    indexName: tagmanifesttomanifest_manifest_id
     indexType: index
     operation: createIndex
-    table: tagmanifesttomanifest_manifest_id
+    table: tagmanifesttomanifest
   - columns: []
-    indexName: tagmanifesttomanifest
+    indexName: tagmanifesttomanifest_tag_manifest_id
     indexType: unique
     operation: createIndex
-    table: tagmanifesttomanifest_tag_manifest_id
+    table: tagmanifesttomanifest

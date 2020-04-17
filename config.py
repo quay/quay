@@ -451,8 +451,11 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SECURITY_SCANNER = False
     FEATURE_SECURITY_NOTIFICATIONS = False
 
-    # The endpoint for the security scanner.
+    # The endpoint for the (deprecated) V2 security scanner.
     SECURITY_SCANNER_ENDPOINT = "http://192.168.99.101:6060"
+
+    # The endpoint for the V4 security scanner.
+    SECURITY_SCANNER_V4_ENDPOINT = "http://192.168.99.101:6060"
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
@@ -471,6 +474,9 @@ class DefaultConfig(ImmutableConfig):
 
     # The version of the API to use for the security scanner.
     SECURITY_SCANNER_API_VERSION = "v1"
+
+    # Namespace whitelist for security scanner.
+    SECURITY_SCANNER_V4_NAMESPACE_WHITELIST = []
 
     # API call timeout for the security scanner.
     SECURITY_SCANNER_API_TIMEOUT_SECONDS = 10
@@ -702,3 +708,16 @@ class DefaultConfig(ImmutableConfig):
 
     # The limit on the number of results returned by app registry listing operations.
     APP_REGISTRY_RESULTS_LIMIT = 100
+
+    # The maximum size of uploaded CNR layers.
+    MAXIMUM_CNR_LAYER_SIZE = "2m"
+
+    # Feature Flag: Whether to clear expired RepositoryActionCount entries.
+    FEATURE_CLEAR_EXPIRED_RAC_ENTRIES = False
+
+    # Feature Flag: Whether OCI manifest support should be enabled generally.
+    FEATURE_GENERAL_OCI_SUPPORT = False
+
+    # Feature Flag: Whether to allow Helm OCI content types.
+    # See: https://helm.sh/docs/topics/registries/
+    FEATURE_EXPERIMENTAL_HELM_OCI_SUPPORT = False

@@ -22,17 +22,17 @@ spec:
     operation: createTable
     table: repositorykind
   - columns: []
-    indexName: repositorykind
+    indexName: repositorykind_name
     indexType: unique
     operation: createIndex
-    table: repositorykind_name
+    table: repositorykind
   - columns:
     - name: kind_id
       nullable: false
     operation: addColumn
     table: !!python/unicode 'repository'
   - columns: []
-    indexName: repository
+    indexName: repository_kind_id
     indexType: index
     operation: createIndex
-    table: repository_kind_id
+    table: repository

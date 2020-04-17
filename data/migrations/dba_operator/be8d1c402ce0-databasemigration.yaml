@@ -30,17 +30,17 @@ spec:
     operation: createTable
     table: teamsync
   - columns: []
-    indexName: teamsync
+    indexName: teamsync_last_updated
     indexType: index
     operation: createIndex
-    table: teamsync_last_updated
+    table: teamsync
   - columns: []
-    indexName: teamsync
+    indexName: teamsync_service_id
     indexType: index
     operation: createIndex
-    table: teamsync_service_id
+    table: teamsync
   - columns: []
-    indexName: teamsync
+    indexName: teamsync_team_id
     indexType: unique
     operation: createIndex
-    table: teamsync_team_id
+    table: teamsync

@@ -29,6 +29,9 @@ def test_escape_tag(input_tag, expected):
         ("dev_table", True),  # Underscores allowed
         ("devtable123", True),  # Numbers allowed
         (u"🌸", False),  # Non-ASCII NOT allowed
+        (".foo", False),  # Cannot start with a dot
+        ("_foo", False),  # Cannot start with an underscore
+        ("-foo", False),  # Cannot start with a dash
     ],
 )
 def test_repository_names_regex(name, should_match):

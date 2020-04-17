@@ -24,7 +24,10 @@ def app_capabilities():
         "appName": "io.quay",
         "capabilities": {
             "io.quay.view-image": {"url-template": view_image_tmpl,},
-            "io.quay.image-security": {"rest-api-template": image_security_tmpl,},
+            "io.quay.image-security": {
+                "rest-api-template": image_security_tmpl,
+                "deprecated": True,
+            },
             "io.quay.manifest-security": {"rest-api-template": manifest_security_tmpl,},
         },
     }

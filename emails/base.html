@@ -58,7 +58,7 @@
   {% if hosted %}
   <table style="text-align:center; margin:25px auto 0;">
     <tr>
-      <td style="font-size: 13px; font-weight: 200">Quay [ builds, analyzes, distributes ] your container images</td>
+      <td style="font-size: 13px; font-weight: 200">{{ app_title }} [ builds, analyzes, distributes ] your container images</td>
     </tr>
   </table>
   <table style="margin: 0 auto;">
@@ -66,8 +66,7 @@
       {% if username %}
       <td><a style="color: #52A3D9;" href="{{ app_url }}/user/{{ username }}?tab=settings">Your Account</a></td>
       {% endif %}
-      <td><a style="color: #52A3D9;" href="https://docs.quay.io/">Documentation</a></td>
-      <td><a style="color: #52A3D9;" href="{{ app_url }}">Quay.io</a></td>
+      <td><a style="color: #52A3D9;" href="{{ app_url }}">{{ app_title }}</a></td>
     </tr>
   </table>
   {% endif %}

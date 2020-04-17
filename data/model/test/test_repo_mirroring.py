@@ -15,7 +15,7 @@ from data.model.repo_mirror import (
 from test.fixtures import *
 
 
-def create_mirror_repo_robot(rules, repo_name="repo"):
+def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=None):
     try:
         user = User.get(User.username == "mirror")
     except User.DoesNotExist:
@@ -37,6 +37,7 @@ def create_mirror_repo_robot(rules, repo_name="repo"):
         "internal_robot": robot,
         "external_reference": "registry.example.com/namespace/repository",
         "sync_interval": timedelta(days=1).total_seconds(),
+        "external_registry_config": external_registry_config,
     }
     mirror = enable_mirroring_for_repository(**mirror_kwargs)
     mirror.sync_status = RepoMirrorStatus.NEVER_RUN

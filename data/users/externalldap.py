@@ -151,7 +151,13 @@ class LDAPUsers(FederatedUsers):
         if not self._ldap_user_filter:
             return query
 
-        return u"(&({0}){1})".format(self._ldap_user_filter, query)
+        user_filter = self._ldap_user_filter
+        if not query.startswith("(") or not query.endswith(")"):
+            query = "(%s)" % query
+
+        assert user_filter.startswith("(") and user_filter.endswith(")")
+        assert query.startswith("(") and query.endswith(")")
+        return u"(&{0}{1})".format(query, user_filter)
 
     def _ldap_user_search_with_rdn(self, conn, username_or_email, user_search_dn, suffix=""):
         query = u"(|({0}={2}{3})({1}={2}{3}))".format(
@@ -263,24 +269,26 @@ class LDAPUsers(FederatedUsers):
         has_pagination = not self._force_no_pagination
         with self._ldap.get_connection() as conn:
             for user_search_dn in self._user_dns:
+                search_flt = self._ldap_user_filter or ""
+
                 lc = ldap.controls.libldap.SimplePagedResultsControl(
                     criticality=True, size=1, cookie=""
                 )
                 try:
                     if has_pagination:
                         msgid = conn.search_ext(
-                            user_search_dn, ldap.SCOPE_SUBTREE, serverctrls=[lc]
+                            user_search_dn, ldap.SCOPE_SUBTREE, search_flt, serverctrls=[lc]
                         )
                         _, rdata, _, serverctrls = conn.result3(msgid)
                     else:
-                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE)
+                        msgid = conn.search(user_search_dn, ldap.SCOPE_SUBTREE, search_flt)
                         _, rdata = conn.result(msgid)
 
                     for entry in rdata:  # Handles both lists and iterators.
                         return (True, None)
 
                 except ldap.LDAPError as lde:
-                    return (False, str(lde) or "Could not find DN %s" % user_search_dn)
+                    return (False, lde.message or "Could not find DN %s" % user_search_dn)
 
         return (False, None)
 

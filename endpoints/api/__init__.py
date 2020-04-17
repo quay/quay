@@ -7,6 +7,7 @@ from functools import partial, wraps
 
 from flask import Blueprint, request, session
 from flask_restful import Resource, abort, Api, reqparse
+from flask_restful.utils import unpack
 from flask_restful.utils.cors import crossdomain
 from jsonschema import validate, ValidationError
 
@@ -471,6 +472,25 @@ def define_json_response(schema_name):
                     raise InvalidResponse(str(ex))
 
             return resp
+
+        return wrapped
+
+    return wrapper
+
+
+def deprecated():
+    """
+    Marks a given API resource operation as deprecated by adding `Deprecation` header.
+    See https://tools.ietf.org/id/draft-dalal-deprecation-header-01.html#RFC7234.
+    """
+
+    def wrapper(func):
+        @wraps(func)
+        def wrapped(self, *args, **kwargs):
+            (data, code, headers) = unpack(func(self, *args, **kwargs))
+            headers["Deprecation"] = "true"
+
+            return (data, code, headers)
 
         return wrapped
 

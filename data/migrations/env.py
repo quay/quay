@@ -11,7 +11,7 @@ from alembic.util import CommandError
 from sqlalchemy import engine_from_config, pool
 from peewee import SqliteDatabase
 
-from data.database import all_models, db
+from data.database import all_models, db, LEGACY_INDEX_MAP
 from data.migrations.tester import NoopTester, PopulateTestDataTester
 from data.model.sqlalchemybridge import gen_sqlalchemy_metadata
 from release import GIT_HEAD, REGION, SERVICE
@@ -24,7 +24,6 @@ from data.migrations.dba_operator import Migration, OpLogger
 config = context.config
 DB_URI = config.get_main_option("db_uri", "sqlite:///test/data/test.db")
 PROM_LABEL_PREFIX = "DBA_OP_LABEL_"
-
 
 # This option exists because alembic needs the db proxy to be configured in order
 # to perform migrations. The app import does the init of the proxy, but we don't
@@ -47,7 +46,7 @@ logger = logging.getLogger(__name__)
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = gen_sqlalchemy_metadata(all_models)
+target_metadata = gen_sqlalchemy_metadata(all_models, LEGACY_INDEX_MAP)
 tables = AttrDict(target_metadata.tables)
 
 # other values from the config, defined by the needs of env.py,
@@ -140,7 +139,9 @@ def run_migrations_online():
 
     migration = Migration()
     version_apply_callback = report_success
-    if truthy_bool(context.get_x_argument(as_dictionary=True).get("generatedbaopmigrations", None)):
+    if truthy_bool(
+        context.get_x_argument(as_dictionary=True).get("generatedbaopmigrations", False)
+    ):
         op = OpLogger(alembic_op, migration)
         version_apply_callback = partial(finish_migration, migration)
 

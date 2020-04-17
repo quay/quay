@@ -66,6 +66,8 @@ class TestConfig(DefaultConfig):
     SECURITY_SCANNER_API_VERSION = "v1"
     SECURITY_SCANNER_ENGINE_VERSION_TARGET = 1
     SECURITY_SCANNER_API_TIMEOUT_SECONDS = 1
+    SECURITY_SCANNER_V4_ENDPOINT = "http://fakesecurityscanner/"
+    SECURITY_SCANNER_V4_NAMESPACE_WHITELIST = ["devtable"]
 
     FEATURE_SIGNING = True
 
@@ -110,5 +112,5 @@ class TestConfig(DefaultConfig):
     }
 
     FEATURE_REPO_MIRROR = True
-
-    V3_UPGRADE_MODE = "complete"
+    FEATURE_GENERAL_OCI_SUPPORT = True
+    OCI_NAMESPACE_WHITELIST = []

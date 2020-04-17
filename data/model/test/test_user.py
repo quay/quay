@@ -20,6 +20,7 @@ from data.queue import WorkQueue
 from util.timedeltastring import convert_to_timedelta
 from util.timedeltastring import convert_to_timedelta
 from util.security.token import encode_public_private_token
+from test.helpers import check_transitive_modifications
 from test.fixtures import *
 
 
@@ -118,7 +119,8 @@ def test_delete_namespace_via_marker(initialized_db):
     marker_id = mark_namespace_for_deletion(user, [], queue)
 
     # Delete the user.
-    delete_namespace_via_marker(marker_id, [])
+    with check_transitive_modifications():
+        delete_namespace_via_marker(marker_id, [])
 
     # Ensure the user was actually deleted.
     with pytest.raises(User.DoesNotExist):

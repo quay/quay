@@ -21,6 +21,7 @@ from endpoints.api import (
     parse_args,
     query_param,
     disallow_for_app_repositories,
+    deprecated,
 )
 from endpoints.exception import NotFound, DownstreamIssue
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
@@ -66,7 +67,9 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     assert result.status in MAPPED_STATUSES
     return {
         "status": MAPPED_STATUSES[result.status].value,
-        "data": result.security_information,
+        "data": result.security_information.to_dict()
+        if result.security_information is not None
+        else None,
     }
 
 
@@ -84,6 +87,7 @@ class RepositoryImageSecurity(RepositoryParamResource):
     @process_basic_auth_no_pass
     @require_repo_read
     @nickname("getRepoImageSecurity")
+    @deprecated()
     @disallow_for_app_repositories
     @parse_args()
     @query_param(

@@ -11,6 +11,7 @@ from auth.registry_jwt_auth import process_registry_jwt_auth
 from digest import digest_tools
 from data.registry_model import registry_model
 from data.model.oci.manifest import CreateManifestException
+from data.model.oci.tag import RetargetTagException
 from endpoints.decorators import anon_protect, parse_repository_name, check_readonly
 from endpoints.metrics import image_pulls, image_pushes
 from endpoints.v2 import v2_bp, require_repo_read, require_repo_write
@@ -21,10 +22,11 @@ from endpoints.v2.errors import (
     TagExpired,
     NameUnknown,
 )
-from image.docker import ManifestException
+from image.shared import ManifestException
+from image.shared.schemas import parse_manifest_from_bytes
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE, DOCKER_SCHEMA1_CONTENT_TYPES
-from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES, OCI_CONTENT_TYPES
-from image.docker.schemas import parse_manifest_from_bytes
+from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
+from image.oci import OCI_CONTENT_TYPES
 from notifications import spawn_notification
 from util.audit import track_and_log
 from util.bytes import Bytes
@@ -160,9 +162,27 @@ def _reject_manifest2_schema2(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         namespace_name = kwargs["namespace_name"]
-        if registry_model.supports_schema2(namespace_name) and namespace_name not in app.config.get(
-            "V22_NAMESPACE_BLACKLIST", []
+        if (
+            request.content_type
+            and request.content_type != "application/json"
+            and request.content_type
+            not in DOCKER_SCHEMA1_CONTENT_TYPES | DOCKER_SCHEMA2_CONTENT_TYPES | OCI_CONTENT_TYPES
         ):
+            raise ManifestInvalid(
+                detail={"message": "manifest schema version not supported"}, http_status_code=415
+            )
+
+        if namespace_name not in app.config.get("V22_NAMESPACE_BLACKLIST", []):
+            if request.content_type in OCI_CONTENT_TYPES:
+                if (
+                    namespace_name not in app.config.get("OCI_NAMESPACE_WHITELIST", [])
+                    and not features.GENERAL_OCI_SUPPORT
+                ):
+                    raise ManifestInvalid(
+                        detail={"message": "manifest schema version not supported"},
+                        http_status_code=415,
+                    )
+
             return func(*args, **kwargs)
 
         if (
@@ -229,10 +249,10 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         image_pushes.labels("v2", 400, "").inc()
         raise ManifestInvalid()
 
-    image_pushes.labels("v2", 202, manifest.media_type).inc()
+    image_pushes.labels("v2", 201, manifest.media_type).inc()
     return Response(
         "OK",
-        status=202,
+        status=201,
         headers={
             "Docker-Content-Digest": manifest.digest,
             "Location": url_for(
@@ -305,11 +325,11 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
 
     track_and_log("push_repo", repository_ref, tag=tag_name)
     spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
-    image_pushes.labels("v2", 202, manifest.media_type).inc()
+    image_pushes.labels("v2", 201, manifest.media_type).inc()
 
     return Response(
         "OK",
-        status=202,
+        status=201,
         headers={
             "Docker-Content-Digest": manifest.digest,
             "Location": url_for(
@@ -332,10 +352,22 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         ):
             pass
         elif manifest_impl.namespace != namespace_name:
-            raise NameInvalid()
+            raise NameInvalid(
+                message="namespace name does not match manifest",
+                details={
+                    "namespace name `%s` does not match `%s` in manifest"
+                    % (namespace_name, manifest_impl.namespace)
+                },
+            )
 
         if manifest_impl.repo_name != repo_name:
-            raise NameInvalid()
+            raise NameInvalid(
+                message="repository name does not match manifest",
+                details={
+                    "repository name `%s` does not match `%s` in manifest"
+                    % (repo_name, manifest_impl.repo_name)
+                },
+            )
 
         try:
             if not manifest_impl.layers:
@@ -355,6 +387,8 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         )
     except CreateManifestException as cme:
         raise ManifestInvalid(detail={"message": str(cme)})
+    except RetargetTagException as rte:
+        raise ManifestInvalid(detail={"message": str(rte)})
 
     if manifest is None:
         raise ManifestInvalid()

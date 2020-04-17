@@ -10,17 +10,20 @@ from playhouse.test_utils import count_queries
 from app import instance_keys, app as realapp
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
+from data.registry_model import registry_model
 from endpoints.test.shared import conduct_call
 from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
 from test.fixtures import *
 
 
 def test_e2e_query_count_manifest_norewrite(client, app):
-    tag_manifest = model.tag.load_tag_manifest("devtable", "simple", "latest")
+    repo_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repo_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     params = {
         "repository": "devtable/simple",
-        "manifest_ref": tag_manifest.digest,
+        "manifest_ref": manifest.digest,
     }
 
     user = model.user.get_user("devtable")
@@ -42,9 +45,9 @@ def test_e2e_query_count_manifest_norewrite(client, app):
         url_for,
         "PUT",
         params,
-        expected_code=202,
+        expected_code=201,
         headers=headers,
-        raw_body=tag_manifest.json_data,
+        raw_body=manifest.internal_manifest_bytes.as_encoded_str(),
     )
 
     timecode = time.time()
@@ -62,9 +65,9 @@ def test_e2e_query_count_manifest_norewrite(client, app):
                 url_for,
                 "PUT",
                 params,
-                expected_code=202,
+                expected_code=201,
                 headers=headers,
-                raw_body=tag_manifest.json_data,
+                raw_body=manifest.internal_manifest_bytes.as_encoded_str(),
             )
 
         assert counter.count <= 27

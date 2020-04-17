@@ -1,0 +1,2 @@
+class ManifestException(Exception):
+    pass

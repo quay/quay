@@ -1,9 +1,12 @@
-from data.secscan_model.datatypes import ScanLookupStatus
+import mock
+import pytest
+
+from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformation
 from data.secscan_model.secscan_v2_model import V2SecurityScanner
 from data.registry_model import registry_model
-from data.registry_model.datatypes import SecurityScanStatus
-from data.database import Manifest
+from data.database import Manifest, Image
 from data.model.oci import shared
+from data.model.image import set_secscan_status
 
 from test.fixtures import *
 
@@ -47,3 +50,63 @@ def test_load_security_information_queued(initialized_db):
 
     secscan = V2SecurityScanner(app, instance_keys, storage)
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.NOT_YET_INDEXED
+
+
+@pytest.mark.parametrize(
+    "secscan_api_response",
+    [
+        ({"Layer": {}}),
+        (
+            {
+                "Layer": {
+                    "IndexedByVersion": 3,
+                    "ParentName": "9c6afaebf33df8db2e3f38f95c402d82e025386730f6a8cbe0b780a6053cdd11.d4b545b4-49ce-4bc4-8bbe-b58bed7bddd9",
+                    "Name": "ed209f9bdb3766c3da8a004a72e3a30901bde36c39466a3825af1cd12894e7a3.86f0a285-6f29-47c4-a3ae-7e2c70cad0ba",
+                }
+            }
+        ),
+        (
+            {
+                "Layer": {
+                    "IndexedByVersion": 3,
+                    "ParentName": "9c6afaebf33df8db2e3f38f95c402d82e025386730f6a8cbe0b780a6053cdd11.d4b545b4-49ce-4bc4-8bbe-b58bed7bddd9",
+                    "Name": "ed209f9bdb3766c3da8a004a72e3a30901bde36c39466a3825af1cd12894e7a3.86f0a285-6f29-47c4-a3ae-7e2c70cad0ba",
+                    "Features": [
+                        {
+                            "Name": "tzdata",
+                            "VersionFormat": "",
+                            "NamespaceName": "",
+                            "AddedBy": "sha256:8d691f585fa8cec0eba196be460cfaffd69939782d6162986c3e0c5225d54f02",
+                            "Version": "2019c-0+deb10u1",
+                        }
+                    ],
+                }
+            }
+        ),
+    ],
+)
+def test_load_security_information_api_responses(secscan_api_response, initialized_db):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
+    manifest = registry_model.get_manifest_for_tag(
+        tag, backfill_if_necessary=True, include_legacy_image=True
+    )
+    set_secscan_status(Image.get(id=manifest.legacy_image._db_id), True, 3)
+
+    secscan = V2SecurityScanner(app, instance_keys, storage)
+    secscan._legacy_secscan_api = mock.Mock()
+    secscan._legacy_secscan_api.get_layer_data.return_value = secscan_api_response
+
+    security_information = secscan.load_security_information(manifest).security_information
+
+    assert isinstance(security_information, SecurityInformation)
+    assert security_information.Layer.Name == secscan_api_response["Layer"].get("Name", "")
+    assert security_information.Layer.ParentName == secscan_api_response["Layer"].get(
+        "ParentName", ""
+    )
+    assert security_information.Layer.IndexedByVersion == secscan_api_response["Layer"].get(
+        "IndexedByVersion", None
+    )
+    assert len(security_information.Layer.Features) == len(
+        secscan_api_response["Layer"].get("Features", [])
+    )

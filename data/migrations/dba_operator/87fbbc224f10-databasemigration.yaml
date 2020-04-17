@@ -20,7 +20,7 @@ spec:
     operation: addColumn
     table: repositorybuildtrigger
   - columns: []
-    indexName: repositorybuildtrigger
+    indexName: repositorybuildtrigger_disabled_datetime
     indexType: index
     operation: createIndex
-    table: repositorybuildtrigger_disabled_datetime
+    table: repositorybuildtrigger

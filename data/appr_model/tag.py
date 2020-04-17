@@ -124,3 +124,24 @@ def filter_tags_by_media_type(tag_query, media_type, models_ref):
         ManifestListManifest, on=(ManifestListManifest.manifest_list == Tag.manifest_list)
     ).where(ManifestListManifest.media_type == ManifestListManifest.media_type.get_id(media_type))
     return t
+
+
+def get_most_recent_tag_lifetime_start(repository_ids, models_ref, tag_kind="release"):
+    """
+    Returns a map from repo ID to the timestamp of the most recently pushed alive tag for each
+    specified repository or None if none.
+    """
+
+    assert len(repository_ids) > 0 and None not in repository_ids
+
+    Tag = models_ref.Tag
+    tag_kind_id = Tag.tag_kind.get_id(tag_kind)
+    tags = tag_is_alive(
+        Tag.select().where(
+            Tag.repository << [rid for rid in repository_ids], Tag.tag_kind == tag_kind_id
+        ),
+        Tag,
+    )
+    to_seconds = lambda ms: ms / 1000 if ms is not None else None
+
+    return {t.repository.id: to_seconds(t.lifetime_start) for t in tags}

@@ -8,8 +8,8 @@ from cachetools.func import lru_cache
 from data import model
 from data.database import Manifest as ManifestTable
 from data.registry_model.datatype import datatype, requiresinput, optionalinput
-from image.docker import ManifestException
-from image.docker.schemas import parse_manifest_from_bytes
+from image.shared import ManifestException
+from image.shared.schemas import parse_manifest_from_bytes
 from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
 from util.bytes import Bytes
@@ -499,7 +499,7 @@ class LegacyImage(
         if not tags:
             return []
 
-        return [Tag.for_repository_tag(tag) for tag in tags]
+        return [Tag.for_tag(tag) for tag in tags]
 
 
 @unique

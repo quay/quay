@@ -1,0 +1,67 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 8e6a363784bb
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 8e6a363784bb
+    image: quay.io/quay/quay
+    name: 8e6a363784bb
+  previous: 4fd6b8463eb2
+  schemaHints:
+  - columns:
+    - name: id
+      nullable: false
+    - name: manifest_id
+      nullable: false
+    - name: repository_id
+      nullable: false
+    - name: index_status
+      nullable: false
+    - name: error_json
+      nullable: false
+    - name: last_indexed
+      nullable: false
+    - name: indexer_hash
+      nullable: false
+    - name: indexer_version
+      nullable: false
+    - name: metadata_json
+      nullable: false
+    operation: createTable
+    table: manifestsecuritystatus
+  - columns: []
+    indexName: manifestsecuritystatus_index_status
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns: []
+    indexName: manifestsecuritystatus_indexer_hash
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns: []
+    indexName: manifestsecuritystatus_indexer_version
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns: []
+    indexName: manifestsecuritystatus_last_indexed
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns: []
+    indexName: manifestsecuritystatus_manifest_id
+    indexType: unique
+    operation: createIndex
+    table: manifestsecuritystatus
+  - columns: []
+    indexName: manifestsecuritystatus_repository_id
+    indexType: index
+    operation: createIndex
+    table: manifestsecuritystatus

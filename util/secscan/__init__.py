@@ -3,6 +3,7 @@
 PRIORITY_LEVELS = {
     "Unknown": {
         "title": "Unknown",
+        "value": "Unknown",
         "index": 6,
         "level": "info",
         "color": "#9B9B9B",
@@ -13,6 +14,7 @@ PRIORITY_LEVELS = {
     },
     "Negligible": {
         "title": "Negligible",
+        "value": "Negligible",
         "index": 5,
         "level": "info",
         "color": "#9B9B9B",
@@ -24,6 +26,7 @@ PRIORITY_LEVELS = {
     },
     "Low": {
         "title": "Low",
+        "value": "Low",
         "index": 4,
         "level": "warning",
         "color": "#F8CA1C",

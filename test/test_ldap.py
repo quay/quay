@@ -260,9 +260,11 @@ def mock_ldap(requires_email=True, user_filter=None):
         return obj
 
     mockldap.start()
-    with patch("ldap.initialize", new=initializer):
-        yield _create_ldap(requires_email=requires_email, user_filter=user_filter)
-    mockldap.stop()
+    try:
+        with patch("ldap.initialize", new=initializer):
+            yield _create_ldap(requires_email=requires_email, user_filter=user_filter)
+    finally:
+        mockldap.stop()
 
 
 class TestLDAP(unittest.TestCase):
@@ -615,7 +617,7 @@ class TestLDAP(unittest.TestCase):
             self.assertTrue(response)
 
     def test_ldap_user_filtering_no_users(self):
-        no_user_filter = "filterField=anothervalue"
+        no_user_filter = "(filterField=anothervalue)"
         with mock_ldap(user_filter=no_user_filter) as ldap:
             # Verify we cannot login.
             (response, _) = ldap.verify_and_link_user("someuser", "somepass")
@@ -630,7 +632,7 @@ class TestLDAP(unittest.TestCase):
             self.assertEquals(0, len(results))
 
     def test_ldap_user_filtering_valid_users(self):
-        valid_user_filter = "filterField=somevalue"
+        valid_user_filter = "(filterField=somevalue)"
         with mock_ldap(user_filter=valid_user_filter) as ldap:
             # Verify we can login.
             (response, _) = ldap.verify_and_link_user("someuser", "somepass")
@@ -643,6 +645,54 @@ class TestLDAP(unittest.TestCase):
 
             results = list(it)
             self.assertEquals(2, len(results))
+
+    def test_at_least_one_user_exists_filtered(self):
+        base_dn = ["dc=quay", "dc=io"]
+        admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
+        admin_passwd = "password"
+        user_rdn = ["ou=employees"]
+        uid_attr = "uid"
+        email_attr = "mail"
+        secondary_user_rdns = ["ou=otheremployees"]
+
+        with mock_ldap():
+            ldap = LDAPUsers(
+                "ldap://localhost",
+                base_dn,
+                admin_dn,
+                admin_passwd,
+                user_rdn,
+                uid_attr,
+                email_attr,
+                ldap_user_filter="(filterField=somevalue)",
+            )
+            (response, err_msg) = ldap.at_least_one_user_exists()
+            self.assertIsNone(err_msg)
+            self.assertTrue(response)
+
+    def test_at_least_one_user_exists_filtered_away(self):
+        base_dn = ["dc=quay", "dc=io"]
+        admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
+        admin_passwd = "password"
+        user_rdn = ["ou=employees"]
+        uid_attr = "uid"
+        email_attr = "mail"
+        secondary_user_rdns = ["ou=otheremployees"]
+
+        with mock_ldap():
+            ldap = LDAPUsers(
+                "ldap://localhost",
+                base_dn,
+                admin_dn,
+                admin_passwd,
+                user_rdn,
+                uid_attr,
+                email_attr,
+                ldap_user_filter="(filterField=someothervalue)",
+            )
+            (response, err_msg) = ldap.at_least_one_user_exists()
+            self.assertIsNone(err_msg)
+            self.assertFalse(response)
 
 
 if __name__ == "__main__":

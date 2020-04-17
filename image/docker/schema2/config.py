@@ -101,7 +101,7 @@ from jsonschema import validate as validate_schema, ValidationError
 from dateutil.parser import parse as parse_date
 
 from digest import digest_tools
-from image.docker import ManifestException
+from image.shared import ManifestException
 from util.bytes import Bytes
 
 
@@ -185,7 +185,7 @@ class DockerSchema2Config(object):
         "additionalProperties": True,
     }
 
-    def __init__(self, config_bytes):
+    def __init__(self, config_bytes, skip_validation_for_testing=False):
         assert isinstance(config_bytes, Bytes)
 
         self._config_bytes = config_bytes
@@ -195,10 +195,11 @@ class DockerSchema2Config(object):
         except ValueError as ve:
             raise MalformedSchema2Config("malformed config data: %s" % ve)
 
-        try:
-            validate_schema(self._parsed, DockerSchema2Config.METASCHEMA)
-        except ValidationError as ve:
-            raise MalformedSchema2Config("config data does not match schema: %s" % ve)
+        if not skip_validation_for_testing:
+            try:
+                validate_schema(self._parsed, DockerSchema2Config.METASCHEMA)
+            except ValidationError as ve:
+                raise MalformedSchema2Config("config data does not match schema: %s" % ve)
 
     @property
     def digest(self):

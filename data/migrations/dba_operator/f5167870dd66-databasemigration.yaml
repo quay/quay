@@ -15,25 +15,25 @@ spec:
   previous: 45fd8b9869d4
   schemaHints:
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_processing_expires_available
     indexType: index
     operation: createIndex
-    table: queueitem_processing_expires_available
+    table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_pe_aafter_qname_rremaining_available
     indexType: index
     operation: createIndex
-    table: queueitem_pe_aafter_qname_rremaining_available
+    table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_pexpires_aafter_rremaining_available
     indexType: index
     operation: createIndex
-    table: queueitem_pexpires_aafter_rremaining_available
+    table: queueitem
   - columns: []
-    indexName: queueitem
+    indexName: queueitem_processing_expires_queue_name_available
     indexType: index
     operation: createIndex
-    table: queueitem_processing_expires_queue_name_available
+    table: queueitem
   - indexName: queueitem_available
     operation: dropIndex
     table: queueitem

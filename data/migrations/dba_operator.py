@@ -49,7 +49,7 @@ class Migration(object):
                         self.hint_add_column(subop.table_name, subop.column)
                     elif isinstance(subop, ops.CreateIndexOp):
                         self.hint_create_index(
-                            subop.table_name, subop.index_name, subop.columns, subop.unique,
+                            subop.index_name, subop.table_name, subop.columns, subop.unique,
                         )
                     elif isinstance(subop, ops.DropIndexOp):
                         self.hint_drop_index(subop.index_name, subop.table_name)
@@ -96,7 +96,7 @@ class Migration(object):
             }
         )
 
-    def hint_create_index(self, table_name, index_name, columns, unique=False, **kwargs):
+    def hint_create_index(self, index_name, table_name, columns, unique=False, **kwargs):
         self._schema_hints.append(
             {
                 "operation": "createIndex",

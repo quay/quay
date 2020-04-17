@@ -26,10 +26,10 @@ spec:
     operation: createTable
     table: robotaccounttoken
   - columns: []
-    indexName: robotaccounttoken
+    indexName: robotaccounttoken_robot_account_id
     indexType: unique
     operation: createIndex
-    table: robotaccounttoken_robot_account_id
+    table: robotaccounttoken
   - columns:
     - name: token_code
       nullable: true
@@ -41,10 +41,10 @@ spec:
     operation: addColumn
     table: !!python/unicode 'accesstoken'
   - columns: []
-    indexName: accesstoken
+    indexName: accesstoken_token_name
     indexType: unique
     operation: createIndex
-    table: accesstoken_token_name
+    table: accesstoken
   - columns:
     - name: token_name
       nullable: true
@@ -56,10 +56,10 @@ spec:
     operation: addColumn
     table: !!python/unicode 'appspecificauthtoken'
   - columns: []
-    indexName: appspecificauthtoken
+    indexName: appspecificauthtoken_token_name
     indexType: unique
     operation: createIndex
-    table: appspecificauthtoken_token_name
+    table: appspecificauthtoken
   - columns:
     - name: verification_code
       nullable: true
@@ -76,10 +76,10 @@ spec:
     operation: addColumn
     table: !!python/unicode 'oauthaccesstoken'
   - columns: []
-    indexName: oauthaccesstoken
+    indexName: oauthaccesstoken_token_name
     indexType: unique
     operation: createIndex
-    table: oauthaccesstoken_token_name
+    table: oauthaccesstoken
   - columns:
     - name: secure_client_secret
       nullable: true
@@ -101,18 +101,18 @@ spec:
     operation: addColumn
     table: !!python/unicode 'oauthauthorizationcode'
   - columns: []
-    indexName: oauthauthorizationcode
+    indexName: oauthauthorizationcode_code_name
     indexType: unique
     operation: createIndex
-    table: oauthauthorizationcode_code_name
+    table: oauthauthorizationcode
   - indexName: oauthauthorizationcode_code
     operation: dropIndex
     table: oauthauthorizationcode
   - columns: []
-    indexName: oauthauthorizationcode
+    indexName: oauthauthorizationcode_code
     indexType: unique
     operation: createIndex
-    table: oauthauthorizationcode_code
+    table: oauthauthorizationcode
   - columns:
     - name: secure_auth_token
       nullable: true

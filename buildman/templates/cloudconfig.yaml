@@ -65,7 +65,7 @@ coreos:
                      worker_tag,
                      extra_args='--net=host --privileged --env-file /root/overrides.list -v /var/run/docker.sock:/var/run/docker.sock -v /usr/share/ca-certificates:/etc/ssl/certs',
                      exec_stop_post=['/bin/sh -xc "/bin/sleep 120; /usr/bin/systemctl --no-block poweroff"'],
-                     flattened=True,
+                     flattened=False,
                      restart_policy='no'
                     ) | indent(4) }}
     {% if logentries_token -%}
@@ -73,7 +73,7 @@ coreos:
     {{ dockersystemd('builder-logs',
                      'quay.io/coreos/journal-2-logentries',
                      extra_args='--env-file /root/overrides.list -v /run/journald.sock:/run/journald.sock',
-                     flattened=True,
+                     flattened=False,
                      after_units=['quay-builder.service']
                      ) | indent(4) }}
     {%- endif %}

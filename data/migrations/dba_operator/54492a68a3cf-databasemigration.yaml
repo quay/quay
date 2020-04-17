@@ -30,17 +30,17 @@ spec:
     operation: createTable
     table: namespacegeorestriction
   - columns: []
-    indexName: namespacegeorestriction
+    indexName: namespacegeorestriction_namespace_id
     indexType: index
     operation: createIndex
-    table: namespacegeorestriction_namespace_id
+    table: namespacegeorestriction
   - columns: []
-    indexName: namespacegeorestriction
+    indexName: namespacegeorestriction_namespace_id_restricted_region_iso_code
     indexType: unique
     operation: createIndex
-    table: namespacegeorestriction_namespace_id_restricted_region_iso_code
+    table: namespacegeorestriction
   - columns: []
-    indexName: namespacegeorestriction
+    indexName: namespacegeorestriction_restricted_region_iso_code
     indexType: index
     operation: createIndex
-    table: namespacegeorestriction_restricted_region_iso_code
+    table: namespacegeorestriction

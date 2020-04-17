@@ -13,7 +13,6 @@ angular.module('quay').directive('repoTagHistory', function () {
       'repositoryTags': '=repositoryTags',
       'filter': '=filter',
       'isEnabled': '=isEnabled',
-      'imageLoader': '=imageLoader'
     },
     controller: function($scope, $element, ApiService, StateService) {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();

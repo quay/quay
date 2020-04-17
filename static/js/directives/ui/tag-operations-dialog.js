@@ -13,7 +13,6 @@ angular.module('quay').directive('tagOperationsDialog', function () {
       'repository': '=repository',
       'repositoryTags': '=repositoryTags',
       'actionHandler': '=actionHandler',
-      'imageLoader': '=imageLoader',
       'tagChanged': '&tagChanged',
       'labelsChanged': '&labelsChanged'
     },
@@ -42,7 +41,6 @@ angular.module('quay').directive('tagOperationsDialog', function () {
             reloadTags(page + 1, tags, added, removed);
           } else {
             $scope.repositoryTags = tags;
-            $scope.imageLoader.reset();
 
             $timeout(function() {
               $scope.tagChanged({

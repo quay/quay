@@ -37,6 +37,7 @@ from data.fields import (
     EncryptedCharField,
     CredentialField,
 )
+from data.decorators import deprecated_model
 from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
 from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig
@@ -650,8 +651,11 @@ class User(BaseModel):
                     TeamSync,
                     RepositorySearchScore,
                     DeletedNamespace,
+                    DeletedRepository,
                     RepoMirrorRule,
                     NamespaceGeoRestriction,
+                    ManifestSecurityStatus,
+                    RepoMirrorConfig,
                 }
                 | appr_classes
                 | v22_classes
@@ -854,6 +858,7 @@ class Repository(BaseModel):
                 RepoMirrorConfig,
                 RepoMirrorRule,
                 DeletedRepository,
+                ManifestSecurityStatus,
             }
             | appr_classes
             | v22_classes
@@ -1776,29 +1781,22 @@ class ManifestLegacyImage(BaseModel):
     image = ForeignKeyField(Image)
 
 
+@deprecated_model
 class TagManifest(BaseModel):
-    """
-    TO BE DEPRECATED: The manifest for a tag.
-    """
-
     tag = ForeignKeyField(RepositoryTag, unique=True)
     digest = CharField(index=True)
     json_data = TextField()
 
 
+@deprecated_model
 class TagManifestToManifest(BaseModel):
-    """ NOTE: Only used for the duration of the migrations. """
-
     tag_manifest = ForeignKeyField(TagManifest, index=True, unique=True)
     manifest = ForeignKeyField(Manifest, index=True)
     broken = BooleanField(index=True, default=False)
 
 
+@deprecated_model
 class TagManifestLabel(BaseModel):
-    """
-    TO BE DEPRECATED: Mapping from a tag manifest to a label.
-    """
-
     repository = ForeignKeyField(Repository, index=True)
     annotated = ForeignKeyField(TagManifest, index=True)
     label = ForeignKeyField(Label)
@@ -1809,9 +1807,8 @@ class TagManifestLabel(BaseModel):
         indexes = ((("annotated", "label"), True),)
 
 
+@deprecated_model
 class TagManifestLabelMap(BaseModel):
-    """ NOTE: Only used for the duration of the migrations. """
-
     tag_manifest = ForeignKeyField(TagManifest, index=True)
     manifest = ForeignKeyField(Manifest, null=True, index=True)
 
@@ -1823,9 +1820,8 @@ class TagManifestLabelMap(BaseModel):
     broken_manifest = BooleanField(index=True, default=False)
 
 
+@deprecated_model
 class TagToRepositoryTag(BaseModel):
-    """ NOTE: Only used for the duration of the migrations. """
-
     repository = ForeignKeyField(Repository, index=True)
     tag = ForeignKeyField(Tag, index=True, unique=True)
     repository_tag = ForeignKeyField(RepositoryTag, index=True, unique=True)
@@ -1911,6 +1907,55 @@ class RepoMirrorConfig(BaseModel):
 
     # Tag-Matching Rules
     root_rule = ForeignKeyField(RepoMirrorRule)
+
+
+@unique
+class IndexStatus(IntEnum):
+    """
+    Possible statuses of manifest security scan progress.
+    """
+
+    MANIFEST_UNSUPPORTED = -2
+    FAILED = -1
+    IN_PROGRESS = 1
+    COMPLETED = 2
+
+
+@unique
+class IndexerVersion(IntEnum):
+    """
+    Possible versions of security indexers.
+    """
+
+    V2 = 2
+    V4 = 4
+
+
+class ManifestSecurityStatus(BaseModel):
+    """
+    Represents the security scan status for a particular container image manifest. 
+
+    Intended to replace the `security_indexed` and `security_indexed_engine` fields 
+    on the `Image` model.
+    """
+
+    manifest = ForeignKeyField(Manifest, unique=True)
+    repository = ForeignKeyField(Repository)
+    index_status = ClientEnumField(IndexStatus)
+    error_json = JSONField(default={})
+    last_indexed = DateTimeField(default=datetime.utcnow, index=True)
+    indexer_hash = CharField(max_length=128, index=True)
+    indexer_version = ClientEnumField(IndexerVersion)
+    metadata_json = JSONField(default={})
+
+
+# Defines a map from full-length index names to the legacy names used in our code
+# to meet length restrictions.
+LEGACY_INDEX_MAP = {
+    "derivedstorageforimage_source_image_id_transformation_id_uniqueness_hash": "uniqueness_hash",
+    "queueitem_processing_expires_available_after_queue_name_retries_remaining_available": "queueitem_pe_aafter_qname_rremaining_available",
+    "queueitem_processing_expires_available_after_retries_remaining_available": "queueitem_pexpires_aafter_rremaining_available",
+}
 
 
 appr_classes = set(

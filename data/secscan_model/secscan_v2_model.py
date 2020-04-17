@@ -9,7 +9,14 @@ from deprecated import deprecated
 from data.database import UseThenDisconnect
 
 from data.secscan_model.interface import SecurityScannerInterface
-from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformationLookupResult
+from data.secscan_model.datatypes import (
+    ScanLookupStatus,
+    SecurityInformationLookupResult,
+    SecurityInformation,
+    Layer,
+    Feature,
+    Vulnerability,
+)
 
 from data.registry_model import registry_model
 from data.registry_model.datatypes import SecurityScanStatus
@@ -23,7 +30,7 @@ from data.model.image import (
 
 from util.migrate.allocator import yield_random_entries
 from util.config import URLSchemeAndHostname
-from util.secscan.api import SecurityConfigValidator, SecurityScannerAPI, APIRequestFailure
+from util.secscan.api import V2SecurityConfigValidator, SecurityScannerAPI, APIRequestFailure
 from util.secscan.secscan_util import get_blob_download_uri_getter
 
 
@@ -59,7 +66,7 @@ class V2SecurityScanner(SecurityScannerInterface):
         self.app = app
         self._legacy_secscan_api = None
 
-        validator = SecurityConfigValidator(
+        validator = V2SecurityConfigValidator(
             app.config.get("FEATURE_SECURITY_SCANNER", False),
             app.config.get("SECURITY_SCANNER_ENDPOINT"),
         )
@@ -143,7 +150,7 @@ class V2SecurityScanner(SecurityScannerInterface):
 
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
-        return SecurityInformationLookupResult.for_data(data)
+        return SecurityInformationLookupResult.for_data(SecurityInformation.from_dict(data))
 
     def _candidates_to_scan(self, start_token=None):
         target_version = self._target_version

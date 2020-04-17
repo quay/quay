@@ -6,9 +6,9 @@ from collections import namedtuple
 from jsonschema import validate as validate_schema, ValidationError
 
 from digest import digest_tools
-from image.docker import ManifestException
-from image.docker.interfaces import ManifestInterface
-from image.docker.types import ManifestImageLayer
+from image.shared import ManifestException
+from image.shared.interfaces import ManifestInterface
+from image.shared.types import ManifestImageLayer
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_CONFIG_CONTENT_TYPE,
@@ -144,7 +144,7 @@ class DockerSchema2Manifest(ManifestInterface):
         ],
     }
 
-    def __init__(self, manifest_bytes):
+    def __init__(self, manifest_bytes, validate=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._payload = manifest_bytes
@@ -318,8 +318,13 @@ class DockerSchema2Manifest(ManifestInterface):
                 blob_index += 1
 
     @property
+    def is_empty_manifest(self):
+        """ Returns whether this manifest is empty. """
+        return len(self._parsed[DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY]) == 0
+
+    @property
     def has_legacy_image(self):
-        return not self.has_remote_layer
+        return not self.has_remote_layer and not self.is_empty_manifest
 
     def generate_legacy_layers(self, images_map, content_retriever):
         assert not self.has_remote_layer
@@ -443,6 +448,12 @@ class DockerSchema2ManifestBuilder(object):
         self.config = None
         self.filesystem_layers = []
 
+    def clone(self):
+        cloned = DockerSchema2ManifestBuilder()
+        cloned.config = self.config
+        cloned.filesystem_layers = list(self.filesystem_layers)
+        return cloned
+
     def set_config(self, schema2_config):
         """
         Sets the configuration for the manifest being built.
@@ -473,7 +484,6 @@ class DockerSchema2ManifestBuilder(object):
         """
         Builds and returns the DockerSchema2Manifest.
         """
-        assert self.filesystem_layers
         assert self.config
 
         def _build_layer(layer):

@@ -54,11 +54,6 @@ registry-test:
 	--timeout=3600 --verbose --show-count -x \
 	test/registry/registry_tests.py
 
-registry-test-old:
-	TEST=true PYTHONPATH="." py.test  \
-	--cov="." --cov-report=html --cov-report=term-missing \
-	--timeout=3600 --verbose --show-count -x \
-	./test/registry_tests.py
 
 buildman-test:
 	TEST=true PYTHONPATH="." py.test \

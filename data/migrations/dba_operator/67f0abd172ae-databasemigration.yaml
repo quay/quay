@@ -26,17 +26,17 @@ spec:
     operation: createTable
     table: tagtorepositorytag
   - columns: []
-    indexName: tagtorepositorytag
+    indexName: tagtorepositorytag_repository_id
     indexType: index
     operation: createIndex
-    table: tagtorepositorytag_repository_id
+    table: tagtorepositorytag
   - columns: []
-    indexName: tagtorepositorytag
+    indexName: tagtorepositorytag_repository_tag_id
     indexType: unique
     operation: createIndex
-    table: tagtorepositorytag_repository_tag_id
+    table: tagtorepositorytag
   - columns: []
-    indexName: tagtorepositorytag
+    indexName: tagtorepositorytag_tag_id
     indexType: unique
     operation: createIndex
-    table: tagtorepositorytag_tag_id
+    table: tagtorepositorytag

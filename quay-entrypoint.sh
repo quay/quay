@@ -71,6 +71,16 @@ case "$QUAYENTRY" in
         echo "Entering repository mirroring mode"
         export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}repomirrorworker,pushgateway"
         ;&
+    "registry-nomigrate")
+        echo "Running all default registry services without migration"
+        for f in "${QUAYCONF}"/init/*.sh; do
+            if [ "$f" != "/quay-registry/conf/init/runmigration.sh" ]; then
+                echo "Running init script '$f'"
+                ENSURE_NO_MIGRATION=true "$f" || exit
+            fi
+        done
+        exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
+        ;;
     "registry")
         if [ -z "${QUAY_SERVICES}" ]; then
             echo "Running all default registry services"

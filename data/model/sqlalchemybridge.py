@@ -1,3 +1,5 @@
+import hashlib
+
 from sqlalchemy import (
     Table,
     MetaData,
@@ -38,7 +40,27 @@ OPTION_TRANSLATIONS = {
 }
 
 
-def gen_sqlalchemy_metadata(peewee_model_list):
+MAXIMUM_INDEX_NAME_LENGTH = 64
+MAXIMUM_INDEX_NAME_ALLOWANCE = 54
+
+
+def normalize_index_name(index_name, legacy_index_map):
+    if len(index_name) <= MAXIMUM_INDEX_NAME_LENGTH:
+        return index_name
+
+    # If a legacy name was defined, use it instead.
+    if index_name in legacy_index_map:
+        return legacy_index_map[index_name]
+
+    # Otherwise, hash the index name and use a short SHA + the allowance
+    # to generate a unique, stable name.
+    hashed = hashlib.sha256(index_name).hexdigest()
+    updated = "%s_%s" % (index_name[0:MAXIMUM_INDEX_NAME_ALLOWANCE], hashed[0:8])
+    assert len(updated) <= MAXIMUM_INDEX_NAME_LENGTH
+    return updated
+
+
+def gen_sqlalchemy_metadata(peewee_model_list, legacy_index_map=None):
     metadata = MetaData(
         naming_convention={
             "ix": "ix_%(column_0_label)s",
@@ -113,13 +135,13 @@ def gen_sqlalchemy_metadata(peewee_model_list):
             col_names = [meta.fields[prop_name].column_name for prop_name in col_prop_names]
             index_name = "%s_%s" % (meta.table_name, "_".join(col_names))
             col_refs = [getattr(new_table.c, col_name) for col_name in col_names]
-            Index(index_name, *col_refs, unique=unique)
+            Index(normalize_index_name(index_name, legacy_index_map), *col_refs, unique=unique)
 
         for col_field_name in fulltext_indexes:
             index_name = "%s_%s__fulltext" % (meta.table_name, col_field_name)
             col_ref = getattr(new_table.c, col_field_name)
             Index(
-                index_name,
+                normalize_index_name(index_name, legacy_index_map),
                 col_ref,
                 postgresql_ops={col_field_name: "gin_trgm_ops"},
                 postgresql_using="gin",

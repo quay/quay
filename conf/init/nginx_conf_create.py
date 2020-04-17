@@ -96,6 +96,7 @@ def generate_server_config(config):
     tuf_host = config.get("TUF_HOST", None)
     signing_enabled = config.get("FEATURE_SIGNING", False)
     maximum_layer_size = config.get("MAXIMUM_LAYER_SIZE", "20G")
+    maximum_cnr_layer_size = config.get("MAXIMUM_CNR_LAYER_SIZE", "1M")
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
 
     write_config(
@@ -104,6 +105,7 @@ def generate_server_config(config):
         tuf_host=tuf_host,
         signing_enabled=signing_enabled,
         maximum_layer_size=maximum_layer_size,
+        maximum_cnr_layer_size=maximum_cnr_layer_size,
         enable_rate_limits=enable_rate_limits,
         static_dir=STATIC_DIR,
     )

@@ -1,4 +1,5 @@
 from enum import IntEnum, unique
+from collections import namedtuple
 
 
 @unique
@@ -24,6 +25,87 @@ class ScanLookupStatus(IntEnum):
     SUCCESS = 5
 
 
+Vulnerability = namedtuple(
+    "Vulnerability",
+    ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
+)
+Feature = namedtuple(
+    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
+)
+Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
+
+
+class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
+    """
+    Canonical representation of security scan data for an image/manifest which is returned by the Quay API.
+    """
+
+    @classmethod
+    def from_dict(cls, data_dict):
+        return SecurityInformation(
+            Layer(
+                Name=data_dict["Layer"].get("Name", ""),
+                ParentName=data_dict["Layer"].get("ParentName", ""),
+                NamespaceName=data_dict["Layer"].get("NamespaceName", ""),
+                IndexedByVersion=data_dict["Layer"].get("IndexedByVersion", None),
+                Features=[
+                    Feature(
+                        Name=f["Name"],
+                        VersionFormat=f["VersionFormat"],
+                        NamespaceName=f["NamespaceName"],
+                        AddedBy=f["AddedBy"],
+                        Version=f["Version"],
+                        Vulnerabilities=[
+                            Vulnerability(
+                                Severity=vuln.get("Severity", None),
+                                NamespaceName=vuln.get("NamespaceName", None),
+                                Link=vuln.get("Link", None),
+                                FixedBy=vuln.get("FixedBy", None),
+                                Description=vuln.get("Description", None),
+                                Name=vuln.get("Name", None),
+                                Metadata=vuln.get("Metadata", None),
+                            )
+                            for vuln in f.get("Vulnerabilities", [])
+                        ],
+                    )
+                    for f in data_dict["Layer"].get("Features", [])
+                ],
+            )
+        )
+
+    def to_dict(self):
+        return {
+            "Layer": {
+                "Name": self.Layer.Name,
+                "ParentName": self.Layer.ParentName,
+                "NamespaceName": self.Layer.NamespaceName,
+                "IndexedByVersion": self.Layer.IndexedByVersion,
+                "Features": [
+                    {
+                        "Name": f.Name,
+                        "VersionFormat": f.VersionFormat,
+                        "NamespaceName": f.NamespaceName,
+                        "AddedBy": f.AddedBy,
+                        "Version": f.Version,
+                        "Vulnerabilities": [
+                            {
+                                "Severity": v.Severity,
+                                "NamespaceName": v.NamespaceName,
+                                "Link": v.Link,
+                                "FixedBy": v.FixedBy,
+                                "Description": v.Description,
+                                "Name": v.Name,
+                                "Metadata": v.Metadata,
+                            }
+                            for v in f.Vulnerabilities
+                        ],
+                    }
+                    for f in self.Layer.Features
+                ],
+            }
+        }
+
+
 class SecurityInformationLookupResult(object):
     """
     Represents the result of calling to lookup security information for a manifest/image.
@@ -47,12 +129,25 @@ class SecurityInformationLookupResult(object):
 
     @classmethod
     def for_data(cls, data):
+        """
+        Returns a result with successful status and the given data, provided that it
+        passes validation.
+        """
+
+        assert isinstance(data, SecurityInformation)
+        for f in data.Layer.Features:
+            assert isinstance(f, Feature)
+            for v in f.Vulnerabilities:
+                assert isinstance(v, Vulnerability)
+
         return SecurityInformationLookupResult(ScanLookupStatus.SUCCESS, data)
 
     @property
     def security_information(self):
         """
-        The loaded security information for the manifest/image, in dictionary form.
+        The loaded security information for the manifest/image.
+
+        :rtype: SecurityInformation
         """
         return self._security_information
 

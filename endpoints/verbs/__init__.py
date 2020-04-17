@@ -27,7 +27,7 @@ from endpoints.decorators import (
 from endpoints.metrics import image_pulls, image_pulled_bytes
 from endpoints.v2.blob import BLOB_DIGEST_ROUTE
 from image.appc import AppCImageFormatter
-from image.docker import ManifestException
+from image.shared import ManifestException
 from image.docker.squashed import SquashedDockerImageFormatter
 from storage import Storage
 from util.audit import track_and_log, wrap_repository
@@ -66,7 +66,8 @@ class VerbReporter(TarLayerFormatterReporter):
         self.kind = kind
 
     def report_pass(self, pass_count):
-        verb_stream_passes.labels(self.kind).inc(pass_count)
+        if pass_count:
+            verb_stream_passes.labels(self.kind).inc(pass_count)
 
 
 def _open_stream(formatter, tag, schema1_manifest, derived_image_id, handlers, reporter):
@@ -422,7 +423,8 @@ def _repo_verb(
         logger.debug("Derived %s image %s exists in storage", verb, derived_image)
         is_head_request = request.method == "HEAD"
 
-        image_pulled_bytes.labels("bittorrent").inc(derived_image.blob.compressed_size)
+        if derived_image.blob.compressed_size:
+            image_pulled_bytes.labels("verbs").inc(derived_image.blob.compressed_size)
 
         download_url = storage.get_direct_download_url(
             derived_image.blob.placements, derived_image.blob.storage_path, head=is_head_request

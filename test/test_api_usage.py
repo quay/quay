@@ -37,7 +37,7 @@ from data.appr_model.models import NEW_MODELS
 from data.database import RepositoryActionCount, Repository as RepositoryTable
 from data.logs_model import logs_model
 from data.registry_model import registry_model
-from test.helpers import assert_action_logged
+from test.helpers import assert_action_logged, log_queries, check_transitive_modifications
 from util.secscan.fake import fake_security_scanner
 
 from endpoints.api.team import (
@@ -2389,45 +2389,6 @@ class TestChangeRepoVisibility(ApiTestCase):
         self.assertEquals(False, json["is_public"])
 
 
-class log_queries(object):
-    def __init__(self, query_filters=None):
-        self.filters = query_filters
-
-    def get_queries(self):
-        queries = [q.msg[0] for q in self._handler.queries]
-        if not self.filters:
-            return queries
-
-        filtered_queries = []
-        for query_filter in self.filters:
-            filtered_queries.extend([q for q in queries if re.match(query_filter, q)])
-
-        return filtered_queries
-
-    def __enter__(self):
-        logger = logging.getLogger("peewee")
-        self._handler = _QueryLogHandler()
-        logger.setLevel(logging.DEBUG)
-        logger.addHandler(self._handler)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        logger = logging.getLogger("peewee")
-        logger.removeHandler(self._handler)
-
-
-class check_transitive_modifications(log_queries):
-    def __init__(self):
-        filters = [r"^DELETE.+IN \(SELECT.+$", r"^UPDATE.+IN \(SELECT.+$"]
-        super(check_transitive_modifications, self).__init__(query_filters=filters)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        super(check_transitive_modifications, self).__exit__(exc_type, exc_val, exc_tb)
-        queries = self.get_queries()
-        if queries:
-            raise Exception("Detected transitive deletion or update in queries: %s" % queries)
-
-
 class TestDeleteRepository(ApiTestCase):
     SIMPLE_REPO = ADMIN_ACCESS_USER + "/simple"
     COMPLEX_REPO = ADMIN_ACCESS_USER + "/complex"
@@ -2565,14 +2526,12 @@ class TestGetRepository(ApiTestCase):
     def test_get_largerepo(self):
         self.login(ADMIN_ACCESS_USER)
 
-        offset = 0 if registry_model.supports_schema2(ADMIN_ACCESS_USER) else 2
-
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + offset + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + 1):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + offset + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + 1):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )

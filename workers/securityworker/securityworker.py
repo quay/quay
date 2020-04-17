@@ -20,12 +20,13 @@ class SecurityWorker(Worker):
     def __init__(self):
         super(SecurityWorker, self).__init__()
         self._next_token = None
+        self._model = secscan_model
 
         interval = app.config.get("SECURITY_SCANNER_INDEXING_INTERVAL", DEFAULT_INDEXING_INTERVAL)
         self.add_operation(self._index_in_scanner, interval)
 
     def _index_in_scanner(self):
-        self._next_token = secscan_model.perform_indexing(self._next_token)
+        self._next_token = self._model.perform_indexing(self._next_token)
 
 
 if __name__ == "__main__":

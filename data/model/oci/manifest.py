@@ -186,6 +186,9 @@ def _create_manifest(
             # Retrieve its labels.
             labels = child_manifest.get_manifest_labels(retriever)
             if labels is None:
+                if raise_on_error:
+                    raise CreateManifestException("Unable to retrieve manifest labels")
+
                 logger.exception("Could not load manifest labels for child manifest")
                 return None
 
@@ -194,6 +197,9 @@ def _create_manifest(
                 repository_id, child_manifest, storage, raise_on_error=raise_on_error
             )
             if child_manifest_info is None:
+                if raise_on_error:
+                    raise CreateManifestException("Unable to retrieve child manifest")
+
                 logger.error("Could not get/create child manifest")
                 return None
 
@@ -211,6 +217,9 @@ def _create_manifest(
         digests.remove(EMPTY_LAYER_BLOB_DIGEST)
         blob_map[EMPTY_LAYER_BLOB_DIGEST] = get_shared_blob(EMPTY_LAYER_BLOB_DIGEST)
         if not blob_map[EMPTY_LAYER_BLOB_DIGEST]:
+            if raise_on_error:
+                raise CreateManifestException("Unable to retrieve specialized empty blob")
+
             logger.warning("Could not find the special empty blob in storage")
             return None
 
@@ -263,9 +272,19 @@ def _create_manifest(
     # image.
     legacy_image = None
     if manifest_interface_instance.has_legacy_image:
-        legacy_image_id = _populate_legacy_image(
-            repository_id, manifest_interface_instance, blob_map, retriever
-        )
+        try:
+            legacy_image_id = _populate_legacy_image(
+                repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error
+            )
+        except ManifestException as me:
+            logger.error("Got manifest error when populating legacy images: %s", me)
+            if raise_on_error:
+                raise CreateManifestException(
+                    "Attempt to create an invalid manifest. Please report this issue."
+                )
+
+            return None
+
         if legacy_image_id is None:
             return None
 
@@ -373,7 +392,9 @@ def _create_manifest(
     return CreatedManifest(manifest=manifest, newly_created=True, labels_to_apply=labels_to_apply)
 
 
-def _populate_legacy_image(repository_id, manifest_interface_instance, blob_map, retriever):
+def _populate_legacy_image(
+    repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error=False
+):
     # Lookup all the images and their parent images (if any) inside the manifest.
     # This will let us know which v1 images we need to synthesize and which ones are invalid.
     docker_image_ids = list(manifest_interface_instance.get_legacy_image_ids(retriever))
@@ -396,6 +417,12 @@ def _populate_legacy_image(repository_id, manifest_interface_instance, blob_map,
                     if parent_image is None:
                         parent_image = get_image(repository_id, rewritten_image.parent_image_id)
                         if parent_image is None:
+                            if raise_on_error:
+                                raise CreateManifestException(
+                                    "Missing referenced parent image %s"
+                                    % rewritten_image.parent_image_id
+                                )
+
                             return None
 
                 storage_reference = blob_map[rewritten_image.content_checksum]
@@ -412,8 +439,12 @@ def _populate_legacy_image(repository_id, manifest_interface_instance, blob_map,
                 )
 
                 parent_image_map[rewritten_image.image_id] = synthesized
-    except ManifestException:
+    except ManifestException as me:
         logger.exception("exception when rewriting v1 metadata")
+        if raise_on_error:
+            raise CreateManifestException(me)
+
         return None
 
+    assert rewritten_images
     return rewritten_images[-1].image_id

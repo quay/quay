@@ -126,6 +126,8 @@ def upload_blob(repository_ref, storage, settings, extra_blob_stream_handlers=No
     When the context manager completes, the blob upload is deleted, whether committed to a blob or
     not. Yields None if a blob upload could not be started.
     """
+    assert repository_ref is not None
+
     created = create_blob_upload(repository_ref, storage, settings, extra_blob_stream_handlers)
     if not created:
         yield None

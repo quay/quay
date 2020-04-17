@@ -65,7 +65,7 @@ GITHUB_WEBHOOK_PAYLOAD_SCHEMA = {
                     },
                 },
             },
-            "required": ["id", "url", "message", "timestamp"],
+            "required": ["id", "url", "timestamp"],
         },
         "repository": {
             "type": "object",
@@ -312,7 +312,7 @@ class GithubBuildTrigger(BuildTriggerHandler):
                 "description": repo.description or "",
                 "last_updated": timegm(repo.pushed_at.utctimetuple()) if repo.pushed_at else 0,
                 "url": repo.html_url,
-                "has_admin_permissions": repo.permissions.admin,
+                "has_admin_permissions": True,
                 "private": repo.private,
             }
 

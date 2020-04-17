@@ -19,11 +19,11 @@ from jwkest.jws import SIGNER_ALGS, keyrep, BadSignature
 from jwt.utils import base64url_encode, base64url_decode
 
 from digest import digest_tools
-from image.docker import ManifestException
-from image.docker.types import ManifestImageLayer
-from image.docker.interfaces import ManifestInterface
+from image.shared import ManifestException
+from image.shared.types import ManifestImageLayer
+from image.shared.interfaces import ManifestInterface
+from image.shared.schemautil import to_canonical_json
 from image.docker.v1 import DockerV1Metadata
-from image.docker.schemautil import to_canonical_json
 from util.bytes import Bytes
 
 logger = logging.getLogger(__name__)
@@ -437,6 +437,7 @@ class DockerSchema1Manifest(ManifestInterface):
                     "Could not parse metadata string: %s" % metadata_string
                 )
 
+            v1_metadata = v1_metadata or {}
             container_config = v1_metadata.get("container_config") or {}
             command_list = container_config.get("Cmd", None)
             command = to_canonical_json(command_list) if command_list else None
@@ -607,6 +608,14 @@ class DockerSchema1ManifestBuilder(object):
         self._tag = tag
         self._architecture = architecture
 
+    def clone(self, tag_name=None):
+        builder = DockerSchema1ManifestBuilder(
+            self._namespace_name, self._repo_name, tag_name or self._tag, self._architecture
+        )
+        builder._fs_layer_digests = list(self._fs_layer_digests)
+        builder._history = list(self._history)
+        return builder
+
     def add_layer(self, layer_digest, v1_json_metadata):
         self._fs_layer_digests.append(
             {DOCKER_SCHEMA1_BLOB_SUM_KEY: layer_digest,}
@@ -614,6 +623,11 @@ class DockerSchema1ManifestBuilder(object):
         self._history.append(
             {DOCKER_SCHEMA1_V1_COMPAT_KEY: v1_json_metadata or "{}",}
         )
+        return self
+
+    def insert_layer(self, layer_digest, v1_json_metadata):
+        self._fs_layer_digests.insert(0, {DOCKER_SCHEMA1_BLOB_SUM_KEY: layer_digest,})
+        self._history.insert(0, {DOCKER_SCHEMA1_V1_COMPAT_KEY: v1_json_metadata or "{}",})
         return self
 
     def with_metadata_removed(self):

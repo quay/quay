@@ -30,22 +30,22 @@ spec:
     operation: createTable
     table: deletednamespace
   - columns: []
-    indexName: deletednamespace
+    indexName: deletednamespace_namespace_id
     indexType: unique
     operation: createIndex
-    table: deletednamespace_namespace_id
+    table: deletednamespace
   - columns: []
-    indexName: deletednamespace
+    indexName: deletednamespace_original_email
     indexType: index
     operation: createIndex
-    table: deletednamespace_original_email
+    table: deletednamespace
   - columns: []
-    indexName: deletednamespace
+    indexName: deletednamespace_original_username
     indexType: index
     operation: createIndex
-    table: deletednamespace_original_username
+    table: deletednamespace
   - columns: []
-    indexName: deletednamespace
+    indexName: deletednamespace_queue_id
     indexType: index
     operation: createIndex
-    table: deletednamespace_queue_id
+    table: deletednamespace
