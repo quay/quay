@@ -30,7 +30,7 @@ TEMP_TAG_EXPIRATION_SEC = 300  # 5 minutes
 
 logger = logging.getLogger(__name__)
 
-CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created"])
+CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "loaded_labels"])
 
 
 class CreateManifestException(Exception):
@@ -125,7 +125,7 @@ def get_or_create_manifest(
         temp_tag_expiration_sec=temp_tag_expiration_sec,
     )
     if existing is not None:
-        return CreatedManifest(manifest=existing, newly_created=False)
+        return CreatedManifest(manifest=existing, newly_created=False, loaded_labels=None)
 
     return _create_manifest(
         repository_id,
@@ -302,7 +302,7 @@ def _create_manifest(
             manifest = Manifest.get(
                 repository=repository_id, digest=manifest_interface_instance.digest
             )
-            return CreatedManifest(manifest=manifest, newly_created=False)
+            return CreatedManifest(manifest=manifest, newly_created=False, loaded_labels=None)
         except Manifest.DoesNotExist:
             pass
 
@@ -328,7 +328,9 @@ def _create_manifest(
 
                 return None
 
-            return CreatedManifest(manifest=manifest, newly_created=False)
+            return CreatedManifest(
+                manifest=manifest, newly_created=False, loaded_labels=labels_to_create
+            )
 
         # Insert the blobs.
         blobs_to_insert = [
@@ -366,7 +368,7 @@ def _create_manifest(
     if labels_to_create:
         batch_create_manifest_labels(manifest.id, labels_to_create)
 
-    return CreatedManifest(manifest=manifest, newly_created=True)
+    return CreatedManifest(manifest=manifest, newly_created=True, loaded_labels=labels_to_create)
 
 
 def _populate_legacy_image(

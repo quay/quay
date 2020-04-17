@@ -119,21 +119,19 @@ def batch_create_manifest_labels(manifest_id, labels):
         return None
 
     label_ids = list()
-    with db_transaction():
-        # Create the labels. We do this non-batch-wise because we need the returned IDs.
-        for translated_label in translated:
-            label_ids.append(Label.create(**translated_label).id)
 
-        # Batch insert the manifest rows.
-        ManifestLabel.bulk_create(
-            [
-                ManifestLabel(
-                    manifest=manifest_id, label=label_id, repository=manifest.repository_id
-                )
-                for label_id in label_ids
-            ],
-            batch_size=100,
-        )
+    # Create the labels. We do this non-batch-wise because we need the returned IDs.
+    for translated_label in translated:
+        label_ids.append(Label.create(**translated_label).id)
+
+    # Batch insert the manifest rows.
+    ManifestLabel.bulk_create(
+        [
+            ManifestLabel(manifest=manifest_id, label=label_id, repository=manifest.repository_id)
+            for label_id in label_ids
+        ],
+        batch_size=100,
+    )
 
 
 def create_manifest_label(manifest_id, key, value, source_type_name, media_type_name=None):

@@ -371,7 +371,9 @@ class OCIModel(RegistryDataInterface):
 
         # Apply any action labels to the tag.
         tag = Tag.for_tag(tag, li)
-        tag = self._apply_labels_to_tag(tag, wrapped_manifest)
+        tag = self._apply_labels_to_tag(
+            tag, wrapped_manifest, labels=created_manifest.loaded_labels
+        )
         return (wrapped_manifest, tag)
 
     def _translate_to_manifest_for_tagging(
@@ -463,7 +465,7 @@ class OCIModel(RegistryDataInterface):
 
         return tag
 
-    def _apply_labels_to_tag(self, tag, manifest):
+    def _apply_labels_to_tag(self, tag, manifest, labels=None):
         """ Processes any labels found on the manifest and applies them to the given
             tag. Returns the updated tag (if applicable).
         """
@@ -472,13 +474,17 @@ class OCIModel(RegistryDataInterface):
             return tag
 
         # Lookup any labels on the manifest matching the keys.
-        labels_found = list(oci.label.lookup_manifest_labels(manifest._db_id, keys))
-        if not labels_found:
-            return tag
+        if labels is None:
+            labels = [
+                {"key": label.key, "value": label.value}
+                for label in oci.label.lookup_manifest_labels(manifest._db_id, keys)
+            ]
+            if not labels:
+                return tag
 
         has_change = False
-        for label in labels_found:
-            result = apply_label_to_tag(dict(key=label.key, value=label.value), tag, self)
+        for label in labels:
+            result = apply_label_to_tag(dict(key=label["key"], value=label["value"]), tag, self)
             if result:
                 has_change = True
 
