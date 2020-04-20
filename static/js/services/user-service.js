@@ -60,26 +60,6 @@ function(ApiService, CookieService, $rootScope, Config, $location, $timeout) {
           }
         }
 
-        if (Config.MARKETO_MUNCHKIN_ID && userResponse['marketo_user_hash']) {
-          var associateLeadBody = {'Email': userResponse.email};
-          if (window.Munchkin !== undefined) {
-            try {
-              Munchkin.munchkinFunction(
-                'associateLead',
-                associateLeadBody,
-                userResponse['marketo_user_hash']
-              );
-            } catch (e) {
-            }
-          } else {
-            window.__quay_munchkin_queue.push([
-              'associateLead',
-              associateLeadBody,
-              userResponse['marketo_user_hash']
-            ]);
-          }
-        }
-
         if (window.Raven !== undefined) {
           try {
             Raven.setUser({

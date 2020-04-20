@@ -56,7 +56,6 @@ from util import get_app_url
 from util.secscan.secscan_util import get_blob_download_uri_getter
 from util.ipresolver import IPResolver
 from util.saas.analytics import Analytics
-from util.saas.useranalytics import UserAnalytics
 from util.saas.exceptionlog import Sentry
 from util.names import urn_generator
 from util.config import URLSchemeAndHostname
@@ -239,7 +238,6 @@ storage = Storage(app, chunk_cleanup_queue, instance_keys, config_provider, ip_r
 userfiles = Userfiles(app, storage)
 log_archive = LogArchive(app, storage)
 analytics = Analytics(app)
-user_analytics = UserAnalytics(app)
 billing = Billing(app)
 sentry = Sentry(app)
 build_logs = BuildLogs(app)

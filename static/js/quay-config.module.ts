@@ -29,9 +29,6 @@ if (INJECTED_CONFIG && (INJECTED_CONFIG.MIXPANEL_KEY ||
 if (INJECTED_CONFIG && INJECTED_CONFIG.MIXPANEL_KEY) {
   quayDependencies.push('angulartics.mixpanel');
 }
-if (INJECTED_CONFIG && INJECTED_CONFIG.MUNCHKIN_KEY) {
-  quayDependencies.push('angulartics.marketo');
-}
 if (INJECTED_CONFIG && INJECTED_CONFIG.GOOGLE_ANALYTICS_KEY) {
   quayDependencies.push('angulartics.google.analytics');
 }
@@ -48,10 +45,10 @@ if (INJECTED_CONFIG && INJECTED_CONFIG.RECAPTCHA_SITE_KEY) {
   declarations: [],
   providers: [
     provideConfig,
-    {provide: 'INJECTED_CONFIG', useValue: INJECTED_CONFIG},
-    {provide: 'INJECTED_FEATURES', useValue: INJECTED_FEATURES},
-    {provide: 'INJECTED_ENDPOINTS', useValue: INJECTED_ENDPOINTS},
-    {provide: 'NAME_PATTERNS', useValue: NAME_PATTERNS},
+    { provide: 'INJECTED_CONFIG', useValue: INJECTED_CONFIG },
+    { provide: 'INJECTED_FEATURES', useValue: INJECTED_FEATURES },
+    { provide: 'INJECTED_ENDPOINTS', useValue: INJECTED_ENDPOINTS },
+    { provide: 'NAME_PATTERNS', useValue: NAME_PATTERNS },
   ]
 })
 export class QuayConfigModule {
@@ -72,20 +69,20 @@ provideConfig.$inject = [
   'RestangularProvider',
 ];
 function provideConfig($provide: ng.auto.IProvideService,
-                       $injector: ng.auto.IInjectorService,
-                       cfpLoadingBarProvider: any,
-                       $tooltipProvider: any,
-                       $compileProvider: ng.ICompileProvider,
-                       RestangularProvider: any): void {
+  $injector: ng.auto.IInjectorService,
+  cfpLoadingBarProvider: any,
+  $tooltipProvider: any,
+  $compileProvider: ng.ICompileProvider,
+  RestangularProvider: any): void {
   cfpLoadingBarProvider.includeSpinner = false;
 
   // decorate the tooltip getter
   var tooltipFactory: any = $tooltipProvider.$get[$tooltipProvider.$get.length - 1];
-  $tooltipProvider.$get[$tooltipProvider.$get.length - 1] = function($window: ng.IWindowService) {
+  $tooltipProvider.$get[$tooltipProvider.$get.length - 1] = function ($window: ng.IWindowService) {
     if ('ontouchstart' in $window) {
       const existing: any = tooltipFactory.apply(this, arguments);
 
-      return function(element) {
+      return function (element) {
         // Note: We only disable bs-tooltip's themselves. $tooltip is used for other things
         // (such as the datepicker), so we need to be specific when canceling it.
         if (element !== undefined && element.attr('bs-tooltip') == null) {
@@ -116,10 +113,10 @@ function provideConfig($provide: ng.auto.IProvideService,
 
   // Configure sentry.
   if (INJECTED_CONFIG && INJECTED_CONFIG.SENTRY_PUBLIC_DSN) {
-    $provide.decorator("$exceptionHandler", function($delegate) {
-      return function(ex, cause) {
+    $provide.decorator("$exceptionHandler", function ($delegate) {
+      return function (ex, cause) {
         $delegate(ex, cause);
-        Raven.captureException(ex, {extra: {cause: cause}});
+        Raven.captureException(ex, { extra: { cause: cause } });
       };
     });
   }
