@@ -100,30 +100,6 @@ class OCIModel(RegistryDataInterface):
 
         return tags_map
 
-    def _get_legacy_compatible_image_for_manifest(self, manifest, storage):
-        # Check for a legacy image directly on the manifest.
-        if not manifest.is_manifest_list:
-            return oci.shared.get_legacy_image_for_manifest(manifest._db_id)
-
-        # Otherwise, lookup a legacy image associated with the v1-compatible manifest
-        # in the list.
-        try:
-            manifest_obj = database.Manifest.get(id=manifest._db_id)
-        except database.Manifest.DoesNotExist:
-            logger.exception("Could not find manifest for manifest `%s`", manifest._db_id)
-            return None
-
-        # See if we can lookup a schema1 legacy image.
-        v1_compatible = self.get_schema1_parsed_manifest(manifest, "", "", "", storage)
-        if v1_compatible is None:
-            return None
-
-        v1_id = v1_compatible.leaf_layer_v1_image_id
-        if v1_id is None:
-            return None
-
-        return model.image.get_image(manifest_obj.repository_id, v1_id)
-
     def find_matching_tag(self, repository_ref, tag_names):
         """
         Finds an alive tag in the repository matching one of the given tag names and returns it or
