@@ -198,6 +198,10 @@ class OCIManifest(ManifestInterface):
         return self.filesystem_layers[-1]
 
     @property
+    def config_media_type(self):
+        return self._parsed[OCI_MANIFEST_CONFIG_KEY][OCI_MANIFEST_MEDIATYPE_KEY]
+
+    @property
     def layers_compressed_size(self):
         return sum(layer.compressed_size for layer in self.filesystem_layers)
 
