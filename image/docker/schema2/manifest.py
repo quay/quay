@@ -223,6 +223,12 @@ class DockerSchema2Manifest(ManifestInterface):
         return sum(layer.compressed_size for layer in self.filesystem_layers)
 
     @property
+    def config_media_type(self):
+        return self._parsed[DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY][
+            DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY
+        ]
+
+    @property
     def has_remote_layer(self):
         for layer in self.filesystem_layers:
             if layer.is_remote:

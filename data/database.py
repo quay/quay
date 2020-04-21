@@ -1718,12 +1718,16 @@ class Manifest(BaseModel):
     media_type = EnumField(MediaType)
     manifest_bytes = TextField()
 
+    config_media_type = CharField(null=True)
+    layers_compressed_size = BigIntegerField(null=True)
+
     class Meta:
         database = db
         read_only_config = read_only_config
         indexes = (
             (("repository", "digest"), True),
             (("repository", "media_type"), False),
+            (("repository", "config_media_type"), False),
         )
 
 

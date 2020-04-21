@@ -50,7 +50,7 @@ MANIFESTLIST_BYTES = json.dumps(
             },
             {
                 "mediaType": "application/vnd.docker.distribution.manifest.v1+json",
-                "size": 878,
+                "size": 1051,
                 "digest": "sha256:5b",
                 "platform": {"architecture": "amd64", "os": "linux", "features": ["sse4"]},
             },
@@ -84,6 +84,8 @@ def test_valid_manifestlist():
     assert manifestlist.bytes.as_encoded_str() == MANIFESTLIST_BYTES
     assert manifestlist.manifest_dict == json.loads(MANIFESTLIST_BYTES)
     assert manifestlist.get_layers(retriever) is None
+    assert manifestlist.config_media_type is None
+    assert manifestlist.layers_compressed_size is None
     assert not manifestlist.blob_digests
 
     for index, manifest in enumerate(manifestlist.manifests(retriever)):

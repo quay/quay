@@ -322,6 +322,8 @@ def _create_manifest(
                 digest=manifest_interface_instance.digest,
                 media_type=media_type,
                 manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
+                config_media_type=manifest_interface_instance.config_media_type,
+                layers_compressed_size=manifest_interface_instance.layers_compressed_size,
             )
         except IntegrityError as ie:
             try:

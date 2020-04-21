@@ -56,6 +56,12 @@ class ManifestInterface(object):
         Returns None if this cannot be computed locally.
         """
 
+    @abstractproperty
+    def config_media_type(self):
+        """ Returns the media type of the config of this manifest or None if
+            this manifest does not support a configuration type.
+        """
+
     @abstractmethod
     def validate(self, content_retriever):
         """

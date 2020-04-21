@@ -177,6 +177,8 @@ def test_get_or_create_manifest(schema_version, initialized_db):
     assert created.digest == sample_manifest_instance.digest
     assert created.manifest_bytes == sample_manifest_instance.bytes.as_encoded_str()
     assert created_manifest.labels_to_apply == expected_labels
+    assert created.config_media_type == sample_manifest_instance.config_media_type
+    assert created.layers_compressed_size == sample_manifest_instance.layers_compressed_size
 
     # Verify it has a temporary tag pointing to it.
     assert Tag.get(manifest=created, hidden=True).lifetime_end_ms
@@ -295,6 +297,8 @@ def test_get_or_create_manifest_list(initialized_db):
     assert created_list
     assert created_list.media_type.name == manifest_list.media_type
     assert created_list.digest == manifest_list.digest
+    assert created_list.config_media_type == manifest_list.config_media_type
+    assert created_list.layers_compressed_size == manifest_list.layers_compressed_size
 
     # Ensure the child manifest links exist.
     child_manifests = {
@@ -423,6 +427,8 @@ def test_get_or_create_manifest_with_remote_layers(initialized_db):
     assert created_manifest
     assert created_manifest.media_type.name == manifest.media_type
     assert created_manifest.digest == manifest.digest
+    assert created_manifest.config_media_type == manifest.config_media_type
+    assert created_manifest.layers_compressed_size == manifest.layers_compressed_size
 
     # Verify the legacy image.
     legacy_image = get_legacy_image_for_manifest(created_manifest)
