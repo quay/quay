@@ -4,6 +4,7 @@ import json
 
 import requests
 from flask_mail import Message
+from urlparse import urlparse
 
 from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
 from data import model
@@ -14,6 +15,8 @@ from workers.queueworker import JobException
 logger = logging.getLogger(__name__)
 
 METHOD_TIMEOUT = app.config.get("NOTIFICATION_SEND_TIMEOUT", 10)  # Seconds
+HOSTNAME_BLACKLIST = ["localhost", "127.0.0.1"]
+HOSTNAME_BLACKLIST.extend(app.config.get("WEBHOOK_HOSTNAME_BLACKLIST", []))
 
 
 class InvalidNotificationMethodException(Exception):
@@ -188,6 +191,13 @@ class WebhookMethod(NotificationMethod):
         if not url:
             raise CannotValidateNotificationMethodException("Missing webhook URL")
 
+        parsed = urlparse(url)
+        if parsed.scheme != "https" and parsed.scheme != "http":
+            raise CannotValidateNotificationMethodException("Invalid webhook URL")
+
+        if parsed.hostname.lower() in HOSTNAME_BLACKLIST:
+            raise CannotValidateNotificationMethodException("Invalid webhook URL")
+
         # If a template was specified, ensure it is a valid template.
         template = config_data.get("template")
         if template:
@@ -201,6 +211,15 @@ class WebhookMethod(NotificationMethod):
         config_data = notification_obj.method_config_dict
         url = config_data.get("url", "")
         if not url:
+            return
+
+        parsed = urlparse(url)
+        if parsed.scheme != "https" and parsed.scheme != "http":
+            logger.error("Invalid webhook URL: %s", url)
+            return
+
+        if parsed.hostname.lower() in HOSTNAME_BLACKLIST:
+            logger.error("Invalid webhook URL: %s", url)
             return
 
         payload = notification_data["event_data"]

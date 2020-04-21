@@ -64,7 +64,14 @@ def test_validate_email(method_config, error_message, initialized_db):
 
 @pytest.mark.parametrize(
     "method_config,error_message",
-    [({}, "Missing webhook URL"), ({"url": "http://example.com"}, None),],
+    [
+        ({}, "Missing webhook URL"),
+        ({"url": "telnet://example.com"}, "Invalid webhook URL"),
+        ({"url": "http://example.com"}, None),
+        ({"url": "http://localhost/"}, "Invalid webhook URL"),
+        ({"url": "http://localhost:5000/"}, "Invalid webhook URL"),
+        ({"url": "https://127.0.0.1:5000/"}, "Invalid webhook URL"),
+    ],
 )
 def test_validate_webhook(method_config, error_message, initialized_db):
     method = WebhookMethod()
