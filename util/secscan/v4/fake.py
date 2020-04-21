@@ -42,7 +42,7 @@ class FakeSecurityScanner(object):
         The HTTMock endpoint definitions for the fake security scanner.
         """
 
-        @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/state", method="GET")
+        @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/index_state", method="GET")
         def state(url, request):
             return {"status_code": 200, "content": json.dumps({"state": self.indexer_state})}
 

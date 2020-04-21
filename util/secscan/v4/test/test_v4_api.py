@@ -33,8 +33,8 @@ bad_vuln_report = {
     "action, resp, expected, exception",
     [
         (None, None, False, AttributeError),
-        (actions["State"](), {}, False, None),
-        (actions["State"](), {"state": "abc"}, True, None),
+        (actions["IndexState"](), {}, False, None),
+        (actions["IndexState"](), {"state": "abc"}, True, None),
         (actions["Index"](None), {}, False, None),
         (actions["Index"](None), good_index_report, True, None),
         (actions["GetIndexReport"](good_index_report["manifest_hash"]), {}, False, None),
