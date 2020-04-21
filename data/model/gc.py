@@ -1,8 +1,9 @@
 import logging
 
 from peewee import fn, IntegrityError
+from datetime import datetime
 
-from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag
+from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag, blob
 from data.model.oci import tag as oci_tag
 from data.database import Repository, db_for_update
 from data.database import ApprTag
@@ -28,6 +29,7 @@ from data.database import (
     RepoMirrorConfig,
     RepositoryPermission,
     RepositoryAuthorizedEmail,
+    UploadedBlob,
 )
 from data.database import (
     RepositoryTag,
@@ -104,6 +106,7 @@ def purge_repository(repo, force=False):
     assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+    assert UploadedBlob.select().where(UploadedBlob.repository == repo).count() == 0
     assert (
         ManifestSecurityStatus.select().where(ManifestSecurityStatus.repository == repo).count()
         == 0
@@ -200,7 +203,27 @@ def _purge_repository_contents(repo):
         if not found:
             break
 
-    # TODO: remove this once we're fully on the OCI data model.
+    # Purge any uploaded blobs that have expired.
+    while True:
+        found = False
+        for uploaded_blobs in _chunk_iterate_for_deletion(
+            UploadedBlob.select().where(UploadedBlob.repository == repo)
+        ):
+            logger.debug(
+                "Found %s uploaded blobs to GC under repository %s", len(uploaded_blobs), repo
+            )
+            found = True
+            context = _GarbageCollectorContext(repo)
+            for uploaded_blob in uploaded_blobs:
+                logger.debug("Deleting uploaded blob %s under repository %s", uploaded_blob, repo)
+                assert uploaded_blob.repository_id == repo.id
+                _purge_uploaded_blob(uploaded_blob, context, allow_non_expired=True)
+
+        if not found:
+            break
+
+    # TODO: remove this once we've removed the foreign key constraints from RepositoryTag
+    # and Image.
     while True:
         found = False
         repo_tag_query = RepositoryTag.select().where(RepositoryTag.repository == repo)
@@ -223,6 +246,7 @@ def _purge_repository_contents(repo):
     assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
     assert ManifestBlob.select().where(ManifestBlob.repository == repo).count() == 0
+    assert UploadedBlob.select().where(UploadedBlob.repository == repo).count() == 0
 
     # Add all remaining images to a new context. We do this here to minimize the number of images
     # we need to load.
@@ -265,6 +289,7 @@ def garbage_collect_repo(repo):
         _run_garbage_collection(context)
         had_changes = True
 
+    # TODO: Remove once we've removed the foreign key constraints from RepositoryTag and Image.
     for tags in _chunk_iterate_for_deletion(pre_oci_tag.lookup_unrecoverable_tags(repo)):
         logger.debug("Found %s tags to GC under repository %s", len(tags), repo)
         context = _GarbageCollectorContext(repo)
@@ -273,6 +298,18 @@ def garbage_collect_repo(repo):
             assert tag.repository_id == repo.id
             assert tag.lifetime_end_ts is not None
             _purge_pre_oci_tag(tag, context)
+
+        _run_garbage_collection(context)
+        had_changes = True
+
+    # Purge expired uploaded blobs.
+    for uploaded_blobs in _chunk_iterate_for_deletion(blob.lookup_expired_uploaded_blobs(repo)):
+        logger.debug("Found %s uploaded blobs to GC under repository %s", len(uploaded_blobs), repo)
+        context = _GarbageCollectorContext(repo)
+        for uploaded_blob in uploaded_blobs:
+            logger.debug("Deleting uploaded blob %s under repository %s", uploaded_blob, repo)
+            assert uploaded_blob.repository_id == repo.id
+            _purge_uploaded_blob(uploaded_blob, context)
 
         _run_garbage_collection(context)
         had_changes = True
@@ -380,6 +417,16 @@ def _purge_pre_oci_tag(tag, context, allow_non_expired=False):
 
         # Delete the tag.
         reloaded_tag.delete_instance()
+
+
+def _purge_uploaded_blob(uploaded_blob, context, allow_non_expired=False):
+    assert allow_non_expired or uploaded_blob.expires_at <= datetime.utcnow()
+
+    # Add the storage to be checked.
+    context.add_blob_id(uploaded_blob.blob_id)
+
+    # Delete the uploaded blob.
+    uploaded_blob.delete_instance()
 
 
 def _check_manifest_used(manifest_id):

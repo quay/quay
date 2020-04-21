@@ -77,9 +77,8 @@ def test_missing_link(initialized_db):
         _perform_cleanup()
 
         # Ensure that the first blob still exists, along with the first tag.
-        assert (
-            model.blob.get_repo_blob_by_digest(ADMIN_ACCESS_USER, REPO, first_blob_sha) is not None
-        )
+        repo = model.repository.get_repository(ADMIN_ACCESS_USER, REPO)
+        assert model.oci.blob.get_repository_blob_by_digest(repo, first_blob_sha) is not None
 
         repository_ref = registry_model.lookup_repository(ADMIN_ACCESS_USER, REPO)
         found_tag = registry_model.get_repo_tag(

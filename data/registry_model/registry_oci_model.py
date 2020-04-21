@@ -633,7 +633,7 @@ class OCIModel(RegistryDataInterface):
             return None
 
         return self._list_manifest_layers(
-            manifest_obj.repository_id, parsed, storage, include_placements, by_manifest=True
+            manifest_obj.repository_id, parsed, storage, include_placements
         )
 
     def _manifest_db_id_for_derived(self, manifest):
@@ -803,11 +803,7 @@ class OCIModel(RegistryDataInterface):
         specified).
         """
         return self._list_manifest_layers(
-            repository_ref._db_id,
-            parsed_manifest,
-            storage,
-            include_placements=include_placements,
-            by_manifest=True,
+            repository_ref._db_id, parsed_manifest, storage, include_placements=include_placements,
         )
 
     def get_manifest_local_blobs(self, manifest, include_placements=False):
@@ -820,7 +816,7 @@ class OCIModel(RegistryDataInterface):
             return None
 
         return self._get_manifest_local_blobs(
-            manifest, manifest_row.repository_id, include_placements, by_manifest=True
+            manifest, manifest_row.repository_id, include_placements
         )
 
     def yield_tags_for_vulnerability_notification(self, layer_id_pairs):
@@ -1180,9 +1176,7 @@ class OCIModel(RegistryDataInterface):
 
         return LegacyImage.for_image(image, images_map=parent_images_map, blob=blob)
 
-    def _get_manifest_local_blobs(
-        self, manifest, repo_id, include_placements=False, by_manifest=False
-    ):
+    def _get_manifest_local_blobs(self, manifest, repo_id, include_placements=False):
         parsed = manifest.get_parsed_manifest()
         if parsed is None:
             return None
@@ -1191,9 +1185,7 @@ class OCIModel(RegistryDataInterface):
         if not len(local_blob_digests):
             return []
 
-        blob_query = self._lookup_repo_storages_by_content_checksum(
-            repo_id, local_blob_digests, by_manifest=by_manifest
-        )
+        blob_query = self._lookup_repo_storages_by_content_checksum(repo_id, local_blob_digests)
         blobs = []
         for image_storage in blob_query:
             placements = None
@@ -1209,9 +1201,7 @@ class OCIModel(RegistryDataInterface):
 
         return blobs
 
-    def _list_manifest_layers(
-        self, repo_id, parsed, storage, include_placements=False, by_manifest=False
-    ):
+    def _list_manifest_layers(self, repo_id, parsed, storage, include_placements=False):
         """
         Returns an *ordered list* of the layers found in the manifest, starting at the base and
         working towards the leaf, including the associated Blob and its placements (if specified).
@@ -1229,9 +1219,7 @@ class OCIModel(RegistryDataInterface):
             blob_digests.append(EMPTY_LAYER_BLOB_DIGEST)
 
         if blob_digests:
-            blob_query = self._lookup_repo_storages_by_content_checksum(
-                repo_id, blob_digests, by_manifest=by_manifest
-            )
+            blob_query = self._lookup_repo_storages_by_content_checksum(repo_id, blob_digests)
             storage_map = {blob.content_checksum: blob for blob in blob_query}
 
         layers = parsed.get_layers(retriever)
@@ -1360,7 +1348,7 @@ class OCIModel(RegistryDataInterface):
 
         return None
 
-    def _lookup_repo_storages_by_content_checksum(self, repo, checksums, by_manifest=False):
+    def _lookup_repo_storages_by_content_checksum(self, repo, checksums):
         checksums = set(checksums)
 
         # Load any shared storages first.
@@ -1373,11 +1361,7 @@ class OCIModel(RegistryDataInterface):
 
         found = []
         if checksums:
-            found = list(
-                model.storage.lookup_repo_storages_by_content_checksum(
-                    repo, checksums, by_manifest=by_manifest
-                )
-            )
+            found = list(model.storage.lookup_repo_storages_by_content_checksum(repo, checksums))
         return found + extra_storages
 
 

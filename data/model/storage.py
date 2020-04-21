@@ -25,6 +25,7 @@ from data.database import (
     ApprBlob,
     ensure_under_transaction,
     ManifestBlob,
+    UploadedBlob,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,13 @@ def _is_storage_orphaned(candidate_id):
         except Image.DoesNotExist:
             pass
 
-        return True
+        try:
+            UploadedBlob.get(blob=candidate_id)
+            return False
+        except UploadedBlob.DoesNotExist:
+            pass
+
+    return True
 
 
 def garbage_collect_storage(storage_id_whitelist):
@@ -307,57 +314,65 @@ def get_layer_path_for_storage(storage_uuid, cas_path, content_checksum):
     return store.blob_path(content_checksum)
 
 
-def lookup_repo_storages_by_content_checksum(repo, checksums, by_manifest=False):
+def lookup_repo_storages_by_content_checksum(repo, checksums, with_uploads=False):
     """
     Looks up repository storages (without placements) matching the given repository and checksum.
     """
+    checksums = list(set(checksums))
     if not checksums:
         return []
+
+    # If the request is not with uploads, simply return the blobs found under the manifests
+    # for the repository.
+    if not with_uploads:
+        return _lookup_repo_storages_by_content_checksum(repo, checksums, ManifestBlob)
+
+    # Otherwise, first check the UploadedBlob table and, once done, then check the ManifestBlob
+    # table.
+    found_via_uploaded = list(
+        _lookup_repo_storages_by_content_checksum(repo, checksums, UploadedBlob)
+    )
+    if len(found_via_uploaded) == len(checksums):
+        return found_via_uploaded
+
+    checksums_remaining = set(checksums) - {
+        uploaded.content_checksum for uploaded in found_via_uploaded
+    }
+    found_via_manifest = list(
+        _lookup_repo_storages_by_content_checksum(repo, checksums_remaining, ManifestBlob)
+    )
+    return found_via_uploaded + found_via_manifest
+
+
+def _lookup_repo_storages_by_content_checksum(repo, checksums, model_class):
+    assert checksums
 
     # There may be many duplicates of the checksums, so for performance reasons we are going
     # to use a union to select just one storage with each checksum
     queries = []
 
-    for counter, checksum in enumerate(set(checksums)):
+    for counter, checksum in enumerate(checksums):
         query_alias = "q{0}".format(counter)
 
-        # TODO: Remove once we have a new-style model for tracking temp uploaded blobs and
-        # all legacy tables have been removed.
-        if by_manifest:
-            candidate_subq = (
-                ImageStorage.select(
-                    ImageStorage.id,
-                    ImageStorage.content_checksum,
-                    ImageStorage.image_size,
-                    ImageStorage.uuid,
-                    ImageStorage.cas_path,
-                    ImageStorage.uncompressed_size,
-                    ImageStorage.uploading,
-                )
-                .join(ManifestBlob)
-                .where(ManifestBlob.repository == repo, ImageStorage.content_checksum == checksum)
-                .limit(1)
-                .alias(query_alias)
+        candidate_subq = (
+            ImageStorage.select(
+                ImageStorage.id,
+                ImageStorage.content_checksum,
+                ImageStorage.image_size,
+                ImageStorage.uuid,
+                ImageStorage.cas_path,
+                ImageStorage.uncompressed_size,
+                ImageStorage.uploading,
             )
-        else:
-            candidate_subq = (
-                ImageStorage.select(
-                    ImageStorage.id,
-                    ImageStorage.content_checksum,
-                    ImageStorage.image_size,
-                    ImageStorage.uuid,
-                    ImageStorage.cas_path,
-                    ImageStorage.uncompressed_size,
-                    ImageStorage.uploading,
-                )
-                .join(Image)
-                .where(Image.repository == repo, ImageStorage.content_checksum == checksum)
-                .limit(1)
-                .alias(query_alias)
-            )
+            .join(model_class)
+            .where(model_class.repository == repo, ImageStorage.content_checksum == checksum)
+            .limit(1)
+            .alias(query_alias)
+        )
 
         queries.append(ImageStorage.select(SQL("*")).from_(candidate_subq))
 
+    assert queries
     return _basequery.reduce_as_tree(queries)
 
 

@@ -686,6 +686,7 @@ class User(BaseModel):
                     NamespaceGeoRestriction,
                     ManifestSecurityStatus,
                     RepoMirrorConfig,
+                    UploadedBlob,
                 }
                 | appr_classes
                 | v22_classes
@@ -890,6 +891,7 @@ class Repository(BaseModel):
                 RepoMirrorRule,
                 DeletedRepository,
                 ManifestSecurityStatus,
+                UploadedBlob,
             }
             | appr_classes
             | v22_classes
@@ -1130,6 +1132,7 @@ class DerivedStorageForImage(BaseModel):
         indexes = ((("source_image", "transformation", "uniqueness_hash"), True),)
 
 
+@deprecated_model
 class RepositoryTag(BaseModel):
     name = CharField()
     image = ForeignKeyField(Image)
@@ -1415,6 +1418,19 @@ class RepositoryAuthorizedEmail(BaseModel):
             # create a unique index on email and repository
             (("email", "repository"), True),
         )
+
+
+class UploadedBlob(BaseModel):
+    """
+    UploadedBlob tracks a recently uploaded blob and prevents it from being GCed
+    while within the expiration window.
+    """
+
+    id = BigAutoField()
+    repository = ForeignKeyField(Repository)
+    blob = ForeignKeyField(ImageStorage)
+    uploaded_at = DateTimeField(default=datetime.utcnow)
+    expires_at = DateTimeField(index=True)
 
 
 class BlobUpload(BaseModel):

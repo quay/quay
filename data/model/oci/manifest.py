@@ -232,7 +232,7 @@ def _create_manifest(
             return None
 
     if digests:
-        query = lookup_repo_storages_by_content_checksum(repository_id, digests)
+        query = lookup_repo_storages_by_content_checksum(repository_id, digests, with_uploads=True)
         blob_map.update({s.content_checksum: s for s in query})
         for digest_str in digests:
             if digest_str not in blob_map:
