@@ -40,18 +40,13 @@ def _tag_dict(tag):
     if tag.lifetime_end_ts and tag.lifetime_end_ts > 0:
         tag_info["end_ts"] = tag.lifetime_end_ts
 
-    # TODO: Remove this once fully on OCI data model.
+    tag_info["manifest_digest"] = tag.manifest_digest
+    tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
+    tag_info["size"] = tag.manifest_layers_size
+
     if tag.legacy_image_if_present:
         tag_info["docker_image_id"] = tag.legacy_image.docker_image_id
         tag_info["image_id"] = tag.legacy_image.docker_image_id
-        tag_info["size"] = tag.legacy_image.aggregate_size
-
-    # TODO: Remove this check once fully on OCI data model.
-    if tag.manifest_digest:
-        tag_info["manifest_digest"] = tag.manifest_digest
-
-        if tag.manifest:
-            tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
 
     if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         last_modified = format_date(datetime.utcfromtimestamp(tag.lifetime_start_ts))

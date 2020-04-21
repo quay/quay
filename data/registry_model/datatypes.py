@@ -189,13 +189,6 @@ class ShallowTag(datatype("ShallowTag", ["name"])):
 
         return ShallowTag(db_id=tag.id, name=tag.name)
 
-    @classmethod
-    def for_repository_tag(cls, repository_tag):
-        if repository_tag is None:
-            return None
-
-        return ShallowTag(db_id=repository_tag.id, name=repository_tag.name)
-
     @property
     def id(self):
         """
@@ -243,45 +236,19 @@ class Tag(
             ),
         )
 
-    @classmethod
-    def for_repository_tag(cls, repository_tag, manifest_digest=None, legacy_image=None):
-        if repository_tag is None:
-            return None
-
-        return Tag(
-            db_id=repository_tag.id,
-            name=repository_tag.name,
-            reversion=repository_tag.reversion,
-            lifetime_start_ts=repository_tag.lifetime_start_ts,
-            lifetime_end_ts=repository_tag.lifetime_end_ts,
-            lifetime_start_ms=repository_tag.lifetime_start_ts * 1000,
-            lifetime_end_ms=(
-                repository_tag.lifetime_end_ts * 1000 if repository_tag.lifetime_end_ts else None
-            ),
-            manifest_digest=manifest_digest,
-            inputs=dict(
-                legacy_image=legacy_image,
-                repository=RepositoryReference.for_id(repository_tag.repository_id),
-            ),
-        )
-
     @property
     @requiresinput("manifest")
     def _manifest(self, manifest):
         """
-        Returns the manifest for this tag.
-
-        Will only apply to new-style OCI tags.
+        Returns the database Manifest object for this tag.
         """
         return manifest
 
     @property
-    @optionalinput("manifest")
+    @requiresinput("manifest")
     def manifest(self, manifest):
         """
-        Returns the manifest for this tag or None if none.
-
-        Will only apply to new-style OCI tags.
+        Returns the manifest for this tag.
         """
         return Manifest.for_manifest(manifest, self.legacy_image_if_present)
 
@@ -322,28 +289,43 @@ class Tag(
         """
         return self._db_id
 
+    @property
+    def manifest_layers_size(self):
+        """ Returns the compressed size of the layers of the manifest for the Tag or
+            None if none applicable or loaded.
+        """
+        # TODO: Simplify once we've stopped writing Image rows and we've backfilled the
+        # sizes.
 
-class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_bytes"])):
+        # First check the manifest itself, as all newly written manifests will have the
+        # size.
+        if self.manifest._layers_compressed_size is not None:
+            return self.manifest._layers_compressed_size
+
+        # Secondly, check for the size of the legacy image.
+        legacy_image = self.legacy_image_if_present
+        if legacy_image:
+            return legacy_image.aggregate_size
+
+        # Otherwise, return None.
+        return None
+
+
+class Manifest(
+    datatype(
+        "Manifest",
+        [
+            "digest",
+            "media_type",
+            "config_media_type",
+            "_layers_compressed_size",
+            "internal_manifest_bytes",
+        ],
+    )
+):
     """
     Manifest represents a manifest in a repository.
     """
-
-    @classmethod
-    def for_tag_manifest(cls, tag_manifest, legacy_image=None):
-        if tag_manifest is None:
-            return None
-
-        return Manifest(
-            db_id=tag_manifest.id,
-            digest=tag_manifest.digest,
-            internal_manifest_bytes=Bytes.for_string_or_unicode(tag_manifest.json_data),
-            media_type=DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,  # Always in legacy.
-            inputs=dict(
-                legacy_image=legacy_image,
-                tag_manifest=True,
-                repository=RepositoryReference.for_id(tag_manifest.repository_id),
-            ),
-        )
 
     @classmethod
     def for_manifest(cls, manifest, legacy_image):
@@ -361,17 +343,10 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
             digest=manifest.digest,
             internal_manifest_bytes=manifest_bytes,
             media_type=ManifestTable.media_type.get_name(manifest.media_type_id),
-            inputs=dict(
-                legacy_image=legacy_image,
-                tag_manifest=False,
-                repository=RepositoryReference.for_id(manifest.repository_id),
-            ),
+            _layers_compressed_size=manifest.layers_compressed_size,
+            config_media_type=manifest.config_media_type,
+            inputs=dict(legacy_image=legacy_image),
         )
-
-    @property
-    @requiresinput("tag_manifest")
-    def _is_tag_manifest(self, tag_manifest):
-        return tag_manifest
 
     @property
     @requiresinput("legacy_image")
@@ -399,17 +374,6 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
         return parse_manifest_from_bytes(
             self.internal_manifest_bytes, self.media_type, validate=validate
         )
-
-    @property
-    def layers_compressed_size(self):
-        """
-        Returns the total compressed size of the layers in the manifest or None if this could not be
-        computed.
-        """
-        try:
-            return self.get_parsed_manifest().layers_compressed_size
-        except ManifestException:
-            return None
 
     @property
     def is_manifest_list(self):
@@ -660,13 +624,6 @@ class LikelyVulnerableTag(datatype("LikelyVulnerableTag", ["layer_id", "name"]))
         layer_id = "%s.%s" % (docker_image_id, storage_uuid)
         return LikelyVulnerableTag(
             db_id=tag.id, name=tag.name, layer_id=layer_id, inputs=dict(repository=repository)
-        )
-
-    @classmethod
-    def for_repository_tag(cls, tag, repository):
-        tag_layer_id = "%s.%s" % (tag.image.docker_image_id, tag.image.storage.uuid)
-        return LikelyVulnerableTag(
-            db_id=tag.id, name=tag.name, layer_id=tag_layer_id, inputs=dict(repository=repository)
         )
 
     @property

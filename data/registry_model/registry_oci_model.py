@@ -148,6 +148,8 @@ class OCIModel(RegistryDataInterface):
         Returns the manifest associated with the given tag.
         """
         assert tag is not None
+        if not include_legacy_image or tag.legacy_image_if_present is not None:
+            return tag.manifest
 
         legacy_image = None
         if include_legacy_image:
