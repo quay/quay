@@ -347,7 +347,7 @@ def test_remove_obsolete_tags(initialized_db):
     incoming_tags = ["one", "two"]
     deleted_tags = delete_obsolete_tags(mirror, incoming_tags)
 
-    assert [tag.name for tag in deleted_tags] == [tag.name]
+    assert [tag.name for tag in deleted_tags] == []
 
 
 @disable_existing_mirrors

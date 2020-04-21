@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from data.model import (
@@ -14,64 +14,19 @@ from data.model import (
 )
 from data.database import (
     Repository,
+    RepositoryState,
     Namespace,
     ImageStorage,
     Image,
     ImageStoragePlacement,
     BlobUpload,
+    UploadedBlob,
     ImageStorageLocation,
     db_random_func,
 )
 
 
 logger = logging.getLogger(__name__)
-
-
-def get_repository_blob_by_digest(repository, blob_digest):
-    """
-    Find the content-addressable blob linked to the specified repository.
-    """
-    assert blob_digest
-    try:
-        storage = (
-            ImageStorage.select(ImageStorage.uuid)
-            .join(Image)
-            .where(
-                Image.repository == repository,
-                ImageStorage.content_checksum == blob_digest,
-                ImageStorage.uploading == False,
-            )
-            .get()
-        )
-
-        return storage_model.get_storage_by_uuid(storage.uuid)
-    except (ImageStorage.DoesNotExist, InvalidImageException):
-        raise BlobDoesNotExist("Blob does not exist with digest: {0}".format(blob_digest))
-
-
-def get_repo_blob_by_digest(namespace, repo_name, blob_digest):
-    """
-    Find the content-addressable blob linked to the specified repository.
-    """
-    assert blob_digest
-    try:
-        storage = (
-            ImageStorage.select(ImageStorage.uuid)
-            .join(Image)
-            .join(Repository)
-            .join(Namespace, on=(Namespace.id == Repository.namespace_user))
-            .where(
-                Repository.name == repo_name,
-                Namespace.username == namespace,
-                ImageStorage.content_checksum == blob_digest,
-                ImageStorage.uploading == False,
-            )
-            .get()
-        )
-
-        return storage_model.get_storage_by_uuid(storage.uuid)
-    except (ImageStorage.DoesNotExist, InvalidImageException):
-        raise BlobDoesNotExist("Blob does not exist with digest: {0}".format(blob_digest))
 
 
 def store_blob_record_and_temp_link(
@@ -157,16 +112,26 @@ def temp_link_blob(repository_id, blob_digest, link_expiration_s):
 
 def _temp_link_blob(repository_id, storage, link_expiration_s):
     """ Note: Should *always* be called by a parent under a transaction. """
-    random_image_name = str(uuid4())
+    try:
+        repository = Repository.get(id=repository_id)
+    except Repository.DoesNotExist:
+        return None
 
-    # Create a temporary link into the repository, to be replaced by the v1 metadata later
-    # and create a temporary tag to reference it
-    image = Image.create(
-        storage=storage, docker_image_id=random_image_name, repository=repository_id
+    if repository.state != RepositoryState.NORMAL:
+        return None
+
+    return UploadedBlob.create(
+        repository=repository_id,
+        blob=storage,
+        expires_at=datetime.utcnow() + timedelta(seconds=link_expiration_s),
     )
-    temp_tag = tag.create_temporary_hidden_tag(repository_id, image, link_expiration_s)
-    if temp_tag is None:
-        image.delete_instance()
+
+
+def lookup_expired_uploaded_blobs(repository):
+    """ Looks up all expired uploaded blobs in a repository. """
+    return UploadedBlob.select().where(
+        UploadedBlob.repository == repository, UploadedBlob.expires_at <= datetime.utcnow()
+    )
 
 
 def get_stale_blob_upload(stale_timespan):
