@@ -119,6 +119,8 @@ def test_valid_manifest():
     assert manifest.media_type == "application/vnd.docker.distribution.manifest.v2+json"
     assert not manifest.has_remote_layer
     assert manifest.has_legacy_image
+    assert manifest.config_media_type == "application/vnd.docker.container.image.v1+json"
+    assert manifest.layers_compressed_size == 123721
 
     retriever = ContentRetrieverForTesting.for_config(
         {
@@ -171,6 +173,8 @@ def test_valid_remote_manifest():
     )
     assert manifest.media_type == "application/vnd.docker.distribution.manifest.v2+json"
     assert manifest.has_remote_layer
+    assert manifest.config_media_type == "application/vnd.docker.container.image.v1+json"
+    assert manifest.layers_compressed_size == 123721
 
     assert len(manifest.filesystem_layers) == 4
     assert manifest.filesystem_layers[0].compressed_size == 1234

@@ -1,0 +1,36 @@
+
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 88e64904d000
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 88e64904d000
+    image: quay.io/quay/quay
+    name: 88e64904d000
+  previous: !!python/tuple
+  - 3383aad1e992
+  schemaHints:
+  - columns:
+    - name: config_media_type
+      nullable: true
+    operation: addColumn
+    table: manifest
+  - columns:
+    - name: layers_compressed_size
+      nullable: true
+    operation: addColumn
+    table: manifest
+  - columns:
+    - name: repository_id
+      nullable: false
+    - name: config_media_type
+      nullable: true
+    indexName: manifest_repository_id_config_media_type
+    indexType: index
+    operation: createIndex
+    table: manifest

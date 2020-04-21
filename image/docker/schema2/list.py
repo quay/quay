@@ -228,6 +228,10 @@ class DockerSchema2ManifestList(ManifestInterface):
     def layers_compressed_size(self):
         return None
 
+    @property
+    def config_media_type(self):
+        return None
+
     @lru_cache(maxsize=1)
     def manifests(self, content_retriever):
         """
