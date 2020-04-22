@@ -31,6 +31,10 @@ def _perform_cleanup():
     model.gc.garbage_collect_repo(repo_object)
 
 
+def _get_legacy_image_row_id(tag):
+    return database.ManifestLegacyImage.get(manifest=tag.manifest._db_id).image.docker_image_id
+
+
 def test_missing_link(initialized_db):
     """
     Tests for a corner case that could result in missing a link to a blob referenced by a manifest.
@@ -54,6 +58,8 @@ def test_missing_link(initialized_db):
                 that of `SECOND_ID`, leaving `THIRD_ID` unlinked and therefore, after a GC, missing
                 `FOURTH_BLOB`.
     """
+    # TODO: Remove this test once we stop writing legacy image rows.
+
     with set_tag_expiration_policy("devtable", 0):
         location_name = storage.preferred_locations[0]
         location = database.ImageStorageLocation.get(name=location_name)
@@ -81,11 +87,9 @@ def test_missing_link(initialized_db):
         assert model.oci.blob.get_repository_blob_by_digest(repo, first_blob_sha) is not None
 
         repository_ref = registry_model.lookup_repository(ADMIN_ACCESS_USER, REPO)
-        found_tag = registry_model.get_repo_tag(
-            repository_ref, FIRST_TAG, include_legacy_image=True
-        )
+        found_tag = registry_model.get_repo_tag(repository_ref, FIRST_TAG)
         assert found_tag is not None
-        assert found_tag.legacy_image.docker_image_id == "first"
+        assert _get_legacy_image_row_id(found_tag) == "first"
 
         # Create the second and third blobs.
         second_blob_sha = "sha256:" + hashlib.sha256(b"SECOND").hexdigest()
@@ -116,18 +120,14 @@ def test_missing_link(initialized_db):
         assert registry_model.get_repo_blob_by_digest(repository_ref, second_blob_sha) is not None
         assert registry_model.get_repo_blob_by_digest(repository_ref, third_blob_sha) is not None
 
-        found_tag = registry_model.get_repo_tag(
-            repository_ref, FIRST_TAG, include_legacy_image=True
-        )
+        found_tag = registry_model.get_repo_tag(repository_ref, FIRST_TAG)
         assert found_tag is not None
-        assert found_tag.legacy_image.docker_image_id == "first"
+        assert _get_legacy_image_row_id(found_tag) == "first"
 
         # Ensure the IDs have changed.
-        found_tag = registry_model.get_repo_tag(
-            repository_ref, SECOND_TAG, include_legacy_image=True
-        )
+        found_tag = registry_model.get_repo_tag(repository_ref, SECOND_TAG)
         assert found_tag is not None
-        assert found_tag.legacy_image.docker_image_id != "second"
+        assert _get_legacy_image_row_id(found_tag) != "second"
 
         # Create the fourth blob.
         fourth_blob_sha = "sha256:" + hashlib.sha256(b"FOURTH").hexdigest()
@@ -157,10 +157,6 @@ def test_missing_link(initialized_db):
         assert registry_model.get_repo_blob_by_digest(repository_ref, fourth_blob_sha) is not None
 
         # Ensure new synthesized IDs were created.
-        second_tag = registry_model.get_repo_tag(
-            repository_ref, SECOND_TAG, include_legacy_image=True
-        )
-        third_tag = registry_model.get_repo_tag(
-            repository_ref, THIRD_TAG, include_legacy_image=True
-        )
-        assert second_tag.legacy_image.docker_image_id != third_tag.legacy_image.docker_image_id
+        second_tag = registry_model.get_repo_tag(repository_ref, SECOND_TAG)
+        third_tag = registry_model.get_repo_tag(repository_ref, THIRD_TAG)
+        assert _get_legacy_image_row_id(second_tag) != _get_legacy_image_row_id(third_tag)

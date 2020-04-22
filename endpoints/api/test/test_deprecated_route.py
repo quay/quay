@@ -11,16 +11,15 @@ from test.fixtures import *
 
 def test_deprecated_route(client):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
-    image = shared.get_legacy_image_for_manifest(manifest._db_id)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     with client_with_identity("devtable", client) as cl:
         resp = conduct_api_call(
             cl,
             RepositoryImageSecurity,
             "get",
-            {"repository": "devtable/simple", "imageid": image.docker_image_id},
+            {"repository": "devtable/simple", "imageid": manifest.legacy_image_root_id},
             expected_code=200,
         )
 

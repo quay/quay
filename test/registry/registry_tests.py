@@ -835,10 +835,11 @@ def test_image_replication(
             credentials=credentials,
         )
 
-        # Ensure that entries were created for each image.
-        for image_id in list(result.image_ids.values()):
-            r = registry_server_executor.on(liveserver).get_storage_replication_entry(image_id)
-            assert r.text == "OK"
+        # Ensure that entries were created for each layer.
+        r = registry_server_executor.on(liveserver).verify_replication_for(
+            "devtable", "newrepo", "latest"
+        )
+        assert r.text == "OK"
 
 
 def test_image_replication_empty_layers(
@@ -872,10 +873,18 @@ def test_image_replication_empty_layers(
             credentials=credentials,
         )
 
+<<<<<<< HEAD
         # Ensure that entries were created for each image.
         for image_id in list(result.image_ids.values()):
             r = registry_server_executor.on(liveserver).get_storage_replication_entry(image_id)
             assert r.text == "OK"
+=======
+        # Ensure that entries were created for each layer.
+        r = registry_server_executor.on(liveserver).verify_replication_for(
+            "devtable", "newrepo", "latest"
+        )
+        assert r.text == "OK"
+>>>>>>> Switch registry model to use synthetic legacy images
 
 
 @pytest.mark.parametrize(
@@ -2323,10 +2332,8 @@ def test_push_pull_same_blobs(pusher, puller, liveserver_session, app_reloader):
     )
 
 
-def test_push_tag_existing_image(
-    v1_protocol, puller, basic_images, liveserver_session, app_reloader
-):
-    """ Test: Push a new tag on an existing manifest/image. """
+def test_push_tag_existing_image(v1_protocol, basic_images, liveserver_session, app_reloader):
+    """ Test: Push a new tag on an existing image. """
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2334,18 +2341,24 @@ def test_push_tag_existing_image(
         liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
     )
 
-    # Push the same image/manifest to another tag in the repository.
+    # Pull the repository to verify.
+    pulled = v1_protocol.pull(
+        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials,
+    )
+    assert pulled.image_ids
+
+    # Push the same image to another tag in the repository.
     v1_protocol.tag(
         liveserver_session,
         "devtable",
         "newrepo",
         "anothertag",
-        basic_images[-1],
+        pulled.image_ids["latest"],
         credentials=credentials,
     )
 
     # Pull the repository to verify.
-    puller.pull(
+    v1_protocol.pull(
         liveserver_session,
         "devtable",
         "newrepo",

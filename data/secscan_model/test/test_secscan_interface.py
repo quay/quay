@@ -69,7 +69,7 @@ def test_load_security_information(repository, v4_whitelist, initialized_db):
         (None, SplitScanToken("v4", None)),
         (SplitScanToken("v4", V4ScanToken(1)), SplitScanToken("v4", None)),
         (SplitScanToken("v4", None), SplitScanToken("v2", V2ScanToken(158))),
-        (SplitScanToken("v2", V2ScanToken(318)), SplitScanToken("v2", None)),
+        (SplitScanToken("v2", V2ScanToken(158)), SplitScanToken("v2", None)),
         (SplitScanToken("v2", None), None),
     ],
 )
@@ -88,8 +88,8 @@ def test_perform_indexing_v2_only(next_token, expected_next_token, initialized_d
     [
         (None, SplitScanToken("v4", V4ScanToken(56))),
         (SplitScanToken("v4", V4ScanToken(1)), SplitScanToken("v4", V4ScanToken(56))),
-        (SplitScanToken("v4", None), SplitScanToken("v2", V2ScanToken(318))),
-        (SplitScanToken("v2", V2ScanToken(318)), SplitScanToken("v2", None)),
+        (SplitScanToken("v4", None), SplitScanToken("v2", V2ScanToken(158))),
+        (SplitScanToken("v2", V2ScanToken(158)), SplitScanToken("v2", None)),
         (SplitScanToken("v2", None), None),
     ],
 )

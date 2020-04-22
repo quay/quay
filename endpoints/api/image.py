@@ -3,6 +3,10 @@ List and lookup repository images.
 """
 import json
 
+from collections import defaultdict
+from datetime import datetime
+
+from app import storage
 from data.registry_model import registry_model
 from endpoints.api import (
     resource,
@@ -17,7 +21,7 @@ from endpoints.api import (
 from endpoints.exception import NotFound
 
 
-def image_dict(image, with_history=False, with_tags=False):
+def image_dict(image):
     parsed_command = None
     if image.command:
         try:
@@ -32,18 +36,10 @@ def image_dict(image, with_history=False, with_tags=False):
         "command": parsed_command,
         "size": image.image_size,
         "uploading": False,
-        "sort_index": len(image.parents),
+        "sort_index": 0,
     }
 
-    if with_tags:
-        image_data["tags"] = [tag.name for tag in image.tags]
-
-    if with_history:
-        image_data["history"] = [image_dict(parent) for parent in image.parents]
-
-    # Calculate the ancestors string, with the DBID's replaced with the docker IDs.
-    parent_docker_ids = [parent_image.docker_image_id for parent_image in image.parents]
-    image_data["ancestors"] = "/{0}/".format("/".join(parent_docker_ids))
+    image_data["ancestors"] = "/{0}/".format("/".join(image.ancestor_ids))
     return image_data
 
 
@@ -66,8 +62,35 @@ class RepositoryImageList(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        images = registry_model.get_legacy_images(repo_ref)
-        return {"images": [image_dict(image, with_tags=True) for image in images]}
+        tags = registry_model.list_all_active_repository_tags(repo_ref)
+        images_with_tags = defaultdict(list)
+        for tag in tags:
+            legacy_image_id = tag.manifest.legacy_image_root_id
+            if legacy_image_id is not None:
+                images_with_tags[legacy_image_id].append(tag)
+
+        # NOTE: This is replicating our older response for this endpoint, but
+        # returns empty for the metadata fields. This is to ensure back-compat
+        # for callers still using the deprecated API, while not having to load
+        # all the manifests from storage.
+        return {
+            "images": [
+                {
+                    "id": image_id,
+                    "created": format_date(
+                        datetime.utcfromtimestamp((min([tag.lifetime_start_ts for tag in tags])))
+                    ),
+                    "comment": "",
+                    "command": "",
+                    "size": 0,
+                    "uploading": False,
+                    "sort_index": 0,
+                    "tags": [tag.name for tag in tags],
+                    "ancestors": "",
+                }
+                for image_id, tags in images_with_tags.iteritems()
+            ]
+        }
 
 
 @resource("/v1/repository/<apirepopath:repository>/image/<image_id>")
@@ -90,8 +113,8 @@ class RepositoryImage(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        image = registry_model.get_legacy_image(repo_ref, image_id, include_parents=True)
+        image = registry_model.get_legacy_image(repo_ref, image_id, storage)
         if image is None:
             raise NotFound()
 
-        return image_dict(image, with_history=True)
+        return image_dict(image)

@@ -148,24 +148,6 @@ def list_repository_tag_history(
     return results[0:page_size], len(results) > page_size
 
 
-def get_legacy_images_for_tags(tags):
-    """
-    Returns a map from tag ID to the legacy image for the tag.
-    """
-    if not tags:
-        return {}
-
-    query = (
-        ManifestLegacyImage.select(ManifestLegacyImage, Image, ImageStorage)
-        .join(Image)
-        .join(ImageStorage)
-        .where(ManifestLegacyImage.manifest << [tag.manifest_id for tag in tags])
-    )
-
-    by_manifest = {mli.manifest_id: mli.image for mli in query}
-    return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
-
-
 def find_matching_tag(repository_id, tag_names, tag_kinds=None):
     """
     Finds an alive tag in the specified repository with one of the specified tag names and returns
@@ -576,6 +558,22 @@ def tags_containing_legacy_image(image):
         .where((Image.id == image.id) | (Image.ancestors ** ancestors_str))
     )
     return filter_to_alive_tags(tags)
+
+
+def lookup_notifiable_tags_for_manifest(manifest, event_name):
+    """
+    Yields any alive Tags found in repositories with an event with the given name registered and
+    whose tag is the given manifest.
+    """
+    event = ExternalNotificationEvent.get(name=event_name)
+
+    # Ensure the manifest is under a repository that supports the event.
+    try:
+        RepositoryNotification.get(repository=manifest.repository_id, event=event)
+    except RepositoryNotification.DoesNotExist:
+        raise StopIteration()
+
+    return filter_to_alive_tags(Tag.select().where(Tag.manifest == manifest))
 
 
 def lookup_notifiable_tags_for_legacy_image(docker_image_id, storage_uuid, event_name):

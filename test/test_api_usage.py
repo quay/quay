@@ -2444,7 +2444,6 @@ class TestDeleteRepository(ApiTestCase):
 
         # Make sure the repository has some images and tags.
         repo_ref = registry_model.lookup_repository(ADMIN_ACCESS_USER, "complex")
-        self.assertTrue(len(list(registry_model.get_legacy_images(repo_ref))) > 0)
         self.assertTrue(len(list(registry_model.list_all_active_repository_tags(repo_ref))) > 0)
 
         # Add some data for the repository, in addition to is already existing images and tags.
@@ -2525,11 +2524,11 @@ class TestGetRepository(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             self.getJsonResponse(Repository, params=dict(repository=ADMIN_ACCESS_USER + "/simple"))
 
         # base + repo + is_starred + tags
-        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4 + 1):
+        with assert_query_count(BASE_LOGGEDIN_QUERY_COUNT + 4):
             json = self.getJsonResponse(
                 Repository, params=dict(repository=ADMIN_ACCESS_USER + "/gargantuan")
             )
@@ -3326,8 +3325,12 @@ class TestListAndDeleteTag(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="sometag"),
         )
 
+<<<<<<< HEAD
         sometag_images = json["images"]
         self.assertEqual(sometag_images, staging_images)
+=======
+        assert json["images"]
+>>>>>>> Switch registry model to use synthetic legacy images
 
         # Move the tag.
         self.putResponse(
@@ -3344,8 +3347,7 @@ class TestListAndDeleteTag(ApiTestCase):
         )
 
         sometag_new_images = json["images"]
-        self.assertEqual(1, len(sometag_new_images))
-        self.assertEqual(staging_images[-1], sometag_new_images[0])
+        assert sometag_new_images
 
     def test_deletesubtag(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3384,7 +3386,7 @@ class TestListAndDeleteTag(ApiTestCase):
         self.login(ADMIN_ACCESS_USER)
 
         repo_ref = registry_model.lookup_repository(ADMIN_ACCESS_USER, "simple")
-        latest_tag = registry_model.get_repo_tag(repo_ref, "latest", include_legacy_image=True)
+        latest_tag = registry_model.get_repo_tag(repo_ref, "latest")
 
         # Create 8 tags in the simple repo.
         remaining_tags = {"latest", "prod"}
@@ -3392,7 +3394,7 @@ class TestListAndDeleteTag(ApiTestCase):
             tag_name = "tag" + str(i)
             remaining_tags.add(tag_name)
             assert registry_model.retarget_tag(
-                repo_ref, tag_name, latest_tag.legacy_image, storage, docker_v2_signing_key
+                repo_ref, tag_name, latest_tag.manifest, storage, docker_v2_signing_key
             )
 
         # Make sure we can iterate over all of them.

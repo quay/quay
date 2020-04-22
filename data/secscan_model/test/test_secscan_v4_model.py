@@ -33,8 +33,8 @@ def set_secscan_config():
 
 def test_load_security_information_queued(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.NOT_YET_INDEXED
@@ -42,8 +42,8 @@ def test_load_security_information_queued(initialized_db, set_secscan_config):
 
 def test_load_security_information_failed_to_index(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -61,8 +61,8 @@ def test_load_security_information_failed_to_index(initialized_db, set_secscan_c
 
 def test_load_security_information_api_returns_none(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -83,8 +83,8 @@ def test_load_security_information_api_returns_none(initialized_db, set_secscan_
 
 def test_load_security_information_api_request_failure(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     mss = ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -106,8 +106,8 @@ def test_load_security_information_api_request_failure(initialized_db, set_secsc
 
 def test_load_security_information_success(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,

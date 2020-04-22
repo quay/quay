@@ -68,7 +68,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
         image_pulls.labels("v2", "tag", 404).inc()
         raise ManifestUnknown()
 
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    manifest = registry_model.get_manifest_for_tag(tag)
     if manifest is None:
         # Something went wrong.
         image_pulls.labels("v2", "tag", 400).inc()

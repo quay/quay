@@ -303,7 +303,7 @@ def _verify_repo_verb(_, namespace, repo_name, tag_name, verb, checker=None):
         abort(404)
 
     # Get its associated manifest.
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    manifest = registry_model.get_manifest_for_tag(tag)
     if manifest is None:
         logger.debug("Could not get manifest on %s/%s:%s::%s", namespace, repo_name, tag.name, verb)
         abort(404)

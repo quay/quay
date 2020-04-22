@@ -6,7 +6,7 @@ from jsonschema import validate as validate_schema, ValidationError
 
 from digest import digest_tools
 from image.shared import ManifestException
-from image.shared.interfaces import ManifestInterface
+from image.shared.interfaces import ManifestListInterface
 from image.shared.schemautil import LazyManifestLoader
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema1 import DockerSchema1Manifest
@@ -53,7 +53,7 @@ class MismatchManifestException(MalformedSchema2ManifestList):
     pass
 
 
-class DockerSchema2ManifestList(ManifestInterface):
+class DockerSchema2ManifestList(ManifestListInterface):
     METASCHEMA = {
         "type": "object",
         "properties": {
@@ -262,7 +262,8 @@ class DockerSchema2ManifestList(ManifestInterface):
             platform = manifest_ref[DOCKER_SCHEMA2_MANIFESTLIST_PLATFORM_KEY]
             architecture = platform[DOCKER_SCHEMA2_MANIFESTLIST_ARCHITECTURE_KEY]
             os = platform[DOCKER_SCHEMA2_MANIFESTLIST_OS_KEY]
-            return manifest_ref[DOCKER_SCHEMA2_MANIFESTLIST_DIGEST_KEY]
+            if architecture == "amd64" and os == "linux":
+                return manifest_ref[DOCKER_SCHEMA2_MANIFESTLIST_DIGEST_KEY]
 
         return None
 

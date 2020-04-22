@@ -14,16 +14,13 @@ class RegistryDataInterface(object):
     @abstractmethod
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
         """
-        Returns the legacy image ID for the tag with a legacy images in the repository.
-
-        Returns None if None.
+        Returns the legacy image ID for the tag in the repository or None if none.
         """
 
     @abstractmethod
     def get_legacy_tags_map(self, repository_ref, storage):
         """
-        Returns a map from tag name to its legacy image ID, for all tags with legacy images in the
-        repository.
+        Returns a map from tag name to its legacy image ID, for all tags in the repository.
 
         Note that this can be a *very* heavy operation.
         """
@@ -51,19 +48,14 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_manifest_for_tag(self, tag, backfill_if_necessary=False, include_legacy_image=False):
+    def get_manifest_for_tag(self, tag):
         """
         Returns the manifest associated with the given tag.
         """
 
     @abstractmethod
     def lookup_manifest_by_digest(
-        self,
-        repository_ref,
-        manifest_digest,
-        allow_dead=False,
-        include_legacy_image=False,
-        require_available=False,
+        self, repository_ref, manifest_digest, allow_dead=False, require_available=False,
     ):
         """
         Looks up the manifest with the given digest under the given repository and returns it or
@@ -92,15 +84,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_legacy_images(self, repository_ref):
-        """
-        Returns an iterator of all the LegacyImage's defined in the matching repository.
-        """
-
-    @abstractmethod
-    def get_legacy_image(
-        self, repository_ref, docker_image_id, include_parents=False, include_blob=False
-    ):
+    def get_legacy_image(self, repository_ref, docker_image_id, storage, include_blob=False):
         """
         Returns the matching LegacyImages under the matching repository, if any.
 
@@ -170,12 +154,12 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def list_all_active_repository_tags(self, repository_ref, include_legacy_images=False):
+    def list_all_active_repository_tags(self, repository_ref):
         """
         Returns a list of all the active tags in the repository.
 
         Note that this is a *HEAVY* operation on repositories with a lot of tags, and should only be
-        used for testing or where other more specific operations are not possible.
+        used for testing or legacy operations.
         """
 
     @abstractmethod
@@ -204,7 +188,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_repo_tag(self, repository_ref, tag_name, include_legacy_image=False):
+    def get_repo_tag(self, repository_ref, tag_name):
         """
         Returns the latest, *active* tag found in the repository, with the matching name or None if
         none.
@@ -257,12 +241,6 @@ class RegistryDataInterface(object):
 
         If the expiration date is None, then the tag will not expire. Returns a tuple of the
         previous expiration timestamp in seconds (if any), and whether the operation succeeded.
-        """
-
-    @abstractmethod
-    def get_legacy_images_owned_by_tag(self, tag):
-        """
-        Returns all legacy images *solely owned and used* by the given tag.
         """
 
     @abstractmethod

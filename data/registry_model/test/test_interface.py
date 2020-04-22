@@ -32,6 +32,7 @@ from data.cache.impl import InMemoryDataModelCache
 from data.registry_model.registry_oci_model import OCIModel
 from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
+from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.blob import store_blob_record_and_temp_link
 from image.shared.types import ManifestImageLayer
 from image.docker.schema1 import (
@@ -120,13 +121,9 @@ def test_lookup_manifests(repo_namespace, repo_name, registry_model):
     repository_ref = RepositoryReference.for_repo_obj(repo)
     found_tag = registry_model.find_matching_tag(repository_ref, ["latest"])
     found_manifest = registry_model.get_manifest_for_tag(found_tag)
-    found = registry_model.lookup_manifest_by_digest(
-        repository_ref, found_manifest.digest, include_legacy_image=True
-    )
+    found = registry_model.lookup_manifest_by_digest(repository_ref, found_manifest.digest)
     assert found._db_id == found_manifest._db_id
     assert found.digest == found_manifest.digest
-    assert found.legacy_image
-    assert found.legacy_image.parents
 
     schema1_parsed = registry_model.get_schema1_parsed_manifest(found, "foo", "bar", "baz", storage)
     assert schema1_parsed is not None
@@ -211,26 +208,24 @@ def test_batch_labels(registry_model):
 )
 def test_repository_tags(repo_namespace, repo_name, registry_model):
     repository_ref = registry_model.lookup_repository(repo_namespace, repo_name)
-    tags = registry_model.list_all_active_repository_tags(
-        repository_ref, include_legacy_images=True
-    )
+    tags = registry_model.list_all_active_repository_tags(repository_ref)
     assert len(tags)
 
     tags_map = registry_model.get_legacy_tags_map(repository_ref, storage)
 
     for tag in tags:
-        found_tag = registry_model.get_repo_tag(repository_ref, tag.name, include_legacy_image=True)
+        found_tag = registry_model.get_repo_tag(repository_ref, tag.name)
         assert found_tag == tag
 
-        if found_tag.legacy_image is None:
-            continue
-
+        retriever = RepositoryContentRetriever(repository_ref.id, storage)
+        legacy_image = tag.manifest.lookup_legacy_image(0, retriever)
         found_image = registry_model.get_legacy_image(
-            repository_ref, found_tag.legacy_image.docker_image_id
+            repository_ref, found_tag.manifest.legacy_image_root_id, storage
         )
-        assert found_image == found_tag.legacy_image
-        assert tag.name in tags_map
-        assert tags_map[tag.name] == found_image.docker_image_id
+
+        if found_image is not None:
+            assert found_image.docker_image_id == legacy_image.docker_image_id
+            assert tags_map[tag.name] == found_image.docker_image_id
 
 
 @pytest.mark.parametrize(
@@ -247,7 +242,7 @@ def test_repository_tag_history(namespace, name, expected_tag_count, has_expired
     Manifest.media_type.get_name(1)
 
     repository_ref = registry_model.lookup_repository(namespace, name)
-    with assert_query_count(2):
+    with assert_query_count(1):
         history, has_more = registry_model.list_repository_tag_history(repository_ref)
         assert not has_more
         assert len(history) == expected_tag_count
@@ -323,9 +318,7 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
 
         # Make sure the tag is no longer found.
         with assert_query_count(1):
-            found_tag = registry_model.get_repo_tag(
-                repository_ref, tag.name, include_legacy_image=True
-            )
+            found_tag = registry_model.get_repo_tag(repository_ref, tag.name)
             assert found_tag is None
 
     # Ensure all tags have been deleted.
@@ -347,7 +340,9 @@ def test_retarget_tag_history(use_manifest, registry_model):
             repository_ref, history[0].manifest_digest, allow_dead=True
         )
     else:
-        manifest_or_legacy_image = history[0].legacy_image
+        manifest_or_legacy_image = registry_model.get_legacy_image(
+            repository_ref, history[0].manifest.legacy_image_root_id, storage
+        )
 
     # Retarget the tag.
     assert manifest_or_legacy_image
@@ -364,7 +359,7 @@ def test_retarget_tag_history(use_manifest, registry_model):
     if use_manifest:
         assert updated_tag.manifest_digest == manifest_or_legacy_image.digest
     else:
-        assert updated_tag.legacy_image == manifest_or_legacy_image
+        assert updated_tag.manifest.legacy_image_root_id == manifest_or_legacy_image.docker_image_id
 
     # Ensure history has been updated.
     new_history, _ = registry_model.list_repository_tag_history(repository_ref)
@@ -388,15 +383,17 @@ def test_change_repository_tag_expiration(registry_model):
 
 def test_get_security_status(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tags = registry_model.list_all_active_repository_tags(
-        repository_ref, include_legacy_images=True
-    )
+    tags = registry_model.list_all_active_repository_tags(repository_ref)
     assert len(tags)
 
     for tag in tags:
-        assert registry_model.get_security_status(tag.legacy_image)
-        registry_model.reset_security_status(tag.legacy_image)
-        assert registry_model.get_security_status(tag.legacy_image)
+        legacy_image = registry_model.get_legacy_image(
+            repository_ref, tag.manifest.legacy_image_root_id, storage
+        )
+        assert legacy_image
+        assert registry_model.get_security_status(legacy_image)
+        registry_model.reset_security_status(legacy_image)
+        assert registry_model.get_security_status(legacy_image)
 
 
 @pytest.fixture()
@@ -765,13 +762,11 @@ def test_get_cached_repo_blob(registry_model):
 
 def test_create_manifest_and_retarget_tag(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    latest_tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
+    latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
 
     builder = DockerSchema1ManifestBuilder("devtable", "simple", "anothertag")
-    builder.add_layer(
-        manifest.blob_digests[0], '{"id": "%s"}' % latest_tag.legacy_image.docker_image_id
-    )
+    builder.add_layer(manifest.blob_digests[0], '{"id": "%s"}' % "someid")
     sample_manifest = builder.build(docker_v2_signing_key)
     assert sample_manifest is not None
 
@@ -787,14 +782,14 @@ def test_create_manifest_and_retarget_tag(registry_model):
 
 def test_get_schema1_parsed_manifest(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    latest_tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
+    latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag)
     assert registry_model.get_schema1_parsed_manifest(manifest, "", "", "", storage)
 
 
 def test_convert_manifest(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    latest_tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
+    latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag)
 
     mediatypes = DOCKER_SCHEMA1_CONTENT_TYPES
@@ -806,11 +801,11 @@ def test_convert_manifest(registry_model):
 
 def test_create_manifest_and_retarget_tag_with_labels(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    latest_tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
+    latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag).get_parsed_manifest()
 
     json_metadata = {
-        "id": latest_tag.legacy_image.docker_image_id,
+        "id": "someid",
         "config": {"Labels": {"quay.expires-after": "2w",},},
     }
 
@@ -949,11 +944,9 @@ def test_yield_tags_for_vulnerability_notification(registry_model):
 
     # Check for all legacy images under the tags and ensure not raised because
     # no notification is yet registered.
-    for tag in registry_model.list_all_active_repository_tags(
-        repository_ref, include_legacy_images=True
-    ):
+    for tag in registry_model.list_all_active_repository_tags(repository_ref):
         image = registry_model.get_legacy_image(
-            repository_ref, tag.legacy_image.docker_image_id, include_blob=True
+            repository_ref, tag.manifest.legacy_image_root_id, storage, include_blob=True
         )
         pairs = [(image.docker_image_id, image.blob.uuid)]
         results = list(registry_model.yield_tags_for_vulnerability_notification(pairs))
@@ -965,20 +958,15 @@ def test_yield_tags_for_vulnerability_notification(registry_model):
     )
 
     # Check again.
-    for tag in registry_model.list_all_active_repository_tags(
-        repository_ref, include_legacy_images=True
-    ):
+    for tag in registry_model.list_all_active_repository_tags(repository_ref):
         image = registry_model.get_legacy_image(
-            repository_ref,
-            tag.legacy_image.docker_image_id,
-            include_blob=True,
-            include_parents=True,
+            repository_ref, tag.manifest.legacy_image_root_id, storage, include_blob=True,
         )
 
         # Check for every parent of the image.
-        for current in image.parents:
+        for current_docker_image_id in image.ancestor_ids:
             img = registry_model.get_legacy_image(
-                repository_ref, current.docker_image_id, include_blob=True
+                repository_ref, current_docker_image_id, storage, include_blob=True
             )
             pairs = [(img.docker_image_id, img.blob.uuid)]
             results = list(registry_model.yield_tags_for_vulnerability_notification(pairs))
@@ -990,3 +978,29 @@ def test_yield_tags_for_vulnerability_notification(registry_model):
         results = list(registry_model.yield_tags_for_vulnerability_notification(pairs))
         assert len(results) > 0
         assert tag.name in {t.name for t in results}
+
+
+def test_create_manifest_with_temp_tag(initialized_db, registry_model):
+    builder = DockerSchema1ManifestBuilder("devtable", "simple", "latest")
+    builder.add_layer(
+        "sha256:abcde", json.dumps({"id": "someid", "author": u"some user",}, ensure_ascii=False)
+    )
+
+    manifest = builder.build(ensure_ascii=False)
+
+    for blob_digest in manifest.local_blob_digests:
+        _populate_blob(blob_digest)
+
+    # Create the manifest in the database.
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    created = registry_model.create_manifest_with_temp_tag(repository_ref, manifest, 300, storage)
+    assert created.digest == manifest.digest
+
+    # Ensure it cannot be found normally, since it is simply temp-tagged.
+    assert registry_model.lookup_manifest_by_digest(repository_ref, manifest.digest) is None
+
+    # Ensure it can be found, which means it is temp-tagged.
+    found = registry_model.lookup_manifest_by_digest(
+        repository_ref, manifest.digest, allow_dead=True
+    )
+    assert found is not None

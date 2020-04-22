@@ -18,9 +18,8 @@ from app import app
 
 def manifest_for(namespace, repository, tagname):
     repository_ref = registry_model.lookup_repository(namespace, repository)
-    tag = registry_model.get_repo_tag(repository_ref, tagname, include_legacy_image=True)
-
-    return registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, tagname)
+    return registry_model.get_manifest_for_tag(tag)
 
 
 @pytest.fixture()

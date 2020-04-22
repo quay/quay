@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from contextlib import contextmanager
 from collections import defaultdict
@@ -32,6 +33,7 @@ from data.registry_model.datatypes import (
     ManifestLayer,
 )
 from data.registry_model.label_handlers import apply_label_to_manifest
+from data.registry_model.shared import SyntheticIDHandler
 from image.shared import ManifestException
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -42,9 +44,6 @@ from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST
 
 logger = logging.getLogger(__name__)
 
-# The maximum size for generated manifest after which we remove extra metadata.
-MAXIMUM_GENERATED_MANIFEST_SIZE = 3 * 1024 * 1024  # 3 MB
-
 
 class OCIModel(RegistryDataInterface):
     """
@@ -52,51 +51,68 @@ class OCIModel(RegistryDataInterface):
     changed to support the OCI specification.
     """
 
+    def __init__(self):
+        self._legacy_image_id_handler = SyntheticIDHandler()
+
+    def set_id_hash_salt(self, id_hash_salt):
+        self._legacy_image_id_handler = SyntheticIDHandler(id_hash_salt)
+
+    def _resolve_legacy_image_id_to_manifest_row(self, legacy_image_id):
+        decoded = self._legacy_image_id_handler.decode(legacy_image_id)
+        if len(decoded) == 0:
+            return (None, None)
+
+        manifest_id, layer_index = decoded
+        if manifest_id is None:
+            return (None, None)
+
+        try:
+            return database.Manifest.get(id=manifest_id), layer_index
+        except database.Manifest.DoesNotExist:
+            return (None, None)
+
+    def _resolve_legacy_image_id(self, legacy_image_id):
+        """ Decodes the given legacy image ID and returns the manifest to which it points,
+            as well as the layer index for the image. If invalid, or the manifest was not found,
+            returns (None, None).
+        """
+        manifest, layer_index = self._resolve_legacy_image_id_to_manifest_row(legacy_image_id)
+        if manifest is None:
+            return (None, None)
+
+        return Manifest.for_manifest(manifest, self._legacy_image_id_handler), layer_index
+
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
         """
-        Returns the legacy image ID for the tag with a legacy images in the repository.
-
-        Returns None if None.
+        Returns the legacy image ID for the tag in the repository. If there is no legacy image,
+        returns None.
         """
-        tag = self.get_repo_tag(repository_ref, tag_name, include_legacy_image=True)
+        tag = self.get_repo_tag(repository_ref, tag_name)
         if tag is None:
             return None
 
-        if tag.legacy_image_if_present is not None:
-            return tag.legacy_image_if_present.docker_image_id
+        retriever = RepositoryContentRetriever(repository_ref.id, storage)
+        legacy_image = tag.manifest.lookup_legacy_image(0, retriever)
+        if legacy_image is None:
+            return None
 
-        if tag.manifest.is_manifest_list:
-            # See if we can lookup a schema1 legacy image.
-            v1_compatible = self.get_schema1_parsed_manifest(tag.manifest, "", "", "", storage)
-            if v1_compatible is not None:
-                return v1_compatible.leaf_layer_v1_image_id
-
-        return None
+        return legacy_image.docker_image_id
 
     def get_legacy_tags_map(self, repository_ref, storage):
         """
-        Returns a map from tag name to its legacy image ID, for all tags with legacy images in the
+        Returns a map from tag name to its legacy image ID, for all tags in the
         repository.
 
         Note that this can be a *very* heavy operation.
         """
         tags = oci.tag.list_alive_tags(repository_ref._db_id)
-        legacy_images_map = oci.tag.get_legacy_images_for_tags(tags)
-
         tags_map = {}
         for tag in tags:
-            legacy_image = legacy_images_map.get(tag.id)
-            if legacy_image is not None:
-                tags_map[tag.name] = legacy_image.docker_image_id
-            else:
-                manifest = Manifest.for_manifest(tag.manifest, None)
-                if legacy_image is None and manifest.is_manifest_list:
-                    # See if we can lookup a schema1 legacy image.
-                    v1_compatible = self.get_schema1_parsed_manifest(manifest, "", "", "", storage)
-                    if v1_compatible is not None:
-                        v1_id = v1_compatible.leaf_layer_v1_image_id
-                        if v1_id is not None:
-                            tags_map[tag.name] = v1_id
+            root_id = Manifest.for_manifest(
+                tag.manifest, self._legacy_image_id_handler
+            ).legacy_image_root_id
+            if root_id is not None:
+                tags_map[tag.name] = root_id
 
         return tags_map
 
@@ -107,7 +123,7 @@ class OCIModel(RegistryDataInterface):
         """
         found_tag = oci.tag.find_matching_tag(repository_ref._db_id, tag_names)
         assert found_tag is None or not found_tag.hidden
-        return Tag.for_tag(found_tag)
+        return Tag.for_tag(found_tag, self._legacy_image_id_handler)
 
     def get_most_recent_tag(self, repository_ref):
         """
@@ -117,29 +133,17 @@ class OCIModel(RegistryDataInterface):
         """
         found_tag = oci.tag.get_most_recent_tag(repository_ref._db_id)
         assert found_tag is None or not found_tag.hidden
-        return Tag.for_tag(found_tag)
+        return Tag.for_tag(found_tag, self._legacy_image_id_handler)
 
-    def get_manifest_for_tag(self, tag, backfill_if_necessary=False, include_legacy_image=False):
+    def get_manifest_for_tag(self, tag):
         """
         Returns the manifest associated with the given tag.
         """
         assert tag is not None
-        if not include_legacy_image or tag.legacy_image_if_present is not None:
-            return tag.manifest
-
-        legacy_image = None
-        if include_legacy_image:
-            legacy_image = oci.shared.get_legacy_image_for_manifest(tag._manifest)
-
-        return Manifest.for_manifest(tag._manifest, LegacyImage.for_image(legacy_image))
+        return tag.manifest
 
     def lookup_manifest_by_digest(
-        self,
-        repository_ref,
-        manifest_digest,
-        allow_dead=False,
-        include_legacy_image=False,
-        require_available=False,
+        self, repository_ref, manifest_digest, allow_dead=False, require_available=False,
     ):
         """
         Looks up the manifest with the given digest under the given repository and returns it or
@@ -154,19 +158,7 @@ class OCIModel(RegistryDataInterface):
         if manifest is None:
             return None
 
-        legacy_image = None
-        if include_legacy_image:
-            try:
-                legacy_image_id = database.ManifestLegacyImage.get(
-                    manifest=manifest
-                ).image.docker_image_id
-                legacy_image = self.get_legacy_image(
-                    repository_ref, legacy_image_id, include_parents=True
-                )
-            except database.ManifestLegacyImage.DoesNotExist:
-                pass
-
-        return Manifest.for_manifest(manifest, legacy_image)
+        return Manifest.for_manifest(manifest, self._legacy_image_id_handler)
 
     def create_manifest_label(self, manifest, key, value, source_type_name, media_type_name=None):
         """
@@ -254,22 +246,15 @@ class OCIModel(RegistryDataInterface):
         tags = oci.tag.lookup_alive_tags_shallow(repository_ref._db_id, start_pagination_id, limit)
         return [ShallowTag.for_tag(tag) for tag in tags]
 
-    def list_all_active_repository_tags(self, repository_ref, include_legacy_images=False):
+    def list_all_active_repository_tags(self, repository_ref):
         """
         Returns a list of all the active tags in the repository.
 
         Note that this is a *HEAVY* operation on repositories with a lot of tags, and should only be
-        used for testing or where other more specific operations are not possible.
+        used for testing or legacy operations.
         """
         tags = list(oci.tag.list_alive_tags(repository_ref._db_id))
-        legacy_images_map = {}
-        if include_legacy_images:
-            legacy_images_map = oci.tag.get_legacy_images_for_tags(tags)
-
-        return [
-            Tag.for_tag(tag, legacy_image=LegacyImage.for_image(legacy_images_map.get(tag.id)))
-            for tag in tags
-        ]
+        return [Tag.for_tag(tag, self._legacy_image_id_handler) for tag in tags]
 
     def list_repository_tag_history(
         self,
@@ -290,13 +275,8 @@ class OCIModel(RegistryDataInterface):
             repository_ref._db_id, page, size, specific_tag_name, active_tags_only, since_time_ms
         )
 
-        # TODO: do we need legacy images here?
-        legacy_images_map = oci.tag.get_legacy_images_for_tags(tags)
         return (
-            [
-                Tag.for_tag(tag, LegacyImage.for_image(legacy_images_map.get(tag.id)))
-                for tag in tags
-            ],
+            [Tag.for_tag(tag, self._legacy_image_id_handler) for tag in tags],
             has_more,
         )
 
@@ -320,7 +300,7 @@ class OCIModel(RegistryDataInterface):
 
         return {repo_id: toSeconds(ms) for repo_id, ms in list(last_modified.items())}
 
-    def get_repo_tag(self, repository_ref, tag_name, include_legacy_image=False):
+    def get_repo_tag(self, repository_ref, tag_name):
         """
         Returns the latest, *active* tag found in the repository, with the matching name or None if
         none.
@@ -331,12 +311,7 @@ class OCIModel(RegistryDataInterface):
         if tag is None:
             return None
 
-        legacy_image = None
-        if include_legacy_image:
-            legacy_images = oci.tag.get_legacy_images_for_tags([tag])
-            legacy_image = legacy_images.get(tag.id)
-
-        return Tag.for_tag(tag, legacy_image=LegacyImage.for_image(legacy_image))
+        return Tag.for_tag(tag, self._legacy_image_id_handler)
 
     def create_manifest_and_retarget_tag(
         self, repository_ref, manifest_interface_instance, tag_name, storage, raise_on_error=False
@@ -373,9 +348,9 @@ class OCIModel(RegistryDataInterface):
             if tag is None:
                 return (None, None)
 
-            legacy_image = oci.shared.get_legacy_image_for_manifest(created_manifest.manifest)
-            li = LegacyImage.for_image(legacy_image)
-            wrapped_manifest = Manifest.for_manifest(created_manifest.manifest, li)
+            wrapped_manifest = Manifest.for_manifest(
+                created_manifest.manifest, self._legacy_image_id_handler
+            )
 
             # Apply any labels that should modify the created tag.
             if created_manifest.labels_to_apply:
@@ -385,7 +360,7 @@ class OCIModel(RegistryDataInterface):
                 # Reload the tag in case any updates were applied.
                 tag = database.Tag.get(id=tag.id)
 
-            return (wrapped_manifest, Tag.for_tag(tag, li))
+            return (wrapped_manifest, Tag.for_tag(tag, self._legacy_image_id_handler))
 
     def retarget_tag(
         self,
@@ -405,62 +380,37 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             assert legacy_manifest_key is not None
-            manifest_id = manifest_or_legacy_image._db_id
-            if isinstance(manifest_or_legacy_image, LegacyImage):
-                # If a legacy image was required, build a new manifest for it and move the tag to that.
+            manifest = manifest_or_legacy_image.as_manifest()
+            manifest_id = manifest._db_id
+
+            # If the manifest is a schema 1 manifest and its tag name does not match that
+            # specified, then we need to create a new manifest, but with that tag name.
+            if manifest.media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
                 try:
-                    image_row = database.Image.get(id=manifest_or_legacy_image._db_id)
-                except database.Image.DoesNotExist:
+                    parsed = manifest.get_parsed_manifest()
+                except ManifestException:
+                    logger.exception(
+                        "Could not parse manifest `%s` in retarget_tag", manifest._db_id,
+                    )
                     return None
 
-                manifest_instance = self._build_manifest_for_legacy_image(tag_name, image_row)
-                if manifest_instance is None:
-                    return None
+                if parsed.tag != tag_name:
+                    logger.debug(
+                        "Rewriting manifest `%s` for tag named `%s`", manifest._db_id, tag_name,
+                    )
 
-                created = oci.manifest.get_or_create_manifest(
-                    repository_ref._db_id, manifest_instance, storage
-                )
-                if created is None:
-                    return None
+                    repository_id = repository_ref._db_id
+                    updated = parsed.with_tag_name(tag_name, legacy_manifest_key)
+                    assert updated.is_signed
 
-                manifest_id = created.manifest.id
-            else:
-                # If the manifest is a schema 1 manifest and its tag name does not match that
-                # specified, then we need to create a new manifest, but with that tag name.
-                if manifest_or_legacy_image.media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
-                    try:
-                        parsed = manifest_or_legacy_image.get_parsed_manifest()
-                    except ManifestException:
-                        logger.exception(
-                            "Could not parse manifest `%s` in retarget_tag",
-                            manifest_or_legacy_image._db_id,
-                        )
+                    created = oci.manifest.get_or_create_manifest(repository_id, updated, storage)
+                    if created is None:
                         return None
 
-                    if parsed.tag != tag_name:
-                        logger.debug(
-                            "Rewriting manifest `%s` for tag named `%s`",
-                            manifest_or_legacy_image._db_id,
-                            tag_name,
-                        )
-
-                        repository_id = repository_ref._db_id
-                        updated = parsed.with_tag_name(tag_name, legacy_manifest_key)
-                        assert updated.is_signed
-
-                        created = oci.manifest.get_or_create_manifest(
-                            repository_id, updated, storage
-                        )
-                        if created is None:
-                            return None
-
-                        manifest_id = created.manifest.id
+                    manifest_id = created.manifest.id
 
             tag = oci.tag.retarget_tag(tag_name, manifest_id, is_reversion=is_reversion)
-            legacy_image = LegacyImage.for_image(
-                oci.shared.get_legacy_image_for_manifest(manifest_id)
-            )
-            return Tag.for_tag(tag, legacy_image)
+            return Tag.for_tag(tag, self._legacy_image_id_handler)
 
     def delete_tag(self, repository_ref, tag_name):
         """
@@ -474,7 +424,7 @@ class OCIModel(RegistryDataInterface):
                 msg = "Invalid repository tag '%s' on repository" % tag_name
                 raise DataModelException(msg)
 
-            return Tag.for_tag(deleted_tag)
+            return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
     def delete_tags_for_manifest(self, manifest):
         """
@@ -485,7 +435,7 @@ class OCIModel(RegistryDataInterface):
         """
         with db_disallow_replica_use():
             deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
-            return [Tag.for_tag(tag) for tag in deleted_tags]
+            return [Tag.for_tag(tag, self._legacy_image_id_handler) for tag in deleted_tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):
         """
@@ -497,75 +447,15 @@ class OCIModel(RegistryDataInterface):
         with db_disallow_replica_use():
             return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
 
-    def get_legacy_images_owned_by_tag(self, tag):
-        """
-        Returns all legacy images *solely owned and used* by the given tag.
-        """
-        tag_obj = oci.tag.get_tag_by_id(tag._db_id)
-        if tag_obj is None:
-            return None
-
-        tags = oci.tag.list_alive_tags(tag_obj.repository_id)
-        legacy_images = oci.tag.get_legacy_images_for_tags(tags)
-
-        tag_legacy_image = legacy_images.get(tag._db_id)
-        if tag_legacy_image is None:
-            return None
-
-        assert isinstance(tag_legacy_image, Image)
-
-        # Collect the IDs of all images that the tag uses.
-        tag_image_ids = set()
-        tag_image_ids.add(tag_legacy_image.id)
-        tag_image_ids.update(tag_legacy_image.ancestor_id_list())
-
-        # Remove any images shared by other tags.
-        for current in tags:
-            if current == tag_obj:
-                continue
-
-            current_image = legacy_images.get(current.id)
-            if current_image is None:
-                continue
-
-            tag_image_ids.discard(current_image.id)
-            tag_image_ids = tag_image_ids.difference(current_image.ancestor_id_list())
-            if not tag_image_ids:
-                return []
-
-        if not tag_image_ids:
-            return []
-
-        # Load the images we need to return.
-        images = database.Image.select().where(database.Image.id << list(tag_image_ids))
-        all_image_ids = set()
-        for image in images:
-            all_image_ids.add(image.id)
-            all_image_ids.update(image.ancestor_id_list())
-
-        # Build a map of all the images and their parents.
-        images_map = {}
-        all_images = database.Image.select().where(database.Image.id << list(all_image_ids))
-        for image in all_images:
-            images_map[image.id] = image
-
-        return [LegacyImage.for_image(image, images_map=images_map) for image in images]
-
     def get_security_status(self, manifest_or_legacy_image):
         """
         Returns the security status for the given manifest or legacy image or None if none.
         """
-        image = None
-
-        if isinstance(manifest_or_legacy_image, Manifest):
-            image = oci.shared.get_legacy_image_for_manifest(manifest_or_legacy_image._db_id)
-            if image is None:
-                return SecurityScanStatus.UNSUPPORTED
-        else:
-            try:
-                image = database.Image.get(id=manifest_or_legacy_image._db_id)
-            except database.Image.DoesNotExist:
-                return None
+        # TODO: change from using the Image row once we've moved all security info into MSS.
+        manifest_id = manifest_or_legacy_image.as_manifest()._db_id
+        image = oci.shared.get_legacy_image_for_manifest(manifest_id)
+        if image is None:
+            return SecurityScanStatus.UNSUPPORTED
 
         if image.security_indexed_engine is not None and image.security_indexed_engine >= 0:
             return (
@@ -580,22 +470,16 @@ class OCIModel(RegistryDataInterface):
         re-indexed.
         """
         with db_disallow_replica_use():
-            image = None
+            # TODO: change from using the Image row once we've moved all security info into MSS.
+            manifest_id = manifest_or_legacy_image.as_manifest()._db_id
+            image = oci.shared.get_legacy_image_for_manifest(manifest_id)
+            if image is None:
+                return None
 
-            if isinstance(manifest_or_legacy_image, Manifest):
-                image = oci.shared.get_legacy_image_for_manifest(manifest_or_legacy_image._db_id)
-                if image is None:
-                    return None
-            else:
-                try:
-                    image = database.Image.get(id=manifest_or_legacy_image._db_id)
-                except database.Image.DoesNotExist:
-                    return None
-
-            assert image
-            image.security_indexed = False
-            image.security_indexed_engine = IMAGE_NOT_SCANNED_ENGINE_VERSION
-            image.save()
+                assert image
+                image.security_indexed = False
+                image.security_indexed_engine = IMAGE_NOT_SCANNED_ENGINE_VERSION
+                image.save()
 
     def list_manifest_layers(self, manifest, storage, include_placements=False):
         try:
@@ -741,9 +625,7 @@ class OCIModel(RegistryDataInterface):
             if created_manifest is None:
                 return None
 
-            legacy_image = oci.shared.get_legacy_image_for_manifest(created_manifest.manifest)
-            li = LegacyImage.for_image(legacy_image)
-            return Manifest.for_manifest(created_manifest.manifest, li)
+            return Manifest.for_manifest(created_manifest.manifest, self._legacy_image_id_handler)
 
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
@@ -805,9 +687,18 @@ class OCIModel(RegistryDataInterface):
         Returns an iterator of LikelyVulnerableTag instances.
         """
         for docker_image_id, storage_uuid in layer_id_pairs:
-            tags = oci.tag.lookup_notifiable_tags_for_legacy_image(
-                docker_image_id, storage_uuid, "vulnerability_found"
-            )
+            # Try with a new-style legacy image ID.
+            manifest_row, _ = self._resolve_legacy_image_id_to_manifest_row(docker_image_id)
+            if manifest_row is not None:
+                tags = oci.tag.lookup_notifiable_tags_for_manifest(
+                    manifest_row, "vulnerability_found"
+                )
+            else:
+                # Try with the old-style legacy Docker Image ID.
+                tags = oci.tag.lookup_notifiable_tags_for_legacy_image(
+                    docker_image_id, storage_uuid, "vulnerability_found"
+                )
+
             for tag in tags:
                 yield LikelyVulnerableTag.for_tag(
                     tag, tag.repository, docker_image_id, storage_uuid
@@ -1095,64 +986,30 @@ class OCIModel(RegistryDataInterface):
             )
             return bool(storage)
 
-    def get_legacy_images(self, repository_ref):
+    def get_legacy_image(self, repository_ref, docker_image_id, storage, include_blob=False):
         """
-        Returns an iterator of all the LegacyImage's defined in the matching repository.
-        """
-        repo = model.repository.lookup_repository(repository_ref._db_id)
-        if repo is None:
-            return None
-
-        all_images = model.image.get_repository_images_without_placements(repo)
-        all_images_map = {image.id: image for image in all_images}
-
-        all_tags = model.oci.tag.list_alive_tags(repo)
-        tags_by_image_id = defaultdict(list)
-        for tag in all_tags:
-            try:
-                mli = database.ManifestLegacyImage.get(manifest=tag.manifest_id)
-                tags_by_image_id[mli.image_id].append(tag)
-            except database.ManifestLegacyImage.DoesNotExist:
-                continue
-
-        return [
-            LegacyImage.for_image(image, images_map=all_images_map, tags_map=tags_by_image_id)
-            for image in all_images
-        ]
-
-    def get_legacy_image(
-        self, repository_ref, docker_image_id, include_parents=False, include_blob=False
-    ):
-        """
-        Returns the matching LegacyImages under the matching repository, if any.
+        Returns the matching LegacyImage under the matching repository, if any.
 
         If none, returns None.
         """
-        repo = model.repository.lookup_repository(repository_ref._db_id)
-        if repo is None:
+        retriever = RepositoryContentRetriever(repository_ref._db_id, storage)
+
+        # Resolves the manifest and the layer index from the synthetic ID.
+        manifest, layer_index = self._resolve_legacy_image_id(docker_image_id)
+        if manifest is None:
             return None
 
-        image = model.image.get_image(repository_ref._db_id, docker_image_id)
-        if image is None:
-            return None
+        # Lookup the legacy image for the index.
+        legacy_image = manifest.lookup_legacy_image(layer_index, retriever)
+        if legacy_image is None or not include_blob:
+            return legacy_image
 
-        parent_images_map = None
-        if include_parents:
-            parent_images = model.image.get_parent_images(
-                repo.namespace_user.username, repo.name, image
+        # If a blob was requested, load it into the legacy image.
+        return legacy_image.with_blob(
+            self.get_repo_blob_by_digest(
+                repository_ref, legacy_image.blob_digest, include_placements=True
             )
-            parent_images_map = {image.id: image for image in parent_images}
-
-        blob = None
-        if include_blob:
-            placements = list(model.storage.get_storage_locations(image.storage.uuid))
-            blob = Blob.for_image_storage(
-                image.storage,
-                storage_path=model.storage.get_layer_path(image.storage),
-                placements=placements,
-            )
-
-        return LegacyImage.for_image(image, images_map=parent_images_map, blob=blob)
+        )
 
     def _get_manifest_local_blobs(self, manifest, repo_id, include_placements=False):
         parsed = manifest.get_parsed_manifest()
@@ -1251,67 +1108,6 @@ class OCIModel(RegistryDataInterface):
         )
 
         return DerivedStorage.for_derived_storage(derived, verb, varying_metadata, blob)
-
-    def _build_manifest_for_legacy_image(self, tag_name, legacy_image_row):
-        import features
-
-        from app import app, docker_v2_signing_key
-
-        repo = legacy_image_row.repository
-        namespace_name = repo.namespace_user.username
-        repo_name = repo.name
-
-        # Find the v1 metadata for this image and its parents.
-        try:
-            parents = model.image.get_parent_images(namespace_name, repo_name, legacy_image_row)
-        except model.DataModelException:
-            logger.exception(
-                "Could not load parent images for legacy image %s", legacy_image_row.id
-            )
-            return None
-
-        # If the manifest is being generated under the library namespace, then we make its namespace
-        # empty.
-        manifest_namespace = namespace_name
-        if features.LIBRARY_SUPPORT and namespace_name == app.config["LIBRARY_NAMESPACE"]:
-            manifest_namespace = ""
-
-        # Create and populate the manifest builder
-        builder = DockerSchema1ManifestBuilder(manifest_namespace, repo_name, tag_name)
-
-        # Add the leaf layer
-        builder.add_layer(
-            legacy_image_row.storage.content_checksum, legacy_image_row.v1_json_metadata
-        )
-        if legacy_image_row.storage.uploading:
-            logger.error("Cannot add an uploading storage row: %s", legacy_image_row.storage.id)
-            return None
-
-        for parent_image in parents:
-            if parent_image.storage.uploading:
-                logger.error("Cannot add an uploading storage row: %s", legacy_image_row.storage.id)
-                return None
-
-            builder.add_layer(parent_image.storage.content_checksum, parent_image.v1_json_metadata)
-
-        try:
-            built_manifest = builder.build(docker_v2_signing_key)
-
-            # If the generated manifest is greater than the maximum size, regenerate it with
-            # intermediate metadata layers stripped down to their bare essentials.
-            if len(built_manifest.bytes.as_encoded_str()) > MAXIMUM_GENERATED_MANIFEST_SIZE:
-                built_manifest = builder.with_metadata_removed().build(docker_v2_signing_key)
-
-            if len(built_manifest.bytes.as_encoded_str()) > MAXIMUM_GENERATED_MANIFEST_SIZE:
-                logger.error("Legacy image is too large to generate manifest")
-                return None
-
-            return built_manifest
-        except ManifestException as me:
-            logger.exception(
-                "Got exception when trying to build manifest for legacy image %s", legacy_image_row
-            )
-            return None
 
     def _get_shared_storage(self, blob_digest):
         """
