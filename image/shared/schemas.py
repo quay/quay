@@ -12,6 +12,14 @@ from image.oci.manifest import OCIManifest
 from util.bytes import Bytes
 
 
+MANIFEST_LIST_TYPES = [DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE, OCI_IMAGE_INDEX_CONTENT_TYPE]
+
+
+def is_manifest_list_type(content_type):
+    """ Returns True if the given content type refers to a manifest list of some kind. """
+    return content_type in MANIFEST_LIST_TYPES
+
+
 def parse_manifest_from_bytes(manifest_bytes, media_type, validate=True):
     """
     Parses and returns a manifest from the given bytes, for the given media type.

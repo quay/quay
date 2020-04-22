@@ -23,6 +23,7 @@ from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
+from image.oci.index import OCIIndexBuilder
 from util.security.registry_jwt import decode_bearer_header
 from util.timedeltastring import convert_to_timedelta
 
@@ -2394,6 +2395,7 @@ def test_push_tag_existing_image(
 
 @pytest.mark.parametrize("schema_version", [1, 2,])
 @pytest.mark.parametrize("is_amd", [True, False])
+@pytest.mark.parametrize("oci_list", [True, False])
 def test_push_pull_manifest_list_back_compat(
     v22_protocol,
     legacy_puller,
@@ -2404,6 +2406,7 @@ def test_push_pull_manifest_list_back_compat(
     schema_version,
     data_model,
     is_amd,
+    oci_list,
 ):
     """ Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
       and one not, and, if there is a legacy manifest, ensure it can be pulled.
@@ -2423,14 +2426,19 @@ def test_push_pull_manifest_list_back_compat(
         options,
         arch="amd64" if is_amd else "something",
     )
-    first_manifest = signed.unsigned()
-    if schema_version == 2:
-        first_manifest = v22_protocol.build_schema2(basic_images, blobs, options)
 
-    second_manifest = v22_protocol.build_schema2(different_images, blobs, options)
+    if not oci_list:
+        first_manifest = signed.unsigned()
+        if schema_version == 2:
+            first_manifest = v22_protocol.build_schema2(basic_images, blobs, options)
+
+        second_manifest = v22_protocol.build_schema2(different_images, blobs, options)
+    else:
+        first_manifest = v22_protocol.build_oci(basic_images, blobs, options)
+        second_manifest = v22_protocol.build_oci(different_images, blobs, options)
 
     # Create and push the manifest list.
-    builder = DockerSchema2ManifestListBuilder()
+    builder = OCIIndexBuilder() if oci_list else DockerSchema2ManifestListBuilder()
     builder.add_manifest(first_manifest, "amd64" if is_amd else "something", "linux")
     builder.add_manifest(second_manifest, "arm", "linux")
     manifestlist = builder.build()
@@ -2460,7 +2468,7 @@ def test_push_pull_manifest_list_back_compat(
     )
 
 
-@pytest.mark.parametrize("schema_version", [1, 2,])
+@pytest.mark.parametrize("schema_version", [1, 2, "oci"])
 def test_push_pull_manifest_list(
     v22_protocol,
     basic_images,
@@ -2482,14 +2490,19 @@ def test_push_pull_manifest_list(
     signed = v22_protocol.build_schema1(
         "devtable", "newrepo", "latest", basic_images, blobs, options
     )
-    first_manifest = signed.unsigned()
-    if schema_version == 2:
-        first_manifest = v22_protocol.build_schema2(basic_images, blobs, options)
 
-    second_manifest = v22_protocol.build_schema2(different_images, blobs, options)
+    if schema_version == "oci":
+        first_manifest = v22_protocol.build_oci(basic_images, blobs, options)
+        second_manifest = v22_protocol.build_oci(different_images, blobs, options)
+    else:
+        first_manifest = signed.unsigned()
+        if schema_version == 2:
+            first_manifest = v22_protocol.build_schema2(basic_images, blobs, options)
+
+        second_manifest = v22_protocol.build_schema2(different_images, blobs, options)
 
     # Create and push the manifest list.
-    builder = DockerSchema2ManifestListBuilder()
+    builder = OCIIndexBuilder() if schema_version == "oci" else DockerSchema2ManifestListBuilder()
     builder.add_manifest(first_manifest, "amd64", "linux")
     builder.add_manifest(second_manifest, "arm", "linux")
     manifestlist = builder.build()

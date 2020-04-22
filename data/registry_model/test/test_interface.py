@@ -42,6 +42,8 @@ from image.docker.schema1 import (
 )
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.oci.manifest import OCIManifestBuilder
+from image.oci.index import OCIIndexBuilder
 from util.bytes import Bytes
 
 from test.fixtures import *
@@ -574,7 +576,14 @@ def test_derived_image_signatures(registry_model):
     assert registry_model.get_derived_image_signature(derived, "gpg2") == "foo"
 
 
-def test_derived_image_for_manifest_list(oci_model):
+@pytest.mark.parametrize(
+    "manifest_builder, list_builder",
+    [
+        (DockerSchema2ManifestBuilder, DockerSchema2ManifestListBuilder),
+        (OCIManifestBuilder, OCIIndexBuilder),
+    ],
+)
+def test_derived_image_for_manifest_list(manifest_builder, list_builder, oci_model):
     # Clear all existing derived storage.
     DerivedStorageForImage.delete().execute()
 
@@ -582,6 +591,8 @@ def test_derived_image_for_manifest_list(oci_model):
     config_json = json.dumps(
         {
             "config": {},
+            "architecture": "amd64",
+            "os": "linux",
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
                 {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
@@ -596,21 +607,24 @@ def test_derived_image_for_manifest_list(oci_model):
         blob = upload.commit_to_blob(app_config)
 
     # Create the manifest in the repo.
-    builder = DockerSchema2ManifestBuilder()
+    builder = manifest_builder()
     builder.set_config_digest(blob.digest, blob.compressed_size)
     builder.add_layer(blob.digest, blob.compressed_size)
     amd64_manifest = builder.build()
 
     oci_model.create_manifest_and_retarget_tag(
-        repository_ref, amd64_manifest, "submanifest", storage
+        repository_ref, amd64_manifest, "submanifest", storage, raise_on_error=True
     )
 
     # Create a manifest list, pointing to at least one amd64+linux manifest.
-    builder = DockerSchema2ManifestListBuilder()
+    builder = list_builder()
     builder.add_manifest(amd64_manifest, "amd64", "linux")
     manifestlist = builder.build()
 
-    oci_model.create_manifest_and_retarget_tag(repository_ref, manifestlist, "listtag", storage)
+    oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifestlist, "listtag", storage, raise_on_error=True
+    )
+
     manifest = oci_model.get_manifest_for_tag(oci_model.get_repo_tag(repository_ref, "listtag"))
     assert manifest
     assert manifest.get_parsed_manifest().is_manifest_list

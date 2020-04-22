@@ -99,7 +99,8 @@ class LazyManifestLoader(object):
         content_type = self._manifest_data[self._media_type_key]
         if content_type not in self._supported_types:
             raise ManifestException(
-                "Unknown or unsupported manifest media type `%s`" % content_type
+                "Unknown or unsupported manifest media type `%s` not found in %s"
+                % (content_type, self._supported_types.keys())
             )
 
         return self._supported_types[content_type](
