@@ -191,6 +191,19 @@ class ManifestInterface(object):
 
 
 @add_metaclass(ABCMeta)
+class ManifestListInterface(object):
+    """
+    Defines the interface for the various manifest list types supported.
+    """
+
+    @abstractmethod
+    def amd64_linux_manifest_digest(self):
+        """ Returns the digest of the AMD64+Linux manifest in this list, if any, or None
+            if none.
+        """
+
+
+@add_metaclass(ABCMeta)
 class ContentRetriever(object):
     """
     Defines the interface for retrieval of various content referenced by a manifest.

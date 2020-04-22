@@ -5,7 +5,7 @@ import unittest
 from app import app, storage, notification_queue, url_scheme_and_hostname
 from data import model
 from data.registry_model import registry_model
-from data.database import Image, IMAGE_NOT_SCANNED_ENGINE_VERSION
+from data.database import Image, IMAGE_NOT_SCANNED_ENGINE_VERSION, ManifestLegacyImage
 from endpoints.v2 import v2_bp
 from initdb import setup_database_for_testing, finished_database_for_testing
 from notifications.notificationevent import VulnerabilityFoundEvent
@@ -33,8 +33,9 @@ def process_notification_data(legacy_api, notification_data):
 
 def _get_legacy_image(namespace, repo, tag, include_storage=True):
     repo_ref = registry_model.lookup_repository(namespace, repo)
-    repo_tag = registry_model.get_repo_tag(repo_ref, tag, include_legacy_image=True)
-    return Image.get(id=repo_tag.legacy_image._db_id)
+    repo_tag = registry_model.get_repo_tag(repo_ref, tag)
+    manifest = registry_model.get_manifest_for_tag(repo_tag)
+    return ManifestLegacyImage.get(manifest_id=manifest._db_id).image
 
 
 def _delete_tag(namespace, repo, tag):

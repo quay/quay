@@ -18,7 +18,7 @@ from data.database import (
     configure,
     DerivedStorageForManifest,
     QueueItem,
-    Image,
+    ImageStorage,
     TagManifest,
     TagManifestToManifest,
     Manifest,
@@ -30,6 +30,7 @@ from data.database import (
 from data import model
 from data.registry_model import registry_model
 from endpoints.csrf import generate_csrf_token
+from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST
 from util.log import logfile_path
 
 from test.registry.liveserverfixture import LiveServerExecutor
@@ -46,15 +47,22 @@ def registry_server_executor(app):
         )
         return "OK"
 
-    def delete_image(image_id):
-        image = Image.get(docker_image_id=image_id)
-        image.docker_image_id = "DELETED"
-        image.save()
-        return "OK"
+    def verify_replication_for(namespace, repo_name, tag_name):
+        repo_ref = registry_model.lookup_repository(namespace, repo_name)
+        assert repo_ref
 
-    def get_storage_replication_entry(image_id):
-        image = Image.get(docker_image_id=image_id)
-        QueueItem.select().where(QueueItem.queue_name ** ("%" + image.storage.uuid + "%")).get()
+        tag = registry_model.get_repo_tag(repo_ref, tag_name)
+        assert tag
+
+        manifest = registry_model.get_manifest_for_tag(tag)
+        assert manifest
+
+        for layer in registry_model.list_manifest_layers(manifest, storage):
+            if layer.blob.digest != EMPTY_LAYER_BLOB_DIGEST:
+                QueueItem.select().where(
+                    QueueItem.queue_name ** ("%" + layer.blob.uuid + "%")
+                ).get()
+
         return "OK"
 
     def set_feature(feature_name, value):
@@ -158,8 +166,7 @@ def registry_server_executor(app):
     executor = LiveServerExecutor()
     executor.register("generate_csrf", generate_csrf)
     executor.register("set_supports_direct_download", set_supports_direct_download)
-    executor.register("delete_image", delete_image)
-    executor.register("get_storage_replication_entry", get_storage_replication_entry)
+    executor.register("verify_replication_for", verify_replication_for)
     executor.register("set_feature", set_feature)
     executor.register("set_config_key", set_config_key)
     executor.register("clear_derived_cache", clear_derived_cache)

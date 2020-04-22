@@ -41,7 +41,7 @@ from jsonschema import validate as validate_schema, ValidationError
 
 from digest import digest_tools
 from image.shared import ManifestException
-from image.shared.interfaces import ManifestInterface
+from image.shared.interfaces import ManifestListInterface
 from image.shared.schemautil import LazyManifestLoader
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.descriptor import get_descriptor_schema
@@ -81,7 +81,7 @@ class MalformedIndex(ManifestException):
     pass
 
 
-class OCIIndex(ManifestInterface):
+class OCIIndex(ManifestListInterface):
     METASCHEMA = {
         "type": "object",
         "properties": {
@@ -278,6 +278,20 @@ class OCIIndex(ManifestInterface):
     @property
     def has_legacy_image(self):
         return False
+
+    @property
+    def amd64_linux_manifest_digest(self):
+        """ Returns the digest of the AMD64+Linux manifest in this list, if any, or None
+            if none.
+        """
+        for manifest_ref in self._parsed[INDEX_MANIFESTS_KEY]:
+            platform = manifest_ref[INDEX_PLATFORM_KEY]
+            architecture = platform.get(INDEX_ARCHITECTURE_KEY, None)
+            os = platform.get(INDEX_OS_KEY, None)
+            if architecture == "amd64" and os == "linux":
+                return manifest_ref[INDEX_DIGEST_KEY]
+
+        return None
 
     def get_requires_empty_layer_blob(self, content_retriever):
         return False

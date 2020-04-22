@@ -4,6 +4,7 @@ Manage the manifests of a repository.
 import json
 import logging
 
+from datetime import datetime
 from flask import request
 
 from app import label_validator, storage
@@ -74,10 +75,6 @@ def _layer_dict(manifest_layer, index):
 
 
 def _manifest_dict(manifest):
-    image = None
-    if manifest.legacy_image_if_present is not None:
-        image = image_dict(manifest.legacy_image, with_history=True)
-
     layers = None
     if not manifest.is_manifest_list:
         layers = registry_model.list_manifest_layers(manifest, storage)
@@ -85,14 +82,30 @@ def _manifest_dict(manifest):
             logger.debug("Missing layers for manifest `%s`", manifest.digest)
             abort(404)
 
+    image = None
+    if manifest.legacy_image_root_id:
+        # NOTE: This is replicating our older response for this endpoint, but
+        # returns empty for the metadata fields. This is to ensure back-compat
+        # for callers still using the deprecated API.
+        image = {
+            "id": manifest.legacy_image_root_id,
+            "created": format_date(datetime.utcnow()),
+            "comment": "",
+            "command": "",
+            "size": 0,
+            "uploading": False,
+            "sort_index": 0,
+            "ancestors": "",
+        }
+
     return {
         "digest": manifest.digest,
         "is_manifest_list": manifest.is_manifest_list,
         "manifest_data": manifest.internal_manifest_bytes.as_unicode(),
-        "image": image,
         "layers": (
             [_layer_dict(lyr.layer_info, idx) for idx, lyr in enumerate(layers)] if layers else None
         ),
+        "image": image,
     }
 
 
@@ -112,9 +125,7 @@ class RepositoryManifest(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        manifest = registry_model.lookup_manifest_by_digest(
-            repo_ref, manifestref, include_legacy_image=True
-        )
+        manifest = registry_model.lookup_manifest_by_digest(repo_ref, manifestref)
         if manifest is None:
             raise NotFound()
 

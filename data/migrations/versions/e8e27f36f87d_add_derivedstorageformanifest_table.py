@@ -1,14 +1,14 @@
 """Add DerivedStorageForManifest table
 
 Revision ID: e8e27f36f87d
-Revises: 8e6a363784bb
+Revises: 04b9d2191450
 Create Date: 2020-03-27 14:41:28.881075
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "e8e27f36f87d"
-down_revision = "8e6a363784bb"
+down_revision = "04b9d2191450"
 
 import sqlalchemy as sa
 

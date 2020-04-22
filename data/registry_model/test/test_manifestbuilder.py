@@ -82,10 +82,9 @@ def test_build_manifest(layers, fake_session, registry_model):
     builder.done()
 
     # Verify the legacy image for the tag.
-    found = registry_model.get_repo_tag(repository_ref, "somenewtag", include_legacy_image=True)
+    found = registry_model.get_repo_tag(repository_ref, "somenewtag")
     assert found
     assert found.name == "somenewtag"
-    assert found.legacy_image.docker_image_id == layers[-1][0]
 
     # Verify the blob and manifest.
     manifest = registry_model.get_manifest_for_tag(found)

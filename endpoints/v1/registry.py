@@ -40,18 +40,7 @@ def require_completion(f):
 
     @wraps(f)
     def wrapper(namespace, repository, *args, **kwargs):
-        image_id = kwargs["image_id"]
-        repository_ref = registry_model.lookup_repository(namespace, repository)
-        if repository_ref is not None:
-            legacy_image = registry_model.get_legacy_image(repository_ref, image_id)
-            if legacy_image is not None and legacy_image.uploading:
-                abort(
-                    400,
-                    "Image %(image_id)s is being uploaded, retry later",
-                    issue="upload-in-progress",
-                    image_id=image_id,
-                )
-
+        # TODO: Remove this
         return f(namespace, repository, *args, **kwargs)
 
     return wrapper
@@ -102,7 +91,9 @@ def head_image_layer(namespace, repository, image_id, headers):
             abort(404)
 
         logger.debug("Looking up placement locations")
-        legacy_image = registry_model.get_legacy_image(repository_ref, image_id, include_blob=True)
+        legacy_image = registry_model.get_legacy_image(
+            repository_ref, image_id, store, include_blob=True
+        )
         if legacy_image is None:
             logger.debug("Could not find any blob placement locations")
             abort(404, "Image %(image_id)s not found", issue="unknown-image", image_id=image_id)
@@ -139,7 +130,9 @@ def get_image_layer(namespace, repository, image_id, headers):
         if repository_ref is None:
             abort(404)
 
-        legacy_image = registry_model.get_legacy_image(repository_ref, image_id, include_blob=True)
+        legacy_image = registry_model.get_legacy_image(
+            repository_ref, image_id, store, include_blob=True
+        )
         if legacy_image is None:
             abort(404, "Image %(image_id)s not found", issue="unknown-image", image_id=image_id)
 
@@ -351,7 +344,9 @@ def get_image_json(namespace, repository, image_id, headers):
         abort(403)
 
     logger.debug("Looking up repo image")
-    legacy_image = registry_model.get_legacy_image(repository_ref, image_id, include_blob=True)
+    legacy_image = registry_model.get_legacy_image(
+        repository_ref, image_id, store, include_blob=True
+    )
     if legacy_image is None:
         flask_abort(404)
 
@@ -381,15 +376,12 @@ def get_image_ancestry(namespace, repository, image_id, headers):
         abort(403)
 
     logger.debug("Looking up repo image")
-    legacy_image = registry_model.get_legacy_image(repository_ref, image_id, include_parents=True)
+    legacy_image = registry_model.get_legacy_image(repository_ref, image_id, store)
     if legacy_image is None:
         abort(404, "Image %(image_id)s not found", issue="unknown-image", image_id=image_id)
 
     # NOTE: We can not use jsonify here because we are returning a list not an object.
-    ancestor_ids = [legacy_image.docker_image_id] + [
-        a.docker_image_id for a in legacy_image.parents
-    ]
-    response = make_response(json.dumps(ancestor_ids), 200)
+    response = make_response(json.dumps(legacy_image.full_image_id_chain), 200)
     response.headers.extend(headers)
     return response
 

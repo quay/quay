@@ -98,7 +98,7 @@ def put_tag(namespace_name, repo_name, tag):
 
         # Check if there is an existing image we should use (for PUT calls outside of a normal push
         # operation).
-        legacy_image = registry_model.get_legacy_image(repository_ref, image_id)
+        legacy_image = registry_model.get_legacy_image(repository_ref, image_id, storage)
         if legacy_image is None:
             abort(400)
 

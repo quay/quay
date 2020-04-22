@@ -13,7 +13,7 @@ spec:
     image: quay.io/quay/quay
     name: e8e27f36f87d
   previous: !!python/tuple
-  - 8e6a363784bb
+  - 04b9d2191450
   schemaHints:
   - columns:
     - name: id

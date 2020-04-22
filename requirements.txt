@@ -69,6 +69,7 @@ gevent==1.4.0
 gipc==1.0.1
 greenlet==0.4.15
 gunicorn==19.9.0
+hashids==1.2.0
 hiredis==1.0.0
 html5lib==0.9999999
 httpretty==0.8.10
