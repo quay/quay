@@ -401,7 +401,6 @@ class LegacyImage(
             "command",
             "image_size",
             "aggregate_size",
-            "uploading",
             "v1_metadata_string",
         ],
     )
@@ -430,7 +429,6 @@ class LegacyImage(
             v1_metadata_string=image.v1_json_metadata,
             image_size=image.storage.image_size,
             aggregate_size=image.aggregate_size,
-            uploading=image.storage.uploading,
         )
 
     @property
