@@ -9,9 +9,8 @@ from data import model
 from data.database import Manifest as ManifestTable
 from data.registry_model.datatype import datatype, requiresinput, optionalinput
 from image.shared import ManifestException
-from image.shared.schemas import parse_manifest_from_bytes
+from image.shared.schemas import parse_manifest_from_bytes, is_manifest_list_type
 from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
-from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
 from util.bytes import Bytes
 
 
@@ -409,7 +408,7 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
         """
         Returns True if this manifest points to a list (instead of an image).
         """
-        return self.media_type == DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+        return is_manifest_list_type(self.media_type)
 
 
 class LegacyImage(
