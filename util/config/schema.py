@@ -1134,5 +1134,11 @@ CONFIG_SCHEMA = {
             "description": "The time after which a fresh login requires users to reenter their password",
             "x-example": "5m",
         },
+        # Webhook blacklist.
+        "WEBHOOK_HOSTNAME_BLACKLIST": {
+            "type": "array",
+            "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost",
+            "x-example": ["somexternaldomain.com"],
+        },
     },
 }
