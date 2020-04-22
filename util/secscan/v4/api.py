@@ -109,7 +109,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         assert isinstance(manifest, ManifestDataType) and not manifest.is_manifest_list
 
         uri_for = lambda layer: self._storage.get_direct_download_url(
-            self._storage.locations, l.blob.storage_path
+            self._storage.locations, layer.blob.storage_path
         )
         body = {
             "hash": manifest.digest,
