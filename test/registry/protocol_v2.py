@@ -11,11 +11,14 @@ from image.docker.schema1 import (
 from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.config import DockerSchema2Config
-from image.docker.schema2.list import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
 from image.oci import OCI_CONTENT_TYPES
 from image.oci.manifest import OCIManifestBuilder
 from image.oci.config import OCIConfig
-from image.shared.schemas import parse_manifest_from_bytes
+from image.shared.schemas import (
+    parse_manifest_from_bytes,
+    is_manifest_list_type,
+    MANIFEST_LIST_TYPES,
+)
 from test.registry.protocols import (
     RegistryProtocol,
     Failures,
@@ -206,7 +209,7 @@ class V2Protocol(RegistryProtocol):
 
         headers = {
             "Authorization": "Bearer " + token,
-            "Accept": ",".join(DOCKER_SCHEMA2_CONTENT_TYPES),
+            "Accept": ",".join(MANIFEST_LIST_TYPES),
         }
 
         for tag_name in tag_names:
@@ -223,7 +226,7 @@ class V2Protocol(RegistryProtocol):
 
             # Parse the returned manifest list and ensure it matches.
             ct = response.headers["Content-Type"]
-            assert ct == DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+            assert is_manifest_list_type(ct), "Expected list type, found: %s" % ct
             retrieved = parse_manifest_from_bytes(Bytes.for_string_or_unicode(response.text), ct)
             assert retrieved.schema_version == 2
             assert retrieved.is_manifest_list

@@ -33,7 +33,7 @@ from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1ManifestBuilder,
 )
-from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST
 
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class OCIModel(RegistryDataInterface):
         if tag.legacy_image_if_present is not None:
             return tag.legacy_image_if_present.docker_image_id
 
-        if tag.manifest.media_type == DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE:
+        if tag.manifest.is_manifest_list:
             # See if we can lookup a schema1 legacy image.
             v1_compatible = self.get_schema1_parsed_manifest(tag.manifest, "", "", "", storage)
             if v1_compatible is not None:
@@ -86,10 +86,7 @@ class OCIModel(RegistryDataInterface):
                 tags_map[tag.name] = legacy_image.docker_image_id
             else:
                 manifest = Manifest.for_manifest(tag.manifest, None)
-                if (
-                    legacy_image is None
-                    and manifest.media_type == DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
-                ):
+                if legacy_image is None and manifest.is_manifest_list:
                     # See if we can lookup a schema1 legacy image.
                     v1_compatible = self.get_schema1_parsed_manifest(manifest, "", "", "", storage)
                     if v1_compatible is not None:
@@ -101,7 +98,7 @@ class OCIModel(RegistryDataInterface):
 
     def _get_legacy_compatible_image_for_manifest(self, manifest, storage):
         # Check for a legacy image directly on the manifest.
-        if manifest.media_type != DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE:
+        if not manifest.is_manifest_list:
             return oci.shared.get_legacy_image_for_manifest(manifest._db_id)
 
         # Otherwise, lookup a legacy image associated with the v1-compatible manifest
