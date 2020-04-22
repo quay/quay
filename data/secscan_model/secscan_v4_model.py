@@ -127,7 +127,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             )
 
         min_id = (
-            start_token
+            start_token.min_id
             if start_token is not None
             else Manifest.select(fn.Min(Manifest.id)).scalar()
         )
