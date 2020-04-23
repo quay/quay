@@ -269,7 +269,8 @@ class LDAPUsers(FederatedUsers):
         has_pagination = not self._force_no_pagination
         with self._ldap.get_connection() as conn:
             for user_search_dn in self._user_dns:
-                search_flt = self._ldap_user_filter or ""
+                search_flt = "(objectClass=*)"
+                search_flt = self._add_user_filter(search_flt)
 
                 lc = ldap.controls.libldap.SimplePagedResultsControl(
                     criticality=True, size=1, cookie=""

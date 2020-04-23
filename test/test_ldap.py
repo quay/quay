@@ -50,6 +50,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "mail": ["bar@baz.com"],
             "memberOf": ["cn=AwesomeFolk,dc=quay,dc=io", "cn=*Guys,dc=quay,dc=io"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=someuser,ou=employees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -59,6 +60,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "mail": ["foo@bar.com"],
             "memberOf": ["cn=AwesomeFolk,dc=quay,dc=io", "cn=*Guys,dc=quay,dc=io"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=nomail,ou=employees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -74,6 +76,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "mail": ["foo@bar.com"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=referred,ou=employees,dc=quay,dc=io": {
             "uid": ["referred"],
@@ -88,11 +91,13 @@ def mock_ldap(requires_email=True, user_filter=None):
             "mail": ["foo@bar.com"],
             "userPassword": ["somepass"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=multientry,ou=subgroup2,ou=employees,dc=quay,dc=io": {
             "uid": ["multientry"],
             "another": ["key"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=secondaryuser,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -101,6 +106,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "mail": ["foosecondary@bar.com"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         # Feature: Email Blacklisting
         "uid=blacklistedcom,ou=otheremployees,dc=quay,dc=io": {
@@ -110,6 +116,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "mail": ["foo@blacklisted.com"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=blacklistednet,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -118,6 +125,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "mail": ["foo@blacklisted.net"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=blacklistedorg,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -126,6 +134,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "mail": ["foo@blacklisted.org"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
         "uid=notblacklistedcom,ou=otheremployees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
@@ -134,6 +143,7 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "mail": ["foo@notblacklisted.com"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
         },
     }
 
