@@ -175,7 +175,8 @@ def test_api_security(
         url = url_for(resource, **params)
         headers = {}
         if identity is not None:
-            headers["authorization"] = "basic " + base64.b64encode("%s:password" % identity)
+            auth = base64.b64encode(("%s:password" % identity).encode("ascii"))
+            headers["authorization"] = "basic " + auth.decode("ascii")
 
         rv = cl.open(url, headers=headers, method=method)
         assert rv.status_code == expected
