@@ -122,17 +122,17 @@ def test_deployment_rollout_status_message(deployment_object, expected_status, e
     [
         (
             {"api_host": "www.customhost.com"},
-            "/apis/extensions/v1beta1/namespaces/quay-enterprise/deployments",
+            "/apis/apps/v1/namespaces/quay-enterprise/deployments",
             "labelSelector=quay-enterprise-component%3Dapp",
         ),
         (
             {"api_host": "www.customhost.com", "qe_deployment_selector": "custom-selector"},
-            "/apis/extensions/v1beta1/namespaces/quay-enterprise/deployments",
+            "/apis/apps/v1/namespaces/quay-enterprise/deployments",
             "labelSelector=quay-enterprise-component%3Dcustom-selector",
         ),
         (
             {"api_host": "www.customhost.com", "qe_namespace": "custom-namespace"},
-            "/apis/extensions/v1beta1/namespaces/custom-namespace/deployments",
+            "/apis/apps/v1/namespaces/custom-namespace/deployments",
             "labelSelector=quay-enterprise-component%3Dapp",
         ),
         (
@@ -141,7 +141,7 @@ def test_deployment_rollout_status_message(deployment_object, expected_status, e
                 "qe_namespace": "custom-namespace",
                 "qe_deployment_selector": "custom-selector",
             },
-            "/apis/extensions/v1beta1/namespaces/custom-namespace/deployments",
+            "/apis/apps/v1/namespaces/custom-namespace/deployments",
             "labelSelector=quay-enterprise-component%3Dcustom-selector",
         ),
     ],
@@ -171,14 +171,14 @@ def test_get_qe_deployments(kube_config, expected_api, expected_query):
         (
             {"api_host": "www.customhost.com"},
             ["myDeployment"],
-            ["/apis/extensions/v1beta1/namespaces/quay-enterprise/deployments/myDeployment"],
+            ["/apis/apps/v1/namespaces/quay-enterprise/deployments/myDeployment"],
         ),
         (
             {"api_host": "www.customhost.com", "qe_namespace": "custom-namespace"},
             ["myDeployment", "otherDeployment"],
             [
-                "/apis/extensions/v1beta1/namespaces/custom-namespace/deployments/myDeployment",
-                "/apis/extensions/v1beta1/namespaces/custom-namespace/deployments/otherDeployment",
+                "/apis/apps/v1/namespaces/custom-namespace/deployments/myDeployment",
+                "/apis/apps/v1/namespaces/custom-namespace/deployments/otherDeployment",
             ],
         ),
     ],

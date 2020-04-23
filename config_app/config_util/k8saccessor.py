@@ -218,9 +218,7 @@ class KubernetesAccessorSingleton(object):
             self.kube_config.qe_deployment_selector,
         )
 
-        response = self._execute_k8s_api(
-            "GET", deployment_selector_url, api_prefix="apis/extensions/v1beta1"
-        )
+        response = self._execute_k8s_api("GET", deployment_selector_url, api_prefix="apis/apps/v1")
         if response.status_code != 200:
             return None
         return json.loads(response.text)
@@ -262,7 +260,7 @@ class KubernetesAccessorSingleton(object):
                             }
                         }
                     },
-                    api_prefix="apis/extensions/v1beta1",
+                    api_prefix="apis/apps/v1",
                     content_type="application/strategic-merge-patch+json",
                 )
             )
@@ -284,7 +282,7 @@ class KubernetesAccessorSingleton(object):
                         "revision": 0
                     },
                 },
-                api_prefix="apis/extensions/v1beta1",
+                api_prefix="apis/apps/v1",
             ),
             201,
         )
