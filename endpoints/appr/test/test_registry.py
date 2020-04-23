@@ -45,7 +45,7 @@ def test_invalid_release_name(release_name, app, client):
     }
 
     url = url_for("appr.push", **params)
-    auth = base64.b64encode("devtable:password")
+    auth = base64.b64encode(b"devtable:password").decode("ascii")
     headers = {"Content-Type": "application/json", "Authorization": "Basic " + auth}
     data = {
         "release": release_name,
@@ -65,7 +65,7 @@ def test_readonly(readonly, expected_status, app, client):
     }
 
     url = url_for("appr.push", **params)
-    auth = base64.b64encode("devtable:password")
+    auth = base64.b64encode(b"devtable:password").decode("ascii")
     headers = {"Content-Type": "application/json", "Authorization": "Basic " + auth}
     data = {
         "release": "1.0",
