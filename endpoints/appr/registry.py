@@ -72,7 +72,8 @@ def login():
     if not result.auth_valid:
         raise UnauthorizedAccess(result.error_message)
 
-    return jsonify({"token": "basic " + b64encode("%s:%s" % (username, password))})
+    auth = b64encode(b"%s:%s" % (username.encode("ascii"), password.encode("ascii")))
+    return jsonify({"token": "basic " + auth.decode("ascii")})
 
 
 # @TODO: Redirect to S3 url
@@ -89,6 +90,7 @@ def blobs(namespace, package_name, digest):
     reponame = repo_name(namespace, package_name)
     data = cnr_registry.pull_blob(reponame, digest, blob_class=Blob)
     json_format = request.args.get("format", None) == "json"
+    print("DATA1:", data)
     return _pull(data, json_format=json_format)
 
 
@@ -197,6 +199,7 @@ def pull(namespace, package_name, release, media_type):
         metadata={"release": release, "mediatype": media_type},
     )
     json_format = request.args.get("format", None) == "json"
+    print("DATA:", data)
     return _pull(data, json_format)
 
 

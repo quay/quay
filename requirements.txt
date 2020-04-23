@@ -1,4 +1,4 @@
--e git+https://github.com/quay/appr.git@ced40805230e0fb1e3efd3d515a360145262e455#egg=cnr_server
+-e git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b#egg=cnr_server
 -e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
 -e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
 -e git+https://github.com/DevTable/container-cloud-config.git@7d6c1545554b81ac65edd6d1bd1ab9f8c462209a#egg=container_cloud_config
