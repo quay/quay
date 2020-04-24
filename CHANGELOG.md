@@ -1,3 +1,8 @@
+### v3.2.2
+
+- Rebuild: Updated base image and installed dependencies
+- Fixed: Clair errors trying to download wrong OVAL data
+
 ### v3.2.1
 
 - Rebuild: Updated base image and installed dependencies
