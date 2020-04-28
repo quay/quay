@@ -4,12 +4,14 @@ from app import repository_gc_queue, all_queues
 from data import model, database
 from workers.queueworker import QueueWorker
 from util.log import logfile_path
+from util.locking import GlobalLock, LockNotAcquiredException
 
 logger = logging.getLogger(__name__)
 
 
 POLL_PERIOD_SECONDS = 60
 REPOSITORY_GC_TIMEOUT = 60 * 15  # 15 minutes
+LOCK_TIMEOUT_PADDING = 60  # seconds
 
 
 class RepositoryGCWorker(QueueWorker):
@@ -18,6 +20,15 @@ class RepositoryGCWorker(QueueWorker):
     """
 
     def process_queue_item(self, job_details):
+        try:
+            with GlobalLock(
+                "LARGE_GARBAGE_COLLECTION", lock_ttl=REPOSITORY_GC_TIMEOUT + LOCK_TIMEOUT_PADDING
+            ):
+                self._perform_gc(job_details)
+        except LockNotAcquiredException:
+            logger.debug("Could not acquire global lock for garbage collection")
+
+    def _perform_gc(self, job_details):
         logger.debug("Got repository GC queue item: %s", job_details)
         marker_id = job_details["marker_id"]
 

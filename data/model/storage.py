@@ -215,11 +215,12 @@ def garbage_collect_storage(storage_id_whitelist):
                 continue
 
             # Perform one final check to ensure the blob is not needed.
-            try:
-                ImageStorage.select().where(ImageStorage.content_checksum == storage_checksum).get()
+            if (
+                ImageStorage.select()
+                .where(ImageStorage.content_checksum == storage_checksum)
+                .exists()
+            ):
                 continue
-            except ImageStorage.DoesNotExist:
-                pass
 
         logger.debug("Removing %s from %s", image_path, location_name)
         config.store.remove({location_name}, image_path)
