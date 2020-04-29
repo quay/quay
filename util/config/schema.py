@@ -289,6 +289,17 @@ CONFIG_SCHEMA = {
             "description": "Whether to proxy all direct download URLs in storage via the registry nginx. Defaults to False",
             "x-example": False,
         },
+        "STORAGE_PROXY_READ_TIMEOUT": {
+            "type": "string",
+            "description": "The read timeout for storage proxying. Defaults to 120s.",
+            "pattern": "^[0-9]+(s|m|h)$",
+            "x-example": "60s",
+        },
+        "STORAGE_PROXY_DNS_RESOLVER": {
+            "type": "string",
+            "description": "The DNS resolver to use for storage proxying. Defaults to the internal DNS.",
+            "x-example": "127.0.0.1:8053",
+        },
         "MAXIMUM_LAYER_SIZE": {
             "type": "string",
             "description": "Maximum allowed size of an image layer. Defaults to 20G",

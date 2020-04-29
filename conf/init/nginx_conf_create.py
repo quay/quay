@@ -98,6 +98,9 @@ def generate_server_config(config):
     maximum_layer_size = config.get("MAXIMUM_LAYER_SIZE", "20G")
     maximum_cnr_layer_size = config.get("MAXIMUM_CNR_LAYER_SIZE", "1M")
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
+    storage_proxy_read_timeout = config.get("STORAGE_PROXY_READ_TIMEOUT", "120s")
+    storage_proxy_dns_resolver = config.get("STORAGE_PROXY_DNS_RESOLVER", None)
+    storage_proxy_enabled = config.get("FEATURE_PROXY_STORAGE", False)
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/server-base.conf"),
@@ -107,6 +110,9 @@ def generate_server_config(config):
         maximum_layer_size=maximum_layer_size,
         maximum_cnr_layer_size=maximum_cnr_layer_size,
         enable_rate_limits=enable_rate_limits,
+        storage_proxy_read_timeout=storage_proxy_read_timeout,
+        storage_proxy_enabled=storage_proxy_enabled,
+        storage_proxy_dns_resolver=storage_proxy_dns_resolver,
         static_dir=STATIC_DIR,
     )
 

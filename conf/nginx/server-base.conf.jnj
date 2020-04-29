@@ -33,8 +33,13 @@ location /realtime {
     proxy_request_buffering off;
 }
 
+{% if storage_proxy_enabled %}
 location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
+    {% if storage_proxy_dns_resolver %}
+    resolver {{ storage_proxy_dns_resolver }} valid=10s;    
+    {% else %}
     include resolver.conf;
+    {% endif %}
 
     auth_request /_storage_proxy_auth;
 
@@ -50,7 +55,7 @@ location ~ ^/_storage_proxy/([^/]+)/([^/]+)/([^/]+)/(.+) {
     proxy_buffering off;
     proxy_request_buffering off;
 
-    proxy_read_timeout 60s;
+    proxy_read_timeout {{ storage_proxy_read_timeout }};
 }
 
 location = /_storage_proxy_auth {
@@ -62,6 +67,7 @@ location = /_storage_proxy_auth {
 
     proxy_read_timeout 10;
 }
+{% endif %}
 
 location ~ ^/v2/_catalog(.*)$ {
     proxy_pass http://registry_app_server;
