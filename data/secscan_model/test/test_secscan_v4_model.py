@@ -24,7 +24,12 @@ from test.fixtures import *
 from app import app, instance_keys, storage
 
 
-def test_load_security_information_queued(initialized_db):
+@pytest.fixture()
+def set_secscan_config():
+    app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
+
+
+def test_load_security_information_queued(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
     manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
@@ -33,7 +38,7 @@ def test_load_security_information_queued(initialized_db):
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.NOT_YET_INDEXED
 
 
-def test_load_security_information_failed_to_index(initialized_db):
+def test_load_security_information_failed_to_index(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
     manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
@@ -52,7 +57,7 @@ def test_load_security_information_failed_to_index(initialized_db):
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.FAILED_TO_INDEX
 
 
-def test_load_security_information_api_returns_none(initialized_db):
+def test_load_security_information_api_returns_none(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
     manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
@@ -74,7 +79,7 @@ def test_load_security_information_api_returns_none(initialized_db):
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.NOT_YET_INDEXED
 
 
-def test_load_security_information_api_request_failure(initialized_db):
+def test_load_security_information_api_request_failure(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
     manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
@@ -96,7 +101,7 @@ def test_load_security_information_api_request_failure(initialized_db):
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.COULD_NOT_LOAD
 
 
-def test_load_security_information_success(initialized_db):
+def test_load_security_information_success(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
     manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
@@ -131,7 +136,7 @@ def test_load_security_information_success(initialized_db):
     assert result.security_information == SecurityInformation(Layer(manifest.digest, "", "", 4, []))
 
 
-def test_perform_indexing_whitelist(initialized_db):
+def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
     expected_manifests = (
         Manifest.select().join(Repository).join(User).where(User.username == "devtable")
@@ -156,7 +161,7 @@ def test_perform_indexing_whitelist(initialized_db):
     )
 
 
-def test_perform_indexing_empty_whitelist(initialized_db):
+def test_perform_indexing_empty_whitelist(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = []
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -173,7 +178,7 @@ def test_perform_indexing_empty_whitelist(initialized_db):
     assert next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
 
 
-def test_perform_indexing_failed(initialized_db):
+def test_perform_indexing_failed(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
     expected_manifests = (
         Manifest.select().join(Repository).join(User).where(User.username == "devtable")
@@ -205,7 +210,7 @@ def test_perform_indexing_failed(initialized_db):
         assert mss.index_status == IndexStatus.COMPLETED
 
 
-def test_perform_indexing_needs_reindexing(initialized_db):
+def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
     expected_manifests = (
         Manifest.select().join(Repository).join(User).where(User.username == "devtable")
@@ -237,7 +242,7 @@ def test_perform_indexing_needs_reindexing(initialized_db):
         assert mss.indexer_hash == "xyz"
 
 
-def test_perform_indexing_api_request_failure_state(initialized_db):
+def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
@@ -250,7 +255,7 @@ def test_perform_indexing_api_request_failure_state(initialized_db):
     assert ManifestSecurityStatus.select().count() == 0
 
 
-def test_perform_indexing_api_request_failure_index(initialized_db):
+def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
     expected_manifests = (
         Manifest.select(fn.Max(Manifest.id))
