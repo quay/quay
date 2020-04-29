@@ -1,7 +1,6 @@
 # Project Quay
 
-[![Build Status](https://travis-ci.com/quay/quay.svg?token=pWvEz2TeyDsVn69Hkiwq&branch=master)](https://travis-ci.com/quay/quay)
-
+![CI](https://github.com/quay/quay/workflows/CI/badge.svg?branch=master)
 [![Container Repository on Quay](https://quay.io/repository/projectquay/quay/status "Container Repository on Quay")](https://quay.io/repository/projectquay/quay)
 
 :warning: The `master` branch may be in an *unstable or even broken state* during development.
