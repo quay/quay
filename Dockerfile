@@ -43,7 +43,7 @@ COPY . .
 RUN scl enable python27 "\
     pip install --upgrade setuptools==44 pip && \
     pip install -r requirements.txt --no-cache && \
-    pip install -r requirements-tests.txt --no-cache && \
+    pip install -r requirements-dev.txt --no-cache && \
     pip freeze && \
     mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \

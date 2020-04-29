@@ -5,13 +5,13 @@ FROM quay.io/quay/quay-base:latest
 
 WORKDIR $QUAYDIR
 
-COPY requirements.txt requirements-tests.txt ./
+COPY requirements.txt requirements-dev.txt ./
 
 # Put the virtualenv outside the source directory.  This lets us mount
 # the Quay source as a volume for local development.
 RUN virtualenv --distribute /venv \
     && /venv/bin/pip install -r requirements.txt \
-    && /venv/bin/pip install -r requirements-tests.txt \
+    && /venv/bin/pip install -r requirements-dev.txt \
     && /venv/bin/pip freeze
 
 ENV PATH /venv/bin:${PATH}

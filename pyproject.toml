@@ -1,0 +1,19 @@
+[tool.black]
+line-length = 100
+target-version = ['py27']
+
+[tool.pylint.messages_control]
+disable = "missing-docstring,invalid-name,too-many-locals,too-few-public-methods,too-many-lines"
+
+[tool.pylint.typecheck]
+ignored-modules = "features,greenlet"
+generated-members = "REQUEST,acl_users,aq_parent,DoesNotExist,id,can"
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+omit = ['test/**', 'venv/**', '**/test/**']

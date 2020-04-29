@@ -1,0 +1,119 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+
+        # https://issues.redhat.com/browse/PROJQUAY-92
+        # https://github.com/psf/black/issues/1207#issuecomment-566249522
+        pip install black --no-binary=regex
+
+    - name: Check Formatting
+      run: |
+        black --line-length=100 --target-version=py27 --check --diff .
+
+  unit:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - name: Set up Python 2.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 2.7
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        python -m pip install --upgrade pip
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      run: tox -e py27-unit
+
+  registry:
+    name: E2E Registry Tests
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - name: Set up Python 2.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 2.7
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        python -m pip install --upgrade pip
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      run: tox -e py27-registry
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Docker Build
+      run: docker build .
+
+  mysql:
+    name: E2E MySQL Test
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - name: Set up Python 2.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 2.7
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
+        sudo systemctl unmask docker
+        sudo systemctl start docker
+        docker version
+        python -m pip install --upgrade pip
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      run: tox -e py27-mysql
+
+  psql:
+    name: E2E Postgres Test
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - name: Set up Python 2.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 2.7
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
+        sudo systemctl unmask docker
+        sudo systemctl start docker
+        docker version
+        python -m pip install --upgrade pip
+        cat requirements-dev.txt | grep tox | xargs pip install
+
+    - name: tox
+      run: tox -e py27-psql
