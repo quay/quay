@@ -18,7 +18,7 @@ from util.morecollections import AttrDict
     [
         ({}, None, None, False, ConfigValidationException),
         ({"BUILDLOGS_REDIS": {}}, None, None, False, ConfigValidationException),
-        ({"BUILDLOGS_REDIS": {"host": "somehost"}}, None, None, False, redis.TimeoutError),
+        ({"BUILDLOGS_REDIS": {"host": "somehost"}}, None, None, False, redis.ConnectionError),
         ({"BUILDLOGS_REDIS": {"host": "localhost"}}, None, None, True, None),
     ],
 )
