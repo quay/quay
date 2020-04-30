@@ -354,7 +354,7 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         elif manifest_impl.namespace != namespace_name:
             raise NameInvalid(
                 message="namespace name does not match manifest",
-                details={
+                detail={
                     "namespace name `%s` does not match `%s` in manifest"
                     % (namespace_name, manifest_impl.namespace)
                 },
@@ -363,7 +363,7 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         if manifest_impl.repo_name != repo_name:
             raise NameInvalid(
                 message="repository name does not match manifest",
-                details={
+                detail={
                     "repository name `%s` does not match `%s` in manifest"
                     % (repo_name, manifest_impl.repo_name)
                 },
