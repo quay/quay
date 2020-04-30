@@ -688,7 +688,7 @@ CONFIG_SCHEMA = {
             "x-example": "http://192.168.99.101:6060",
         },
         "SECURITY_SCANNER_V4_ENDPOINT": {
-            "type": "string",
+            "type": ["string", "null"],
             "pattern": "^http(s)?://(.)+$",
             "description": "The endpoint for the V4 security scanner",
             "x-example": "http://192.168.99.101:6060",
