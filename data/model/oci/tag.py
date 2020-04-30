@@ -198,6 +198,9 @@ def get_most_recent_tag_lifetime_start(repository_ids):
     Returns a map from repo ID to the timestamp of the most recently pushed alive tag for each
     specified repository or None if none.
     """
+    if not repository_ids:
+        return {}
+
     assert len(repository_ids) > 0 and None not in repository_ids
 
     query = (

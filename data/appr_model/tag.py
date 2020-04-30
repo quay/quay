@@ -131,6 +131,11 @@ def get_most_recent_tag_lifetime_start(repository_ids, models_ref, tag_kind="rel
     Returns a map from repo ID to the timestamp of the most recently pushed alive tag for each
     specified repository or None if none.
     """
+    if not repository_ids:
+        return {}
+
+    assert len(repository_ids) > 0 and None not in repository_ids
+
     Tag = models_ref.Tag
     tag_kind_id = Tag.tag_kind.get_id(tag_kind)
     tags = tag_is_alive(
