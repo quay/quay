@@ -4,6 +4,12 @@ from six import add_metaclass
 from deprecated import deprecated
 
 
+class InvalidConfigurationException(Exception):
+    """
+    Exception raised when attempting to initialize a secscan model fails.
+    """
+
+
 @add_metaclass(ABCMeta)
 class SecurityScannerInterface(object):
     """

@@ -6,7 +6,7 @@ from math import log10
 from peewee import fn, JOIN
 from enum import Enum
 
-from data.secscan_model.interface import SecurityScannerInterface
+from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.secscan_model.datatypes import (
     ScanLookupStatus,
     SecurityInformationLookupResult,
@@ -51,6 +51,25 @@ class ScanToken(namedtuple("NextScanToken", ["min_id"])):
     """
 
 
+class NoopV4SecurityScanner(SecurityScannerInterface):
+    """
+    No-op implementation of the security scanner interface for Clair V4.
+    """
+
+    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
+        return SecurityInformationLookupResult.for_request_error("security scanner misconfigured")
+
+    def perform_indexing(self, start_token=None):
+        return None
+
+    def register_model_cleanup_callbacks(self, data_model_config):
+        pass
+
+    @property
+    def legacy_api_handler(self):
+        raise NotImplementedError("Unsupported for this security scanner version")
+
+
 class V4SecurityScanner(SecurityScannerInterface):
     """
     Implementation of the security scanner interface for Clair V4 API-compatible implementations.
@@ -60,14 +79,20 @@ class V4SecurityScanner(SecurityScannerInterface):
         self.app = app
         self.storage = storage
 
+        if app.config.get("SECURITY_SCANNER_V4_ENDPOINT", None) is None:
+            raise InvalidConfigurationException(
+                "Missing SECURITY_SCANNER_V4_ENDPOINT configuration"
+            )
+
         validator = V4SecurityConfigValidator(
             app.config.get("FEATURE_SECURITY_SCANNER", False),
-            app.config.get("SECURITY_SCANNER_V4_ENDPOINT"),
+            app.config.get("SECURITY_SCANNER_V4_ENDPOINT", None),
         )
 
         if not validator.valid():
-            logger.warning("Failed to validate security scanner V4 configuration")
-            return
+            msg = "Failed to validate security scanner V4 configuration"
+            logger.warning(msg)
+            raise InvalidConfigurationException(msg)
 
         self._secscan_api = ClairSecurityScannerAPI(
             endpoint=app.config.get("SECURITY_SCANNER_V4_ENDPOINT"),
@@ -77,7 +102,9 @@ class V4SecurityScanner(SecurityScannerInterface):
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
         if not isinstance(manifest_or_legacy_image, ManifestDataType):
-            return None
+            return SecurityInformationLookupResult.with_status(
+                ScanLookupStatus.UNSUPPORTED_FOR_INDEXING
+            )
 
         status = None
         try:

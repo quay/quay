@@ -8,7 +8,7 @@ from deprecated import deprecated
 
 from data.database import UseThenDisconnect
 
-from data.secscan_model.interface import SecurityScannerInterface
+from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.secscan_model.datatypes import (
     ScanLookupStatus,
     SecurityInformationLookupResult,
@@ -54,6 +54,26 @@ class ScanToken(namedtuple("NextScanToken", ["min_id"])):
 
 
 @deprecated(reason="Will be replaced by a V4 API security scanner soon")
+class NoopV2SecurityScanner(SecurityScannerInterface):
+    """
+    No-op implementation of the security scanner interface for Clair V2.
+    """
+
+    def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
+        return None
+
+    def perform_indexing(self, start_token=None):
+        return None
+
+    def register_model_cleanup_callbacks(self, data_model_config):
+        pass
+
+    @property
+    def legacy_api_handler(self):
+        return None
+
+
+@deprecated(reason="Will be replaced by a V4 API security scanner soon")
 class V2SecurityScanner(SecurityScannerInterface):
     """
     Implementation of the security scanner interface for Clair V2 API-compatible implementations.
@@ -70,9 +90,11 @@ class V2SecurityScanner(SecurityScannerInterface):
             app.config.get("FEATURE_SECURITY_SCANNER", False),
             app.config.get("SECURITY_SCANNER_ENDPOINT"),
         )
+
         if not validator.valid():
-            logger.warning("Failed to validate security scanner V2 configuration")
-            return
+            msg = "Failed to validate security scanner V2 configuration"
+            logger.warning(msg)
+            raise InvalidConfigurationException(msg)
 
         url_scheme_and_hostname = URLSchemeAndHostname(
             app.config["PREFERRED_URL_SCHEME"], app.config["SERVER_HOSTNAME"]
