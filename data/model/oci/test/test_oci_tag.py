@@ -69,6 +69,9 @@ def test_get_most_recent_tag_lifetime_start(initialized_db):
         tags = get_most_recent_tag_lifetime_start([repo])
         assert tags[repo.id] == tag.lifetime_start_ms
 
+    no_tags = get_most_recent_tag_lifetime_start([])
+    assert isinstance(no_tags, dict) and len(no_tags) == 0
+
 
 def test_get_most_recent_tag(initialized_db):
     repo = get_repository("outsideorg", "coolrepo")
