@@ -174,6 +174,7 @@ def __create_manifest_and_tags(
 
         config = {
             "id": current_id,
+            "Size": len(content),
         }
         if parent_id:
             config["parent"] = parent_id

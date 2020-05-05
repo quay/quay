@@ -249,11 +249,14 @@ class Tag(
     @property
     @requiresinput("manifest_row")
     @requiresinput("legacy_id_handler")
-    def manifest(self, manifest_row, legacy_id_handler):
+    @optionalinput("legacy_image_row")
+    def manifest(self, manifest_row, legacy_id_handler, legacy_image_row):
         """
         Returns the manifest for this tag.
         """
-        return Manifest.for_manifest(manifest_row, legacy_id_handler)
+        return Manifest.for_manifest(
+            manifest_row, legacy_id_handler, legacy_image_row=legacy_image_row
+        )
 
     @property
     @requiresinput("repository")

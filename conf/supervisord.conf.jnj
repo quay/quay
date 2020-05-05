@@ -168,6 +168,14 @@ autostart = {{ config['teamsyncworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:repomirrorworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command=python -m workers.repomirrorworker
+autostart = {{ config['repomirrorworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 ;;; Run interactive scripts
 [program:dnsmasq]
 command=/usr/sbin/dnsmasq --no-daemon --user=root --listen-address=127.0.0.1 --port=8053

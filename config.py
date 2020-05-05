@@ -730,3 +730,6 @@ class DefaultConfig(ImmutableConfig):
 
     # The root URL for documentation.
     DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3.3/"
+
+    # TEMP FEATURE: Backfill the sizes of manifests.
+    FEATURE_MANIFEST_SIZE_BACKFILL = True

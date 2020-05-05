@@ -165,6 +165,8 @@ def test_get_or_create_manifest(schema_version, initialized_db):
         builder.add_layer(random_digest, len(random_data))
         sample_manifest_instance = builder.build()
 
+    assert sample_manifest_instance.layers_compressed_size is not None
+
     # Create a new manifest.
     created_manifest = get_or_create_manifest(repository, sample_manifest_instance, storage)
     created = created_manifest.manifest
@@ -178,6 +180,12 @@ def test_get_or_create_manifest(schema_version, initialized_db):
     assert created_manifest.labels_to_apply == expected_labels
     assert created.config_media_type == sample_manifest_instance.config_media_type
     assert created.layers_compressed_size == sample_manifest_instance.layers_compressed_size
+
+    # Lookup the manifest and verify.
+    found = lookup_manifest(repository, created.digest, allow_dead=True)
+    assert found.digest == created.digest
+    assert found.config_media_type == created.config_media_type
+    assert found.layers_compressed_size == created.layers_compressed_size
 
     # Verify it has a temporary tag pointing to it.
     assert Tag.get(manifest=created, hidden=True).lifetime_end_ms
