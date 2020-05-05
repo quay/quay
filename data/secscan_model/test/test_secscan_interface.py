@@ -99,7 +99,7 @@ def test_perform_indexing(next_token, expected_next_token, initialized_db):
 
     def secscan_api(*args, **kwargs):
         api = Mock()
-        api.state.return_value = "abc"
+        api.state.return_value = {"state": "abc"}
         api.index.return_value = ({"err": None, "state": IndexReportState.Index_Finished}, "abc")
 
         return api
