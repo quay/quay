@@ -739,3 +739,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether the repository action count worker is enabled.
     FEATURE_REPOSITORY_ACTION_COUNTER = True
+
+    # TEMP FEATURE: Backfill the sizes of manifests.
+    FEATURE_MANIFEST_SIZE_BACKFILL = True

@@ -123,7 +123,14 @@ def list_repository_tag_history(
     Note that the returned Manifest will not contain the manifest contents.
     """
     query = (
-        Tag.select(Tag, Manifest.id, Manifest.digest, Manifest.media_type)
+        Tag.select(
+            Tag,
+            Manifest.id,
+            Manifest.digest,
+            Manifest.media_type,
+            Manifest.layers_compressed_size,
+            Manifest.config_media_type,
+        )
         .join(Manifest)
         .where(Tag.repository == repository_id)
         .order_by(Tag.lifetime_start_ms.desc(), Tag.name)

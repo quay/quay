@@ -275,8 +275,21 @@ class OCIModel(RegistryDataInterface):
             repository_ref._db_id, page, size, specific_tag_name, active_tags_only, since_time_ms
         )
 
+        # TODO: Remove this once the layers compressed sizes have been fully backfilled.
+        tags_missing_sizes = [tag for tag in tags if tag.manifest.layers_compressed_size is None]
+        legacy_images_map = {}
+        if tags_missing_sizes:
+            legacy_images_map = oci.tag.get_legacy_images_for_tags(tags_missing_sizes)
+
         return (
-            [Tag.for_tag(tag, self._legacy_image_id_handler) for tag in tags],
+            [
+                Tag.for_tag(
+                    tag,
+                    self._legacy_image_id_handler,
+                    legacy_image_row=legacy_images_map.get(tag.id),
+                )
+                for tag in tags
+            ],
             has_more,
         )
 

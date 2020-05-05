@@ -283,7 +283,7 @@ class DockerSchema1Manifest(ManifestInterface):
 
     @property
     def layers_compressed_size(self):
-        return sum(l.compressed_size for l in self.layers if l.compressed_size)
+        return sum(l.compressed_size for l in self.layers if l.compressed_size is not None)
 
     @property
     def config_media_type(self):

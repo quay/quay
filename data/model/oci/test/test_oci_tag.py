@@ -146,6 +146,11 @@ def test_list_repository_tag_history(namespace_name, repo_name, initialized_db):
     assert results
     assert not has_more
 
+    assert results[0].manifest.id is not None
+    assert results[0].manifest.digest is not None
+    assert results[0].manifest.media_type is not None
+    assert results[0].manifest.layers_compressed_size is not None
+
 
 def test_list_repository_tag_history_with_history(initialized_db):
     repo = get_repository("devtable", "history")

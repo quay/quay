@@ -873,18 +873,11 @@ def test_image_replication_empty_layers(
             credentials=credentials,
         )
 
-<<<<<<< HEAD
-        # Ensure that entries were created for each image.
-        for image_id in list(result.image_ids.values()):
-            r = registry_server_executor.on(liveserver).get_storage_replication_entry(image_id)
-            assert r.text == "OK"
-=======
         # Ensure that entries were created for each layer.
         r = registry_server_executor.on(liveserver).verify_replication_for(
             "devtable", "newrepo", "latest"
         )
         assert r.text == "OK"
->>>>>>> Switch registry model to use synthetic legacy images
 
 
 @pytest.mark.parametrize(
