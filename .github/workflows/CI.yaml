@@ -117,3 +117,67 @@ jobs:
 
     - name: tox
       run: tox -e py27-psql
+
+  oci:
+    name: OCI Conformance
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: opencontainers/distribution-spec
+        path: dist-spec
+
+    - name: Set up Python 2.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 2.7
+
+    - name: Set up Go 1.14
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+
+    - name: Set GOPATH
+      run: |
+        # temporary fix for https://github.com/actions/setup-go/issues/14
+        echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
+        echo "##[add-path]$(dirname $GITHUB_WORKSPACE)/bin"
+
+    - name: Install dependencies
+      run: |
+        # Quay
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        python -m pip install --upgrade pip
+        pip install -r <(cat requirements.txt requirements-dev.txt)
+
+        # Conformance
+        cd dist-spec/conformance
+        go mod vendor
+        CGO_ENABLED=0 go test -c -o conformance.test
+
+    - name: Start a registry instance
+      run: |
+        gunicorn -c conf/gunicorn_local.py application:application &
+        sleep 30
+
+        sudo apt-get install curl
+        curl -v http://localhost:5000/v2/auth?scope=repository%3Adevtable%2Foci%3Apull&service=localhost%3A5000
+
+    - name: Run conformance tests
+      env:
+        OCI_ROOT_URL: http://localhost:5000
+        OCI_NAMESPACE: devtable/oci
+        OCI_USERNAME: devtable
+        OCI_PASSWORD: password
+        OCI_DEBUG: true
+        OCI_TEST_PUSH: 1
+        OCI_TEST_CONTENT_DISCOVERY: 1
+      run: |
+        ./dist-spec/conformance/conformance.test
+
+    - name: Clean up registry instance
+      run: |
+        pkill -9 gunicorn
+      if: always()
