@@ -51,6 +51,9 @@ class InMemoryDataModelCache(DataModelCache):
     def __init__(self):
         self.cache = ExpiresDict()
 
+    def empty_for_testing(self):
+        self.cache = ExpiresDict()
+
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         not_found = [None]
         logger.debug("Checking cache for key %s", cache_key.key)
