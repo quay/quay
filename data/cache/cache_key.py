@@ -38,3 +38,10 @@ def for_active_repo_tags(repository_id, start_pagination_id, limit):
     return CacheKey(
         "repo_active_tags__%s_%s_%s" % (repository_id, start_pagination_id, limit), "120s"
     )
+
+
+def for_appr_applications_list(namespace, limit):
+    """
+    Returns a cache key for listing applications under the App Registry.
+    """
+    return CacheKey("appr_applications_list_%s_%s" % (namespace, limit), "3600s")

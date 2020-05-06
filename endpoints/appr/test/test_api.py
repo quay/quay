@@ -2,6 +2,8 @@ import uuid
 
 import pytest
 
+from app import model_cache
+
 from cnr.tests.conftest import *
 from cnr.tests.test_apiserver import BaseTestServer
 from cnr.tests.test_models import CnrTestModels
@@ -99,6 +101,11 @@ class TestServerQuayDB(BaseTestServer):
         assert res.status_code == 200
         assert len(self.json(res)) == 1
 
+        # Run again for cache checking.
+        res = self.Client(client, self.headers()).get(url, params={"query": "rocketchat"})
+        assert res.status_code == 200
+        assert len(self.json(res)) == 1
+
     def test_list_search_package_no_match(self, db_with_data1, client):
         url = self._url_for("api/v1/packages")
         res = self.Client(client, self.headers()).get(url, params={"query": "toto"})
@@ -141,6 +148,22 @@ class TestQuayModels(CnrTestModels):
     def test_db_restore(self, newdb, dbdata1):
         # This will fail as long as CNR tests use a mediatype with v1.
         pass
+
+    def test_save_package_exists_force(self, newdb, package_b64blob):
+        model_cache.empty_for_testing()
+        CnrTestModels.test_save_package_exists_force(self, newdb, package_b64blob)
+
+    def test_save_package_exists(self, newdb, package_b64blob):
+        model_cache.empty_for_testing()
+        CnrTestModels.test_save_package_exists(self, newdb, package_b64blob)
+
+    def test_save_package(self, newdb, package_b64blob):
+        model_cache.empty_for_testing()
+        CnrTestModels.test_save_package(self, newdb, package_b64blob)
+
+    def test_save_package_bad_release(self, newdb):
+        model_cache.empty_for_testing()
+        CnrTestModels.test_save_package_bad_release(self, newdb)
 
     def test_push_same_blob(self, db_with_data1):
         p = db_with_data1.Package.get("titi/rocketchat", ">1.2", "kpm")
