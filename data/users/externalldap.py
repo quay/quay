@@ -442,6 +442,7 @@ class LDAPUsers(FederatedUsers):
                     break
 
                 while True:
+                    found_results = 0
                     try:
                         if has_pagination:
                             _, rdata, _, serverctrls = conn.result3(msgid)
@@ -449,7 +450,6 @@ class LDAPUsers(FederatedUsers):
                             _, rdata = conn.result(msgid)
 
                         # Yield any users found.
-                        found_results = 0
                         for userdata in rdata:
                             found_results = found_results + 1
                             yield self._build_user_information(userdata[1])
