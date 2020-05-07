@@ -89,78 +89,78 @@ angular.module('quay').directive('repoPanelTags', function () {
         }
 
         // Sort the tags by the predicate and the reverse, and map the information.
-        var imageIDs = [];
         var ordered = TableService.buildOrderedItems(allTags, $scope.options,
-            ['name'], ['last_modified_datetime', 'size']).entries;
+            ['name', 'manifest_digest'], ['last_modified_datetime', 'size']).entries;
 
         var checked = [];
-        var imageMap = {};
-        var imageIndexMap = {};
+        var manifestMap = {};
+        var manifestIndexMap = {};
+        var manifestDigests = [];
         for (var i = 0; i < ordered.length; ++i) {
           var tagInfo = ordered[i];
-          if (!tagInfo.image_id) {
+          if (!tagInfo.manifest_digest) {
             continue;
           }
 
-          if (!imageMap[tagInfo.image_id]) {
-            imageMap[tagInfo.image_id] = [];
-            imageIDs.push(tagInfo.image_id)
+          if (!manifestMap[tagInfo.manifest_digest]) {
+            manifestMap[tagInfo.manifest_digest] = [];
+            manifestDigests.push(tagInfo.manifest_digest)
           }
 
-          imageMap[tagInfo.image_id].push(tagInfo);
+          manifestMap[tagInfo.manifest_digest].push(tagInfo);
           if ($.inArray(tagInfo.name, $scope.selectedTags) >= 0) {
             checked.push(tagInfo);
           }
 
-          if (!imageIndexMap[tagInfo.image_id]) {
-            imageIndexMap[tagInfo.image_id] = {'start': i, 'end': i};
+          if (!manifestIndexMap[tagInfo.manifest_digest]) {
+            manifestIndexMap[tagInfo.manifest_digest] = {'start': i, 'end': i};
           }
 
-          imageIndexMap[tagInfo.image_id]['end'] = i;
+          manifestIndexMap[tagInfo.manifest_digest]['end'] = i;
         };
 
         // Calculate the image tracks.
         var colors = d3.scale.category10();
-        if (Object.keys(imageMap).length > 10) {
+        if (Object.keys(manifestMap).length > 10) {
           colors = d3.scale.category20();
         }
 
-        var imageTracks = [];
-        var imageTrackEntries = [];
-        var trackEntryForImage = {};
+        var manifestTracks = [];
+        var manifestTrackEntries = [];
+        var trackEntryForManifest = {};
 
         var visibleStartIndex = ($scope.options.page * $scope.tagsPerPage);
         var visibleEndIndex = (($scope.options.page + 1) * $scope.tagsPerPage);
 
-        imageIDs.sort().map(function(image_id) {
-          if (imageMap[image_id].length >= 2){
+        manifestDigests.sort().map(function(manifest_digest) {
+          if (manifestMap[manifest_digest].length >= 2){
             // Create the track entry.
-            var imageIndexRange = imageIndexMap[image_id];
-            var colorIndex = imageTrackEntries.length;
+            var manifestIndexRange = manifestIndexMap[manifest_digest];
+            var colorIndex = manifestTrackEntries.length;
             var trackEntry = {
-              'image_id': image_id,
+              'manifest_digest': manifest_digest,
               'color': colors(colorIndex),
-              'count': imageMap[image_id].length,
-              'tags': imageMap[image_id],
-              'index_range': imageIndexRange,
-              'visible': visibleStartIndex <= imageIndexRange.end && imageIndexRange.start <= visibleEndIndex,
+              'count': manifestMap[manifest_digest].length,
+              'tags': manifestMap[manifest_digest],
+              'index_range': manifestIndexRange,
+              'visible': visibleStartIndex <= manifestIndexRange.end && manifestIndexRange.start <= visibleEndIndex,
             };
 
-            trackEntryForImage[image_id] = trackEntry;
-            imageMap[image_id]['color'] = colors(colorIndex);
+            trackEntryForManifest[manifest_digest] = trackEntry;
+            manifestMap[manifest_digest]['color'] = colors(colorIndex);
 
             // Find the track in which we can place the entry, if any.
             var existingTrack = null;
-            for (var i = 0; i < imageTracks.length; ++i) {
+            for (var i = 0; i < manifestTracks.length; ++i) {
               // For the current track, ensure that the start and end index
               // for the current entry is outside of the range of the track's
               // entries. If so, then we can add the entry to the track.
-              var currentTrack = imageTracks[i];
+              var currentTrack = manifestTracks[i];
               var canAddToCurrentTrack = true;
               for (var j = 0; j < currentTrack.entries.length; ++j) {
                 var currentTrackEntry = currentTrack.entries[j];
-                var entryInfo = imageIndexMap[currentTrackEntry.image_id];
-                if (Math.max(entryInfo.start, imageIndexRange.start) <= Math.min(entryInfo.end, imageIndexRange.end)) {
+                var entryInfo = manifestIndexMap[currentTrackEntry.image_id];
+                if (Math.max(entryInfo.start, manifestIndexRange.start) <= Math.min(entryInfo.end, manifestIndexRange.end)) {
                   canAddToCurrentTrack = false;
                   break;
                 }
@@ -175,38 +175,38 @@ angular.module('quay').directive('repoPanelTags', function () {
             // Add the entry to the track or create a new track if necessary.
             if (existingTrack) {
               existingTrack.entries.push(trackEntry)
-              existingTrack.entryByImageId[image_id] = trackEntry;
-              existingTrack.endIndex = Math.max(existingTrack.endIndex, imageIndexRange.end);
+              existingTrack.entryByManifestDigest[manifest_digest] = trackEntry;
+              existingTrack.endIndex = Math.max(existingTrack.endIndex, manifestIndexRange.end);
 
-              for (var j = imageIndexRange.start; j <= imageIndexRange.end; j++) {
+              for (var j = manifestIndexRange.start; j <= manifestIndexRange.end; j++) {
                 existingTrack.entryByIndex[j] = trackEntry;
               }
             } else {
-              var entryByImageId = {};
-              entryByImageId[image_id] = trackEntry;
+              var entryByManifestDigest = {};
+              entryByManifestDigest[manifest_digest] = trackEntry;
 
               var entryByIndex = {};
-              for (var j = imageIndexRange.start; j <= imageIndexRange.end; j++) {
+              for (var j = manifestIndexRange.start; j <= manifestIndexRange.end; j++) {
                 entryByIndex[j] = trackEntry;
               }
 
-              imageTracks.push({
+              manifestTracks.push({
                 'entries': [trackEntry],
-                'entryByImageId': entryByImageId,
-                'startIndex': imageIndexRange.start,
-                'endIndex': imageIndexRange.end,
+                'entryByManifestDigest': entryByManifestDigest,
+                'startIndex': manifestIndexRange.start,
+                'endIndex': manifestIndexRange.end,
                 'entryByIndex': entryByIndex,
               });
             }
 
-            imageTrackEntries.push(trackEntry);
+            manifestTrackEntries.push(trackEntry);
           }
         });
 
-        $scope.imageMap = imageMap;
-        $scope.imageTracks = imageTracks;
-        $scope.imageTrackEntries = imageTrackEntries;
-        $scope.trackEntryForImage = trackEntryForImage;
+        $scope.manifestMap = manifestMap;
+        $scope.manifestTracks = manifestTracks;
+        $scope.manifestTrackEntries = manifestTrackEntries;
+        $scope.trackEntryForManifest = trackEntryForManifest;
 
         $scope.options.page = 0;
 
@@ -241,7 +241,7 @@ angular.module('quay').directive('repoPanelTags', function () {
       });
 
       $scope.$watch('selectedTags', function(selectedTags) {
-        if (!selectedTags || !$scope.repository || !$scope.imageMap) { return; }
+        if (!selectedTags || !$scope.repository || !$scope.manifestMap) { return; }
 
         $scope.checkedTags.setChecked(selectedTags.map(function(tag) {
           return $scope.repositoryTags[tag];
@@ -410,8 +410,8 @@ angular.module('quay').directive('repoPanelTags', function () {
         return false;
       };
 
-      $scope.imageIDFilter = function(image_id, tag) {
-        return tag.image_id == image_id;
+      $scope.manifestDigestFilter = function(manifest_digest, tag) {
+        return tag.manifest_digest == manifest_digest;
       };
 
       $scope.setTab = function(tab) {
@@ -420,7 +420,7 @@ angular.module('quay').directive('repoPanelTags', function () {
 
       $scope.selectTrack = function(it) {
         $scope.checkedTags.checkByFilter(function(tag) {
-          return $scope.imageIDFilter(it.image_id, tag);
+          return $scope.manifestDigestFilter(it.manifest_digest, tag);
         });
       };
 
