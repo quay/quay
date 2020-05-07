@@ -32,9 +32,9 @@
       <i class="fa fa-git"></i>Commit SHAs
      </div>
 
-     <div class="cor-checkable-menu-item" item-filter="imageIDFilter(it.image_id, item)"
-          ng-repeat="it in imageTrackEntries" ng-if="::it.visible">
-      <i class="fa fa-circle-o" ng-style="::{'color': it.color}"></i> {{ ::it.image_id.substr(0, 12) }}
+     <div class="cor-checkable-menu-item" item-filter="manifestDigestFilter(mt.manifest_digest, item)"
+          ng-repeat="mt in manifestTrackEntries" ng-if="::it.visible">
+      <i class="fa fa-circle-o" ng-style="::{'color': ,t.color}"></i>
      </div>
    </span>
 
@@ -116,16 +116,16 @@
         style="width: 140px;">
       <a ng-click="orderBy('expiration_date')" data-title="When the tag expires" data-container="body" bs-tooltip>Expires</a>
     </td>
-    <td class="hidden-xs hidden-sm" ng-if="imageTracks.length > maxTrackCount"
+    <td class="hidden-xs hidden-sm" ng-if="manifestTracks.length > maxTrackCount"
         style="width: 20px; position: relative;">
     </td>
     <td class="hidden-xs hidden-sm"
-        ng-class="tablePredicateClass('image_id', options.predicate, options.reverse)"
+        ng-class="tablePredicateClass('manifest_digest', options.predicate, options.reverse)"
         style="width: 140px;">
-      <a ng-click="orderBy('image_id')">Manifest</a>
+      <a ng-click="orderBy('manifest_digest')">Manifest</a>
     </td>
-    <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="it in imageTracks"
-        ng-if="imageTracks.length <= maxTrackCount"></td>
+    <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+        ng-if="manifestTracks.length <= maxTrackCount"></td>
     <td class="options-col"></td>
     <td class="options-col"></td>
     <td class="hidden-xs hidden-sm" style="width: 4px"></td>
@@ -167,14 +167,6 @@
           See Child Manifests
         </span>
 
-        <!-- No Digest -->
-        <span class="nodigest" ng-if="::!tag.manifest_digest"
-              data-title="The tag does not have a V2 digest and so is unsupported for scan"
-              bs-tooltip>
-          <span class="donut-chart" width="22" data="[{'index': 0, 'value': 1, 'color': '#eee'}]"></span>
-          Unsupported
-        </span>
-
         <!-- Manifest security view -->
         <manifest-security-view repository="::repository" manifest-digest="::tag.manifest_digest"
                                 ng-if="::(tag.manifest_digest && !tag.is_manifest_list)">
@@ -198,11 +190,11 @@
 
       <!-- Manifest link -->
       <td class="hidden-xs hidden-sm hidden-md image-track"
-          ng-if="imageTracks.length > maxTrackCount">
+          ng-if="manifestTracks.length > maxTrackCount">
         <span class="image-track-filled-dot"
-              ng-if="::trackEntryForImage[tag.image_id]"
-              ng-style="::{'backgroundColor': trackEntryForImage[tag.image_id].color}"
-              ng-click="::selectTrack(trackEntryForImage[tag.image_id])"
+              ng-if="::trackEntryForManifest[tag.manifest_digest]"
+              ng-style="::{'backgroundColor': trackEntryForManifest[tag.manifest_digest].color}"
+              ng-click="::selectTrack(trackEntryForManifest[tag.manifest_digest])"
               data-template-url="/static/directives/repo-view/image-tag-tooltip.html"
               data-placement="left"
               data-trigger="hover"
@@ -213,22 +205,22 @@
       <td class="hidden-xs hidden-sm image-id-col">
         <manifest-link repository="repository" image-id="tag.image_id" manifest-digest="tag.manifest_digest"></manifest-link>
       </td>
-      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="it in imageTracks"
-          ng-if="imageTracks.length <= maxTrackCount">
+      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+          ng-if="manifestTracks.length <= maxTrackCount">
         <span class="image-track-dot"
-              ng-if="::it.entryByImageId[tag.image_id]"
-              ng-style="::{'borderColor': trackEntryForImage[tag.image_id].color}"
-              ng-click="::selectTrack(trackEntryForImage[tag.image_id])"
-              data-template-url="/static/directives/repo-view/image-tag-tooltip.html"
+              ng-if="::mt.entryByManifestDigest[tag.manifest_digest]"
+              ng-style="::{'borderColor': trackEntryForManifest[tag.manifest_digest].color}"
+              ng-click="::selectTrack(trackEntryForManifest[tag.manifest_digest])"
+              data-template-url="/static/directives/repo-view/manifest-tag-tooltip.html"
               data-placement="left"
               data-trigger="hover"
               data-animation="am-flip-x"
               data-auto-close="1"
               bs-popover></span>
         <span class="image-track-line"
-              ng-if="::getTrackEntryForIndex(it, $parent.$parent.$index)"
-              ng-class="::trackLineClass(it, $parent.$parent.$parent.$index)"
-              ng-style="::{'borderColor': getTrackEntryForIndex(it, $parent.$parent.$parent.$index).color}"></span>
+              ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$index)"
+              ng-class="::trackLineClass(mt, $parent.$parent.$parent.$index)"
+              ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$index).color}"></span>
       </td>
       <td class="options-col">
         <i class="fa fa-download" data-title="Fetch Tag" bs-tooltip
@@ -288,12 +280,12 @@
           <manifest-link repository="repository" manifest-digest="manifest.digest"></manifest-link>
       </td>
 
-      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="it in imageTracks"
-          ng-if="imageTracks.length <= maxTrackCount" bindonce>
+      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+          ng-if="manifestTracks.length <= maxTrackCount" bindonce>
         <span class="image-track-line"
-          ng-if="::getTrackEntryForIndex(it, $parent.$parent.$parent.$parent.$index)"
-          ng-class="::trackLineExpandedClass(it, $parent.$parent.$parent.$parent.$parent.$index)"
-          ng-style="::{'borderColor': getTrackEntryForIndex(it, $parent.$parent.$parent.$parent.$parent.$index).color}"></span>
+          ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$parent.$parent.$index)"
+          ng-class="::trackLineExpandedClass(mt, $parent.$parent.$parent.$parent.$parent.$index)"
+          ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$parent.$parent.$index).color}"></span>
       </td>
 
       <td class="options-col"></td>
@@ -320,12 +312,12 @@
         </div>
       </td>
 
-      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="it in imageTracks"
-          ng-if="imageTracks.length <= maxTrackCount" bindonce>
+      <td class="hidden-xs hidden-sm hidden-md image-track" ng-repeat="mt in manifestTracks"
+          ng-if="manifestTracks.length <= maxTrackCount" bindonce>
         <span class="image-track-line"
-          ng-if="::getTrackEntryForIndex(it, $parent.$parent.$index)"
-          ng-class="::trackLineExpandedClass(it, $parent.$parent.$parent.$index)"
-          ng-style="::{'borderColor': getTrackEntryForIndex(it, $parent.$parent.$parent.$index).color}"></span>
+          ng-if="::getTrackEntryForIndex(mt, $parent.$parent.$index)"
+          ng-class="::trackLineExpandedClass(mt, $parent.$parent.$parent.$index)"
+          ng-style="::{'borderColor': getTrackEntryForIndex(mt, $parent.$parent.$parent.$index).color}"></span>
       </td>
       <td></td>
       <td class="options-col hidden-xs hidden-sm"><!-- Whitespace col --></td>
