@@ -148,6 +148,7 @@ jobs:
     - name: Install dependencies
       run: |
         # Quay
+        sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
         python -m pip install --upgrade pip
         pip install -r <(cat requirements.txt requirements-dev.txt)
@@ -157,27 +158,5 @@ jobs:
         go mod vendor
         CGO_ENABLED=0 go test -c -o conformance.test
 
-    - name: Start a registry instance
-      run: |
-        gunicorn -c conf/gunicorn_local.py application:application &
-        sleep 30
-
-        sudo apt-get install curl
-        curl -v http://localhost:5000/v2/auth?scope=repository%3Adevtable%2Foci%3Apull&service=localhost%3A5000
-
-    - name: Run conformance tests
-      env:
-        OCI_ROOT_URL: http://localhost:5000
-        OCI_NAMESPACE: devtable/oci
-        OCI_USERNAME: devtable
-        OCI_PASSWORD: password
-        OCI_DEBUG: true
-        OCI_TEST_PUSH: 1
-        OCI_TEST_CONTENT_DISCOVERY: 1
-      run: |
-        ./dist-spec/conformance/conformance.test
-
-    - name: Clean up registry instance
-      run: |
-        pkill -9 gunicorn
-      if: always()
+    - name: conformance
+      run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv 

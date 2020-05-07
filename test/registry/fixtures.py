@@ -233,7 +233,7 @@ class ConfigChange(object):
 
     Usage:
 
-    with ConfigChange('SOMEKEY', 'value', registry_server_executor.on(liveserver)):
+    with ConfigChange('SOMEKEY', 'value', registry_server_executor.on(liveserver), liveserver):
       ... app.config['SOMEKEY'] is 'value' in this context ...
     """
 
