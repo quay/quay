@@ -279,14 +279,41 @@ class OCIManifest(ManifestInterface):
         # Retrieve the configuration for the manifest.
         config = self._get_built_config(content_retriever)
         history = list(config.history)
-        if len(history) < len(self.filesystem_layers):
-            raise MalformedOCIManifest("Found less history than layer blobs")
 
         digest_history = hashlib.sha256()
         v1_layer_parent_id = None
         v1_layer_id = None
-        blob_index = 0
 
+        # The history entry in OCI config is optional. If none was given, then generate the
+        # "images" based on the layer data, with empty config (with exception of the final layer).
+        if not history:
+            for index, filesystem_layer in enumerate(self.filesystem_layers):
+                digest_history.update(str(filesystem_layer.digest))
+                digest_history.update("||")
+
+                v1_layer_parent_id = v1_layer_id
+                v1_layer_id = digest_history.hexdigest()
+
+                yield OCIManifestImageLayer(
+                    history=config.synthesized_history
+                    if index == len(self.filesystem_layers) - 1
+                    else None,
+                    blob_layer=filesystem_layer,
+                    blob_digest=str(filesystem_layer.digest),
+                    v1_id=v1_layer_id,
+                    v1_parent_id=v1_layer_parent_id,
+                    compressed_size=filesystem_layer.compressed_size,
+                )
+            raise StopIteration()
+
+        # Make sure we aren't missing any history entries if it was specified.
+        if len(history) < len(self.filesystem_layers):
+            raise MalformedOCIManifest(
+                "Found less history (%s) than layer blobs (%s)"
+                % (len(history), len(self.filesystem_layers))
+            )
+
+        blob_index = 0
         for history_index, history_entry in enumerate(history):
             if not history_entry.is_empty and blob_index >= len(self.filesystem_layers):
                 raise MalformedOCIManifest("Missing history entry #%s" % blob_index)

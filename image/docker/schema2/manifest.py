@@ -297,7 +297,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
             # Create a new synthesized V1 ID for the history layer by hashing its content and
             # the blob associated with it.
-            digest_history.update(json.dumps(history_entry.raw_entry))
+            digest_history.update(json.dumps(history_entry.raw_entry or "empty"))
             digest_history.update("|")
             digest_history.update(str(history_index))
             digest_history.update("|")

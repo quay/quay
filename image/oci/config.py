@@ -267,6 +267,22 @@ class OCIConfig(object):
                 raw_entry=history_entry,
             )
 
+    @property
+    def synthesized_history(self):
+        created_datetime_str = self._parsed.get(CONFIG_CREATED_KEY)
+        created_datetime = parse_date(created_datetime_str) if created_datetime_str else None
+        config = self._parsed.get(CONFIG_CONFIG_KEY) or {}
+
+        return LayerHistory(
+            created_datetime=created_datetime,
+            created=created_datetime_str,
+            command=config.get("Cmd", None),
+            author=self._parsed.get(CONFIG_AUTHOR_KEY, None),
+            comment=None,
+            is_empty=False,
+            raw_entry=None,
+        )
+
     def build_v1_compatibility(self, history, v1_id, v1_parent_id, is_leaf, compressed_size=None):
         """
         Builds the V1 compatibility block for the given layer.
@@ -278,22 +294,23 @@ class OCIConfig(object):
         if v1_parent_id is not None:
             v1_compatibility["parent"] = v1_parent_id
 
-        if "created" not in v1_compatibility and history.created:
-            v1_compatibility["created"] = history.created
+        if history is not None:
+            if "created" not in v1_compatibility and history.created:
+                v1_compatibility["created"] = history.created
 
-        if "author" not in v1_compatibility and history.author:
-            v1_compatibility["author"] = history.author
+            if "author" not in v1_compatibility and history.author:
+                v1_compatibility["author"] = history.author
 
-        if "comment" not in v1_compatibility and history.comment:
-            v1_compatibility["comment"] = history.comment
+            if "comment" not in v1_compatibility and history.comment:
+                v1_compatibility["comment"] = history.comment
 
-        if "throwaway" not in v1_compatibility and history.is_empty:
-            v1_compatibility["throwaway"] = True
+            if "throwaway" not in v1_compatibility and history.is_empty:
+                v1_compatibility["throwaway"] = True
 
-        if "container_config" not in v1_compatibility:
-            v1_compatibility["container_config"] = {
-                "Cmd": [history.command],
-            }
+            if "container_config" not in v1_compatibility:
+                v1_compatibility["container_config"] = {
+                    "Cmd": [history.command],
+                }
 
         if compressed_size is not None:
             v1_compatibility["Size"] = compressed_size

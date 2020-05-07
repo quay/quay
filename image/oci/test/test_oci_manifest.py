@@ -187,3 +187,88 @@ def test_validate_manifest_invalid_config_type():
 
     with pytest.raises(MalformedOCIManifest):
         OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
+
+
+def test_get_schema1_manifest_missing_history():
+    retriever = ContentRetrieverForTesting.for_config(
+        {
+            "config": {"Labels": {"foo": "bar",}, "Cmd": ["dosomething"],},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "architecture": "amd64",
+            "os": "linux",
+        },
+        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        7023,
+    )
+
+    manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
+    assert manifest.get_manifest_labels(retriever) == {
+        "com.example.key1": "value1",
+        "com.example.key2": "value2",
+        "foo": "bar",
+    }
+
+    schema1 = manifest.get_schema1_manifest("somenamespace", "somename", "sometag", retriever)
+    assert schema1 is not None
+    assert schema1.media_type == DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
+    assert set(schema1.local_blob_digests) == (
+        set(manifest.local_blob_digests)
+        - {"sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"}
+    )
+    assert len(schema1.layers) == 3
+
+    via_convert = manifest.convert_manifest(
+        [schema1.media_type], "somenamespace", "somename", "sometag", retriever
+    )
+    assert via_convert.digest == schema1.digest
+
+    final_layer = schema1.leaf_layer
+    assert final_layer.v1_metadata.command == '[["dosomething"]]'
+
+
+def test_get_schema1_manifest_incorrect_history():
+    retriever = ContentRetrieverForTesting.for_config(
+        {
+            "config": {"Labels": {"foo": "bar",},},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "foo"},
+                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "foo"},
+            ],
+            "architecture": "amd64",
+            "os": "linux",
+        },
+        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+        7023,
+    )
+
+    manifest = OCIManifest(Bytes.for_string_or_unicode(SAMPLE_MANIFEST))
+    assert manifest.get_manifest_labels(retriever) == {
+        "com.example.key1": "value1",
+        "com.example.key2": "value2",
+        "foo": "bar",
+    }
+
+    with pytest.raises(MalformedOCIManifest):
+        manifest.get_schema1_manifest("somenamespace", "somename", "sometag", retriever)
+
+
+def test_validate_manifest_invalid_config_type():
+    manifest_bytes = """{
+      "schemaVersion": 2,
+      "config": {
+        "mediaType": "application/some.other.thing",
+        "digest": "sha256:6bd578ec7d1e7381f63184dfe5fbe7f2f15805ecc4bfd485e286b76b1e796524",
+        "size": 145
+      },
+      "layers": [
+        {
+          "mediaType": "application/tar+gzip",
+          "digest": "sha256:ce879e86a8f71031c0f1ab149a26b000b3b5b8810d8d047f240ef69a6b2516ee",
+          "size": 2807
+        }
+      ]
+    }"""
+
+    with pytest.raises(MalformedOCIManifest):
+        OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
