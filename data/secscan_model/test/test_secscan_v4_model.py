@@ -4,6 +4,8 @@ import pytest
 import os
 import json
 
+from datetime import datetime, timedelta
+
 from data.secscan_model.secscan_v4_model import V4SecurityScanner, IndexReportState, features_for
 from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformation, Layer
 from data.database import (
@@ -27,7 +29,6 @@ from app import app, instance_keys, storage
 @pytest.fixture()
 def set_secscan_config():
     app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
-    app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
 
 
 def test_load_security_information_queued(initialized_db, set_secscan_config):
@@ -202,6 +203,8 @@ def test_perform_indexing_failed(initialized_db, set_secscan_config):
             index_status=IndexStatus.FAILED,
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow()
+            - timedelta(seconds=app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
             metadata_json={},
         )
 
@@ -266,6 +269,8 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
             index_status=IndexStatus.COMPLETED,
             indexer_hash="abc",
             indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow()
+            - timedelta(seconds=app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
             metadata_json={},
         )
 
