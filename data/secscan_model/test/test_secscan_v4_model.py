@@ -27,6 +27,7 @@ from app import app, instance_keys, storage
 @pytest.fixture()
 def set_secscan_config():
     app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
+    app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 0
 
 
 def test_load_security_information_queued(initialized_db, set_secscan_config):
@@ -84,7 +85,7 @@ def test_load_security_information_api_request_failure(initialized_db, set_secsc
     tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
     manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
 
-    ManifestSecurityStatus.create(
+    mss = ManifestSecurityStatus.create(
         manifest=manifest._db_id,
         repository=repository_ref._db_id,
         error_json={},
@@ -99,6 +100,7 @@ def test_load_security_information_api_request_failure(initialized_db, set_secsc
     secscan._secscan_api.vulnerability_report.side_effect = APIRequestFailure()
 
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.COULD_NOT_LOAD
+    assert not ManifestSecurityStatus.select().where(ManifestSecurityStatus.id == mss.id).exists()
 
 
 def test_load_security_information_success(initialized_db, set_secscan_config):
@@ -144,7 +146,7 @@ def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.state.return_value = "abc"
+    secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.return_value = (
         {"err": None, "state": IndexReportState.Index_Finished},
         "abc",
@@ -165,7 +167,7 @@ def test_perform_indexing_empty_whitelist(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = []
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.state.return_value = "abc"
+    secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.return_value = (
         {"err": None, "state": IndexReportState.Index_Finished},
         "abc",
@@ -186,7 +188,7 @@ def test_perform_indexing_failed(initialized_db, set_secscan_config):
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.state.return_value = "abc"
+    secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.return_value = (
         {"err": None, "state": IndexReportState.Index_Finished},
         "abc",
@@ -210,6 +212,38 @@ def test_perform_indexing_failed(initialized_db, set_secscan_config):
         assert mss.index_status == IndexStatus.COMPLETED
 
 
+def test_perform_indexing_failed_within_reindex_threshold(initialized_db, set_secscan_config):
+    app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 300
+    expected_manifests = (
+        Manifest.select().join(Repository).join(User).where(User.username == "devtable")
+    )
+
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "abc"}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "abc",
+    )
+
+    for manifest in expected_manifests:
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            error_json={},
+            index_status=IndexStatus.FAILED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            metadata_json={},
+        )
+
+    secscan.perform_indexing()
+
+    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.FAILED
+
+
 def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
     expected_manifests = (
@@ -218,7 +252,7 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.state.return_value = "xyz"
+    secscan._secscan_api.state.return_value = {"state": "xyz"}
     secscan._secscan_api.index.return_value = (
         {"err": None, "state": IndexReportState.Index_Finished},
         "xyz",
@@ -240,6 +274,41 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
     assert ManifestSecurityStatus.select().count() == expected_manifests.count()
     for mss in ManifestSecurityStatus.select():
         assert mss.indexer_hash == "xyz"
+
+
+def test_perform_indexing_needs_reindexing_within_reindex_threshold(
+    initialized_db, set_secscan_config
+):
+    app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 300
+    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
+    expected_manifests = (
+        Manifest.select().join(Repository).join(User).where(User.username == "devtable")
+    )
+
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "xyz"}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "xyz",
+    )
+
+    for manifest in expected_manifests:
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            error_json={},
+            index_status=IndexStatus.COMPLETED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            metadata_json={},
+        )
+
+    secscan.perform_indexing()
+
+    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.indexer_hash == "abc"
 
 
 def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_config):
@@ -266,7 +335,7 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.state.return_value = "abc"
+    secscan._secscan_api.state.return_value = {"state": "abc"}
     secscan._secscan_api.index.side_effect = APIRequestFailure()
 
     next_token = secscan.perform_indexing()

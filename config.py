@@ -478,6 +478,9 @@ class DefaultConfig(ImmutableConfig):
     # Namespace whitelist for security scanner.
     SECURITY_SCANNER_V4_NAMESPACE_WHITELIST = []
 
+    # Minimum number of seconds before re-indexing a manifest with the security scanner.
+    SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 300
+
     # API call timeout for the security scanner.
     SECURITY_SCANNER_API_TIMEOUT_SECONDS = 10
 
