@@ -46,6 +46,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
@@ -66,6 +67,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
@@ -94,6 +96,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
         sudo systemctl unmask docker
         sudo systemctl start docker
@@ -117,6 +120,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
         sudo systemctl unmask docker
         sudo systemctl start docker
