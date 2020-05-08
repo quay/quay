@@ -2,6 +2,7 @@ import logging
 import itertools
 
 from collections import namedtuple
+from datetime import datetime, timedelta
 from math import log10
 from peewee import fn, JOIN
 from enum import Enum
@@ -15,6 +16,7 @@ from data.secscan_model.datatypes import (
     Layer,
     Vulnerability,
 )
+from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
@@ -128,6 +130,11 @@ class V4SecurityScanner(SecurityScannerInterface):
         try:
             report = self._secscan_api.vulnerability_report(manifest_or_legacy_image.digest)
         except APIRequestFailure as arf:
+            try:
+                status.delete_instance()
+            except ReadOnlyModeException:
+                pass
+
             return SecurityInformationLookupResult.for_request_error(str(arf))
 
         if report is None:
@@ -163,6 +170,10 @@ class V4SecurityScanner(SecurityScannerInterface):
         if max_id is None or min_id is None or min_id > max_id:
             return None
 
+        reindex_threshold = lambda: datetime.utcnow() - timedelta(
+            seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD")
+        )
+
         # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
             return (
@@ -177,7 +188,10 @@ class V4SecurityScanner(SecurityScannerInterface):
                 eligible_manifests(Manifest.select())
                 .switch(Manifest)
                 .join(ManifestSecurityStatus)
-                .where(ManifestSecurityStatus.index_status == IndexStatus.FAILED)
+                .where(
+                    ManifestSecurityStatus.index_status == IndexStatus.FAILED,
+                    ManifestSecurityStatus.last_indexed < reindex_threshold(),
+                )
             )
 
         def needs_reindexing_query(indexer_hash):
@@ -185,7 +199,10 @@ class V4SecurityScanner(SecurityScannerInterface):
                 eligible_manifests(Manifest.select())
                 .switch(Manifest)
                 .join(ManifestSecurityStatus)
-                .where(ManifestSecurityStatus.indexer_hash != indexer_hash)
+                .where(
+                    ManifestSecurityStatus.indexer_hash != indexer_hash,
+                    ManifestSecurityStatus.last_indexed < reindex_threshold(),
+                )
             )
 
         # 4^log10(total) gives us a scalable batch size into the billions.
@@ -195,7 +212,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             yield_random_entries(not_indexed_query, Manifest.id, batch_size, max_id, min_id,),
             yield_random_entries(index_error_query, Manifest.id, batch_size, max_id, min_id,),
             yield_random_entries(
-                lambda: needs_reindexing_query(indexer_state),
+                lambda: needs_reindexing_query(indexer_state.get("state", "")),
                 Manifest.id,
                 batch_size,
                 max_id,
