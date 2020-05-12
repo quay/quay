@@ -12,6 +12,7 @@ from data.database import (
     ImageStorage,
     MediaType,
     RepositoryTag,
+    RepositoryState,
     TagManifest,
     TagManifestToManifest,
     get_epoch_timestamp_ms,
@@ -652,6 +653,8 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
                 ~(Tag.lifetime_end_ms >> None),
                 (Tag.lifetime_end_ms <= expiration_timestamp),
                 (Namespace.removed_tag_expiration_s == limit_to_gc_policy_s),
+                (Namespace.enabled == True),
+                (Repository.state != RepositoryState.MARKED_FOR_DELETION),
             )
             .limit(GC_CANDIDATE_COUNT)
             .distinct()
