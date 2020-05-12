@@ -68,43 +68,25 @@ def add_storage_placement(storage, location_name):
         pass
 
 
-def _orphaned_storage_query(candidate_ids):
+def _is_storage_orphaned(candidate_id):
     """
-    Returns the subset of the candidate ImageStorage IDs representing storages that are no longer
-    referenced by images.
+    Returns the whether the given candidate storage ID is orphaned. Must be executed
+    under a transaction.
     """
-    # Issue a union query to find all storages that are still referenced by a candidate storage. This
-    # is much faster than the group_by and having call we used to use here.
-    nonorphaned_queries = []
-    for counter, candidate_id in enumerate(candidate_ids):
-        query_alias = "q{0}".format(counter)
+    with ensure_under_transaction():
+        try:
+            ManifestBlob.get(blob=candidate_id)
+            return False
+        except ManifestBlob.DoesNotExist:
+            pass
 
-        # TODO: remove the join with Image once fully on the OCI data model.
-        storage_subq = (
-            ImageStorage.select(ImageStorage.id)
-            .join(Image)
-            .where(ImageStorage.id == candidate_id)
-            .limit(1)
-            .alias(query_alias)
-        )
+        try:
+            Image.get(storage=candidate_id)
+            return False
+        except Image.DoesNotExist:
+            pass
 
-        nonorphaned_queries.append(ImageStorage.select(SQL("*")).from_(storage_subq))
-
-        manifest_storage_subq = (
-            ImageStorage.select(ImageStorage.id)
-            .join(ManifestBlob)
-            .where(ImageStorage.id == candidate_id)
-            .limit(1)
-            .alias(query_alias)
-        )
-
-        nonorphaned_queries.append(ImageStorage.select(SQL("*")).from_(manifest_storage_subq))
-
-    # Build the set of storages that are missing. These storages are orphaned.
-    nonorphaned_storage_ids = {
-        storage.id for storage in _basequery.reduce_as_tree(nonorphaned_queries)
-    }
-    return list(candidate_ids - nonorphaned_storage_ids)
+        return True
 
 
 def garbage_collect_storage(storage_id_whitelist):
@@ -122,10 +104,10 @@ def garbage_collect_storage(storage_id_whitelist):
         Returns the list of paths to remove from storage, filtered from the given placements query
         by removing any CAS paths that are still referenced by storage(s) in the database.
         """
-        with ensure_under_transaction():
-            if not placements_list:
-                return set()
+        if not placements_list:
+            return set()
 
+        with ensure_under_transaction():
             # Find the content checksums not referenced by other storages. Any that are, we cannot
             # remove.
             content_checksums = set(
@@ -184,54 +166,47 @@ def garbage_collect_storage(storage_id_whitelist):
     # TODO: We might want to allow for null storages on placements, which would allow us to
     # delete the storages, then delete the placements in a non-transaction.
     logger.debug("Garbage collecting storages from candidates: %s", storage_id_whitelist)
-    with db_transaction():
-        orphaned_storage_ids = _orphaned_storage_query(storage_id_whitelist)
-        if len(orphaned_storage_ids) == 0:
-            # Nothing to GC.
-            return []
+    paths_to_remove = []
+    orphaned_storage_ids = set()
+    for storage_id_to_check in storage_id_whitelist:
+        logger.debug("Garbage collecting storage %s", storage_id_to_check)
 
-        placements_to_remove = list(
-            ImageStoragePlacement.select(ImageStoragePlacement, ImageStorage)
-            .join(ImageStorage)
-            .where(ImageStorage.id << orphaned_storage_ids)
-        )
+        with db_transaction():
+            if not _is_storage_orphaned(storage_id_to_check):
+                continue
 
-        # Remove the placements for orphaned storages
-        if len(placements_to_remove) > 0:
-            placement_ids_to_remove = [placement.id for placement in placements_to_remove]
-            placements_removed = (
-                ImageStoragePlacement.delete()
-                .where(ImageStoragePlacement.id << placement_ids_to_remove)
-                .execute()
+            orphaned_storage_ids.add(storage_id_to_check)
+
+            placements_to_remove = list(
+                ImageStoragePlacement.select(ImageStoragePlacement, ImageStorage)
+                .join(ImageStorage)
+                .where(ImageStorage.id == storage_id_to_check)
             )
-            logger.debug("Removed %s image storage placements", placements_removed)
 
-        # Remove all orphaned storages
-        torrents_removed = (
-            TorrentInfo.delete().where(TorrentInfo.storage << orphaned_storage_ids).execute()
-        )
-        logger.debug("Removed %s torrent info records", torrents_removed)
+            # Remove the placements for orphaned storages
+            if placements_to_remove:
+                ImageStoragePlacement.delete().where(
+                    ImageStoragePlacement.storage == storage_id_to_check
+                ).execute()
 
-        signatures_removed = (
-            ImageStorageSignature.delete()
-            .where(ImageStorageSignature.storage << orphaned_storage_ids)
-            .execute()
-        )
-        logger.debug("Removed %s image storage signatures", signatures_removed)
+            # Remove all orphaned storages
+            TorrentInfo.delete().where(TorrentInfo.storage == storage_id_to_check).execute()
 
-        storages_removed = (
-            ImageStorage.delete().where(ImageStorage.id << orphaned_storage_ids).execute()
-        )
-        logger.debug("Removed %s image storage records", storages_removed)
+            ImageStorageSignature.delete().where(
+                ImageStorageSignature.storage == storage_id_to_check
+            ).execute()
 
-        # Determine the paths to remove. We cannot simply remove all paths matching storages, as CAS
-        # can share the same path. We further filter these paths by checking for any storages still in
-        # the database with the same content checksum.
-        paths_to_remove = placements_to_filtered_paths_set(placements_to_remove)
+            ImageStorage.delete().where(ImageStorage.id == storage_id_to_check).execute()
+
+            # Determine the paths to remove. We cannot simply remove all paths matching storages, as CAS
+            # can share the same path. We further filter these paths by checking for any storages still in
+            # the database with the same content checksum.
+            paths_to_remove.extend(placements_to_filtered_paths_set(placements_to_remove))
 
     # We are going to make the conscious decision to not delete image storage blobs inside
     # transactions.
     # This may end up producing garbage in s3, trading off for higher availability in the database.
+    paths_to_remove = list(set(paths_to_remove))
     for location_name, image_path, storage_checksum in paths_to_remove:
         if storage_checksum:
             # Skip any specialized blob digests that we know we should keep around.
@@ -239,11 +214,12 @@ def garbage_collect_storage(storage_id_whitelist):
                 continue
 
             # Perform one final check to ensure the blob is not needed.
-            try:
-                ImageStorage.select().where(ImageStorage.content_checksum == storage_checksum).get()
+            if (
+                ImageStorage.select()
+                .where(ImageStorage.content_checksum == storage_checksum)
+                .exists()
+            ):
                 continue
-            except ImageStorage.DoesNotExist:
-                pass
 
         logger.debug("Removing %s from %s", image_path, location_name)
         config.store.remove({location_name}, image_path)

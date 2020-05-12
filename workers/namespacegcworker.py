@@ -4,12 +4,14 @@ from app import namespace_gc_queue, all_queues
 from data import model
 from workers.queueworker import QueueWorker
 from util.log import logfile_path
+from util.locking import GlobalLock, LockNotAcquiredException
 
 logger = logging.getLogger(__name__)
 
 
 POLL_PERIOD_SECONDS = 60
-NAMESPACE_GC_TIMEOUT = 60 * 15  # 15 minutes
+NAMESPACE_GC_TIMEOUT = 60 * 60  # 60 minutes
+LOCK_TIMEOUT_PADDING = 60  # seconds
 
 
 class NamespaceGCWorker(QueueWorker):
@@ -18,6 +20,15 @@ class NamespaceGCWorker(QueueWorker):
     """
 
     def process_queue_item(self, job_details):
+        try:
+            with GlobalLock(
+                "LARGE_GARBAGE_COLLECTION", lock_ttl=NAMESPACE_GC_TIMEOUT + LOCK_TIMEOUT_PADDING
+            ):
+                self._perform_gc(job_details)
+        except LockNotAcquiredException:
+            logger.debug("Could not acquire global lock for garbage collection")
+
+    def _perform_gc(self, job_details):
         logger.debug("Got namespace GC queue item: %s", job_details)
         marker_id = job_details["marker_id"]
         model.user.delete_namespace_via_marker(marker_id, all_queues)
