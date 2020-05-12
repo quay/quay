@@ -40,7 +40,7 @@ from data.fields import (
 from data.decorators import deprecated_model
 from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
-from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig
+from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig, disallow_replica_use
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from util.names import urn_generator
 from util.validation import validate_postgres_precondition
@@ -304,6 +304,7 @@ db_random_func = CallableProxy()
 db_match_func = CallableProxy()
 db_for_update = CallableProxy()
 db_transaction = CallableProxy()
+db_disallow_replica_use = CallableProxy()
 db_concat_func = CallableProxy()
 db_encrypter = Proxy()
 db_count_estimator = CallableProxy()
@@ -442,6 +443,9 @@ def configure(config_object, testing=False):
     def _db_transaction():
         return config_object["DB_TRANSACTION_FACTORY"](db)
 
+    def _db_disallow_replica_use():
+        return disallow_replica_use(db)
+
     @contextmanager
     def _ensure_under_transaction():
         if not testing and not config_object["TESTING"]:
@@ -451,6 +455,7 @@ def configure(config_object, testing=False):
         yield
 
     db_transaction.initialize(_db_transaction)
+    db_disallow_replica_use.initialize(_db_disallow_replica_use)
     ensure_under_transaction.initialize(_ensure_under_transaction)
 
 
