@@ -1207,9 +1207,9 @@ def delete_namespace_via_marker(marker_id, queues):
     try:
         marker = DeletedNamespace.get(id=marker_id)
     except DeletedNamespace.DoesNotExist:
-        return
+        return True
 
-    delete_user(marker.namespace, queues)
+    return delete_user(marker.namespace, queues)
 
 
 def delete_user(user, queues):
@@ -1218,20 +1218,41 @@ def delete_user(user, queues):
 
     Should *not* be called by any user-facing API. Instead, mark_namespace_for_deletion should be
     used, and the queue should call this method.
+    
+    Returns True on success and False otherwise.
     """
+    # Ensure the user is disabled before beginning the deletion process.
+    if user.enabled:
+        user.enabled = False
+        user.save()
+
     # Delete all queue items for the user.
     for queue in queues:
         queue.delete_namespaced_items(user.username)
 
     # Delete any repositories under the user's namespace.
-    for repo in list(Repository.select().where(Repository.namespace_user == user)):
-        gc.purge_repository(repo, force=True)
+    while True:
+        is_progressing = False
+        repositories = list(Repository.select().where(Repository.namespace_user == user))
+        if not repositories:
+            break
+
+        for repo in repositories:
+            if gc.purge_repository(repo, force=True):
+                is_progressing = True
+
+        if not is_progressing:
+            return False
 
     # Delete non-repository related items.
     _delete_user_linked_data(user)
 
     # Delete the user itself.
-    user.delete_instance(recursive=True, delete_nullable=True)
+    try:
+        user.delete_instance(recursive=True, delete_nullable=True)
+        return True
+    except IntegrityError:
+        return False
 
 
 def _delete_user_linked_data(user):

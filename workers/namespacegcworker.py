@@ -31,7 +31,8 @@ class NamespaceGCWorker(QueueWorker):
     def _perform_gc(self, job_details):
         logger.debug("Got namespace GC queue item: %s", job_details)
         marker_id = job_details["marker_id"]
-        model.user.delete_namespace_via_marker(marker_id, all_queues)
+        if not model.user.delete_namespace_via_marker(marker_id, all_queues):
+            raise Exception("GC interrupted; will retry")
 
 
 if __name__ == "__main__":
