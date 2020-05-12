@@ -13,7 +13,6 @@ from util.config.validators.validate_keystone import KeystoneValidator
 from util.config.validators.validate_jwt import JWTAuthValidator
 from util.config.validators.validate_secscan import SecurityScannerValidator
 from util.config.validators.validate_signer import SignerValidator
-from util.config.validators.validate_torrent import BittorrentValidator
 from util.config.validators.validate_ssl import SSLValidator, SSL_FILENAMES
 from util.config.validators.validate_google_login import GoogleLoginValidator
 from util.config.validators.validate_bitbucket_trigger import BitbucketTriggerValidator
@@ -65,7 +64,6 @@ VALIDATORS = {
     KeystoneValidator.name: KeystoneValidator.validate,
     SignerValidator.name: SignerValidator.validate,
     SecurityScannerValidator.name: SecurityScannerValidator.validate,
-    BittorrentValidator.name: BittorrentValidator.validate,
     OIDCLoginValidator.name: OIDCLoginValidator.validate,
     TimeMachineValidator.name: TimeMachineValidator.validate,
     AccessSettingsValidator.name: AccessSettingsValidator.validate,

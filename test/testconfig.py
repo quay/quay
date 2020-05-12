@@ -55,7 +55,6 @@ class TestConfig(DefaultConfig):
     LICENSE_EXPIRATION_WARNING = datetime.now() + timedelta(weeks=520)
 
     FEATURE_GITHUB_BUILD = True
-    FEATURE_BITTORRENT = True
     FEATURE_ACI_CONVERSION = True
 
     CLOUDWATCH_NAMESPACE = None

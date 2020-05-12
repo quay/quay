@@ -94,10 +94,6 @@ def add_enterprise_config_defaults(config_obj, current_secret_key):
     if not "DATABASE_SECRET_KEY" in config_obj:
         config_obj["DATABASE_SECRET_KEY"] = generate_secret_key()
 
-    # Default torrent pepper.
-    if not "BITTORRENT_FILENAME_PEPPER" in config_obj:
-        config_obj["BITTORRENT_FILENAME_PEPPER"] = str(uuid4())
-
     # Default storage configuration.
     if not "DISTRIBUTED_STORAGE_CONFIG" in config_obj:
         config_obj["DISTRIBUTED_STORAGE_PREFERENCE"] = ["default"]

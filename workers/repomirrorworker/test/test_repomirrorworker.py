@@ -39,7 +39,7 @@ def disable_existing_mirrors(func):
 def _create_tag(repo, name):
     repo_ref = RepositoryReference.for_repo_obj(repo)
 
-    with upload_blob(repo_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
+    with upload_blob(repo_ref, storage, BlobUploadSettings(500, 500)) as upload:
         app_config = {"TESTING": True}
         config_json = json.dumps(
             {

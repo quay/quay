@@ -42,7 +42,7 @@ def fake_session():
 def test_build_manifest(layers, fake_session, registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
-    settings = BlobUploadSettings("2M", 512 * 1024, 3600)
+    settings = BlobUploadSettings("2M", 3600)
     app_config = {"TESTING": True}
 
     builder = create_manifest_builder(repository_ref, storage, docker_v2_signing_key)

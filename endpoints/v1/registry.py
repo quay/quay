@@ -206,7 +206,6 @@ def put_image_layer(namespace, repository, image_id):
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
     settings = BlobUploadSettings(
         maximum_blob_size=app.config["MAXIMUM_LAYER_SIZE"],
-        bittorrent_piece_size=app.config["BITTORRENT_PIECE_SIZE"],
         committed_blob_expiration=expiration_sec,
     )
 

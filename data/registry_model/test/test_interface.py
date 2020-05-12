@@ -24,7 +24,6 @@ from data.database import (
     TagManifest,
     TagManifestLabel,
     DerivedStorageForImage,
-    TorrentInfo,
     Tag,
     TagToRepositoryTag,
     ImageStorageLocation,
@@ -481,7 +480,7 @@ def test_manifest_remote_layers(oci_model):
 
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
-    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
         upload.upload_chunk(app_config, BytesIO(config_json))
         blob = upload.commit_to_blob(app_config)
 
@@ -602,7 +601,7 @@ def test_derived_image_for_manifest_list(manifest_builder, list_builder, oci_mod
 
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
-    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
         upload.upload_chunk(app_config, BytesIO(config_json))
         blob = upload.commit_to_blob(app_config)
 
@@ -644,38 +643,6 @@ def test_derived_image_for_manifest_list(manifest_builder, list_builder, oci_mod
     assert oci_model.lookup_derived_image(manifest, "squash", storage, {}) == squashed
 
 
-def test_torrent_info(registry_model):
-    # Remove all existing info.
-    TorrentInfo.delete().execute()
-
-    repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest")
-    manifest = registry_model.get_manifest_for_tag(tag)
-
-    blobs = registry_model.get_manifest_local_blobs(manifest)
-    assert blobs
-
-    assert registry_model.get_torrent_info(blobs[0]) is None
-    registry_model.set_torrent_info(blobs[0], 2, "foo")
-
-    # Set it again exactly, which should be a no-op.
-    registry_model.set_torrent_info(blobs[0], 2, "foo")
-
-    # Check the information we've set.
-    torrent_info = registry_model.get_torrent_info(blobs[0])
-    assert torrent_info is not None
-    assert torrent_info.piece_length == 2
-    assert torrent_info.pieces == "foo"
-
-    # Try setting it again. Nothing should happen.
-    registry_model.set_torrent_info(blobs[0], 3, "bar")
-
-    torrent_info = registry_model.get_torrent_info(blobs[0])
-    assert torrent_info is not None
-    assert torrent_info.piece_length == 2
-    assert torrent_info.pieces == "foo"
-
-
 def test_blob_uploads(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
 
@@ -691,20 +658,12 @@ def test_blob_uploads(registry_model):
 
     # Update and ensure the changes are saved.
     assert registry_model.update_blob_upload(
-        blob_upload,
-        1,
-        "the-pieces_hash",
-        blob_upload.piece_sha_state,
-        {"new": "metadata"},
-        2,
-        3,
-        blob_upload.sha_state,
+        blob_upload, 1, {"new": "metadata"}, 2, 3, blob_upload.sha_state,
     )
 
     updated = registry_model.lookup_blob_upload(repository_ref, blob_upload.upload_id)
     assert updated
     assert updated.uncompressed_byte_count == 1
-    assert updated.piece_hashes == "the-pieces_hash"
     assert updated.storage_metadata == {"new": "metadata"}
     assert updated.byte_count == 2
     assert updated.chunk_count == 3

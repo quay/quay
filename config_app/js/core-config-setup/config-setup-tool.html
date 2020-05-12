@@ -686,49 +686,6 @@
         </div>
       </div>
 
-      <!-- BitTorrent pull (DEPRECATED) -->
-      <div class="co-panel" ng-show="originalConfig.FEATURE_BITTORRENT">
-        <div class="co-panel-heading">
-          <i class="fas fa-cloud-download-alt"></i> BitTorrent-based download (DEPRECATED)
-        </div>
-        <div class="co-panel-body">
-          <div class="co-alert co-alert-warning" style="margin-bottom: 20px">
-            BitTorrent support has been <strong>officially deprecated</strong> by Quay and support will be
-            removed in the next version. It is <strong>strongly</strong> suggested to disable this feature now.
-          </div>
-
-          <div class="description">
-            <p>If enabled, all images in the registry can be downloaded using the <a
-                                                                                    href="http://github.com/coreos/quayctl" ng-safenewtab>quayctl</a> tool via the BitTorrent protocol. A
-              JWT-compatible BitTorrent tracker such as <a
-                                                          href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#chihaya-setup">Chihaya</a> must be run.
-          </div>
-
-          <div class="config-bool-field" binding="config.FEATURE_BITTORRENT">
-            Enable BitTorrent downloads
-          </div>
-
-          <table class="config-table" ng-if="config.FEATURE_BITTORRENT">
-            <tr>
-              <td>Announce URL:</td>
-              <td>
-                <span class="config-string-field" binding="config.BITTORRENT_ANNOUNCE_URL"
-                      placeholder="Announce URL for the torrent tracker (Example: http://mytracker/announce)"
-                      pattern="http(s)?://.+"></span>
-                <div class="help-text">
-                  The HTTP URL at which the torrents should be announced. A JWT-compatible tracker such as <a
-                                                                                                             href="https://github.com/chihaya/chihaya" ng-safenewtab>Chihaya</a> must be run to ensure proper
-                  security. Documentation on running Chihaya with
-                  this support can be found at <a
-                                                 href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#chihaya-setup">Running Chihaya for
-                  Red Hat Quay</a>.
-                </div>
-              </td>
-            </tr>
-          </table>
-        </div>
-      </div>
-
       <!-- ACI Conversion (DEPRECATED) -->
       <div class="co-panel" ng-show="originalConfig.FEATURE_ACI_CONVERSION">
         <div class="co-panel-heading">

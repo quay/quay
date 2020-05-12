@@ -1615,44 +1615,6 @@ def test_tags_disabled_namespace(
     )
 
 
-def test_pull_torrent(
-    pusher, basic_images, liveserver_session, liveserver, registry_server_executor, app_reloader
-):
-    """ Test: Retrieve a torrent for pulling the image via the Quay CLI. """
-    credentials = ("devtable", "password")
-
-    # Push an image to download.
-    pusher.push(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
-    )
-
-    # Required for torrent.
-    registry_server_executor.on(liveserver).set_supports_direct_download(True)
-
-    # For each layer, retrieve a torrent for the blob.
-    for image in basic_images:
-        digest = "sha256:" + hashlib.sha256(image.bytes).hexdigest()
-        response = liveserver_session.get(
-            "/c1/torrent/devtable/newrepo/blobs/%s" % digest, auth=credentials
-        )
-        torrent_info = bencode.bdecode(response.content)
-
-        # Check the announce URL.
-        assert torrent_info["url-list"] == "http://somefakeurl?goes=here"
-
-        # Check the metadata.
-        assert torrent_info.get("info", {}).get("pieces") is not None
-        assert torrent_info.get("announce") is not None
-
-        # Check the pieces.
-        sha = resumablehashlib.sha1()
-        sha.update(image.bytes)
-
-        expected = binascii.hexlify(sha.digest())
-        found = binascii.hexlify(torrent_info["info"]["pieces"])
-        assert expected == found
-
-
 def test_squashed_image_disabled_namespace(
     pusher, sized_images, liveserver_session, liveserver, registry_server_executor, app_reloader
 ):

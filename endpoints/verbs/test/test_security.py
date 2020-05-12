@@ -70,39 +70,6 @@ ACI_ARGS = {
             dict(tag="fake"),
             (403, 403, 403, 403, 404),
         ),
-        # get_tag_torrent
-        (
-            "get_tag_torrent",
-            "GET",
-            PUBLIC_REPO,
-            True,
-            dict(digest="sha256:1234"),
-            (404, 404, 404, 404, 404),
-        ),
-        (
-            "get_tag_torrent",
-            "GET",
-            PRIVATE_REPO,
-            True,
-            dict(digest="sha256:1234"),
-            (403, 403, 404, 403, 404),
-        ),
-        (
-            "get_tag_torrent",
-            "GET",
-            ORG_REPO,
-            True,
-            dict(digest="sha256:1234"),
-            (403, 403, 404, 403, 404),
-        ),
-        (
-            "get_tag_torrent",
-            "GET",
-            ANOTHER_ORG_REPO,
-            True,
-            dict(digest="sha256:1234"),
-            (403, 403, 403, 403, 404),
-        ),
     ],
 )
 def test_verbs_security(
