@@ -63,17 +63,9 @@ def abort(status_code, message=None, issue=None, headers=None, **kwargs):
     # Log the abort.
     logger.error("Error %s: %s; Arguments: %s" % (status_code, message, params))
 
-    # Calculate the issue URL (if the issue ID was supplied).
-    issue_url = None
-    if issue:
-        issue_url = "http://docs.quay.io/issues/%s.html" % (issue)
-
     # Create the final response data and message.
     data = {}
     data["error"] = message
-
-    if issue_url:
-        data["info_url"] = issue_url
 
     if headers is None:
         headers = {}

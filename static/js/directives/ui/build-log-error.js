@@ -13,8 +13,9 @@ angular.module('quay').directive('buildLogError', function () {
       'entries': '=entries',
       'isSuperuser': '<isSuperuser'
     },
-    controller: function($scope, $element, Config) {
+    controller: function($scope, $element, Config, DocumentationService) {
       $scope.localPullInfo = null;
+      $sope.DocumentationService = DocumentationService;
 
       var calculateLocalPullInfo = function(entries) {
         var localInfo = {

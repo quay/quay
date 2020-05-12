@@ -14,7 +14,7 @@ angular.module('quay').directive('repositoryEventsTable', function () {
       'isEnabled': '=isEnabled'
     },
     controller: function($scope, $element, $timeout, ApiService, Restangular, UtilService,
-                         ExternalNotificationData, $location, StateService) {
+                         ExternalNotificationData, $location, StateService, DocumentationService) {
       $scope.canCreateNotification = function() {
         return StateService.inReadOnlyMode()
           ? false
@@ -22,6 +22,7 @@ angular.module('quay').directive('repositoryEventsTable', function () {
       };
       $scope.showNewNotificationCounter = 0;
       $scope.newNotificationData = {};
+      $scope.DocumentationService = DocumentationService;
 
       var loadNotifications = function() {
         if (!$scope.repository || !$scope.isEnabled) { return; }
@@ -134,7 +135,9 @@ angular.module('quay').directive('repositoryEventsTable', function () {
 
       $scope.showWebhookInfo = function(notification) {
         var eventId = notification.event;
-        document.location = 'http://docs.quay.io/guides/notifications.html#webhook_' + eventId;
+        document.location = $scope.DocumentationService.getUrl('notifications.webhook', {
+          'event': eventId
+        });
       };
 
       $scope.testNotification = function(notification) {

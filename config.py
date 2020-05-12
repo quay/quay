@@ -40,6 +40,7 @@ CLIENT_WHITELIST = [
     "SEARCH_RESULTS_PER_PAGE",
     "SEARCH_MAX_RESULT_PAGE_COUNT",
     "BRANDING",
+    "DOCUMENTATION_ROOT",
 ]
 
 
@@ -728,3 +729,6 @@ class DefaultConfig(ImmutableConfig):
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).
     WEBHOOK_HOSTNAME_BLACKLIST = []
+
+    # The root URL for documentation.
+    DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3.3/"
