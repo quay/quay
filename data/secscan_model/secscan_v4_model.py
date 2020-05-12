@@ -23,6 +23,7 @@ from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
 from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure
 from util.secscan import PRIORITY_LEVELS
+from util.secscan.blob import BlobURLRetriever
 from util.config import URLSchemeAndHostname
 
 from data.database import (
@@ -99,7 +100,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         self._secscan_api = ClairSecurityScannerAPI(
             endpoint=app.config.get("SECURITY_SCANNER_V4_ENDPOINT"),
             client=app.config.get("HTTPCLIENT"),
-            storage=storage,
+            blob_url_retriever=BlobURLRetriever(storage, instance_keys, app),
         )
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
