@@ -10,8 +10,15 @@ angular.module('quay').factory('ApiService', ['Restangular', '$q', 'UtilService'
 
   var getResource = function(getMethod, operation, opt_parameters, opt_background) {
     var resource = {};
+    var paginationKey = null;
+
     resource.withOptions = function(options) {
       this.options = options;
+      return this;
+    };
+
+    resource.withPagination = function(key) {
+      paginationKey = key;
       return this;
     };
 
@@ -23,17 +30,44 @@ angular.module('quay').factory('ApiService', ['Restangular', '$q', 'UtilService'
         'hasError': false
       };
 
-      getMethod(options, opt_parameters, opt_background, true).then(function(resp) {
-        result.value = processor(resp);
-        result.loading = false;
-      }, function(resp) {
-        result.hasError = true;
-        result.loading = false;
-        if (opt_errorHandler) {
-          opt_errorHandler(resp);
-        }
-      });
+      var paginatedResults = [];
 
+      var performGet = function(opt_nextPageToken) {
+        if (opt_nextPageToken) {
+          opt_parameters = opt_parameters || {};
+          opt_parameters['next_page'] = opt_nextPageToken;
+        }
+
+        getMethod(options, opt_parameters, opt_background, true).then(function(resp) {
+          if (paginationKey) {
+            if (resp && resp[paginationKey]) {
+              Array.prototype.push.apply(paginatedResults, resp[paginationKey]);
+
+              var fullResp = {};
+              fullResp[paginationKey] = paginatedResults;
+              result.value = processor(fullResp);
+              result.loading = resp['next_page'] != null;
+
+              if (result.loading) {
+                performGet(resp['next_page']);
+              }
+
+              return;
+            }
+          }
+
+          result.value = processor(resp);
+          result.loading = false;
+        }, function(resp) {
+          result.hasError = true;
+          result.loading = false;
+          if (opt_errorHandler) {
+            opt_errorHandler(resp);
+          }
+        });
+      };
+
+      performGet();
       return result;
     };
 

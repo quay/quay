@@ -17,7 +17,7 @@ angular.module('quay').directive('repoListTable', function () {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.repositories = null;
       $scope.orderedRepositories = [];
-      $scope.reposPerPage = 50;
+      $scope.reposPerPage = 25;
 
       $scope.maxPopularity = 0;
       $scope.options = {

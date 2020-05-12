@@ -408,6 +408,9 @@ class ConductRepositorySearch(ApiResource):
     @parse_args()
     @query_param("query", "The search query.", type=str, default="")
     @query_param("page", "The page.", type=int, default=1)
+    @query_param(
+        "includeUsage", "Whether to include usage metadata", type=truthy_bool, default=False
+    )
     @nickname("conductRepoSearch")
     def get(self, parsed_args):
         """
@@ -416,7 +419,7 @@ class ConductRepositorySearch(ApiResource):
         query = parsed_args["query"]
         page = min(max(1, parsed_args["page"]), MAX_RESULT_PAGE_COUNT)
         offset = (page - 1) * MAX_PER_PAGE
-        limit = offset + MAX_PER_PAGE + 1
+        limit = MAX_PER_PAGE + 1
 
         username = get_authenticated_user().username if get_authenticated_user() else None
 
@@ -427,27 +430,35 @@ class ConductRepositorySearch(ApiResource):
             )
         )
 
+        assert len(matching_repos) <= limit
+        has_additional = len(matching_repos) > MAX_PER_PAGE
+        matching_repos = matching_repos[0:MAX_PER_PAGE]
+
         # Load secondary information such as last modified time, star count and action count.
-        repository_ids = [repo.id for repo in matching_repos]
-        last_modified_map = registry_model.get_most_recent_tag_lifetime_start(matching_repos)
-        star_map = model.repository.get_stars(repository_ids)
-        action_sum_map = model.log.get_repositories_action_sums(repository_ids)
+        last_modified_map = None
+        star_map = None
+        action_sum_map = None
+        if parsed_args["includeUsage"]:
+            repository_ids = [repo.id for repo in matching_repos]
+            last_modified_map = registry_model.get_most_recent_tag_lifetime_start(matching_repos)
+            star_map = model.repository.get_stars(repository_ids)
+            action_sum_map = model.log.get_repositories_action_sums(repository_ids)
 
         # Build the results list.
         results = [
             repo_result_view(
                 repo,
                 username,
-                last_modified_map.get(repo.id),
-                star_map.get(repo.id, 0),
-                float(action_sum_map.get(repo.id, 0)),
+                last_modified_map.get(repo.id) if last_modified_map is not None else None,
+                star_map.get(repo.id, 0) if star_map is not None else None,
+                float(action_sum_map.get(repo.id, 0)) if action_sum_map is not None else None,
             )
             for repo in matching_repos
         ]
 
         return {
-            "results": results[0:MAX_PER_PAGE],
-            "has_additional": len(results) > MAX_PER_PAGE,
+            "results": results,
+            "has_additional": has_additional,
             "page": page,
             "page_size": MAX_PER_PAGE,
             "start_index": offset,

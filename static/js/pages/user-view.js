@@ -59,7 +59,7 @@
         'popularity': true
       };
 
-      $scope.context.viewuser.repositories = ApiService.listReposAsResource().withOptions(options).get(function(resp) {
+      $scope.context.viewuser.repositories = ApiService.listReposAsResource().withPagination('repositories').withOptions(options).get(function(resp) {
         return resp.repositories;
       });
     };

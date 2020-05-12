@@ -117,12 +117,10 @@ from endpoints.api.organization import (
     OrganizationApplicationResetClientSecret,
     Organization,
 )
-from endpoints.api.repository import (
-    RepositoryList,
-    RepositoryVisibility,
-    Repository,
-    REPOS_PER_PAGE,
-)
+from endpoints.api.repository import RepositoryList, RepositoryVisibility, Repository
+
+from endpoints.api.repository_models_pre_oci import REPOS_PER_PAGE
+
 from endpoints.api.permission import (
     RepositoryUserPermission,
     RepositoryTeamPermission,
