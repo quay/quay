@@ -33,6 +33,7 @@ def track_and_log(event_name, repo_obj, analytics_name=None, analytics_sample=1,
     metadata = {
         "repo": repo_name,
         "namespace": namespace_name,
+        "user-agent": request.user_agent.string,
     }
     metadata.update(kwargs)
 
