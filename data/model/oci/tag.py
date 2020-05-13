@@ -685,3 +685,21 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
         return None
     except Repository.DoesNotExist:
         return None
+
+
+def get_legacy_images_for_tags(tags):
+    """
+    Returns a map from tag ID to the legacy image for the tag.
+    """
+    if not tags:
+        return {}
+
+    query = (
+        ManifestLegacyImage.select(ManifestLegacyImage, Image, ImageStorage)
+        .join(Image)
+        .join(ImageStorage)
+        .where(ManifestLegacyImage.manifest << [tag.manifest_id for tag in tags])
+    )
+
+    by_manifest = {mli.manifest_id: mli.image for mli in query}
+    return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
