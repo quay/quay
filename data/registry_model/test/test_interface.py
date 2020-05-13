@@ -237,12 +237,19 @@ def test_repository_tags(repo_namespace, repo_name, registry_model):
         ("public", "publicrepo", 1, False),
     ],
 )
-def test_repository_tag_history(namespace, name, expected_tag_count, has_expired, registry_model):
+@pytest.mark.parametrize("with_size_fallback", [False, True,])
+def test_repository_tag_history(
+    namespace, name, expected_tag_count, has_expired, registry_model, with_size_fallback
+):
     # Pre-cache media type loads to ensure consistent query count.
     Manifest.media_type.get_name(1)
 
+    # If size fallback is requested, delete the sizes on the manifest rows.
+    if with_size_fallback:
+        Manifest.update(layers_compressed_size=None).execute()
+
     repository_ref = registry_model.lookup_repository(namespace, name)
-    with assert_query_count(1):
+    with assert_query_count(2 if with_size_fallback else 1):
         history, has_more = registry_model.list_repository_tag_history(repository_ref)
         assert not has_more
         assert len(history) == expected_tag_count
