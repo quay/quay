@@ -338,7 +338,11 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
             digest=tag_manifest.digest,
             internal_manifest_bytes=Bytes.for_string_or_unicode(tag_manifest.json_data),
             media_type=DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,  # Always in legacy.
-            inputs=dict(legacy_image=legacy_image, tag_manifest=True),
+            inputs=dict(
+                legacy_image=legacy_image,
+                tag_manifest=True,
+                repository=RepositoryReference.for_id(tag_manifest.repository_id),
+            ),
         )
 
     @classmethod
@@ -357,7 +361,11 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
             digest=manifest.digest,
             internal_manifest_bytes=manifest_bytes,
             media_type=ManifestTable.media_type.get_name(manifest.media_type_id),
-            inputs=dict(legacy_image=legacy_image, tag_manifest=False),
+            inputs=dict(
+                legacy_image=legacy_image,
+                tag_manifest=False,
+                repository=RepositoryReference.for_id(manifest.repository_id),
+            ),
         )
 
     @property
@@ -409,6 +417,14 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
         Returns True if this manifest points to a list (instead of an image).
         """
         return is_manifest_list_type(self.media_type)
+
+    @property
+    @requiresinput("repository")
+    def repository(self, repository):
+        """
+        Returns the repository under which this manifest lives.
+        """
+        return repository
 
 
 class LegacyImage(
