@@ -55,6 +55,7 @@ from data.database import (
     RepoMirrorConfig,
     RepoMirrorRule,
     RepositoryState,
+    RepoMirrorRuleType,
 )
 from data import model
 from data.decorators import is_deprecated_model
@@ -757,6 +758,22 @@ def populate_database(minimal=False):
         (5, [], "latest"),
     )
 
+    mirror_bot, _ = model.user.create_robot("mirrorbot", new_user_1)
+    mirroring_repo = __generate_repository(
+        new_user_1,
+        "mirroring",
+        "Mirroring repository.",
+        False,
+        [(mirror_bot, "write")],
+        (4, [], ["latest", "prod"]),
+    )
+    root_rule = model.repo_mirror.create_mirroring_rule(
+        mirroring_repo, {"kind": 5, "allowed": ["Unknown"],}, RepoMirrorRuleType.COMPLEX,
+    )
+    model.repo_mirror.enable_mirroring_for_repository(
+        mirroring_repo, root_rule, mirror_bot, "stage.quay.io/clairv4testing/ubuntu", 30
+    )
+
     building = __generate_repository(
         new_user_1,
         "building",
@@ -962,6 +979,7 @@ def populate_database(minimal=False):
         ],
     )
 
+    """
     mirror_repo = __generate_repository(
         new_user_1,
         "mirrored",
@@ -980,6 +998,7 @@ def populate_database(minimal=False):
         "sync_start_date": datetime.utcnow(),
     }
     mirror = model.repo_mirror.enable_mirroring_for_repository(*mirror_args, **mirror_kwargs)
+    """
 
     read_only_repo = __generate_repository(
         new_user_1, "readonly", "Read-Only Repo.", False, [], (4, [], ["latest", "prod"]),
@@ -1231,8 +1250,6 @@ WHITELISTED_EMPTY_MODELS = [
     "DeletedRepository",
     "ManifestChild",
     "NamespaceGeoRestriction",
-    "RepoMirrorConfig",
-    "RepoMirrorRule",
     "ImageStorageSignature",
     "DerivedStorageForImage",
     "TorrentInfo",

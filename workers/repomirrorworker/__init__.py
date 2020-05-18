@@ -1,9 +1,13 @@
+import base64
 import os
 import re
 import traceback
 import fnmatch
 import logging.config
 
+import requests
+
+from contextlib import contextmanager
 from prometheus_client import Gauge
 
 import features
@@ -21,6 +25,8 @@ from notifications import spawn_notification
 from util.audit import wrap_repository
 
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
+from workers.repomirrorworker.skopeo_calls import get_all_tags, RepoMirrorSkopeoException
+from workers.repomirrorworker.rules.definitions import handler_for_mirroring_row
 
 
 logger = logging.getLogger(__name__)
@@ -38,24 +44,12 @@ class PreemptedException(Exception):
     """
 
 
-class RepoMirrorSkopeoException(Exception):
-    """
-    Exception from skopeo.
-    """
-
-    def __init__(self, message, stdout, stderr):
-        self.message = message
-        self.stdout = stdout
-        self.stderr = stderr
-
-
 def process_mirrors(skopeo, token=None):
     """
     Performs mirroring of repositories whose last sync time is greater than sync interval.
 
     If a token is provided, scanning will begin where the token indicates it previously completed.
     """
-
     if not features.REPO_MIRROR:
         logger.debug("Repository mirror disabled; skipping RepoMirrorWorker process_mirrors")
         return None
@@ -65,16 +59,18 @@ def process_mirrors(skopeo, token=None):
         logger.debug("Found no additional repositories to mirror")
         return next_token
 
+    verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
+
     with database.UseThenDisconnect(app.config):
         for mirror, abt, num_remaining in iterator:
             try:
-                perform_mirror(skopeo, mirror)
+                _perform_mirror(skopeo, mirror, verbose_logs=verbose_logs)
             except PreemptedException:
                 logger.info(
                     "Another repository mirror worker pre-empted us for repository: %s", mirror.id
                 )
                 abt.set()
-            except Exception as e:  # TODO: define exceptions
+            except Exception as e:
                 logger.exception("Repository Mirror service unavailable")
                 return None
 
@@ -83,260 +79,230 @@ def process_mirrors(skopeo, token=None):
     return next_token
 
 
-def perform_mirror(skopeo, mirror):
+class RunStatus(object):
+    def __init__(self):
+        self.success = False
+
+
+@contextmanager
+def _run_and_catch(mirror):
+    """ Context manager which yields a RunStatus object and executes whatever code
+        occurs underneath the context. If the code raises an exception of any kind,
+        the mirroring operation is marked as failed.
+    """
+    status = RunStatus()
+
+    try:
+        yield status
+        status.success = True
+    except RepoMirrorSkopeoException as rmse:
+        release_mirror(mirror, RepoMirrorStatus.FAIL)
+        _emit_log(
+            mirror,
+            "repo_mirror_sync_failed",
+            "end",
+            "%s: %s" % (_description(mirror), str(rmse)),
+            stdout=rmse.stdout,
+            stderr=rmse.stderr,
+        )
+    except Exception as e:
+        if os.getenv("RAISE_MIRROR_EXCEPTIONS") == "true":
+            raise
+
+        release_mirror(mirror, RepoMirrorStatus.FAIL)
+        _emit_log(
+            mirror,
+            "repo_mirror_sync_failed",
+            "end",
+            "%s: INTERNAL ERROR" % _description(mirror),
+            stdout="Not applicable",
+            stderr=traceback.format_exc(e),
+        )
+
+
+def _decrypt_credentials(mirror):
+    """ Runs decryption of the mirroring credentials and returns them, if any. If none,
+        returns (None, None). Raises an exception if decryption failed.
+    """
+    try:
+        username = (
+            mirror.external_registry_username.decrypt()
+            if mirror.external_registry_username
+            else None
+        )
+        password = (
+            mirror.external_registry_password.decrypt()
+            if mirror.external_registry_password
+            else None
+        )
+    except DecryptionFailureException:
+        logger.exception(
+            "Failed to decrypt username or password for mirroring %s", mirror.repository
+        )
+        raise
+
+    return username, password
+
+
+def _perform_mirror(skopeo, mirror, verbose_logs=False):
     """
     Run mirror on all matching tags of remote repository.
     """
-
-    if os.getenv("DEBUGLOG", "false").lower() == "true":
-        verbose_logs = True
-    else:
-        verbose_logs = False
-
     mirror = claim_mirror(mirror)
     if mirror == None:
         raise PreemptedException
 
-    emit_log(
-        mirror,
-        "repo_mirror_sync_started",
-        "start",
-        "'%s' with tag pattern '%s'"
-        % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
+    # Emit that we've started the mirroring operation.
+    _emit_log(
+        mirror, "repo_mirror_sync_started", "start", _description(mirror),
     )
 
-    # Fetch the tags to mirror, being careful to handle exceptions. The 'Exception' is safety net only, allowing
-    # easy communication by user through bug report.
-    tags = []
-    try:
-        tags = tags_to_mirror(skopeo, mirror)
-    except RepoMirrorSkopeoException as e:
-        emit_log(
-            mirror,
-            "repo_mirror_sync_failed",
-            "end",
-            "'%s' with tag pattern '%s': %s"
-            % (mirror.external_reference, ",".join(mirror.root_rule.rule_value), str(e)),
-            tags=", ".join(tags),
-            stdout=e.stdout,
-            stderr=e.stderr,
-        )
-        release_mirror(mirror, RepoMirrorStatus.FAIL)
-        return
-    except Exception as e:
-        emit_log(
-            mirror,
-            "repo_mirror_sync_failed",
-            "end",
-            "'%s' with tag pattern '%s': INTERNAL ERROR"
-            % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-            tags=", ".join(tags),
-            stdout="Not applicable",
-            stderr=traceback.format_exc(e),
-        )
-        release_mirror(mirror, RepoMirrorStatus.FAIL)
-        return
-    if tags == []:
-        emit_log(
-            mirror,
-            "repo_mirror_sync_success",
-            "end",
-            "'%s' with tag pattern '%s'"
-            % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-            tags="No tags matched",
-        )
-        release_mirror(mirror, RepoMirrorStatus.SUCCESS)
-        return
+    # Validate credentials, if any.
+    with _run_and_catch(mirror) as run_status:
+        username, password = _decrypt_credentials(mirror)
 
-    # Sync tags
-    now_ms = database.get_epoch_timestamp_ms()
-    overall_status = RepoMirrorStatus.SUCCESS
-    try:
-        delete_obsolete_tags(mirror, tags)
+    if not run_status.success:
+        return RepoMirrorStatus.FAIL
 
-        try:
-            username = (
-                mirror.external_registry_username.decrypt()
-                if mirror.external_registry_username
-                else None
+    # Fetch the tags to mirror.
+    with _run_and_catch(mirror) as run_status:
+        tags = _tags_to_mirror(skopeo, mirror, verbose_logs=verbose_logs)
+
+    if not run_status.success:
+        return RepoMirrorStatus.FAIL
+
+    # Delete any obsolete tags.
+    with _run_and_catch(mirror) as run_status:
+        _delete_obsolete_tags(mirror, tags)
+
+    if not run_status.success:
+        return RepoMirrorStatus.FAIL
+
+    # Synchronize any new or updated tags.
+    with _run_and_catch(mirror) as run_status:
+        if not _synchronize_tags(
+            mirror, skopeo, tags, username, password, verbose_logs=verbose_logs
+        ):
+            release_mirror(mirror, RepoMirrorStatus.FAIL)
+            return RepoMirrorStatus.FAIL
+
+    if not run_status.success:
+        return RepoMirrorStatus.FAIL
+
+    # Done!
+    _emit_log(
+        mirror, "repo_mirror_sync_success", "end", _description(mirror), tags=", ".join(tags),
+    )
+    release_mirror(mirror, RepoMirrorStatus.SUCCESS)
+
+    return RepoMirrorStatus.SUCCESS
+
+
+def _description(mirror):
+    """ Returns a human-readable description of the mirroring configuration. """
+    handler = handler_for_mirroring_row(mirror.root_rule)
+    return "'%s' with rule '%s'" % (
+        mirror.external_reference,
+        handler.describe(mirror.root_rule.rule_value),
+    )
+
+
+def _synchronize_tags(mirror, skopeo, tags, username, password, verbose_logs=False):
+    """ Synchronizes tags as part of the mirroring operation. """
+    dest_server = (
+        app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+    )
+
+    had_failure = False
+    for tag in tags:
+        # Re-claim the mirror between each operation, to ensure no other worker
+        # preempts use
+        mirror = claim_mirror(mirror)
+        if mirror is None:
+            _emit_log(
+                mirror, "repo_mirror_sync_failed", "lost", _description(mirror),
             )
-            password = (
-                mirror.external_registry_password.decrypt()
-                if mirror.external_registry_password
-                else None
-            )
-        except DecryptionFailureException:
-            logger.exception(
-                "Failed to decrypt username or password for mirroring %s", mirror.repository
-            )
-            raise
+            return False
 
-        dest_server = (
-            app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
+        src_image = "docker://%s:%s" % (mirror.external_reference, tag)
+        dest_image = "docker://%s/%s/%s:%s" % (
+            dest_server,
+            mirror.repository.namespace_user.username,
+            mirror.repository.name,
+            tag,
         )
-
-        for tag in tags:
-            src_image = "docker://%s:%s" % (mirror.external_reference, tag)
-            dest_image = "docker://%s/%s/%s:%s" % (
-                dest_server,
-                mirror.repository.namespace_user.username,
-                mirror.repository.name,
-                tag,
+        with database.CloseForLongOperation(app.config):
+            result = skopeo.copy(
+                src_image,
+                dest_image,
+                src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
+                dest_tls_verify=app.config.get(
+                    "REPO_MIRROR_TLS_VERIFY", True
+                ),  # TODO: is this a config choice or something else?
+                src_username=username,
+                src_password=password,
+                dest_username=mirror.internal_robot.username,
+                dest_password=retrieve_robot_token(mirror.internal_robot),
+                proxy=mirror.external_registry_config.get("proxy", {}),
+                verbose_logs=verbose_logs,
             )
-            with database.CloseForLongOperation(app.config):
-                result = skopeo.copy(
-                    src_image,
-                    dest_image,
-                    src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
-                    dest_tls_verify=app.config.get(
-                        "REPO_MIRROR_TLS_VERIFY", True
-                    ),  # TODO: is this a config choice or something else?
-                    src_username=username,
-                    src_password=password,
-                    dest_username=mirror.internal_robot.username,
-                    dest_password=retrieve_robot_token(mirror.internal_robot),
-                    proxy=mirror.external_registry_config.get("proxy", {}),
-                    verbose_logs=verbose_logs,
-                )
 
-            if not result.success:
-                overall_status = RepoMirrorStatus.FAIL
-                emit_log(
-                    mirror,
-                    "repo_mirror_sync_tag_failed",
-                    "finish",
-                    "Source '%s' failed to sync" % src_image,
-                    tag=tag,
-                    stdout=result.stdout,
-                    stderr=result.stderr,
-                )
-                logger.info("Source '%s' failed to sync." % src_image)
-            else:
-                emit_log(
-                    mirror,
-                    "repo_mirror_sync_tag_success",
-                    "finish",
-                    "Source '%s' successful sync" % src_image,
-                    tag=tag,
-                    stdout=result.stdout,
-                    stderr=result.stderr,
-                )
-                logger.info("Source '%s' successful sync." % src_image)
-
-            mirror = claim_mirror(mirror)
-            if mirror is None:
-                emit_log(
-                    mirror,
-                    "repo_mirror_sync_failed",
-                    "lost",
-                    "'%s' with tag pattern '%s'"
-                    % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-                )
-    except Exception as e:
-        overall_status = RepoMirrorStatus.FAIL
-        emit_log(
-            mirror,
-            "repo_mirror_sync_failed",
-            "end",
-            "'%s' with tag pattern '%s': INTERNAL ERROR"
-            % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-            tags=", ".join(tags),
-            stdout="Not applicable",
-            stderr=traceback.format_exc(e),
-        )
-        release_mirror(mirror, overall_status)
-        return
-    finally:
-        if overall_status == RepoMirrorStatus.FAIL:
-            emit_log(
+        if result.success:
+            _emit_log(
                 mirror,
-                "repo_mirror_sync_failed",
-                "lost",
-                "'%s' with tag pattern '%s'"
-                % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
+                "repo_mirror_sync_tag_success",
+                "finish",
+                "Source '%s' successful sync" % src_image,
+                tag=tag,
+                stdout=result.stdout,
+                stderr=result.stderr,
             )
-            rollback(mirror, now_ms)
+            logger.debug("Source '%s' successful sync." % src_image)
         else:
-            emit_log(
+            had_failure = True
+            _emit_log(
                 mirror,
-                "repo_mirror_sync_success",
-                "end",
-                "'%s' with tag pattern '%s'"
-                % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-                tags=", ".join(tags),
+                "repo_mirror_sync_tag_failed",
+                "finish",
+                "Source '%s' failed to sync" % src_image,
+                tag=tag,
+                stdout=result.stdout,
+                stderr=result.stderr,
             )
-        release_mirror(mirror, overall_status)
+            logger.warning("Source '%s' failed to sync." % src_image)
 
-    return overall_status
+    return not had_failure
 
 
-def tags_to_mirror(skopeo, mirror):
-    all_tags = get_all_tags(skopeo, mirror)
-    if all_tags == []:
+def _tags_to_mirror(skopeo, mirror, verbose_logs=False):
+    """ Returns the list of tags to mirror. """
+    # Build a list of expected tags to give to skopeo. Skopeo cannot perform
+    # a tags call without at least one valid tag (no idea why), so we loop
+    # through the list of rules and find any defined tag names to use as a list.
+    # If none are found, `latest` will be provided in the tags call.
+    handler = handler_for_mirroring_row(mirror.root_rule)
+    expected_tags = list(handler.list_direct_tag_references(mirror.root_rule.rule_value))
+    expected_tags = expected_tags or ["latest"]
+
+    all_tags = get_all_tags(skopeo, mirror, expected_tags, verbose_logs=verbose_logs)
+    if not all_tags:
         return []
 
-    matching_tags = []
-    for pattern in mirror.root_rule.rule_value:
-        matching_tags = matching_tags + [tag for tag in all_tags if fnmatch.fnmatch(tag, pattern)]
-    matching_tags = list(set(matching_tags))
+    handler = handler_for_mirroring_row(mirror.root_rule)
+    matching_tags = set(
+        filter_tags(skopeo, mirror, mirror.root_rule.rule_value, all_tags, verbose_logs)
+    )
+    matching_tags = list(matching_tags)
     matching_tags.sort()
     return matching_tags
 
 
-def get_all_tags(skopeo, mirror):
-    verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
-
-    username = (
-        mirror.external_registry_username.decrypt() if mirror.external_registry_username else None
-    )
-    password = (
-        mirror.external_registry_password.decrypt() if mirror.external_registry_password else None
-    )
-
-    with database.CloseForLongOperation(app.config):
-        result = skopeo.tags(
-            "docker://%s" % (mirror.external_reference),
-            mirror.root_rule.rule_value,
-            username=username,
-            password=password,
-            verbose_logs=verbose_logs,
-            verify_tls=mirror.external_registry_config.get("verify_tls", True),
-            proxy=mirror.external_registry_config.get("proxy", {}),
-        )
-
-    if not result.success:
-        raise RepoMirrorSkopeoException(
-            "skopeo inspect failed: %s" % _skopeo_inspect_failure(result),
-            result.stdout,
-            result.stderr,
-        )
-
-    return result.tags
-
-
-def _skopeo_inspect_failure(result):
+def _rollback(mirror, since_ms):
     """
-    Custom processing of skopeo error messages for user friendly description.
-
-    :param result: SkopeoResults object
-    :return: Message to display
+      :param mirror: Mirror to perform rollback on
+      :param start_time: Time mirror was started; all changes after will be undone
+      :return:
     """
-
-    lines = result.stderr.split("\n")
-    for line in lines:
-        if re.match(".*Error reading manifest.*", line):
-            return "No matching tags, including 'latest', to inspect for tags list"
-
-    return "See output"
-
-
-def rollback(mirror, since_ms):
-    """
-
-  :param mirror: Mirror to perform rollback on
-  :param start_time: Time mirror was started; all changes after will be undone
-  :return:
-  """
 
     repository_ref = registry_model.lookup_repository(
         mirror.repository.namespace_user.username, mirror.repository.name
@@ -373,7 +339,8 @@ def rollback(mirror, since_ms):
             delete_tag(mirror.repository, tag.name)
 
 
-def delete_obsolete_tags(mirror, tags):
+def _delete_obsolete_tags(mirror, tags):
+    """ Deletes any tags no longer found in the mirrored repository. """
     existing_tags = lookup_alive_tags_shallow(mirror.repository.id)
     obsolete_tags = list([tag for tag in existing_tags if tag.name not in tags])
 
@@ -383,8 +350,7 @@ def delete_obsolete_tags(mirror, tags):
     return obsolete_tags
 
 
-# TODO: better to call 'track_and_log()' https://jira.coreos.com/browse/QUAY-1821
-def emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, stderr=None):
+def _emit_log(mirror, log_kind, verb, message, tag=None, tags=None, stdout=None, stderr=None):
     logs_model.log_action(
         log_kind,
         namespace_name=mirror.repository.namespace_user.username,

@@ -175,13 +175,13 @@ def create_mirroring_rule(repository, rule_value, rule_type=RepoMirrorRuleType.T
     Create a RepoMirrorRule for a given Repository.
     """
 
-    if rule_type != RepoMirrorRuleType.TAG_GLOB_CSV:
-        raise ValidationError("validation failed: rule_type must be TAG_GLOB_CSV")
+    # if rule_type != RepoMirrorRuleType.TAG_GLOB_CSV:
+    #    raise ValidationError("validation failed: rule_type must be TAG_GLOB_CSV")
 
-    if not isinstance(rule_value, list) or len(rule_value) < 1:
-        raise ValidationError(
-            "validation failed: rule_value for TAG_GLOB_CSV must be a list with at least one rule"
-        )
+    # if not isinstance(rule_value, list) or len(rule_value) < 1:
+    #    raise ValidationError(
+    #        "validation failed: rule_value for TAG_GLOB_CSV must be a list with at least one rule"
+    #    )
 
     rule = RepoMirrorRule.create(repository=repository, rule_type=rule_type, rule_value=rule_value)
     return rule

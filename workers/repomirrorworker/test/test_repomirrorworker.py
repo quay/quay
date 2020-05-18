@@ -12,7 +12,7 @@ from data.model.test.test_repo_mirroring import create_mirror_repo_robot
 from data.model.user import retrieve_robot_token
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 
-from workers.repomirrorworker import delete_obsolete_tags
+from workers.repomirrorworker import _delete_obsolete_tags
 from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
 from io import BytesIO
 from util.repomirror.skopeomirror import SkopeoResults, SkopeoMirror
@@ -345,7 +345,7 @@ def test_remove_obsolete_tags(initialized_db):
     _create_tag(repository, "oldtag")
 
     incoming_tags = ["one", "two"]
-    deleted_tags = delete_obsolete_tags(mirror, incoming_tags)
+    deleted_tags = _delete_obsolete_tags(mirror, incoming_tags)
 
     assert [tag.name for tag in deleted_tags] == ["oldtag"]
 

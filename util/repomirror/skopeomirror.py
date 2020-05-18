@@ -49,10 +49,33 @@ class SkopeoMirror(object):
 
         return self.run_skopeo(args, proxy)
 
+    def lookup_manifest_digest(
+        self,
+        repository,
+        username=None,
+        password=None,
+        verify_tls=True,
+        proxy=None,
+        verbose_logs=False,
+    ):
+        """ Looks up the manifest digest for the tag referenced by the full repository path given. """
+        args = ["/usr/bin/skopeo"]
+        if verbose_logs:
+            args = args + ["--debug"]
+        args = args + ["inspect", "--tls-verify=%s" % verify_tls]
+        args = args + self.external_registry_credentials("--creds", username, password)
+
+        result = self.run_skopeo(args + [quote(repository)], proxy)
+        digest = None
+        if result.success:
+            digest = json.loads(result.stdout)["Digest"]
+
+        return SkopeoResults(result.success, [digest], result.stdout, result.stderr)
+
     def tags(
         self,
         repository,
-        rule_value,
+        expected_tags=None,
         username=None,
         password=None,
         verify_tls=True,
@@ -72,11 +95,13 @@ class SkopeoMirror(object):
         args = args + ["inspect", "--tls-verify=%s" % verify_tls]
         args = args + self.external_registry_credentials("--creds", username, password)
 
-        if not rule_value:
-            rule_value = []
-
         all_tags = []
-        for tag in rule_value + ["latest"]:
+
+        # Add `latest` as a fallback.
+        if "latest" not in expected_tags:
+            expected_tags.append("latest")
+
+        for tag in expected_tags:
             result = self.run_skopeo(args + [quote("%s:%s" % (repository, tag))], proxy)
 
             if result.success:

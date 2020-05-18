@@ -1862,11 +1862,18 @@ class TagToRepositoryTag(BaseModel):
 class RepoMirrorRuleType(IntEnum):
     """
     Types of mirroring rules.
-
-    TAG_GLOB_CSV: Comma separated glob values (eg. "7.6,7.6-1.*")
     """
 
+    """
+    TAG_GLOB_CSV: Comma separated glob values (eg. "7.6,7.6-1.*"). Used for legacy only and
+    now deprecated.
+    """
     TAG_GLOB_CSV = 1
+
+    """
+    COMPLEX: A complex tree of rules, found in the  rule_value
+    """
+    COMPLEX = 2
 
 
 class RepoMirrorRule(BaseModel):
@@ -1880,10 +1887,6 @@ class RepoMirrorRule(BaseModel):
 
     rule_type = ClientEnumField(RepoMirrorRuleType, default=RepoMirrorRuleType.TAG_GLOB_CSV)
     rule_value = JSONField()
-
-    # Optional associations to allow the generation of a ruleset tree
-    left_child = ForeignKeyField("self", null=True, backref="left_child")
-    right_child = ForeignKeyField("self", null=True, backref="right_child")
 
 
 @unique

@@ -47,7 +47,7 @@ if __name__ == "__main__":
             host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False
         )
 
-    logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
+    logging.config.fileConfig(logfile_path(debug=True), disable_existing_loggers=False)
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

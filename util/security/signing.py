@@ -1,4 +1,4 @@
-import gpg
+# import gpg
 import features
 import logging
 from io import BytesIO
@@ -22,6 +22,7 @@ class GPG2Signer(object):
         if not config.get("GPG2_PUBLIC_KEY_FILENAME"):
             raise Exception("Missing configuration key GPG2_PUBLIC_KEY_FILENAME")
 
+        return
         self._ctx = gpg.Context()
         self._ctx.armor = True
         self._private_key_name = config["GPG2_PRIVATE_KEY_NAME"]
