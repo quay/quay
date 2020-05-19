@@ -116,6 +116,7 @@ While we're here, let's set up a directory to hold image blobs:
 
 ```
 $ mkdir $QUAY/storage
+$ setfacl -m u:1001:-wx $QUAY/storage
 ```
 
 Stop the Config Tool with `CTRL-C` (or `podman stop` depending on how you ran it)- we won't need it anymore.
