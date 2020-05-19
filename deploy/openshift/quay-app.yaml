@@ -248,6 +248,8 @@ objects:
             value: ${{SYSLOG_PROTO}}
           - name: QUAY_LOGGING
             value: ${{QUAY_LOGGING}}
+          - name: DB_CONNECTION_POOLING
+            value: ${{DB_CONNECTION_POOLING}}
 parameters:
   - name: NAME
     value: "quay"
@@ -424,4 +426,5 @@ parameters:
     value: "3600"
     displayName: aws load balancer connection idle timeout
     description: aws load balancer connection idle timeout
-
+  - name: DB_CONNECTION_POOLING
+    value: false
