@@ -427,4 +427,4 @@ parameters:
     displayName: aws load balancer connection idle timeout
     description: aws load balancer connection idle timeout
   - name: DB_CONNECTION_POOLING
-    value: false
+    value: "false"
