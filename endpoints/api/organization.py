@@ -636,7 +636,7 @@ class OrganizationApplications(ApiResource):
 
             log_action("create_application", orgname, app_data)
 
-            return app_view(application)
+            return app_view(application), 201
         raise Unauthorized()
 
 
