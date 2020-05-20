@@ -1,5 +1,5 @@
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1 
 kind: Deployment
 metadata:
   labels:
@@ -16,18 +16,21 @@ spec:
       labels:
         app: postgres-clair
     spec:
+      securityContext:
+        runAsUser: 0 
+        fsGroup: 0
       containers:
       - env:
-        - name: POSTGRESQL_USER
+        - name: POSTGRES_USER
           # Set the username for the Clair postgres database (clair by default)
           value: clair
-        - name: POSTGRESQL_DATABASE
+        - name: POSTGRES_DATABASE
           # Set the name of the Clair postgres database
           value: clair
-        - name: POSTGRESQL_PASSWORD
+        - name: POSTGRES_PASSWORD
           # Set the password for the Clair postgress user
           value: test123
-        image: registry.access.redhat.com/rhscl/postgresql-10-rhel7:1-35
+          image: postgres:12 
         imagePullPolicy: IfNotPresent
         name: postgres-clair
         ports:
@@ -36,8 +39,8 @@ spec:
         volumeMounts:
         - mountPath: /var/lib/pgsql/data
           name: postgredb
-        serviceAccount: postgres
-        serviceAccountName: postgres
+      serviceAccount: postgres
+      serviceAccountName: postgres
       volumes:
       - name: postgredb
         persistentVolumeClaim:

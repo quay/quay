@@ -1,5 +1,5 @@
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1 
 kind: Deployment
 metadata:
   namespace: quay-enterprise
@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: quay-enterprise-mirror-app
-        image: quay.io/redhat/quay:v3.1.0
+        image: quay.io/redhat/quay:v3.2.1
         ports:
         - containerPort: 8443
         command: ["/quay-registry/quay-entrypoint.sh"]
