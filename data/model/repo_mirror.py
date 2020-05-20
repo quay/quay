@@ -14,6 +14,7 @@ from data.database import (
     Repository,
     uuid_generator,
     db_transaction,
+    User,
 )
 from data.fields import DecryptedValue
 from data.model import DataModelException
@@ -362,7 +363,12 @@ def get_mirror(repository):
     Return the RepoMirrorConfig associated with the given Repository, or None if it doesn't exist.
     """
     try:
-        return RepoMirrorConfig.get(repository=repository)
+        return (
+            RepoMirrorConfig.select(RepoMirrorConfig, User)
+            .join(User)
+            .where(RepoMirrorConfig.repository == repository)
+            .get()
+        )
     except RepoMirrorConfig.DoesNotExist:
         return None
 

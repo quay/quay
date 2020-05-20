@@ -32,7 +32,13 @@ def _perform_cleanup():
 
 
 def _get_legacy_image_row_id(tag):
-    return database.ManifestLegacyImage.get(manifest=tag.manifest._db_id).image.docker_image_id
+    return (
+        database.ManifestLegacyImage.select(database.ManifestLegacyImage, database.Image)
+        .join(database.Image)
+        .where(database.ManifestLegacyImage.manifest == tag.manifest._db_id)
+        .get()
+        .image.docker_image_id
+    )
 
 
 def test_missing_link(initialized_db):

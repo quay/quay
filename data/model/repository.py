@@ -479,6 +479,10 @@ def lookup_repository(repo_id):
         return None
 
 
+def repository_visibility_name(repository):
+    return "public" if is_repository_public(repository) else "private"
+
+
 def is_repository_public(repository):
     return repository.visibility_id == _basequery.get_public_repo_visibility().id
 

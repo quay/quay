@@ -79,7 +79,6 @@ def test_find_matching_tag(names, expected, registry_model):
         assert found is None
     else:
         assert found.name in expected
-        assert found.repository.namespace_name == "devtable"
         assert found.repository.name == "simple"
 
 

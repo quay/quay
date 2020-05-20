@@ -10,7 +10,11 @@ import data.model
 
 from app import app, storage, authentication, model_cache
 from data import appr_model
+<<<<<<< HEAD
 from data.cache import cache_key
+=======
+from data import model as data_model
+>>>>>>> Add missing joins to reduce extra queries
 from data.database import Repository, MediaType, db_transaction
 from data.appr_model.models import NEW_MODELS
 from endpoints.appr.models_interface import (
@@ -202,7 +206,7 @@ class CNRAppModel(AppRegistryDataInterface):
             yield CachedApplication(
                 namespace=repo.namespace_user.username,
                 name=app_name,
-                visibility=repo.visibility.name,
+                visibility=data_model.repository.repository_visibility_name(repo),
                 tag_names=available_releases,
                 latest_lifetime_start=tag_set_prefetch[-1].lifetime_start,
                 first_lifetime_start=tag_set_prefetch[0].lifetime_start,
