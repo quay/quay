@@ -86,6 +86,10 @@ angular.module("quay-config")
             return config.FEATURE_GOOGLE_LOGIN;
           }},
 
+          {'id': 'openshift-login', 'title': 'OpenShift Authentication', 'condition': function(config) {
+            return config.FEATURE_OPENSHIFT_LOGIN;
+          }},
+
           {'id': 'github-trigger', 'title': 'GitHub (Enterprise) Build Triggers', 'condition': function(config) {
             return config.FEATURE_GITHUB_BUILD;
           }},
@@ -280,7 +284,7 @@ angular.module("quay-config")
         $scope.getOIDCProviders = function(config) {
           var keys = Object.keys(config || {});
           return keys.filter(function(key) {
-            if (key == 'GITHUB_LOGIN_CONFIG' || key == 'GOOGLE_LOGIN_CONFIG') {
+            if (key == 'GITHUB_LOGIN_CONFIG' || key == 'GOOGLE_LOGIN_CONFIG' || key == 'OPENSHIFT_LOGIN_CONFIG') {
               // Has custom UI and config.
               return false;
             }

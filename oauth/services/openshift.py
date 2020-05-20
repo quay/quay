@@ -67,7 +67,8 @@ class OpenshiftOAuthService(OAuthLoginService):
         return OAuthEndpoint(self.config.get("OPENSHIFT_SERVER") + "apis/user.openshift.io/v1/users/~")
 
     def validate_client_id_and_secret(self, http_client, url_scheme_and_hostname):
-        pass
+        """TODO: provide means of validation with internal OAuth service."""
+        return True
 
     def _get_endpoint(self, endpoint_key, **kwargs):
         """
