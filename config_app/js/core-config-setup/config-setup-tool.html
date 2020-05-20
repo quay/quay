@@ -1383,7 +1383,47 @@
           </div> <!-- /Google Authentication -->
 
           <!-- OpenShift Authentication -->
+          <div class="co-panel">
+            <div class="co-panel-heading">
+              <i class="fab fa-redhat"></i> OpenShift Integrated Authentication
+            </div>
+            <div class="co-panel-body">
+              <div class="description">
+                <p>
+                  If enabled, users can use OpenShift to authenticate to the registry.
+                </p>
+                <p>
+                  <strong>Note:</strong> You must register Quay as an OAuth client to the internal OAuth service.
 
+                  See: <a href="https://docs.openshift.com/container-platform/latest/authentication/using-service-accounts-as-oauth-client.html">
+                  Using a service account as an OAuth client</a> for more information on configuring Service Accounts as OAuth clients.
+                </p>
+              </div>
+
+              <div class="config-bool-field" binding="config.FEATURE_OPENSHIFT_LOGIN">
+                Enable OpenShift Integrated Authentication
+              </div>
+
+              <table class="config-table" ng-if="config.FEATURE_OPENSHIFT_LOGIN">
+                <tr>
+                  <td>OAuth Client ID:</td>
+                  <td>
+                    <span class="config-string-field" binding="config.OPENSHIFT_LOGIN_CONFIG.CLIENT_ID"
+                          placeholder="system:serviceaccount:<namespace>:<serviceaccount>">
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>OAuth Client Secret:</td>
+                  <td>
+                    <span class="config-string-field" binding="config.OPENSHIFT_LOGIN_CONFIG.CLIENT_SECRET"
+                          placeholder="oc sa get-token <serviceaccount>">
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div> <!-- /OpenShift Authentication -->
 
           <!-- Custom OIDC providers -->
           <div class="co-panel" ng-repeat="provider in getOIDCProviders(config)">
