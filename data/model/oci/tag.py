@@ -148,8 +148,9 @@ def list_repository_tag_history(
 
     if active_tags_only:
         query = filter_to_alive_tags(query)
+    else
+        query = filter_to_visible_tags(query)
 
-    query = filter_to_visible_tags(query)
     results = list(query)
 
     return results[0:page_size], len(results) > page_size
@@ -406,7 +407,6 @@ def delete_tags_for_manifest(manifest):
     """
     query = Tag.select().where(Tag.manifest == manifest)
     query = filter_to_alive_tags(query)
-    query = filter_to_visible_tags(query)
 
     tags = list(query)
     now_ms = get_epoch_timestamp_ms()
@@ -435,9 +435,8 @@ def filter_to_alive_tags(query, now_ms=None, model=Tag):
     if now_ms is None:
         now_ms = get_epoch_timestamp_ms()
 
-    return query.where((model.lifetime_end_ms >> None) | (model.lifetime_end_ms > now_ms)).where(
-        model.hidden == False
-    )
+    query = query.where((model.lifetime_end_ms >> None) | (model.lifetime_end_ms > now_ms))
+    return filter_to_visible_tags(query)
 
 
 def set_tag_expiration_sec_for_manifest(manifest_id, expiration_seconds):
