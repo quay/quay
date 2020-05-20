@@ -699,9 +699,8 @@ def get_legacy_images_for_tags(tags):
         return {}
 
     query = (
-        ManifestLegacyImage.select(ManifestLegacyImage, Image, ImageStorage)
+        ManifestLegacyImage.select(ManifestLegacyImage, Image)
         .join(Image)
-        .join(ImageStorage)
         .where(ManifestLegacyImage.manifest << [tag.manifest_id for tag in tags])
     )
 
