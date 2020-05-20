@@ -68,6 +68,7 @@ def get_manifest_types(repo, models_ref, release=None):
     )
     if release:
         query = query.where(Tag.name == release)
+        return [get_media_type(query.scalar())]
 
     manifests = set()
     for m in query.distinct().tuples():
