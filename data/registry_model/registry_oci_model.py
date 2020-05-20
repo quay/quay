@@ -373,7 +373,10 @@ class OCIModel(RegistryDataInterface):
                 # Reload the tag in case any updates were applied.
                 tag = database.Tag.get(id=tag.id)
 
-            return (wrapped_manifest, Tag.for_tag(tag, self._legacy_image_id_handler))
+            return (
+                wrapped_manifest,
+                Tag.for_tag(tag, self._legacy_image_id_handler, manifest_row=created_manifest.manifest),
+            )
 
     def retarget_tag(
         self,
@@ -444,11 +447,11 @@ class OCIModel(RegistryDataInterface):
         Deletes all tags pointing to the given manifest, making the manifest inaccessible for
         pulling.
 
-        Returns the tags deleted, if any. Returns None on error.
+        Returns the tags (ShallowTag) deleted. Returns None on error.
         """
         with db_disallow_replica_use():
             deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
-            return [Tag.for_tag(tag, self._legacy_image_id_handler) for tag in deleted_tags]
+            return [ShallowTag.for_tag(tag) for tag in deleted_tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):
         """
@@ -526,7 +529,7 @@ class OCIModel(RegistryDataInterface):
         try:
             manifestlist = database.Manifest.get(id=db_id)
             amdlinux_manifest = database.Manifest.get(
-                digest=digest, repository=manifestlist.repository
+                digest=digest, repository=manifestlist.repository_id
             )
             return amdlinux_manifest.id
         except database.Manifest.DoesNotExist:
@@ -763,8 +766,9 @@ class OCIModel(RegistryDataInterface):
         except database.DerivedStorageForManifest.DoesNotExist:
             return None
 
-        storage = derived_storage.derivative
-        signature_entry = model.storage.lookup_storage_signature(storage, signer_name)
+        signature_entry = model.storage.lookup_storage_signature(
+            derived_storage.derivative_id, signer_name
+        )
         if signature_entry is None:
             return None
 
@@ -779,11 +783,12 @@ class OCIModel(RegistryDataInterface):
         except database.DerivedStorageForManifest.DoesNotExist:
             return None
 
-            storage = derived_storage.derivative
-            signature_entry = model.storage.find_or_create_storage_signature(storage, signer_name)
-            signature_entry.signature = signature
-            signature_entry.uploading = False
-            signature_entry.save()
+        signature_entry = model.storage.find_or_create_storage_signature(
+            derived_storage.derivative_id, signer_name
+        )
+        signature_entry.signature = signature
+        signature_entry.uploading = False
+        signature_entry.save()
 
     def delete_derived_storage(self, derived_storage):
         """
@@ -801,7 +806,14 @@ class OCIModel(RegistryDataInterface):
         Sets the compressed size on the given derived storage.
         """
         try:
-            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
+            derived_storage = (
+                database.DerivedStorageForManifest.select(
+                    database.DerivedStorageForManifest, database.ImageStorage
+                )
+                .join(database.ImageStorage)
+                .where(database.DerivedStorageForManifest.id == derived_storage._db_id)
+                .get()
+            )
         except database.DerivedStorageForManifest.DoesNotExist:
             return None
 

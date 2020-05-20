@@ -173,8 +173,8 @@ class Label(datatype("Label", ["key", "value", "uuid", "source_type_name", "medi
             key=label.key,
             value=label.value,
             uuid=label.uuid,
-            media_type_name=label.media_type.name,
-            source_type_name=label.source_type.name,
+            media_type_name=model.label.get_media_types()[label.media_type_id],
+            source_type_name=model.label.get_label_source_types()[label.source_type_id],
         )
 
 
@@ -217,7 +217,7 @@ class Tag(
     """
 
     @classmethod
-    def for_tag(cls, tag, legacy_id_handler, legacy_image_row=None):
+    def for_tag(cls, tag, legacy_id_handler, manifest_row=None, legacy_image_row=None):
         if tag is None:
             return None
 
@@ -229,11 +229,11 @@ class Tag(
             lifetime_end_ms=tag.lifetime_end_ms,
             lifetime_start_ts=tag.lifetime_start_ms // 1000,
             lifetime_end_ts=tag.lifetime_end_ms // 1000 if tag.lifetime_end_ms else None,
-            manifest_digest=tag.manifest.digest,
+            manifest_digest=manifest_row.digest if manifest_row else tag.manifest.digest,
             inputs=dict(
                 legacy_id_handler=legacy_id_handler,
                 legacy_image_row=legacy_image_row,
-                manifest_row=tag.manifest,
+                manifest_row=manifest_row or tag.manifest,
                 repository=RepositoryReference.for_id(tag.repository_id),
             ),
         )

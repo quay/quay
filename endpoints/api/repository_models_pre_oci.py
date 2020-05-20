@@ -161,7 +161,7 @@ class PreOCIModel(RepositoryDataInterface):
                     repo.namespace_user.username,
                     repo.name,
                     repo.rid in star_set,
-                    repo.visibility_id == model.repository.get_public_repo_visibility().id,
+                    model.repository.is_repository_public(repo),
                     repo_kind,
                     repo.description,
                     repo.namespace_user.organization,

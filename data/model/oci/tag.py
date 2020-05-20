@@ -580,7 +580,9 @@ def lookup_notifiable_tags_for_manifest(manifest, event_name):
     except RepositoryNotification.DoesNotExist:
         raise StopIteration()
 
-    return filter_to_alive_tags(Tag.select().where(Tag.manifest == manifest))
+    return filter_to_alive_tags(
+        Tag.select(Tag, Repository).join(Repository).where(Tag.manifest == manifest)
+    )
 
 
 def lookup_notifiable_tags_for_legacy_image(docker_image_id, storage_uuid, event_name):
@@ -590,7 +592,9 @@ def lookup_notifiable_tags_for_legacy_image(docker_image_id, storage_uuid, event
     """
     event = ExternalNotificationEvent.get(name=event_name)
     images = (
-        Image.select()
+        Image.select(Image, Repository)
+        .join(Repository)
+        .switch(Image)
         .join(ImageStorage)
         .where(Image.docker_image_id == docker_image_id, ImageStorage.uuid == storage_uuid)
     )

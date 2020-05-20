@@ -10,6 +10,7 @@ import data.model
 
 from app import app, storage, authentication, model_cache
 from data import appr_model
+from data import model as data_model
 from data.cache import cache_key
 from data.database import Repository, MediaType, db_transaction
 from data.appr_model.models import NEW_MODELS
@@ -173,7 +174,7 @@ class CNRAppModel(AppRegistryDataInterface):
             view = ApplicationSummaryView(
                 namespace=repo.namespace_user.username,
                 name=app_name,
-                visibility=repo.visibility.name,
+                visibility=data_model.repository.repository_visibility_name(repo),
                 default=available_releases[0],
                 channels=channels,
                 manifests=manifests,

@@ -522,12 +522,16 @@ def delete_derived_storage(derived_storage):
     """ Deletes the derived storage. """
     # Verify that we aren't about to delete a non-derived blob.
     try:
-        ManifestBlob.get(blob=derived_storage.derivative)
+        ManifestBlob.get(blob=derived_storage.derivative_id)
         raise Exception("Derived linked to manifest blob")
     except ManifestBlob.DoesNotExist:
         pass
 
-    derived_storage.derivative.delete_instance(recursive=True)
+    try:
+        derivative = ImageStorage.get(id=derived_storage.derivative_id)
+        derivative.delete_instance(recursive=True)
+    except ImageStorage.DoesNotExist:
+        pass
 
 
 def _get_uniqueness_hash(varying_metadata):

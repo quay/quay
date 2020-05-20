@@ -157,7 +157,12 @@ def get_blob_upload_by_uuid(upload_uuid):
     Loads the upload with the given UUID, if any.
     """
     try:
-        return BlobUpload.select().where(BlobUpload.uuid == upload_uuid).get()
+        return (
+            BlobUpload.select(BlobUpload, ImageStorageLocation)
+            .join(ImageStorageLocation)
+            .where(BlobUpload.uuid == upload_uuid)
+            .get()
+        )
     except BlobUpload.DoesNotExist:
         return None
 
