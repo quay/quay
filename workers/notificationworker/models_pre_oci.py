@@ -1,6 +1,7 @@
 import json
 
 from data import model
+from data.database import RepositoryNotification
 from workers.notificationworker.models_interface import (
     NotificationWorkerDataInterface,
     Notification,
@@ -14,8 +15,8 @@ def notification(notification_row):
     """
     return Notification(
         uuid=notification_row.uuid,
-        event_name=notification_row.event.name,
-        method_name=notification_row.method.name,
+        event_name=RepositoryNotification.event.get_name(notification_row.event_id),
+        method_name=RepositoryNotification.method.get_name(notification_row.method_id),
         event_config_dict=json.loads(notification_row.event_config_json or "{}"),
         method_config_dict=json.loads(notification_row.config_json or "{}"),
         repository=Repository(

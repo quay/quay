@@ -148,7 +148,7 @@ def list_repository_tag_history(
 
     if active_tags_only:
         query = filter_to_alive_tags(query)
-    else
+    else:
         query = filter_to_visible_tags(query)
 
     results = list(query)

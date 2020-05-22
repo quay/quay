@@ -1320,7 +1320,11 @@ def get_region_locations(user):
     """
     Returns the locations defined as preferred storage for the given user.
     """
-    query = UserRegion.select().join(ImageStorageLocation).where(UserRegion.user == user)
+    query = (
+        UserRegion.select(UserRegion, ImageStorageLocation)
+        .join(ImageStorageLocation)
+        .where(UserRegion.user == user)
+    )
     return set([region.location.name for region in query])
 
 
