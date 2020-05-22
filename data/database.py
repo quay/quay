@@ -1397,8 +1397,8 @@ class ExternalNotificationMethod(BaseModel):
 class RepositoryNotification(BaseModel):
     uuid = CharField(default=uuid_generator, index=True)
     repository = ForeignKeyField(Repository)
-    event = ForeignKeyField(ExternalNotificationEvent)
-    method = ForeignKeyField(ExternalNotificationMethod)
+    event = EnumField(ExternalNotificationEvent)
+    method = EnumField(ExternalNotificationMethod)
     title = CharField(null=True)
     config_json = TextField()
     event_config_json = TextField(default="{}")
