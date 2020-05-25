@@ -697,6 +697,11 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether garbage collection is enabled.
     FEATURE_GARBAGE_COLLECTION = True
 
+    # Feature Flags: Whether the workers for GCing deleted namespaces and repositories
+    # are enabled.
+    FEATURE_NAMESPACE_GARBAGE_COLLECTION = True
+    FEATURE_REPOSITORY_GARBAGE_COLLECTION = True
+
     # When enabled, sets a tracing callback to report greenlet metrics.
     GREENLET_TRACING = True
 
