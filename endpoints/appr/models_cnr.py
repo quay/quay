@@ -10,11 +10,8 @@ import data.model
 
 from app import app, storage, authentication, model_cache
 from data import appr_model
-<<<<<<< HEAD
-from data.cache import cache_key
-=======
 from data import model as data_model
->>>>>>> Add missing joins to reduce extra queries
+from data.cache import cache_key
 from data.database import Repository, MediaType, db_transaction
 from data.appr_model.models import NEW_MODELS
 from endpoints.appr.models_interface import (

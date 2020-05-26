@@ -1240,7 +1240,6 @@ WHITELISTED_EMPTY_MODELS = [
     "RepoMirrorRule",
     "ImageStorageSignature",
     "DerivedStorageForImage",
-    "DerivedStorageForManifest",
     "TorrentInfo",
     "LogEntry",
     "LogEntry2",

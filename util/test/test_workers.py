@@ -28,10 +28,6 @@ from util.workers import get_worker_count
         ("registry", {"WORKER_COUNT": 1,}, [0, 1], 10, 8, 64, 8),
         # Override always uses specific first.
         ("registry", {"WORKER_COUNT_REGISTRY": 120, "WORKER_COUNT": 12,}, [0, 1], 10, 8, 64, 120),
-        # Non-matching override.
-        ("verbs", {"WORKER_COUNT_REGISTRY": 120,}, [0, 1], 10, 8, 64, 20),
-        # Zero worker count (use defaults).
-        ("verbs", {"WORKER_COUNT": 0,}, [0, 1], 10, 8, 64, 8),
     ],
 )
 def test_get_worker_count(

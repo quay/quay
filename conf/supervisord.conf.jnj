@@ -200,14 +200,6 @@ autostart = {{ config['gunicorn-secscan']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:gunicorn-verbs]
-environment=
-  PYTHONPATH=%(ENV_QUAYDIR)s
-command=nice -n 10 gunicorn -c %(ENV_QUAYCONF)s/gunicorn_verbs.py verbs:application
-autostart = {{ config['gunicorn-verbs']['autostart'] }}
-stdout_events_enabled = true
-stderr_events_enabled = true
-
 [program:gunicorn-web]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s

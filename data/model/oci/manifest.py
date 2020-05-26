@@ -1,4 +1,3 @@
-import hashlib
 import json
 import logging
 
@@ -12,7 +11,6 @@ from data.database import (
     ManifestBlob,
     ManifestLegacyImage,
     ManifestChild,
-    DerivedStorageForManifest,
     ImageStorage,
     ImageStoragePlacement,
     ImageStorageTransformation,
@@ -458,84 +456,3 @@ def _populate_legacy_image(
 
     assert rewritten_images
     return rewritten_images[-1].image_id
-
-
-def find_or_create_derived_storage(
-    source_manifest, transformation_name, preferred_location, varying_metadata=None
-):
-    """ Finds the derived storage for the given manifest with the given transformation
-        and returns it or creates a new one.
-    """
-    existing = find_derived_storage_for_manifest(
-        source_manifest, transformation_name, varying_metadata
-    )
-    if existing is not None:
-        return existing
-
-    uniqueness_hash = _get_uniqueness_hash(varying_metadata)
-    trans = ImageStorageTransformation.get(name=transformation_name)
-    new_storage = create_v1_storage(preferred_location)
-
-    try:
-        derived = DerivedStorageForManifest.create(
-            source_manifest=source_manifest,
-            derivative=new_storage,
-            transformation=trans,
-            uniqueness_hash=uniqueness_hash,
-        )
-    except IntegrityError:
-        # Storage was created while this method executed. Just return the existing.
-        ImageStoragePlacement.delete().where(ImageStoragePlacement.storage == new_storage).execute()
-        new_storage.delete_instance()
-        return find_derived_storage_for_manifest(
-            source_manifest, transformation_name, varying_metadata
-        )
-
-    return derived
-
-
-def find_derived_storage_for_manifest(source_manifest, transformation_name, varying_metadata=None):
-    """ Finds the derived storage for the given manifest with the given transformation
-        and returns it or None if none.
-    """
-    uniqueness_hash = _get_uniqueness_hash(varying_metadata)
-
-    try:
-        found = (
-            DerivedStorageForManifest.select(ImageStorage, DerivedStorageForManifest)
-            .join(ImageStorage)
-            .switch(DerivedStorageForManifest)
-            .join(ImageStorageTransformation)
-            .where(
-                DerivedStorageForManifest.source_manifest == source_manifest,
-                DerivedStorageForManifest.uniqueness_hash == uniqueness_hash,
-                ImageStorageTransformation.name == transformation_name,
-            )
-            .get()
-        )
-        return found
-    except DerivedStorageForManifest.DoesNotExist:
-        return None
-
-
-def delete_derived_storage(derived_storage):
-    """ Deletes the derived storage. """
-    # Verify that we aren't about to delete a non-derived blob.
-    try:
-        ManifestBlob.get(blob=derived_storage.derivative_id)
-        raise Exception("Derived linked to manifest blob")
-    except ManifestBlob.DoesNotExist:
-        pass
-
-    try:
-        derivative = ImageStorage.get(id=derived_storage.derivative_id)
-        derivative.delete_instance(recursive=True)
-    except ImageStorage.DoesNotExist:
-        pass
-
-
-def _get_uniqueness_hash(varying_metadata):
-    if not varying_metadata:
-        return None
-
-    return hashlib.sha256(json.dumps(canonicalize(varying_metadata))).hexdigest()

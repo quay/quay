@@ -36,7 +36,6 @@ def default_services():
         "dnsmasq": {"autostart": "true"},
         "gunicorn-registry": {"autostart": "true"},
         "gunicorn-secscan": {"autostart": "true"},
-        "gunicorn-verbs": {"autostart": "true"},
         "gunicorn-web": {"autostart": "true"},
         "ip-resolver-update-worker": {"autostart": "true"},
         "jwtproxy": {"autostart": "true"},
