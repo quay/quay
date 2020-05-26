@@ -315,7 +315,11 @@ class Manifest(
             media_type=ManifestTable.media_type.get_name(manifest.media_type_id),
             _layers_compressed_size=manifest.layers_compressed_size,
             config_media_type=manifest.config_media_type,
-            inputs=dict(legacy_id_handler=legacy_id_handler, legacy_image_row=legacy_image_row),
+            inputs=dict(
+                legacy_id_handler=legacy_id_handler,
+                legacy_image_row=legacy_image_row,
+                repository=RepositoryReference.for_id(manifest.repository_id),
+            ),
         )
 
     def get_parsed_manifest(self, validate=True):
