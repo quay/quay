@@ -265,6 +265,7 @@ def get_visible_repositories(
             Namespace.username,
             Repository.visibility,
             Repository.kind,
+            Repository.state,
         )
         .switch(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))

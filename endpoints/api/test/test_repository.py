@@ -68,6 +68,15 @@ def test_list_starred_repos(client):
         assert "public/publicrepo" not in repos
 
 
+def test_list_repos(client, initialized_db):
+    with client_with_identity("devtable", client) as cl:
+        params = {"starred": "true", "repo_kind": "application"}
+        response = conduct_api_call(cl, RepositoryList, "GET", params).json
+        repo_states = {r["state"] for r in response["repositories"]}
+        for state in repo_states:
+            assert state in ["NORMAL", "MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
+
+
 def test_list_starred_app_repos(client, initialized_db):
     with client_with_identity("devtable", client) as cl:
         params = {"starred": "true", "repo_kind": "application"}
@@ -170,6 +179,7 @@ def test_get_repo(has_tag_manifest, client, initialized_db):
         params = {"repository": "devtable/simple"}
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["kind"] == "image"
+        assert response["state"] in ["NORMAL", "MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
 
 
 def test_get_app_repo(client, initialized_db):
