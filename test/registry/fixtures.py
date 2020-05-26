@@ -16,7 +16,6 @@ from app import storage
 from data.database import (
     close_db_filter,
     configure,
-    DerivedStorageForManifest,
     QueueItem,
     ImageStorage,
     TagManifest,
@@ -88,10 +87,6 @@ def registry_server_executor(app):
         configure(app.config)
 
         return jsonify({"old_value": old_value})
-
-    def clear_derived_cache():
-        DerivedStorageForManifest.delete().execute()
-        return "OK"
 
     def clear_uncompressed_size(image_id):
         image = model.image.get_image_by_id("devtable", "newrepo", image_id)
@@ -169,7 +164,6 @@ def registry_server_executor(app):
     executor.register("verify_replication_for", verify_replication_for)
     executor.register("set_feature", set_feature)
     executor.register("set_config_key", set_config_key)
-    executor.register("clear_derived_cache", clear_derived_cache)
     executor.register("clear_uncompressed_size", clear_uncompressed_size)
     executor.register("add_token", add_token)
     executor.register("break_database", break_database)

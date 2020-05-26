@@ -36,7 +36,6 @@ from data.database import (
     TagManifest,
     Image,
     DerivedStorageForImage,
-    DerivedStorageForManifest,
 )
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
 
@@ -476,12 +475,6 @@ def _garbage_collect_manifest(manifest_id, context):
     for manifest_label in ManifestLabel.select().where(ManifestLabel.manifest == manifest_id):
         context.add_label_id(manifest_label.label_id)
 
-    # Grab any derived storage for the manifest.
-    for derived in DerivedStorageForManifest.select().where(
-        DerivedStorageForManifest.source_manifest == manifest_id
-    ):
-        context.add_blob_id(derived.derivative_id)
-
     # Delete the manifest.
     with db_transaction():
         try:
@@ -521,11 +514,6 @@ def _garbage_collect_manifest(manifest_id, context):
         ManifestSecurityStatus.delete().where(
             ManifestSecurityStatus.manifest == manifest_id,
             ManifestSecurityStatus.repository == context.repository,
-        ).execute()
-
-        # Delete any derived storage for the manifest.
-        DerivedStorageForManifest.delete().where(
-            DerivedStorageForManifest.source_manifest == manifest_id
         ).execute()
 
         # Delete the manifest legacy image row.

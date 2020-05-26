@@ -298,57 +298,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def lookup_derived_storage(
-        self, manifest, verb, storage, varying_metadata=None, include_placements=False
-    ):
-        """
-        Looks up the derived storage for the given manifest, verb and optional varying metadata and
-        returns it or None if none.
-        """
-
-    @abstractmethod
-    def lookup_or_create_derived_storage(
-        self,
-        manifest,
-        verb,
-        storage_location,
-        storage,
-        varying_metadata=None,
-        include_placements=False,
-    ):
-        """
-        Looks up the derived storage for the given maniest, verb and optional varying metadata and
-        returns it.
-
-        If none exists, a new derived storage is created.
-        """
-
-    @abstractmethod
-    def get_derived_storage_signature(self, derived_storage, signer_name):
-        """
-        Returns the signature associated with the derived storage and a specific signer or None if
-        none.
-        """
-
-    @abstractmethod
-    def set_derived_storage_signature(self, derived_storage, signer_name, signature):
-        """
-        Sets the calculated signature for the given derived storage and signer to that specified.
-        """
-
-    @abstractmethod
-    def delete_derived_storage(self, derived_storage):
-        """
-        Deletes a derived storage and all of its storage.
-        """
-
-    @abstractmethod
-    def set_derived_storage_size(self, derived_storage, compressed_size):
-        """
-        Sets the compressed size on the given derived storage.
-        """
-
-    @abstractmethod
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
         Returns the blob in the repository with the given digest, if any or None if none.

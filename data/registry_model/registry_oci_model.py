@@ -26,7 +26,6 @@ from data.registry_model.datatypes import (
     SecurityScanStatus,
     Blob,
     BlobUpload,
-    DerivedStorage,
     ShallowTag,
     LikelyVulnerableTag,
     RepositoryReference,
@@ -514,71 +513,6 @@ class OCIModel(RegistryDataInterface):
             manifest_obj.repository_id, parsed, storage, include_placements
         )
 
-    def _manifest_db_id_for_derived(self, manifest):
-        db_id = manifest._db_id
-        if not manifest.is_manifest_list:
-            return manifest._db_id
-
-        # If a manifest list, return the derived storage for the AMD64+Linux manifest,
-        # if any.
-        parsed = manifest.get_parsed_manifest(validate=False)
-        digest = parsed.amd64_linux_manifest_digest
-        if digest is None:
-            return None
-
-        try:
-            manifestlist = database.Manifest.get(id=db_id)
-            amdlinux_manifest = database.Manifest.get(
-                digest=digest, repository=manifestlist.repository_id
-            )
-            return amdlinux_manifest.id
-        except database.Manifest.DoesNotExist:
-            return None
-
-    def lookup_derived_storage(
-        self, manifest, verb, storage, varying_metadata=None, include_placements=False
-    ):
-        """
-        Looks up the derived storage for the given manifest, verb and optional varying metadata and
-        returns it or None if none. If the manifest is a list, the derived storage for the
-        amd64+linux manifest is returned. If none, returns None.
-        """
-        db_id = self._manifest_db_id_for_derived(manifest)
-        if db_id is None:
-            return None
-
-        derived = model.oci.manifest.find_derived_storage_for_manifest(
-            db_id, verb, varying_metadata
-        )
-        return self._build_derived(derived, verb, varying_metadata, include_placements)
-
-    def lookup_or_create_derived_storage(
-        self,
-        manifest,
-        verb,
-        storage_location,
-        storage,
-        varying_metadata=None,
-        include_placements=False,
-    ):
-        """
-        Looks up the derived storage for the given manifest, verb and optional varying metadata and
-        returns it. 
-
-        If none exists, a new derived storage is created.
-
-        If the manifest is a list, the derived storage for the amd64+linux manifest is returned or
-        created. If none, returns None.
-        """
-        db_id = self._manifest_db_id_for_derived(manifest)
-        if db_id is None:
-            return None
-
-        derived = model.oci.manifest.find_or_create_derived_storage(
-            db_id, verb, storage_location, varying_metadata
-        )
-        return self._build_derived(derived, verb, varying_metadata, include_placements)
-
     def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
         """
         Sets the expiration on all tags that point to the given manifest to that specified.
@@ -755,72 +689,6 @@ class OCIModel(RegistryDataInterface):
         """
         namespace = model.user.get_namespace_user(namespace_name)
         return namespace is not None and namespace.enabled
-
-    def get_derived_storage_signature(self, derived_storage, signer_name):
-        """
-        Returns the signature associated with the derived storage and a specific signer or None if
-        none.
-        """
-        try:
-            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
-        except database.DerivedStorageForManifest.DoesNotExist:
-            return None
-
-        signature_entry = model.storage.lookup_storage_signature(
-            derived_storage.derivative_id, signer_name
-        )
-        if signature_entry is None:
-            return None
-
-        return signature_entry.signature
-
-    def set_derived_storage_signature(self, derived_storage, signer_name, signature):
-        """
-        Sets the calculated signature for the given derived storage and signer to that specified.
-        """
-        try:
-            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
-        except database.DerivedStorageForManifest.DoesNotExist:
-            return None
-
-        signature_entry = model.storage.find_or_create_storage_signature(
-            derived_storage.derivative_id, signer_name
-        )
-        signature_entry.signature = signature
-        signature_entry.uploading = False
-        signature_entry.save()
-
-    def delete_derived_storage(self, derived_storage):
-        """
-        Deletes a derived storage and all of its storage.
-        """
-        try:
-            derived_storage = database.DerivedStorageForManifest.get(id=derived_storage._db_id)
-        except database.DerivedStorageForManifest.DoesNotExist:
-            return None
-
-        model.oci.manifest.delete_derived_storage(derived_storage)
-
-    def set_derived_storage_size(self, derived_storage, compressed_size):
-        """
-        Sets the compressed size on the given derived storage.
-        """
-        try:
-            derived_storage = (
-                database.DerivedStorageForManifest.select(
-                    database.DerivedStorageForManifest, database.ImageStorage
-                )
-                .join(database.ImageStorage)
-                .where(database.DerivedStorageForManifest.id == derived_storage._db_id)
-                .get()
-            )
-        except database.DerivedStorageForManifest.DoesNotExist:
-            return None
-
-            storage_entry = derived_storage.derivative
-            storage_entry.image_size = compressed_size
-            storage_entry.uploading = False
-            storage_entry.save()
 
     def lookup_cached_active_repository_tags(
         self, model_cache, repository_ref, start_pagination_id, limit
@@ -1116,23 +984,6 @@ class OCIModel(RegistryDataInterface):
             manifest_layers.append(ManifestLayer(layer, blob))
 
         return manifest_layers
-
-    def _build_derived(self, derived, verb, varying_metadata, include_placements):
-        if derived is None:
-            return None
-
-        derived_storage = derived.derivative
-        placements = None
-        if include_placements:
-            placements = list(model.storage.get_storage_locations(derived_storage.uuid))
-
-        blob = Blob.for_image_storage(
-            derived_storage,
-            storage_path=model.storage.get_layer_path(derived_storage),
-            placements=placements,
-        )
-
-        return DerivedStorage.for_derived_storage(derived, verb, varying_metadata, blob)
 
     def _get_shared_storage(self, blob_digest):
         """

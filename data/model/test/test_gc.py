@@ -20,7 +20,6 @@ from data.database import (
     Image,
     ImageStorage,
     DerivedStorageForImage,
-    DerivedStorageForManifest,
     Label,
     ManifestLabel,
     ApprBlob,
@@ -158,13 +157,9 @@ def _get_dangling_storage_count():
     referenced_by_derived_image = set(
         [derived.derivative_id for derived in DerivedStorageForImage.select()]
     )
-    referenced_by_derived_manifest = set(
-        [derived.derivative_id for derived in DerivedStorageForManifest.select()]
-    )
     return len(
         storage_ids
         - referenced_by_image
-        - referenced_by_derived_manifest
         - referenced_by_derived_image
         - referenced_by_manifest
         - referenced_by_uploaded

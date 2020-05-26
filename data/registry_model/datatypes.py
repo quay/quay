@@ -576,27 +576,6 @@ class Blob(
         return placements
 
 
-class DerivedStorage(datatype("DerivedStorage", ["verb", "varying_metadata", "blob"])):
-    """
-    DerivedStorage represents storage derived from a manifest via some form of verb.
-    """
-
-    @classmethod
-    def for_derived_storage(cls, derived, verb, varying_metadata, blob):
-        return DerivedStorage(
-            db_id=derived.id, verb=verb, varying_metadata=varying_metadata, blob=blob
-        )
-
-    @property
-    def unique_id(self):
-        """
-        Returns a unique ID for this derived storage.
-
-        This call will consistently produce the same unique ID across calls in the same code base.
-        """
-        return hashlib.sha256(("%s:%s" % (self.verb, self._db_id)).encode("utf-8")).hexdigest()
-
-
 class BlobUpload(
     datatype(
         "BlobUpload",

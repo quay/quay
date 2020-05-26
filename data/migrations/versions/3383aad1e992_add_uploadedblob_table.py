@@ -1,14 +1,14 @@
 """Add UploadedBlob table
 
 Revision ID: 3383aad1e992
-Revises: e8e27f36f87d
+Revises: 04b9d2191450
 Create Date: 2020-04-21 11:45:54.837077
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "3383aad1e992"
-down_revision = "e8e27f36f87d"
+down_revision = "04b9d2191450"
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
