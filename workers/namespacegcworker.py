@@ -1,4 +1,7 @@
 import logging
+import time
+
+import features
 
 from app import namespace_gc_queue, all_queues
 from data import model
@@ -37,6 +40,11 @@ class NamespaceGCWorker(QueueWorker):
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
+
+    if not features.NAMESPACE_GARBAGE_COLLECTION:
+        logger.info("Namespace garbage collection is disabled; skipping")
+        while True:
+            time.sleep(100000)
 
     logger.debug("Starting namespace GC worker")
     worker = NamespaceGCWorker(
