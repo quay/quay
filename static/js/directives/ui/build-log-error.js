@@ -15,7 +15,7 @@ angular.module('quay').directive('buildLogError', function () {
     },
     controller: function($scope, $element, Config, DocumentationService) {
       $scope.localPullInfo = null;
-      $sope.DocumentationService = DocumentationService;
+      $scope.DocumentationService = DocumentationService;
 
       var calculateLocalPullInfo = function(entries) {
         var localInfo = {

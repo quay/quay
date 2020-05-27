@@ -67,7 +67,7 @@ if (process.env.NODE_ENV === 'production') {
   config.optimization.minimizer = [
     new TerserPlugin({
       // Disable mangle to prevent AngularJS errors
-      terserOptions: {mangle: false},
+      terserOptions: {mangle: false, keep_classnames: true, keep_fnames: true},
       sourceMap: true,
     }),
   ];
