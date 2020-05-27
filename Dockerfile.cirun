@@ -1,7 +1,15 @@
 FROM quay-ci-base
+
+ENV ENCRYPTED_ROBOT_TOKEN_MIGRATION_PHASE remove-old-fields
+
+# Install Test Dependencies
+RUN yum install -y make git
+RUN python -m pip install -r requirements-tests.txt
+
 RUN mkdir -p conf/stack
 RUN rm -rf test/data/test.db
 ADD cirun.config.yaml conf/stack/config.yaml
-RUN /usr/bin/scl enable python27 rh-nginx112 "LOGGING_LEVEL=INFO python initdb.py"
+RUN LOGGING_LEVEL=INFO python initdb.py
+
 ENTRYPOINT ["/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]
