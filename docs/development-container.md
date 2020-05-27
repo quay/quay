@@ -59,7 +59,7 @@ This will start the quay container and be fully running. The web UI is available
 When exec'ing into the development container, it is best to run under the [SCLs](https://www.softwarecollections.org) used during production. This will provide the correct paths to python and other executables.
 
 ```
-docker exec --rm -it quay scl enable python27 rh-nginx112 bash
+docker exec --rm -it quay bash
 ```
 
 The following sections are perhaps easiest to run in separate `docker exec` sessions, which is how they will be described. Some or all could be run in the background and managed differently than described here.
