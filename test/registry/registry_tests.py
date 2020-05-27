@@ -6,7 +6,7 @@ from io import StringIO
 
 import binascii
 import bencode
-import resumablehashlib
+import rehash
 
 from werkzeug.datastructures import Accept
 
