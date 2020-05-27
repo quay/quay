@@ -32,7 +32,7 @@ jobs:
     - name: Check Formatting
       run: |
         # TODO(kleesc): Re-enable after buildman rewrite
-        black --line-length=100 --target-version=py27 --check --diff --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|buildman)/" .
+        black --line-length=100 --target-version=py36 --check --diff --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|buildman)/" .
 
   unit:
     name: Unit Test
@@ -40,10 +40,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
@@ -53,7 +53,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-unit
+      run: tox -e py36-unit
 
   registry:
     name: E2E Registry Tests
@@ -61,10 +61,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
@@ -74,7 +74,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-registry
+      run: tox -e py36-registry
 
   docker:
     name: Docker Build
@@ -90,10 +90,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
@@ -106,7 +106,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-mysql
+      run: tox -e py36-mysql
 
   psql:
     name: E2E Postgres Test
@@ -114,10 +114,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
@@ -130,4 +130,4 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-psql
+      run: tox -e py36-psql
