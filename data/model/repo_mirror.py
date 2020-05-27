@@ -2,7 +2,7 @@ import re
 
 from datetime import datetime, timedelta
 
-from peewee import IntegrityError, fn
+from peewee import IntegrityError, fn, JOIN
 from jsonschema import ValidationError
 
 from data.database import (
@@ -365,7 +365,7 @@ def get_mirror(repository):
     try:
         return (
             RepoMirrorConfig.select(RepoMirrorConfig, User)
-            .join(User)
+            .join(User, JOIN.LEFT_OUTER)
             .where(RepoMirrorConfig.repository == repository)
             .get()
         )
