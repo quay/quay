@@ -37,13 +37,6 @@ from util.registry.filelike import wrap_with_handler
 from util.registry.queuefile import QueueFile
 from util.registry.queueprocess import QueueProcess
 from util.registry.tarlayerformat import TarLayerFormatterReporter
-from util.registry.torrent import (
-    make_torrent,
-    per_user_torrent_filename,
-    public_torrent_filename,
-    PieceHasher,
-    TorrentConfiguration,
-)
 
 
 logger = logging.getLogger(__name__)
@@ -184,88 +177,6 @@ def _write_derived_image_to_storage(
     queue_file.close()
 
 
-def _torrent_for_blob(blob, is_public):
-    """
-    Returns a response containing the torrent file contents for the given blob.
-
-    May abort with an error if the state is not valid (e.g. non-public, non-user request).
-    """
-    # Make sure the storage has a size.
-    if not blob.compressed_size:
-        abort(404)
-
-    # Lookup the torrent information for the storage.
-    torrent_info = registry_model.get_torrent_info(blob)
-    if torrent_info is None:
-        abort(404)
-
-    # Lookup the webseed path for the storage.
-    webseed = storage.get_direct_download_url(
-        blob.placements, blob.storage_path, expires_in=app.config["BITTORRENT_WEBSEED_LIFETIME"]
-    )
-    if webseed is None:
-        # We cannot support webseeds for storages that cannot provide direct downloads.
-        exact_abort(501, "Storage engine does not support seeding.")
-
-    # Load the config for building torrents.
-    torrent_config = TorrentConfiguration.from_app_config(instance_keys, app.config)
-
-    # Build the filename for the torrent.
-    if is_public:
-        name = public_torrent_filename(blob.uuid)
-    else:
-        user = get_authenticated_user()
-        if not user:
-            abort(403)
-
-        name = per_user_torrent_filename(torrent_config, user.uuid, blob.uuid)
-
-    # Return the torrent file.
-    torrent_file = make_torrent(
-        torrent_config,
-        name,
-        webseed,
-        blob.compressed_size,
-        torrent_info.piece_length,
-        torrent_info.pieces,
-    )
-
-    headers = {
-        "Content-Type": "application/x-bittorrent",
-        "Content-Disposition": "attachment; filename={0}.torrent".format(name),
-    }
-
-    return make_response(torrent_file, 200, headers)
-
-
-def _torrent_repo_verb(repository, tag, manifest, verb, **kwargs):
-    """
-    Handles returning a torrent for the given verb on the given image and tag.
-    """
-    if not features.BITTORRENT:
-        # Torrent feature is not enabled.
-        abort(406)
-
-    # Lookup an *existing* derived storage for the verb. If the verb's image storage doesn't exist,
-    # we cannot create it here, so we 406.
-    derived_image = registry_model.lookup_derived_image(
-        manifest, verb, storage, varying_metadata={"tag": tag.name}, include_placements=True
-    )
-    if derived_image is None:
-        abort(406)
-
-    # Return the torrent.
-    torrent = _torrent_for_blob(
-        derived_image.blob, model.repository.is_repository_public(repository)
-    )
-
-    # Log the action.
-    track_and_log(
-        "repo_verb", wrap_repository(repository), tag=tag.name, verb=verb, torrent=True, **kwargs
-    )
-    return torrent
-
-
 def _verify_repo_verb(_, namespace, repo_name, tag_name, verb, checker=None):
     permission = ReadRepositoryPermission(namespace, repo_name)
     repo = model.repository.get_repository(namespace, repo_name)
@@ -369,6 +280,18 @@ def _repo_verb_signature(namespace, repository, tag_name, verb, checker=None, **
     return make_response(signature_value)
 
 
+class SimpleHasher(object):
+    def __init__(self):
+        self._current_offset = 0
+
+    def update(self, buf):
+        self._current_offset += len(buf)
+
+    @property
+    def hashed_bytes(self):
+        return self._current_offset
+
+
 @check_region_blacklisted()
 def _repo_verb(
     namespace, repository, tag_name, verb, formatter, sign=False, checker=None, **kwargs
@@ -391,10 +314,9 @@ def _repo_verb(
     if repo is None:
         abort(404)
 
-    # Check for torrent. If found, we return a torrent for the repo verb image (if the derived
-    # image already exists).
+    # Check for torrent, which is no longer supported.
     if request.accept_mimetypes.best == "application/x-bittorrent":
-        return _torrent_repo_verb(repo, tag, manifest, verb, **kwargs)
+        abort(406)
 
     # Log the action.
     track_and_log("repo_verb", wrap_repository(repo), tag=tag.name, verb=verb, **kwargs)
@@ -445,6 +367,7 @@ def _repo_verb(
         )
 
     logger.debug("Building and returning derived %s image", verb)
+    hasher = SimpleHasher()
 
     # Close the database connection before any process forking occurs. This is important because
     # the Postgres driver does not react kindly to forking, so we need to make sure it is closed
@@ -455,16 +378,11 @@ def _repo_verb(
         # Close any existing DB connection once the process has exited.
         database.close_db_filter(None)
 
-    hasher = PieceHasher(app.config["BITTORRENT_PIECE_SIZE"])
-
     def _store_metadata_and_cleanup():
         if is_readonly:
             return
 
         with database.UseThenDisconnect(app.config):
-            registry_model.set_torrent_info(
-                derived_image.blob, app.config["BITTORRENT_PIECE_SIZE"], hasher.final_piece_hashes()
-            )
             registry_model.set_derived_image_size(derived_image, hasher.hashed_bytes)
 
     # Create a queue process to generate the data. The queue files will read from the process
@@ -607,40 +525,6 @@ def get_aci_image(server, namespace, repository, tag, os, arch):
 @process_auth
 def get_squashed_tag(namespace, repository, tag):
     return _repo_verb(namespace, repository, tag, "squash", SquashedDockerImageFormatter())
-
-
-@route_show_if(features.BITTORRENT)
-@anon_protect
-@verbs.route("/torrent{0}".format(BLOB_DIGEST_ROUTE), methods=["GET"])
-@observe_route("bittorrent")
-@process_auth
-@parse_repository_name()
-@check_region_blacklisted(namespace_name_kwarg="namespace_name")
-def get_tag_torrent(namespace_name, repo_name, digest):
-    repo = model.repository.get_repository(namespace_name, repo_name)
-    repo_is_public = repo is not None and model.repository.is_repository_public(repo)
-
-    permission = ReadRepositoryPermission(namespace_name, repo_name)
-    if not permission.can() and not repo_is_public:
-        abort(403)
-
-    user = get_authenticated_user()
-    if user is None and not repo_is_public:
-        # We can not generate a private torrent cluster without a user uuid (e.g. token auth)
-        abort(403)
-
-    if repo is not None and repo.kind.name != "image":
-        abort(405)
-
-    repo_ref = registry_model.lookup_repository(namespace_name, repo_name)
-    if repo_ref is None:
-        abort(404)
-
-    blob = registry_model.get_repo_blob_by_digest(repo_ref, digest, include_placements=True)
-    if blob is None:
-        abort(404)
-
-    return _torrent_for_blob(blob, repo_is_public)
 
 
 @verbs.route("/_internal_ping")

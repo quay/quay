@@ -14,7 +14,6 @@ from data.database import CloseForLongOperation, db_transaction
 from digest import digest_tools
 from util.registry.filelike import wrap_with_handler, StreamSlice
 from util.registry.gzipstream import calculate_size_handler
-from util.registry.torrent import PieceHasher
 
 
 logger = logging.getLogger(__name__)
@@ -63,8 +62,7 @@ class BlobTooLargeException(BlobUploadException):
 
 
 BlobUploadSettings = namedtuple(
-    "BlobUploadSettings",
-    ["maximum_blob_size", "bittorrent_piece_size", "committed_blob_expiration"],
+    "BlobUploadSettings", ["maximum_blob_size", "committed_blob_expiration"],
 )
 
 
@@ -215,21 +213,6 @@ class _BlobUploadManager(object):
                 for handler in self.extra_blob_stream_handlers:
                     input_fp = wrap_with_handler(input_fp, handler)
 
-            # Add a hasher for calculating SHA1s for torrents if this is the first chunk and/or we have
-            # already calculated hash data for the previous chunk(s).
-            piece_hasher = None
-            if self.blob_upload.chunk_count == 0 or self.blob_upload.piece_sha_state:
-                initial_sha1_value = self.blob_upload.piece_sha_state or resumablehashlib.sha1()
-                initial_sha1_pieces_value = self.blob_upload.piece_hashes or ""
-
-                piece_hasher = PieceHasher(
-                    self.settings.bittorrent_piece_size,
-                    start_offset,
-                    initial_sha1_pieces_value,
-                    initial_sha1_value,
-                )
-                input_fp = wrap_with_handler(input_fp, piece_hasher.update)
-
             # If this is the first chunk and we're starting at the 0 offset, add a handler to gunzip the
             # stream so we can determine the uncompressed size. We'll throw out this data if another chunk
             # comes in, but in the common case the docker client only sends one chunk.
@@ -273,17 +256,9 @@ class _BlobUploadManager(object):
             # know the uncompressed size.
             uncompressed_byte_count = None
 
-        piece_hashes = None
-        piece_sha_state = None
-        if piece_hasher is not None:
-            piece_hashes = piece_hasher.piece_hashes
-            piece_sha_state = piece_hasher.hash_fragment
-
         self.blob_upload = registry_model.update_blob_upload(
             self.blob_upload,
             uncompressed_byte_count,
-            piece_hashes,
-            piece_sha_state,
             new_metadata,
             new_blob_bytes,
             self.blob_upload.chunk_count + 1,
@@ -336,15 +311,6 @@ class _BlobUploadManager(object):
             )
             if blob is None:
                 return None
-
-            # Save torrent hash information (if available).
-            if self.blob_upload.piece_sha_state is not None and not storage_already_existed:
-                piece_bytes = (
-                    self.blob_upload.piece_hashes + self.blob_upload.piece_sha_state.digest()
-                )
-                registry_model.set_torrent_info(
-                    blob, self.settings.bittorrent_piece_size, piece_bytes
-                )
 
         self.committed_blob = blob
         return blob

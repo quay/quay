@@ -32,7 +32,7 @@ def registry_model(initialized_db):
 def test_basic_upload_blob(chunk_count, subchunk, registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
-    settings = BlobUploadSettings("2M", 512 * 1024, 3600)
+    settings = BlobUploadSettings("2M", 3600)
     app_config = {"TESTING": True}
 
     data = ""
@@ -64,7 +64,7 @@ def test_basic_upload_blob(chunk_count, subchunk, registry_model):
 def test_cancel_upload(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
-    settings = BlobUploadSettings("2M", 512 * 1024, 3600)
+    settings = BlobUploadSettings("2M", 3600)
     app_config = {"TESTING": True}
 
     blob_upload_id = None
@@ -82,7 +82,7 @@ def test_cancel_upload(registry_model):
 def test_too_large(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
-    settings = BlobUploadSettings("1K", 512 * 1024, 3600)
+    settings = BlobUploadSettings("1K", 3600)
     app_config = {"TESTING": True}
 
     with upload_blob(repository_ref, storage, settings) as manager:
@@ -102,7 +102,7 @@ def test_extra_blob_stream_handlers(registry_model):
 
     repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
-    settings = BlobUploadSettings("1K", 512 * 1024, 3600)
+    settings = BlobUploadSettings("1K", 3600)
     app_config = {"TESTING": True}
 
     with upload_blob(
@@ -131,7 +131,7 @@ def valid_tar_gz(contents):
 def test_uncompressed_size(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])
-    settings = BlobUploadSettings("1K", 512 * 1024, 3600)
+    settings = BlobUploadSettings("1K", 3600)
     app_config = {"TESTING": True}
 
     with upload_blob(repository_ref, storage, settings) as manager:

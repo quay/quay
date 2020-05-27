@@ -12,6 +12,7 @@ from data.database import (
     ImageStorage,
     MediaType,
     RepositoryTag,
+    RepositoryState,
     TagManifest,
     TagManifestToManifest,
     get_epoch_timestamp_ms,
@@ -198,7 +199,11 @@ def get_most_recent_tag_lifetime_start(repository_ids):
     Returns a map from repo ID to the timestamp of the most recently pushed alive tag for each
     specified repository or None if none.
     """
+    if not repository_ids:
+        return {}
+
     assert len(repository_ids) > 0 and None not in repository_ids
+    assert len(repository_ids) <= 100
 
     query = (
         Tag.select(Tag.repository, fn.Max(Tag.lifetime_start_ms))
@@ -652,6 +657,8 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
                 ~(Tag.lifetime_end_ms >> None),
                 (Tag.lifetime_end_ms <= expiration_timestamp),
                 (Namespace.removed_tag_expiration_s == limit_to_gc_policy_s),
+                (Namespace.enabled == True),
+                (Repository.state != RepositoryState.MARKED_FOR_DELETION),
             )
             .limit(GC_CANDIDATE_COUNT)
             .distinct()

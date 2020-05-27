@@ -2,9 +2,9 @@ import os
 import logging
 from collections import namedtuple
 
-from data.secscan_model.secscan_v2_model import V2SecurityScanner
-from data.secscan_model.secscan_v4_model import V4SecurityScanner
-from data.secscan_model.interface import SecurityScannerInterface
+from data.secscan_model.secscan_v2_model import V2SecurityScanner, NoopV2SecurityScanner
+from data.secscan_model.secscan_v4_model import V4SecurityScanner, NoopV4SecurityScanner
+from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.database import Manifest
 from data.registry_model.datatypes import Manifest as ManifestDataType
 
@@ -18,22 +18,28 @@ SplitScanToken = namedtuple("NextScanToken", ["version", "token"])
 class SecurityScannerModelProxy(SecurityScannerInterface):
     def configure(self, app, instance_keys, storage):
         # TODO(alecmerdler): Just use `V4SecurityScanner` once Clair V2 is removed.
-        self._model = V2SecurityScanner(app, instance_keys, storage)
-        self._v4_model = V4SecurityScanner(app, instance_keys, storage)
+        try:
+            self._model = V2SecurityScanner(app, instance_keys, storage)
+        except InvalidConfigurationException:
+            self._model = NoopV2SecurityScanner()
+
+        try:
+            self._v4_model = V4SecurityScanner(app, instance_keys, storage)
+        except InvalidConfigurationException:
+            self._v4_model = NoopV4SecurityScanner()
+
         self._v4_namespace_whitelist = app.config.get("SECURITY_SCANNER_V4_NAMESPACE_WHITELIST", [])
 
         logger.info("===============================")
-        logger.info(
-            "Using split secscan model: v4 whitelist `%s`", self._v4_namespace_whitelist,
-        )
+        logger.info("Using split secscan model: `%s`", [self._model, self._v4_model])
+        logger.info("v4 whitelist `%s`", self._v4_namespace_whitelist)
         logger.info("===============================")
 
         return self
 
     def perform_indexing(self, next_token=None):
         if next_token is None:
-            # FIXME(alecmerdler): If no Clair v4, this will fail and block indexing of Clair v2 repos...
-            return SplitScanToken("v4", self._v4_model.perform_indexing())
+            return SplitScanToken("v4", self._v4_model.perform_indexing(None))
 
         if next_token.version == "v4" and next_token.token is not None:
             return SplitScanToken("v4", self._v4_model.perform_indexing(next_token.token))

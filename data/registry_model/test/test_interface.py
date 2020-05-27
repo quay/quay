@@ -24,7 +24,6 @@ from data.database import (
     TagManifest,
     TagManifestLabel,
     DerivedStorageForImage,
-    TorrentInfo,
     Tag,
     TagToRepositoryTag,
     ImageStorageLocation,
@@ -42,6 +41,8 @@ from image.docker.schema1 import (
 )
 from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from image.docker.schema2.list import DockerSchema2ManifestListBuilder
+from image.oci.manifest import OCIManifestBuilder
+from image.oci.index import OCIIndexBuilder
 from util.bytes import Bytes
 
 from test.fixtures import *
@@ -479,7 +480,7 @@ def test_manifest_remote_layers(oci_model):
 
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
-    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
         upload.upload_chunk(app_config, BytesIO(config_json))
         blob = upload.commit_to_blob(app_config)
 
@@ -574,7 +575,14 @@ def test_derived_image_signatures(registry_model):
     assert registry_model.get_derived_image_signature(derived, "gpg2") == "foo"
 
 
-def test_derived_image_for_manifest_list(oci_model):
+@pytest.mark.parametrize(
+    "manifest_builder, list_builder",
+    [
+        (DockerSchema2ManifestBuilder, DockerSchema2ManifestListBuilder),
+        (OCIManifestBuilder, OCIIndexBuilder),
+    ],
+)
+def test_derived_image_for_manifest_list(manifest_builder, list_builder, oci_model):
     # Clear all existing derived storage.
     DerivedStorageForImage.delete().execute()
 
@@ -582,6 +590,8 @@ def test_derived_image_for_manifest_list(oci_model):
     config_json = json.dumps(
         {
             "config": {},
+            "architecture": "amd64",
+            "os": "linux",
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
                 {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
@@ -591,26 +601,29 @@ def test_derived_image_for_manifest_list(oci_model):
 
     app_config = {"TESTING": True}
     repository_ref = oci_model.lookup_repository("devtable", "simple")
-    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500, 500)) as upload:
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
         upload.upload_chunk(app_config, BytesIO(config_json))
         blob = upload.commit_to_blob(app_config)
 
     # Create the manifest in the repo.
-    builder = DockerSchema2ManifestBuilder()
+    builder = manifest_builder()
     builder.set_config_digest(blob.digest, blob.compressed_size)
     builder.add_layer(blob.digest, blob.compressed_size)
     amd64_manifest = builder.build()
 
     oci_model.create_manifest_and_retarget_tag(
-        repository_ref, amd64_manifest, "submanifest", storage
+        repository_ref, amd64_manifest, "submanifest", storage, raise_on_error=True
     )
 
     # Create a manifest list, pointing to at least one amd64+linux manifest.
-    builder = DockerSchema2ManifestListBuilder()
+    builder = list_builder()
     builder.add_manifest(amd64_manifest, "amd64", "linux")
     manifestlist = builder.build()
 
-    oci_model.create_manifest_and_retarget_tag(repository_ref, manifestlist, "listtag", storage)
+    oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifestlist, "listtag", storage, raise_on_error=True
+    )
+
     manifest = oci_model.get_manifest_for_tag(oci_model.get_repo_tag(repository_ref, "listtag"))
     assert manifest
     assert manifest.get_parsed_manifest().is_manifest_list
@@ -630,38 +643,6 @@ def test_derived_image_for_manifest_list(oci_model):
     assert oci_model.lookup_derived_image(manifest, "squash", storage, {}) == squashed
 
 
-def test_torrent_info(registry_model):
-    # Remove all existing info.
-    TorrentInfo.delete().execute()
-
-    repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest")
-    manifest = registry_model.get_manifest_for_tag(tag)
-
-    blobs = registry_model.get_manifest_local_blobs(manifest)
-    assert blobs
-
-    assert registry_model.get_torrent_info(blobs[0]) is None
-    registry_model.set_torrent_info(blobs[0], 2, "foo")
-
-    # Set it again exactly, which should be a no-op.
-    registry_model.set_torrent_info(blobs[0], 2, "foo")
-
-    # Check the information we've set.
-    torrent_info = registry_model.get_torrent_info(blobs[0])
-    assert torrent_info is not None
-    assert torrent_info.piece_length == 2
-    assert torrent_info.pieces == "foo"
-
-    # Try setting it again. Nothing should happen.
-    registry_model.set_torrent_info(blobs[0], 3, "bar")
-
-    torrent_info = registry_model.get_torrent_info(blobs[0])
-    assert torrent_info is not None
-    assert torrent_info.piece_length == 2
-    assert torrent_info.pieces == "foo"
-
-
 def test_blob_uploads(registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
 
@@ -677,20 +658,12 @@ def test_blob_uploads(registry_model):
 
     # Update and ensure the changes are saved.
     assert registry_model.update_blob_upload(
-        blob_upload,
-        1,
-        "the-pieces_hash",
-        blob_upload.piece_sha_state,
-        {"new": "metadata"},
-        2,
-        3,
-        blob_upload.sha_state,
+        blob_upload, 1, {"new": "metadata"}, 2, 3, blob_upload.sha_state,
     )
 
     updated = registry_model.lookup_blob_upload(repository_ref, blob_upload.upload_id)
     assert updated
     assert updated.uncompressed_byte_count == 1
-    assert updated.piece_hashes == "the-pieces_hash"
     assert updated.storage_metadata == {"new": "metadata"}
     assert updated.byte_count == 2
     assert updated.chunk_count == 3

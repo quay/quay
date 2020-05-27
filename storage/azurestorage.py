@@ -345,18 +345,18 @@ class AzureStorage(BaseStorage):
             logger.debug(
                 "Starting copying file from Azure %s to Azure %s via an Azure copy",
                 self._azure_container,
-                destination,
+                destination._azure_container,
             )
-            blob_name = self._blob_name_from_path(path)
             copy_source_url = self.get_direct_download_url(path)
-            copy_prop = self._blob_service.copy_blob(
+            blob_name = destination._blob_name_from_path(path)
+            copy_prop = destination._blob_service.copy_blob(
                 destination._azure_container, blob_name, copy_source_url
             )
-            self._await_copy(destination._azure_container, blob_name, copy_prop)
+            destination._await_copy(destination._azure_container, blob_name, copy_prop)
             logger.debug(
                 "Finished copying file from Azure %s to Azure %s via an Azure copy",
                 self._azure_container,
-                destination,
+                destination._azure_container,
             )
             return
 

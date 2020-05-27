@@ -9,9 +9,8 @@ from data import model
 from data.database import Manifest as ManifestTable
 from data.registry_model.datatype import datatype, requiresinput, optionalinput
 from image.shared import ManifestException
-from image.shared.schemas import parse_manifest_from_bytes
+from image.shared.schemas import parse_manifest_from_bytes, is_manifest_list_type
 from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
-from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
 from util.bytes import Bytes
 
 
@@ -339,7 +338,11 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
             digest=tag_manifest.digest,
             internal_manifest_bytes=Bytes.for_string_or_unicode(tag_manifest.json_data),
             media_type=DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE,  # Always in legacy.
-            inputs=dict(legacy_image=legacy_image, tag_manifest=True),
+            inputs=dict(
+                legacy_image=legacy_image,
+                tag_manifest=True,
+                repository=RepositoryReference.for_id(tag_manifest.repository_id),
+            ),
         )
 
     @classmethod
@@ -358,7 +361,11 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
             digest=manifest.digest,
             internal_manifest_bytes=manifest_bytes,
             media_type=ManifestTable.media_type.get_name(manifest.media_type_id),
-            inputs=dict(legacy_image=legacy_image, tag_manifest=False),
+            inputs=dict(
+                legacy_image=legacy_image,
+                tag_manifest=False,
+                repository=RepositoryReference.for_id(manifest.repository_id),
+            ),
         )
 
     @property
@@ -409,7 +416,15 @@ class Manifest(datatype("Manifest", ["digest", "media_type", "internal_manifest_
         """
         Returns True if this manifest points to a list (instead of an image).
         """
-        return self.media_type == DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+        return is_manifest_list_type(self.media_type)
+
+    @property
+    @requiresinput("repository")
+    def repository(self, repository):
+        """
+        Returns the repository under which this manifest lives.
+        """
+        return repository
 
 
 class LegacyImage(
@@ -595,20 +610,6 @@ class DerivedImage(datatype("DerivedImage", ["verb", "varying_metadata", "blob"]
         This call will consistently produce the same unique ID across calls in the same code base.
         """
         return hashlib.sha256("%s:%s" % (self.verb, self._db_id)).hexdigest()
-
-
-class TorrentInfo(datatype("TorrentInfo", ["pieces", "piece_length"])):
-    """
-    TorrentInfo represents information to pull a blob via torrent.
-    """
-
-    @classmethod
-    def for_torrent_info(cls, torrent_info):
-        return TorrentInfo(
-            db_id=torrent_info.id,
-            pieces=torrent_info.pieces,
-            piece_length=torrent_info.piece_length,
-        )
 
 
 class BlobUpload(

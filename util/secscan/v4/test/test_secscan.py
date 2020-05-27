@@ -3,15 +3,17 @@ import pytest
 
 from mock import patch
 
-from app import app, instance_keys, storage
+from app import instance_keys, storage
 from config import build_requests_session
 from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure
 from util.secscan.v4.fake import fake_security_scanner
+from util.secscan.blob import BlobURLRetriever
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
 from data.database import ManifestSecurityStatus
 
 from test.fixtures import *
+from app import app
 
 
 def manifest_for(namespace, repository, tagname):
@@ -23,7 +25,11 @@ def manifest_for(namespace, repository, tagname):
 
 @pytest.fixture()
 def api():
-    return ClairSecurityScannerAPI("http://fakesecurityscanner", build_requests_session(), storage)
+    assert app is not None
+    retriever = BlobURLRetriever(storage, instance_keys, app)
+    return ClairSecurityScannerAPI(
+        "http://fakesecurityscanner", build_requests_session(), retriever
+    )
 
 
 def test_state(api, initialized_db):

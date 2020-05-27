@@ -224,12 +224,18 @@ def assert_gc_integrity(expect_storage_removed=True):
     # storage is not found *anywhere* in the database.
     for removed_image_and_storage in removed_image_storages:
         assert isinstance(removed_image_and_storage, Image)
-        with pytest.raises(Image.DoesNotExist):
+
+        try:
+            # NOTE: SQLite can and will reuse AUTOINCREMENT IDs occasionally, so if we find a row
+            # with the same ID, make sure it does not have the same Docker Image ID.
+            # See: https://www.sqlite.org/autoinc.html
             found_image = Image.get(id=removed_image_and_storage.id)
-            print(
-                "Found unexpected removed image %s under repo %s" % found_image.id,
-                found_image.repository,
+            assert found_image.docker_image_id != removed_image_and_storage.docker_image_id, (
+                "Found unexpected removed image %s under repo %s"
+                % (found_image.id, found_image.repository)
             )
+        except Image.DoesNotExist:
+            pass
 
         # Ensure that image storages are only removed if not shared.
         shared = Image.select().where(Image.storage == removed_image_and_storage.storage_id).count()

@@ -13,6 +13,8 @@ INTERNAL_ONLY_PROPERTIES = {
     "OCI_NAMESPACE_WHITELIST",
     "FEATURE_GENERAL_OCI_SUPPORT",
     "FEATURE_EXPERIMENTAL_HELM_OCI_SUPPORT",
+    "FEATURE_NAMESPACE_GARBAGE_COLLECTION",
+    "FEATURE_REPOSITORY_GARBAGE_COLLECTION",
     "TESTING",
     "SEND_FILE_MAX_AGE_DEFAULT",
     "DISABLED_FOR_AUDIT_LOGS",
@@ -40,8 +42,6 @@ INTERNAL_ONLY_PROPERTIES = {
     "UNAPPROVED_SERVICE_KEY_TTL_SEC",
     "EXPIRED_SERVICE_KEY_TTL_SEC",
     "REGISTRY_JWT_AUTH_MAX_FRESH_S",
-    "BITTORRENT_FILENAME_PEPPER",
-    "BITTORRENT_WEBSEED_LIFETIME",
     "SERVICE_LOG_ACCOUNT_ID",
     "BUILDLOGS_OPTIONS",
     "LIBRARY_NAMESPACE",
@@ -55,6 +55,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "JWTPROXY_SIGNER",
     "SECURITY_SCANNER_INDEXING_MIN_ID",
     "SECURITY_SCANNER_V4_NAMESPACE_WHITELIST",
+    "SECURITY_SCANNER_V4_REINDEX_THRESHOLD",
     "STATIC_SITE_BUCKET",
     "LABEL_KEY_RESERVED_PREFIXES",
     "TEAM_SYNC_WORKER_FREQUENCY",
@@ -575,6 +576,7 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "DOCUMENTATION_ROOT": {"type": "string", "description": "Root URL for documentation links"},
         # Health.
         "HEALTH_CHECKER": {
             "description": "The configured health check.",
@@ -688,7 +690,7 @@ CONFIG_SCHEMA = {
             "x-example": "http://192.168.99.101:6060",
         },
         "SECURITY_SCANNER_V4_ENDPOINT": {
-            "type": "string",
+            "type": ["string", "null"],
             "pattern": "^http(s)?://(.)+$",
             "description": "The endpoint for the V4 security scanner",
             "x-example": "http://192.168.99.101:6060",
@@ -703,24 +705,6 @@ CONFIG_SCHEMA = {
             "type": "number",
             "description": "The number of seconds between checking for repository mirror candidates. Defaults to 30.",
             "x-example": 30,
-        },
-        # Bittorrent support.
-        "FEATURE_BITTORRENT": {
-            "type": "boolean",
-            "description": "Whether to allow using Bittorrent-based pulls. Defaults to False",
-            "x-example": False,
-            "x-reference": "https://coreos.com/quay-enterprise/docs/latest/bittorrent.html",
-        },
-        "BITTORRENT_PIECE_SIZE": {
-            "type": "number",
-            "description": "The bittorent piece size to use. If not specified, defaults to 512 * 1024.",
-            "x-example": 512 * 1024,
-        },
-        "BITTORRENT_ANNOUNCE_URL": {
-            "type": "string",
-            "pattern": "^http(s)?://(.)+$",
-            "description": "The URL of the announce endpoint on the bittorrent tracker",
-            "x-example": "https://localhost:6881/announce",
         },
         # Build
         "FEATURE_GITHUB_BUILD": {
@@ -1133,6 +1117,12 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "The time after which a fresh login requires users to reenter their password",
             "x-example": "5m",
+        },
+        # Webhook blacklist.
+        "WEBHOOK_HOSTNAME_BLACKLIST": {
+            "type": "array",
+            "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost",
+            "x-example": ["somexternaldomain.com"],
         },
     },
 }

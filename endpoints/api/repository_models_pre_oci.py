@@ -91,6 +91,7 @@ class PreOCIModel(RepositoryDataInterface):
         popularity,
     ):
         next_page_token = None
+
         # Lookup the requested repositories (either starred or non-starred.)
         if starred:
             # Return the full list of repos starred by the current user that are still visible to them.
@@ -103,17 +104,6 @@ class PreOCIModel(RepositoryDataInterface):
                 user, kind_filter=repo_kind
             )
             repos = [repo for repo in unfiltered_repos if can_view_repo(repo)]
-        elif namespace:
-            # Repositories filtered by namespace do not need pagination (their results are fairly small),
-            # so we just do the lookup directly.
-            repos = list(
-                model.repository.get_visible_repositories(
-                    username=username,
-                    include_public=public,
-                    namespace=namespace,
-                    kind_filter=repo_kind,
-                )
-            )
         else:
             # Determine the starting offset for pagination. Note that we don't use the normal
             # model.modelutil.paginate method here, as that does not operate over UNION queries, which
@@ -128,13 +118,17 @@ class PreOCIModel(RepositoryDataInterface):
                 start_id=start_id,
                 limit=REPOS_PER_PAGE + 1,
                 kind_filter=repo_kind,
+                namespace=namespace,
             )
 
             repos, next_page_token = model.modelutil.paginate_query(
                 repo_query, limit=REPOS_PER_PAGE, sort_field_name="rid"
             )
 
-        # Collect the IDs of the repositories found for subequent lookup of popularity
+        repos = list(repos)
+        assert len(repos) <= REPOS_PER_PAGE
+
+        # Collect the IDs of the repositories found for subsequent lookup of popularity
         # and/or last modified.
         last_modified_map = {}
         action_sum_map = {}

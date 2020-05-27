@@ -40,6 +40,7 @@ CLIENT_WHITELIST = [
     "SEARCH_RESULTS_PER_PAGE",
     "SEARCH_MAX_RESULT_PAGE_COUNT",
     "BRANDING",
+    "DOCUMENTATION_ROOT",
 ]
 
 
@@ -455,7 +456,7 @@ class DefaultConfig(ImmutableConfig):
     SECURITY_SCANNER_ENDPOINT = "http://192.168.99.101:6060"
 
     # The endpoint for the V4 security scanner.
-    SECURITY_SCANNER_V4_ENDPOINT = "http://192.168.99.101:6060"
+    SECURITY_SCANNER_V4_ENDPOINT = None
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
@@ -477,6 +478,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Namespace whitelist for security scanner.
     SECURITY_SCANNER_V4_NAMESPACE_WHITELIST = []
+
+    # Minimum number of seconds before re-indexing a manifest with the security scanner.
+    SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 300
 
     # API call timeout for the security scanner.
     SECURITY_SCANNER_API_TIMEOUT_SECONDS = 10
@@ -507,13 +511,6 @@ class DefaultConfig(ImmutableConfig):
     # The audience that jwtproxy should verify on incoming requests
     # If None, will be calculated off of the SERVER_HOSTNAME (default)
     JWTPROXY_AUDIENCE = None
-
-    # Torrent management flags
-    FEATURE_BITTORRENT = False
-    BITTORRENT_PIECE_SIZE = 512 * 1024
-    BITTORRENT_ANNOUNCE_URL = "https://localhost:6881/announce"
-    BITTORRENT_FILENAME_PEPPER = str(uuid4())
-    BITTORRENT_WEBSEED_LIFETIME = 3600
 
     # "Secret" key for generating encrypted paging tokens. Only needed to be secret to
     # hide the ID range for production (in which this value is overridden). Should *not*
@@ -700,6 +697,11 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether garbage collection is enabled.
     FEATURE_GARBAGE_COLLECTION = True
 
+    # Feature Flags: Whether the workers for GCing deleted namespaces and repositories
+    # are enabled.
+    FEATURE_NAMESPACE_GARBAGE_COLLECTION = True
+    FEATURE_REPOSITORY_GARBAGE_COLLECTION = True
+
     # When enabled, sets a tracing callback to report greenlet metrics.
     GREENLET_TRACING = True
 
@@ -721,3 +723,10 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
     FEATURE_EXPERIMENTAL_HELM_OCI_SUPPORT = False
+
+    # The set of hostnames disallowed from webhooks, beyond localhost (which will
+    # not work due to running inside a container).
+    WEBHOOK_HOSTNAME_BLACKLIST = []
+
+    # The root URL for documentation.
+    DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3.3/"

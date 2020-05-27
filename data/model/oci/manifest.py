@@ -280,7 +280,7 @@ def _create_manifest(
             logger.error("Got manifest error when populating legacy images: %s", me)
             if raise_on_error:
                 raise CreateManifestException(
-                    "Attempt to create an invalid manifest. Please report this issue."
+                    "Attempt to create an invalid manifest: %s. Please report this issue." % me
                 )
 
             return None

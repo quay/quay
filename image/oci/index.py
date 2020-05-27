@@ -45,6 +45,7 @@ from image.shared.interfaces import ManifestInterface
 from image.shared.schemautil import LazyManifestLoader
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.descriptor import get_descriptor_schema
+from image.oci.manifest import OCIManifest
 from util.bytes import Bytes
 
 
@@ -65,6 +66,11 @@ INDEX_OS_FEATURES_KEY = "os.features"
 INDEX_FEATURES_KEY = "features"
 INDEX_VARIANT_KEY = "variant"
 INDEX_ANNOTATIONS_KEY = "annotations"
+
+ALLOWED_MEDIA_TYPES = [
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+    OCI_IMAGE_INDEX_CONTENT_TYPE,
+]
 
 
 class MalformedIndex(ManifestException):
@@ -94,10 +100,7 @@ class OCIIndex(ManifestInterface):
                 "type": "array",
                 "description": "The manifests field contains a list of manifests for specific platforms",
                 "items": get_descriptor_schema(
-                    allowed_media_types=[
-                        OCI_IMAGE_MANIFEST_CONTENT_TYPE,
-                        OCI_IMAGE_INDEX_CONTENT_TYPE,
-                    ],
+                    allowed_media_types=ALLOWED_MEDIA_TYPES,
                     additional_properties={
                         INDEX_PLATFORM_KEY: {
                             "type": "object",
@@ -231,7 +234,7 @@ class OCIIndex(ManifestInterface):
         """
         manifests = self._parsed[INDEX_MANIFESTS_KEY]
         supported_types = {}
-        # supported_types[OCI_IMAGE_MANIFEST_CONTENT_TYPE] = OCIManifest
+        supported_types[OCI_IMAGE_MANIFEST_CONTENT_TYPE] = OCIManifest
         supported_types[OCI_IMAGE_INDEX_CONTENT_TYPE] = OCIIndex
         return [
             LazyManifestLoader(
@@ -328,3 +331,61 @@ class OCIIndex(ManifestInterface):
 
     def generate_legacy_layers(self, images_map, content_retriever):
         return None
+
+
+class OCIIndexBuilder(object):
+    """
+    A convenient abstraction around creating new OCIIndex's.
+    """
+
+    def __init__(self):
+        self.manifests = []
+
+    def add_manifest(self, manifest, architecture, os):
+        """
+        Adds a manifest to the list.
+        """
+        assert manifest.media_type in ALLOWED_MEDIA_TYPES
+        self.add_manifest_digest(
+            manifest.digest,
+            len(manifest.bytes.as_encoded_str()),
+            manifest.media_type,
+            architecture,
+            os,
+        )
+
+    def add_manifest_digest(self, manifest_digest, manifest_size, media_type, architecture, os):
+        """
+        Adds a manifest to the list.
+        """
+        self.manifests.append(
+            (
+                manifest_digest,
+                manifest_size,
+                media_type,
+                {INDEX_ARCHITECTURE_KEY: architecture, INDEX_OS_KEY: os,},
+            )
+        )
+
+    def build(self):
+        """
+        Builds and returns the DockerSchema2ManifestList.
+        """
+        assert self.manifests
+
+        manifest_list_dict = {
+            INDEX_VERSION_KEY: 2,
+            INDEX_MEDIATYPE_KEY: OCI_IMAGE_INDEX_CONTENT_TYPE,
+            INDEX_MANIFESTS_KEY: [
+                {
+                    INDEX_MEDIATYPE_KEY: manifest[2],
+                    INDEX_DIGEST_KEY: manifest[0],
+                    INDEX_SIZE_KEY: manifest[1],
+                    INDEX_PLATFORM_KEY: manifest[3],
+                }
+                for manifest in self.manifests
+            ],
+        }
+
+        json_str = Bytes.for_string_or_unicode(json.dumps(manifest_list_dict, indent=3))
+        return OCIIndex(json_str)

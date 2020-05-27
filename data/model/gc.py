@@ -1,6 +1,6 @@
 import logging
 
-from peewee import fn
+from peewee import fn, IntegrityError
 
 from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag
 from data.model.oci import tag as oci_tag
@@ -127,8 +127,11 @@ def purge_repository(repo, force=False):
     except Repository.DoesNotExist:
         return False
 
-    fetched.delete_instance(recursive=True, delete_nullable=False, force=force)
-    return True
+    try:
+        fetched.delete_instance(recursive=True, delete_nullable=False, force=force)
+        return True
+    except IntegrityError:
+        return False
 
 
 def _chunk_delete_all(repo, model, force=False, chunk_size=500):

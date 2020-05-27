@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import datetime
 
 import cnr.semver
@@ -7,8 +8,9 @@ from cnr.exception import raise_package_not_found, raise_channel_not_found, CnrE
 import features
 import data.model
 
-from app import app, storage, authentication
+from app import app, storage, authentication, model_cache
 from data import appr_model
+from data.cache import cache_key
 from data.database import Repository, MediaType, db_transaction
 from data.appr_model.models import NEW_MODELS
 from endpoints.appr.models_interface import (
@@ -23,6 +25,22 @@ from endpoints.appr.models_interface import (
 from util.audit import track_and_log
 from util.morecollections import AttrDict
 from util.names import parse_robot_username
+
+
+CachedApplication = namedtuple(
+    "CachedApplication",
+    [
+        "namespace",
+        "name",
+        "visibility",
+        "tag_names",
+        "latest_lifetime_start",
+        "first_lifetime_start",
+        "channels",
+        "manifests",
+    ],
+)
+CachedChannel = namedtuple("CachedChannel", ["name", "linked_tag_name"])
 
 
 class ReadOnlyException(CnrException):
@@ -109,7 +127,57 @@ class CNRAppModel(AppRegistryDataInterface):
         namespace and view a specific user.
         """
         limit = app.config.get("APP_REGISTRY_RESULTS_LIMIT", 50)
-        views = []
+
+        # NOTE: This caching only applies for the super-large and commonly requested results
+        # sets.
+        if media_type is None and search is None and username is None and not with_channels:
+
+            def _list_applications():
+                return [
+                    found._asdict()
+                    for found in self._list_applications(namespace=namespace, limit=limit)
+                ]
+
+            apps_cache_key = cache_key.for_appr_applications_list(namespace, limit)
+            results = [
+                CachedApplication(**found)
+                for found in model_cache.retrieve(apps_cache_key, _list_applications)
+            ]
+        else:
+            results = self._list_applications(
+                namespace, media_type, search, username, with_channels, limit=limit
+            )
+
+        return [
+            ApplicationSummaryView(
+                namespace=result.namespace,
+                name=result.name,
+                visibility=result.visibility,
+                default=result.tag_names[0] if result.tag_names else None,
+                channels=[
+                    ChannelView(name=channel.name, current=channel.linked_tag_name)
+                    for channel in result.channels
+                ]
+                if result.channels is not None
+                else None,
+                manifests=result.manifests,
+                releases=result.tag_names,
+                updated_at=_timestamp_to_iso(result.latest_lifetime_start),
+                created_at=_timestamp_to_iso(result.first_lifetime_start),
+            )
+            for result in results
+        ]
+
+    def _list_applications(
+        self,
+        namespace=None,
+        media_type=None,
+        search=None,
+        username=None,
+        with_channels=False,
+        limit=None,
+    ):
+        limit = limit or app.config.get("APP_REGISTRY_RESULTS_LIMIT", 50)
         for repo in appr_model.package.list_packages_query(
             self.models_ref, namespace, media_type, search, username=username, limit=limit
         ):
@@ -117,31 +185,30 @@ class CNRAppModel(AppRegistryDataInterface):
             releases = [t.name for t in tag_set_prefetch]
             if not releases:
                 continue
+
             available_releases = [
                 str(x) for x in sorted(cnr.semver.versions(releases, False), reverse=True)
             ]
             channels = None
             if with_channels:
                 channels = [
-                    ChannelView(name=chan.name, current=chan.linked_tag.name)
+                    CachedChannel(name=chan.name, current=chan.linked_tag.name)
                     for chan in appr_model.channel.get_repo_channels(repo, self.models_ref)
                 ]
 
             app_name = _join_package_name(repo.namespace_user.username, repo.name)
             manifests = self.list_manifests(app_name, available_releases[0])
-            view = ApplicationSummaryView(
+
+            yield CachedApplication(
                 namespace=repo.namespace_user.username,
                 name=app_name,
                 visibility=repo.visibility.name,
-                default=available_releases[0],
-                channels=channels,
+                tag_names=available_releases,
+                latest_lifetime_start=tag_set_prefetch[-1].lifetime_start,
+                first_lifetime_start=tag_set_prefetch[0].lifetime_start,
                 manifests=manifests,
-                releases=available_releases,
-                updated_at=_timestamp_to_iso(tag_set_prefetch[-1].lifetime_start),
-                created_at=_timestamp_to_iso(tag_set_prefetch[0].lifetime_start),
+                channels=channels,
             )
-            views.append(view)
-        return views
 
     def application_is_public(self, package_name):
         """

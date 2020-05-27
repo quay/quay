@@ -9,6 +9,7 @@ import features
 from app import app, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from digest import digest_tools
+from data.database import db_disallow_replica_use
 from data.registry_model import registry_model
 from data.model.oci.manifest import CreateManifestException
 from data.model.oci.tag import RetargetTagException
@@ -290,55 +291,57 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     Note: there is no equivalent method for deleting by tag name because it is
     forbidden by the spec.
     """
-    repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
-    if repository_ref is None:
-        raise NameUnknown()
+    with db_disallow_replica_use():
+        repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
+        if repository_ref is None:
+            raise NameUnknown()
 
-    manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
-    if manifest is None:
-        raise ManifestUnknown()
+        manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
+        if manifest is None:
+            raise ManifestUnknown()
 
-    tags = registry_model.delete_tags_for_manifest(manifest)
-    if not tags:
-        raise ManifestUnknown()
+        tags = registry_model.delete_tags_for_manifest(manifest)
+        if not tags:
+            raise ManifestUnknown()
 
-    for tag in tags:
-        track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
+        for tag in tags:
+            track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
 
-    return Response(status=202)
+        return Response(status=202)
 
 
 def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
-    repository_ref, manifest, tag = _write_manifest(
-        namespace_name, repo_name, tag_name, manifest_impl
-    )
+    with db_disallow_replica_use():
+        repository_ref, manifest, tag = _write_manifest(
+            namespace_name, repo_name, tag_name, manifest_impl
+        )
 
-    # Queue all blob manifests for replication.
-    if features.STORAGE_REPLICATION:
-        blobs = registry_model.get_manifest_local_blobs(manifest)
-        if blobs is None:
-            logger.error("Could not lookup blobs for manifest `%s`", manifest.digest)
-        else:
-            with queue_replication_batch(namespace_name) as queue_storage_replication:
-                for blob_digest in blobs:
-                    queue_storage_replication(blob_digest)
+        # Queue all blob manifests for replication.
+        if features.STORAGE_REPLICATION:
+            blobs = registry_model.get_manifest_local_blobs(manifest)
+            if blobs is None:
+                logger.error("Could not lookup blobs for manifest `%s`", manifest.digest)
+            else:
+                with queue_replication_batch(namespace_name) as queue_storage_replication:
+                    for blob_digest in blobs:
+                        queue_storage_replication(blob_digest)
 
-    track_and_log("push_repo", repository_ref, tag=tag_name)
-    spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
-    image_pushes.labels("v2", 201, manifest.media_type).inc()
+        track_and_log("push_repo", repository_ref, tag=tag_name)
+        spawn_notification(repository_ref, "repo_push", {"updated_tags": [tag_name]})
+        image_pushes.labels("v2", 201, manifest.media_type).inc()
 
-    return Response(
-        "OK",
-        status=201,
-        headers={
-            "Docker-Content-Digest": manifest.digest,
-            "Location": url_for(
-                "v2.fetch_manifest_by_digest",
-                repository="%s/%s" % (namespace_name, repo_name),
-                manifest_ref=manifest.digest,
-            ),
-        },
-    )
+        return Response(
+            "OK",
+            status=201,
+            headers={
+                "Docker-Content-Digest": manifest.digest,
+                "Location": url_for(
+                    "v2.fetch_manifest_by_digest",
+                    repository="%s/%s" % (namespace_name, repo_name),
+                    manifest_ref=manifest.digest,
+                ),
+            },
+        )
 
 
 def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
@@ -354,7 +357,7 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         elif manifest_impl.namespace != namespace_name:
             raise NameInvalid(
                 message="namespace name does not match manifest",
-                details={
+                detail={
                     "namespace name `%s` does not match `%s` in manifest"
                     % (namespace_name, manifest_impl.namespace)
                 },
@@ -363,7 +366,7 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         if manifest_impl.repo_name != repo_name:
             raise NameInvalid(
                 message="repository name does not match manifest",
-                details={
+                detail={
                     "repository name `%s` does not match `%s` in manifest"
                     % (repo_name, manifest_impl.repo_name)
                 },

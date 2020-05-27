@@ -18,7 +18,6 @@ from app import (
     billing as stripe,
     authentication,
     avatar,
-    user_analytics,
     all_queues,
     oauth_login,
     namespace_gc_queue,
@@ -73,7 +72,6 @@ from util.useremails import (
     send_org_recovery_email,
 )
 from util.names import parse_single_urn
-from util.saas.useranalytics import build_error_callback
 from util.request import get_request_ip
 
 
@@ -182,14 +180,6 @@ def user_view(user, previous_username=None):
                 "has_password_set": authentication.has_password_set(user.username),
             }
         )
-
-        analytics_metadata = user_analytics.get_user_analytics_metadata(user)
-
-        # This is a sync call, but goes through the async wrapper interface and
-        # returns a Future. By calling with timeout 0 immediately after the method
-        # call, we ensure that if it ever accidentally becomes async it will raise
-        # a TimeoutError.
-        user_response.update(analytics_metadata.result(timeout=0))
 
     user_view_perm = UserReadPermission(user.username)
     if user_view_perm.can():
@@ -397,8 +387,6 @@ class User(ApiResource):
                     )
                     send_change_email(user.username, user_data["email"], confirmation_code)
                 else:
-                    ua_future = user_analytics.change_email(user.email, new_email)
-                    ua_future.add_done_callback(build_error_callback("Change email failed"))
                     model.user.update_email(user, new_email, auto_verify=not features.MAILING)
 
             if features.USER_METADATA:
@@ -410,11 +398,6 @@ class User(ApiResource):
 
                 if len(metadata) > 0:
                     model.user.update_user_metadata(user, metadata)
-
-                    ua_mdata_future = user_analytics.change_metadata(user.email, **metadata)
-                    ua_mdata_future.add_done_callback(
-                        build_error_callback("Change metadata failed")
-                    )
 
             # Check for username rename. A username can be renamed if the feature is enabled OR the user
             # currently has a confirm_username prompt.
@@ -434,11 +417,6 @@ class User(ApiResource):
                         raise request_error(message="Username is already in use")
 
                     user = model.user.change_username(user.id, new_username)
-                    username_future = user_analytics.change_username(user.email, new_username)
-                    username_future.add_done_callback(
-                        build_error_callback("Change username failed")
-                    )
-
                 elif confirm_username:
                     model.user.remove_user_prompt(user, "confirm_username")
 

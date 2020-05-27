@@ -43,7 +43,7 @@ COPY . .
 RUN scl enable python27 "\
     pip install --upgrade setuptools==44 pip && \
     pip install -r requirements.txt --no-cache && \
-    pip install -r requirements-tests.txt --no-cache && \
+    pip install -r requirements-dev.txt --no-cache && \
     pip freeze && \
     mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
@@ -126,11 +126,19 @@ RUN mkdir /datastorage && chgrp 0 /datastorage && chmod g=u /datastorage && \
 
 RUN chgrp 0 /var/opt/rh/rh-nginx112/log/nginx && chmod g=u /var/opt/rh/rh-nginx112/log/nginx
 
+# Allow TLS certs to be created and installed as non-root user
+RUN chgrp -R 0 /etc/pki/ca-trust/extracted && \
+    chmod -R g=u /etc/pki/ca-trust/extracted && \
+    chgrp -R 0 /etc/pki/ca-trust/source/anchors && \
+    chmod -R g=u /etc/pki/ca-trust/source/anchors && \
+    chgrp -R 0 /opt/rh/python27/root/usr/lib/python2.7/site-packages/requests && \
+    chmod -R g=u /opt/rh/python27/root/usr/lib/python2.7/site-packages/requests && \
+    chgrp -R 0 /opt/rh/python27/root/usr/lib/python2.7/site-packages/certifi && \
+    chmod -R g=u /opt/rh/python27/root/usr/lib/python2.7/site-packages/certifi
+
 VOLUME ["/var/log", "/datastorage", "/tmp", "/conf/stack"]
+
+USER 1001
 
 ENTRYPOINT ["/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]
-
-# root required to create and install certs
-# https://jira.coreos.com/browse/QUAY-1468
-# USER 1001

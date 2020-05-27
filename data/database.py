@@ -40,7 +40,7 @@ from data.fields import (
 from data.decorators import deprecated_model
 from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
-from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig
+from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig, disallow_replica_use
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from util.names import urn_generator
 from util.validation import validate_postgres_precondition
@@ -145,11 +145,12 @@ def delete_instance_filtered(instance, model_class, delete_nullable, skip_transi
 
     Callers *must* ensure that any models listed in the skip_transitive_deletes must be capable
     of being directly deleted when the instance is deleted (with automatic sorting handling
-    dependency order).
+    dependency order) - for example, the Manifest and ManifestBlob tables for Repository will
+    always refer to the *same* repository when Manifest references ManifestBlob, so we can safely
+    skip transitive deletion for the Manifest table.
 
-    For example, the RepositoryTag and Image tables for Repository will always refer to the
-    *same* repository when RepositoryTag references Image, so we can safely skip
-    transitive deletion for the RepositoryTag table.
+    Callers *must* catch IntegrityError's raised, as this method will *not* delete the instance
+    under a transaction, to avoid locking the database.
     """
     # We need to sort the ops so that models get cleaned in order of their dependencies
     ops = reversed(list(instance.dependencies(delete_nullable)))
@@ -181,15 +182,17 @@ def delete_instance_filtered(instance, model_class, delete_nullable, skip_transi
 
     filtered_ops.sort(key=sorted_model_key)
 
-    with db_transaction():
-        for query, fk in filtered_ops:
-            _model = fk.model
-            if fk.null and not delete_nullable:
-                _model.update(**{fk.name: None}).where(query).execute()
-            else:
-                _model.delete().where(query).execute()
+    # NOTE: We do not use a transaction here, as it can be a VERY long transaction, potentially
+    # locking up the database. Instead, we expect cleanup code to have run before this point, and
+    # if this fails with an IntegrityError, callers are expected to catch and retry.
+    for query, fk in filtered_ops:
+        _model = fk.model
+        if fk.null and not delete_nullable:
+            _model.update(**{fk.name: None}).where(query).execute()
+        else:
+            _model.delete().where(query).execute()
 
-        return instance.delete().where(instance._pk_expr()).execute()
+    return instance.delete().where(instance._pk_expr()).execute()
 
 
 SCHEME_SPECIALIZED_FOR_UPDATE = {
@@ -304,6 +307,7 @@ db_random_func = CallableProxy()
 db_match_func = CallableProxy()
 db_for_update = CallableProxy()
 db_transaction = CallableProxy()
+db_disallow_replica_use = CallableProxy()
 db_concat_func = CallableProxy()
 db_encrypter = Proxy()
 db_count_estimator = CallableProxy()
@@ -441,6 +445,9 @@ def configure(config_object, testing=False):
     def _db_transaction():
         return config_object["DB_TRANSACTION_FACTORY"](db)
 
+    def _db_disallow_replica_use():
+        return disallow_replica_use(db)
+
     @contextmanager
     def _ensure_under_transaction():
         if not testing and not config_object["TESTING"]:
@@ -450,6 +457,7 @@ def configure(config_object, testing=False):
         yield
 
     db_transaction.initialize(_db_transaction)
+    db_disallow_replica_use.initialize(_db_disallow_replica_use)
     ensure_under_transaction.initialize(_ensure_under_transaction)
 
 
@@ -1433,6 +1441,7 @@ class QuayRelease(BaseModel):
         )
 
 
+@deprecated_model
 class TorrentInfo(BaseModel):
     storage = ForeignKeyField(ImageStorage)
     piece_length = IntegerField()

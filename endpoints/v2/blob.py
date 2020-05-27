@@ -111,14 +111,13 @@ def download_blob(namespace_name, repo_name, digest):
 
     # Close the database connection before we stream the download.
     logger.debug("Closing database connection before streaming layer data")
+    headers.update(
+        {"Content-Length": blob.compressed_size, "Content-Type": BLOB_CONTENT_TYPE,}
+    )
+
     with database.CloseForLongOperation(app.config):
         # Stream the response to the client.
-        return Response(
-            storage.stream_read(blob.placements, path),
-            headers=headers.update(
-                {"Content-Length": blob.compressed_size, "Content-Type": BLOB_CONTENT_TYPE,}
-            ),
-        )
+        return Response(storage.stream_read(blob.placements, path), headers=headers,)
 
 
 def _try_to_mount_blob(repository_ref, mount_blob_digest):
@@ -462,7 +461,6 @@ def _upload_settings():
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
     settings = BlobUploadSettings(
         maximum_blob_size=app.config["MAXIMUM_LAYER_SIZE"],
-        bittorrent_piece_size=app.config["BITTORRENT_PIECE_SIZE"],
         committed_blob_expiration=expiration_sec,
     )
     return settings

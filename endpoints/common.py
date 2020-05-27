@@ -9,7 +9,7 @@ from flask_principal import identity_changed
 import endpoints.decorated  # Register the various exceptions via decorators.
 import features
 
-from app import app, oauth_apps, oauth_login, LoginWrappedDBUser, user_analytics, IS_KUBERNETES
+from app import app, oauth_apps, oauth_login, LoginWrappedDBUser, IS_KUBERNETES
 from auth import scopes
 from auth.permissions import QuayDeferredPermissionUser
 from config import frontend_visible_config
@@ -18,7 +18,6 @@ from endpoints.common_models_pre_oci import pre_oci_model as model
 from endpoints.csrf import generate_csrf_token, QUAY_CSRF_UPDATED_HEADER_NAME
 from util.config.provider.k8sprovider import QE_NAMESPACE
 from util.secscan import PRIORITY_LEVELS
-from util.saas.useranalytics import build_error_callback
 from util.timedeltastring import convert_to_timedelta
 from _init import __version__
 
@@ -49,18 +48,6 @@ def common_login(user_uuid, permanent_session=True):
             session_timeout_str = app.config.get("SESSION_TIMEOUT", "31d")
             session.permanent = True
             session.permanent_session_lifetime = convert_to_timedelta(session_timeout_str)
-
-        # Inform our user analytics that we have a new "lead"
-        create_lead_future = user_analytics.create_lead(
-            user.email,
-            user.username,
-            user.given_name,
-            user.family_name,
-            user.company,
-            user.location,
-        )
-
-        create_lead_future.add_done_callback(build_error_callback("Create lead failed"))
 
         # Force a new CSRF token.
         headers = {}

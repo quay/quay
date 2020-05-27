@@ -22,6 +22,7 @@ import { SearchBoxComponent } from './directives/ui/search-box/search-box.compon
 import { TypeaheadDirective } from './directives/ui/typeahead/typeahead.directive';
 import { BuildServiceImpl } from './services/build/build.service.impl';
 import { AvatarServiceImpl } from './services/avatar/avatar.service.impl';
+import { DocumentationServiceImpl } from './services/documentation/documentation.service.impl';
 import { DockerfileServiceImpl } from './services/dockerfile/dockerfile.service.impl';
 import { DataFileServiceImpl } from './services/datafile/datafile.service.impl';
 import { QuayRequireDirective } from './directives/structural/quay-require/quay-require.directive';
@@ -96,11 +97,12 @@ import * as Clipboard from 'clipboard';
     ViewArrayImpl,
     BuildServiceImpl,
     AvatarServiceImpl,
+    DocumentationServiceImpl,
     DockerfileServiceImpl,
     DataFileServiceImpl,
-    {provide: 'fileReaderFactory', useValue: () => new FileReader()},
-    {provide: 'BrowserPlatform', useValue: browserPlatform},
-    {provide: 'clipboardFactory', useValue: (trigger, options) => new Clipboard(trigger, options)},
+    { provide: 'fileReaderFactory', useValue: () => new FileReader() },
+    { provide: 'BrowserPlatform', useValue: browserPlatform },
+    { provide: 'clipboardFactory', useValue: (trigger, options) => new Clipboard(trigger, options) },
   ],
 })
 export class QuayModule {

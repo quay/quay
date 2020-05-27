@@ -198,8 +198,9 @@ class RegistryDataInterface(object):
     @abstractmethod
     def get_most_recent_tag_lifetime_start(self, repository_refs):
         """
-        Returns a map from repository ID to the last modified time ( seconds from epoch, UTC) for
-        each repository in the given repository reference list.
+        Returns a map from repository ID to the last modified time (seconds from epoch, UTC) for
+        each repository in the given repository reference list. There can be a maximum of 100
+        repositories specified, as this is a VERY heavy operation.
         """
 
     @abstractmethod
@@ -370,18 +371,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_torrent_info(self, blob):
-        """
-        Returns the torrent information associated with the given blob or None if none.
-        """
-
-    @abstractmethod
-    def set_torrent_info(self, blob, piece_length, pieces):
-        """
-        Sets the torrent infomation associated with the given blob to that specified.
-        """
-
-    @abstractmethod
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
         Returns the blob in the repository with the given digest, if any or None if none.
@@ -410,8 +399,6 @@ class RegistryDataInterface(object):
         self,
         blob_upload,
         uncompressed_byte_count,
-        piece_hashes,
-        piece_sha_state,
         storage_metadata,
         byte_count,
         chunk_count,

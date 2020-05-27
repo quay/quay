@@ -351,8 +351,10 @@ def get_filtered_matching_repositories(
         if filter_user is None:
             return []
 
+        # NOTE: We add the offset to the limit here to ensure we have enough results
+        # for the take's we conduct below.
         iterator = _filter_repositories_visible_to_user(
-            unfiltered_query, filter_user.id, limit, repo_kind
+            unfiltered_query, filter_user.id, offset + limit, repo_kind
         )
         if offset > 0:
             take(offset, iterator)
@@ -429,7 +431,7 @@ def _get_sorted_matching_repositories(
             Repository.select(*select_fields)
             .join(RepositorySearchScore)
             .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
-            .order_by(RepositorySearchScore.score.desc())
+            .order_by(RepositorySearchScore.score.desc(), RepositorySearchScore.id)
         )
     else:
         if search_fields is None:
@@ -454,7 +456,7 @@ def _get_sorted_matching_repositories(
             .join(RepositorySearchScore)
             .where(clause)
             .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
-            .order_by(SQL("score").desc())
+            .order_by(SQL("score").desc(), RepositorySearchScore.id)
         )
 
     if repo_kind is not None:

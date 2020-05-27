@@ -17,6 +17,8 @@ from data.model.storage import get_storage_locations
 
 logger = logging.getLogger(__name__)
 
+DOWNLOAD_VALIDITY_LIFETIME_S = 60  # Amount of time the security scanner has to call the layer URL
+
 
 class Non200ResponseException(Exception):
     """
@@ -79,7 +81,7 @@ class SecurityScannerAPIInterface(object):
 Action = namedtuple("Action", ["name", "payload"])
 
 actions = {
-    "State": lambda: Action("State", ("GET", "state", None)),
+    "IndexState": lambda: Action("IndexState", ("GET", "index_state", None)),
     "Index": lambda manifest: Action("Index", ("POST", "index_report", manifest)),
     "GetIndexReport": lambda manifest_hash: Action(
         "GetIndexReport", ("GET", "index_report/" + manifest_hash, None)
@@ -91,14 +93,15 @@ actions = {
 
 
 class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
-    def __init__(self, endpoint, client, storage):
+    def __init__(self, endpoint, client, blob_url_retriever):
         self._client = client
-        self._storage = storage
+        self._blob_url_retriever = blob_url_retriever
+
         self.secscan_api_endpoint = urljoin(endpoint, "/api/v1/")
 
     def state(self):
         try:
-            resp = self._perform(actions["State"]())
+            resp = self._perform(actions["IndexState"]())
         except (Non200ResponseException, IncompatibleAPIResponse) as ex:
             raise APIRequestFailure(ex.message)
 
@@ -108,16 +111,24 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         # TODO: Better method of determining if a manifest can be indexed (new field or content-type whitelist)
         assert isinstance(manifest, ManifestDataType) and not manifest.is_manifest_list
 
-        uri_for = lambda layer: self._storage.get_direct_download_url(
-            self._storage.locations, l.blob.storage_path
-        )
+        def _join(first, second):
+            first.update(second)
+            return first
+
         body = {
             "hash": manifest.digest,
             "layers": [
                 {
                     "hash": str(l.layer_info.blob_digest),
-                    "uri": uri_for(l),
-                    "headers": {"Accept": ["application/gzip"],},
+                    "uri": self._blob_url_retriever.url_for_download(manifest.repository, l.blob),
+                    "headers": _join(
+                        {"Accept": ["application/gzip"],},
+                        (
+                            self._blob_url_retriever.headers_for_download(
+                                manifest.repository, l.blob, DOWNLOAD_VALIDITY_LIFETIME_S
+                            )
+                        ),
+                    ),
                 }
                 for l in layers
             ],
@@ -178,9 +189,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             raise Non200ResponseException(resp)
 
         if not is_valid_response(action, resp.json()):
-            msg = "Received incompatible response from security scanner"
-            logger.exception(msg)
-            raise IncompatibleAPIResponse(msg)
+            raise IncompatibleAPIResponse("Received incompatible response from security scanner")
 
         return resp
 
@@ -189,7 +198,7 @@ def is_valid_response(action, resp={}):
     assert action.name in actions.keys()
 
     schema_for = {
-        "State": "State",
+        "IndexState": "State",
         "Index": "IndexReport",
         "GetIndexReport": "IndexReport",
         "GetVulnerabilityReport": "VulnerabilityReport",
@@ -205,4 +214,5 @@ def is_valid_response(action, resp={}):
             validate(resp, schema, resolver=resolver)
             return True
         except Exception:
+            logger.exception("Security scanner response failed OpenAPI validation")
             return False

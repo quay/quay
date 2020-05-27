@@ -215,27 +215,6 @@ Schema for Red Hat Quay<ul class="level0">
 </div>
 </li>
 <li class="schema item">
-<div class="name">BITTORRENT_ANNOUNCE_URL</div>
-<div class="type">[string]</div>
-<div class="required"></div>
-<div class="docs">
-<div class="title"></div>
-<div class="description">The URL of the announce endpoint on the bittorrent tracker</div>
-<div class="pattern">Pattern: ^http(s)?://(.)+$</div>
-<div class="x-example">Example: <code>https://localhost:6881/announce</code></div>
-</div>
-</li>
-<li class="schema item">
-<div class="name">BITTORRENT_PIECE_SIZE</div>
-<div class="type">[number]</div>
-<div class="required"></div>
-<div class="docs">
-<div class="title"></div>
-<div class="description">The bittorent piece size to use. If not specified, defaults to 512 * 1024.</div>
-<div class="x-example">Example: <code>524288</code></div>
-</div>
-</li>
-<li class="schema item">
 <div class="name">CONTACT_INFO</div>
 <div class="type">[array]</div>
 <div class="required"></div>
@@ -423,17 +402,6 @@ Schema for Red Hat Quay<ul class="level0">
 <div class="docs">
 <div class="title"></div>
 <div class="description">Whether to support Bitbucket build triggers. Defaults to False</div>
-<div class="x-example">Example: <code>False</code></div>
-</div>
-</li>
-<li class="schema item">
-<div class="name">FEATURE_BITTORRENT</div>
-<div class="type">[boolean]</div>
-<div class="required"></div>
-<div class="docs">
-<div class="title"></div>
-<div class="description">Whether to allow using Bittorrent-based pulls. Defaults to False</div>
-<div class="x-reference"><a href="https://coreos.com/quay-enterprise/docs/latest/bittorrent.html">Reference: https://coreos.com/quay-enterprise/docs/latest/bittorrent.html</a></div>
 <div class="x-example">Example: <code>False</code></div>
 </div>
 </li>

@@ -10,7 +10,8 @@ angular.module('quay').directive('credentials', function() {
     scope: {
       'trigger': '=trigger'
     },
-    controller: function($scope, TriggerService) {
+    controller: function($scope, TriggerService, DocumentationService) {
+      $scope.DocumentationService = DocumentationService;
       TriggerService.populateTemplate($scope, 'credentials');
     }
   };

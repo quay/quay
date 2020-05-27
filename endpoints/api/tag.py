@@ -194,23 +194,22 @@ class RepositoryTag(RepositoryParamResource):
             image_id = None
             manifest_digest = None
 
-            if "image" in request.get_json():
-                image_id = request.get_json()["image"]
-                manifest_or_image = registry_model.get_legacy_image(repo_ref, image_id)
-            else:
+            if "manifest_digest" in request.get_json():
                 manifest_digest = request.get_json()["manifest_digest"]
                 manifest_or_image = registry_model.lookup_manifest_by_digest(
                     repo_ref, manifest_digest, require_available=True
                 )
+            else:
+                image_id = request.get_json()["image"]
+                manifest_or_image = registry_model.get_legacy_image(repo_ref, image_id)
 
             if manifest_or_image is None:
                 raise NotFound()
 
-            # TODO: Remove this check once fully on V22
-            existing_manifest_digest = None
-            if existing_tag:
-                existing_manifest = registry_model.get_manifest_for_tag(existing_tag)
-                existing_manifest_digest = existing_manifest.digest if existing_manifest else None
+            existing_manifest = (
+                registry_model.get_manifest_for_tag(existing_tag) if existing_tag else None
+            )
+            existing_manifest_digest = existing_manifest.digest if existing_manifest else None
 
             if not registry_model.retarget_tag(
                 repo_ref, tag, manifest_or_image, storage, docker_v2_signing_key
@@ -229,11 +228,6 @@ class RepositoryTag(RepositoryParamResource):
                     "namespace": namespace,
                     "image": image_id,
                     "manifest_digest": manifest_digest,
-                    "original_image": (
-                        existing_tag.legacy_image.docker_image_id
-                        if existing_tag and existing_tag.legacy_image_if_present
-                        else None
-                    ),
                     "original_manifest_digest": existing_manifest_digest,
                 },
                 repo_name=repository,

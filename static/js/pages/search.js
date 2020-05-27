@@ -14,7 +14,8 @@
 
       var params = {
         'query': $routeParams['q'],
-        'page': $scope.currentPage
+        'page': $scope.currentPage,
+        'includeUsage': true
       };
 
       var MAX_PAGE_RESULTS = Config['SEARCH_MAX_RESULT_PAGE_COUNT'];
