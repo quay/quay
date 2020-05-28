@@ -22,18 +22,6 @@ def generate_key(service, name, expiration_date=None, notes=None):
         key.kid, ServiceKeyApprovalType.AUTOMATIC, notes=notes or ""
     )
 
-    # Log the creation and auto-approval of the service key.
-    key_log_metadata = {
-        "kid": key.kid,
-        "preshared": True,
-        "service": service,
-        "name": name,
-        "expiration_date": expiration_date,
-        "auto_approved": True,
-    }
-
-    logs_model.log_action("service_key_create", metadata=key_log_metadata)
-    logs_model.log_action("service_key_approve", metadata=key_log_metadata)
     return private_key, key.kid
 
 
