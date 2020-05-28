@@ -397,6 +397,7 @@ def _db_from_url(
     else:
         logger.info("Connection pooling disabled for %s", parsed_url.drivername)
         db_kwargs.pop("stale_timeout", None)
+        db_kwargs.pop("timeout", None)
         db_kwargs.pop("max_connections", None)
 
     for key, value in _EXTRA_ARGS.get(parsed_url.drivername, {}).iteritems():
