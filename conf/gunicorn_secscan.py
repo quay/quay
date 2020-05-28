@@ -7,13 +7,14 @@ import logging
 
 from Crypto import Random
 from util.log import logfile_path
-from util.workers import get_worker_count
+from util.workers import get_worker_count, get_worker_connections_count
 
 
 logconfig = logfile_path(debug=False)
 bind = "unix:/tmp/gunicorn_secscan.sock"
 workers = get_worker_count("secscan", 2, minimum=2, maximum=4)
 worker_class = "gevent"
+worker_connections = get_worker_connections_count("secscan")
 pythonpath = "."
 preload_app = True
 
