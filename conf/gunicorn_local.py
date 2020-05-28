@@ -7,13 +7,14 @@ import logging
 
 from Crypto import Random
 from util.log import logfile_path
-from util.workers import get_worker_count
+from util.workers import get_worker_count, get_worker_connections_count
 
 
 logconfig = logfile_path(debug=True)
 bind = "0.0.0.0:5000"
 workers = get_worker_count("local", 2, minimum=2, maximum=8)
 worker_class = "gevent"
+worker_connections = get_worker_connections_count("local")
 daemon = False
 pythonpath = "."
 preload_app = True
