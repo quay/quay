@@ -257,6 +257,10 @@ objects:
             value: ${{QUAY_LOGGING}}
           - name: DB_CONNECTION_POOLING
             value: ${{DB_CONNECTION_POOLING}}
+          - name: WORKER_COUNT_REGISTRY
+            value: ${{QUAY_WORKER_COUNT_REGISTRY}}
+          - name: WORKER_CONNECTION_COUNT_REGISTRY
+            value: ${{QUAY_WORKER_CONNECTION_COUNT_REGISTRY}}
 parameters:
   - name: NAME
     value: "quay"
@@ -435,3 +439,11 @@ parameters:
     description: aws load balancer connection idle timeout
   - name: DB_CONNECTION_POOLING
     value: "true"
+  - name: QUAY_WORKER_COUNT_REGISTRY
+    value: ""
+    displayName: the number of gunicorn workers for the registry routes
+    description: the number of gunicorn workers for the registry routes
+  - name: QUAY_WORKER_CONNECTION_COUNT_REGISTRY
+    value: ""
+    displayName: the maximum number of greenlets per gunicorn worker for the registry routes
+    description: the maximum number of greenlets per gunicorn worker for the registry routes
