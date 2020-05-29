@@ -18,11 +18,20 @@ def get_worker_connections_count(worker_kind_name, default=50):
     return default
 
 
-def get_worker_count(worker_kind_name, multiplier, minimum=None, maximum=None):
+def get_worker_count(worker_kind_name, multiplier=1, minimum=None, maximum=None):
     """
     Returns the number of gunicorn workers to run for the given worker kind, based on a combination
     of environment variable, multiplier, minimum (if any), and number of accessible CPU cores.
     """
+    # Check for an override via environment variable.
+    general_multiplier_override = int(os.environ.get("WORKER_MULTIPLIER", "-1"))
+    multiplier = general_multiplier_override if general_multiplier_override != -1 else multiplier
+
+    specific_multiplier_override = int(
+        os.environ.get("WORKER_MULTIPLIER_" + worker_kind_name.upper(), "-1")
+    )
+    multiplier = specific_multiplier_override if specific_multiplier_override != -1 else multiplier
+
     minimum = minimum or multiplier
     maximum = maximum or (multiplier * multiplier)
 
