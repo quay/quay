@@ -429,7 +429,7 @@ parameters:
     displayName: aws load balancer connection idle timeout
     description: aws load balancer connection idle timeout
   - name: QUAY_WORKER_MULTIPLIER_REGISTRY
-    value: 2
+    value: "2"
     displayName: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
     description: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
   - name: QUAY_WORKER_CONNECTION_COUNT_REGISTRY
