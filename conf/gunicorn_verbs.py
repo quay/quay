@@ -12,7 +12,7 @@ from util.workers import get_worker_count, get_worker_connections_count
 logconfig = logfile_path(debug=False)
 
 bind = "unix:/tmp/gunicorn_verbs.sock"
-workers = get_worker_count("verbs", 2, minimum=2, maximum=32)
+workers = get_worker_count("verbs", multiplier=2, minimum=2, maximum=32)
 worker_connections = get_worker_connections_count("verbs")
 pythonpath = "."
 preload_app = True

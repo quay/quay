@@ -12,7 +12,7 @@ from util.workers import get_worker_count, get_worker_connections_count
 
 logconfig = logfile_path(debug=False)
 bind = "unix:/tmp/gunicorn_registry.sock"
-workers = get_worker_count("registry", 4, minimum=8, maximum=64)
+workers = get_worker_count("registry", multiplier=4, minimum=8, maximum=64)
 worker_class = "gevent"
 worker_connections = get_worker_connections_count("registry")
 pythonpath = "."

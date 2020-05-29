@@ -12,7 +12,7 @@ from util.workers import get_worker_count, get_worker_connections_count
 
 logconfig = logfile_path(debug=True)
 bind = "0.0.0.0:5000"
-workers = get_worker_count("local", 2, minimum=2, maximum=8)
+workers = get_worker_count("local", multiplier=2, minimum=2, maximum=8)
 worker_class = "gevent"
 worker_connections = get_worker_connections_count("local")
 daemon = False
