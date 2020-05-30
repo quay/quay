@@ -62,7 +62,12 @@ class OpenshiftOAuthService(OAuthLoginService):
 
     def user_endpoint(self):
         """Technically the user endpoint is the Kubernetes API itself in the OpenShift situation.
-        Reference implementation: https://github.com/openshift/oauth-proxy/blob/master/providers/openshift/provider.go
+
+        The openshift-oauth service provides a reference to the User resource as validation, as seen in:
+        https://github.com/openshift/oauth-proxy/blob/master/providers/openshift/provider.go#L129
+
+        Which is used by https://github.com/openshift/oauth-proxy/blob/master/providers/openshift/provider.go#L415
+        to retrieve the E-mail attribute.
         """
         return OAuthEndpoint(self.config.get("OPENSHIFT_SERVER") + "apis/user.openshift.io/v1/users/~")
 
