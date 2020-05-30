@@ -20,7 +20,7 @@ class AccessSettingsValidator(BaseValidator):
             login_manager = OAuthLoginManager(config, client=client)
             custom_oidc = [s for s in login_manager.services if isinstance(s, OIDCLoginService)]
 
-            if not github_login and not google_login and not openshift_login and not custom_oidc:
+            if not any([github_login, google_login, openshift_login]) and not custom_oidc:
                 msg = "Cannot disable credentials login to UI without configured OIDC service"
                 raise ConfigValidationException(msg)
 
