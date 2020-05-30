@@ -108,8 +108,6 @@ class OpenshiftOAuthService(OAuthLoginService):
         DiscoveryFailureException on failure.
         """
         oauth_server = self.config.get("OPENSHIFT_SERVER", DEFAULT_OAUTH_HOST)
-        # if not oidc_server.startswith("https://") and not is_debugging:
-        #     raise DiscoveryFailureException("OIDC server must be accessed over SSL")
 
         discovery_url = urllib.parse.urljoin(oauth_server, OAUTH_WELLKNOWN)
         discovery = self._http_client.get(discovery_url, timeout=5, verify=is_debugging is False)
