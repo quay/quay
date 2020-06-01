@@ -364,8 +364,10 @@ def get_mirror(repository):
     """
     try:
         return (
-            RepoMirrorConfig.select(RepoMirrorConfig, User)
+            RepoMirrorConfig.select(RepoMirrorConfig, User, RepoMirrorRule)
             .join(User, JOIN.LEFT_OUTER)
+            .switch(RepoMirrorConfig)
+            .join(RepoMirrorRule)
             .where(RepoMirrorConfig.repository == repository)
             .get()
         )
