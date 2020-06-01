@@ -249,9 +249,9 @@ objects:
           - name: QUAY_LOGGING
             value: ${{QUAY_LOGGING}}
           - name: WORKER_MULTIPLIER_REGISTRY
-            value: ${{QUAY_WORKER_MULTIPLIER_REGISTRY}}
+            value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
           - name: WORKER_CONNECTION_COUNT_REGISTRY
-            value: ${{QUAY_WORKER_CONNECTION_COUNT_REGISTRY}}
+            value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
 parameters:
   - name: NAME
     value: "quay"
