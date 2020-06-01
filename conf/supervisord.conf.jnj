@@ -136,14 +136,6 @@ autostart = {{ config['repositoryactioncounter']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:security_notification_worker]
-environment=
-  PYTHONPATH=%(ENV_QUAYDIR)s
-command=python -m workers.security_notification_worker
-autostart = {{ config['security_notification_worker']['autostart'] }}
-stdout_events_enabled = true
-stderr_events_enabled = true
-
 [program:securityworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s

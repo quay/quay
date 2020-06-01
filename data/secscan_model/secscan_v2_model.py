@@ -1,12 +1,9 @@
 import logging
 
 from collections import namedtuple
-from math import log10
 
 from prometheus_client import Gauge
 from deprecated import deprecated
-
-from data.database import UseThenDisconnect
 
 from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.secscan_model.datatypes import (
@@ -21,14 +18,6 @@ from data.secscan_model.datatypes import (
 from data.registry_model import registry_model
 from data.registry_model.datatypes import SecurityScanStatus
 
-from data.model.image import (
-    get_images_eligible_for_scan,
-    get_image_pk_field,
-    get_max_id_for_sec_scan,
-    get_min_id_for_sec_scan,
-)
-
-from util.migrate.allocator import yield_random_entries
 from util.config import URLSchemeAndHostname
 from util.secscan.api import V2SecurityConfigValidator, SecurityScannerAPI, APIRequestFailure
 from util.secscan.secscan_util import get_blob_download_uri_getter
@@ -111,12 +100,8 @@ class V2SecurityScanner(SecurityScannerInterface):
             instance_keys=instance_keys,
         )
 
-        # NOTE: This import is in here because otherwise this class would depend upon app.
-        # Its not great, but as this is intended to be legacy until its removed, its okay.
-        from util.secscan.analyzer import LayerAnalyzer
-
-        self._target_version = app.config.get("SECURITY_SCANNER_ENGINE_VERSION_TARGET", 3)
-        self._analyzer = LayerAnalyzer(app.config, self._legacy_secscan_api)
+    def register_model_cleanup_callbacks(self, data_model_config):
+        pass
 
     @property
     def legacy_api_handler(self):
@@ -124,12 +109,6 @@ class V2SecurityScanner(SecurityScannerInterface):
         Exposes the legacy security scan API for legacy workers that need it.
         """
         return self._legacy_secscan_api
-
-    def register_model_cleanup_callbacks(self, data_model_config):
-        if self._legacy_secscan_api is not None:
-            data_model_config.register_image_cleanup_callback(
-                self._legacy_secscan_api.cleanup_layers
-            )
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
         status = registry_model.get_security_status(manifest_or_legacy_image)
@@ -164,80 +143,13 @@ class V2SecurityScanner(SecurityScannerInterface):
             return SecurityInformationLookupResult.for_request_error(str(arf))
 
         if data is None:
-            # If no data was found but we reached this point, then it indicates we have incorrect security
-            # status for the manifest or legacy image. Mark the manifest or legacy image as unindexed
-            # so it automatically gets re-indexed.
-            if self.app.config.get("REGISTRY_STATE", "normal") == "normal":
-                registry_model.reset_security_status(manifest_or_legacy_image)
-
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
         return SecurityInformationLookupResult.for_data(SecurityInformation.from_dict(data))
 
-    def _candidates_to_scan(self, start_token=None):
-        target_version = self._target_version
-
-        def batch_query():
-            return get_images_eligible_for_scan(target_version)
-
-        # Find the minimum ID.
-        min_id = None
-        if start_token is not None:
-            min_id = start_token.min_id
-        else:
-            min_id = self.app.config.get("SECURITY_SCANNER_INDEXING_MIN_ID")
-            if min_id is None:
-                min_id = get_min_id_for_sec_scan(target_version)
-
-        # Get the ID of the last image we can analyze. Will be None if there are no images in the
-        # database.
-        max_id = get_max_id_for_sec_scan()
-        if max_id is None:
-            return (None, None)
-
-        if min_id is None or min_id > max_id:
-            return (None, None)
-
-        # 4^log10(total) gives us a scalable batch size into the billions.
-        batch_size = int(4 ** log10(max(10, max_id - min_id)))
-
-        # TODO: Once we have a clean shared NamedTuple for Images, send that to the secscan analyzer
-        # rather than the database Image itself.
-        iterator = yield_random_entries(
-            batch_query, get_image_pk_field(), batch_size, max_id, min_id,
-        )
-
-        return (iterator, ScanToken(max_id + 1))
-
     def perform_indexing(self, start_token=None):
         """
         Performs indexing of the next set of unindexed manifests/images.
-
-        If start_token is given, the indexing should resume from that point. Returns a new start
-        index for the next iteration of indexing. The tokens returned and given are assumed to be
-        opaque outside of this implementation and should not be relied upon by the caller to conform
-        to any particular format.
+        NOTE: Raises `NotImplementedError` because indexing for v2 is not supported.
         """
-        # NOTE: This import is in here because otherwise this class would depend upon app.
-        # Its not great, but as this is intended to be legacy until its removed, its okay.
-        from util.secscan.analyzer import PreemptedException
-
-        iterator, next_token = self._candidates_to_scan(start_token)
-        if iterator is None:
-            logger.debug("Found no additional images to scan")
-            return None
-
-        with UseThenDisconnect(self.app.config):
-            for candidate, abt, num_remaining in iterator:
-                try:
-                    self._analyzer.analyze_recursively(candidate)
-                except PreemptedException:
-                    logger.info("Another worker pre-empted us for layer: %s", candidate.id)
-                    abt.set()
-                except APIRequestFailure:
-                    logger.exception("Security scanner service unavailable")
-                    return
-
-                unscanned_images.set(num_remaining)
-
-        return next_token
+        raise NotImplementedError("Unsupported for this security scanner version")

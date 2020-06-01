@@ -4,7 +4,7 @@ import pytest
 from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformation
 from data.secscan_model.secscan_v2_model import V2SecurityScanner
 from data.registry_model import registry_model
-from data.database import Manifest, Image
+from data.database import Manifest, Image, ManifestSecurityStatus, IndexStatus, IndexerVersion
 from data.model.oci import shared
 from data.model.image import set_secscan_status
 
@@ -111,3 +111,10 @@ def test_load_security_information_api_responses(secscan_api_response, initializ
     assert len(security_information.Layer.Features) == len(
         secscan_api_response["Layer"].get("Features", [])
     )
+
+
+def test_perform_indexing(initialized_db):
+    secscan = V2SecurityScanner(app, instance_keys, storage)
+
+    with pytest.raises(NotImplementedError):
+        secscan.perform_indexing()

@@ -1,4 +1,5 @@
 import pytest
+
 from mock import patch, Mock
 
 from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformationLookupResult
@@ -8,8 +9,10 @@ from data.secscan_model.secscan_v4_model import (
     IndexReportState,
     ScanToken as V4ScanToken,
 )
-from data.secscan_model import secscan_model, SplitScanToken
+from data.secscan_model import secscan_model
 from data.registry_model import registry_model
+from data.model.oci import shared
+from data.database import ManifestSecurityStatus, IndexerVersion, IndexStatus, ManifestLegacyImage
 
 from test.fixtures import *
 
@@ -17,84 +20,60 @@ from app import app, instance_keys, storage
 
 
 @pytest.mark.parametrize(
-    "repository, v4_whitelist",
-    [(("devtable", "complex"), []), (("devtable", "complex"), ["devtable"]),],
+    "indexed_v2, indexed_v4, expected_status",
+    [
+        (False, False, ScanLookupStatus.NOT_YET_INDEXED),
+        (False, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
+        (True, False, ScanLookupStatus.FAILED_TO_INDEX),
+        (True, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
+    ],
 )
-def test_load_security_information_v2_only(repository, v4_whitelist, initialized_db):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = v4_whitelist
-
+def test_load_security_information(indexed_v2, indexed_v4, expected_status, initialized_db):
     secscan_model.configure(app, instance_keys, storage)
 
-    repo = registry_model.lookup_repository(*repository)
-    for tag in registry_model.list_all_active_repository_tags(repo):
-        manifest = registry_model.get_manifest_for_tag(tag)
-        assert manifest
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.find_matching_tag(repository_ref, ["latest"])
+    manifest = registry_model.get_manifest_for_tag(tag)
+    assert manifest
 
-        result = secscan_model.load_security_information(manifest, True)
-        assert isinstance(result, SecurityInformationLookupResult)
-        assert result.status == ScanLookupStatus.NOT_YET_INDEXED
+    image = shared.get_legacy_image_for_manifest(manifest._db_id)
 
+    if indexed_v2:
+        image.security_indexed = False
+        image.security_indexed_engine = 3
+        image.save()
+    else:
+        ManifestLegacyImage.delete().where(
+            ManifestLegacyImage.manifest == manifest._db_id
+        ).execute()
 
-@pytest.mark.parametrize(
-    "repository, v4_whitelist",
-    [
-        (("devtable", "complex"), []),
-        (("devtable", "complex"), ["devtable"]),
-        (("buynlarge", "orgrepo"), ["devtable"]),
-        (("buynlarge", "orgrepo"), ["devtable", "buynlarge"]),
-        (("buynlarge", "orgrepo"), ["devtable", "buynlarge", "sellnsmall"]),
-    ],
-)
-def test_load_security_information(repository, v4_whitelist, initialized_db):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = v4_whitelist
-    app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
-    secscan_api = Mock()
+    if indexed_v4:
+        ManifestSecurityStatus.create(
+            manifest=manifest._db_id,
+            repository=repository_ref._db_id,
+            error_json={},
+            index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+            indexer_hash="abc",
+            indexer_version=IndexerVersion.V4,
+            metadata_json={},
+        )
 
-    with patch("data.secscan_model.secscan_v4_model.ClairSecurityScannerAPI", secscan_api):
-        secscan_model.configure(app, instance_keys, storage)
+    result = secscan_model.load_security_information(manifest, True)
 
-        repo = registry_model.lookup_repository(*repository)
-        for tag in registry_model.list_all_active_repository_tags(repo):
-            manifest = registry_model.get_manifest_for_tag(tag)
-            assert manifest
-
-            result = secscan_model.load_security_information(manifest, True)
-            assert isinstance(result, SecurityInformationLookupResult)
-            assert result.status == ScanLookupStatus.NOT_YET_INDEXED
+    assert isinstance(result, SecurityInformationLookupResult)
+    assert result.status == expected_status
 
 
 @pytest.mark.parametrize(
-    "next_token, expected_next_token",
+    "next_token, expected_next_token, expected_error",
     [
-        (None, SplitScanToken("v4", None)),
-        (SplitScanToken("v4", V4ScanToken(1)), SplitScanToken("v4", None)),
-        (SplitScanToken("v4", None), SplitScanToken("v2", V2ScanToken(158))),
-        (SplitScanToken("v2", V2ScanToken(158)), SplitScanToken("v2", None)),
-        (SplitScanToken("v2", None), None),
+        (None, V4ScanToken(56), None),
+        (V4ScanToken(None), V4ScanToken(56), AssertionError),
+        (V4ScanToken(1), V4ScanToken(56), None),
+        (V2ScanToken(158), V4ScanToken(56), AssertionError),
     ],
 )
-def test_perform_indexing_v2_only(next_token, expected_next_token, initialized_db):
-    def layer_analyzer(*args, **kwargs):
-        return Mock()
-
-    with patch("util.secscan.analyzer.LayerAnalyzer", layer_analyzer):
-        secscan_model.configure(app, instance_keys, storage)
-
-        assert secscan_model.perform_indexing(next_token) == expected_next_token
-
-
-@pytest.mark.parametrize(
-    "next_token, expected_next_token",
-    [
-        (None, SplitScanToken("v4", V4ScanToken(56))),
-        (SplitScanToken("v4", V4ScanToken(1)), SplitScanToken("v4", V4ScanToken(56))),
-        (SplitScanToken("v4", None), SplitScanToken("v2", V2ScanToken(158))),
-        (SplitScanToken("v2", V2ScanToken(158)), SplitScanToken("v2", None)),
-        (SplitScanToken("v2", None), None),
-    ],
-)
-def test_perform_indexing(next_token, expected_next_token, initialized_db):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
+def test_perform_indexing(next_token, expected_next_token, expected_error, initialized_db):
     app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
 
     def secscan_api(*args, **kwargs):
@@ -104,11 +83,11 @@ def test_perform_indexing(next_token, expected_next_token, initialized_db):
 
         return api
 
-    def layer_analyzer(*args, **kwargs):
-        return Mock()
-
     with patch("data.secscan_model.secscan_v4_model.ClairSecurityScannerAPI", secscan_api):
-        with patch("util.secscan.analyzer.LayerAnalyzer", layer_analyzer):
-            secscan_model.configure(app, instance_keys, storage)
+        secscan_model.configure(app, instance_keys, storage)
 
+        if expected_error is not None:
+            with pytest.raises(expected_error):
+                secscan_model.perform_indexing(next_token)
+        else:
             assert secscan_model.perform_indexing(next_token) == expected_next_token

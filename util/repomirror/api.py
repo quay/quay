@@ -96,7 +96,7 @@ class RepoMirrorAPIInterface(object):
         Posts the given repository to the repo mirror for processing, blocking until complete.
 
         Returns the analysis version on success or raises an exception deriving from
-        AnalyzeLayerException on failure. Callers should handle all cases of AnalyzeLayerException.
+        RepoMirrorException on failure. Callers should handle all cases of RepoMirrorException.
         """
         pass
 

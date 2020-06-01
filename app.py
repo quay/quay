@@ -260,9 +260,6 @@ dockerfile_build_queue = WorkQueue(
     app.config["DOCKERFILE_BUILD_QUEUE_NAME"], tf, has_namespace=True
 )
 notification_queue = WorkQueue(app.config["NOTIFICATION_QUEUE_NAME"], tf, has_namespace=True)
-secscan_notification_queue = WorkQueue(
-    app.config["SECSCAN_NOTIFICATION_QUEUE_NAME"], tf, has_namespace=False
-)
 export_action_logs_queue = WorkQueue(
     app.config["EXPORT_ACTION_LOGS_QUEUE_NAME"], tf, has_namespace=True
 )
@@ -277,7 +274,6 @@ all_queues = [
     image_replication_queue,
     dockerfile_build_queue,
     notification_queue,
-    secscan_notification_queue,
     chunk_cleanup_queue,
     repository_gc_queue,
     namespace_gc_queue,
@@ -315,7 +311,6 @@ model.config.store = storage
 model.config.register_repo_cleanup_callback(tuf_metadata_api.delete_metadata)
 
 secscan_model.configure(app, instance_keys, storage)
-secscan_model.register_model_cleanup_callbacks(model.config)
 
 logs_model.configure(app.config)
 

@@ -29,7 +29,6 @@ def default_services():
         "notificationworker": {"autostart": "true"},
         "queuecleanupworker": {"autostart": "true"},
         "repositoryactioncounter": {"autostart": "true"},
-        "security_notification_worker": {"autostart": "true"},
         "securityworker": {"autostart": "true"},
         "storagereplication": {"autostart": "true"},
         "teamsyncworker": {"autostart": "true"},
