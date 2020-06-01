@@ -258,9 +258,9 @@ objects:
           - name: DB_CONNECTION_POOLING
             value: ${{DB_CONNECTION_POOLING}}
           - name: WORKER_MULTIPLIER_REGISTRY
-            value: ${{QUAY_WORKER_MULTIPLIER_REGISTRY}}
+            value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
           - name: WORKER_CONNECTION_COUNT_REGISTRY
-            value: ${{QUAY_WORKER_CONNECTION_COUNT_REGISTRY}}
+            value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
 parameters:
   - name: NAME
     value: "quay"
