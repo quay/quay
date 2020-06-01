@@ -1,5 +1,3 @@
-### master
-
 ### qui-gon
 
 - Fixed: Local storage now works with clair-v4
