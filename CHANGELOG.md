@@ -1,5 +1,21 @@
 ### master
 
+### qui-gon
+
+- Fixed: Local storage now works with clair-v4
+- Fixed: Container will correctly initialize database and create first superuser at startup
+- Fixed: Running in config mode now installs mounted TLS certificates
+- Added: Audit logs now contain "user-agent" of request
+- Added: Env vars WORKER_MULTIPLER to adjust number of gunicorn workers
+- Added: Env vars WORKER_CONNECTION_COUNT to adjust database connections per gunicorn worker
+- Added: Added config FEATURE_NAMESPACE_GARBAGE_COLLECTION and FEATURE_REPOSITORY_GARBAGE_COLLECTION
+
+### padme
+
+- Added: quay container runs as default user instead of root
+- Fixed: Spaces are ignored in repository mirror list of comma-separated tags
+- Fixed: Repository mirror correctly honors TLS verify off
+
 ### v3.2.0
 
 **NOTE** A new required config.yaml entry “DATABASE_SECRET_KEY” must be manually added to existing installs. See documentation.
