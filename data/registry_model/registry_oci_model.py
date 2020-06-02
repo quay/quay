@@ -9,7 +9,12 @@ from data import model
 from data.cache import cache_key
 from data.model import oci, DataModelException
 from data.model.oci.retriever import RepositoryContentRetriever
-from data.database import db_transaction, Image, IMAGE_NOT_SCANNED_ENGINE_VERSION
+from data.database import (
+    db_transaction,
+    Image,
+    IMAGE_NOT_SCANNED_ENGINE_VERSION,
+    db_disallow_replica_use,
+)
 from data.registry_model.interface import RegistryDataInterface
 from data.registry_model.datatype import FromDictionaryException
 from data.registry_model.datatypes import (
@@ -381,37 +386,38 @@ class OCIModel(RegistryDataInterface):
         raise_on_error is set to True, in which case a CreateManifestException may also be
         raised.
         """
-        # Get or create the manifest itself.
-        created_manifest = oci.manifest.get_or_create_manifest(
-            repository_ref._db_id,
-            manifest_interface_instance,
-            storage,
-            for_tagging=True,
-            raise_on_error=raise_on_error,
-        )
-        if created_manifest is None:
-            return (None, None)
+        with db_disallow_replica_use():
+            # Get or create the manifest itself.
+            created_manifest = oci.manifest.get_or_create_manifest(
+                repository_ref._db_id,
+                manifest_interface_instance,
+                storage,
+                for_tagging=True,
+                raise_on_error=raise_on_error,
+            )
+            if created_manifest is None:
+                return (None, None)
 
-        # Re-target the tag to it.
-        tag = oci.tag.retarget_tag(
-            tag_name, created_manifest.manifest, raise_on_error=raise_on_error,
-        )
-        if tag is None:
-            return (None, None)
+            # Re-target the tag to it.
+            tag = oci.tag.retarget_tag(
+                tag_name, created_manifest.manifest, raise_on_error=raise_on_error,
+            )
+            if tag is None:
+                return (None, None)
 
-        legacy_image = oci.shared.get_legacy_image_for_manifest(created_manifest.manifest)
-        li = LegacyImage.for_image(legacy_image)
-        wrapped_manifest = Manifest.for_manifest(created_manifest.manifest, li)
+            legacy_image = oci.shared.get_legacy_image_for_manifest(created_manifest.manifest)
+            li = LegacyImage.for_image(legacy_image)
+            wrapped_manifest = Manifest.for_manifest(created_manifest.manifest, li)
 
-        # Apply any labels that should modify the created tag.
-        if created_manifest.labels_to_apply:
-            for key, value in created_manifest.labels_to_apply.iteritems():
-                apply_label_to_manifest(dict(key=key, value=value), wrapped_manifest, self)
+            # Apply any labels that should modify the created tag.
+            if created_manifest.labels_to_apply:
+                for key, value in created_manifest.labels_to_apply.iteritems():
+                    apply_label_to_manifest(dict(key=key, value=value), wrapped_manifest, self)
 
-            # Reload the tag in case any updates were applied.
-            tag = database.Tag.get(id=tag.id)
+                # Reload the tag in case any updates were applied.
+                tag = database.Tag.get(id=tag.id)
 
-        return (wrapped_manifest, Tag.for_tag(tag, li))
+            return (wrapped_manifest, Tag.for_tag(tag, li))
 
     def retarget_tag(
         self,
@@ -429,72 +435,78 @@ class OCIModel(RegistryDataInterface):
         If is_reversion is set to True, this operation is considered a reversion over a previous tag
         move operation. Returns the updated Tag or None on error.
         """
-        assert legacy_manifest_key is not None
-        manifest_id = manifest_or_legacy_image._db_id
-        if isinstance(manifest_or_legacy_image, LegacyImage):
-            # If a legacy image was required, build a new manifest for it and move the tag to that.
-            try:
-                image_row = database.Image.get(id=manifest_or_legacy_image._db_id)
-            except database.Image.DoesNotExist:
-                return None
-
-            manifest_instance = self._build_manifest_for_legacy_image(tag_name, image_row)
-            if manifest_instance is None:
-                return None
-
-            created = oci.manifest.get_or_create_manifest(
-                repository_ref._db_id, manifest_instance, storage
-            )
-            if created is None:
-                return None
-
-            manifest_id = created.manifest.id
-        else:
-            # If the manifest is a schema 1 manifest and its tag name does not match that
-            # specified, then we need to create a new manifest, but with that tag name.
-            if manifest_or_legacy_image.media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
+        with db_disallow_replica_use():
+            assert legacy_manifest_key is not None
+            manifest_id = manifest_or_legacy_image._db_id
+            if isinstance(manifest_or_legacy_image, LegacyImage):
+                # If a legacy image was required, build a new manifest for it and move the tag to that.
                 try:
-                    parsed = manifest_or_legacy_image.get_parsed_manifest()
-                except ManifestException:
-                    logger.exception(
-                        "Could not parse manifest `%s` in retarget_tag",
-                        manifest_or_legacy_image._db_id,
-                    )
+                    image_row = database.Image.get(id=manifest_or_legacy_image._db_id)
+                except database.Image.DoesNotExist:
                     return None
 
-                if parsed.tag != tag_name:
-                    logger.debug(
-                        "Rewriting manifest `%s` for tag named `%s`",
-                        manifest_or_legacy_image._db_id,
-                        tag_name,
-                    )
+                manifest_instance = self._build_manifest_for_legacy_image(tag_name, image_row)
+                if manifest_instance is None:
+                    return None
 
-                    repository_id = repository_ref._db_id
-                    updated = parsed.with_tag_name(tag_name, legacy_manifest_key)
-                    assert updated.is_signed
+                created = oci.manifest.get_or_create_manifest(
+                    repository_ref._db_id, manifest_instance, storage
+                )
+                if created is None:
+                    return None
 
-                    created = oci.manifest.get_or_create_manifest(repository_id, updated, storage)
-                    if created is None:
+                manifest_id = created.manifest.id
+            else:
+                # If the manifest is a schema 1 manifest and its tag name does not match that
+                # specified, then we need to create a new manifest, but with that tag name.
+                if manifest_or_legacy_image.media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
+                    try:
+                        parsed = manifest_or_legacy_image.get_parsed_manifest()
+                    except ManifestException:
+                        logger.exception(
+                            "Could not parse manifest `%s` in retarget_tag",
+                            manifest_or_legacy_image._db_id,
+                        )
                         return None
 
-                    manifest_id = created.manifest.id
+                    if parsed.tag != tag_name:
+                        logger.debug(
+                            "Rewriting manifest `%s` for tag named `%s`",
+                            manifest_or_legacy_image._db_id,
+                            tag_name,
+                        )
 
-        tag = oci.tag.retarget_tag(tag_name, manifest_id, is_reversion=is_reversion)
-        legacy_image = LegacyImage.for_image(oci.shared.get_legacy_image_for_manifest(manifest_id))
-        return Tag.for_tag(tag, legacy_image)
+                        repository_id = repository_ref._db_id
+                        updated = parsed.with_tag_name(tag_name, legacy_manifest_key)
+                        assert updated.is_signed
+
+                        created = oci.manifest.get_or_create_manifest(
+                            repository_id, updated, storage
+                        )
+                        if created is None:
+                            return None
+
+                        manifest_id = created.manifest.id
+
+            tag = oci.tag.retarget_tag(tag_name, manifest_id, is_reversion=is_reversion)
+            legacy_image = LegacyImage.for_image(
+                oci.shared.get_legacy_image_for_manifest(manifest_id)
+            )
+            return Tag.for_tag(tag, legacy_image)
 
     def delete_tag(self, repository_ref, tag_name):
         """
         Deletes the latest, *active* tag with the given name in the repository.
         """
-        deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name)
-        if deleted_tag is None:
-            # TODO: This is only needed because preoci raises an exception. Remove and fix
-            # expected status codes once PreOCIModel is gone.
-            msg = "Invalid repository tag '%s' on repository" % tag_name
-            raise DataModelException(msg)
+        with db_disallow_replica_use():
+            deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name)
+            if deleted_tag is None:
+                # TODO: This is only needed because preoci raises an exception. Remove and fix
+                # expected status codes once PreOCIModel is gone.
+                msg = "Invalid repository tag '%s' on repository" % tag_name
+                raise DataModelException(msg)
 
-        return Tag.for_tag(deleted_tag)
+            return Tag.for_tag(deleted_tag)
 
     def delete_tags_for_manifest(self, manifest):
         """
@@ -503,8 +515,9 @@ class OCIModel(RegistryDataInterface):
 
         Returns the tags deleted, if any. Returns None on error.
         """
-        deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
-        return [Tag.for_tag(tag) for tag in deleted_tags]
+        with db_disallow_replica_use():
+            deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
+            return [Tag.for_tag(tag) for tag in deleted_tags]
 
     def change_repository_tag_expiration(self, tag, expiration_date):
         """
@@ -513,7 +526,8 @@ class OCIModel(RegistryDataInterface):
         If the expiration date is None, then the tag will not expire. Returns a tuple of the
         previous expiration timestamp in seconds (if any), and whether the operation succeeded.
         """
-        return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
+        with db_disallow_replica_use():
+            return oci.tag.change_tag_expiration(tag._db_id, expiration_date)
 
     def get_legacy_images_owned_by_tag(self, tag):
         """
@@ -597,22 +611,23 @@ class OCIModel(RegistryDataInterface):
         Resets the security status for the given manifest or legacy image, ensuring that it will get
         re-indexed.
         """
-        image = None
+        with db_disallow_replica_use():
+            image = None
 
-        if isinstance(manifest_or_legacy_image, Manifest):
-            image = oci.shared.get_legacy_image_for_manifest(manifest_or_legacy_image._db_id)
-            if image is None:
-                return None
-        else:
-            try:
-                image = database.Image.get(id=manifest_or_legacy_image._db_id)
-            except database.Image.DoesNotExist:
-                return None
+            if isinstance(manifest_or_legacy_image, Manifest):
+                image = oci.shared.get_legacy_image_for_manifest(manifest_or_legacy_image._db_id)
+                if image is None:
+                    return None
+            else:
+                try:
+                    image = database.Image.get(id=manifest_or_legacy_image._db_id)
+                except database.Image.DoesNotExist:
+                    return None
 
-        assert image
-        image.security_indexed = False
-        image.security_indexed_engine = IMAGE_NOT_SCANNED_ENGINE_VERSION
-        image.save()
+            assert image
+            image.security_indexed = False
+            image.security_indexed_engine = IMAGE_NOT_SCANNED_ENGINE_VERSION
+            image.save()
 
     def list_manifest_layers(self, manifest, storage, include_placements=False):
         try:
@@ -660,20 +675,22 @@ class OCIModel(RegistryDataInterface):
 
         If none exists, a new derived image is created.
         """
-        legacy_image = self._get_legacy_compatible_image_for_manifest(manifest, storage)
-        if legacy_image is None:
-            return None
+        with db_disallow_replica_use():
+            legacy_image = self._get_legacy_compatible_image_for_manifest(manifest, storage)
+            if legacy_image is None:
+                return None
 
-        derived = model.image.find_or_create_derived_storage(
-            legacy_image, verb, storage_location, varying_metadata
-        )
-        return self._build_derived(derived, verb, varying_metadata, include_placements)
+            derived = model.image.find_or_create_derived_storage(
+                legacy_image, verb, storage_location, varying_metadata
+            )
+            return self._build_derived(derived, verb, varying_metadata, include_placements)
 
     def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
         """
         Sets the expiration on all tags that point to the given manifest to that specified.
         """
-        oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
+        with db_disallow_replica_use():
+            oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
 
     def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
         """
@@ -718,20 +735,21 @@ class OCIModel(RegistryDataInterface):
 
         Returns the manifest object created or None on error.
         """
-        # Get or create the manifest itself. get_or_create_manifest will take care of the
-        # temporary tag work.
-        created_manifest = oci.manifest.get_or_create_manifest(
-            repository_ref._db_id,
-            manifest_interface_instance,
-            storage,
-            temp_tag_expiration_sec=expiration_sec,
-        )
-        if created_manifest is None:
-            return None
+        with db_disallow_replica_use():
+            # Get or create the manifest itself. get_or_create_manifest will take care of the
+            # temporary tag work.
+            created_manifest = oci.manifest.get_or_create_manifest(
+                repository_ref._db_id,
+                manifest_interface_instance,
+                storage,
+                temp_tag_expiration_sec=expiration_sec,
+            )
+            if created_manifest is None:
+                return None
 
-        legacy_image = oci.shared.get_legacy_image_for_manifest(created_manifest.manifest)
-        li = LegacyImage.for_image(legacy_image)
-        return Manifest.for_manifest(created_manifest.manifest, li)
+            legacy_image = oci.shared.get_legacy_image_for_manifest(created_manifest.manifest)
+            li = LegacyImage.for_image(legacy_image)
+            return Manifest.for_manifest(created_manifest.manifest, li)
 
     def get_repo_blob_by_digest(self, repository_ref, blob_digest, include_placements=False):
         """
@@ -862,41 +880,44 @@ class OCIModel(RegistryDataInterface):
         """
         Sets the calculated signature for the given derived image and signer to that specified.
         """
-        try:
-            derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
-        except database.DerivedStorageForImage.DoesNotExist:
-            return None
+        with db_disallow_replica_use():
+            try:
+                derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
+            except database.DerivedStorageForImage.DoesNotExist:
+                return None
 
-        storage = derived_storage.derivative
-        signature_entry = model.storage.find_or_create_storage_signature(storage, signer_name)
-        signature_entry.signature = signature
-        signature_entry.uploading = False
-        signature_entry.save()
+            storage = derived_storage.derivative
+            signature_entry = model.storage.find_or_create_storage_signature(storage, signer_name)
+            signature_entry.signature = signature
+            signature_entry.uploading = False
+            signature_entry.save()
 
     def delete_derived_image(self, derived_image):
         """
         Deletes a derived image and all of its storage.
         """
-        try:
-            derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
-        except database.DerivedStorageForImage.DoesNotExist:
-            return None
+        with db_disallow_replica_use():
+            try:
+                derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
+            except database.DerivedStorageForImage.DoesNotExist:
+                return None
 
-        model.image.delete_derived_storage(derived_storage)
+            model.image.delete_derived_storage(derived_storage)
 
     def set_derived_image_size(self, derived_image, compressed_size):
         """
         Sets the compressed size on the given derived image.
         """
-        try:
-            derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
-        except database.DerivedStorageForImage.DoesNotExist:
-            return None
+        with db_disallow_replica_use():
+            try:
+                derived_storage = database.DerivedStorageForImage.get(id=derived_image._db_id)
+            except database.DerivedStorageForImage.DoesNotExist:
+                return None
 
-        storage_entry = derived_storage.derivative
-        storage_entry.image_size = compressed_size
-        storage_entry.uploading = False
-        storage_entry.save()
+            storage_entry = derived_storage.derivative
+            storage_entry.image_size = compressed_size
+            storage_entry.uploading = False
+            storage_entry.save()
 
     def get_torrent_info(self, blob):
         """
@@ -1012,28 +1033,30 @@ class OCIModel(RegistryDataInterface):
 
         If the blob upload could not be created, returns None.
         """
-        repo = model.repository.lookup_repository(repository_ref._db_id)
-        if repo is None:
-            return None
+        with db_disallow_replica_use():
+            repo = model.repository.lookup_repository(repository_ref._db_id)
+            if repo is None:
+                return None
 
-        try:
-            upload_record = model.blob.initiate_upload_for_repo(
-                repo, new_upload_id, location_name, storage_metadata
-            )
-            return BlobUpload.for_upload(upload_record, location_name=location_name)
-        except database.Repository.DoesNotExist:
-            return None
+            try:
+                upload_record = model.blob.initiate_upload_for_repo(
+                    repo, new_upload_id, location_name, storage_metadata
+                )
+                return BlobUpload.for_upload(upload_record, location_name=location_name)
+            except database.Repository.DoesNotExist:
+                return None
 
     def lookup_blob_upload(self, repository_ref, blob_upload_id):
         """
         Looks up the blob upload withn the given ID under the specified repository and returns it or
         None if none.
         """
-        upload_record = model.blob.get_blob_upload_by_uuid(blob_upload_id)
-        if upload_record is None:
-            return None
+        with db_disallow_replica_use():
+            upload_record = model.blob.get_blob_upload_by_uuid(blob_upload_id)
+            if upload_record is None:
+                return None
 
-        return BlobUpload.for_upload(upload_record)
+            return BlobUpload.for_upload(upload_record)
 
     def update_blob_upload(
         self,
@@ -1051,54 +1074,57 @@ class OCIModel(RegistryDataInterface):
 
         Returns the updated blob upload or None if the record does not exists.
         """
-        upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
-        if upload_record is None:
-            return None
+        with db_disallow_replica_use():
+            upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
+            if upload_record is None:
+                return None
 
-        upload_record.uncompressed_byte_count = uncompressed_byte_count
-        upload_record.piece_hashes = piece_hashes
-        upload_record.piece_sha_state = piece_sha_state
-        upload_record.storage_metadata = storage_metadata
-        upload_record.byte_count = byte_count
-        upload_record.chunk_count = chunk_count
-        upload_record.sha_state = sha_state
-        upload_record.save()
-        return BlobUpload.for_upload(upload_record)
+            upload_record.uncompressed_byte_count = uncompressed_byte_count
+            upload_record.piece_hashes = piece_hashes
+            upload_record.piece_sha_state = piece_sha_state
+            upload_record.storage_metadata = storage_metadata
+            upload_record.byte_count = byte_count
+            upload_record.chunk_count = chunk_count
+            upload_record.sha_state = sha_state
+            upload_record.save()
+            return BlobUpload.for_upload(upload_record)
 
     def delete_blob_upload(self, blob_upload):
         """
         Deletes a blob upload record.
         """
-        upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
-        if upload_record is not None:
-            upload_record.delete_instance()
+        with db_disallow_replica_use():
+            upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
+            if upload_record is not None:
+                upload_record.delete_instance()
 
     def commit_blob_upload(self, blob_upload, blob_digest_str, blob_expiration_seconds):
         """
         Commits the blob upload into a blob and sets an expiration before that blob will be GCed.
         """
-        upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
-        if upload_record is None:
-            return None
+        with db_disallow_replica_use():
+            upload_record = model.blob.get_blob_upload_by_uuid(blob_upload.upload_id)
+            if upload_record is None:
+                return None
 
-        repository_id = upload_record.repository_id
+            repository_id = upload_record.repository_id
 
-        # Create the blob and temporarily tag it.
-        location_obj = model.storage.get_image_location_for_name(blob_upload.location_name)
-        blob_record = model.blob.store_blob_record_and_temp_link_in_repo(
-            repository_id,
-            blob_digest_str,
-            location_obj.id,
-            blob_upload.byte_count,
-            blob_expiration_seconds,
-            blob_upload.uncompressed_byte_count,
-        )
+            # Create the blob and temporarily tag it.
+            location_obj = model.storage.get_image_location_for_name(blob_upload.location_name)
+            blob_record = model.blob.store_blob_record_and_temp_link_in_repo(
+                repository_id,
+                blob_digest_str,
+                location_obj.id,
+                blob_upload.byte_count,
+                blob_expiration_seconds,
+                blob_upload.uncompressed_byte_count,
+            )
 
-        # Delete the blob upload.
-        upload_record.delete_instance()
-        return Blob.for_image_storage(
-            blob_record, storage_path=model.storage.get_layer_path(blob_record)
-        )
+            # Delete the blob upload.
+            upload_record.delete_instance()
+            return Blob.for_image_storage(
+                blob_record, storage_path=model.storage.get_layer_path(blob_record)
+            )
 
     def mount_blob_into_repository(self, blob, target_repository_ref, expiration_sec):
         """
@@ -1108,10 +1134,11 @@ class OCIModel(RegistryDataInterface):
         This function is useful during push operations if an existing blob from another repository
         is being pushed. Returns False if the mounting fails.
         """
-        storage = model.blob.temp_link_blob(
-            target_repository_ref._db_id, blob.digest, expiration_sec
-        )
-        return bool(storage)
+        with db_disallow_replica_use():
+            storage = model.blob.temp_link_blob(
+                target_repository_ref._db_id, blob.digest, expiration_sec
+            )
+            return bool(storage)
 
     def get_legacy_images(self, repository_ref):
         """
