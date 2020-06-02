@@ -1293,6 +1293,9 @@ def _delete_user_linked_data(user):
     # falling and only occurs if a superuser is being deleted.
     ServiceKeyApproval.update(approver=None).where(ServiceKeyApproval.approver == user).execute()
 
+    # Delete any federated user links.
+    FederatedLogin.delete().where(FederatedLogin.user == user).execute()
+
 
 def get_pull_credentials(robotname):
     """
