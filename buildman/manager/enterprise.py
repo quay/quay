@@ -5,8 +5,6 @@ from buildman.component.basecomponent import BaseComponent
 from buildman.component.buildcomponent import BuildComponent
 from buildman.manager.basemanager import BaseManager
 
-from trollius import From, Return, coroutine
-
 REGISTRATION_REALM = "registration"
 RETRY_TIMEOUT = 5
 logger = logging.getLogger(__name__)
@@ -20,9 +18,9 @@ class DynamicRegistrationComponent(BaseComponent):
     def onConnect(self):
         self.join(REGISTRATION_REALM)
 
-    def onJoin(self, details):
+    async def onJoin(self, details):
         logger.debug("Registering registration method")
-        yield From(self.register(self._worker_register, "io.quay.buildworker.register"))
+        await self.register(self._worker_register, "io.quay.buildworker.register")
 
     def _worker_register(self):
         realm = self.parent_manager.add_build_component()
@@ -65,30 +63,27 @@ class EnterpriseManager(BaseManager):
         self.all_components.add(new_component)
         return realm
 
-    @coroutine
-    def schedule(self, build_job):
+    async def schedule(self, build_job):
         """
         Schedules a build for an Enterprise Registry.
         """
         if self.shutting_down or not self.ready_components:
-            raise Return(False, RETRY_TIMEOUT)
+            return False, RETRY_TIMEOUT
 
         component = self.ready_components.pop()
 
-        yield From(component.start_build(build_job))
+        await component.start_build(build_job)
 
-        raise Return(True, None)
+        return True, None
 
-    @coroutine
-    def build_component_ready(self, build_component):
+    async def build_component_ready(self, build_component):
         self.ready_components.add(build_component)
 
     def shutdown(self):
         self.shutting_down = True
 
-    @coroutine
-    def job_completed(self, build_job, job_status, build_component):
-        yield From(self.job_complete_callback(build_job, job_status))
+    async def job_completed(self, build_job, job_status, build_component):
+        await self.job_complete_callback(build_job, job_status)
 
     def build_component_disposed(self, build_component, timed_out):
         self.all_components.remove(build_component)

@@ -81,7 +81,6 @@ supervisor-logging
 text_unidecode
 tldextract
 toposort
-trollius
 tzlocal
 xhtml2pdf
 recaptcha2

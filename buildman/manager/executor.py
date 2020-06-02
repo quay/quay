@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import hashlib
 import logging
@@ -16,7 +17,6 @@ import requests
 
 from container_cloud_config import CloudConfigContext
 from jinja2 import FileSystemLoader, Environment
-from trollius import coroutine, sleep, From, Return, get_event_loop
 from prometheus_client import Histogram
 
 import release
@@ -99,8 +99,7 @@ class BuilderExecutor(object):
         """
         return self.executor_config.get("SETUP_TIME")
 
-    @coroutine
-    def start_builder(self, realm, token, build_uuid):
+    async def start_builder(self, realm, token, build_uuid):
         """
         Create a builder with the specified config.
 
@@ -108,8 +107,7 @@ class BuilderExecutor(object):
         """
         raise NotImplementedError
 
-    @coroutine
-    def stop_builder(self, builder_id):
+    async def stop_builder(self, builder_id):
         """
         Stop a builder which is currently running.
         """
@@ -189,7 +187,7 @@ class EC2Executor(BuilderExecutor):
     )
 
     def __init__(self, *args, **kwargs):
-        self._loop = get_event_loop()
+        self._loop = asyncio.get_event_loop()
         super(EC2Executor, self).__init__(*args, **kwargs)
 
     def _get_conn(self):
@@ -214,16 +212,15 @@ class EC2Executor(BuilderExecutor):
         stack_amis = dict([stack.split("=") for stack in stack_list_string.split("|")])
         return stack_amis[ec2_region]
 
-    @coroutine
     @async_observe(build_start_duration, "ec2")
-    def start_builder(self, realm, token, build_uuid):
+    async def start_builder(self, realm, token, build_uuid):
         region = self.executor_config["EC2_REGION"]
         channel = self.executor_config.get("COREOS_CHANNEL", "stable")
 
         coreos_ami = self.executor_config.get("COREOS_AMI", None)
         if coreos_ami is None:
             get_ami_callable = partial(self._get_coreos_ami, region, channel)
-            coreos_ami = yield From(self._loop.run_in_executor(None, get_ami_callable))
+            coreos_ami = await self._loop.run_in_executor(None, get_ami_callable)
 
         user_data = self.generate_cloud_config(
             realm, token, build_uuid, channel, self.manager_hostname
@@ -250,7 +247,7 @@ class EC2Executor(BuilderExecutor):
             interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(interface)
 
         try:
-            reservation = yield From(
+            reservation = await (
                 ec2_conn.run_instances(
                     coreos_ami,
                     instance_type=self.executor_config["EC2_INSTANCE_TYPE"],
@@ -273,12 +270,12 @@ class EC2Executor(BuilderExecutor):
         launched = AsyncWrapper(reservation.instances[0])
 
         # Sleep a few seconds to wait for AWS to spawn the instance.
-        yield From(sleep(_TAG_RETRY_SLEEP))
+        await asyncio.sleep(_TAG_RETRY_SLEEP)
 
         # Tag the instance with its metadata.
         for i in range(0, _TAG_RETRY_COUNT):
             try:
-                yield From(
+                await (
                     launched.add_tags(
                         {
                             "Name": "Quay Ephemeral Builder",
@@ -297,7 +294,7 @@ class EC2Executor(BuilderExecutor):
                             build_uuid,
                             i,
                         )
-                        yield From(sleep(_TAG_RETRY_SLEEP))
+                        await asyncio.sleep(_TAG_RETRY_SLEEP)
                         continue
 
                     raise ExecutorException("Unable to find builder instance.")
@@ -305,13 +302,12 @@ class EC2Executor(BuilderExecutor):
                 logger.exception("Failed to write EC2 tags (attempt #%s)", i)
 
         logger.debug("Machine with ID %s started for build %s", launched.id, build_uuid)
-        raise Return(launched.id)
+        return launched.id
 
-    @coroutine
-    def stop_builder(self, builder_id):
+    async def stop_builder(self, builder_id):
         try:
             ec2_conn = self._get_conn()
-            terminated_instances = yield From(ec2_conn.terminate_instances([builder_id]))
+            terminated_instances = await ec2_conn.terminate_instances([builder_id])
         except boto.exception.EC2ResponseError as ec2e:
             if ec2e.error_code == "InvalidInstanceID.NotFound":
                 logger.debug("Instance %s already terminated", builder_id)
@@ -333,9 +329,8 @@ class PopenExecutor(BuilderExecutor):
         self._jobs = {}
         super(PopenExecutor, self).__init__(executor_config, manager_hostname)
 
-    @coroutine
     @async_observe(build_start_duration, "fork")
-    def start_builder(self, realm, token, build_uuid):
+    async def start_builder(self, realm, token, build_uuid):
         # Now start a machine for this job, adding the machine id to the etcd information
         logger.debug("Forking process for build")
 
@@ -362,10 +357,9 @@ class PopenExecutor(BuilderExecutor):
         builder_id = str(uuid.uuid4())
         self._jobs[builder_id] = (spawned, logpipe)
         logger.debug("Builder spawned with id: %s", builder_id)
-        raise Return(builder_id)
+        return builder_id
 
-    @coroutine
-    def stop_builder(self, builder_id):
+    async def stop_builder(self, builder_id):
         if builder_id not in self._jobs:
             raise ExecutorException("Builder id not being tracked by executor.")
 
@@ -384,14 +378,13 @@ class KubernetesExecutor(BuilderExecutor):
 
     def __init__(self, *args, **kwargs):
         super(KubernetesExecutor, self).__init__(*args, **kwargs)
-        self._loop = get_event_loop()
+        self._loop = asyncio.get_event_loop()
         self.namespace = self.executor_config.get("BUILDER_NAMESPACE", "builder")
         self.image = self.executor_config.get(
             "BUILDER_VM_CONTAINER_IMAGE", "quay.io/quay/quay-builder-qemu-coreos:stable"
         )
 
-    @coroutine
-    def _request(self, method, path, **kwargs):
+    async def _request(self, method, path, **kwargs):
         request_options = dict(kwargs)
 
         tls_cert = self.executor_config.get("K8S_API_TLS_CERT")
@@ -422,7 +415,7 @@ class KubernetesExecutor(BuilderExecutor):
         logger.debug("Kubernetes request: %s %s: %s", method, url, request_options)
         res = requests.request(method, url, **request_options)
         logger.debug("Kubernetes response: %s: %s", res.status_code, res.text)
-        raise Return(res)
+        return res
 
     def _jobs_path(self):
         return "/apis/batch/v1/namespaces/%s/jobs" % self.namespace
@@ -566,9 +559,8 @@ class KubernetesExecutor(BuilderExecutor):
 
         return job_resource
 
-    @coroutine
     @async_observe(build_start_duration, "k8s")
-    def start_builder(self, realm, token, build_uuid):
+    async def start_builder(self, realm, token, build_uuid):
         # generate resource
         channel = self.executor_config.get("COREOS_CHANNEL", "stable")
         user_data = self.generate_cloud_config(
@@ -579,7 +571,7 @@ class KubernetesExecutor(BuilderExecutor):
         logger.debug("Generated kubernetes resource:\n%s", resource)
 
         # schedule
-        create_job = yield From(self._request("POST", self._jobs_path(), json=resource))
+        create_job = await self._request("POST", self._jobs_path(), json=resource)
         if int(create_job.status_code / 100) != 2:
             raise ExecutorException(
                 "Failed to create job: %s: %s: %s"
@@ -587,24 +579,21 @@ class KubernetesExecutor(BuilderExecutor):
             )
 
         job = create_job.json()
-        raise Return(job["metadata"]["name"])
+        return job["metadata"]["name"]
 
-    @coroutine
-    def stop_builder(self, builder_id):
+    async def stop_builder(self, builder_id):
         pods_path = "/api/v1/namespaces/%s/pods" % self.namespace
 
         # Delete the job itself.
         try:
-            yield From(self._request("DELETE", self._job_path(builder_id)))
+            await self._request("DELETE", self._job_path(builder_id))
         except:
             logger.exception("Failed to send delete job call for job %s", builder_id)
 
         # Delete the pod(s) for the job.
         selectorString = "job-name=%s" % builder_id
         try:
-            yield From(
-                self._request("DELETE", pods_path, params=dict(labelSelector=selectorString))
-            )
+            await (self._request("DELETE", pods_path, params=dict(labelSelector=selectorString)))
         except:
             logger.exception("Failed to send delete pod call for job %s", builder_id)
 
