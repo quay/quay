@@ -17,6 +17,8 @@ spec:
       labels:
         quay-enterprise-component: config-app
     spec:
+      securityContext:
+        fsGroup: 1001
       containers:
       - name: quay-enterprise-config-app
         image: quay.io/redhat/quay:v3.2.1
