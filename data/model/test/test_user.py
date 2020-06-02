@@ -4,7 +4,7 @@ import pytest
 
 from mock import patch
 
-from data.database import EmailConfirmation, User, DeletedNamespace
+from data.database import EmailConfirmation, User, DeletedNamespace, FederatedLogin
 from data.model.organization import get_organization
 from data.model.notification import create_notification
 from data.model.team import create_team, add_user_to_team
@@ -13,7 +13,7 @@ from data.model.user import mark_namespace_for_deletion, delete_namespace_via_ma
 from data.model.user import create_robot, lookup_robot, list_namespace_robots
 from data.model.user import get_pull_credentials, retrieve_robot_token, verify_robot
 from data.model.user import InvalidRobotException, delete_robot, get_matching_users
-from data.model.user import get_estimated_robot_count, RobotAccountToken
+from data.model.user import get_estimated_robot_count, RobotAccountToken, attach_federated_login
 from data.model.repository import create_repository
 from data.fields import Credential
 from data.queue import WorkQueue
@@ -78,6 +78,12 @@ def test_mark_namespace_for_deletion(initialized_db):
     assert lookup_robot("foobar+bar") is not None
     assert len(list(list_namespace_robots("foobar"))) == 2
 
+    # Add some federated user links.
+    attach_federated_login(user, "google", "someusername")
+    attach_federated_login(user, "github", "someusername")
+    assert FederatedLogin.select().where(FederatedLogin.user == user).count() == 2
+    assert FederatedLogin.select().where(FederatedLogin.service_ident == "someusername").exists()
+
     # Mark the user for deletion.
     queue = WorkQueue("testgcnamespace", create_transaction)
     mark_namespace_for_deletion(user, [], queue)
@@ -94,6 +100,12 @@ def test_mark_namespace_for_deletion(initialized_db):
         assert lookup_robot("foobar+bar")
 
     assert len(list(list_namespace_robots(older_user.username))) == 0
+
+    # Ensure the federated logins are gone.
+    assert FederatedLogin.select().where(FederatedLogin.user == user).count() == 0
+    assert (
+        not FederatedLogin.select().where(FederatedLogin.service_ident == "someusername").exists()
+    )
 
     # Ensure we can create a user with the same namespace again.
     new_user = create_user_noverify("foobar", "foo@example.com", email_required=False)
