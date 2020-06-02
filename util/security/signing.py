@@ -1,10 +1,10 @@
 import gpg
 import features
 import logging
+from io import BytesIO
+
 
 logger = logging.getLogger(__name__)
-
-from io import BytesIO
 
 
 class GPG2Signer(object):
@@ -43,7 +43,7 @@ class GPG2Signer(object):
 
     def detached_sign(self, stream):
         """
-        Signs the given stream, returning the signature.
+        Signs the given byte-like stream, returning the signature.
         """
         ctx = self._ctx
         try:
@@ -51,12 +51,12 @@ class GPG2Signer(object):
         except:
             raise Exception("Invalid private key name")
 
-        signature = BytesIO()
-        indata = gpg.core.Data(file=stream)
-        outdata = gpg.core.Data(file=signature)
-        ctx.op_sign(indata, outdata, gpg.constants.sig.DETACH)
-        signature.seek(0)
-        return signature.getvalue()
+        data = stream.read()
+        if not isinstance(data, bytes):
+            raise TypeError("Stream is not byte-like")
+
+        sign_res = ctx.sign(data, mode=gpg.constants.sig.mode.DETACH)
+        return sign_res[0]
 
 
 class Signer(object):

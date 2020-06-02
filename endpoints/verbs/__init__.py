@@ -117,8 +117,10 @@ def _sign_derived_image(verb, derived_image, queue_file):
     signature = None
     try:
         signature = signer.detached_sign(queue_file)
-    except:
-        logger.exception("Exception when signing %s deriving image %s", verb, derived_image)
+    except Exception as e:
+        logger.exception(
+            "Exception when signing %s deriving image %s: $s", verb, derived_image, str(e)
+        )
         return
 
     # Setup the database (since this is a new process) and then disconnect immediately
@@ -269,13 +271,11 @@ def _repo_verb_signature(namespace, repository, tag_name, verb, checker=None, **
 
     # Check if we have a valid signer configured.
     if not signer.name:
-        print("NO SIGNER")
         abort(404)
 
     # Lookup the signature for the verb.
     signature_value = registry_model.get_derived_image_signature(derived_image, signer.name)
     if signature_value is None:
-        print("NO SIGNATURE")
         abort(404)
 
     # Return the signature.

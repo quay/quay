@@ -22,4 +22,4 @@ class SignerValidator(BaseValidator):
             raise ConfigValidationException("Unknown signing engine: %s" % config["SIGNING_ENGINE"])
 
         engine = SIGNING_ENGINES[config["SIGNING_ENGINE"]](config, config_provider)
-        engine.detached_sign(StringIO("test string"))
+        engine.detached_sign(BytesIO(b"test string"))
