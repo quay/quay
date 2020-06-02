@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "validatec/cmd"
+import "github.com/jonathankingfc/config-tool/cmd"
 
 func main() {
 	cmd.Execute()
