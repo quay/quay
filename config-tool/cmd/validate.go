@@ -24,20 +24,21 @@ import (
 // validateCmd represents the validate command
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Validate your config.yaml",
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("validate called")
+		fmt.Println(schema)
 	},
 }
 
+var schema string
+
 func init() {
+
 	rootCmd.AddCommand(validateCmd)
+
+	validateCmd.Flags().StringVarP(&schema, "schema", "s", "", "The path to a schema JSON file")
+	validateCmd.MarkFlagRequired("schema")
 
 	// Here you will define your flags and configuration settings.
 
