@@ -17,6 +17,12 @@ spec:
       labels:
         quay-enterprise-component: mirror-app
     spec:
+      securityContext:
+        fsGroup: 1001
+      volumes:
+        - name: configvolume
+          secret:
+            secretName: quay-enterprise-config-secret
       containers:
       - name: quay-enterprise-mirror-app
         image: quay.io/redhat/quay:v3.2.1
@@ -24,5 +30,10 @@ spec:
         - containerPort: 8443
         command: ["/quay-registry/quay-entrypoint.sh"]
         args: ["repomirror"]
+        volumeMounts:
+        - name: configvolume
+          readOnly: false
+          mountPath: /conf/stack
       imagePullSecrets:
         - name: redhat-quay-pull-secret
+
