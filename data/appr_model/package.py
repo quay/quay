@@ -3,7 +3,7 @@ from peewee import prefetch
 
 
 from data import model
-from data.database import Repository, Namespace
+from data.database import Repository, Namespace, RepositoryState
 from data.appr_model import tag as tag_model
 
 
@@ -60,6 +60,8 @@ def list_packages_query(
 
         if namespace:
             repo_query = repo_query.where(Namespace.username == namespace)
+
+    repo_query = repo_query.where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
 
     tag_query = (
         Tag.select()
