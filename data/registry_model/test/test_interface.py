@@ -290,7 +290,7 @@ def test_get_most_recent_tag_lifetime_start(repositories, expected_tag_count, re
     assert len(last_modified_map) == expected_tag_count
     for repo_id, last_modified in list(last_modified_map.items()):
         tag = registry_model.get_most_recent_tag(RepositoryReference.for_id(repo_id))
-        assert last_modified == tag.lifetime_start_ms / 1000
+        assert last_modified == tag.lifetime_start_ms // 1000
 
 
 @pytest.mark.parametrize(

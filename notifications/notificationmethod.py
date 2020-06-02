@@ -242,7 +242,7 @@ class WebhookMethod(NotificationMethod):
                 cert=_ssl_cert(),
                 timeout=METHOD_TIMEOUT,
             )
-            if resp.status_code / 100 != 2:
+            if resp.status_code // 100 != 2:
                 error_message = "%s response for webhook to url: %s" % (resp.status_code, url)
                 logger.error(error_message)
                 logger.error(resp.content)
@@ -303,7 +303,7 @@ class FlowdockMethod(NotificationMethod):
             resp = requests.post(
                 url, data=json.dumps(payload), headers=headers, timeout=METHOD_TIMEOUT
             )
-            if resp.status_code / 100 != 2:
+            if resp.status_code // 100 != 2:
                 error_message = "%s response for flowdock to url: %s" % (resp.status_code, url)
                 logger.error(error_message)
                 logger.error(resp.content)
@@ -372,7 +372,7 @@ class HipchatMethod(NotificationMethod):
             resp = requests.post(
                 url, data=json.dumps(payload), headers=headers, timeout=METHOD_TIMEOUT
             )
-            if resp.status_code / 100 != 2:
+            if resp.status_code // 100 != 2:
                 error_message = "%s response for hipchat to url: %s" % (resp.status_code, url)
                 logger.error(error_message)
                 logger.error(resp.content)
@@ -497,7 +497,7 @@ class SlackMethod(NotificationMethod):
             resp = requests.post(
                 url, data=json.dumps(payload), headers=headers, timeout=METHOD_TIMEOUT
             )
-            if resp.status_code / 100 != 2:
+            if resp.status_code // 100 != 2:
                 error_message = "%s response for Slack to url: %s" % (resp.status_code, url)
                 logger.error(error_message)
                 logger.error(resp.content)

@@ -33,7 +33,7 @@ while batch.data:
 
 
 def format_money(total_cents):
-    dollars = total_cents / 100
+    dollars = total_cents // 100
     cents = total_cents % 100
     return dollars, cents
 

@@ -233,8 +233,8 @@ class Tag(
             reversion=tag.reversion,
             lifetime_start_ms=tag.lifetime_start_ms,
             lifetime_end_ms=tag.lifetime_end_ms,
-            lifetime_start_ts=tag.lifetime_start_ms / 1000,
-            lifetime_end_ts=tag.lifetime_end_ms / 1000 if tag.lifetime_end_ms else None,
+            lifetime_start_ts=tag.lifetime_start_ms // 1000,
+            lifetime_end_ts=tag.lifetime_end_ms // 1000 if tag.lifetime_end_ms else None,
             manifest_digest=tag.manifest.digest,
             inputs=dict(
                 legacy_image=legacy_image,

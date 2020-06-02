@@ -337,7 +337,7 @@ def retarget_tag(
 
     legacy_image = get_legacy_image_for_manifest(manifest)
     now_ms = now_ms or get_epoch_timestamp_ms()
-    now_ts = int(now_ms / 1000)
+    now_ts = int(now_ms // 1000)
 
     with db_transaction():
         # Lookup an existing tag in the repository with the same name and, if present, mark it
@@ -381,7 +381,7 @@ def _delete_tag(tag, now_ms):
     """
     Deletes the given tag by marking it as expired.
     """
-    now_ts = int(now_ms / 1000)
+    now_ts = int(now_ms // 1000)
 
     with db_transaction():
         updated = (
@@ -498,7 +498,7 @@ def change_tag_expiration(tag_id, expiration_datetime):
     )
 
     if expiration_datetime is not None:
-        lifetime_start_ts = int(tag.lifetime_start_ms / 1000)
+        lifetime_start_ts = int(tag.lifetime_start_ms // 1000)
 
         offset = timegm(expiration_datetime.utctimetuple()) - lifetime_start_ts
         offset = min(max(offset, min_expire_sec.total_seconds()), max_expire_sec.total_seconds())
@@ -550,7 +550,7 @@ def set_tag_end_ms(tag, end_ms):
                 .get()
             ).repository_tag
 
-            old_style_tag.lifetime_end_ts = end_ms / 1000 if end_ms is not None else None
+            old_style_tag.lifetime_end_ts = end_ms // 1000 if end_ms is not None else None
             old_style_tag.save()
         except TagToRepositoryTag.DoesNotExist:
             pass

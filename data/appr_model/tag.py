@@ -144,6 +144,6 @@ def get_most_recent_tag_lifetime_start(repository_ids, models_ref, tag_kind="rel
         ),
         Tag,
     )
-    to_seconds = lambda ms: ms / 1000 if ms is not None else None
+    to_seconds = lambda ms: ms // 1000 if ms is not None else None
 
     return {t.repository.id: to_seconds(t.lifetime_start) for t in tags}

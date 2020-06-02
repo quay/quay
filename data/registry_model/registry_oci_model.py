@@ -337,7 +337,7 @@ class OCIModel(RegistryDataInterface):
         if not repository_refs:
             return {}
 
-        toSeconds = lambda ms: ms / 1000 if ms is not None else None
+        toSeconds = lambda ms: ms // 1000 if ms is not None else None
         last_modified = oci.tag.get_most_recent_tag_lifetime_start([r.id for r in repository_refs])
 
         return {repo_id: toSeconds(ms) for repo_id, ms in list(last_modified.items())}

@@ -128,9 +128,9 @@ class V2Protocol(RegistryProtocol):
 
         response = session.get("/v2/auth", params=params, auth=auth)
         if expect_success:
-            assert response.status_code / 100 == 2
+            assert response.status_code // 100 == 2
         else:
-            assert response.status_code / 100 == 4
+            assert response.status_code // 100 == 4
 
         return response
 

@@ -37,7 +37,7 @@ def fake_elasticsearch(allow_wildcard=True):
         # fields here.
         if field_name == "datetime":
             if isinstance(value, int):
-                return datetime.utcfromtimestamp(value / 1000)
+                return datetime.utcfromtimestamp(value // 1000)
 
             parsed = dateutil.parser.parse(value)
             return parsed

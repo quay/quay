@@ -163,7 +163,7 @@ class Channel(namedtuple("Channel", ["name", "linked_tag_name", "linked_tag_life
             "name": self.name,
             "release": self.linked_tag_name,
             "last_modified": format_date(
-                datetime.fromtimestamp(self.linked_tag_lifetime_start / 1000)
+                datetime.fromtimestamp(self.linked_tag_lifetime_start // 1000)
             ),
         }
 
@@ -180,7 +180,7 @@ class Release(namedtuple("Channel", ["name", "lifetime_start", "releases_channel
     def to_dict(self):
         return {
             "name": self.name,
-            "last_modified": format_date(datetime.fromtimestamp(self.lifetime_start / 1000)),
+            "last_modified": format_date(datetime.fromtimestamp(self.lifetime_start // 1000)),
             "channels": self.releases_channels_map[self.name],
         }
 
