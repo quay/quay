@@ -1401,6 +1401,7 @@ class BlobUpload(BaseModel):
     repository = ForeignKeyField(Repository)
     uuid = CharField(index=True, unique=True)
     byte_count = BigIntegerField(default=0)
+    # TODO(kleesc): Verify that this is backward compatible with resumablehashlib
     sha_state = ResumableSHA256Field(null=True, default=rehash.sha256)
     location = ForeignKeyField(ImageStorageLocation)
     storage_metadata = JSONField(null=True, default={})
