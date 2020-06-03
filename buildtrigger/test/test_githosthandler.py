@@ -93,9 +93,9 @@ def test_list_build_source_namespaces():
     ]
 
     found = get_bitbucket_trigger().list_build_source_namespaces()
-    sorted(found, key=lambda d: sorted(d.items()))
+    found = sorted(found, key=lambda d: sorted(d.items()))
 
-    sorted(namespaces_expected, key=lambda d: sorted(d.items()))
+    namespaces_expected = sorted(namespaces_expected, key=lambda d: sorted(d.items()))
     assert found == namespaces_expected
 
 

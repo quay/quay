@@ -1,5 +1,4 @@
 FROM centos:8
-#FROM registry.access.redhat.com/ubi8:8.1
 LABEL maintainer "thomasmckay@redhat.com"
 
 ENV OS=linux \
