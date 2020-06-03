@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 
 	"github.com/qri-io/jsonschema"
 	"github.com/spf13/cobra"
@@ -34,42 +33,10 @@ var validateCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// Read config file
-		configBytes, err := ioutil.ReadFile(configPath)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		// Validate Schema
+		_, err := ValidateSchema(configPath, schemaPath)
 
-		// Load config into struct
-		c := &interface{}
-		if err = yaml.Unmarshal(configBytes, c); err != nil {
-			fmt.Println("Cannot unmarshal config.yaml" + err.Error())
-		}
 
-		// Read schema file
-		schemaBytes, err := ioutil.ReadFile(schemaPath)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		// Load schema file into struct
-		rs := &jsonschema.Schema{}
-		if err := json.Unmarshal(schemaBytes, rs); err != nil {
-			fmt.Println("unmarshal schema: " + err.Error())
-		}
-
-		errs, err := rs.Validate(context.Background(), configBytes)
-		if err != nil {
-			panic(err)
-		}
-		if len(errs) > 0 {
-			fmt.Println(errs[0].Error())
-		}
-
-		fmt.Println(schemaPath)
-		fmt.Println(configPath)
 	},
 }
 
@@ -91,14 +58,40 @@ func init() {
 
 }
 
-// FileExists checks if a file exists at the given path
-func FileExists(path string) (bool, error) {
-
-	_, err := os.Stat(path)
-
-	if os.IsNotExist(err) {
-		return false, nil
+// ValidateSchema checks the config file against a JSON Schema Definition
+func ValidateSchema(configPath, schemaPath string) (bool, error) {
+	
+	// Read config file
+	configBytes, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return false, err
 	}
 
-	return err == nil, err
+	// Load config into struct
+	var c = map[interface{}]interface{}
+	if err = yaml.Unmarshal(configBytes, &c); err != nil {
+		return false, err
+	}
+
+	// Read schema file
+	schemaBytes, err := ioutil.ReadFile(schemaPath)
+	if err != nil {
+		return false, err
+	}
+
+	// Load schema file into struct
+	rs := &jsonschema.Schema{}
+	if err := json.Unmarshal(schemaBytes, rs); err != nil {
+		return false, err
+	}
+
+	errs, err := rs.Validate(context.Background(), configBytes)
+	if err != nil {
+		panic(err)
+	}
+	if len(errs) > 0 {
+		fmt.Println(errs[0].Error())
+	}
+
+	return true, nil
 }
