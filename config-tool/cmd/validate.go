@@ -34,8 +34,11 @@ var validateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Validate Schema
-		_, err := ValidateSchema(configPath, schemaPath)
-
+		if _, err := ValidateSchema(configPath, schemaPath); err != nil {
+			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Config has valid schema")
+		}
 
 	},
 }
@@ -60,16 +63,21 @@ func init() {
 
 // ValidateSchema checks the config file against a JSON Schema Definition
 func ValidateSchema(configPath, schemaPath string) (bool, error) {
-	
+
 	// Read config file
 	configBytes, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return false, err
 	}
 
-	// Load config into struct
-	var c = map[interface{}]interface{}
+	// Load config into struct and convert to JSON
+	var c interface{}
 	if err = yaml.Unmarshal(configBytes, &c); err != nil {
+		return false, err
+	}
+	c = YAMLtoJSON(c)
+	config, err := json.Marshal(c)
+	if err != nil {
 		return false, err
 	}
 
@@ -85,13 +93,35 @@ func ValidateSchema(configPath, schemaPath string) (bool, error) {
 		return false, err
 	}
 
-	errs, err := rs.Validate(context.Background(), configBytes)
+	// Validate config against schema and get errors
+	errs, err := rs.ValidateBytes(context.Background(), config)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 	if len(errs) > 0 {
-		fmt.Println(errs[0].Error())
+		for i, err := range errs {
+			fmt.Println(i, err)
+		}
+		return false, nil
 	}
 
+	// Scheme validation was successful
 	return true, nil
+}
+
+// YAMLtoJSON converts a YAML struct JSON
+func YAMLtoJSON(i interface{}) interface{} {
+	switch x := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := map[string]interface{}{}
+		for k, v := range x {
+			m2[k.(string)] = YAMLtoJSON(v)
+		}
+		return m2
+	case []interface{}:
+		for i, v := range x {
+			x[i] = YAMLtoJSON(v)
+		}
+	}
+	return i
 }
