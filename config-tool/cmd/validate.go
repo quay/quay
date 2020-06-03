@@ -16,9 +16,15 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 
+	"github.com/qri-io/jsonschema"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 // validateCmd represents the validate command
@@ -27,26 +33,72 @@ var validateCmd = &cobra.Command{
 	Short: "Validate your config.yaml",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(schema)
+
+		// Read config file
+		configBytes, err := ioutil.ReadFile(configPath)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		// Load config into struct
+		c := &interface{}
+		if err = yaml.Unmarshal(configBytes, c); err != nil {
+			fmt.Println("Cannot unmarshal config.yaml" + err.Error())
+		}
+
+		// Read schema file
+		schemaBytes, err := ioutil.ReadFile(schemaPath)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		// Load schema file into struct
+		rs := &jsonschema.Schema{}
+		if err := json.Unmarshal(schemaBytes, rs); err != nil {
+			fmt.Println("unmarshal schema: " + err.Error())
+		}
+
+		errs, err := rs.Validate(context.Background(), configBytes)
+		if err != nil {
+			panic(err)
+		}
+		if len(errs) > 0 {
+			fmt.Println(errs[0].Error())
+		}
+
+		fmt.Println(schemaPath)
+		fmt.Println(configPath)
 	},
 }
 
-var schema string
+var configPath string
+var schemaPath string
 
 func init() {
 
+	// Add validation command
 	rootCmd.AddCommand(validateCmd)
 
-	validateCmd.Flags().StringVarP(&schema, "schema", "s", "", "The path to a schema JSON file")
-	validateCmd.MarkFlagRequired("schema")
+	// Add --schema flag
+	validateCmd.Flags().StringVarP(&schemaPath, "schemaPath", "s", "", "The path to a schema JSON file")
+	validateCmd.MarkFlagRequired("schemaPath")
 
-	// Here you will define your flags and configuration settings.
+	// Add --config flag
+	validateCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
+	validateCmd.MarkFlagRequired("configPath")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// validateCmd.PersistentFlags().String("foo", "", "A help for foo")
+}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// validateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+// FileExists checks if a file exists at the given path
+func FileExists(path string) (bool, error) {
+
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	return err == nil, err
 }
