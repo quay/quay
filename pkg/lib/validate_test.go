@@ -14,9 +14,16 @@ func TestValidateSchema(t *testing.T) {
 		config string
 		schema string
 		want   bool
+		err    bool
 	}{
-		{"test1", "config1.yaml", "quay-config-schema.json", true},
-		{"test2", "config2.yaml", "quay-config-schema.json", false},
+		// Valid
+		{name: "test1", config: "config1.yaml", schema: "quay-config-schema.json", want: true, err: false},
+
+		// Invalid
+		{name: "test2", config: "config2.yaml", schema: "quay-config-schema.json", want: false, err: false},
+
+		// Error
+		{name: "test3", config: "config3.yaml", schema: "quay-config-schema.json", want: false, err: true},
 	}
 
 	// Iterate through tests
@@ -27,9 +34,24 @@ func TestValidateSchema(t *testing.T) {
 		schemaPath := filepath.Join("testdata", tt.schema)
 
 		t.Run(tt.name, func(t *testing.T) {
-			result, _ := ValidateSchema(configPath, schemaPath)
-			if result != tt.want {
-				t.Error()
+			result, err := ValidateSchema(configPath, schemaPath)
+
+			// Got Error
+			if err != nil {
+
+				// Expected No Error
+				if !tt.err {
+					t.Errorf("Did not expect error: %s", err.Error())
+					return
+				}
+
+				// Expected Error
+				return
+			}
+
+			// Got Result
+			if result.IsValid != tt.want {
+				t.Errorf("Expected %v for %s. Received %v", tt.want, tt.config, result.IsValid)
 			}
 		})
 	}
