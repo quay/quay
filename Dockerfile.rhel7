@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/rhel7:7.7
+FROM registry.access.redhat.com/rhel7:7.8
 LABEL maintainer "thomasmckay@redhat.com"
 
 ENV OS=linux \
@@ -32,6 +32,7 @@ RUN INSTALL_PKGS="\
         openssl \
         skopeo \
         " && \
+    yum-config-manager --save --setopt=rhel-7-server-htb-rpms.skip_if_unavailable=true && \
     yum install -y yum-utils && \
     yum-config-manager --quiet --disable "*" >/dev/null && \
     yum-config-manager --quiet --enable \
