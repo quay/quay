@@ -45,6 +45,7 @@ def default_services():
         "pushgateway": {"autostart": "true"},
         "servicekey": {"autostart": "true"},
         "repomirrorworker": {"autostart": "false"},
+        "localpromstatsworker": {"autostart": "true"},
     }
 
 

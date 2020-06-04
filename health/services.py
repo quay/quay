@@ -6,6 +6,7 @@ import psutil
 
 from app import build_logs, storage, authentication, instance_keys
 from health.models_pre_oci import pre_oci_model as model
+from health.processes import get_all_zombies
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,20 @@ def _check_disk_space(for_warning):
     return _check_disk_space
 
 
+def _check_zombie_process_count(app):
+    """
+    Returns False if too many zombie processes are running.
+    """
+    processes = get_all_zombies()
+    count = len(processes)
+    msg = "Found %s zombie processes." % count
+
+    max_zombies = app.config["MAX_DEFUNCT_PROCESS_COUNT"]
+    is_healthy = count <= max_zombies  # Only report False if too many zombies exist
+
+    return (is_healthy, msg)
+
+
 _INSTANCE_SERVICES = {
     "registry_gunicorn": _check_gunicorn("v1/_internal_ping"),
     "web_gunicorn": _check_gunicorn("_internal_ping"),
@@ -182,6 +197,7 @@ _INSTANCE_SERVICES = {
     "service_key": _check_service_key,
     "disk_space": _check_disk_space(for_warning=False),
     "jwtproxy": _check_jwt_proxy,
+    "defunct_processes": _check_zombie_process_count,
 }
 
 _GLOBAL_SERVICES = {

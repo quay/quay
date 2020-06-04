@@ -249,4 +249,13 @@ command=python -m workers.repomirrorworker.repomirrorworker
 autostart = {{ config['repomirrorworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+
+[program:localpromstatsworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command=python -m workers.localpromstats
+autostart = {{ config['localpromstatsworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 # EOF NO NEWLINE

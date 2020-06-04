@@ -736,3 +736,12 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether the repository action count worker is enabled.
     FEATURE_REPOSITORY_ACTION_COUNTER = True
+
+    # Determines if localpromstats worker should run.
+    FEATURE_REPORT_PROMETHEUS_STATS = False
+
+    # Maximum number of zombie/defunct processes allowed to exist before health-check should fail
+    MAX_DEFUNCT_PROCESS_COUNT = 0
+
+    # Dictates how often local statistics data should be reported to prometheus. (Seconds)
+    LOCAL_PROMETHEUS_STATS_FREQUENCY = 60

@@ -1126,5 +1126,31 @@ CONFIG_SCHEMA = {
             "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost",
             "x-example": ["somexternaldomain.com"],
         },
+        # Max Zombie processes allowed
+        "MAX_DEFUNCT_PROCESS_COUNT": {
+            "type": "number",
+            "description": (
+                "Maximum number of defunct (zombie) processes allowed before a Quay instance "
+                "will report an error in the health-check endpoint."
+            ),
+            "x-example": 1,
+        },
+        # Interval to report local statistics to prometheus
+        "LOCAL_PROMETHEUS_STATS_FREQUENCY": {
+            "type": "number",
+            "description": (
+                "Interval, in seconds, to fetch and report local statistics to prometheus."
+            ),
+            "x-example": 60,
+        },
+        # Enable/Disable localpromstats worker
+        "FEATURE_REPORT_PROMETHEUS_STATS": {
+            "type": "boolean",
+            "description": (
+                "Toggles the localpromstats worker which reports statistics from the local machine "
+                "or container namespace to prometheus."
+            ),
+            "x-example": True,
+        },
     },
 }
