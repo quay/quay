@@ -198,7 +198,6 @@ def pull(namespace, package_name, release, media_type):
         metadata={"release": release, "mediatype": media_type},
     )
     json_format = request.args.get("format", None) == "json"
-    print("DATA:", data)
     return _pull(data, json_format)
 
 

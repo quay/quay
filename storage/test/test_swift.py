@@ -10,7 +10,6 @@ from swiftclient.client import ClientException, ReadableToIterable
 
 from storage import StorageContext
 from storage.swift import SwiftStorage, _EMPTY_SEGMENTS_KEY
-from util.registry.generatorfile import GeneratorFile
 
 base_args = {
     "context": StorageContext("nyc", None, None, None),

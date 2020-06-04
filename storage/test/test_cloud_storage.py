@@ -8,7 +8,6 @@ import moto
 import boto
 
 from moto import mock_s3_deprecated as mock_s3
-from moto.s3 import s3_backend
 
 from storage import S3Storage, StorageContext
 from storage.cloud import _CloudStorage, _PartUploadMetadata
