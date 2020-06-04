@@ -4,7 +4,7 @@ kind: Template
 metadata:
   name: quay
 objects:
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
   metadata:
     name: ${{NAME}}
@@ -34,7 +34,13 @@ objects:
     - patch
     - update
     - watch
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: ${{NAME}}
+  imagePullSecrets:
+  - name: quayio-backup-image-pull-secret
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
     name: ${{NAME}}
@@ -206,7 +212,6 @@ objects:
           - containerPort: 8443
           volumeMounts:
           - name: configvolume
-            readOnly: false
             mountPath: /conf/stack
           livenessProbe:
             exec:
