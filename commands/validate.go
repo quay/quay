@@ -30,12 +30,20 @@ var validateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Validate Schema
-		if _, err := lib.ValidateSchema(configPath, schemaPath); err != nil {
+		response, err := lib.ValidateSchema(configPath, schemaPath)
+		if err != nil {
 			fmt.Println(err.Error())
-		} else {
-			fmt.Println("Config has valid schema")
 		}
 
+		if response.IsValid {
+			fmt.Println("Configuration Schema is Valid")
+		} else {
+
+			fmt.Println("Configuration has invalid keys:")
+			for _, keyError := range response.KeyErrors {
+				fmt.Println(keyError)
+			}
+		}
 	},
 }
 
