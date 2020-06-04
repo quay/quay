@@ -59,14 +59,14 @@ High-level features include:
 
 ## Community
 
+* Issue tracking: [Red Hat JIRA]
+* Security Issues: [security@redhat.com]
 * Mailing List: [quay-sig@googlegroups.com]
 * IRC: #quay on [freenode.net]
-* Bug tracking: [JBoss JIRA]
-* Security Issues: [security@redhat.com]
 
 [quay-sig@googlegroups.com]: https://groups.google.com/forum/#!forum/quay-sig
 [freenode.net]: https://webchat.freenode.net
-[JBoss JIRA]: https://issues.jboss.org/projects/PROJQUAY
+[Red Hat JIRA]: https://issues.redhat.com/projects/PROJQUAY
 [security@redhat.com]: mailto:security@redhat.com
 
 ## License
