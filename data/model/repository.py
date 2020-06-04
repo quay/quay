@@ -60,6 +60,20 @@ class RepoStateConfigException(Exception):
     pass
 
 
+def get_max_id():
+    """
+    Gets the maximum id for repository.
+    """
+    return Repository.select(fn.Max(Repository.id)).scalar()
+
+
+def get_min_id():
+    """
+    Gets the minimum id for repository.
+    """
+    return Repository.select(fn.Min(Repository.id)).scalar()
+
+
 def get_repo_kind_name(repo):
     return Repository.kind.get_name(repo.kind_id)
 
