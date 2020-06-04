@@ -436,7 +436,10 @@ def configure(config_object, testing=False):
 
     read_replica_dbs = []
     if read_replicas:
-        read_replica_dbs = [_db_from_url(config["DB_URI"], db_kwargs) for config in read_replicas]
+        read_replica_dbs = [
+            _db_from_url(ro_config["DB_URI"], ro_config.get("DB_CONNECTION_ARGS", db_kwargs))
+            for ro_config in read_replicas
+        ]
 
     read_only_config.initialize(ReadOnlyConfig(is_read_only, read_replica_dbs))
 
