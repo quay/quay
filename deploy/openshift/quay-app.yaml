@@ -245,8 +245,10 @@ objects:
             value: ${{SYSLOG_PROTO}}
           - name: QUAY_LOGGING
             value: ${{QUAY_LOGGING}}
-          - name: DB_CONNECTION_POOLING
-            value: ${{DB_CONNECTION_POOLING}}
+          - name: WORKER_MULTIPLIER_REGISTRY
+            value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
+          - name: WORKER_CONNECTION_COUNT_REGISTRY
+            value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
 parameters:
   - name: NAME
     value: "quay"
