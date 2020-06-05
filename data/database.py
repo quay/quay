@@ -359,7 +359,12 @@ def _wrap_for_retry(driver):
 
 
 def _db_from_url(
-    url, db_kwargs, connect_timeout=DEFAULT_DB_CONNECT_TIMEOUT, allow_pooling=True, allow_retry=True
+    url,
+    db_kwargs,
+    connect_timeout=DEFAULT_DB_CONNECT_TIMEOUT,
+    allow_pooling=True,
+    allow_retry=True,
+    is_read_replica=False,
 ):
     parsed_url = make_url(url)
 
@@ -404,7 +409,15 @@ def _db_from_url(
     if allow_retry:
         driver = _wrap_for_retry(driver)
 
+    driver_autocommit = False
+    if db_kwargs.get("_driver_autocommit"):
+        assert is_read_replica, "_driver_autocommit can only be set for a read replica"
+        driver_autocommit = db_kwargs["_driver_autocommit"]
+        db_kwargs.pop("_driver_autocommit", None)
+
     created = driver(parsed_url.database, **db_kwargs)
+    if driver_autocommit:
+        created.connect_params["autocommit"] = driver_autocommit
 
     # Revert the behavior "fixed" in:
     # https://github.com/coleifer/peewee/commit/36bd887ac07647c60dfebe610b34efabec675706
@@ -437,7 +450,11 @@ def configure(config_object, testing=False):
     read_replica_dbs = []
     if read_replicas:
         read_replica_dbs = [
-            _db_from_url(ro_config["DB_URI"], ro_config.get("DB_CONNECTION_ARGS", db_kwargs))
+            _db_from_url(
+                ro_config["DB_URI"],
+                ro_config.get("DB_CONNECTION_ARGS", db_kwargs),
+                is_read_replica=True,
+            )
             for ro_config in read_replicas
         ]
 
