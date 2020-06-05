@@ -423,6 +423,14 @@ parameters:
     value: "3600"
     displayName: aws load balancer connection idle timeout
     description: aws load balancer connection idle timeout
+  - name: QUAY_WORKER_MULTIPLIER_REGISTRY
+    value: "2"
+    displayName: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
+    description: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
+  - name: QUAY_WORKER_CONNECTION_COUNT_REGISTRY
+    value: "50"
+    displayName: the maximum number of greenlets per gunicorn worker for the registry routes
+    description: the maximum number of greenlets per gunicorn worker for the registry routes
   - name: DB_CONNECTION_POOLING
     value: "true"
   - name: TICKER_TIME
