@@ -1,4 +1,4 @@
--e git+https://github.com/kleesc/appr.git@191be9f890b4a4eca54fcd583c94713717b45304#egg=cnr_server
+-e git+https://github.com/kleesc/appr.git@quay-python3#egg=cnr-server
 
 -e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
 -e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto

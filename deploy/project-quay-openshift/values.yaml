@@ -1,0 +1,103 @@
+replicaCount: 1
+
+# Project Quay BuildConfig
+build:
+  git:
+    url: https://github.com/mosen/quay.git
+    ref: "feature/openshift_oauth"
+  dockerfilePath: Dockerfile.rhel7
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+
+
+service:
+  type: ClusterIP
+  port: 80
+
+
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Project Quay PostgreSQL Instance
+postgresql:
+  commonLabels:
+    app.kubernetes.io/part-of: quay
+    app.kubernetes.io/version: "HEAD"
+    app.kubernetes.io/managed-by: helm
+    # Required by Quay Deployment
+    quay-enterprise-component: appdb
+
+  image: registry.redhat.io/rhscl/postgresql-12-rhel7:latest
+  service:
+    port: 5432
+
+  pvcRequestSize: 5G
+  pvcStorageClass: gp2
+
+  selectorLabels:
+    quay-enterprise-component: appdb
+
+databaseUser: quay
+databaseName: quay
+databasePassword: quay
+
+# Project Quay Redis
+redisPassword: redis
+redis:
+  image: registry.access.redhat.com/rhscl/redis-32-rhel7
+  commonLabels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: keyvaluestore
+    app.kubernetes.io/part-of: quay
+    app.kubernetes.io/version: 3.2.13
+    app.kubernetes.io/managed-by: helm
+    # Required by Quay Deployment
+    quay-enterprise-component: redis
+
+  selectorLabels:
+    quay-enterprise-component: redis
+
+  service:
+    port: 6379
+
+
+
+commonLabels:
+  app.kubernetes.io/name: quay-app
+  app.kubernetes.io/component: application
+  app.kubernetes.io/part-of: quay
+  app.kubernetes.io/version: HEAD
+  app.kubernetes.io/managed-by: helm
+  # Required by Quay Deployment
+  quay-enterprise-component: app
+
+selectorLabels:
+  quay-enterprise-component: app
+

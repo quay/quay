@@ -1,0 +1,22 @@
+kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  name: project-quay-build
+  namespace: {{ .Release.Namespace }}
+spec:
+  triggers:
+    - type: ImageChange
+  source:
+    type: Git
+    git:
+      uri: {{ .Values.build.git.url }}
+      ref: {{ .Values.build.git.ref }}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: {{ .Values.build.dockerfilePath }}
+  output:
+    to:
+      kind: ImageStreamTag
+      name: "project-quay:latest"
+

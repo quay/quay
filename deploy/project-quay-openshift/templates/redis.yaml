@@ -1,0 +1,50 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: {{ .Release.namespace }}
+  labels:
+  {{- with .Values.redis.commonLabels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+    {{- with .Values.redis.selectorLabels }}
+    {{- toYaml . | nindent 6 }}
+  {{- end }}
+  template:
+    metadata:
+      namespace: quay-enterprise
+      labels:
+      {{- with .Values.redis.selectorLabels }}
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    spec:
+      containers:
+        - name: redis-master
+          image: {{ .Values.redis.image }}
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 6379
+          env:
+            - name: REDIS_PASSWORD
+              value: {{ .Values.redisPassword }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+  {{- with .Values.redis.selectorLabels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ports:
+    - port: {{ .Values.redis.service.port }}
+  selector:
+  {{- with .Values.redis.selectorLabels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}

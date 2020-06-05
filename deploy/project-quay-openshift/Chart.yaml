@@ -1,0 +1,6 @@
+apiVersion: v2
+name: project-quay-openshift
+description: Project Quay on OpenShift (Build from Source)
+type: application
+version: 0.1.0
+appVersion: 3.4.0

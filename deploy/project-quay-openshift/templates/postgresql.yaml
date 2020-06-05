@@ -1,0 +1,113 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgresql-data
+  namespace: {{ .Release.namespace }}
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: postgresql
+  {{- with .Values.commonLabels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.pvcRequestSize }}
+  storageClassName: {{ .Values.postgresql.pvcStorageClass }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgresql-secret
+type: Opaque
+stringData:
+  POSTGRESQL_USER: {{ .Values.databaseUser }}
+  POSTGRESQL_DATABASE: {{ .Values.databaseName }}
+  POSTGRESQL_PASSWORD: {{ .Values.databasePassword }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: {{ .Release.namespace }}
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: postgresql
+  {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+    {{- with .Values.postgresql.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: database
+        app.kubernetes.io/name: postgresql
+      {{- with .Values.postgresql.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      imagePullSecrets:
+        - name: redhat-pull-secret
+      containers:
+        - name: postgresql
+          image: "{{ .Values.postgresql.image }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secret
+                  key: POSTGRESQL_USER
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secret
+                  key: POSTGRESQL_DATABASE
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secret
+                  key: POSTGRESQL_PASSWORD
+          volumeMounts:
+            - mountPath: /var/lib/pgsql/data
+              name: postgresql-data
+      volumes:
+        - name: postgresql-data
+          persistentVolumeClaim:
+            claimName: postgresql-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: postgresql
+  {{- with .Values.commonLabels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      name: postgresql
+      port: {{ .Values.postgresql.service.port }}
+      targetPort: 5432
+  selector:
+  {{- with .Values.selectorLabels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}

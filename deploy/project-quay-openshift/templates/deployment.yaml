@@ -1,0 +1,40 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-quay
+  namespace: {{ .Release.Namespace }}
+  labels:
+  {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+    {{- with .Values.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  template:
+    metadata:
+      namespace: {{ .Release.Namespace }}
+      labels:
+      {{- with .Values.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      volumes:
+        - name: configvolume
+          secret:
+            secretName: quay-enterprise-config-secret
+      containers:
+        - name: project-quay
+          ports:
+            - containerPort: 8080
+            - containerPort: 8443
+          volumeMounts:
+            - name: configvolume
+              readOnly: false
+              mountPath: /conf/stack
+      imagePullSecrets:
+        - name: redhat-quay-pull-secret
