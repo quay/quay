@@ -22,7 +22,7 @@ spec:
         fsGroup: 0
       containers:
         - name: postgres
-          image: postgres:12 
+          image: registry.access.redhat.com/rhscl/postgresql-10-rhel7:1-35 
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 5432
