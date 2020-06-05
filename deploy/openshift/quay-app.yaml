@@ -86,22 +86,6 @@ objects:
 - apiVersion: v1
   kind: Service
   metadata:
-    name: quay-loadbalancer-service
-    annotations:
-      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
-  spec:
-    ports:
-    - name: loadbalancer
-      protocol: TCP
-      port: ${{LOADBALANCER_SERVICE_PORT}}
-      targetPort: ${{LOADBALANCER_SERVICE_TARGET_PORT}}
-    loadBalancerIP:
-    type: LoadBalancer
-    selector:
-      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
-- apiVersion: v1
-  kind: Service
-  metadata:
     name: quay-load-balancer-proxy-protocol-service
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
@@ -162,6 +146,13 @@ objects:
             protocol: TCP
             name: syslog-tcp-port
           env:
+          - name: STREAM_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: TICKER_TIME
+            value: ${TICKER_TIME}
           - name: PORT
             value: ${SYSLOG_PORT}
           - name: AWS_REGION
@@ -442,3 +433,8 @@ parameters:
     value: "50"
     displayName: the maximum number of greenlets per gunicorn worker for the registry routes
     description: the maximum number of greenlets per gunicorn worker for the registry routes
+  - name: DB_CONNECTION_POOLING
+    value: "true"
+  - name: TICKER_TIME
+    value: "200"
+
