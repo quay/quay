@@ -34,6 +34,7 @@
         },
         "SERVER_HOSTNAME": {
             "type": "string",
+            "pattern": "^(([a-z0-9]|[a-z0-9][a-z0-9\\-]*[a-z0-9])\\.)*([a-z0-9]|[a-z0-9][a-z0-9\\-]*[a-z0-9])(:[0-9]+)?$",
             "description": "The URL at which Quay is accessible, without the scheme.",
             "x-example": "quay.io"
         },
@@ -44,6 +45,85 @@
         },
         "SSL_CIPHERS": {
             "type": "array",
+            "items": {
+                "enum": [
+                    "DEFAULT",
+                    "COMPLEMENTOFDEFAULT",
+                    "ALL",
+                    "COMPLEMENTOFALL",
+                    "HIGH",
+                    "MEDIUM",
+                    "LOW",
+                    "EXP",
+                    "EXPORT",
+                    "EXPORT40",
+                    "EXPORT56",
+                    "eNULL",
+                    "NULL",
+                    "aNULL",
+                    "kRSA",
+                    "RSA",
+                    "kDHr",
+                    "kDHd",
+                    "kDH",
+                    "DHE",
+                    "EDH",
+                    "ADH",
+                    "DH",
+                    "kECDHr",
+                    "kECDHe",
+                    "kECDH",
+                    "kECDHE",
+                    "kEECDH",
+                    "ECDHE",
+                    "EECDH",
+                    "AECDH",
+                    "ECDH",
+                    "aRSA",
+                    "aDSS",
+                    "DSS",
+                    "aDH",
+                    "aECDH",
+                    "aECDSA",
+                    "ECDSA",
+                    "kFZA",
+                    "aFZA",
+                    "eFZA",
+                    "FZA",
+                    "TLSv1.2",
+                    "TLSv1",
+                    "SSLv3",
+                    "SSLv2",
+                    "AES128",
+                    "AES256",
+                    "AES",
+                    "AESGCM",
+                    "CAMELLIA128",
+                    "CAMELLIA256",
+                    "CAMELLIA",
+                    "3DES",
+                    "DES",
+                    "RC4",
+                    "RC2",
+                    "IDEA",
+                    "SEED",
+                    "MD5",
+                    "SHA1",
+                    "SHA",
+                    "SHA256",
+                    "SHA384",
+                    "aGOST",
+                    "aGOST01",
+                    "aGOST94",
+                    "kGOST",
+                    "GOST94",
+                    "GOST89MAC",
+                    "PSK",
+                    "SUITEB128",
+                    "SUITEB128ONLY",
+                    "SUITEB192"
+                ]
+            },
             "description": "If specified, the nginx-defined list of SSL ciphers to enabled and disabled",
             "x-example": [
                 "CAMELLIA",
@@ -53,6 +133,16 @@
         },
         "SSL_PROTOCOLS": {
             "type": "array",
+            "items": {
+                "enum": [
+                    "SSLv2",
+                    "SSLv3",
+                    "TLSv1",
+                    "TLSv1.1",
+                    "TLSv1.2",
+                    "TLSv1.3"
+                ]
+            },
             "description": "If specified, the nginx-defined list of SSL protocols to enabled and disabled",
             "x-example": [
                 "TLSv1.1",
@@ -1116,5 +1206,21 @@
                 "somexternaldomain.com"
             ]
         }
-    }
+    },
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "FEATURE_MAILING": {
+                        "const": true
+                    }
+                }
+            },
+            "then": {
+                "required": [
+                    "MAIL_SERVER"
+                ]
+            }
+        }
+    ]
 }
