@@ -1,4 +1,4 @@
-from urlparse import urljoin
+from urllib.parse import urljoin
 
 from flask import url_for
 
@@ -72,4 +72,4 @@ class BlobURLRetriever(object):
             audience, subject, context, access, timeout, self._instance_keys
         )
 
-        return {"Authorization": ["Bearer " + auth_token]}
+        return {"Authorization": ["Bearer " + auth_token.decode("ascii")]}

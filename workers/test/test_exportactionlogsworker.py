@@ -46,7 +46,7 @@ def storage_engine(request):
 
 def test_export_logs_failure(initialized_db):
     # Make all uploads fail.
-    test_storage.put_content("local_us", "except_upload", "true")
+    test_storage.put_content("local_us", "except_upload", b"true")
 
     repo = model.repository.get_repository("devtable", "simple")
     user = model.user.get_user("devtable")
@@ -83,8 +83,8 @@ def test_export_logs_failure(initialized_db):
     test_storage.remove("local_us", "except_upload")
 
     assert called[0]
-    assert called[0][u"export_id"] == "someid"
-    assert called[0][u"status"] == "failed"
+    assert called[0]["export_id"] == "someid"
+    assert called[0]["status"] == "failed"
 
 
 @pytest.mark.parametrize("has_logs", [True, False,])
@@ -137,17 +137,19 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
         )
 
     assert called[0]
-    assert called[0][u"export_id"] == "someid"
-    assert called[0][u"status"] == "success"
+    assert called[0]["export_id"] == "someid"
+    assert called[0]["status"] == "success"
 
-    url = called[0][u"exported_data_url"]
+    url = called[0]["exported_data_url"]
 
     if url.find("http://localhost:5000/exportedlogs/") == 0:
         storage_id = url[len("http://localhost:5000/exportedlogs/") :]
     else:
-        assert url.find("https://some_bucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
+        assert (
+            url.find("https://some_bucket.s3.amazonaws.com:443/some/path/exportedactionlogs/") == 0
+        )
         storage_id, _ = url[
-            len("https://some_bucket.s3.amazonaws.com/some/path/exportedactionlogs/") :
+            len("https://some_bucket.s3.amazonaws.com:443/some/path/exportedactionlogs/") :
         ].split("?")
 
     created = storage_engine.get_content(

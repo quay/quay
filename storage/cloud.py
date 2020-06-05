@@ -1,11 +1,10 @@
-import cStringIO as StringIO
 import os
 import logging
 import copy
 
 from collections import namedtuple
 from datetime import datetime, timedelta
-from io import BufferedIOBase
+from io import BufferedIOBase, StringIO, BytesIO
 from itertools import chain
 from uuid import uuid4
 
@@ -113,10 +112,10 @@ class _CloudStorage(BaseStorageV2):
         orig_meth = key.bucket.connection.make_request
 
         def new_meth(*args, **kwargs):
-            print "#" * 16
-            print args
-            print kwargs
-            print "#" * 16
+            print("#" * 16)
+            print(args)
+            print(kwargs)
+            print("#" * 16)
             return orig_meth(*args, **kwargs)
 
         key.bucket.connection.make_request = new_meth
@@ -249,7 +248,7 @@ class _CloudStorage(BaseStorageV2):
             return 0, e
 
         # We are going to reuse this but be VERY careful to only read the number of bytes written to it
-        buf = StringIO.StringIO()
+        buf = BytesIO()
 
         num_part = 1
         total_bytes_written = 0
@@ -474,7 +473,7 @@ class _CloudStorage(BaseStorageV2):
         if max_chunk_size is None or chunk.length <= max_chunk_size:
             yield chunk
         else:
-            newchunk_length = chunk.length / 2
+            newchunk_length = chunk.length // 2
             first_subchunk = _PartUploadMetadata(chunk.path, chunk.offset, newchunk_length)
             second_subchunk = _PartUploadMetadata(
                 chunk.path, chunk.offset + newchunk_length, chunk.length - newchunk_length
@@ -775,7 +774,7 @@ class CloudFrontedS3Storage(S3Storage):
         storage_path,
         s3_bucket,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super(CloudFrontedS3Storage, self).__init__(
             context, storage_path, s3_bucket, *args, **kwargs
@@ -841,7 +840,7 @@ class CloudFrontedS3Storage(S3Storage):
             return None
 
         with self._context.config_provider.get_volume_file(
-            cloudfront_privatekey_filename
+            cloudfront_privatekey_filename, mode="rb",
         ) as key_file:
             return serialization.load_pem_private_key(
                 key_file.read(), password=None, backend=default_backend()

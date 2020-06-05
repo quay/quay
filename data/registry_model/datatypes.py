@@ -233,8 +233,8 @@ class Tag(
             reversion=tag.reversion,
             lifetime_start_ms=tag.lifetime_start_ms,
             lifetime_end_ms=tag.lifetime_end_ms,
-            lifetime_start_ts=tag.lifetime_start_ms / 1000,
-            lifetime_end_ts=tag.lifetime_end_ms / 1000 if tag.lifetime_end_ms else None,
+            lifetime_start_ts=tag.lifetime_start_ms // 1000,
+            lifetime_end_ts=tag.lifetime_end_ms // 1000 if tag.lifetime_end_ms else None,
             manifest_digest=tag.manifest.digest,
             inputs=dict(
                 legacy_image=legacy_image,
@@ -609,7 +609,7 @@ class DerivedImage(datatype("DerivedImage", ["verb", "varying_metadata", "blob"]
 
         This call will consistently produce the same unique ID across calls in the same code base.
         """
-        return hashlib.sha256("%s:%s" % (self.verb, self._db_id)).hexdigest()
+        return hashlib.sha256(("%s:%s" % (self.verb, self._db_id)).encode("utf-8")).hexdigest()
 
 
 class BlobUpload(

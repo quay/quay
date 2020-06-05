@@ -49,10 +49,10 @@ def verify_backfill(namespace_name):
         assert tag.repository == repo_tag.repository, _vs(tag.repository_id, repo_tag.repository_id)
         assert tag.reversion == repo_tag.reversion, _vs(tag.reversion, repo_tag.reversion)
 
-        start_check = int(tag.lifetime_start_ms / 1000) == repo_tag.lifetime_start_ts
+        start_check = int(tag.lifetime_start_ms // 1000) == repo_tag.lifetime_start_ts
         assert start_check, _vs(tag.lifetime_start_ms, repo_tag.lifetime_start_ts)
         if repo_tag.lifetime_end_ts is not None:
-            end_check = int(tag.lifetime_end_ms / 1000) == repo_tag.lifetime_end_ts
+            end_check = int(tag.lifetime_end_ms // 1000) == repo_tag.lifetime_end_ts
             assert end_check, _vs(tag.lifetime_end_ms, repo_tag.lifetime_end_ts)
         else:
             assert tag.lifetime_end_ms is None

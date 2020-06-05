@@ -24,6 +24,7 @@ from data.database import (
     db_count_estimator,
     db,
 )
+from functools import reduce
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,8 @@ def reduce_as_tree(queries_to_reduce):
     This works around a bug in peewee SQL generation where reducing linearly generates a chain of
     queries that will exceed the recursion depth limit when it has around 80 queries.
     """
-    mid = len(queries_to_reduce) / 2
+    mid = len(queries_to_reduce) // 2
+
     left = queries_to_reduce[:mid]
     right = queries_to_reduce[mid:]
 

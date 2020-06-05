@@ -67,10 +67,10 @@ class ExpiresDict(object):
         return items
 
     def _alive_items(self):
-        return {k: entry.value for (k, entry) in self._items.items() if not entry.expired}
+        return {k: entry.value for (k, entry) in list(self._items.items()) if not entry.expired}
 
     def items(self):
-        return self._alive_items().items()
+        return list(self._alive_items().items())
 
     def iteritems(self):
         return iteritems(self._alive_items())

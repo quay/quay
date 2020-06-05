@@ -5,14 +5,14 @@ class Bytes(object):
     """
 
     def __init__(self, data):
-        assert isinstance(data, str)
+        assert isinstance(data, bytes)
         self._encoded_data = data
 
     @classmethod
     def for_string_or_unicode(cls, input):
         # If the string is a unicode string, then encode its data as UTF-8. Note that
         # we don't catch any decode exceptions here, as we want those to be raised.
-        if isinstance(input, unicode):
+        if isinstance(input, str):
             return Bytes(input.encode("utf-8"))
 
         # Next, try decoding as UTF-8. If we have a utf-8 encoded string, then we have no

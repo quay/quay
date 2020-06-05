@@ -59,7 +59,11 @@ def gen_basic_auth(username, password):
     """
     Generates a basic auth header.
     """
-    return "Basic " + base64.b64encode("%s:%s" % (username, password))
+    encoded_username = username.encode("utf-8")
+    encoded_password = password.encode("utf-8")
+    return "Basic " + base64.b64encode(b"%s:%s" % (encoded_username, encoded_password)).decode(
+        "ascii"
+    )
 
 
 def conduct_call(

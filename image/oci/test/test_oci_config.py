@@ -75,28 +75,28 @@ def test_parse_basic_config():
 
     expected = [
         LayerHistory(
-            created=u"2015-10-31T22:22:54.690851953Z",
+            created="2015-10-31T22:22:54.690851953Z",
             created_datetime=datetime.datetime(2015, 10, 31, 22, 22, 54, 690851, tzinfo=tzutc()),
-            command=u"/bin/sh -c #(nop) ADD file:a3bc1e842b69636f9df5256c49c5374fb4eef1e281fe3f282c65fb853ee171c5 in /",
+            command="/bin/sh -c #(nop) ADD file:a3bc1e842b69636f9df5256c49c5374fb4eef1e281fe3f282c65fb853ee171c5 in /",
             is_empty=False,
             author=None,
             comment=None,
             raw_entry={
-                u"created_by": u"/bin/sh -c #(nop) ADD file:a3bc1e842b69636f9df5256c49c5374fb4eef1e281fe3f282c65fb853ee171c5 in /",
-                u"created": u"2015-10-31T22:22:54.690851953Z",
+                "created_by": "/bin/sh -c #(nop) ADD file:a3bc1e842b69636f9df5256c49c5374fb4eef1e281fe3f282c65fb853ee171c5 in /",
+                "created": "2015-10-31T22:22:54.690851953Z",
             },
         ),
         LayerHistory(
-            created=u"2015-10-31T22:22:55.613815829Z",
+            created="2015-10-31T22:22:55.613815829Z",
             created_datetime=datetime.datetime(2015, 10, 31, 22, 22, 55, 613815, tzinfo=tzutc()),
-            command=u'/bin/sh -c #(nop) CMD ["sh"]',
+            command='/bin/sh -c #(nop) CMD ["sh"]',
             is_empty=True,
             author=None,
             comment=None,
             raw_entry={
-                u"empty_layer": True,
-                u"created_by": u'/bin/sh -c #(nop) CMD ["sh"]',
-                u"created": u"2015-10-31T22:22:55.613815829Z",
+                "empty_layer": True,
+                "created_by": '/bin/sh -c #(nop) CMD ["sh"]',
+                "created": "2015-10-31T22:22:55.613815829Z",
             },
         ),
     ]

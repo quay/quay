@@ -8,8 +8,8 @@ import zlib
 
 from mock import patch
 from io import BytesIO
-from urllib import urlencode
-from urlparse import urlparse, urlunparse, parse_qs
+from urllib.parse import urlencode
+from urllib.parse import urlparse, urlunparse, parse_qs
 from datetime import datetime, timedelta
 
 import jwt
@@ -28,6 +28,7 @@ from endpoints.keyserver import jwk_with_kid
 from endpoints.csrf import OAUTH_CSRF_TOKEN_NAME
 from endpoints.web import web as web_bp
 from endpoints.webhooks import webhooks as webhooks_bp
+from endpoints.test.shared import gen_basic_auth
 from initdb import setup_database_for_testing, finished_database_for_testing
 from test.helpers import assert_action_logged
 from util.security.token import encode_public_private_token
@@ -90,20 +91,20 @@ class EndpointTestCase(unittest.TestCase):
 
     def getResponse(self, resource_name, expected_code=200, **kwargs):
         rv = self.app.get(url_for(resource_name, **kwargs))
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteResponse(self, resource_name, headers=None, expected_code=200, **kwargs):
         headers = headers or {}
         rv = self.app.delete(url_for(resource_name, **kwargs), headers=headers)
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def deleteEmptyResponse(self, resource_name, headers=None, expected_code=204, **kwargs):
         headers = headers or {}
         rv = self.app.delete(url_for(resource_name, **kwargs), headers=headers)
-        self.assertEquals(rv.status_code, expected_code)
-        self.assertEquals(rv.data, "")  # ensure response body empty
+        self.assertEqual(rv.status_code, expected_code)
+        self.assertEqual(rv.data, b"")  # ensure response body empty
         return
 
     def putResponse(self, resource_name, headers=None, data=None, expected_code=200, **kwargs):
@@ -112,7 +113,7 @@ class EndpointTestCase(unittest.TestCase):
         rv = self.app.put(
             url_for(resource_name, **kwargs), headers=headers, data=py_json.dumps(data)
         )
-        self.assertEquals(rv.status_code, expected_code)
+        self.assertEqual(rv.status_code, expected_code)
         return rv.data
 
     def postResponse(
@@ -123,7 +124,7 @@ class EndpointTestCase(unittest.TestCase):
         form=None,
         with_csrf=True,
         expected_code=200,
-        **kwargs
+        **kwargs,
     ):
         headers = headers or {}
         form = form or {}
@@ -139,7 +140,7 @@ class EndpointTestCase(unittest.TestCase):
 
         rv = self.app.post(url, headers=headers, data=post_data)
         if expected_code is not None:
-            self.assertEquals(rv.status_code, expected_code)
+            self.assertEqual(rv.status_code, expected_code)
 
         return rv
 
@@ -149,7 +150,7 @@ class EndpointTestCase(unittest.TestCase):
             data=py_json.dumps(dict(username=username, password=password)),
             headers={"Content-Type": "application/json"},
         )
-        self.assertEquals(rv.status_code, 200)
+        self.assertEqual(rv.status_code, 200)
 
 
 class BuildLogsTestCase(EndpointTestCase):
@@ -176,7 +177,7 @@ class BuildLogsTestCase(EndpointTestCase):
         logs = ["log1", "log2"]
         with patch("endpoints.web.build_logs.get_log_entries", return_value=(None, logs)):
             resp = self.getResponse("web.buildlogs", build_uuid=self.build_uuid, expected_code=200)
-            self.assertEquals({"logs": logs}, py_json.loads(resp))
+            self.assertEqual({"logs": logs}, py_json.loads(resp))
 
 
 class ArchivedLogsTestCase(EndpointTestCase):
@@ -227,7 +228,7 @@ class WebhookEndpointTestCase(EndpointTestCase):
         )
 
     def test_valid_build_trigger_webhook_missing_payload(self):
-        auth_header = "Basic %s" % (base64.b64encode("devtable:password"))
+        auth_header = gen_basic_auth("devtable", "password")
         trigger = list(model.build.list_build_triggers("devtable", "building"))[0]
         self.postResponse(
             "webhooks.build_trigger_webhook",
@@ -237,7 +238,7 @@ class WebhookEndpointTestCase(EndpointTestCase):
         )
 
     def test_valid_build_trigger_webhook_invalid_payload(self):
-        auth_header = "Basic %s" % (base64.b64encode("devtable:password"))
+        auth_header = gen_basic_auth("devtable", "password")
         trigger = list(model.build.list_build_triggers("devtable", "building"))[0]
         self.postResponse(
             "webhooks.build_trigger_webhook",
@@ -278,13 +279,13 @@ class WebEndpointTestCase(EndpointTestCase):
 
     def test_confirm_email(self):
         user = model.user.get_user("devtable")
-        self.assertNotEquals(user.email, "foo@bar.com")
+        self.assertNotEqual(user.email, "foo@bar.com")
 
         confirmation_code = model.user.create_confirm_email_code(user, "foo@bar.com")
         self.getResponse("web.confirm_email", code=confirmation_code, expected_code=302)
 
         user = model.user.get_user("devtable")
-        self.assertEquals(user.email, "foo@bar.com")
+        self.assertEqual(user.email, "foo@bar.com")
 
     def test_confirm_recovery(self):
         # Try for an invalid code.
@@ -415,7 +416,7 @@ class OAuthTestCase(EndpointTestCase):
         resp = self.postResponse(
             "web.authorize_application", form=form, with_csrf=True, expected_code=302
         )
-        self.assertEquals(
+        self.assertEqual(
             "http://localhost:5000/foobar?error=unauthorized_client", resp.headers["Location"]
         )
 
@@ -431,7 +432,7 @@ class OAuthTestCase(EndpointTestCase):
         resp = self.postResponse(
             "web.authorize_application", form=form, with_csrf=True, expected_code=302
         )
-        self.assertEquals(
+        self.assertEqual(
             "http://localhost:8000/o2c.html?error=invalid_scope", resp.headers["Location"]
         )
 
@@ -501,7 +502,7 @@ class OAuthTestCase(EndpointTestCase):
             "scope": "user:admin",
         }
 
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:invalidpassword"))
+        headers = dict(authorization=gen_basic_auth("devtable", "invalidpassword"))
         self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -519,7 +520,7 @@ class OAuthTestCase(EndpointTestCase):
         }
 
         # Try without the client id being in the whitelist.
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:password"))
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
         self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -531,7 +532,7 @@ class OAuthTestCase(EndpointTestCase):
         # Add the client ID to the whitelist and try again.
         app.config["DIRECT_OAUTH_CLIENTID_WHITELIST"] = ["deadbeef"]
 
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:password"))
+        headers = dict(authorization=gen_basic_auth("devtable", "password"))
         resp = self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -550,7 +551,7 @@ class OAuthTestCase(EndpointTestCase):
         }
 
         # Try without the client id being in the whitelist a few times, making sure we eventually get rate limited.
-        headers = dict(authorization="Basic " + base64.b64encode("devtable:invalidpassword"))
+        headers = dict(authorization=gen_basic_auth("devtable", "invalidpassword"))
         self.postResponse(
             "web.authorize_application",
             headers=headers,
@@ -568,7 +569,7 @@ class OAuthTestCase(EndpointTestCase):
                 with_csrf=False,
                 expected_code=None,
             )
-            self.assertNotEquals(200, r.status_code)
+            self.assertNotEqual(200, r.status_code)
             counter = counter + 1
             if counter > 5:
                 self.fail("Exponential backoff did not fire")
@@ -606,7 +607,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Make sure the hidden keys are not returned and the visible ones are returned.
         self.assertTrue(len(visible_jwks) > 0)
         self.assertTrue(len(invisible_jwks) > 0)
-        self.assertEquals(len(visible_jwks), len(jwkset["keys"]))
+        self.assertEqual(len(visible_jwks), len(jwkset["keys"]))
 
         for jwk in jwkset["keys"]:
             self.assertIn(jwk, visible_jwks)
@@ -653,7 +654,10 @@ class KeyServerTestCase(EndpointTestCase):
             "key_server.put_service_key",
             service="sample service",
             kid="kid420",
-            headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+            headers={
+                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Content-Type": "application/json",
+            },
             data=jwk,
             expected_code=400,
         )
@@ -664,7 +668,10 @@ class KeyServerTestCase(EndpointTestCase):
                 "key_server.put_service_key",
                 service="sample_service",
                 kid="kid420",
-                headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+                headers={
+                    "Authorization": "Bearer %s" % token.decode("ascii"),
+                    "Content-Type": "application/json",
+                },
                 data=jwk,
                 expected_code=202,
             )
@@ -682,7 +689,10 @@ class KeyServerTestCase(EndpointTestCase):
             "key_server.put_service_key",
             service="sample_service",
             kid="kid6969",
-            headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+            headers={
+                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Content-Type": "application/json",
+            },
             data=jwk,
             expected_code=403,
         )
@@ -701,7 +711,10 @@ class KeyServerTestCase(EndpointTestCase):
                 "key_server.put_service_key",
                 service="sample_service",
                 kid="kid6969",
-                headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+                headers={
+                    "Authorization": "Bearer %s" % token.decode("ascii"),
+                    "Content-Type": "application/json",
+                },
                 data=jwk,
                 expected_code=200,
             )
@@ -716,7 +729,10 @@ class KeyServerTestCase(EndpointTestCase):
             "key_server.put_service_key",
             service="sample_service",
             kid="kid6969",
-            headers={"Authorization": "Bearer %s" % token, "Content-Type": "application/json",},
+            headers={
+                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Content-Type": "application/json",
+            },
             data=jwk,
             expected_code=403,
         )
@@ -735,7 +751,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our key, attempt to delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token},
+            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
             expected_code=400,
             service="sample_service",
             kid="first",
@@ -765,7 +781,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our second key, attempt to delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token},
+            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
             expected_code=403,
             service="sample_service",
             kid="second",
@@ -777,7 +793,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="second",
@@ -806,7 +822,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="unapprovedkeyhere",
@@ -835,7 +851,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our second key, attempt tp delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token},
+            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
             expected_code=403,
             service="sample_service",
             kid="kid321",
@@ -850,7 +866,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="kid321",
@@ -865,7 +881,7 @@ class KeyServerTestCase(EndpointTestCase):
         )
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % bad_token},
+            headers={"Authorization": "Bearer %s" % bad_token.decode("ascii")},
             expected_code=403,
             service="sample_service",
             kid="kid123",
@@ -875,7 +891,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token},
+                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
                 expected_code=204,
                 service="sample_service",
                 kid="kid123",

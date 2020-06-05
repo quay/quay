@@ -168,18 +168,17 @@ class ImplementedRepoMirrorAPI(RepoMirrorAPIInterface):
             return self._call("GET", _API_METHOD_PING)
         except requests.exceptions.Timeout as tie:
             logger.exception("Timeout when trying to connect to repository mirror endpoint")
-            msg = "Timeout when trying to connect to repository mirror endpoint: %s" % tie.message
+            msg = "Timeout when trying to connect to repository mirror endpoint: %s" % str(tie)
             raise Exception(msg)
         except requests.exceptions.ConnectionError as ce:
             logger.exception(
                 "Connection error when trying to connect to repository mirror endpoint"
             )
-            msg = (
-                "Connection error when trying to connect to repository mirror endpoint: %s"
-                % ce.message
+            msg = "Connection error when trying to connect to repository mirror endpoint: %s" % str(
+                ce
             )
             raise Exception(msg)
         except (requests.exceptions.RequestException, ValueError) as ve:
             logger.exception("Exception when trying to connect to repository mirror endpoint")
-            msg = "Exception when trying to connect to repository mirror endpoint: %s" % ve
+            msg = "Exception when trying to connect to repository mirror endpoint: %s" % str(ve)
             raise Exception(msg)

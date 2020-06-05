@@ -22,7 +22,7 @@ from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase, Pooled
 
 from sqlalchemy.engine.url import make_url
 
-import resumablehashlib
+import rehash
 from cachetools.func import lru_cache
 
 from data.fields import (
@@ -405,7 +405,7 @@ def _db_from_url(
         db_kwargs.pop("timeout", None)
         db_kwargs.pop("max_connections", None)
 
-    for key, value in _EXTRA_ARGS.get(parsed_url.drivername, {}).iteritems():
+    for key, value in _EXTRA_ARGS.get(parsed_url.drivername, {}).items():
         if key not in db_kwargs:
             db_kwargs[key] = value
 
@@ -1112,7 +1112,7 @@ class Image(BaseModel):
         """
         Returns an integer list of ancestor ids, ordered chronologically from root to direct parent.
         """
-        return map(int, self.ancestors.split("/")[1:-1])
+        return list(map(int, self.ancestors.split("/")[1:-1]))
 
 
 class DerivedStorageForImage(BaseModel):
@@ -1418,7 +1418,8 @@ class BlobUpload(BaseModel):
     repository = ForeignKeyField(Repository)
     uuid = CharField(index=True, unique=True)
     byte_count = BigIntegerField(default=0)
-    sha_state = ResumableSHA256Field(null=True, default=resumablehashlib.sha256)
+    # TODO(kleesc): Verify that this is backward compatible with resumablehashlib
+    sha_state = ResumableSHA256Field(null=True, default=rehash.sha256)
     location = ForeignKeyField(ImageStorageLocation)
     storage_metadata = JSONField(null=True, default={})
     chunk_count = IntegerField(default=0)

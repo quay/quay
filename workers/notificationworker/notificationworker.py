@@ -22,11 +22,11 @@ class NotificationWorker(QueueWorker):
             event_handler = NotificationEvent.get_event(event_name)
             method_handler = NotificationMethod.get_method(method_name)
         except InvalidNotificationMethodException as ex:
-            logger.exception("Cannot find notification method: %s", ex.message)
-            raise JobException("Cannot find notification method: %s" % ex.message)
+            logger.exception("Cannot find notification method: %s", str(ex))
+            raise JobException("Cannot find notification method: %s" % str(ex))
         except InvalidNotificationEventException as ex:
-            logger.exception("Cannot find notification event: %s", ex.message)
-            raise JobException("Cannot find notification event: %s" % ex.message)
+            logger.exception("Cannot find notification event: %s", str(ex))
+            raise JobException("Cannot find notification event: %s" % str(ex))
 
         if event_handler.should_perform(job_details["event_data"], notification):
             try:

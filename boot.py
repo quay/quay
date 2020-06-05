@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from datetime import datetime, timedelta
-from urlparse import urlunparse
+from urllib.parse import urlunparse
 
 from jinja2 import Template
 from cachetools.func import lru_cache
@@ -96,7 +96,7 @@ def setup_jwt_proxy():
 
         with open(app.config["INSTANCE_SERVICE_KEY_LOCATION"], mode="w") as f:
             f.truncate(0)
-            f.write(quay_key.exportKey())
+            f.write(quay_key.exportKey().decode("utf-8"))
 
     # Generate the JWT proxy configuration.
     audience = get_audience()

@@ -2,7 +2,6 @@ import datetime
 import logging
 
 from redis import RedisError
-from trollius import From, Return, coroutine
 
 from data.database import BUILD_PHASE
 from data import model
@@ -35,54 +34,47 @@ class StatusHandler(object):
         # Write the initial status.
         self.__exit__(None, None, None)
 
-    @coroutine
-    def _append_log_message(self, log_message, log_type=None, log_data=None):
+    async def _append_log_message(self, log_message, log_type=None, log_data=None):
         log_data = log_data or {}
         log_data["datetime"] = str(datetime.datetime.now())
 
         try:
-            yield From(
-                self._build_logs.append_log_message(self._uuid, log_message, log_type, log_data)
-            )
+            await (self._build_logs.append_log_message(self._uuid, log_message, log_type, log_data))
         except RedisError:
             logger.exception("Could not save build log for build %s: %s", self._uuid, log_message)
 
-    @coroutine
-    def append_log(self, log_message, extra_data=None):
+    async def append_log(self, log_message, extra_data=None):
         if log_message is None:
             return
 
-        yield From(self._append_log_message(log_message, log_data=extra_data))
+        await self._append_log_message(log_message, log_data=extra_data)
 
-    @coroutine
-    def set_command(self, command, extra_data=None):
+    async def set_command(self, command, extra_data=None):
         if self._current_command == command:
-            raise Return()
+            return
 
         self._current_command = command
-        yield From(self._append_log_message(command, self._build_logs.COMMAND, extra_data))
+        await self._append_log_message(command, self._build_logs.COMMAND, extra_data)
 
-    @coroutine
-    def set_error(self, error_message, extra_data=None, internal_error=False, requeued=False):
+    async def set_error(self, error_message, extra_data=None, internal_error=False, requeued=False):
         error_phase = (
             BUILD_PHASE.INTERNAL_ERROR if internal_error and requeued else BUILD_PHASE.ERROR
         )
-        yield From(self.set_phase(error_phase))
+        await self.set_phase(error_phase)
 
         extra_data = extra_data or {}
         extra_data["internal_error"] = internal_error
-        yield From(self._append_log_message(error_message, self._build_logs.ERROR, extra_data))
+        await self._append_log_message(error_message, self._build_logs.ERROR, extra_data)
 
-    @coroutine
-    def set_phase(self, phase, extra_data=None):
+    async def set_phase(self, phase, extra_data=None):
         if phase == self._current_phase:
-            raise Return(False)
+            return False
 
         self._current_phase = phase
-        yield From(self._append_log_message(phase, self._build_logs.PHASE, extra_data))
+        await self._append_log_message(phase, self._build_logs.PHASE, extra_data)
 
         # Update the repository build with the new phase
-        raise Return(self._build_model.update_phase_then_close(self._uuid, phase))
+        return self._build_model.update_phase_then_close(self._uuid, phase)
 
     def __enter__(self):
         return self._status

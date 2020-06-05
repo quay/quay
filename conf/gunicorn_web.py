@@ -1,3 +1,8 @@
+# NOTE: Must be before we import or call anything that may be synchronous.
+from gevent import monkey
+
+monkey.patch_all()
+
 import sys
 import os
 

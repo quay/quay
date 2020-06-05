@@ -69,9 +69,7 @@ def test_unicode_parse_as_unicode():
         """
     FROM someimage:latest
     MAINTAINER José Schorr <jschorr@whatever.com>
-  """.decode(
-            "utf-8"
-        )
+  """
     )
 
     assert parsed.get_image_and_tag() == ("someimage", "latest")

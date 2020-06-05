@@ -6,7 +6,7 @@ import re
 
 from contextlib import contextmanager
 
-from playhouse.test_utils import assert_query_count, _QueryLogHandler
+from playhouse.test_utils import _QueryLogHandler
 
 from data.database import LogEntryKind, LogEntry3
 

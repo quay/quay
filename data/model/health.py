@@ -13,11 +13,11 @@ def check_health(app_config):
     try:
         validate_database_url(app_config["DB_URI"], {}, connect_timeout=3)
     except Exception as ex:
-        return (False, "Could not connect to the database: %s" % ex.message)
+        return (False, "Could not connect to the database: %s" % str(ex))
 
     # We will connect to the db, check that it contains some team role kinds
     try:
         okay = bool(list(TeamRole.select().limit(1)))
         return (okay, "Could not connect to the database" if not okay else None)
     except Exception as ex:
-        return (False, "Could not connect to the database: %s" % ex.message)
+        return (False, "Could not connect to the database: %s" % str(ex))

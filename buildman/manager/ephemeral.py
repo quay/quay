@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 import calendar
@@ -9,7 +10,6 @@ from datetime import datetime, timedelta
 from six import iteritems
 
 from prometheus_client import Counter, Histogram
-from trollius import From, coroutine, Return, async, sleep
 
 from buildman.orchestrator import (
     orchestrator_from_config,
@@ -98,8 +98,7 @@ class EphemeralBuilderManager(BaseManager):
     def overall_setup_time(self):
         return EPHEMERAL_SETUP_TIMEOUT
 
-    @coroutine
-    def _mark_job_incomplete(self, build_job, build_info):
+    async def _mark_job_incomplete(self, build_job, build_info):
         """
         Marks a job as incomplete, in response to a failure to start or a timeout.
         """
@@ -113,11 +112,11 @@ class EphemeralBuilderManager(BaseManager):
         # Take a lock to ensure that only one manager reports the build as incomplete for this
         # execution.
         lock_key = slash_join(self._expired_lock_prefix, build_job.build_uuid, execution_id)
-        acquired_lock = yield From(self._orchestrator.lock(lock_key))
+        acquired_lock = await self._orchestrator.lock(lock_key)
         if acquired_lock:
             try:
                 # Clean up the bookkeeping for the job.
-                yield From(self._orchestrator.delete_key(self._job_key(build_job)))
+                await self._orchestrator.delete_key(self._job_key(build_job))
             except KeyError:
                 logger.debug(
                     "Could not delete job key %s; might have been removed already",
@@ -130,7 +129,7 @@ class EphemeralBuilderManager(BaseManager):
                 executor_name,
                 execution_id,
             )
-            yield From(
+            await (
                 self.job_complete_callback(
                     build_job, BuildJobResult.INCOMPLETE, executor_name, update_phase=True
                 )
@@ -138,8 +137,7 @@ class EphemeralBuilderManager(BaseManager):
         else:
             logger.debug("Did not get lock for job-expiration for job %s", build_job.build_uuid)
 
-    @coroutine
-    def _job_callback(self, key_change):
+    async def _job_callback(self, key_change):
         """
         This is the callback invoked when keys related to jobs are changed. It ignores all events
         related to the creation of new jobs. Deletes or expirations cause checks to ensure they've
@@ -149,7 +147,7 @@ class EphemeralBuilderManager(BaseManager):
         :type key_change: :class:`KeyChange`
         """
         if key_change.event in (KeyEvent.CREATE, KeyEvent.SET):
-            raise Return()
+            return
 
         elif key_change.event in (KeyEvent.DELETE, KeyEvent.EXPIRE):
             # Handle the expiration/deletion.
@@ -166,13 +164,13 @@ class EphemeralBuilderManager(BaseManager):
                     build_job.build_uuid,
                     job_metadata,
                 )
-                raise Return()
+                return
 
             if key_change.event != KeyEvent.EXPIRE:
                 # If the etcd action was not an expiration, then it was already deleted by some manager and
                 # the execution was therefore already shutdown. All that's left is to remove the build info.
                 self._build_uuid_to_info.pop(build_job.build_uuid, None)
-                raise Return()
+                return
 
             logger.debug(
                 "got expiration for job %s with metadata: %s", build_job.build_uuid, job_metadata
@@ -181,7 +179,7 @@ class EphemeralBuilderManager(BaseManager):
             if not job_metadata.get("had_heartbeat", False):
                 # If we have not yet received a heartbeat, then the node failed to boot in some way.
                 # We mark the job as incomplete here.
-                yield From(self._mark_job_incomplete(build_job, build_info))
+                await self._mark_job_incomplete(build_job, build_info)
 
             # Finally, we terminate the build execution for the job. We don't do this under a lock as
             # terminating a node is an atomic operation; better to make sure it is terminated than not.
@@ -190,14 +188,13 @@ class EphemeralBuilderManager(BaseManager):
                 build_job.build_uuid,
                 build_info.execution_id,
             )
-            yield From(self.kill_builder_executor(build_job.build_uuid))
+            await self.kill_builder_executor(build_job.build_uuid)
         else:
             logger.warning(
                 "Unexpected KeyEvent (%s) on job key: %s", key_change.event, key_change.key
             )
 
-    @coroutine
-    def _realm_callback(self, key_change):
+    async def _realm_callback(self, key_change):
         logger.debug("realm callback for key: %s", key_change.key)
         if key_change.event == KeyEvent.CREATE:
             # Listen on the realm created by ourselves or another worker.
@@ -231,7 +228,7 @@ class EphemeralBuilderManager(BaseManager):
                 # Cleanup the job, since it never started.
                 logger.debug("Job %s for incomplete marking: %s", build_uuid, build_info)
                 if build_info is not None:
-                    yield From(self._mark_job_incomplete(build_job, build_info))
+                    await self._mark_job_incomplete(build_job, build_info)
 
                 # Cleanup the executor.
                 logger.info(
@@ -241,7 +238,7 @@ class EphemeralBuilderManager(BaseManager):
                     executor_name,
                     execution_id,
                 )
-                yield From(self.terminate_executor(executor_name, execution_id))
+                await self.terminate_executor(executor_name, execution_id)
 
         else:
             logger.warning(
@@ -278,10 +275,9 @@ class EphemeralBuilderManager(BaseManager):
     def registered_executors(self):
         return self._ordered_executors
 
-    @coroutine
-    def _register_existing_realms(self):
+    async def _register_existing_realms(self):
         try:
-            all_realms = yield From(self._orchestrator.get_prefixed_keys(self._realm_prefix))
+            all_realms = await self._orchestrator.get_prefixed_keys(self._realm_prefix)
 
             # Register all existing realms found.
             encountered = {
@@ -400,22 +396,21 @@ class EphemeralBuilderManager(BaseManager):
         )
 
         # Load components for all realms currently known to the cluster
-        async(self._register_existing_realms())
+        asyncio.create_task(self._register_existing_realms())
 
     def shutdown(self):
         logger.debug("Shutting down worker.")
         if self._orchestrator is not None:
             self._orchestrator.shutdown()
 
-    @coroutine
-    def schedule(self, build_job):
+    async def schedule(self, build_job):
         build_uuid = build_job.job_details["build_uuid"]
         logger.debug("Calling schedule with job: %s", build_uuid)
 
         # Check if there are worker slots available by checking the number of jobs in the orchestrator
         allowed_worker_count = self._manager_config.get("ALLOWED_WORKER_COUNT", 1)
         try:
-            active_jobs = yield From(self._orchestrator.get_prefixed_keys(self._job_prefix))
+            active_jobs = await self._orchestrator.get_prefixed_keys(self._job_prefix)
             workers_alive = len(active_jobs)
         except KeyError:
             workers_alive = 0
@@ -423,12 +418,12 @@ class EphemeralBuilderManager(BaseManager):
             logger.exception(
                 "Could not read job count from orchestrator for job due to orchestrator being down"
             )
-            raise Return(False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION)
+            return False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
         except OrchestratorError:
             logger.exception(
                 "Exception when reading job count from orchestrator for job: %s", build_uuid
             )
-            raise Return(False, RETRY_IMMEDIATELY_SLEEP_DURATION)
+            return False, RETRY_IMMEDIATELY_SLEEP_DURATION
 
         logger.debug("Total jobs (scheduling job %s): %s", build_uuid, workers_alive)
 
@@ -439,7 +434,7 @@ class EphemeralBuilderManager(BaseManager):
                 workers_alive,
                 allowed_worker_count,
             )
-            raise Return(False, TOO_MANY_WORKERS_SLEEP_DURATION)
+            return False, TOO_MANY_WORKERS_SLEEP_DURATION
 
         job_key = self._job_key(build_job)
 
@@ -466,7 +461,7 @@ class EphemeralBuilderManager(BaseManager):
         )
 
         try:
-            yield From(
+            await (
                 self._orchestrator.set_key(
                     job_key, lock_payload, overwrite=False, expiration=EPHEMERAL_SETUP_TIMEOUT
                 )
@@ -475,15 +470,15 @@ class EphemeralBuilderManager(BaseManager):
             logger.warning(
                 "Job: %s already exists in orchestrator, timeout may be misconfigured", build_uuid
             )
-            raise Return(False, EPHEMERAL_API_TIMEOUT)
+            return False, EPHEMERAL_API_TIMEOUT
         except OrchestratorConnectionError:
             logger.exception(
                 "Exception when writing job %s to orchestrator; could not connect", build_uuid
             )
-            raise Return(False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION)
+            return False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
         except OrchestratorError:
             logger.exception("Exception when writing job %s to orchestrator", build_uuid)
-            raise Return(False, RETRY_IMMEDIATELY_SLEEP_DURATION)
+            return False, RETRY_IMMEDIATELY_SLEEP_DURATION
 
         # Got a lock, now lets boot the job via one of the registered executors.
         started_with_executor = None
@@ -519,7 +514,7 @@ class EphemeralBuilderManager(BaseManager):
             )
 
             try:
-                execution_id = yield From(executor.start_builder(realm, token, build_uuid))
+                execution_id = await executor.start_builder(realm, token, build_uuid)
             except:
                 logger.exception("Exception when starting builder for job: %s", build_uuid)
                 continue
@@ -534,8 +529,8 @@ class EphemeralBuilderManager(BaseManager):
             logger.error("Could not start ephemeral worker for build %s", build_uuid)
 
             # Delete the associated build job record.
-            yield From(self._orchestrator.delete_key(job_key))
-            raise Return(False, EPHEMERAL_API_TIMEOUT)
+            await self._orchestrator.delete_key(job_key)
+            return False, EPHEMERAL_API_TIMEOUT
 
         # Job was started!
         logger.debug(
@@ -551,7 +546,7 @@ class EphemeralBuilderManager(BaseManager):
         )
 
         try:
-            yield From(
+            await (
                 self._orchestrator.set_key(
                     self._metric_key(realm),
                     metric_spec,
@@ -591,7 +586,7 @@ class EphemeralBuilderManager(BaseManager):
                 execution_id,
                 setup_time,
             )
-            yield From(
+            await (
                 self._orchestrator.set_key(
                     self._realm_key(realm), realm_spec, expiration=setup_time
                 )
@@ -600,12 +595,12 @@ class EphemeralBuilderManager(BaseManager):
             logger.exception(
                 "Exception when writing realm %s to orchestrator for job %s", realm, build_uuid
             )
-            raise Return(False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION)
+            return False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
         except OrchestratorError:
             logger.exception(
                 "Exception when writing realm %s to orchestrator for job %s", realm, build_uuid
             )
-            raise Return(False, setup_time)
+            return False, setup_time
 
         logger.debug(
             "Builder spawn complete for job %s using executor %s with ID %s ",
@@ -613,10 +608,9 @@ class EphemeralBuilderManager(BaseManager):
             started_with_executor.name,
             execution_id,
         )
-        raise Return(True, None)
+        return True, None
 
-    @coroutine
-    def build_component_ready(self, build_component):
+    async def build_component_ready(self, build_component):
         logger.debug(
             "Got component ready for component with realm %s", build_component.builder_realm
         )
@@ -631,7 +625,7 @@ class EphemeralBuilderManager(BaseManager):
                 "Could not find job for the build component on realm %s; component is ready",
                 build_component.builder_realm,
             )
-            raise Return()
+            return
 
         # Start the build job.
         logger.debug(
@@ -639,15 +633,13 @@ class EphemeralBuilderManager(BaseManager):
             job.build_uuid,
             build_component.builder_realm,
         )
-        yield From(build_component.start_build(job))
+        await build_component.start_build(job)
 
-        yield From(self._write_duration_metric(build_ack_duration, build_component.builder_realm))
+        await self._write_duration_metric(build_ack_duration, build_component.builder_realm)
 
         # Clean up the bookkeeping for allowing any manager to take the job.
         try:
-            yield From(
-                self._orchestrator.delete_key(self._realm_key(build_component.builder_realm))
-            )
+            await (self._orchestrator.delete_key(self._realm_key(build_component.builder_realm)))
         except KeyError:
             logger.warning("Could not delete realm key %s", build_component.builder_realm)
 
@@ -655,13 +647,12 @@ class EphemeralBuilderManager(BaseManager):
         logger.debug("Calling build_component_disposed.")
         self.unregister_component(build_component)
 
-    @coroutine
-    def job_completed(self, build_job, job_status, build_component):
+    async def job_completed(self, build_job, job_status, build_component):
         logger.debug(
             "Calling job_completed for job %s with status: %s", build_job.build_uuid, job_status
         )
 
-        yield From(
+        await (
             self._write_duration_metric(
                 build_duration, build_component.builder_realm, job_status=job_status
             )
@@ -671,66 +662,61 @@ class EphemeralBuilderManager(BaseManager):
         # to ask for the phase to be updated as well.
         build_info = self._build_uuid_to_info.get(build_job.build_uuid, None)
         executor_name = build_info.executor_name if build_info else None
-        yield From(
-            self.job_complete_callback(build_job, job_status, executor_name, update_phase=False)
-        )
+        await (self.job_complete_callback(build_job, job_status, executor_name, update_phase=False))
 
         # Kill the ephemeral builder.
-        yield From(self.kill_builder_executor(build_job.build_uuid))
+        await self.kill_builder_executor(build_job.build_uuid)
 
         # Delete the build job from the orchestrator.
         try:
             job_key = self._job_key(build_job)
-            yield From(self._orchestrator.delete_key(job_key))
+            await self._orchestrator.delete_key(job_key)
         except KeyError:
             logger.debug("Builder is asking for job to be removed, but work already completed")
         except OrchestratorConnectionError:
             logger.exception("Could not remove job key as orchestrator is not available")
-            yield From(sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION))
-            raise Return()
+            await asyncio.sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION)
+            return
 
         # Delete the metric from the orchestrator.
         try:
             metric_key = self._metric_key(build_component.builder_realm)
-            yield From(self._orchestrator.delete_key(metric_key))
+            await self._orchestrator.delete_key(metric_key)
         except KeyError:
             logger.debug("Builder is asking for metric to be removed, but key not found")
         except OrchestratorConnectionError:
             logger.exception("Could not remove metric key as orchestrator is not available")
-            yield From(sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION))
-            raise Return()
+            await asyncio.sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION)
+            return
 
         logger.debug("job_completed for job %s with status: %s", build_job.build_uuid, job_status)
 
-    @coroutine
-    def kill_builder_executor(self, build_uuid):
+    async def kill_builder_executor(self, build_uuid):
         logger.info("Starting termination of executor for job %s", build_uuid)
         build_info = self._build_uuid_to_info.pop(build_uuid, None)
         if build_info is None:
             logger.debug(
                 "Build information not found for build %s; skipping termination", build_uuid
             )
-            raise Return()
+            return
 
         # Remove the build's component.
         self._component_to_job.pop(build_info.component, None)
 
         # Stop the build node/executor itself.
-        yield From(self.terminate_executor(build_info.executor_name, build_info.execution_id))
+        await self.terminate_executor(build_info.executor_name, build_info.execution_id)
 
-    @coroutine
-    def terminate_executor(self, executor_name, execution_id):
+    async def terminate_executor(self, executor_name, execution_id):
         executor = self._executor_name_to_executor.get(executor_name)
         if executor is None:
             logger.error("Could not find registered executor %s", executor_name)
-            raise Return()
+            return
 
         # Terminate the executor's execution.
         logger.info("Terminating executor %s with execution id %s", executor_name, execution_id)
-        yield From(executor.stop_builder(execution_id))
+        await executor.stop_builder(execution_id)
 
-    @coroutine
-    def job_heartbeat(self, build_job):
+    async def job_heartbeat(self, build_job):
         """
     :param build_job: the identifier for the build
     :type build_job: str
@@ -738,13 +724,12 @@ class EphemeralBuilderManager(BaseManager):
         self.job_heartbeat_callback(build_job)
         self._extend_job_in_orchestrator(build_job)
 
-    @coroutine
-    def _extend_job_in_orchestrator(self, build_job):
+    async def _extend_job_in_orchestrator(self, build_job):
         try:
-            job_data = yield From(self._orchestrator.get_key(self._job_key(build_job)))
+            job_data = await self._orchestrator.get_key(self._job_key(build_job))
         except KeyError:
             logger.info("Job %s no longer exists in the orchestrator", build_job.build_uuid)
-            raise Return()
+            return
         except OrchestratorConnectionError:
             logger.exception("failed to connect when attempted to extend job")
 
@@ -762,7 +747,7 @@ class EphemeralBuilderManager(BaseManager):
         }
 
         try:
-            yield From(
+            await (
                 self._orchestrator.set_key(
                     self._job_key(build_job), json.dumps(payload), expiration=ttl
                 )
@@ -771,15 +756,14 @@ class EphemeralBuilderManager(BaseManager):
             logger.exception(
                 "Could not update heartbeat for job as the orchestrator is not available"
             )
-            yield From(sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION))
+            await asyncio.sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION)
 
-    @coroutine
-    def _write_duration_metric(self, metric, realm, job_status=None):
+    async def _write_duration_metric(self, metric, realm, job_status=None):
         """ :returns: True if the metric was written, otherwise False
             :rtype: bool
         """
         try:
-            metric_data = yield From(self._orchestrator.get_key(self._metric_key(realm)))
+            metric_data = await self._orchestrator.get_key(self._metric_key(realm))
             parsed_metric_data = json.loads(metric_data)
             start_time = parsed_metric_data["start_time"]
             executor = parsed_metric_data.get("executor_name", "unknown")
@@ -799,25 +783,24 @@ class EphemeralBuilderManager(BaseManager):
         """
         return len(self._component_to_job)
 
-    @coroutine
-    def _cancel_callback(self, key_change):
+    async def _cancel_callback(self, key_change):
         if key_change.event not in (KeyEvent.CREATE, KeyEvent.SET):
-            raise Return()
+            return
 
         build_uuid = key_change.value
         build_info = self._build_uuid_to_info.get(build_uuid, None)
         if build_info is None:
             logger.debug('No build info for "%s" job %s', key_change.event, build_uuid)
-            raise Return(False)
+            return False
 
         lock_key = slash_join(self._canceled_lock_prefix, build_uuid, build_info.execution_id)
-        lock_acquired = yield From(self._orchestrator.lock(lock_key))
+        lock_acquired = await self._orchestrator.lock(lock_key)
         if lock_acquired:
             builder_realm = build_info.component.builder_realm
-            yield From(self.kill_builder_executor(build_uuid))
-            yield From(self._orchestrator.delete_key(self._realm_key(builder_realm)))
-            yield From(self._orchestrator.delete_key(self._metric_key(builder_realm)))
-            yield From(self._orchestrator.delete_key(slash_join(self._job_prefix, build_uuid)))
+            await self.kill_builder_executor(build_uuid)
+            await self._orchestrator.delete_key(self._realm_key(builder_realm))
+            await self._orchestrator.delete_key(self._metric_key(builder_realm))
+            await self._orchestrator.delete_key(slash_join(self._job_prefix, build_uuid))
 
         # This is outside the lock so we can un-register the component wherever it is registered to.
-        yield From(build_info.component.cancel_build())
+        await build_info.component.cancel_build()

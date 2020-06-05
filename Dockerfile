@@ -1,14 +1,14 @@
-FROM centos:7
+FROM centos:8
 LABEL maintainer "thomasmckay@redhat.com"
 
 ENV OS=linux \
     ARCH=amd64 \
-    PYTHON_VERSION=2.7 \
+    PYTHON_VERSION=3.6 \
     PATH=$HOME/.local/bin/:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8 \
-    LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
     PIP_NO_CACHE_DIR=off
 
 ENV QUAYDIR /quay-registry
@@ -19,54 +19,36 @@ RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
 RUN INSTALL_PKGS="\
-        python27 \
-        python27-python-pip \
-        rh-nginx112 rh-nginx112-nginx \
+        python3 \
+        nginx \
         openldap \
-        scl-utils \
         gcc-c++ git \
         openldap-devel \
-        gpgme-devel \
+        python3-devel \
+        python3-gpg \
         dnsmasq \
         memcached \
         openssl \
         skopeo \
         " && \
-    yum install -y yum-utils && \
-    yum install -y epel-release centos-release-scl && \
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
 
 COPY . .
 
-RUN scl enable python27 "\
-    pip install --upgrade setuptools==44 pip && \
-    pip install -r requirements.txt --no-cache && \
-    pip install -r requirements-dev.txt --no-cache && \
-    pip freeze && \
+RUN alternatives --set python /usr/bin/python3 && \
+    python -m pip install --upgrade setuptools pip && \
+    python -m pip install -r requirements.txt --no-cache && \
+    python -m pip freeze && \
     mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
     mkdir -p $QUAYDIR/static/ldn && \
-    PYTHONPATH=$QUAYPATH python -m external_libraries \
-    "
-
-RUN cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
+    PYTHONPATH=$QUAYPATH python -m external_libraries && \
+    cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
     cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
     cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
 
-# Check python dependencies for GPL
-# Due to the following bug, pip results must be piped to a file before grepping:
-# https://github.com/pypa/pip/pull/3304
-# 'docutils' is a setup dependency of botocore required by s3transfer. It's under
-# GPLv3, and so is manually removed.
-RUN rm -Rf /opt/rh/python27/root/usr/lib/python2.7/site-packages/docutils && \
-    scl enable python27 "pip freeze" | grep -v '^-e' | awk -F == '{print $1}' | grep -v docutils > piplist.txt && \
-    scl enable python27 "xargs -a piplist.txt pip --disable-pip-version-check show" > pipinfo.txt && \
-    test -z "$(cat pipinfo.txt | grep GPL | grep -v LGPL)" && \
-    rm -f piplist.txt pipinfo.txt
-
-# # Front-end
 RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
     yum install -y nodejs && \
     curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
@@ -76,14 +58,11 @@ RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
     yarn build && \
     yarn build-config-app
 
-# TODO: Build jwtproxy in dist-git
-#       https://jira.coreos.com/browse/QUAY-1315
+
 ENV JWTPROXY_VERSION=0.0.3
 RUN curl -fsSL -o /usr/local/bin/jwtproxy "https://github.com/coreos/jwtproxy/releases/download/v${JWTPROXY_VERSION}/jwtproxy-${OS}-${ARCH}" && \
     chmod +x /usr/local/bin/jwtproxy
 
-# TODO: Build pushgateway in dist-git
-#       https://jira.coreos.com/browse/QUAY-1324
 ENV PUSHGATEWAY_VERSION=1.0.0
 RUN curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" | \
     tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" && \
@@ -95,16 +74,16 @@ RUN curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${P
 RUN curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json
 
 RUN ln -s $QUAYCONF /conf && \
-    mkdir /var/log/nginx && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stdout /var/log/nginx/error.log && \
     chmod -R a+rwx /var/log/nginx
 
 # Cleanup
 RUN UNINSTALL_PKGS="\
-        gcc-c++ \
+        gcc-c++ git \
         openldap-devel \
         gpgme-devel \
+        python3-devel \
         optipng \
         kernel-headers \
         " && \
@@ -118,23 +97,11 @@ RUN chgrp -R 0 $QUAYDIR && \
     chmod -R g=u $QUAYDIR
 
 RUN mkdir /datastorage && chgrp 0 /datastorage && chmod g=u /datastorage && \
-    mkdir -p /var/log/nginx && chgrp 0 /var/log/nginx && chmod g=u /var/log/nginx && \
+    chgrp 0 /var/log/nginx && chmod g=u /var/log/nginx && \
     mkdir -p /conf/stack && chgrp 0 /conf/stack && chmod g=u /conf/stack && \
     mkdir -p /tmp && chgrp 0 /tmp && chmod g=u /tmp && \
     mkdir /certificates && chgrp 0 /certificates && chmod g=u /certificates && \
     chmod g=u /etc/passwd
-
-RUN chgrp 0 /var/opt/rh/rh-nginx112/log/nginx && chmod g=u /var/opt/rh/rh-nginx112/log/nginx
-
-# Allow TLS certs to be created and installed as non-root user
-RUN chgrp -R 0 /etc/pki/ca-trust/extracted && \
-    chmod -R g=u /etc/pki/ca-trust/extracted && \
-    chgrp -R 0 /etc/pki/ca-trust/source/anchors && \
-    chmod -R g=u /etc/pki/ca-trust/source/anchors && \
-    chgrp -R 0 /opt/rh/python27/root/usr/lib/python2.7/site-packages/requests && \
-    chmod -R g=u /opt/rh/python27/root/usr/lib/python2.7/site-packages/requests && \
-    chgrp -R 0 /opt/rh/python27/root/usr/lib/python2.7/site-packages/certifi && \
-    chmod -R g=u /opt/rh/python27/root/usr/lib/python2.7/site-packages/certifi
 
 VOLUME ["/var/log", "/datastorage", "/tmp", "/conf/stack"]
 

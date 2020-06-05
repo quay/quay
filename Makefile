@@ -173,4 +173,5 @@ yapf-test:
 
 
 black:
-	black --line-length 100 --target-version py27 .
+	black --line-length 100 --target-version py36 --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|buildman)/" . # TODO(kleesc): Re-enable after buildman rewrite
+

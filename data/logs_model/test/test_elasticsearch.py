@@ -14,7 +14,7 @@ from httmock import urlmatch, HTTMock
 from data.model.log import _json_serialize
 from data.logs_model.elastic_logs import ElasticsearchLogs, INDEX_NAME_PREFIX, INDEX_DATE_FORMAT
 from data.logs_model import configure, LogsModelProxy
-from mock_elasticsearch import *
+from .mock_elasticsearch import *
 
 FAKE_ES_HOST = "fakees"
 FAKE_ES_HOST_PATTERN = r"fakees.*"
@@ -195,7 +195,7 @@ def mock_elasticsearch():
             window_size = query["scroll"]
             maximum_result_size = int(query["size"])
             return mock.search_scroll_create(window_size, maximum_result_size, json.loads(req.body))
-        elif "aggs" in req.body:
+        elif b"aggs" in req.body:
             return mock.search_aggs(json.loads(req.body))
         else:
             return mock.search_after(json.loads(req.body))

@@ -20,7 +20,7 @@ class TimeMachineValidator(BaseValidator):
         try:
             convert_to_timedelta(config["DEFAULT_TAG_EXPIRATION"]).total_seconds()
         except ValueError as ve:
-            raise ConfigValidationException("Invalid default expiration: %s" % ve.message)
+            raise ConfigValidationException("Invalid default expiration: %s" % str(ve))
 
         if not config["DEFAULT_TAG_EXPIRATION"] in config.get("TAG_EXPIRATION_OPTIONS", []):
             raise ConfigValidationException("Default expiration must be in expiration options set")

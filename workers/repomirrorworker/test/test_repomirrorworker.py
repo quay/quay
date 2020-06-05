@@ -43,18 +43,18 @@ def _create_tag(repo, name):
         app_config = {"TESTING": True}
         config_json = json.dumps(
             {
-                "config": {"author": u"Repo Mirror",},
+                "config": {"author": "Repo Mirror",},
                 "rootfs": {"type": "layers", "diff_ids": []},
                 "history": [
                     {
                         "created": "2019-07-30T18:37:09.284840891Z",
                         "created_by": "base",
-                        "author": u"Repo Mirror",
+                        "author": "Repo Mirror",
                     },
                 ],
             }
         )
-        upload.upload_chunk(app_config, BytesIO(config_json))
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
     builder = DockerSchema2ManifestBuilder()
     builder.set_config_digest(blob.digest, blob.compressed_size)
@@ -83,7 +83,7 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=False",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
         },
@@ -96,8 +96,8 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
                 "--dest-creds",
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
-                u"docker://registry.example.com/namespace/repository:latest",
-                u"docker://localhost:5000/mirror/repo:latest",
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "stdout", "stderr"),
         },
@@ -140,7 +140,7 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
         },
@@ -153,8 +153,8 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
                 "--dest-creds",
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
-                u"docker://registry.example.com/namespace/repository:latest",
-                u"docker://localhost:5000/mirror/repo:latest",
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "stdout", "stderr"),
         },
@@ -195,7 +195,7 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
                 "--debug",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
         },
@@ -209,8 +209,8 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
                 "--dest-creds",
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
-                u"docker://registry.example.com/namespace/repository:latest",
-                u"docker://localhost:5000/mirror/repo:latest",
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "Success", ""),
         },
@@ -257,7 +257,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:updated",
+                "docker://registry.example.com/namespace/repository:updated",
             ],
             "results": SkopeoResults(
                 True, [], '{"RepoTags": ["latest", "updated", "created", "zzerror"]}', ""
@@ -272,8 +272,8 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "--dest-creds",
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
-                u"docker://registry.example.com/namespace/repository:created",
-                u"docker://localhost:5000/mirror/repo:created",
+                "docker://registry.example.com/namespace/repository:created",
+                "docker://localhost:5000/mirror/repo:created",
             ],
             "results": SkopeoResults(True, [], "Success", ""),
         },
@@ -286,8 +286,8 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "--dest-creds",
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
-                u"docker://registry.example.com/namespace/repository:updated",
-                u"docker://localhost:5000/mirror/repo:updated",
+                "docker://registry.example.com/namespace/repository:updated",
+                "docker://localhost:5000/mirror/repo:updated",
             ],
             "results": SkopeoResults(True, [], "Success", ""),
         },
@@ -300,8 +300,8 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "--dest-creds",
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
-                u"docker://registry.example.com/namespace/repository:zzerror",
-                u"docker://localhost:5000/mirror/repo:zzerror",
+                "docker://registry.example.com/namespace/repository:zzerror",
+                "docker://localhost:5000/mirror/repo:zzerror",
             ],
             "results": SkopeoResults(False, [], "", "ERROR"),
         },
@@ -347,7 +347,7 @@ def test_remove_obsolete_tags(initialized_db):
     incoming_tags = ["one", "two"]
     deleted_tags = delete_obsolete_tags(mirror, incoming_tags)
 
-    assert [tag.name for tag in deleted_tags] == [tag.name]
+    assert [tag.name for tag in deleted_tags] == ["oldtag"]
 
 
 @disable_existing_mirrors
@@ -366,7 +366,7 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
                 "--debug",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
         },
@@ -380,8 +380,8 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
                 "--dest-creds",
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
-                u"docker://registry.example.com/namespace/repository:latest",
-                u"docker://config_server_hostname/mirror/repo:latest",
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://config_server_hostname/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "Success", ""),
         },
@@ -429,8 +429,8 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
                 "inspect",
                 "--tls-verify=True",
                 "--creds",
-                u"`rm -rf /`",
-                u"'docker://& rm -rf /;/namespace/repository:latest'",
+                "`rm -rf /`",
+                "'docker://& rm -rf /;/namespace/repository:latest'",
             ],
             "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
         },
@@ -444,9 +444,9 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
                 "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 "--src-creds",
-                u"`rm -rf /`",
-                u"'docker://& rm -rf /;/namespace/repository:latest'",
-                u"docker://localhost:5000/mirror/repo:latest",
+                "`rm -rf /`",
+                "'docker://& rm -rf /;/namespace/repository:latest'",
+                "docker://localhost:5000/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "stdout", "stderr"),
         },
@@ -491,8 +491,8 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
                 "inspect",
                 "--tls-verify=True",
                 "--creds",
-                u'`rm -rf /`:""$PATH\\"',
-                u"'docker://& rm -rf /;/namespace/repository:latest'",
+                '`rm -rf /`:""$PATH\\"',
+                "'docker://& rm -rf /;/namespace/repository:latest'",
             ],
             "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
         },
@@ -503,12 +503,12 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
-                u"%s:%s"
+                "%s:%s"
                 % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
                 "--src-creds",
-                u'`rm -rf /`:""$PATH\\"',
-                u"'docker://& rm -rf /;/namespace/repository:latest'",
-                u"docker://localhost:5000/mirror/repo:latest",
+                '`rm -rf /`:""$PATH\\"',
+                "'docker://& rm -rf /;/namespace/repository:latest'",
+                "docker://localhost:5000/mirror/repo:latest",
             ],
             "results": SkopeoResults(True, [], "stdout", "stderr"),
         },
@@ -566,7 +566,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository:7.1",
             ],
             "results": SkopeoResults(
                 False,
@@ -580,7 +580,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(
                 False,
@@ -602,7 +602,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository:7.1",
             ],
             "results": SkopeoResults(
                 False,
@@ -616,7 +616,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(
                 False,
@@ -638,7 +638,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository:7.1",
             ],
             "results": SkopeoResults(
                 False,
@@ -652,7 +652,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(
                 False,
@@ -674,7 +674,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository:7.1",
             ],
             "results": SkopeoResults(
                 False,
@@ -688,7 +688,7 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
                 "/usr/bin/skopeo",
                 "inspect",
                 "--tls-verify=True",
-                u"docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository:latest",
             ],
             "results": SkopeoResults(
                 False,

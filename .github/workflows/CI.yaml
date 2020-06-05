@@ -16,10 +16,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.7
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
@@ -31,7 +31,8 @@ jobs:
 
     - name: Check Formatting
       run: |
-        black --line-length=100 --target-version=py27 --check --diff .
+        # TODO(kleesc): Re-enable after buildman rewrite
+        black --line-length=100 --target-version=py38 --check --diff --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|buildman)/" .
 
   unit:
     name: Unit Test
@@ -39,20 +40,20 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-unit
+      run: tox -e py38-unit
 
   registry:
     name: E2E Registry Tests
@@ -60,20 +61,20 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-registry
+      run: tox -e py38-registry
 
   docker:
     name: Docker Build
@@ -89,15 +90,15 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig docker.io
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
@@ -105,7 +106,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-mysql
+      run: tox -e py38-mysql
 
   psql:
     name: E2E Postgres Test
@@ -113,15 +114,15 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig docker.io
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
@@ -129,7 +130,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-psql
+      run: tox -e py38-psql
 
   oci:
     name: OCI Conformance
@@ -142,10 +143,10 @@ jobs:
         repository: opencontainers/distribution-spec
         path: dist-spec
 
-    - name: Set up Python 2.7
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.8
 
     - name: Set up Go 1.14
       uses: actions/setup-go@v1
@@ -162,7 +163,7 @@ jobs:
       run: |
         # Quay
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
         pip install -r <(cat requirements.txt requirements-dev.txt)
 
@@ -172,4 +173,4 @@ jobs:
         CGO_ENABLED=0 go test -c -o conformance.test
 
     - name: conformance
-      run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv 
+      run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv --ignore=buildman # TODO(kleesc): Remove --ignore=buildman after rewrite

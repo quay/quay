@@ -29,7 +29,7 @@ class SSLValidator(BaseValidator):
                 raise ConfigValidationException("Missing required SSL file: %s" % filename)
 
         # Read the contents of the SSL certificate.
-        with config_provider.get_volume_file(SSL_FILENAMES[0]) as f:
+        with config_provider.get_volume_file(SSL_FILENAMES[0], mode="rb") as f:
             cert_contents = f.read()
 
         # Validate the certificate.

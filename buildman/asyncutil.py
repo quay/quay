@@ -1,12 +1,12 @@
+import asyncio
+
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-
-from trollius import get_event_loop, coroutine
 
 
 def wrap_with_threadpool(obj, worker_threads=1):
     """
-    Wraps a class in an async executor so that it can be safely used in an event loop like trollius.
+    Wraps a class in an async executor so that it can be safely used in an event loop like asyncio.
     """
     async_executor = ThreadPoolExecutor(worker_threads)
     return AsyncWrapper(obj, executor=async_executor), async_executor
@@ -14,12 +14,12 @@ def wrap_with_threadpool(obj, worker_threads=1):
 
 class AsyncWrapper(object):
     """
-    Wrapper class which will transform a syncronous library to one that can be used with trollius
+    Wrapper class which will transform a syncronous library to one that can be used with asyncio
     coroutines.
     """
 
     def __init__(self, delegate, loop=None, executor=None):
-        self._loop = loop if loop is not None else get_event_loop()
+        self._loop = loop if loop is not None else asyncio.get_event_loop()
         self._delegate = delegate
         self._executor = executor
 
@@ -39,7 +39,6 @@ class AsyncWrapper(object):
 
         return wrapper
 
-    @coroutine
-    def __call__(self, *args, **kwargs):
+    async def __call__(self, *args, **kwargs):
         callable_delegate_attr = partial(self._delegate, *args, **kwargs)
         return self._loop.run_in_executor(self._executor, callable_delegate_attr)

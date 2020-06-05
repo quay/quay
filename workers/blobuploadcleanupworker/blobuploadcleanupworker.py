@@ -60,7 +60,7 @@ class BlobUploadCleanupWorker(Worker):
                 logger.debug(
                     "Got error when trying to cancel chunked upload %s: %s",
                     stale_upload.uuid,
-                    ex.message,
+                    str(ex),
                 )
 
             # Delete the stale upload's row.

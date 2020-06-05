@@ -17,9 +17,10 @@ from test.fixtures import *
 
 
 def _token(username, password):
-    assert isinstance(username, basestring)
-    assert isinstance(password, basestring)
-    return "basic " + b64encode("%s:%s" % (username, password))
+    assert isinstance(username, str)
+    assert isinstance(password, str)
+    token_bytes = b"%s:%s" % (username.encode("utf-8"), password.encode("utf-8"))
+    return "basic " + b64encode(token_bytes).decode("ascii")
 
 
 @pytest.mark.parametrize(
@@ -61,6 +62,10 @@ def _token(username, password):
                 AuthKind.basic,
                 error_message="This user has been disabled. Please contact your administrator.",
             ),
+        ),
+        (
+            _token("usér", "passwôrd"),
+            ValidateResult(AuthKind.basic, error_message="Invalid Username or Password"),
         ),
     ],
 )
@@ -110,15 +115,15 @@ def test_valid_app_specific_token(app):
 
 
 def test_invalid_unicode(app):
-    token = "\xebOH"
-    header = "basic " + b64encode(token)
+    token = b"\xebOH"
+    header = "basic " + b64encode(token).decode("ascii")
     result = validate_basic_auth(header)
     assert result == ValidateResult(AuthKind.basic, missing=True)
 
 
 def test_invalid_unicode_2(app):
-    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”"
-    header = "basic " + b64encode("devtable+somerobot:%s" % token)
+    token = "“4JPCOLIVMAY32Q3XGVPHC4CBF8SKII5FWNYMASOFDIVSXTC5I5NBU”".encode("utf-8")
+    header = "basic " + b64encode(b"devtable+somerobot:%s" % token).decode("ascii")
     result = validate_basic_auth(header)
     assert result == ValidateResult(
         AuthKind.basic,
@@ -128,7 +133,9 @@ def test_invalid_unicode_2(app):
 
 def test_invalid_unicode_3(app):
     token = "sometoken"
-    header = "basic " + b64encode("“devtable+somerobot”:%s" % token)
+    auth = "“devtable+somerobot”:" + token
+    auth = auth.encode("utf-8")
+    header = "basic " + b64encode(auth).decode("ascii")
     result = validate_basic_auth(header)
     assert result == ValidateResult(
         AuthKind.basic, error_message="Could not find robot with specified username",

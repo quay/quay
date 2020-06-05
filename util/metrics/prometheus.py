@@ -4,7 +4,7 @@ import socket
 import sys
 import threading
 import time
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 from cachetools.func import lru_cache
 
@@ -92,7 +92,7 @@ class ThreadPusher(threading.Thread):
                     agg_url,
                     process_grouping_key(),
                 )
-            except urllib2.URLError:
+            except urllib.error.URLError:
                 # There are many scenarios when the gateway might not be running.
                 # These could be testing scenarios or simply processes racing to start.
                 # Rather than try to guess all of them, keep it simple and let it fail.

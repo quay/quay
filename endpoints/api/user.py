@@ -186,7 +186,7 @@ def user_view(user, previous_username=None):
         user_response.update(
             {
                 "organizations": [
-                    org_view(o, user_admin=user_admin.can()) for o in organizations.values()
+                    org_view(o, user_admin=user_admin.can()) for o in list(organizations.values())
                 ],
             }
         )
@@ -420,7 +420,7 @@ class User(ApiResource):
                 elif confirm_username:
                     model.user.remove_user_prompt(user, "confirm_username")
 
-        except model.user.InvalidPasswordException, ex:
+        except model.user.InvalidPasswordException as ex:
             raise request_error(exception=ex)
 
         return user_view(user, previous_username=previous_username), 200, headers
@@ -575,7 +575,7 @@ class ClientKey(ApiResource):
         if not result:
             raise request_error(message=error_message)
 
-        return {"key": authentication.encrypt_user_password(password)}
+        return {"key": authentication.encrypt_user_password(password).decode("ascii")}
 
 
 def conduct_signin(username_or_email, password, invite_code=None):
@@ -824,7 +824,7 @@ class ExternalLoginInformation(ApiResource):
             return {"auth_url": auth_url}
         except DiscoveryFailureException as dfe:
             logger.exception("Could not discovery OAuth endpoint information")
-            raise DownstreamIssue(dfe.message)
+            raise DownstreamIssue(str(dfe))
 
 
 @resource("/v1/detachexternal/<service_id>")
@@ -883,7 +883,7 @@ class Recovery(ApiResource):
                 if i < threshold or i >= len(value) - threshold:
                     v = v + value[i]
                 else:
-                    v = v + u"\u2022"
+                    v = v + "\u2022"
 
             return v
 

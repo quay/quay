@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 TEST_DATETIME = datetime.utcnow()
 
 TEST_JSON_STRING = '{"a": "b", "c": "d"}'
-TEST_JSON_STRING_WITH_UNICODE = u'{"éëê": "îôû"}'
+TEST_JSON_STRING_WITH_UNICODE = '{"éëê": "îôû"}'
 
 VALID_LOGENTRY = LogEntry(
     random_id="123-45", ip="0.0.0.0", metadata_json=TEST_JSON_STRING, datetime=TEST_DATETIME
@@ -30,11 +30,11 @@ VALID_LOGENTRY_WITH_UNICODE = LogEntry(
 VALID_LOGENTRY_EXPECTED_OUTPUT = (
     '{"datetime": "%s", "ip": "0.0.0.0", "metadata_json": "{\\"a\\": \\"b\\", \\"c\\": \\"d\\"}", "random_id": "123-45"}'
     % TEST_DATETIME.isoformat()
-)
+).encode("ascii")
 VALID_LOGENTRY_WITH_UNICODE_EXPECTED_OUTPUT = (
     '{"datetime": "%s", "ip": "0.0.0.0", "metadata_json": "{\\"\\u00e9\\u00eb\\u00ea\\": \\"\\u00ee\\u00f4\\u00fb\\"}", "random_id": "123-45"}'
     % TEST_DATETIME.isoformat()
-)
+).encode("ascii")
 
 
 @pytest.mark.parametrize(

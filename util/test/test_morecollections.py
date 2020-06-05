@@ -6,36 +6,36 @@ def test_fastindexlist_basic_usage():
 
     # Add 1
     indexlist.add(1)
-    assert indexlist.values() == [1]
+    assert list(indexlist.values()) == [1]
     assert indexlist.index(1) == 0
 
     # Add 2
     indexlist.add(2)
-    assert indexlist.values() == [1, 2]
+    assert list(indexlist.values()) == [1, 2]
     assert indexlist.index(1) == 0
     assert indexlist.index(2) == 1
 
     # Pop nothing.
     indexlist.pop_until(-1)
-    assert indexlist.values() == [1, 2]
+    assert list(indexlist.values()) == [1, 2]
     assert indexlist.index(1) == 0
     assert indexlist.index(2) == 1
 
     # Pop 1.
     assert indexlist.pop_until(0) == [1]
-    assert indexlist.values() == [2]
+    assert list(indexlist.values()) == [2]
     assert indexlist.index(1) is None
     assert indexlist.index(2) == 0
 
     # Add 3.
     indexlist.add(3)
-    assert indexlist.values() == [2, 3]
+    assert list(indexlist.values()) == [2, 3]
     assert indexlist.index(2) == 0
     assert indexlist.index(3) == 1
 
     # Pop 2, 3.
     assert indexlist.pop_until(1) == [2, 3]
-    assert indexlist.values() == []
+    assert list(indexlist.values()) == []
     assert indexlist.index(1) is None
     assert indexlist.index(2) is None
     assert indexlist.index(3) is None

@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from collections import namedtuple
 
 import bitmath
-import resumablehashlib
+import rehash
 
 from prometheus_client import Counter, Histogram
 

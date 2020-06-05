@@ -1,11 +1,10 @@
-import gpgme
-import os
+import gpg
 import features
 import logging
+from io import BytesIO
+
 
 logger = logging.getLogger(__name__)
-
-from StringIO import StringIO
 
 
 class GPG2Signer(object):
@@ -23,7 +22,7 @@ class GPG2Signer(object):
         if not config.get("GPG2_PUBLIC_KEY_FILENAME"):
             raise Exception("Missing configuration key GPG2_PUBLIC_KEY_FILENAME")
 
-        self._ctx = gpgme.Context()
+        self._ctx = gpg.Context()
         self._ctx.armor = True
         self._private_key_name = config["GPG2_PRIVATE_KEY_NAME"]
         self._public_key_filename = config["GPG2_PUBLIC_KEY_FILENAME"]
@@ -33,7 +32,7 @@ class GPG2Signer(object):
             raise Exception("Missing key file %s" % config["GPG2_PRIVATE_KEY_FILENAME"])
 
         with config_provider.get_volume_file(config["GPG2_PRIVATE_KEY_FILENAME"], mode="rb") as fp:
-            self._ctx.import_(fp)
+            self._ctx.op_import(fp)
 
     @property
     def name(self):
@@ -44,18 +43,20 @@ class GPG2Signer(object):
 
     def detached_sign(self, stream):
         """
-        Signs the given stream, returning the signature.
+        Signs the given byte-like stream, returning the signature.
         """
         ctx = self._ctx
         try:
-            ctx.signers = [ctx.get_key(self._private_key_name)]
+            ctx.signers = [ctx.get_key(self._private_key_name, 0)]
         except:
             raise Exception("Invalid private key name")
 
-        signature = StringIO()
-        new_sigs = ctx.sign(stream, signature, gpgme.SIG_MODE_DETACH)
-        signature.seek(0)
-        return signature.getvalue()
+        data = stream.read()
+        if not isinstance(data, bytes):
+            raise TypeError("Stream is not byte-like")
+
+        sign_res = ctx.sign(data, mode=gpg.constants.sig.mode.DETACH)
+        return sign_res[0]
 
 
 class Signer(object):

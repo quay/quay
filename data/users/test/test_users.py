@@ -3,7 +3,7 @@ import pytest
 from contextlib import contextmanager
 from mock import patch
 
-from data.database import model
+from data import model
 from data.users.federated import DISABLED_MESSAGE
 from test.test_ldap import mock_ldap
 from test.test_keystone_auth import fake_keystone

@@ -19,22 +19,22 @@ class FakeQueue(object):
 
 def test_basic():
     queue = FakeQueue()
-    queue.put(QueueResult("hello world", None))
-    queue.put(QueueResult("! how goes there?", None))
+    queue.put(QueueResult(b"hello world", None))
+    queue.put(QueueResult(b"! how goes there?", None))
     queue.put(QueueResult(None, None))
 
     queuefile = QueueFile(queue)
-    assert queuefile.read() == "hello world! how goes there?"
+    assert queuefile.read() == b"hello world! how goes there?"
 
 
 def test_chunk_reading():
     queue = FakeQueue()
-    queue.put(QueueResult("hello world", None))
-    queue.put(QueueResult("! how goes there?", None))
+    queue.put(QueueResult(b"hello world", None))
+    queue.put(QueueResult(b"! how goes there?", None))
     queue.put(QueueResult(None, None))
 
     queuefile = QueueFile(queue)
-    data = ""
+    data = b""
 
     while True:
         result = queuefile.read(size=2)
@@ -43,14 +43,14 @@ def test_chunk_reading():
 
         data += result
 
-    assert data == "hello world! how goes there?"
+    assert data == b"hello world! how goes there?"
 
 
 def test_unhandled_exception():
     queue = FakeQueue()
-    queue.put(QueueResult("hello world", None))
+    queue.put(QueueResult(b"hello world", None))
     queue.put(QueueResult(None, IOError("some exception")))
-    queue.put(QueueResult("! how goes there?", None))
+    queue.put(QueueResult(b"! how goes there?", None))
     queue.put(QueueResult(None, None))
 
     queuefile = QueueFile(queue)
@@ -61,9 +61,9 @@ def test_unhandled_exception():
 
 def test_handled_exception():
     queue = FakeQueue()
-    queue.put(QueueResult("hello world", None))
+    queue.put(QueueResult(b"hello world", None))
     queue.put(QueueResult(None, IOError("some exception")))
-    queue.put(QueueResult("! how goes there?", None))
+    queue.put(QueueResult(b"! how goes there?", None))
     queue.put(QueueResult(None, None))
 
     ex_found = [None]
@@ -87,7 +87,7 @@ def test_binary_data():
     queue.put(QueueResult(None, None))
 
     queuefile = QueueFile(queue)
-    found_data = ""
+    found_data = b""
     while True:
         current_data = queuefile.read(size=37)
         if len(current_data) == 0:
@@ -102,12 +102,12 @@ def test_empty_data():
     queue = FakeQueue()
 
     # Generate some empty binary data.
-    binary_data = "\0" * 1024
+    binary_data = b"\0" * 1024
     queue.put(QueueResult(binary_data, None))
     queue.put(QueueResult(None, None))
 
     queuefile = QueueFile(queue)
-    found_data = ""
+    found_data = b""
     while True:
         current_data = queuefile.read(size=37)
         if len(current_data) == 0:

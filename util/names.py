@@ -1,7 +1,7 @@
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import re
 
-import anunidecode  # Don't listen to pylint's lies. This import is required for unidecode below.
+from text_unidecode import unidecode
 
 from uuid import uuid4
 
@@ -10,7 +10,7 @@ REPOSITORY_NAME_REGEX = re.compile(r"^[a-z0-9][\.a-z0-9_-]{0,254}$")
 VALID_TAG_PATTERN = r"[\w][\w.-]{0,127}"
 FULL_TAG_PATTERN = r"^[\w][\w.-]{0,127}$"
 
-TAG_REGEX = re.compile(FULL_TAG_PATTERN)
+TAG_REGEX = re.compile(FULL_TAG_PATTERN, re.ASCII)
 TAG_ERROR = (
     'Invalid tag: must match [A-Za-z0-9_.-], NOT start with "." or "-", '
     "and can contain 1-128 characters"
@@ -40,7 +40,7 @@ def escape_tag(tag, default="latest"):
 def parse_namespace_repository(
     repository, library_namespace, include_tag=False, allow_library=True
 ):
-    repository = repository.encode("unidecode", "ignore")
+    repository = unidecode(repository)
 
     parts = repository.rstrip("/").split("/", 1)
     if len(parts) < 2:
@@ -58,7 +58,7 @@ def parse_namespace_repository(
         else:
             (repository, tag) = parts
 
-    repository = urllib.quote_plus(repository)
+    repository = urllib.parse.quote_plus(repository)
     if include_tag:
         return (namespace, repository, tag)
     return (namespace, repository)

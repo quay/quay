@@ -248,7 +248,7 @@ class OCIManifest(ManifestInterface):
         not support layers.
         """
         if not self.is_image_manifest:
-            raise StopIteration()
+            return
 
         for image_layer in self._manifest_image_layers(content_retriever):
             is_remote = image_layer.blob_layer.is_remote if image_layer.blob_layer else False
@@ -288,8 +288,8 @@ class OCIManifest(ManifestInterface):
         # "images" based on the layer data, with empty config (with exception of the final layer).
         if not history:
             for index, filesystem_layer in enumerate(self.filesystem_layers):
-                digest_history.update(str(filesystem_layer.digest))
-                digest_history.update("||")
+                digest_history.update(str(filesystem_layer.digest).encode("ascii"))
+                digest_history.update(b"||")
 
                 v1_layer_parent_id = v1_layer_id
                 v1_layer_id = digest_history.hexdigest()
@@ -304,7 +304,7 @@ class OCIManifest(ManifestInterface):
                     v1_parent_id=v1_layer_parent_id,
                     compressed_size=filesystem_layer.compressed_size,
                 )
-            raise StopIteration()
+            return
 
         # Make sure we aren't missing any history entries if it was specified.
         if len(history) < len(self.filesystem_layers):
@@ -325,12 +325,12 @@ class OCIManifest(ManifestInterface):
 
             # Create a new synthesized V1 ID for the history layer by hashing its content and
             # the blob associated with it.
-            digest_history.update(json.dumps(history_entry.raw_entry))
-            digest_history.update("|")
-            digest_history.update(str(history_index))
-            digest_history.update("|")
-            digest_history.update(blob_digest)
-            digest_history.update("||")
+            digest_history.update(json.dumps(history_entry.raw_entry).encode("utf-8"))
+            digest_history.update(b"|")
+            digest_history.update(b"%d" % history_index)
+            digest_history.update(b"|")
+            digest_history.update(blob_digest.encode("ascii"))
+            digest_history.update(b"||")
 
             v1_layer_id = digest_history.hexdigest()
             yield OCIManifestImageLayer(

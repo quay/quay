@@ -70,7 +70,7 @@ def _join_package_name(ns, name):
 
 def _timestamp_to_iso(timestamp, in_ms=True):
     if in_ms:
-        timestamp = timestamp / 1000
+        timestamp = timestamp // 1000
     return datetime.fromtimestamp(timestamp).isoformat()
 
 
@@ -116,7 +116,7 @@ class CNRAppModel(AppRegistryDataInterface):
             repo,
             analytics_name=analytics_name,
             analytics_sample=analytics_sample,
-            **metadata
+            **metadata,
         )
 
     def list_applications(

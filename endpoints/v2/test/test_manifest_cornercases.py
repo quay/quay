@@ -59,7 +59,7 @@ def test_missing_link(initialized_db):
         location = database.ImageStorageLocation.get(name=location_name)
 
         # Create first blob.
-        first_blob_sha = "sha256:" + hashlib.sha256("FIRST").hexdigest()
+        first_blob_sha = "sha256:" + hashlib.sha256(b"FIRST").hexdigest()
         model.blob.store_blob_record_and_temp_link(
             ADMIN_ACCESS_USER, REPO, first_blob_sha, location, 0, 0, 0
         )
@@ -89,8 +89,8 @@ def test_missing_link(initialized_db):
         assert found_tag.legacy_image.docker_image_id == "first"
 
         # Create the second and third blobs.
-        second_blob_sha = "sha256:" + hashlib.sha256("SECOND").hexdigest()
-        third_blob_sha = "sha256:" + hashlib.sha256("THIRD").hexdigest()
+        second_blob_sha = "sha256:" + hashlib.sha256(b"SECOND").hexdigest()
+        third_blob_sha = "sha256:" + hashlib.sha256(b"THIRD").hexdigest()
 
         model.blob.store_blob_record_and_temp_link(
             ADMIN_ACCESS_USER, REPO, second_blob_sha, location, 0, 0, 0
@@ -131,7 +131,7 @@ def test_missing_link(initialized_db):
         assert found_tag.legacy_image.docker_image_id != "second"
 
         # Create the fourth blob.
-        fourth_blob_sha = "sha256:" + hashlib.sha256("FOURTH").hexdigest()
+        fourth_blob_sha = "sha256:" + hashlib.sha256(b"FOURTH").hexdigest()
         model.blob.store_blob_record_and_temp_link(
             ADMIN_ACCESS_USER, REPO, fourth_blob_sha, location, 0, 0, 0
         )

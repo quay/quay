@@ -51,7 +51,7 @@ class BaseStorage(StoragePaths):
         The client is an HTTP client to use for any external calls.
         """
         # Put a temporary file to make sure the normal storage paths work.
-        self.put_content("_verify", "testing 123")
+        self.put_content("_verify", b"testing 123")
         if not self.exists("_verify"):
             raise Exception("Could not find verification file")
 

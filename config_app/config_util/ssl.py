@@ -28,7 +28,7 @@ def load_certificate(cert_contents):
         cert = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert_contents)
         return SSLCertificate(cert)
     except OpenSSL.crypto.Error as ex:
-        raise CertInvalidException(ex.message[0][2])
+        raise CertInvalidException(str(ex))
 
 
 _SUBJECT_ALT_NAME = "subjectAltName"
@@ -55,7 +55,7 @@ class SSLCertificate(object):
             context.use_privatekey_file(private_key_path)
             context.check_privatekey()
         except OpenSSL.SSL.Error as ex:
-            raise KeyInvalidException(ex.message[0][2])
+            raise KeyInvalidException(str(ex))
 
     def matches_name(self, check_name):
         """
