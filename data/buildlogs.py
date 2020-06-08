@@ -32,7 +32,12 @@ class RedisBuildLogs(object):
 
         args = dict(self._redis_config)
         args.update(
-            {"socket_connect_timeout": 1, "socket_timeout": 2, "single_connection_client": True}
+            {
+                "socket_connect_timeout": 1,
+                "socket_timeout": 2,
+                "health_check_interval": 2,
+                "single_connection_client": True,
+            }
         )
 
         self._redis_client = redis.StrictRedis(**args)
