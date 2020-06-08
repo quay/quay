@@ -103,6 +103,17 @@ RUN mkdir /datastorage && chgrp 0 /datastorage && chmod g=u /datastorage && \
     mkdir /certificates && chgrp 0 /certificates && chmod g=u /certificates && \
     chmod g=u /etc/passwd
 
+
+# Allow TLS certs to be created and installed as non-root user
+RUN chgrp -R 0 /etc/pki/ca-trust/extracted && \
+    chmod -R g=u /etc/pki/ca-trust/extracted && \
+    chgrp -R 0 /etc/pki/ca-trust/source/anchors && \
+    chmod -R g=u /etc/pki/ca-trust/source/anchors && \
+    chgrp -R 0 /usr/local/lib/python3.6/site-packages/requests && \
+    chmod -R g=u /usr/local/lib/python3.6/site-packages/requests && \
+    chgrp -R 0 /usr/local/lib/python3.6/site-packages/certifi && \
+    chmod -R g=u /usr/local/lib/python3.6/site-packages/certifi
+
 VOLUME ["/var/log", "/datastorage", "/tmp", "/conf/stack"]
 
 USER 1001
