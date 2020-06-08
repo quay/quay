@@ -2,16 +2,16 @@
     "type": "object",
     "description": "Schema for Quay configuration",
     "required": [
+        "AUTHENTICATION_TYPE",
+        "BUILDLOGS_REDIS",
+        "DB_URI",
+        "DEFAULT_TAG_EXPIRATION",
+        "DISTRIBUTED_STORAGE_CONFIG",
+        "DISTRIBUTED_STORAGE_PREFERENCE",
         "PREFERRED_URL_SCHEME",
         "SERVER_HOSTNAME",
-        "DB_URI",
-        "AUTHENTICATION_TYPE",
-        "DISTRIBUTED_STORAGE_CONFIG",
-        "BUILDLOGS_REDIS",
-        "USER_EVENTS_REDIS",
-        "DISTRIBUTED_STORAGE_PREFERENCE",
-        "DEFAULT_TAG_EXPIRATION",
-        "TAG_EXPIRATION_OPTIONS"
+        "TAG_EXPIRATION_OPTIONS",
+        "USER_EVENTS_REDIS"
     ],
     "properties": {
         "REGISTRY_STATE": {
@@ -1214,12 +1214,16 @@
                     "FEATURE_MAILING": {
                         "const": true
                     }
-                }
+                },
+                "required": ["FEATURE_MAILING"]
             },
             "then": {
                 "required": [
                     "MAIL_SERVER"
                 ]
+            },
+            "else": {
+                "required": []
             }
         }
     ]

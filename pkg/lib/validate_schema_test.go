@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -17,13 +18,16 @@ func TestValidateSchema(t *testing.T) {
 		err    bool
 	}{
 		// Valid
-		{name: "test1", config: "config1.yaml", schema: "quay-config-schema.json", want: true, err: false},
+		{name: "checkRequiredPass", config: "requiredPass.yaml", schema: "quay-config-schema.json", want: true, err: false},
+		{name: "checkCrossValPass", config: "crossValPass.yaml", schema: "quay-config-schema.json", want: true, err: false},
 
 		// Invalid
-		{name: "test2", config: "config2.yaml", schema: "quay-config-schema.json", want: false, err: false},
+		{name: "checkRequiredFail", config: "requiredFail.yaml", schema: "quay-config-schema.json", want: false, err: false},
+		{name: "checkCrossValFail", config: "crossValFail.yaml", schema: "quay-config-schema.json", want: false, err: false},
+		{name: "checkEnumFail", config: "enumFail.yaml", schema: "quay-config-schema.json", want: false, err: false},
 
 		// Error
-		{name: "test3", config: "config3.yaml", schema: "quay-config-schema.json", want: false, err: true},
+		{name: "testConfigDNE", config: "missingDNE", schema: "quay-config-schema.json", want: false, err: true},
 	}
 
 	// Iterate through tests
@@ -51,7 +55,9 @@ func TestValidateSchema(t *testing.T) {
 
 			// Got Result
 			if result.IsValid != tt.want {
+				fmt.Println(result.KeyErrors)
 				t.Errorf("Expected %v for %s. Received %v", tt.want, tt.config, result.IsValid)
+
 			}
 		})
 	}
