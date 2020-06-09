@@ -177,6 +177,19 @@ class BuilderServer(object):
 
     @trollius.coroutine
     def _job_complete(self, build_job, job_status, executor_name=None, update_phase=False):
+        if update_phase:
+            status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
+            try:
+                yield From(status_handler.set_phase(RESULT_PHASES[job_status]))
+            except Exception as spe:
+                logger.warning(
+                    "[BUILD INCOMPLETE: job complete] Build ID: %s. Retry restore. Failed to update build phase: %s",
+                    build_job.repo_build.uuid,
+                    spe,
+                )
+                self._queue.incomplete(build_job.job_item, restore_retry=False, retry_after=30)
+                raise Return()
+
         if job_status == BuildJobResult.INCOMPLETE:
             logger.warning(
                 "[BUILD INCOMPLETE: job complete] Build ID: %s. No retry restore.",
@@ -191,10 +204,6 @@ class BuilderServer(object):
             model.build.update_trigger_disable_status(
                 build_job.repo_build.trigger, RESULT_PHASES[job_status]
             )
-
-        if update_phase:
-            status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
-            yield From(status_handler.set_phase(RESULT_PHASES[job_status]))
 
         self._job_count = self._job_count - 1
 
@@ -253,7 +262,18 @@ class BuilderServer(object):
             if schedule_success:
                 logger.debug("Marking build %s as scheduled", build_job.repo_build.uuid)
                 status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
-                yield From(status_handler.set_phase(database.BUILD_PHASE.BUILD_SCHEDULED))
+                try:
+                    yield From(status_handler.set_phase(database.BUILD_PHASE.BUILD_SCHEDULED))
+                except Exception as spe:
+                    logger.warning(
+                        "[BUILD INCOMPLETE: set phase] Build ID: %s. Retry restored.",
+                        build_job.repo_build.uuid,
+                    )
+                    logger.exception("Exception trying to set build phase:" % str(spe))
+                    self._queue.incomplete(
+                        job_item, restore_retry=true, retry_after=WORK_CHECK_TIMEOUT
+                    )
+                    continue
 
                 self._job_count = self._job_count + 1
                 logger.debug(
