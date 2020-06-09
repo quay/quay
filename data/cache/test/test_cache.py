@@ -6,15 +6,21 @@ from data.cache import InMemoryDataModelCache, NoopDataModelCache, MemcachedMode
 from data.cache.cache_key import CacheKey
 
 
+DATA = {}
+
+
 class MockClient(object):
     def __init__(self, server, **kwargs):
-        self.data = {}
+        pass
 
     def get(self, key, default=None):
-        return self.data.get(key, default)
+        return DATA.get(key, default)
 
     def set(self, key, value, expire=None):
-        self.data[key] = value
+        DATA[key] = value
+
+    def close(self):
+        pass
 
 
 @pytest.mark.parametrize("cache_type", [(NoopDataModelCache), (InMemoryDataModelCache),])
@@ -28,6 +34,9 @@ def test_caching(cache_type):
 
 
 def test_memcache():
+    global DATA
+    DATA = {}
+
     key = CacheKey("foo", "60m")
     with patch("data.cache.impl.Client", MockClient):
         cache = MemcachedModelCache(("127.0.0.1", "-1"))
@@ -36,6 +45,9 @@ def test_memcache():
 
 
 def test_memcache_should_cache():
+    global DATA
+    DATA = {}
+
     key = CacheKey("foo", None)
 
     def sc(value):
