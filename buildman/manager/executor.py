@@ -181,9 +181,9 @@ class EC2Executor(BuilderExecutor):
     Implementation of BuilderExecutor which uses libcloud to start machines on a variety of cloud
     providers.
     """
-
+    COREOS_STACK_ARCHITECTURE = "x86_64"
     COREOS_STACK_URL = (
-        "http://%s.release.core-os.net/amd64-usr/current/coreos_production_ami_hvm.txt"
+        "https://builds.coreos.fedoraproject.org/streams/%s.json"
     )
 
     def __init__(self, *args, **kwargs):
@@ -208,9 +208,9 @@ class EC2Executor(BuilderExecutor):
         """
         Retrieve the CoreOS AMI id from the canonical listing.
         """
-        stack_list_string = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).text
-        stack_amis = dict([stack.split("=") for stack in stack_list_string.split("|")])
-        return stack_amis[ec2_region]
+        stack_list_json = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).json()
+        stack_amis = stack_list_json['architectures'][EC2Executor.COREOS_STACK_ARCHITECTURE]['images']['aws']['regions']
+        return stack_amis[ec2_region]['image']
 
     @async_observe(build_start_duration, "ec2")
     async def start_builder(self, realm, token, build_uuid):
