@@ -163,33 +163,8 @@
         "CONTACT_INFO": {
             "type": "array",
             "uniqueItems": true,
-            "description": "If specified, contact information to display on the contact page. If only a single piece of contact information is specified, the contact footer will link directly.",
-            "items": [
-                {
-                    "type": "string",
-                    "pattern": "^mailto:(.)+$",
-                    "x-example": "mailto:support@quay.io",
-                    "description": "Adds a link to send an e-mail"
-                },
-                {
-                    "type": "string",
-                    "pattern": "^irc://(.)+$",
-                    "x-example": "irc://chat.freenode.net:6665/quay",
-                    "description": "Adds a link to visit an IRC chat room"
-                },
-                {
-                    "type": "string",
-                    "pattern": "^tel:(.)+$",
-                    "x-example": "tel:+1-888-930-3475",
-                    "description": "Adds a link to call a phone number"
-                },
-                {
-                    "type": "string",
-                    "pattern": "^http(s)?://(.)+$",
-                    "x-example": "https://twitter.com/quayio",
-                    "description": "Adds a link to a defined URL"
-                }
-            ]
+            "description": "If specified, contact information to display on the contact page. If only a single piece of contact information is specified, the contact footer will link directly."
+            
         },
         "SEARCH_RESULTS_PER_PAGE": {
             "type": "number",
