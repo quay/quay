@@ -730,3 +730,6 @@ class DefaultConfig(ImmutableConfig):
 
     # The root URL for documentation.
     DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3.3/"
+
+    # Feature Flag: Whether the repository action count worker is enabled.
+    FEATURE_REPOSITORY_ACTION_COUNTER = True

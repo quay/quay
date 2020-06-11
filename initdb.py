@@ -1221,12 +1221,8 @@ def populate_database(minimal=False):
 
     model.user.create_user_prompt(new_user_4, "confirm_username")
 
-    while True:
-        to_count = model.repositoryactioncount.find_uncounted_repository()
-        if not to_count:
-            break
-
-        model.repositoryactioncount.count_repository_actions(to_count, datetime.utcnow().day)
+    for to_count in Repository.select():
+        model.repositoryactioncount.count_repository_actions(to_count, datetime.utcnow())
         model.repositoryactioncount.update_repository_score(to_count)
 
 
