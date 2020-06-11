@@ -46,6 +46,7 @@ class StatusHandler(object):
             )
         except RedisError:
             logger.exception("Could not save build log for build %s: %s", self._uuid, log_message)
+            raise
 
     @coroutine
     def append_log(self, log_message, extra_data=None):
@@ -92,3 +93,4 @@ class StatusHandler(object):
             self._sync_build_logs.set_status(self._uuid, self._status)
         except RedisError:
             logger.exception("Could not set status of build %s to %s", self._uuid, self._status)
+            raise
