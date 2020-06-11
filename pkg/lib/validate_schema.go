@@ -18,8 +18,6 @@ type ValidationResponse struct {
 // ValidateSchema checks the config file against a JSON Schema Definition
 func ValidateSchema(configPath, schemaPath string) (ValidationResponse, error) {
 
-	// Create Validation Response
-
 	// Read config file
 	configBytes, err := ioutil.ReadFile(configPath)
 	if err != nil {
