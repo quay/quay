@@ -9,5 +9,5 @@ def test_repositoryactioncount(app):
     database.RepositorySearchScore.delete().execute()
 
     rac = RepositoryActionCountWorker()
-    while rac._count_repository_actions():
-        continue
+    for repository in database.Repository.select():
+        assert rac._count_repository_actions(repository)

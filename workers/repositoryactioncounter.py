@@ -1,37 +1,57 @@
 import logging
+import time
 
 from datetime import date, timedelta
+from math import log10
 
 import features
 
 from app import app  # This is required to initialize the database.
-from data import model
+from data import model, database
 from data.logs_model import logs_model
+from util.migrate.allocator import yield_random_entries
 from workers.worker import Worker, with_exponential_backoff
 
 
 logger = logging.getLogger(__name__)
 
-
-POLL_PERIOD_SECONDS = 10
+POLL_PERIOD_SECONDS = 30 * 60  # 30 minutes
 
 
 class RepositoryActionCountWorker(Worker):
     def __init__(self):
         super(RepositoryActionCountWorker, self).__init__()
-        self.add_operation(self._count_repository_actions, POLL_PERIOD_SECONDS)
+        self.add_operation(self._run_counting, POLL_PERIOD_SECONDS)
 
-    @with_exponential_backoff(backoff_multiplier=10, max_backoff=3600, max_retries=10)
-    def _count_repository_actions(self):
+    def _run_counting(self):
+        def batch_query():
+            return database.Repository.select()
+
+        min_id = model.repository.get_min_id()
+        max_id = model.repository.get_max_id()
+        if min_id is None or max_id is None:
+            return
+
+        # 4^log10(total) gives us a scalable batch size into the billions.
+        batch_size = int(4 ** log10(max(10, max_id - min_id)))
+
+        iterator = yield_random_entries(
+            batch_query, database.Repository.id, batch_size, max_id, min_id,
+        )
+
+        yesterday = date.today() - timedelta(days=1)
+        for candidate, abt, num_remaining in iterator:
+            if model.repositoryactioncount.has_repository_action_count(candidate, yesterday):
+                abt.set()
+                continue
+
+            if not self._count_repository_actions(candidate):
+                abt.set()
+
+    def _count_repository_actions(self, to_count):
         """
         Counts actions and aggregates search scores for a random repository for the previous day.
         """
-        # Select a repository that needs its actions for the last day updated.
-        to_count = model.repositoryactioncount.find_uncounted_repository()
-        if to_count is None:
-            logger.debug("No further repositories to count")
-            return False
-
         logger.debug("Found repository #%s to count", to_count.id)
 
         # Count the number of actions that occurred yesterday for the repository.
@@ -73,5 +93,10 @@ class RepositoryActionCountWorker(Worker):
 
 
 if __name__ == "__main__":
+    if not features.REPOSITORY_ACTION_COUNTER:
+        logger.info("Repository action count is disabled; skipping")
+        while True:
+            time.sleep(100000)
+
     worker = RepositoryActionCountWorker()
     worker.start()
