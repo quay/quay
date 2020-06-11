@@ -110,7 +110,14 @@ class BuildComponent(BaseComponent):
         )
 
         self._current_job = build_job
-        self._build_status = StatusHandler(self.build_logs, build_job.repo_build.uuid)
+        build_id = build_job.repo_build.uuid
+        try:
+            self._build_status = StatusHandler(self.build_logs, build_id)
+        except Exception as bse:
+            logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
+            self._build_status_failure(bse)
+            raise Return()
+
         self._image_info = {}
 
         yield From(self._set_status(ComponentStatus.BUILDING))

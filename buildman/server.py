@@ -178,8 +178,8 @@ class BuilderServer(object):
     @trollius.coroutine
     def _job_complete(self, build_job, job_status, executor_name=None, update_phase=False):
         if update_phase:
-            status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
             try:
+                status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
                 yield From(status_handler.set_phase(RESULT_PHASES[job_status]))
             except Exception as spe:
                 logger.warning(
@@ -261,8 +261,8 @@ class BuilderServer(object):
 
             if schedule_success:
                 logger.debug("Marking build %s as scheduled", build_job.repo_build.uuid)
-                status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
                 try:
+                    status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
                     yield From(status_handler.set_phase(database.BUILD_PHASE.BUILD_SCHEDULED))
                 except Exception as spe:
                     logger.warning(
