@@ -127,10 +127,18 @@ class CNRAppModel(AppRegistryDataInterface):
         namespace and view a specific user.
         """
         limit = app.config.get("APP_REGISTRY_RESULTS_LIMIT", 50)
+        namespace_whitelist = app.config.get("APP_REGISTRY_PACKAGE_LIST_CACHE_WHITELIST", [])
 
         # NOTE: This caching only applies for the super-large and commonly requested results
         # sets.
-        if media_type is None and search is None and username is None and not with_channels:
+        if (
+            namespace is not None
+            and namespace in namespace_whitelist
+            and media_type is None
+            and search is None
+            and username is None
+            and not with_channels
+        ):
 
             def _list_applications():
                 return [
