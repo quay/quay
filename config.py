@@ -719,3 +719,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether to clear expired RepositoryActionCount entries.
     FEATURE_CLEAR_EXPIRED_RAC_ENTRIES = False
+
+    # Feature Flag: Whether the repository action count worker is enabled.
+    FEATURE_REPOSITORY_ACTION_COUNTER = True
