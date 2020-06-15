@@ -232,7 +232,10 @@ objects:
               memory: ${{QUAY_APP_MEMORY_REQUEST}}
           env:
           - name: QE_K8S_NAMESPACE
-            value: ${{QUAY_APP_DEPLOYMENT_NAMESPACE}}
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
           - name: QE_K8S_CONFIG_SECRET
             value: ${{QUAY_APP_CONFIG_SECRET}}
           - name: DEBUGLOG
