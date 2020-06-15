@@ -74,10 +74,6 @@ angular.module("quay-config")
             return config.AUTHENTICATION_TYPE == 'AppToken';
           }},
 
-          {'id': 'signer', 'title': 'ACI Signing', 'condition': function(config) {
-            return config.FEATURE_ACI_CONVERSION;
-          }},
-
           {'id': 'github-login', 'title': 'Github (Enterprise) Authentication', 'condition': function(config) {
             return config.FEATURE_GITHUB_LOGIN;
           }},

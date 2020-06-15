@@ -66,7 +66,6 @@ from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
 from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
-from util.security.signing import Signer
 from util.greenlet_tracing import enable_tracing
 
 
@@ -244,7 +243,6 @@ build_logs = BuildLogs(app)
 authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY)
 userevents = UserEventsBuilderModule(app)
 superusers = SuperUserManager(app)
-signer = Signer(app, config_provider)
 instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
