@@ -88,7 +88,7 @@ class RepositoryImageList(RepositoryParamResource):
                     "tags": [tag.name for tag in tags],
                     "ancestors": "",
                 }
-                for image_id, tags in images_with_tags.iteritems()
+                for image_id, tags in images_with_tags.items()
             ]
         }
 

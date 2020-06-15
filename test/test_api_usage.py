@@ -3325,12 +3325,7 @@ class TestListAndDeleteTag(ApiTestCase):
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="sometag"),
         )
 
-<<<<<<< HEAD
-        sometag_images = json["images"]
-        self.assertEqual(sometag_images, staging_images)
-=======
         assert json["images"]
->>>>>>> Switch registry model to use synthetic legacy images
 
         # Move the tag.
         self.putResponse(
