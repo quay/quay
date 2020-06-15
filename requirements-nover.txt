@@ -25,6 +25,7 @@ bitmath
 boto3
 cachetools
 cryptography
+dumb-init
 elasticsearch>=7.0.4,<8.0.0
 elasticsearch-dsl>=7.0.0,<8.0.0
 flask
