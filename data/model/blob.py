@@ -117,7 +117,7 @@ def _temp_link_blob(repository_id, storage, link_expiration_s):
     except Repository.DoesNotExist:
         return None
 
-    if repository.state != RepositoryState.NORMAL:
+    if repository.state == RepositoryState.MARKED_FOR_DELETION:
         return None
 
     return UploadedBlob.create(

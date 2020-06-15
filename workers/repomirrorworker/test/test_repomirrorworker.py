@@ -56,14 +56,18 @@ def _create_tag(repo, name):
         )
         upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
+        assert blob
+
     builder = DockerSchema2ManifestBuilder()
     builder.set_config_digest(blob.digest, blob.compressed_size)
     builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
     manifest = builder.build()
 
     manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repo_ref, manifest, name, storage
+        repo_ref, manifest, name, storage, raise_on_error=True
     )
+    assert tag
+    assert tag.name == name
 
 
 @disable_existing_mirrors
