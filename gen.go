@@ -4,22 +4,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"path"
+	"runtime"
 	"strings"
 
-	"github.com/creasty/defaults"
 	"github.com/dave/jennifer/jen"
 )
 
-type Config struct {
+type FieldGroupDefinition struct {
 	PackageName string       `json:"packageName"`
 	FieldGroups []FieldGroup `json:"fieldGroups"`
 }
 
+// FieldGroup is a struct that represents a single field group
 type FieldGroup struct {
 	FieldGroupName string  `json:"fieldGroupName"`
 	Fields         []Field `json:"fields"`
 }
 
+// Field is a struct that represents a single field
 type Field struct {
 	FieldName    string `json:"fieldName"`
 	FieldYAML    string `json:"fieldYAML"`
@@ -27,30 +30,30 @@ type Field struct {
 	FieldDefault string `json:"fieldDefault"`
 }
 
+//go:generate go run gen.go
 func main() {
 
-	newObj := &TagExpirationFieldGroup{}
-	defaults.Set(newObj)
-	fmt.Printf("%+v\n", newObj)
-
-	return
+	// Get root of project
+	_, b, _, _ := runtime.Caller(0)
+	projRoot := path.Join(path.Dir(b))
+	fmt.Println("Relative", projRoot)
 
 	// Read config file
-	fieldGroupDefinitions, err := ioutil.ReadFile("obj.json")
+	fieldGroupDefinitionFile, err := ioutil.ReadFile("fieldgroups.json")
 	if err != nil {
 		return
 	}
 
-	var config Config
-
-	if err = json.Unmarshal(fieldGroupDefinitions, &config); err != nil {
+	// Load field group definitions
+	var fgd FieldGroupDefinition
+	if err = json.Unmarshal(fieldGroupDefinitionFile, &fgd); err != nil {
 		fmt.Println("error: " + err.Error())
 	}
 
-	packageName := config.PackageName
+	// Get package name
+	packageName := fgd.PackageName
 
-	for _, fieldGroup := range config.FieldGroups {
-		fmt.Println("Creating File for FieldGroup: " + fieldGroup.FieldGroupName)
+	for _, fieldGroup := range fgd.FieldGroups {
 
 		// Create package name
 		f := jen.NewFile(packageName)
@@ -117,32 +120,11 @@ func main() {
 			jen.Return(jen.True(), jen.Nil()),
 		)
 
-		fmt.Printf("%#v", f)
+		// Define outputfile name
+		outfile := strings.ToLower(fieldGroup.FieldGroupName + ".go")
+		outfilePath := path.Join(projRoot, outfile)
+		fmt.Println(outfilePath)
 
 	}
 
-}
-
-type TagExpirationFieldGroup struct {
-	FeatureChangeTagExpiration bool     `default:"false"`
-	DefaultTagExpiration       string   `default:"2w"`
-	TagExpirationOptions       []string `default:"[\"0s\", \"1d\", \"1w\", \"2w\", \"4w\"]"`
-}
-
-// Constructor
-func NewTagExpirationFieldGroup(fullConfig map[string]interface{}) *TagExpirationFieldGroup {
-	newTagExpiration := &TagExpirationFieldGroup{}
-	defaults.Set(newTagExpiration)
-
-	if value, ok := fullConfig["FEATURE_CHANGE_TAG_EXPIRATION"]; ok {
-		newTagExpiration.FeatureChangeTagExpiration = value.(bool)
-	}
-	if value, ok := fullConfig["DEFAULT_TAG_EXPIRATION"]; ok {
-		newTagExpiration.DefaultTagExpiration = value.(string)
-	}
-	if value, ok := fullConfig["TAG_EXPIRATION_OPTIONS"]; ok {
-		newTagExpiration.TagExpirationOptions = value.([]string)
-	}
-
-	return newTagExpiration
 }

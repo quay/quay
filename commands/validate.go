@@ -18,7 +18,7 @@ package commands
 import (
 	"fmt"
 
-	"github.com/quay/config-tool/pkg/lib"
+	"github.com/quay/config-tool/pkg/lib/validation"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ var validateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Validate Schema
-		response, err := lib.ValidateSchema(configPath, schemaPath)
+		response, err := validation.ValidateSchema(configPath, schemaPath)
 		if err != nil {
 			fmt.Println(err.Error())
 		}
