@@ -402,15 +402,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def yield_tags_for_vulnerability_notification(self, layer_id_pairs):
-        """
-        Yields tags that contain one (or more) of the given layer ID pairs, in repositories which
-        have been registered for vulnerability_found notifications.
-
-        Returns an iterator of LikelyVulnerableTag instances.
-        """
-
-    @abstractmethod
     def find_repository_with_garbage(self, limit_to_gc_policy_s):
         """ Returns a repository reference to a repository that contains garbage for collection
             or None if none.

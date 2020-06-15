@@ -803,51 +803,10 @@ def test_lookup_active_repository_tags(oci_model):
     assert not tags_expected
 
 
-def test_yield_tags_for_vulnerability_notification(registry_model):
-    repository_ref = registry_model.lookup_repository("devtable", "complex")
-
-    # Check for all legacy images under the tags and ensure not raised because
-    # no notification is yet registered.
-    for tag in registry_model.list_all_active_repository_tags(repository_ref):
-        image = registry_model.get_legacy_image(
-            repository_ref, tag.manifest.legacy_image_root_id, storage, include_blob=True
-        )
-        pairs = [(image.docker_image_id, image.blob.uuid)]
-        results = list(registry_model.yield_tags_for_vulnerability_notification(pairs))
-        assert not len(results)
-
-    # Register a notification.
-    model.notification.create_repo_notification(
-        repository_ref.id, "vulnerability_found", "email", {}, {}
-    )
-
-    # Check again.
-    for tag in registry_model.list_all_active_repository_tags(repository_ref):
-        image = registry_model.get_legacy_image(
-            repository_ref, tag.manifest.legacy_image_root_id, storage, include_blob=True,
-        )
-
-        # Check for every parent of the image.
-        for current_docker_image_id in image.ancestor_ids:
-            img = registry_model.get_legacy_image(
-                repository_ref, current_docker_image_id, storage, include_blob=True
-            )
-            pairs = [(img.docker_image_id, img.blob.uuid)]
-            results = list(registry_model.yield_tags_for_vulnerability_notification(pairs))
-            assert len(results) > 0
-            assert tag.name in {t.name for t in results}
-
-        # Check for the image itself.
-        pairs = [(image.docker_image_id, image.blob.uuid)]
-        results = list(registry_model.yield_tags_for_vulnerability_notification(pairs))
-        assert len(results) > 0
-        assert tag.name in {t.name for t in results}
-
-
 def test_create_manifest_with_temp_tag(initialized_db, registry_model):
     builder = DockerSchema1ManifestBuilder("devtable", "simple", "latest")
     builder.add_layer(
-        "sha256:abcde", json.dumps({"id": "someid", "author": u"some user",}, ensure_ascii=False)
+        "sha256:abcde", json.dumps({"id": "someid", "author": "some user",}, ensure_ascii=False)
     )
 
     manifest = builder.build(ensure_ascii=False)

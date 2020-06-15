@@ -374,7 +374,9 @@ class OCIModel(RegistryDataInterface):
 
             return (
                 wrapped_manifest,
-                Tag.for_tag(tag, self._legacy_image_id_handler, manifest_row=created_manifest.manifest),
+                Tag.for_tag(
+                    tag, self._legacy_image_id_handler, manifest_row=created_manifest.manifest
+                ),
             )
 
     def retarget_tag(
@@ -628,31 +630,6 @@ class OCIModel(RegistryDataInterface):
         return self._get_manifest_local_blobs(
             manifest, manifest_row.repository_id, include_placements
         )
-
-    def yield_tags_for_vulnerability_notification(self, layer_id_pairs):
-        """
-        Yields tags that contain one (or more) of the given layer ID pairs, in repositories which
-        have been registered for vulnerability_found notifications.
-
-        Returns an iterator of LikelyVulnerableTag instances.
-        """
-        for docker_image_id, storage_uuid in layer_id_pairs:
-            # Try with a new-style legacy image ID.
-            manifest_row, _ = self._resolve_legacy_image_id_to_manifest_row(docker_image_id)
-            if manifest_row is not None:
-                tags = oci.tag.lookup_notifiable_tags_for_manifest(
-                    manifest_row, "vulnerability_found"
-                )
-            else:
-                # Try with the old-style legacy Docker Image ID.
-                tags = oci.tag.lookup_notifiable_tags_for_legacy_image(
-                    docker_image_id, storage_uuid, "vulnerability_found"
-                )
-
-            for tag in tags:
-                yield LikelyVulnerableTag.for_tag(
-                    tag, tag.repository, docker_image_id, storage_uuid
-                )
 
     def find_repository_with_garbage(self, limit_to_gc_policy_s):
         repo = model.oci.tag.find_repository_with_garbage(limit_to_gc_policy_s)
