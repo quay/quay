@@ -1,0 +1,28 @@
+{
+  "packageName": "fieldgroups",
+  "fieldGroups": [
+    {
+      "fieldGroupName": "TagExpiration",
+      "fields": [
+        {
+          "fieldName": "FeatureChangeTagExpiration",
+          "fieldYAML": "FEATURE_CHANGE_TAG_EXPIRATION",
+          "fieldType": "boolean",
+          "fieldDefault": "false"
+        },
+        {
+          "fieldName": "DefaultTagExpiration",
+          "fieldYAML": "DEFAULT_TAG_EXPIRATION",
+          "fieldType": "string",
+          "fieldDefault": "2w"
+        },
+        {
+          "fieldName": "TagExpirationOptions",
+          "fieldYAML": "TAG_EXPIRATION_OPTIONS",
+          "fieldType": "array",
+          "fieldDefault": "[\"0s\", \"1d\", \"1w\", \"2w\", \"4w\"]"
+        }
+      ]
+    }
+  ]
+}

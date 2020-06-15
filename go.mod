@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/atombender/go-jsonschema v0.8.0 // indirect
+	github.com/creasty/defaults v1.4.0 // indirect
 	github.com/dave/jennifer v1.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-playground/universal-translator v0.17.0 // indirect

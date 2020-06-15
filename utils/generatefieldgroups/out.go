@@ -24,9 +24,9 @@ func NewTagExpirationFieldGroup(fullConfig map[string]interface{}) FieldGoup {
 	}
 
 	return &TagExpirationFieldGroup{
+		FeatureChangeTagExpiration: FeatureChangeTagExpiration_SET,
 		DefaultTagExpiration:       DefaultTagExpiration_SET,
 		TagExpirationOptions:       TagExpirationOptions_SET,
-		FeatureChangeTagExpiration: FeatureChangeTagExpiration_SET,
 	}
 }
 

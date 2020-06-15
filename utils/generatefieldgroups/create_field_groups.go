@@ -1,141 +1,148 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"strings"
 
+	"github.com/creasty/defaults"
 	"github.com/dave/jennifer/jen"
 )
 
-type inputData struct {
-	PackageName    string
-	FieldGroupName string
-	Fields         map[string]fieldData
+type Config struct {
+	PackageName string       `json:"packageName"`
+	FieldGroups []FieldGroup `json:"fieldGroups"`
 }
 
-type fieldData struct {
-	fieldYAML    string
-	fieldType    string
-	fieldDefault string
+type FieldGroup struct {
+	FieldGroupName string  `json:"fieldGroupName"`
+	Fields         []Field `json:"fields"`
+}
+
+type Field struct {
+	FieldName    string `json:"fieldName"`
+	FieldYAML    string `json:"fieldYAML"`
+	FieldType    string `json:"fieldType"`
+	FieldDefault string `json:"fieldDefault"`
 }
 
 func main() {
 
-	data := inputData{
-		PackageName:    "fieldgroups",
-		FieldGroupName: "TagExpiration",
-		Fields: map[string]fieldData{
-			"FeatureChangeTagExpiration": {
-				fieldYAML:    "FEATURE_CHANGE_TAG_EXPIRATION",
-				fieldType:    "bool",
-				fieldDefault: "false",
-			},
-			"DefaultTagExpiration": {
-				fieldYAML:    "DEFAULT_TAG_EXPIRATION",
-				fieldType:    "string",
-				fieldDefault: "2w",
-			},
-			"TagExpirationOptions": {
-				fieldYAML:    "TAG_EXPIRATION_OPTIONS",
-				fieldType:    "array",
-				fieldDefault: "['0s', '1d', '1w', '2w', '4w']",
-			},
-		},
+	newObj := &TagExpirationFieldGroup{}
+	defaults.Set(newObj)
+	fmt.Printf("%+v\n", newObj)
+
+	return
+
+	// Read config file
+	fieldGroupDefinitions, err := ioutil.ReadFile("obj.json")
+	if err != nil {
+		return
 	}
 
-	// Create package name
-	f := jen.NewFile(data.PackageName)
+	var config Config
 
-	op := jen.Options{
-		Open:  "\n",
-		Multi: true,
-		Close: "\n",
+	if err = json.Unmarshal(fieldGroupDefinitions, &config); err != nil {
+		fmt.Println("error: " + err.Error())
 	}
-	attributes := jen.CustomFunc(op, func(g *jen.Group) {
 
-		for key, val := range data.Fields {
+	packageName := config.PackageName
 
-			switch val.fieldType {
-			case "array":
-				g.Id(key).Index().String()
-			case "bool":
-				g.Id(key).Bool()
-			case "string":
-				g.Id(key).String()
-			default:
+	for _, fieldGroup := range config.FieldGroups {
+		fmt.Println("Creating File for FieldGroup: " + fieldGroup.FieldGroupName)
+
+		// Create package name
+		f := jen.NewFile(packageName)
+
+		op := jen.Options{
+			Open:  "\n",
+			Multi: true,
+			Close: "\n",
+		}
+		attributes := jen.CustomFunc(op, func(g *jen.Group) {
+
+			for _, field := range fieldGroup.Fields {
+
+				// hacky fix to escape string
+				fieldDefault := strings.Replace(field.FieldDefault, `"`, `\"`, -1)
+
+				switch field.FieldType {
+				case "array":
+					g.Id(field.FieldName).Index().String().Tag(map[string]string{"default": fieldDefault})
+				case "boolean":
+					g.Id(field.FieldName).Bool().Tag(map[string]string{"default": fieldDefault})
+				case "string":
+					g.Id(field.FieldName).String().Tag(map[string]string{"default": field.FieldDefault})
+				default:
+
+				}
 
 			}
+		})
 
+		// Create struct definition
+		f.Comment("Struct Definition")
+		f.Type().Id(fieldGroup.FieldGroupName + "FieldGroup").Struct(attributes)
+
+		// Create default values dynamically
+		op = jen.Options{
+			Open:  "\n",
+			Multi: true,
+			Close: "\n",
 		}
-	})
+		defaultValues := jen.CustomFunc(op, func(g *jen.Group) {
 
-	// Create struct definition
-	f.Comment("Struct Definition")
-	f.Type().Id(data.FieldGroupName + "FieldGroup").Struct(attributes)
+			for _, field := range fieldGroup.Fields {
 
-	// Create default values dynamically
-	op = jen.Options{
-		Open:  "\n",
-		Multi: true,
-		Close: "\n",
-	}
-	defaultValues := jen.CustomFunc(op, func(g *jen.Group) {
-
-		for key, val := range data.Fields {
-
-			switch val.fieldType {
-			case "array":
-				g.Var().Id(key + "_SET").Index().String()
-			case "bool":
-				g.Var().Id(key + "_SET").Bool().Op("=").Id(val.fieldDefault)
-			case "string":
-				g.Var().Id(key + "_SET").String().Op("=").Lit(val.fieldDefault)
-			default:
+				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.FieldYAML)), jen.Id("ok")).Block(
+					jen.Id("new" + fieldGroup.FieldGroupName).Dot(field.FieldName).Op("=").Id("value"),
+				)
 
 			}
+		})
 
-			g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(val.fieldYAML)), jen.Id("ok")).Block(
-				jen.Id(key + "_SET").Op("=").Id("value"),
-			)
+		// Create constructor
+		f.Comment("Constructor")
+		f.Func().Id("New"+fieldGroup.FieldGroupName+"FieldGroup").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id("FieldGoup").Block(
+			jen.Id("new"+fieldGroup.FieldGroupName).Op(":=").Op("&").Id(fieldGroup.FieldGroupName+"FieldGroup").Values(),
+			jen.Id("defaults").Dot("Set").Call(jen.Id("new"+fieldGroup.FieldGroupName)),
+			defaultValues,
+			jen.Return(jen.Id("new"+fieldGroup.FieldGroupName)),
+		)
 
-		}
-	})
+		// Create Validator function
+		f.Comment("Validator Function")
+		f.Func().Params(jen.Id("fg *"+fieldGroup.FieldGroupName+"FieldGroup")).Id("Validate").Params().Params(jen.Bool(), jen.Error()).Block(
+			jen.Return(jen.True(), jen.Nil()),
+		)
 
-	// Create return values dynamically
-	op = jen.Options{
-		Multi:     true,
-		Close:     "\n",
-		Separator: ",",
+		fmt.Printf("%#v", f)
+
 	}
-	returnValues := jen.CustomFunc(op, func(g *jen.Group) {
 
-		for key, val := range data.Fields {
+}
 
-			switch val.fieldType {
-			case "array":
-				g.Id(key).Id(":").Id(key + "_SET")
-			case "bool":
-				g.Id(key).Id(":").Id(key + "_SET")
-			case "string":
-				g.Id(key).Id(":").Id(key + "_SET")
-			default:
+type TagExpirationFieldGroup struct {
+	FeatureChangeTagExpiration bool     `default:"false"`
+	DefaultTagExpiration       string   `default:"2w"`
+	TagExpirationOptions       []string `default:"[\"0s\", \"1d\", \"1w\", \"2w\", \"4w\"]"`
+}
 
-			}
+// Constructor
+func NewTagExpirationFieldGroup(fullConfig map[string]interface{}) *TagExpirationFieldGroup {
+	newTagExpiration := &TagExpirationFieldGroup{}
+	defaults.Set(newTagExpiration)
 
-		}
-	})
+	if value, ok := fullConfig["FEATURE_CHANGE_TAG_EXPIRATION"]; ok {
+		newTagExpiration.FeatureChangeTagExpiration = value.(bool)
+	}
+	if value, ok := fullConfig["DEFAULT_TAG_EXPIRATION"]; ok {
+		newTagExpiration.DefaultTagExpiration = value.(string)
+	}
+	if value, ok := fullConfig["TAG_EXPIRATION_OPTIONS"]; ok {
+		newTagExpiration.TagExpirationOptions = value.([]string)
+	}
 
-	// Create constructor
-	f.Comment("Constructor")
-	f.Func().Id("New"+data.FieldGroupName+"FieldGroup").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id("FieldGoup").Block(
-		defaultValues,
-		jen.Return(jen.Op("&").Id(data.FieldGroupName+"FieldGroup").Values(returnValues)),
-	)
-
-	// Create Validator function
-	f.Comment("Validator Function")
-	f.Func().Params(jen.Id("fg *"+data.FieldGroupName+"FieldGroup")).Id("Validate").Params().Params(jen.Bool(), jen.Error()).Block(
-		jen.Return(jen.True(), jen.Nil()),
-	)
-
-	fmt.Printf("%#v", f)
+	return newTagExpiration
 }
