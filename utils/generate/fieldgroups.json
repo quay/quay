@@ -1,0 +1,57 @@
+{
+  "packageName": "fieldgroups",
+  "fieldGroups": [
+    {
+      "fieldGroupName": "TagExpiration",
+      "fields": [
+        {
+          "fieldName": "FeatureChangeTagExpiration",
+          "fieldYAML": "FEATURE_CHANGE_TAG_EXPIRATION",
+          "fieldType": "bool",
+          "fieldDefault": "false",
+          "fieldValidate": ""
+        },
+        {
+          "fieldName": "DefaultTagExpiration",
+          "fieldYAML": "DEFAULT_TAG_EXPIRATION",
+          "fieldType": "string",
+          "fieldDefault": "2w",
+          "fieldValidate": "required"
+        },
+        {
+          "fieldName": "TagExpirationOptions",
+          "fieldYAML": "TAG_EXPIRATION_OPTIONS",
+          "fieldType": "[]string",
+          "fieldDefault": "[\"0s\", \"1d\", \"1w\", \"2w\", \"4w\"]",
+          "fieldValidate": "required"
+        }
+      ]
+    },
+    {
+      "fieldGroupName": "HostSettings",
+      "fields": [
+        {
+          "fieldName": "ServerHostname",
+          "fieldYAML": "SERVER_HOSTNAME",
+          "fieldType": "string",
+          "fieldDefault": "localhost:5000",
+          "fieldValidate": "required"
+        },
+        {
+          "fieldName": "PreferredUrlScheme",
+          "fieldYAML": "PREFERRED_URL_SCHEME",
+          "fieldType": "string",
+          "fieldDefault": "http",
+          "fieldValidate": "required"
+        },
+        {
+          "fieldName": "ExternalTlsTermination",
+          "fieldYAML": "EXTERNAL_TLS_TERMINATION",
+          "fieldType": "bool",
+          "fieldDefault": "false",
+          "fieldValidate": "oneof=http https"
+        }
+      ]
+    }
+  ]
+}
