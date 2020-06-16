@@ -49,6 +49,7 @@ decorator==4.4.1
 Deprecated==1.2.7
 docker==4.1.0
 docutils==0.15.2
+dumb-init==1.2.2
 ecdsa==0.15
 elasticsearch==7.0.4
 elasticsearch-dsl==7.0.0
