@@ -41,6 +41,13 @@ def _get_legacy_image_row_id(tag):
     )
 
 
+def _add_legacy_image(namespace, repo_name, tag_name):
+    repo_ref = registry_model.lookup_repository(namespace, repo_name)
+    tag_ref = registry_model.get_repo_tag(repo_ref, tag_name)
+    manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
+    registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
+
+
 def test_missing_link(initialized_db):
     """
     Tests for a corner case that could result in missing a link to a blob referenced by a manifest.
@@ -84,6 +91,7 @@ def test_missing_link(initialized_db):
         )
 
         _write_manifest(ADMIN_ACCESS_USER, REPO, FIRST_TAG, first_manifest)
+        _add_legacy_image(ADMIN_ACCESS_USER, REPO, FIRST_TAG)
 
         # Delete all temp tags and perform GC.
         _perform_cleanup()
@@ -117,6 +125,7 @@ def test_missing_link(initialized_db):
         )
 
         _write_manifest(ADMIN_ACCESS_USER, REPO, SECOND_TAG, second_manifest)
+        _add_legacy_image(ADMIN_ACCESS_USER, REPO, SECOND_TAG)
 
         # Delete all temp tags and perform GC.
         _perform_cleanup()
@@ -152,6 +161,7 @@ def test_missing_link(initialized_db):
         )
 
         _write_manifest(ADMIN_ACCESS_USER, REPO, THIRD_TAG, third_manifest)
+        _add_legacy_image(ADMIN_ACCESS_USER, REPO, THIRD_TAG)
 
         # Delete all temp tags and perform GC.
         _perform_cleanup()

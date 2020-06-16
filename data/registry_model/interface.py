@@ -406,3 +406,9 @@ class RegistryDataInterface(object):
         """ Returns a repository reference to a repository that contains garbage for collection
             or None if none.
         """
+
+    @abstractmethod
+    def populate_legacy_images_for_testing(self, manifest, storage):
+        """ Populates legacy images for the given manifest, for testing only. This call
+            will fail if called under non-testing code.
+        """

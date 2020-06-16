@@ -18,6 +18,8 @@ def test_load_security_information_unknown_manifest(initialized_db):
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
+    registry_model.populate_legacy_images_for_testing(manifest, storage)
+
     # Delete the manifest.
     Manifest.get(id=manifest._db_id).delete_instance(recursive=True)
 
@@ -33,6 +35,8 @@ def test_load_security_information_failed_to_index(initialized_db):
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
 
+    registry_model.populate_legacy_images_for_testing(manifest, storage)
+
     # Set the index status.
     image = shared.get_legacy_image_for_manifest(manifest._db_id)
     image.security_indexed = False
@@ -47,6 +51,8 @@ def test_load_security_information_queued(initialized_db):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
+
+    registry_model.populate_legacy_images_for_testing(manifest, storage)
 
     secscan = V2SecurityScanner(app, instance_keys, storage)
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.NOT_YET_INDEXED
@@ -89,6 +95,8 @@ def test_load_security_information_api_responses(secscan_api_response, initializ
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(tag)
+
+    registry_model.populate_legacy_images_for_testing(manifest, storage)
 
     legacy_image_row = shared.get_legacy_image_for_manifest(manifest._db_id)
     assert legacy_image_row is not None

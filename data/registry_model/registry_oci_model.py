@@ -881,6 +881,15 @@ class OCIModel(RegistryDataInterface):
             )
         )
 
+    def populate_legacy_images_for_testing(self, manifest, storage):
+        """ Populates legacy images for the given manifest, for testing only. This call
+            will fail if called under non-testing code.
+        """
+        manifest_row = database.Manifest.get(id=manifest._db_id)
+        oci.manifest.populate_legacy_images_for_testing(
+            manifest_row, manifest.get_parsed_manifest(), storage
+        )
+
     def _get_manifest_local_blobs(self, manifest, repo_id, include_placements=False):
         parsed = manifest.get_parsed_manifest()
         if parsed is None:

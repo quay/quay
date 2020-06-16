@@ -36,6 +36,8 @@ def test_load_security_information(indexed_v2, indexed_v4, expected_status, init
     manifest = registry_model.get_manifest_for_tag(tag)
     assert manifest
 
+    registry_model.populate_legacy_images_for_testing(manifest, storage)
+
     image = shared.get_legacy_image_for_manifest(manifest._db_id)
 
     if indexed_v2:

@@ -125,6 +125,10 @@ def move_tag(repository, tag, image_ids, expect_gc=True):
         repo_ref, manifest, tag, storage, raise_on_error=True
     )
 
+    tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+    manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
+    registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
+
     if expect_gc:
         assert model.gc.garbage_collect_repo(repository) == expect_gc
 
@@ -683,6 +687,10 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
             repo_ref, manifest, "first", storage, raise_on_error=True
         )
 
+        tag_ref = registry_model.get_repo_tag(repo_ref, "first")
+        manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
+        registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
+
         # Store another as `second`.
         builder = DockerSchema1ManifestBuilder(
             repository.namespace_user.username, repository.name, "second"
@@ -692,6 +700,10 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         created, _ = registry_model.create_manifest_and_retarget_tag(
             repo_ref, manifest, "second", storage, raise_on_error=True
         )
+
+        tag_ref = registry_model.get_repo_tag(repo_ref, "second")
+        manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
+        registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
 
         # Manually retarget the second manifest's blob to the second row.
         try:

@@ -220,7 +220,17 @@ class DockerSchema1Manifest(ManifestInterface):
 
         Raises a ManifestException on failure.
         """
-        # Already validated.
+        # Validate the parent image IDs.
+        encountered_ids = set()
+        for layer in self.layers:
+            if layer.v1_metadata.parent_image_id:
+                if layer.v1_metadata.parent_image_id not in encountered_ids:
+                    raise ManifestException(
+                        "Unknown parent image %s" % layer.v1_metadata.parent_image_id
+                    )
+
+            if layer.v1_metadata.image_id:
+                encountered_ids.add(layer.v1_metadata.image_id)
 
     @property
     def is_signed(self):

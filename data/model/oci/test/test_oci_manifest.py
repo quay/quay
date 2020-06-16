@@ -191,11 +191,6 @@ def test_get_or_create_manifest(schema_version, initialized_db):
     # Verify it has a temporary tag pointing to it.
     assert Tag.get(manifest=created, hidden=True).lifetime_end_ms
 
-    # Verify the legacy image.
-    legacy_image = get_legacy_image_for_manifest(created)
-    assert legacy_image is not None
-    assert legacy_image.storage.content_checksum == random_digest
-
     # Verify the linked blobs.
     blob_digests = [
         mb.blob.content_checksum
