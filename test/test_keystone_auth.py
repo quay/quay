@@ -110,6 +110,7 @@ def _create_app(requires_email=True):
         for user in users:
             if user["username"] == userid:
                 user_data = {}
+                user_data["name"] = userid
                 if requires_email:
                     user_data["email"] = user.get("email") or userid + "@example.com"
                 return json.dumps({"user": user_data})

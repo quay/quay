@@ -137,7 +137,7 @@ class KeystoneV2Users(FederatedUsers):
             return (None, "Missing email field for user %s" % user_id)
 
         email = user.email if hasattr(user, "email") else None
-        return (UserInformation(username=username_or_email, email=email, id=user_id), None)
+        return (UserInformation(username=user.name, email=email, id=user_id), None)
 
     def query_users(self, query, limit=20):
         return (None, self.federated_service, "Unsupported in Keystone V2")
