@@ -1,6 +1,6 @@
 # Quay Config Validation Tool
 
-This tool is used to validate configuration bundles for use with Quay. 
+This tool is used to validate configuration bundles for use with Quay.
 
 ## Installation
 
@@ -11,7 +11,8 @@ go get -u github.com/quay/config-tool/config-tool
 ```
 
 ## Design
-This tool can be used as either a library or through the command line. 
+
+This tool can be used as either a library or through the command line.
 
 ```
 config-tool/
@@ -50,7 +51,9 @@ Flags:
 ```
 
 ## Library
-The library contains functions that can be imported into other Go projects. 
+
+The library contains functions that can be imported into other Go projects.
 
 ## License
+
 [Apache 2.0](https://choosealicense.com/licenses/apache-2.0/)

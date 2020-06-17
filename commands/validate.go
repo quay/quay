@@ -16,8 +16,9 @@ limitations under the License.
 package commands
 
 import (
-	"fmt"
+	"os"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/quay/config-tool/pkg/lib/validation"
 	"github.com/spf13/cobra"
 )
@@ -30,34 +31,44 @@ var validateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Validate Schema
-		response, err := validation.ValidateSchema(configPath, schemaPath)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+		configFieldGroups := validation.ValidateConf(configPath)
 
-		if response.IsValid {
-			fmt.Println("Configuration Schema is Valid")
-		} else {
+		validationStatus := [][]string{}
 
-			fmt.Println("Configuration has invalid keys:")
-			for _, keyError := range response.KeyErrors {
-				fmt.Println(keyError)
+		for key, val := range configFieldGroups {
+
+			// Validate
+			validationErrors := val.Validate()
+
+			// If no errors, append row
+			if len(validationErrors) == 0 {
+				validationStatus = append(validationStatus, []string{key, "-", "-", "🟢"})
+			}
+
+			for _, err := range validationErrors {
+				validationStatus = append(validationStatus, []string{key, err.Field(), "Failed on " + err.Tag() + " tag", "🔴"})
 			}
 		}
+
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"Field Group", "Field", "Error", "Status"})
+		table.SetBorder(true)
+
+		table.AppendBulk(validationStatus)
+
+		table.SetAutoMergeCellsByColumnIndex([]int{0})
+
+		table.Render()
+
 	},
 }
 
 var configPath string
-var schemaPath string
 
 func init() {
 
 	// Add validation command
 	rootCmd.AddCommand(validateCmd)
-
-	// Add --schema flag
-	validateCmd.Flags().StringVarP(&schemaPath, "schemaPath", "s", "", "The path to a schema JSON file")
-	validateCmd.MarkFlagRequired("schemaPath")
 
 	// Add --config flag
 	validateCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
