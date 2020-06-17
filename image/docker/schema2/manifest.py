@@ -172,7 +172,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
         Raises a ManifestException on failure.
         """
-        # Nothing to validate.
+        self._get_built_config(content_retriever)
 
     @property
     def is_manifest_list(self):

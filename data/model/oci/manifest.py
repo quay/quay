@@ -215,7 +215,12 @@ def _create_manifest(
 
     # Build the map from required blob digests to the blob objects.
     blob_map = _build_blob_map(
-        repository_id, manifest_interface_instance, retriever, storage, raise_on_error
+        repository_id,
+        manifest_interface_instance,
+        retriever,
+        storage,
+        raise_on_error,
+        require_empty_layer=False,
     )
     if blob_map is None:
         return None
@@ -317,7 +322,12 @@ def _create_manifest(
 
 
 def _build_blob_map(
-    repository_id, manifest_interface_instance, retriever, storage, raise_on_error=False
+    repository_id,
+    manifest_interface_instance,
+    retriever,
+    storage,
+    raise_on_error=False,
+    require_empty_layer=True,
 ):
     # Ensure all the blobs in the manifest exist.
     digests = set(manifest_interface_instance.local_blob_digests)
@@ -355,8 +365,8 @@ def _build_blob_map(
 
     # Special check: If the empty layer blob is needed for this manifest, add it to the
     # blob map. This is necessary because Docker decided to elide sending of this special
-    # empty layer in schema version 2, but we need to have it referenced for GC and schema version 1.
-    if EMPTY_LAYER_BLOB_DIGEST not in blob_map:
+    # empty layer in schema version 2, but we need to have it referenced for schema version 1.
+    if require_empty_layer and EMPTY_LAYER_BLOB_DIGEST not in blob_map:
         try:
             requires_empty_layer = manifest_interface_instance.get_requires_empty_layer_blob(
                 retriever
@@ -393,7 +403,9 @@ def populate_legacy_images_for_testing(manifest, manifest_interface_instance, st
     repository_id = manifest.repository_id
     retriever = RepositoryContentRetriever.for_repository(repository_id, storage)
 
-    blob_map = _build_blob_map(repository_id, manifest_interface_instance, storage, True)
+    blob_map = _build_blob_map(
+        repository_id, manifest_interface_instance, storage, True, require_empty_layer=True
+    )
     if blob_map is None:
         return None
 
