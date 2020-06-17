@@ -84,10 +84,10 @@ class IPResolver(IPResolverInterface):
         logger.info("Loading AWS IP ranges from disk")
         aws_ip_ranges_data = _get_aws_ip_ranges()
         if aws_ip_ranges_data is not None and aws_ip_ranges_data.get("syncToken"):
-            logger.info("Building AWS IP ranges")
+            logger.debug("Building AWS IP ranges")
             self.amazon_ranges = IPResolver._parse_amazon_ranges(aws_ip_ranges_data)
             self.sync_token = aws_ip_ranges_data["syncToken"]
-            logger.info("Finished building AWS IP ranges")
+            logger.debug("Finished building AWS IP ranges")
 
     @ttl_cache(maxsize=100, ttl=600)
     def is_ip_possible_threat(self, ip_address):

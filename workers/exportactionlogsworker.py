@@ -242,7 +242,7 @@ class ExportActionLogsWorker(QueueWorker):
         return upload_metadata, uploaded_byte_count
 
     def _report_results(self, job_details, result_status, exported_data_url=None):
-        logger.info(
+        logger.debug(
             "Reporting result of `%s` for %s; %s", result_status, job_details, exported_data_url
         )
 

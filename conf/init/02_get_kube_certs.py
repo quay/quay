@@ -1,8 +1,13 @@
 import json
+import logging
 import os
 import base64
 
 from requests import Request, Session
+
+
+logger = logging.getLogger(__name__)
+
 
 QUAYPATH = os.environ.get("QUAYPATH", ".")
 KUBE_EXTRA_CA_CERTDIR = os.environ.get(
@@ -71,7 +76,7 @@ def main():
 
         cert_value = base64.b64decode(secret_data[cert_key])
         cert_filename = cert_key.replace(EXTRA_CA_DIRECTORY_PREFIX, "")
-        print("Found an extra cert %s in config-secret, copying to kube ca dir")
+        logger.info("Found an extra cert %s in config-secret, copying to kube ca dir")
 
         with open(os.path.join(KUBE_EXTRA_CA_CERTDIR, cert_filename), "w") as f:
             f.write(cert_value)

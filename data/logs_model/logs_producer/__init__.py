@@ -20,9 +20,7 @@ class LogProducerProxy(object):
 
     def initialize(self, model):
         self._model = model
-        logger.info("===============================")
-        logger.info("Using producer `%s`", self._model)
-        logger.info("===============================")
+        logger.debug("Using producer `%s`", self._model)
 
     def __getattr__(self, attr):
         if not self._model:

@@ -19,7 +19,7 @@ class OrchestratorCanceller(object):
         self._orchestrator = orchestrator_from_config(config, canceller_only=True)
 
     def try_cancel_build(self, build_uuid):
-        logger.info("Cancelling build %s", build_uuid)
+        logger.debug("Cancelling build %s", build_uuid)
         cancel_key = slash_join(CANCEL_PREFIX, build_uuid)
         try:
             self._orchestrator.set_key_sync(cancel_key, build_uuid, expiration=60)
