@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// TagExpirationFieldGroup represents the TagExpiration config fields
+// TagExpirationFieldGroupFieldGroup represents the TagExpirationFieldGroup config fields
 type TagExpirationFieldGroup struct {
 	FeatureChangeTagExpiration bool          `default:"false" validate:""`
 	DefaultTagExpiration       string        `default:"2w" validate:"required"`
@@ -14,20 +14,20 @@ type TagExpirationFieldGroup struct {
 
 // NewTagExpirationFieldGroup creates a new TagExpirationFieldGroup
 func NewTagExpirationFieldGroup(fullConfig map[string]interface{}) FieldGroup {
-	newTagExpiration := &TagExpirationFieldGroup{}
-	defaults.Set(newTagExpiration)
+	newTagExpirationFieldGroup := &TagExpirationFieldGroup{}
+	defaults.Set(newTagExpirationFieldGroup)
 
 	if value, ok := fullConfig["FEATURE_CHANGE_TAG_EXPIRATION"]; ok {
-		newTagExpiration.FeatureChangeTagExpiration = value.(bool)
+		newTagExpirationFieldGroup.FeatureChangeTagExpiration = value.(bool)
 	}
 	if value, ok := fullConfig["DEFAULT_TAG_EXPIRATION"]; ok {
-		newTagExpiration.DefaultTagExpiration = value.(string)
+		newTagExpirationFieldGroup.DefaultTagExpiration = value.(string)
 	}
 	if value, ok := fullConfig["TAG_EXPIRATION_OPTIONS"]; ok {
-		newTagExpiration.TagExpirationOptions = value.([]interface{})
+		newTagExpirationFieldGroup.TagExpirationOptions = value.([]interface{})
 	}
 
-	return newTagExpiration
+	return newTagExpirationFieldGroup
 }
 
 // Validate checks the configuration settings for this field group

@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// HostSettingsFieldGroup represents the HostSettings config fields
+// HostSettingsFieldGroupFieldGroup represents the HostSettingsFieldGroup config fields
 type HostSettingsFieldGroup struct {
 	ServerHostname         string `default:"" validate:"required"`
 	PreferredURLScheme     string `default:"http" validate:"oneof=http https"`
@@ -14,20 +14,20 @@ type HostSettingsFieldGroup struct {
 
 // NewHostSettingsFieldGroup creates a new HostSettingsFieldGroup
 func NewHostSettingsFieldGroup(fullConfig map[string]interface{}) FieldGroup {
-	newHostSettings := &HostSettingsFieldGroup{}
-	defaults.Set(newHostSettings)
+	newHostSettingsFieldGroup := &HostSettingsFieldGroup{}
+	defaults.Set(newHostSettingsFieldGroup)
 
 	if value, ok := fullConfig["SERVER_HOSTNAME"]; ok {
-		newHostSettings.ServerHostname = value.(string)
+		newHostSettingsFieldGroup.ServerHostname = value.(string)
 	}
 	if value, ok := fullConfig["PREFERRED_URL_SCHEME"]; ok {
-		newHostSettings.PreferredURLScheme = value.(string)
+		newHostSettingsFieldGroup.PreferredURLScheme = value.(string)
 	}
 	if value, ok := fullConfig["EXTERNAL_TLS_TERMINATION"]; ok {
-		newHostSettings.ExternalTLSTermination = value.(bool)
+		newHostSettingsFieldGroup.ExternalTLSTermination = value.(bool)
 	}
 
-	return newHostSettings
+	return newHostSettingsFieldGroup
 }
 
 // Validate checks the configuration settings for this field group
