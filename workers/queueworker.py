@@ -34,6 +34,18 @@ class WorkerUnhealthyException(Exception):
     pass
 
 
+class WorkerSleepException(Exception):
+    """
+    When this exception is raised, the worker is told to go to sleep, as another worker is doing
+    work.
+
+    When this is raised while processing a queue item, the item should be returned to the queue
+    along with another retry.
+    """
+
+    pass
+
+
 class QueueWorker(Worker):
     def __init__(
         self,
@@ -126,6 +138,11 @@ class QueueWorker(Worker):
                 logger.warning("An error occurred processing request: %s", current_queue_item.body)
                 logger.warning("Job exception: %s", jex)
                 self.mark_current_incomplete(restore_retry=False)
+
+            except WorkerSleepException as exc:
+                logger.debug("Worker has been requested to go to sleep")
+                self.mark_current_incomplete(restore_retry=True)
+                self._stop.set()
 
             except WorkerUnhealthyException as exc:
                 logger.error(
