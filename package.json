@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/quay/quay#readme",
   "dependencies": {
-    "angular": "1.6.2",
+    "angular": "1.8.0",
     "angular-animate": "1.6.2",
     "angular-cookies": "1.6.2",
     "angular-route": "1.6.2",
