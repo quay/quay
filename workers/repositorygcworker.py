@@ -5,7 +5,7 @@ import features
 
 from app import repository_gc_queue, all_queues
 from data import model, database
-from workers.queueworker import QueueWorker
+from workers.queueworker import QueueWorker, WorkerSleepException
 from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
 
@@ -30,6 +30,7 @@ class RepositoryGCWorker(QueueWorker):
                 self._perform_gc(job_details)
         except LockNotAcquiredException:
             logger.debug("Could not acquire global lock for garbage collection")
+            raise WorkerSleepException
 
     def _perform_gc(self, job_details):
         logger.debug("Got repository GC queue item: %s", job_details)
