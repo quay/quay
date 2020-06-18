@@ -183,7 +183,7 @@ class EphemeralBuilderManager(BaseManager):
 
             # Finally, we terminate the build execution for the job. We don't do this under a lock as
             # terminating a node is an atomic operation; better to make sure it is terminated than not.
-            logger.info(
+            logger.debug(
                 "Terminating expired build executor for job %s with execution id %s",
                 build_job.build_uuid,
                 build_info.execution_id,
@@ -231,7 +231,7 @@ class EphemeralBuilderManager(BaseManager):
                     await self._mark_job_incomplete(build_job, build_info)
 
                 # Cleanup the executor.
-                logger.info(
+                logger.debug(
                     "Realm %s expired for job %s, terminating executor %s with execution id %s",
                     realm_id,
                     build_uuid,
@@ -428,7 +428,7 @@ class EphemeralBuilderManager(BaseManager):
         logger.debug("Total jobs (scheduling job %s): %s", build_uuid, workers_alive)
 
         if workers_alive >= allowed_worker_count:
-            logger.info(
+            logger.debug(
                 "Too many workers alive, unable to start new worker for build job: %s. %s >= %s",
                 build_uuid,
                 workers_alive,
@@ -692,7 +692,7 @@ class EphemeralBuilderManager(BaseManager):
         logger.debug("job_completed for job %s with status: %s", build_job.build_uuid, job_status)
 
     async def kill_builder_executor(self, build_uuid):
-        logger.info("Starting termination of executor for job %s", build_uuid)
+        logger.debug("Starting termination of executor for job %s", build_uuid)
         build_info = self._build_uuid_to_info.pop(build_uuid, None)
         if build_info is None:
             logger.debug(
@@ -713,7 +713,7 @@ class EphemeralBuilderManager(BaseManager):
             return
 
         # Terminate the executor's execution.
-        logger.info("Terminating executor %s with execution id %s", executor_name, execution_id)
+        logger.debug("Terminating executor %s with execution id %s", executor_name, execution_id)
         await executor.stop_builder(execution_id)
 
     async def job_heartbeat(self, build_job):
@@ -728,7 +728,7 @@ class EphemeralBuilderManager(BaseManager):
         try:
             job_data = await self._orchestrator.get_key(self._job_key(build_job))
         except KeyError:
-            logger.info("Job %s no longer exists in the orchestrator", build_job.build_uuid)
+            logger.debug("Job %s no longer exists in the orchestrator", build_job.build_uuid)
             return
         except OrchestratorConnectionError:
             logger.exception("failed to connect when attempted to extend job")

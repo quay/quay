@@ -128,7 +128,7 @@ def create_user_noverify(
 
     try:
         existing = User.get((User.username == username) | (User.email == email))
-        logger.info("Existing user with same username or email.")
+        logger.debug("Existing user with same username or email.")
 
         # A user already exists with either the same username or email
         if existing.username == username:
@@ -335,7 +335,7 @@ def create_robot(robot_shortname, parent, description="", unstructured_metadata=
         User.get(User.username == username)
 
         msg = "Existing robot with name: %s" % username
-        logger.info(msg)
+        logger.debug(msg)
         raise InvalidRobotException(msg)
     except User.DoesNotExist:
         pass

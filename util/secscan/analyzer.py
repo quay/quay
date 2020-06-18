@@ -135,10 +135,10 @@ class LayerAnalyzer(object):
         previously_security_indexed_successfully = layer.security_indexed
         previous_security_indexed_engine = layer.security_indexed_engine
 
-        logger.info("Analyzing layer %s", layer.docker_image_id)
+        logger.debug("Analyzing layer %s", layer.docker_image_id)
         analyzed_version = self._api.analyze_layer(layer)
 
-        logger.info(
+        logger.debug(
             "Analyzed layer %s successfully with version %s",
             layer.docker_image_id,
             analyzed_version,

@@ -103,7 +103,7 @@ def run_build_manager():
 
 
 if __name__ == "__main__":
-    logging.config.fileConfig(logfile_path(debug=True), disable_existing_loggers=False)
+    logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     logging.getLogger("peewee").setLevel(logging.WARN)
     logging.getLogger("boto").setLevel(logging.WARN)
 

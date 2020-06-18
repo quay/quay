@@ -33,7 +33,7 @@ class EtcdCanceller(object):
         """
         Writes etcd message to cancel build_uuid.
         """
-        logger.info("Cancelling build %s".format(build_uuid))
+        logger.debug("Cancelling build %s".format(build_uuid))
         try:
             self._etcd_client.write(
                 "{}{}".format(self._cancel_prefix, build_uuid), build_uuid, ttl=60
