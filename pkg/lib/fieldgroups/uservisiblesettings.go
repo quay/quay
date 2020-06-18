@@ -14,13 +14,10 @@ type UserVisibleSettingsFieldGroup struct {
 	ContactInfo              []interface{} `default:"[]" validate:""`
 	AvatarKind               string        `default:"local" validate:"oneof=local gravatar"`
 	Branding                 struct {
-		Logo       string `default:"" validate:"url"`
-		FooterIMG  string `default:"" validate:"url"`
-		FooterURL  string `default:"" validate:"url"`
-		TestNested struct {
-			TestNested2 string `default:"" validate:""`
-		}
-	}
+		Logo      string `default:"" validate:"url"`
+		FooterIMG string `default:"" validate:"url"`
+		FooterURL string `default:"" validate:"url"`
+	} `default:"" validate:""`
 }
 
 // NewUserVisibleSettingsFieldGroup creates a new UserVisibleSettingsFieldGroup
@@ -47,7 +44,7 @@ func NewUserVisibleSettingsFieldGroup(fullConfig map[string]interface{}) FieldGr
 		newUserVisibleSettings.AvatarKind = value.(string)
 	}
 	if value, ok := fullConfig["BRANDING"]; ok {
-		newUserVisibleSettings.Branding = value.(object)
+		newUserVisibleSettings.Branding = value.(interface{})
 	}
 
 	return newUserVisibleSettings
