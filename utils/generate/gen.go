@@ -71,9 +71,18 @@ func createFieldGroups(configDef ConfigDefinition) error {
 		f.ImportName("github.com/go-playground/validator/v10", "validator")
 
 		// Struct Definition
-		f.Comment(fgName + "FieldGroup represents the " + fgName + " config fields")
-		structBlock := generateStructBlock(fields)
-		f.Type().Id(fgName + "FieldGroup").Struct(structBlock)
+		structsList := reverseStructOrder(generateStructs(fgName, fields))
+
+		op := jen.Options{
+			Open:  "\n",
+			Multi: true,
+			Close: "\n",
+		}
+		f.CustomFunc(op, func(g *jen.Group) {
+			for _, structDef := range structsList {
+				g.Add(structDef)
+			}
+		})
 
 		// Constructor
 		f.Comment("New" + fgName + "FieldGroup creates a new " + fgName + "FieldGroup")
@@ -156,7 +165,9 @@ func createConfigBase(configDef ConfigDefinition) error {
 *************************************************/
 
 // generateStructDefaults generates a struct definition block
-func generateStructBlock(fields []FieldDefinition) *jen.Statement {
+func generateStructs(fgName string, fields []FieldDefinition) (structs []*jen.Statement) {
+
+	var innerStructs []*jen.Statement = []*jen.Statement{}
 
 	op := jen.Options{
 		Open:  "\n",
@@ -182,7 +193,8 @@ func generateStructBlock(fields []FieldDefinition) *jen.Statement {
 			case "int":
 				g.Id(fieldName).Int().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
 			case "interface{}":
-				g.Id(fieldName).Struct(generateStructBlock(field.Properties)).Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
+				g.Id(fieldName).Id(fieldName + "Struct")
+				innerStructs = append(innerStructs, generateStructs(fieldName, field.Properties)...)
 			default:
 
 			}
@@ -190,7 +202,10 @@ func generateStructBlock(fields []FieldDefinition) *jen.Statement {
 		}
 	})
 
-	return structBlock
+	structDef := jen.Comment("//" + fgName + "FieldGroup represents the " + fgName + " config fields\n")
+	structDef.Add(jen.Type().Id(fgName + "FieldGroup").Struct(structBlock))
+
+	return append(innerStructs, structDef)
 
 }
 
@@ -236,4 +251,13 @@ func getFullOutputPath(fileName string) string {
 	projRoot := path.Join(path.Dir(path.Dir(path.Dir(b))), path.Join("pkg", "lib", "fieldgroups"))
 	fullPath := path.Join(projRoot, fileName)
 	return fullPath
+}
+
+// reverseStructOrder reverses the list of structs. TAKEN FROM https://stackoverflow.com/questions/28058278/how-do-i-reverse-a-slice-in-go
+func reverseStructOrder(structs []*jen.Statement) []*jen.Statement {
+	for i, j := 0, len(structs)-1; i < j; i, j = i+1, j-1 {
+		structs[i], structs[j] = structs[j], structs[i]
+	}
+
+	return structs
 }
