@@ -156,6 +156,17 @@ func createConfigBase(configDef ConfigDefinition) error {
 	f.Comment("NewConfig creates a Config struct from a map[string]interface{}")
 	f.Func().Id("NewConfig").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id("Config").Block(constructorBlock, jen.Return(jen.Id("newConfig")))
 
+	// Add helper function to fix maps
+	f.Comment("fixInterface converts a map[interface{}]interface{} into a map[string]interface{}")
+	f.Func().Id("fixInterface").Params(jen.Id("input").Map(jen.Interface()).Interface()).Map(jen.String()).Interface().Block(
+		jen.Id("output").Op(":=").Make(jen.Map(jen.String()).Interface()),
+		jen.For(jen.List(jen.Id("_"), jen.Id("value")).Op(":=").Range().Id("input").Block(
+			jen.Id("strKey").Op(":=").Qual("fmt", "Sprintf").Call(jen.List(jen.Lit("%v"), jen.Id("value"))),
+			jen.Id("output").Index(jen.Id("strKey")).Op("=").Id("value"),
+		)),
+		jen.Return(jen.Id("output")),
+	)
+
 	// Define outputfile name
 	outfile := "config.go"
 	outfilePath := getFullOutputPath(outfile)
@@ -253,7 +264,8 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 			// If the field is a nested struct
 			if field.Type == "interface{}" {
 				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
-					jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("New" + field.Name + "Struct").Call(jen.Id("value").Assert(jen.Map(jen.String()).Interface())),
+					jen.Id("value").Op(":=").Id("fixInterface").Call(jen.Id("value").Assert(jen.Map(jen.Interface()).Interface())),
+					jen.Id("new"+fgName).Dot(field.Name).Op("=").Id("New"+field.Name+"Struct").Call(jen.Id("value")),
 				)
 
 				innerConstructors = append(innerConstructors, generateConstructors(field.Name, field.Properties, false)...)
