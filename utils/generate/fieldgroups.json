@@ -1,5 +1,5 @@
 {
-  "SecurityScannerFieldGroup": [
+  "SecurityScanner": [
     {
       "name": "FeatureSecurityScanner",
       "yaml": "FEATURE_SECURITY_SCANNER",

@@ -105,33 +105,33 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// SecurityScannerFieldGroupFieldGroup represents the SecurityScannerFieldGroupFieldGroup config fields
-type SecurityScannerFieldGroupFieldGroup struct {
+// SecurityScannerFieldGroup represents the SecurityScannerFieldGroup config fields
+type SecurityScannerFieldGroup struct {
 	FeatureSecurityScanner       bool   `default:"false" validate:"omitempty"`
 	FeatureSecurityNotifications bool   `default:"false" validate:"omitempty"`
 	SecurityScannerEndpoint      string `default:"" validate:"required_with=FeatureSecurityScanner"`
 }
 
-// NewSecurityScannerFieldGroupFieldGroup creates a new SecurityScannerFieldGroupFieldGroup
-func NewSecurityScannerFieldGroupFieldGroup(fullConfig map[string]interface{}) FieldGroup {
-	newSecurityScannerFieldGroupFieldGroup := &SecurityScannerFieldGroupFieldGroup{}
-	defaults.Set(newSecurityScannerFieldGroupFieldGroup)
+// NewSecurityScannerFieldGroup creates a new SecurityScannerFieldGroup
+func NewSecurityScannerFieldGroup(fullConfig map[string]interface{}) FieldGroup {
+	newSecurityScannerFieldGroup := &SecurityScannerFieldGroup{}
+	defaults.Set(newSecurityScannerFieldGroup)
 
 	if value, ok := fullConfig["FEATURE_SECURITY_SCANNER"]; ok {
-		newSecurityScannerFieldGroupFieldGroup.FeatureSecurityScanner = value.(bool)
+		newSecurityScannerFieldGroup.FeatureSecurityScanner = value.(bool)
 	}
 	if value, ok := fullConfig["FEATURE_SECURITY_NOTIFICATIONS"]; ok {
-		newSecurityScannerFieldGroupFieldGroup.FeatureSecurityNotifications = value.(bool)
+		newSecurityScannerFieldGroup.FeatureSecurityNotifications = value.(bool)
 	}
 	if value, ok := fullConfig["SECURITY_SCANNER_ENDPOINT"]; ok {
-		newSecurityScannerFieldGroupFieldGroup.SecurityScannerEndpoint = value.(string)
+		newSecurityScannerFieldGroup.SecurityScannerEndpoint = value.(string)
 	}
 
-	return newSecurityScannerFieldGroupFieldGroup
+	return newSecurityScannerFieldGroup
 }
 
 // Validate checks the configuration settings for this field group
-func (fg *SecurityScannerFieldGroupFieldGroup) Validate() validator.ValidationErrors {
+func (fg *SecurityScannerFieldGroup) Validate() validator.ValidationErrors {
 	validate := validator.New()
 	err := validate.Struct(fg)
 	if err == nil {
@@ -162,12 +162,12 @@ FEATURE_SECURITY_NOTIFICATIONS: false
 This config returns the following:
 
 ```
-+---------------------------+-------------------------+-------------------------------------+--------+
-|        FIELD GROUP        |          FIELD          |             ERROR                   | STATUS |
-+---------------------------+-------------------------+-------------------------------------+--------+
-| SecurityScannerFieldGroup | SecurityScannerEndpoint | Field enforces tag:                 | 🔴     |
-|                           |                         | required_with FeatureSecurityScanner         |
-+---------------------------+-------------------------+-------------------------------------+--------+
++-----------------+-------------------------+--------------------------------------+--------+
+|   FIELD GROUP   |          FIELD          |             ERROR                    | STATUS |
++-----------------+-------------------------+--------------------------------------+--------+
+| SecurityScanner | SecurityScannerEndpoint | Field enforces tag:                  | 🔴     |
+|                 |                         | required_with FeatureSecurityScanner |        |
++-----------------+-------------------------+--------------------------------------+--------+
 ```
 
 If we fix our `config.yaml` to the following:
@@ -181,9 +181,9 @@ SECURITY_SCANNER_ENDPOINT: localhost:8080
 This config returns the following:
 
 ```
-+---------------------------+-------+-------+--------+
-|        FIELD GROUP        | FIELD | ERROR | STATUS |
-+---------------------------+-------+-------+--------+
-| SecurityScannerFieldGroup | -     | -     | 🟢     |
-+---------------------------+-------+-------+--------+
++-----------------+-------+-------+--------+
+|   FIELD GROUP   | FIELD | ERROR | STATUS |
++-----------------+-------+-------+--------+
+| SecurityScanner | -     | -     | 🟢     |
++-----------------+-------+-------+--------+
 ```
