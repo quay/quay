@@ -54,7 +54,7 @@ func main() {
 }
 
 /**************************************************
-Generate Files
+                 Generate Files
 **************************************************/
 
 // createFieldGroups will generate a .go file for a field group defined struct
@@ -70,9 +70,8 @@ func createFieldGroups(configDef ConfigDefinition) error {
 		f.ImportName("github.com/creasty/defaults", "defaults")
 		f.ImportName("github.com/go-playground/validator/v10", "validator")
 
-		// Struct Definition
-		structsList := reverseStructOrder(generateStructs(fgName, fields))
-
+		// Struct Definitions
+		structsList := reverseList(generateStructs(fgName, fields, true))
 		op := jen.Options{
 			Open:  "\n",
 			Multi: true,
@@ -84,10 +83,18 @@ func createFieldGroups(configDef ConfigDefinition) error {
 			}
 		})
 
-		// Constructor
-		f.Comment("New" + fgName + "FieldGroup creates a new " + fgName + "FieldGroup")
-		constructor := generateConstructor(fgName, fields)
-		f.Add(constructor)
+		// Constructor Definitions
+		constructorsList := reverseList(generateConstructors(fgName, fields, true))
+		op = jen.Options{
+			Open:  "\n",
+			Multi: true,
+			Close: "\n",
+		}
+		f.CustomFunc(op, func(g *jen.Group) {
+			for _, constructorDef := range constructorsList {
+				g.Add(constructorDef)
+			}
+		})
 
 		// Create Validator function
 		f.Comment("Validate checks the configuration settings for this field group")
@@ -165,9 +172,17 @@ func createConfigBase(configDef ConfigDefinition) error {
 *************************************************/
 
 // generateStructDefaults generates a struct definition block
-func generateStructs(fgName string, fields []FieldDefinition) (structs []*jen.Statement) {
+func generateStructs(fgName string, fields []FieldDefinition, topLevel bool) (structs []*jen.Statement) {
 
 	var innerStructs []*jen.Statement = []*jen.Statement{}
+
+	// If top level is true, this struct is a field group
+	if topLevel {
+		fgName = fgName + "FieldGroup"
+
+	} else { // Otherwise it is a inner struct
+		fgName = fgName + "Struct"
+	}
 
 	op := jen.Options{
 		Open:  "\n",
@@ -193,8 +208,8 @@ func generateStructs(fgName string, fields []FieldDefinition) (structs []*jen.St
 			case "int":
 				g.Id(fieldName).Int().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
 			case "interface{}":
-				g.Id(fieldName).Id(fieldName + "Struct")
-				innerStructs = append(innerStructs, generateStructs(fieldName, field.Properties)...)
+				g.Id(fieldName).Id("*" + fieldName + "Struct")
+				innerStructs = append(innerStructs, generateStructs(fieldName, field.Properties, false)...)
 			default:
 
 			}
@@ -202,17 +217,30 @@ func generateStructs(fgName string, fields []FieldDefinition) (structs []*jen.St
 		}
 	})
 
-	structDef := jen.Comment("//" + fgName + "FieldGroup represents the " + fgName + " config fields\n")
-	structDef.Add(jen.Type().Id(fgName + "FieldGroup").Struct(structBlock))
+	structDef := jen.Comment("// " + fgName + "FieldGroup represents the " + fgName + " config fields\n")
+	structDef.Add(jen.Type().Id(fgName).Struct(structBlock))
 
 	return append(innerStructs, structDef)
 
 }
 
 // generateConstructorBlock generates a constructor block
-func generateConstructor(fgName string, fields []FieldDefinition) *jen.Statement {
+func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool) (constructors []*jen.Statement) {
 
-	// Create default values dynamically
+	var innerConstructors []*jen.Statement = []*jen.Statement{}
+	var returnType string
+
+	// If top level is true, this struct is a field group
+	if topLevel {
+		fgName = fgName + "FieldGroup"
+		returnType = "FieldGroup"
+
+	} else { // Otherwise it is a inner struct
+		fgName = fgName + "Struct"
+		returnType = "*" + fgName
+	}
+
+	// Load values from map[string]interface{}
 	op := jen.Options{
 		Open:  "\n",
 		Multi: true,
@@ -222,21 +250,32 @@ func generateConstructor(fgName string, fields []FieldDefinition) *jen.Statement
 
 		for _, field := range fields {
 
-			g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
-				jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("value").Assert(jen.Id(field.Type)),
-			)
+			// If the field is a nested struct
+			if field.Type == "interface{}" {
+				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
+					jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("New" + field.Name + "Struct").Call(jen.Id("value").Assert(jen.Map(jen.String()).Interface())),
+				)
+
+				innerConstructors = append(innerConstructors, generateConstructors(field.Name, field.Properties, false)...)
+
+			} else { // If the field is a primitive
+				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
+					jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("value").Assert(jen.Id(field.Type)),
+				)
+			}
 
 		}
 	})
 
-	constructor := jen.Func().Id("New"+fgName+"FieldGroup").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id("FieldGroup").Block(
-		jen.Id("new"+fgName).Op(":=").Op("&").Id(fgName+"FieldGroup").Values(),
+	constructor := jen.Comment("// New" + fgName + " creates a new " + fgName + "\n")
+	constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
+		jen.Id("new"+fgName).Op(":=").Op("&").Id(fgName).Values(),
 		jen.Qual("github.com/creasty/defaults", "Set").Call(jen.Id("new"+fgName)),
 		setValues,
 		jen.Return(jen.Id("new"+fgName)),
-	)
+	))
 
-	return constructor
+	return append(innerConstructors, constructor)
 
 }
 
@@ -254,7 +293,7 @@ func getFullOutputPath(fileName string) string {
 }
 
 // reverseStructOrder reverses the list of structs. TAKEN FROM https://stackoverflow.com/questions/28058278/how-do-i-reverse-a-slice-in-go
-func reverseStructOrder(structs []*jen.Statement) []*jen.Statement {
+func reverseList(structs []*jen.Statement) []*jen.Statement {
 	for i, j := 0, len(structs)-1; i < j; i, j = i+1, j-1 {
 		structs[i], structs[j] = structs[j], structs[i]
 	}
