@@ -28,7 +28,8 @@ type FieldDefinition struct {
 func main() {
 
 	// Read config definition file
-	configDefFile, err := ioutil.ReadFile("fieldgroups.json")
+	configDefPath := getFullInputPath("fieldgroups.json")
+	configDefFile, err := ioutil.ReadFile(configDefPath)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -54,7 +55,7 @@ func main() {
 }
 
 /**************************************************
-                 Generate Files
+                Generate Files
 **************************************************/
 
 // createFieldGroups will generate a .go file for a field group defined struct
@@ -160,8 +161,8 @@ func createConfigBase(configDef ConfigDefinition) error {
 	f.Comment("fixInterface converts a map[interface{}]interface{} into a map[string]interface{}")
 	f.Func().Id("fixInterface").Params(jen.Id("input").Map(jen.Interface()).Interface()).Map(jen.String()).Interface().Block(
 		jen.Id("output").Op(":=").Make(jen.Map(jen.String()).Interface()),
-		jen.For(jen.List(jen.Id("_"), jen.Id("value")).Op(":=").Range().Id("input").Block(
-			jen.Id("strKey").Op(":=").Qual("fmt", "Sprintf").Call(jen.List(jen.Lit("%v"), jen.Id("value"))),
+		jen.For(jen.List(jen.Id("key"), jen.Id("value")).Op(":=").Range().Id("input").Block(
+			jen.Id("strKey").Op(":=").Qual("fmt", "Sprintf").Call(jen.List(jen.Lit("%v"), jen.Id("key"))),
 			jen.Id("output").Index(jen.Id("strKey")).Op("=").Id("value"),
 		)),
 		jen.Return(jen.Id("output")),
@@ -179,7 +180,7 @@ func createConfigBase(configDef ConfigDefinition) error {
 }
 
 /*************************************************
-            Generate Block Contents
+                Generate Blocks
 *************************************************/
 
 // generateStructDefaults generates a struct definition block
@@ -292,8 +293,17 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 }
 
 /************************************************
-              Helper Functions
+               Helper Functions
 ************************************************/
+
+// getFullOutputPath returns the full path to the input file
+func getFullInputPath(fileName string) string {
+	// Get root of project
+	_, b, _, _ := runtime.Caller(0)
+	projRoot := path.Join(path.Dir(path.Dir(path.Dir(b))), path.Join("utils", "generate"))
+	fullPath := path.Join(projRoot, fileName)
+	return fullPath
+}
 
 // getFullOutputPath returns the full path to an output file
 func getFullOutputPath(fileName string) string {

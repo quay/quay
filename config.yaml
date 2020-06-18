@@ -20,4 +20,5 @@ TAG_EXPIRATION_OPTIONS:
   - 2w
   - 4w
 BRANDING:
-  logo: www.google.com
+  logo: not_a_url
+  footer_img: also_not_a_url

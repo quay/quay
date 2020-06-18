@@ -51,102 +51,70 @@
       "yaml": "REGISTRY_TITLE",
       "type": "string",
       "default": "Project Quay",
-      "validate": ""
+      "validate": "omitempty"
     },
     {
       "name": "RegistryTitleShort",
       "yaml": "REGISTRY_TITLE_SHORT",
       "type": "string",
       "default": "Project Quay",
-      "validate": ""
+      "validate": "omitempty"
     },
     {
       "name": "SearchResultsPerPage",
       "yaml": "SEARCH_RESULTS_PER_PAGE",
       "type": "int",
       "default": "10",
-      "validate": ""
+      "validate": "omitempty"
     },
     {
       "name": "SearchMaxResultPageCount",
       "yaml": "SEARCH_MAX_RESULT_PAGE_COUNT",
       "type": "int",
       "default": "10",
-      "validate": ""
+      "validate": "omitempty"
     },
     {
       "name": "ContactInfo",
       "yaml": "CONTACT_INFO",
       "type": "[]interface{}",
       "default": "[]",
-      "validate": ""
+      "validate": "omitempty"
     },
     {
       "name": "AvatarKind",
       "yaml": "AVATAR_KIND",
       "type": "string",
       "default": "local",
-      "validate": "oneof=local gravatar"
+      "validate": "omitempty,oneof=local gravatar"
     },
     {
       "name": "Branding",
       "yaml": "BRANDING",
       "type": "interface{}",
       "default": "",
-      "validate": "",
+      "validate": "omitempty",
       "properties": [
         {
           "name": "Logo",
           "yaml": "logo",
           "type": "string",
           "default": "",
-          "validate": "url"
+          "validate": "omitempty,url"
         },
         {
           "name": "FooterIMG",
           "yaml": "footer_img",
           "type": "string",
           "default": "",
-          "validate": "url"
+          "validate": "omitempty,url"
         },
         {
           "name": "FooterURL",
           "yaml": "footer_url",
           "type": "string",
           "default": "",
-          "validate": "url"
-        }
-      ]
-    }
-  ],
-  "GoogleLogin": [
-    {
-      "name": "FeatureGoogleLogin",
-      "yaml": "FEATURE_GOOGLE_LOGIN",
-      "type": "string",
-      "default": "",
-      "validate": ""
-    },
-    {
-      "name": "GoogleLoginConfig",
-      "yaml": "GOOGLE_LOGIN_CONFIG",
-      "type": "interface{}",
-      "default": "",
-      "validate": "",
-      "properties": [
-        {
-          "name": "ClientID",
-          "yaml": "CLIENT_ID",
-          "type": "string",
-          "default": "",
-          "validate": ""
-        },
-        {
-          "name": "ClientSecret",
-          "yaml": "CLIENT_SECRET",
-          "type": "string",
-          "default": "",
-          "validate": ""
+          "validate": "omitempty,url"
         }
       ]
     }

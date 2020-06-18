@@ -1,59 +1,84 @@
-# Quay Config Validation Tool
+# Config Tool
 
-This tool is used to validate configuration bundles for use with Quay.
+The Quay Config Tool implements several features to capture and validate configuration data based on a predefined schema.
+
+This tool includes the following features:
+
+- Validate Quay configuration using CLI tool
+- Generate code for custom field group definitions (includes structs, constructors, defaults)
+- Validation tag support from [Validator](https://github.com/go-playground/validator)
+- Built-in validator tags for OAuth and JWT structs
 
 ## Installation
 
-Use the `go get` command to install config-tool.
-
-```bash
-go get -u github.com/quay/config-tool/config-tool
-```
-
-## Design
-
-This tool can be used as either a library or through the command line.
+Clone this repository:
 
 ```
-config-tool/
-├── cmd
-│   └── config-tool
-│       └── main.go
-├── commands # This is where the Cobra CLI commands are called from
-│   ├── root.go
-│   └── validate.go
-├── go.mod
-├── go.sum
-├── LICENSE
-├── pkg
-│   └── lib # This folder contains the public library that can be imported
-│       ├── testdata
-│       │   ├── config1.yaml
-│       │   ├── config2.yaml
-│       │   └── quay-config-schema.json
-│       ├── validate.go
-│       └── validate_test.go
-├── README.md
-└── utils # This folder contains tools and scripts used in development
-    └── dumpschema.py
+git clone github.com/quay/config-tool
+cd config-tool
 ```
 
-## CLI Usage
+Generate files and install from source:
 
 ```
-Usage:
-  config-tool validate [flags]
-
-Flags:
-  -c, --configPath string   The path to a config file
-  -h, --help                help for validate
-  -s, --schemaPath string   The path to a schema JSON file
+make all
 ```
 
-## Library
+This will generate files for the Quay validator executable and install the `config-tool` CLI tool.
 
-The library contains functions that can be imported into other Go projects.
+#### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/config-tool/utils/generate)
 
-## License
+## Usage
 
-[Apache 2.0](https://choosealicense.com/licenses/apache-2.0/)
+The CLI tool contains two main commands:
+
+#### The `print` command is used to output the entire configuration with defaults specified
+
+```
+{
+        "HostSettings": (*fieldgroups.HostSettingsFieldGroup)({
+                ServerHostname: "quay:8081",
+                PreferredURLScheme: "https",
+                ExternalTLSTermination: false
+        }),
+        "TagExpiration": (*fieldgroups.TagExpirationFieldGroup)({
+                FeatureChangeTagExpiration: false,
+                DefaultTagExpiration: "2w",
+                TagExpirationOptions: {
+                        "0s",
+                        "1d",
+                        "1w",
+                        "2w",
+                        "4w"
+                }
+        }),
+        "UserVisibleSettings": (*fieldgroups.UserVisibleSettingsFieldGroup)({
+                RegistryTitle: "Project Quay",
+                RegistryTitleShort: "Project Quay",
+                SearchResultsPerPage: 10,
+                SearchMaxResultPageCount: 10,
+                ContactInfo: {
+                },
+                AvatarKind: "local",
+                Branding: (*fieldgroups.BrandingStruct)({
+                        Logo: "not_a_url",
+                        FooterIMG: "also_not_a_url",
+                        FooterURL: ""
+                })
+        })
+}
+```
+
+#### The `validate` command is used to show while field groups have been validated succesully
+
+```sh
+$ config-tool validate -c <path-to-config.yaml>
++---------------------+--------------------+-------------------------+--------+
+|     FIELD GROUP     |       FIELD        |          ERROR          | STATUS |
++---------------------+--------------------+-------------------------+--------+
+| HostSettings        | -                  | -                       | 🟢     |
+| TagExpiration       | -                  | -                       | 🟢     |
+| UserVisibleSettings | Branding.Logo      | Field enforces tag: url | 🔴     |
+|                     | Branding.FooterIMG | Field enforces tag: url | 🔴     |
++---------------------+--------------------+-------------------------+--------+
+```

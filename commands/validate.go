@@ -17,6 +17,8 @@ package commands
 
 import (
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/quay/config-tool/pkg/lib/validation"
@@ -33,12 +35,23 @@ var validateCmd = &cobra.Command{
 		// Validate Schema
 		configFieldGroups := validation.ValidateConf(configPath)
 
+		// Sort keys
+		keys := []string{}
+		for key := range configFieldGroups {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
+		// Initialize validaiton status grid
 		validationStatus := [][]string{}
 
-		for key, val := range configFieldGroups {
+		for _, key := range keys {
+
+			// Get field group for key
+			fieldGroup := configFieldGroups[key]
 
 			// Validate
-			validationErrors := val.Validate()
+			validationErrors := fieldGroup.Validate()
 
 			// If no errors, append row
 			if len(validationErrors) == 0 {
@@ -46,7 +59,9 @@ var validateCmd = &cobra.Command{
 			}
 
 			for _, err := range validationErrors {
-				validationStatus = append(validationStatus, []string{key, err.Field(), "Failed on " + err.Tag() + " tag", "🔴"})
+
+				fieldName := removeFieldGroupPrefix(err.Namespace())
+				validationStatus = append(validationStatus, []string{key, fieldName, "Field enforces tag: " + err.Tag(), "🔴"})
 			}
 		}
 
@@ -57,13 +72,10 @@ var validateCmd = &cobra.Command{
 		table.AppendBulk(validationStatus)
 
 		table.SetAutoMergeCellsByColumnIndex([]int{0})
-
 		table.Render()
 
 	},
 }
-
-var configPath string
 
 func init() {
 
@@ -74,4 +86,12 @@ func init() {
 	validateCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
 	validateCmd.MarkFlagRequired("configPath")
 
+}
+
+// removeFieldGroup removes the <fgName>FieldGroup. prefix to a tag name
+func removeFieldGroupPrefix(input string) string {
+	if i := strings.Index(input, "."); i != -1 {
+		return input[i+1:]
+	}
+	return input
 }
