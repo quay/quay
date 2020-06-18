@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// UserVisibleSettingsFieldGroupFieldGroup represents the UserVisibleSettingsFieldGroup config fields
+// UserVisibleSettingsFieldGroup represents the UserVisibleSettingsFieldGroup config fields
 type UserVisibleSettingsFieldGroup struct {
 	RegistryTitle            string        `default:"Project Quay" validate:""`
 	RegistryTitleShort       string        `default:"Project Quay" validate:""`
@@ -16,7 +16,7 @@ type UserVisibleSettingsFieldGroup struct {
 	Branding                 *BrandingStruct
 }
 
-// BrandingStructFieldGroup represents the BrandingStruct config fields
+// BrandingStruct represents the BrandingStruct config fields
 type BrandingStruct struct {
 	Logo      string `default:"" validate:"url"`
 	FooterIMG string `default:"" validate:"url"`

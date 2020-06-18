@@ -217,7 +217,7 @@ func generateStructs(fgName string, fields []FieldDefinition, topLevel bool) (st
 		}
 	})
 
-	structDef := jen.Comment("// " + fgName + "FieldGroup represents the " + fgName + " config fields\n")
+	structDef := jen.Comment("// " + fgName + " represents the " + fgName + " config fields\n")
 	structDef.Add(jen.Type().Id(fgName).Struct(structBlock))
 
 	return append(innerStructs, structDef)

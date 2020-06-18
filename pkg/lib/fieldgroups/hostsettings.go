@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// HostSettingsFieldGroupFieldGroup represents the HostSettingsFieldGroup config fields
+// HostSettingsFieldGroup represents the HostSettingsFieldGroup config fields
 type HostSettingsFieldGroup struct {
 	ServerHostname         string `default:"" validate:"required"`
 	PreferredURLScheme     string `default:"http" validate:"oneof=http https"`

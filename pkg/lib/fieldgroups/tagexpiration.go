@@ -5,7 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// TagExpirationFieldGroupFieldGroup represents the TagExpirationFieldGroup config fields
+// TagExpirationFieldGroup represents the TagExpirationFieldGroup config fields
 type TagExpirationFieldGroup struct {
 	FeatureChangeTagExpiration bool          `default:"false" validate:""`
 	DefaultTagExpiration       string        `default:"2w" validate:"required"`
