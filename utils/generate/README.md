@@ -154,13 +154,13 @@ If we run our newly created validation tool against the following `config.yaml`,
 
 `config.yaml`
 
-````
+```
 FEATURE_SECURITY_SCANNER: true
 FEATURE_SECURITY_NOTIFICATIONS: false
-
 ```
 
 This config returns the following:
+
 ```
 +---------------------------+-------------------------+-------------------------------------+--------+
 |        FIELD GROUP        |          FIELD          |             ERROR                   | STATUS |
@@ -168,22 +168,22 @@ This config returns the following:
 | SecurityScannerFieldGroup | SecurityScannerEndpoint | Field enforces tag:                 | 🔴     |
 |                           |                         | required_with FeatureSecurityScanner         |
 +---------------------------+-------------------------+-------------------------------------+--------+
-````
+```
 
 If we fix our `config.yaml` to the following:
 
-````
+```
 FEATURE_SECURITY_SCANNER: true
 FEATURE_SECURITY_NOTIFICATIONS: false
 SECURITY_SCANNER_ENDPOINT: localhost:8080
-
 ```
 
 This config returns the following:
+
 ```
 +---------------------------+-------+-------+--------+
 |        FIELD GROUP        | FIELD | ERROR | STATUS |
 +---------------------------+-------+-------+--------+
 | SecurityScannerFieldGroup | -     | -     | 🟢     |
 +---------------------------+-------+-------+--------+
-````
+```
