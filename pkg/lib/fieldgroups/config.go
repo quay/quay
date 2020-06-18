@@ -1,6 +1,10 @@
 package fieldgroups
 
-import "github.com/go-playground/validator/v10"
+import (
+	"fmt"
+
+	"github.com/go-playground/validator/v10"
+)
 
 // FieldGroup is an interface that implements the Validate() function
 type FieldGroup interface {
@@ -17,6 +21,17 @@ func NewConfig(fullConfig map[string]interface{}) Config {
 	newConfig["HostSettings"] = NewHostSettingsFieldGroup(fullConfig)
 	newConfig["TagExpiration"] = NewTagExpirationFieldGroup(fullConfig)
 	newConfig["UserVisibleSettings"] = NewUserVisibleSettingsFieldGroup(fullConfig)
+	newConfig["GoogleLogin"] = NewGoogleLoginFieldGroup(fullConfig)
 
 	return newConfig
+}
+
+// fixInterface converts a map[interface{}]interface{} into a map[string]interface{}
+func fixInterface(input map[interface{}]interface{}) map[string]interface{} {
+	output := make(map[string]interface{})
+	for _, value := range input {
+		strKey := fmt.Sprintf("%v", value)
+		output[strKey] = value
+	}
+	return output
 }

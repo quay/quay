@@ -118,5 +118,37 @@
         }
       ]
     }
+  ],
+  "GoogleLogin": [
+    {
+      "name": "FeatureGoogleLogin",
+      "yaml": "FEATURE_GOOGLE_LOGIN",
+      "type": "string",
+      "default": "",
+      "validate": ""
+    },
+    {
+      "name": "GoogleLoginConfig",
+      "yaml": "GOOGLE_LOGIN_CONFIG",
+      "type": "interface{}",
+      "default": "",
+      "validate": "",
+      "properties": [
+        {
+          "name": "ClientID",
+          "yaml": "CLIENT_ID",
+          "type": "string",
+          "default": "",
+          "validate": ""
+        },
+        {
+          "name": "ClientSecret",
+          "yaml": "CLIENT_SECRET",
+          "type": "string",
+          "default": "",
+          "validate": ""
+        }
+      ]
+    }
   ]
 }

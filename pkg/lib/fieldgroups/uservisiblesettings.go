@@ -47,7 +47,8 @@ func NewUserVisibleSettingsFieldGroup(fullConfig map[string]interface{}) FieldGr
 		newUserVisibleSettingsFieldGroup.AvatarKind = value.(string)
 	}
 	if value, ok := fullConfig["BRANDING"]; ok {
-		newUserVisibleSettingsFieldGroup.Branding = NewBrandingStruct(value.(map[string]interface{}))
+		value := fixInterface(value.(map[interface{}]interface{}))
+		newUserVisibleSettingsFieldGroup.Branding = NewBrandingStruct(value)
 	}
 
 	return newUserVisibleSettingsFieldGroup

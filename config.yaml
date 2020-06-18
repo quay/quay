@@ -19,7 +19,5 @@ TAG_EXPIRATION_OPTIONS:
   - 1w
   - 2w
   - 4w
-USER_EVENTS_REDIS:
-  host: 10.88.0.17
-  password: strongpassword
-  port: 6379
+BRANDING:
+  logo: www.google.com
