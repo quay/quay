@@ -26,7 +26,7 @@ make all
 
 This will generate files for the Quay validator executable and install the `config-tool` CLI tool.
 
-#### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/config-tool/utils/generate)
+#### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/config-tool/tree/master/utils/generate)
 
 ## Usage
 
@@ -71,7 +71,7 @@ The CLI tool contains two main commands:
 
 #### The `validate` command is used to show while field groups have been validated succesully
 
-```sh
+```
 $ config-tool validate -c <path-to-config.yaml>
 +---------------------+--------------------+-------------------------+--------+
 |     FIELD GROUP     |       FIELD        |          ERROR          | STATUS |

@@ -1,24 +1,3 @@
-AUTHENTICATION_TYPE: Database
-BUILDLOGS_REDIS:
-  host: 10.88.0.17
-  password: strongpassword
-  port: 6379
-DB_URI: postgresql://user:pass@10.88.0.16/quay
-DEFAULT_TAG_EXPIRATION: 2w
-DISTRIBUTED_STORAGE_CONFIG:
-  default:
-    - LocalStorage
-    - storage_path: /datastorage/registry
-DISTRIBUTED_STORAGE_PREFERENCE:
-  - default
-PREFERRED_URL_SCHEME: "https"
-SERVER_HOSTNAME: quay:8081
-TAG_EXPIRATION_OPTIONS:
-  - 0s
-  - 1d
-  - 1w
-  - 2w
-  - 4w
-BRANDING:
-  logo: not_a_url
-  footer_img: also_not_a_url
+FEATURE_SECURITY_SCANNER: true
+FEATURE_SECURITY_NOTIFICATIONS: false
+SECURITY_SCANNER_ENDPOINT: localhost:8080
