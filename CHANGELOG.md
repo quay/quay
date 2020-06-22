@@ -1,3 +1,10 @@
+### v3.3.1
+
+**Fixed**
+- Config app installs supplied TLS certs at startup
+- Tech preview clair-v4 correctly reindexes manifests
+
+
 ### v3.3.0
 
 **Added**
