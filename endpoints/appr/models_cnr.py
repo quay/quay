@@ -443,7 +443,7 @@ class CNRAppModel(AppRegistryDataInterface):
             channels = appr_model.channel.get_tag_channels(
                 repo, release, self.models_ref, active=active
             )
-            return [ChannelView(name=c.name, current=c.linked_tag.name) for c in channels]
+            return [ChannelView(name=c.name, current=release) for c in channels]
         except (self.models_ref.Channel.DoesNotExist, self.models_ref.Tag.DoesNotExist):
             raise_package_not_found(package_name, release)
 
