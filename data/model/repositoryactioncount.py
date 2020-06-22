@@ -1,7 +1,7 @@
 import logging
 
 from collections import namedtuple
-from peewee import IntegrityError
+from peewee import IntegrityError, JOIN
 
 from datetime import date, timedelta, datetime
 from data.database import (
@@ -146,6 +146,16 @@ def update_repository_score(repo):
     except IntegrityError:
         logger.debug("RepositorySearchScore row already existed; skipping")
         return False
+
+
+def missing_counts_query(date):
+    """ Returns a query to find all Repository's with missing RAC entries for the given date. """
+    return (
+        Repository.select()
+        .join(RepositoryActionCount, JOIN.LEFT_OUTER)
+        .where(RepositoryActionCount.id >> None)
+        .where(RepositoryActionCount.date == date)
+    )
 
 
 def delete_expired_entries(repo, limit=50):
