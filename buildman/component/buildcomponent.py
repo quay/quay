@@ -7,6 +7,7 @@ import trollius
 
 from autobahn.wamp.exception import ApplicationError
 from trollius import From, Return
+from redis import RedisError
 
 from buildman.server import BuildJobResult
 from buildman.component.basecomponent import BaseComponent
@@ -17,7 +18,7 @@ from buildman.jobutil.workererror import WorkerError
 
 from app import app
 from data.database import BUILD_PHASE, UseThenDisconnect
-from data.model import InvalidRepositoryBuildException
+from data.model import build as build_model, InvalidRepositoryBuildException
 from data.registry_model import registry_model
 from util import slash_join
 
@@ -114,8 +115,10 @@ class BuildComponent(BaseComponent):
         try:
             self._build_status = StatusHandler(self.build_logs, build_id)
         except Exception as bse:
-            logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
-            self._build_status_failure(bse)
+            logger.exception(
+                "Failed to set phase for start build for build ID: %s - %s", build_id, bse
+            )
+            yield From(self._build_status_failure(bse))
             raise Return()
 
         self._image_info = {}
@@ -344,7 +347,6 @@ class BuildComponent(BaseComponent):
                         )
                         raise Return(False)
                 except InvalidRepositoryBuildException:
-                    build_id = self._current_job.repo_build.uuid
                     logger.warning("Build %s was not found; repo was probably deleted", build_id)
                     raise Return(False)
 
@@ -360,9 +362,14 @@ class BuildComponent(BaseComponent):
                 # If the json data contains an error, then something went wrong with a push or pull.
                 if "error" in log_data:
                     yield From(self._build_status.set_error(log_data["error"]))
+        except RedisError as re:
+            # Move forward with the build if it is a Redis error
+            logger.warning("Failed to set phase on log for build ID: %s - %s", build_id, bse)
+            build_model.update_phase_then_close(build_id, phase)
         except Exception as bse:
-            logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
-            self._build_status_failure(bse)
+            # Fail the build on other error types
+            logger.exception("Failed to set phase for on log for build ID: %s - %s", build_id, bse)
+            yield From(self._build_status_failure(bse))
             raise Return()
 
         try:
@@ -370,9 +377,11 @@ class BuildComponent(BaseComponent):
                 yield From(self._build_status.set_command(current_status_string))
             elif phase == BUILD_PHASE.BUILDING:
                 yield From(self._build_status.append_log(current_status_string))
+        except RedisError as re:
+            logger.warning("Failed to append log for build ID: %s - %s", build_id, re)
         except Exception as bse:
             logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
-            self._build_status_failure(bse)
+            yield From(self._build_status_failure(bse))
             raise Return()
 
         raise Return(True)
@@ -386,8 +395,8 @@ class BuildComponent(BaseComponent):
                 status_dict["total_commands"] = len(command_comments) + 1
         except Exception as bse:
             build_id = self._current_job.repo_build.uuid
-            logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
-            self._build_status_failure(bse)
+            logger.exception("Failed to set phase for cache for build ID: %s - %s", build_id, bse)
+            yield From(self._build_status_failure(bse))
             raise Return()
 
         logger.debug(
@@ -400,6 +409,16 @@ class BuildComponent(BaseComponent):
 
         tag_found = self._current_job.determine_cached_tag(base_image_id, command_comments)
         raise Return(tag_found or "")
+
+    @trollius.coroutine
+    def _build_finished(self, job_status):
+        """
+        Alerts the parent that a build has completed and sets the status back to running.
+        """
+        yield From(self.parent_manager.job_completed(self._current_job, job_status, self))
+
+        # Set the component back to a running state.
+        yield From(self._set_status(ComponentStatus.RUNNING))
 
     @trollius.coroutine
     def _build_failure(self, error_message, exception=None):
@@ -415,7 +434,7 @@ class BuildComponent(BaseComponent):
         except Exception as bse:
             build_id = self._current_job.repo_build.uuid
             logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
-            self._build_status_failure(bse)
+            yield From(self._build_status_failure(bse))
             raise Return()
 
         build_id = self._current_job.repo_build.uuid
@@ -433,7 +452,11 @@ class BuildComponent(BaseComponent):
         This allows to handle Redis failures.
         """
         build_id = self._current_job.repo_build.uuid
-        logger.warning("Failed to set phase for build ID: %s - %s", build_id, exception)
+
+        # The build's phase should still be updated even without logging to avoid getting into
+        # a weird state where it was complete but wasn't updated from "building" because of
+        # Redis going down.
+        build_model.update_phase_then_close(build_id, BUILD_PHASE.INTERNAL_ERROR)
         yield From(self._build_finished(BuildJobResult.ERROR))
 
     @trollius.coroutine
@@ -463,6 +486,13 @@ class BuildComponent(BaseComponent):
             except InvalidRepositoryBuildException:
                 logger.warning("Build %s was not found; repo was probably deleted", build_id)
                 raise Return()
+            except Exception as bse:
+                # This catch block allows the build to complete even the buildman was not able to
+                # log the phase change.
+                build_model.update_phase_then_close(build_id, BUILD_PHASE.COMPLETE)
+                logger.warning(
+                    "Failed to set phase to COMPLETE for build ID: %s - %s", build_id, bse
+                )
 
             yield From(self._build_finished(BuildJobResult.COMPLETE))
 
@@ -501,40 +531,27 @@ class BuildComponent(BaseComponent):
                         requeued=self._current_job.has_retries_remaining(),
                     )
                 )
+
+                # Mark the build as completed.
+                if worker_error.is_internal_error():
+                    logger.exception(
+                        "[BUILD INTERNAL ERROR: Remote] Build ID: %s: %s",
+                        build_id,
+                        worker_error.public_message(),
+                    )
+                    yield From(self._build_finished(BuildJobResult.INCOMPLETE))
+                else:
+                    logger.debug("Got remote failure exception for build %s: %s", build_id, aex)
+                    yield From(self._build_finished(BuildJobResult.ERROR))
+
             except Exception as bse:
-                logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
-                self._build_status_failure(bse)
-                raise Return()
-
-            # Send the notification that the build has failed.
-            self._current_job.send_notification(
-                "build_failure", error_message=worker_error.public_message()
-            )
-
-            # Mark the build as completed.
-            if worker_error.is_internal_error():
-                logger.exception(
-                    "[BUILD INTERNAL ERROR: Remote] Build ID: %s: %s",
-                    build_id,
-                    worker_error.public_message(),
+                logger.warning(
+                    "Failed to set phase error and finalizing for build ID: %s - %s", build_id, bse
                 )
-                yield From(self._build_finished(BuildJobResult.INCOMPLETE))
-            else:
-                logger.debug("Got remote failure exception for build %s: %s", build_id, aex)
-                yield From(self._build_finished(BuildJobResult.ERROR))
+                yield From(self._build_status_failure(bse))
 
         # Remove the current job.
         self._current_job = None
-
-    @trollius.coroutine
-    def _build_finished(self, job_status):
-        """
-        Alerts the parent that a build has completed and sets the status back to running.
-        """
-        yield From(self.parent_manager.job_completed(self._current_job, job_status, self))
-
-        # Set the component back to a running state.
-        yield From(self._set_status(ComponentStatus.RUNNING))
 
     @staticmethod
     def _ping():
@@ -670,8 +687,8 @@ class BuildComponent(BaseComponent):
                     )
                 )
         except Exception as bse:
-            logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
-            self._build_status_failure(bse)
+            logger.exception("Failed to set phase for timeout for build ID: %s - %s", build_id, bse)
+            yield From(self._build_status_failure(bse))
             raise Return()
 
         # Unregister the current component so that it cannot be invoked again.

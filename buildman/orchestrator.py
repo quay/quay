@@ -724,7 +724,15 @@ class RedisOrchestrator(Orchestrator):
             ttl = yield From(self._client.ttl(key))
             if ttl != REDIS_NONEXPIRING_KEY:
                 # Only redis keys without expirations are live build manager keys.
-                value = yield From(self._client.get(key))
+                try:
+                    value = yield From(self._client.get(key))
+                    if value is None:
+                        raise KeyError
+                except redis.ConnectionError as rce:
+                    raise OrchestratorConnectionError(rce)
+                except redis.RedisError as re:
+                    raise OrchestratorError(re)
+
                 results.update({key: value})
 
         raise Return(results)
@@ -733,28 +741,44 @@ class RedisOrchestrator(Orchestrator):
     def get_key(self, key):
         assert not self.is_canceller_only
 
-        value = yield From(self._client.get(key))
+        try:
+            value = yield From(self._client.get(key))
+            if value is None:
+                raise KeyError
+        except redis.ConnectionError as rce:
+            raise OrchestratorConnectionError(rce)
+        except redis.RedisError as re:
+            raise OrchestratorError(re)
+
         raise Return(value)
 
     @coroutine
     def set_key(self, key, value, overwrite=False, expiration=None):
         assert not self.is_canceller_only
 
-        already_exists = yield From(self._client.exists(key))
+        try:
+            already_exists = yield From(self._client.exists(key))
+            if already_exists and not overwrite:
+                raise KeyError
 
-        yield From(self._client.set(key, value, xx=overwrite))
-        if expiration is not None:
-            yield From(
-                self._client.set(
-                    slash_join(key, REDIS_EXPIRING_SUFFIX), value, xx=overwrite, ex=expiration
+            yield From(self._client.set(key, value, xx=overwrite))
+            if expiration is not None:
+                yield From(
+                    self._client.set(
+                        slash_join(key, REDIS_EXPIRING_SUFFIX), value, xx=overwrite, ex=expiration
+                    )
                 )
-            )
-
-        key_event = KeyEvent.SET if already_exists else KeyEvent.CREATE
-        yield From(self._publish(event=key_event, key=key, value=value))
+            key_event = KeyEvent.SET if already_exists else KeyEvent.CREATE
+            yield From(self._publish(event=key_event, key=key, value=value))
+        except redis.ConnectionError as rce:
+            raise OrchestratorConnectionError(rce)
+        except redis.RedisError as re:
+            raise OrchestratorError(re)
 
     def set_key_sync(self, key, value, overwrite=False, expiration=None):
         already_exists = self._sync_client.exists(key)
+        if already_exists and not overwrite:
+            raise KeyError
 
         self._sync_client.set(key, value, xx=overwrite)
         if expiration is not None:
@@ -784,10 +808,17 @@ class RedisOrchestrator(Orchestrator):
     def delete_key(self, key):
         assert not self.is_canceller_only
 
-        value = yield From(self._client.get(key))
-        yield From(self._client.delete(key))
-        yield From(self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX)))
-        yield From(self._publish(event=KeyEvent.DELETE, key=key, value=value))
+        try:
+            value = yield From(self._client.get(key))
+            if value is None:
+                raise KeyError
+            yield From(self._client.delete(key))
+            yield From(self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX)))
+            yield From(self._publish(event=KeyEvent.DELETE, key=key, value=value))
+        except redis.ConnectionError as rce:
+            raise OrchestratorConnectionError(rce)
+        except redis.RedisError as re:
+            raise OrchestratorError(re)
 
     @coroutine
     def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):

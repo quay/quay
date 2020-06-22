@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from buildman.component.basecomponent import BaseComponent
-from buildman.component.buildcomponent import BuildComponent
+from buildman.component.buildcomponent import BuildComponent, ComponentStatus
 from buildman.manager.basemanager import BaseManager
 
 from trollius import From, Return, coroutine
