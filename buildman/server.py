@@ -183,11 +183,11 @@ class BuilderServer(object):
                 yield From(status_handler.set_phase(RESULT_PHASES[job_status]))
             except Exception as spe:
                 logger.warning(
-                    "[BUILD INCOMPLETE: job complete] Build ID: %s. Retry restore. Failed to update build phase: %s",
+                    "[BUILD INCOMPLETE: job complete] Build ID: %s. Retry restored; Failed to update build phase: %s",
                     build_job.repo_build.uuid,
                     spe,
                 )
-                self._queue.incomplete(build_job.job_item, restore_retry=False, retry_after=30)
+                self._queue.incomplete(build_job.job_item, restore_retry=True, retry_after=30)
                 raise Return()
 
         if job_status == BuildJobResult.INCOMPLETE:
@@ -266,12 +266,12 @@ class BuilderServer(object):
                     yield From(status_handler.set_phase(database.BUILD_PHASE.BUILD_SCHEDULED))
                 except Exception as spe:
                     logger.warning(
-                        "[BUILD INCOMPLETE: set phase] Build ID: %s. Retry restored.",
+                        "[BUILD INCOMPLETE: set phase] Build ID: %s. Retry restored; Failed to update build phase: %s",
                         build_job.repo_build.uuid,
+                        spe,
                     )
-                    logger.exception("Exception trying to set build phase:" % str(spe))
                     self._queue.incomplete(
-                        job_item, restore_retry=true, retry_after=WORK_CHECK_TIMEOUT
+                        job_item, restore_retry=True, retry_after=WORK_CHECK_TIMEOUT
                     )
                     continue
 
