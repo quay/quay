@@ -150,11 +150,16 @@ def update_repository_score(repo):
 
 def missing_counts_query(date):
     """ Returns a query to find all Repository's with missing RAC entries for the given date. """
+    subquery = (
+        RepositoryActionCount.select(RepositoryActionCount.id, RepositoryActionCount.repository)
+        .where(RepositoryActionCount.date == date)
+        .alias("rac")
+    )
+
     return (
         Repository.select()
-        .join(RepositoryActionCount, JOIN.LEFT_OUTER)
-        .where(RepositoryActionCount.id >> None)
-        .where(RepositoryActionCount.date == date)
+        .join(subquery, JOIN.LEFT_OUTER, on=(Repository.id == subquery.c.repository_id))
+        .where(subquery.c.id >> None)
     )
 
 
