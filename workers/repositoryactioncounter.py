@@ -24,8 +24,10 @@ class RepositoryActionCountWorker(Worker):
         self.add_operation(self._run_counting, POLL_PERIOD_SECONDS)
 
     def _run_counting(self):
+        yesterday = date.today() - timedelta(days=1)
+
         def batch_query():
-            return database.Repository.select()
+            return model.repositoryactioncount.missing_counts_query(yesterday)
 
         min_id = model.repository.get_min_id()
         max_id = model.repository.get_max_id()
@@ -39,7 +41,6 @@ class RepositoryActionCountWorker(Worker):
             batch_query, database.Repository.id, batch_size, max_id, min_id,
         )
 
-        yesterday = date.today() - timedelta(days=1)
         for candidate, abt, num_remaining in iterator:
             if model.repositoryactioncount.has_repository_action_count(candidate, yesterday):
                 abt.set()
