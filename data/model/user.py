@@ -396,6 +396,11 @@ def get_robot_and_metadata(robot_shortname, parent):
 
 def lookup_robot(robot_username):
     try:
+        robot_username.encode("ascii")
+    except UnicodeEncodeError:
+        raise InvalidRobotException("Could not find robot with specified username")
+
+    try:
         return User.get(username=robot_username, robot=True)
     except User.DoesNotExist:
         raise InvalidRobotException("Could not find robot with specified username")
