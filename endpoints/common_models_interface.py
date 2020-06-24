@@ -1,10 +1,12 @@
+from typing import List
+
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
 from six import add_metaclass
 
 
-USER_FIELDS = ["uuid", "username", "email", "given_name", "family_name", "company", "location"]
+USER_FIELDS = ["uuid", "username", "email", "given_name", "family_name", "company", "location"]  # type: List[str]
 
 
 class User(namedtuple("User", USER_FIELDS)):

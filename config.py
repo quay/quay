@@ -568,7 +568,7 @@ class DefaultConfig(ImmutableConfig):
     DIRECT_OAUTH_CLIENTID_WHITELIST = []  # type: Optional[List[str]]
 
     # URL that specifies the location of the prometheus pushgateway.
-    PROMETHEUS_PUSHGATEWAY_URL = "http://localhost:9091"
+    PROMETHEUS_PUSHGATEWAY_URL = "http://localhost:9091"  # type: Optional[str]
 
     # Namespace prefix for all prometheus metrics.
     PROMETHEUS_NAMESPACE = "quay"

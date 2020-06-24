@@ -6,6 +6,7 @@ actually exists there. If the file is not found in that storage location, the pl
 database is removed.
 """
 
+from typing import Dict
 import logging
 
 from peewee import fn
@@ -17,7 +18,7 @@ from util.migrate.allocator import yield_random_entries
 
 logger = logging.getLogger(__name__)
 
-LOCATION_MAP = {}
+LOCATION_MAP = {}  # type: Dict[str, ImageStorageLocation]
 
 
 def _get_location_row(location):

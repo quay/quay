@@ -108,7 +108,7 @@ app.config.update(environ_config)
 
 # Fix remote address handling for Flask.
 if app.config.get("PROXY_COUNT", 1):
-    app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=app.config.get("PROXY_COUNT", 1))
+    app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=app.config.get("PROXY_COUNT", 1))  # type: ignore
 
 # Allow user to define a custom storage preference for the local instance.
 _distributed_storage_preference = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
