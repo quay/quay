@@ -1,3 +1,4 @@
+from typing import Dict
 import stripe
 
 from datetime import datetime, timedelta
@@ -383,7 +384,7 @@ class FakeStripe(object):
             }
         )
 
-        ACTIVE_CUSTOMERS = {}
+        ACTIVE_CUSTOMERS = {}  # type: AttrDict[str,AttrDict[str,Customer]]
 
         @property
         def card(self):

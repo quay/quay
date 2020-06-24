@@ -1,4 +1,5 @@
 import logging
+from typing import DefaultDict, Optional
 
 from collections import namedtuple, defaultdict
 from functools import partial
@@ -36,7 +37,7 @@ TEAM_ORGWIDE_REPO_ROLES = {
     "member": None,
 }
 
-SCOPE_MAX_REPO_ROLES = defaultdict(lambda: None)
+SCOPE_MAX_REPO_ROLES = defaultdict(lambda: None)  # type: DefaultDict[scopes.Scope, Optional[str]]
 SCOPE_MAX_REPO_ROLES.update(
     {
         scopes.READ_REPO: "read",
@@ -46,7 +47,7 @@ SCOPE_MAX_REPO_ROLES.update(
     }
 )
 
-SCOPE_MAX_TEAM_ROLES = defaultdict(lambda: None)
+SCOPE_MAX_TEAM_ROLES = defaultdict(lambda: None)  # type: DefaultDict[scopes.Scope, Optional[str]]
 SCOPE_MAX_TEAM_ROLES.update(
     {
         scopes.CREATE_REPO: "creator",
@@ -55,7 +56,7 @@ SCOPE_MAX_TEAM_ROLES.update(
     }
 )
 
-SCOPE_MAX_USER_ROLES = defaultdict(lambda: None)
+SCOPE_MAX_USER_ROLES = defaultdict(lambda: None)  # type: DefaultDict[scopes.Scope, Optional[str]]
 SCOPE_MAX_USER_ROLES.update(
     {
         scopes.READ_USER: "read",
