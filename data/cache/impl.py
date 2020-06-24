@@ -170,7 +170,7 @@ class MemcachedModelCache(DataModelCache):
                 if flags == _JSON_TYPE:
                     return json.loads(value)
 
-                raise Exception("Unknown flags for value: {1}".format(flags))
+                raise Exception("Unknown flags for value: {}".format(flags))
 
             return PooledClient(
                 server=self.endpoint,

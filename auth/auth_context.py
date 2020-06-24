@@ -1,4 +1,4 @@
-from flask import _request_ctx_stack
+from flask import _request_ctx_stack  # type: ignore
 
 
 def get_authenticated_context():
