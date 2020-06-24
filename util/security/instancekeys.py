@@ -9,7 +9,7 @@ class CachingKey(object):
         self._service_key = service_key
         self._cached_public_key = None
 
-    @property
+    @property  # type: ignore
     def public_key(self):
         cached_key = self._cached_public_key
         if cached_key is not None:
@@ -47,21 +47,21 @@ class InstanceKeys(object):
 
         return keys
 
-    @property
+    @property  # type: ignore
     def service_name(self):
         """
         Returns the name of the instance key's service (i.e. 'quay').
         """
         return self.app.config["INSTANCE_SERVICE_KEY_SERVICE"]
 
-    @property
+    @property  # type: ignore
     def service_key_expiration(self):
         """
         Returns the defined expiration for instance service keys, in minutes.
         """
         return self.app.config.get("INSTANCE_SERVICE_KEY_EXPIRATION", 120)
 
-    @property
+    @property  # type: ignore
     @lru_cache(maxsize=1)
     def local_key_id(self):
         """
@@ -69,7 +69,7 @@ class InstanceKeys(object):
         """
         return _load_file_contents(self.app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"])
 
-    @property
+    @property  # type: ignore
     @lru_cache(maxsize=1)
     def local_private_key(self):
         """
