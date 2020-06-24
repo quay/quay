@@ -1,3 +1,4 @@
+from typing import List, Optional, Dict, Tuple, Any, Type
 from mock import patch
 
 import pytest
@@ -5739,7 +5740,7 @@ SECURITY_TESTS = [
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "devtable", 400),
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "freshuser", 403),
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "reader", 403),
-]
+]  # type: List[Tuple[Type[ApiResource], str, Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[str], int]]
 
 
 @pytest.mark.parametrize("resource,method,params,body,identity,expected", SECURITY_TESTS)

@@ -1,3 +1,4 @@
+from typing import Dict, Union
 import json
 import tarfile
 
@@ -104,7 +105,7 @@ class RegistryProtocol(object):
     Interface for protocols.
     """
 
-    FAILURE_CODES = {}
+    FAILURE_CODES = {}  # type: Dict[Union[V1ProtocolSteps,V2ProtocolSteps], Dict[Failures, int]]
 
     @abstractmethod
     def login(self, session, username, password, scopes, expect_success):

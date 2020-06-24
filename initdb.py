@@ -1,3 +1,4 @@
+from typing import Dict, Any
 import logging
 import json
 import hashlib
@@ -5,6 +6,7 @@ import random
 import calendar
 import os
 import argparse
+import unittest
 
 from datetime import datetime, timedelta, date
 from freezegun import freeze_time
@@ -236,7 +238,7 @@ def __generate_repository(user_obj, name, description, is_public, permissions, s
 
 
 db_initialized_for_testing = Event()
-testcases = {}
+testcases = {}  # type: Dict[unittest.TestCase, Dict[str, Any]]
 
 
 def finished_database_for_testing(testcase):
