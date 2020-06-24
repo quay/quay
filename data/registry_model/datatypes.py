@@ -55,12 +55,12 @@ class RepositoryReference(datatype("Repository", [])):
             ),
         )
 
-    @property
+    @property  # type: ignore
     @lru_cache(maxsize=1)
     def _repository_obj(self):
         return model.repository.lookup_repository(self._db_id)
 
-    @property
+    @property  # type: ignore
     @optionalinput("kind")
     def kind(self, kind):
         """
@@ -68,7 +68,7 @@ class RepositoryReference(datatype("Repository", [])):
         """
         return kind or model.repository.get_repo_kind_name(self._repositry_obj)
 
-    @property
+    @property  # type: ignore
     @optionalinput("is_public")
     def is_public(self, is_public):
         """
@@ -79,7 +79,7 @@ class RepositoryReference(datatype("Repository", [])):
 
         return model.repository.is_repository_public(self._repository_obj)
 
-    @property
+    @property  # type: ignore
     def trust_enabled(self):
         """
         Returns whether trust is enabled in this repository.
@@ -90,14 +90,14 @@ class RepositoryReference(datatype("Repository", [])):
 
         return repository.trust_enabled
 
-    @property
+    @property  # type: ignore
     def id(self):
         """
         Returns the database ID of the repository.
         """
         return self._db_id
 
-    @property
+    @property  # type: ignore
     @optionalinput("namespace_name")
     def namespace_name(self, namespace_name=None):
         """
@@ -112,7 +112,7 @@ class RepositoryReference(datatype("Repository", [])):
 
         return repository.namespace_user.username
 
-    @property
+    @property  # type: ignore
     @optionalinput("is_free_namespace")
     def is_free_namespace(self, is_free_namespace=None):
         """
@@ -127,7 +127,7 @@ class RepositoryReference(datatype("Repository", [])):
 
         return repository.namespace_user.stripe_id is None
 
-    @property
+    @property  # type: ignore
     @optionalinput("repo_name")
     def name(self, repo_name=None):
         """
@@ -142,7 +142,7 @@ class RepositoryReference(datatype("Repository", [])):
 
         return repository.name
 
-    @property
+    @property  # type: ignore
     @optionalinput("state")
     def state(self, state=None):
         """
@@ -258,7 +258,7 @@ class Tag(
             manifest_row, legacy_id_handler, legacy_image_row=legacy_image_row
         )
 
-    @property
+    @property  # type: ignore
     @requiresinput("repository")
     def repository(self, repository):
         """
@@ -338,7 +338,7 @@ class Manifest(
         """
         return is_manifest_list_type(self.media_type)
 
-    @property
+    @property  # type: ignore
     @requiresinput("repository")
     def repository(self, repository):
         """
@@ -564,7 +564,7 @@ class Blob(
             uploading=image_storage.uploading,
         )
 
-    @property
+    @property  # type: ignore
     @requiresinput("storage_path")
     def storage_path(self, storage_path):
         """
@@ -572,7 +572,7 @@ class Blob(
         """
         return storage_path
 
-    @property
+    @property  # type: ignore
     @requiresinput("placements")
     def placements(self, placements):
         """
