@@ -9,7 +9,7 @@ from io import StringIO
 try:
     from werkzeug.exceptions import Unauthorized
 except ImportError:
-    Unauthorized = Exception
+    Unauthorized = Exception  # type: ignore
 
 from oauth import utils
 

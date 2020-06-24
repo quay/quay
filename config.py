@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Union, Tuple
 from uuid import uuid4
 
 import os.path
@@ -187,7 +187,7 @@ class DefaultConfig(ImmutableConfig):
         REGISTRY_TITLE = "Project Quay"
         REGISTRY_TITLE_SHORT = "Project Quay"
 
-    CONTACT_INFO = []
+    CONTACT_INFO = []  # type: List[str]
 
     # Mail config
     MAIL_SERVER = ""
@@ -204,7 +204,7 @@ class DefaultConfig(ImmutableConfig):
     DB_CONNECTION_ARGS = {
         "threadlocals": True,
         "autorollback": True,
-    }
+    }  # type: Optional[Dict[str,Any]]
 
     @staticmethod
     def create_transaction(db):
@@ -230,7 +230,7 @@ class DefaultConfig(ImmutableConfig):
 
     # Build logs
     BUILDLOGS_REDIS = {"host": "localhost"}
-    BUILDLOGS_OPTIONS = []
+    BUILDLOGS_OPTIONS = []  # type: List[Any]
 
     # Real-time user events
     USER_EVENTS_REDIS = {"host": "localhost"}
@@ -255,13 +255,13 @@ class DefaultConfig(ImmutableConfig):
     GITHUB_TRIGGER_CONFIG = None
 
     # Google Config.
-    GOOGLE_LOGIN_CONFIG = None  # type: Optional[Dict[str, Any]]
+    GOOGLE_LOGIN_CONFIG = None  # type: Optional[Dict[str, str]]
 
     # Bitbucket Config.
-    BITBUCKET_TRIGGER_CONFIG = None
+    BITBUCKET_TRIGGER_CONFIG = None  # type: Optional[Dict[str, str]]
 
     # Gitlab Config.
-    GITLAB_TRIGGER_CONFIG = None
+    GITLAB_TRIGGER_CONFIG = None  # type: Optional[Dict[str, str]]
 
     NOTIFICATION_QUEUE_NAME = "notification"
     DOCKERFILE_BUILD_QUEUE_NAME = "dockerfilebuild"
@@ -273,7 +273,7 @@ class DefaultConfig(ImmutableConfig):
     SECSCAN_V4_NOTIFICATION_QUEUE_NAME = "secscanv4"
 
     # Super user config. Note: This MUST BE an empty list for the default config.
-    SUPER_USERS = []
+    SUPER_USERS = []  # type: List[str]
 
     # Feature Flag: Whether sessions are permanent.
     FEATURE_PERMANENT_SESSIONS = True
@@ -326,7 +326,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_REQUIRE_ENCRYPTED_BASIC_AUTH = False
 
     # Feature Flag: Whether to automatically replicate between storage engines.
-    FEATURE_STORAGE_REPLICATION = False
+    FEATURE_STORAGE_REPLICATION = False  # Optional[bool]
 
     # Feature Flag: Whether users can directly login to the UI.
     FEATURE_DIRECT_LOGIN = True
@@ -340,7 +340,7 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether to restrict V1 pushes to the whitelist.
     FEATURE_RESTRICTED_V1_PUSH = False
-    V1_PUSH_WHITELIST = []
+    V1_PUSH_WHITELIST = []  # type: Optional[List[str]]
 
     # Feature Flag: Whether or not to rotate old action logs to storage.
     FEATURE_ACTION_LOG_ROTATION = False
@@ -399,18 +399,18 @@ class DefaultConfig(ImmutableConfig):
     # See: https://github.com/docker/docker/blob/master/registry/session.go#L320
     LIBRARY_NAMESPACE = "library"
 
-    BUILD_MANAGER = ("enterprise", {})
+    BUILD_MANAGER = ("enterprise", {})  # type: Tuple[str, Dict[Any,Any]]
 
     DISTRIBUTED_STORAGE_CONFIG = {
         "local_eu": ["LocalStorage", {"storage_path": "test/data/registry/eu"}],
         "local_us": ["LocalStorage", {"storage_path": "test/data/registry/us"}],
-    }
+    }  # type: Optional[Dict[str,List[Any]]]
 
     DISTRIBUTED_STORAGE_PREFERENCE = ["local_us"]
     DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS = ["local_us"]
 
     # Health checker.
-    HEALTH_CHECKER = ("LocalHealthCheck", {})
+    HEALTH_CHECKER = ("LocalHealthCheck", {})  # type: Tuple[str, Dict[Any,Any]]
 
     # Userfiles
     USERFILES_LOCATION = "local_us"
@@ -421,8 +421,8 @@ class DefaultConfig(ImmutableConfig):
     LOG_ARCHIVE_PATH = "logarchive/"
 
     # Action logs archive
-    ACTION_LOG_ARCHIVE_LOCATION = "local_us"
-    ACTION_LOG_ARCHIVE_PATH = "actionlogarchive/"
+    ACTION_LOG_ARCHIVE_LOCATION = "local_us"  # type: Optional[str]
+    ACTION_LOG_ARCHIVE_PATH = "actionlogarchive/"  # type: Optional[str]
     ACTION_LOG_ROTATION_THRESHOLD = "30d"
 
     # Allow registry pulls when unable to write to the audit log
@@ -485,7 +485,7 @@ class DefaultConfig(ImmutableConfig):
     SECURITY_SCANNER_ENDPOINT_BATCH = None
 
     # If specified, GET requests that return non-200 will be retried at the following instances.
-    SECURITY_SCANNER_READONLY_FAILOVER_ENDPOINTS = []
+    SECURITY_SCANNER_READONLY_FAILOVER_ENDPOINTS = []  # type: Optional[List[str]]
 
     # The indexing engine version running inside the security scanner.
     SECURITY_SCANNER_ENGINE_VERSION_TARGET = 3
@@ -565,7 +565,7 @@ class DefaultConfig(ImmutableConfig):
     INSTANCE_SERVICE_KEY_REFRESH = 55
 
     # The whitelist of client IDs for OAuth applications that allow for direct login.
-    DIRECT_OAUTH_CLIENTID_WHITELIST = []
+    DIRECT_OAUTH_CLIENTID_WHITELIST = []  # type: Optional[List[str]]
 
     # URL that specifies the location of the prometheus pushgateway.
     PROMETHEUS_PUSHGATEWAY_URL = "http://localhost:9091"
@@ -574,7 +574,7 @@ class DefaultConfig(ImmutableConfig):
     PROMETHEUS_NAMESPACE = "quay"
 
     # Overridable list of reverse DNS prefixes that are reserved for internal use on labels.
-    LABEL_KEY_RESERVED_PREFIXES = []
+    LABEL_KEY_RESERVED_PREFIXES = []  # type: Optional[List[str]]
 
     # Delays workers from starting until a random point in time between 0 and their regular interval.
     STAGGER_WORKERS = True
@@ -698,13 +698,13 @@ class DefaultConfig(ImmutableConfig):
 
     # Log model
     LOGS_MODEL = "database"
-    LOGS_MODEL_CONFIG = {}
+    LOGS_MODEL_CONFIG = {}  # type: Dict[str,Any]
 
     # Namespace in which all audit logging is disabled.
-    DISABLED_FOR_AUDIT_LOGS = []
+    DISABLED_FOR_AUDIT_LOGS = []  # type: List[str]
 
     # Namespace in which pull audit logging is disabled.
-    DISABLED_FOR_PULL_LOGS = []
+    DISABLED_FOR_PULL_LOGS = []  # type: List[str]
 
     # Feature Flag: Whether pull logs are disabled for free namespace.
     FEATURE_DISABLE_PULL_LOGS_FOR_FREE_NAMESPACES = False
@@ -716,7 +716,7 @@ class DefaultConfig(ImmutableConfig):
     # The list of domains, including subdomains, for which any *new* User with a matching
     # email address will be denied creation. This option is only used if
     # FEATURE_BLACKLISTED_EMAILS is enabled.
-    BLACKLISTED_EMAIL_DOMAINS = []
+    BLACKLISTED_EMAIL_DOMAINS = []  # type: List[str]
 
     # Feature Flag: Whether garbage collection is enabled.
     FEATURE_GARBAGE_COLLECTION = True
@@ -736,7 +736,7 @@ class DefaultConfig(ImmutableConfig):
     APP_REGISTRY_RESULTS_LIMIT = 100
 
     # The whitelist of namespaces whose app registry package list is cached for 1 hour.
-    APP_REGISTRY_PACKAGE_LIST_CACHE_WHITELIST = []
+    APP_REGISTRY_PACKAGE_LIST_CACHE_WHITELIST = []  # type: Optional[List[str]]
 
     # The whitelist of namespaces whose app registry show package is cached for 1 hour.
     APP_REGISTRY_SHOW_PACKAGE_CACHE_WHITELIST = []
@@ -765,7 +765,7 @@ class DefaultConfig(ImmutableConfig):
 
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).
-    WEBHOOK_HOSTNAME_BLACKLIST = []
+    WEBHOOK_HOSTNAME_BLACKLIST = []  # type: Optional[List[str]]
 
     # The root URL for documentation.
     if os.environ.get("RED_HAT_QUAY", False):
