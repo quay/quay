@@ -1,3 +1,4 @@
+from typing import Optional, Dict, Any
 from uuid import uuid4
 
 import os.path
@@ -192,8 +193,8 @@ class DefaultConfig(ImmutableConfig):
     MAIL_SERVER = ""
     MAIL_USE_TLS = True
     MAIL_PORT = 587
-    MAIL_USERNAME = None
-    MAIL_PASSWORD = None
+    MAIL_USERNAME = None  # type: Optional[str]
+    MAIL_PASSWORD = None  # type: Optional[str]
     MAIL_DEFAULT_SENDER = "admin@example.com"
     MAIL_FAIL_SILENTLY = False
     TESTING = True
@@ -250,11 +251,11 @@ class DefaultConfig(ImmutableConfig):
     SENTRY_PUBLIC_DSN = None
 
     # Github Config
-    GITHUB_LOGIN_CONFIG = None
+    GITHUB_LOGIN_CONFIG = None  # type: Optional[Dict[str, Any]]
     GITHUB_TRIGGER_CONFIG = None
 
     # Google Config.
-    GOOGLE_LOGIN_CONFIG = None
+    GOOGLE_LOGIN_CONFIG = None  # type: Optional[Dict[str, Any]]
 
     # Bitbucket Config.
     BITBUCKET_TRIGGER_CONFIG = None
@@ -391,7 +392,7 @@ class DefaultConfig(ImmutableConfig):
     # user's repository list pages, regardless of whether that user is a member of the namespace.
     # Typically, this is used by an enterprise customer in configuring a set of "well-known"
     # namespaces.
-    PUBLIC_NAMESPACES = []
+    PUBLIC_NAMESPACES = []  # type: List[str]
 
     # The namespace to use for library repositories.
     # Note: This must remain 'library' until Docker removes their hard-coded namespace for libraries.
@@ -450,13 +451,13 @@ class DefaultConfig(ImmutableConfig):
             "logo": "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg",
             "footer_img": "/static/img/RedHat.svg",
             "footer_url": "https://access.redhat.com/documentation/en-us/red_hat_quay/3/",
-        }
+        }  # type: Dict[str,Optional[str]]
     else:
         BRANDING = {
             "logo": "/static/img/quay-horizontal-color.svg",
             "footer_img": None,
             "footer_url": None,
-        }
+        }  # type: Dict[str,Optional[str]]
 
     # How often the Garbage Collection worker runs.
     GARBAGE_COLLECTION_FREQUENCY = 30  # seconds
@@ -472,7 +473,7 @@ class DefaultConfig(ImmutableConfig):
     SECURITY_SCANNER_ENDPOINT = None
 
     # The endpoint for the V4 security scanner.
-    SECURITY_SCANNER_V4_ENDPOINT = None
+    SECURITY_SCANNER_V4_ENDPOINT = None    # type: Optional[str]
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
@@ -518,7 +519,7 @@ class DefaultConfig(ImmutableConfig):
     REPO_MIRROR_TLS_VERIFY = True
 
     # Replaces the SERVER_HOSTNAME as the destination for mirroring.
-    REPO_MIRROR_SERVER_HOSTNAME = None
+    REPO_MIRROR_SERVER_HOSTNAME = None  # type: Optional[str]
 
     # JWTProxy Settings
     # The address (sans schema) to proxy outgoing requests through the jwtproxy
@@ -583,8 +584,8 @@ class DefaultConfig(ImmutableConfig):
 
     # Site key and secret key for using recaptcha.
     FEATURE_RECAPTCHA = False
-    RECAPTCHA_SITE_KEY = None
-    RECAPTCHA_SECRET_KEY = None
+    RECAPTCHA_SITE_KEY = None  # type: Optional[str]
+    RECAPTCHA_SECRET_KEY = None  # type: Optional[str]
 
     # Server where TUF metadata can be found
     TUF_SERVER = None
@@ -637,18 +638,18 @@ class DefaultConfig(ImmutableConfig):
     BROWSER_API_CALLS_XHR_ONLY = True
 
     # If set to a non-None integer value, the default number of maximum builds for a namespace.
-    DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT = None
+    DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT = None  # type: Optional[int]
 
     # If set to a non-None integer value, the default number of maximum builds for a namespace whose
     # creator IP is deemed a threat.
-    THREAT_NAMESPACE_MAXIMUM_BUILD_COUNT = None
+    THREAT_NAMESPACE_MAXIMUM_BUILD_COUNT = None  # type: Optional[int]
 
     # The API Key to use when requesting IP information.
     IP_DATA_API_KEY = None
 
     # For Billing Support Only: The number of allowed builds on a namespace that has been billed
     # successfully.
-    BILLED_NAMESPACE_MAXIMUM_BUILD_COUNT = None
+    BILLED_NAMESPACE_MAXIMUM_BUILD_COUNT = None  # type: Optional[int]
 
     # Configuration for the data model cache.
     DATA_MODEL_CACHE_CONFIG = {
