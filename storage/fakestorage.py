@@ -1,3 +1,4 @@
+from typing import DefaultDict
 from io import BytesIO
 import hashlib
 
@@ -6,7 +7,7 @@ from uuid import uuid4
 
 from storage.basestorage import BaseStorageV2
 
-_GLOBAL_FAKE_STORAGE_MAP = defaultdict(BytesIO)
+_GLOBAL_FAKE_STORAGE_MAP = defaultdict(BytesIO)  # type: DefaultDict[BytesIO]
 
 
 class FakeStorage(BaseStorageV2):
