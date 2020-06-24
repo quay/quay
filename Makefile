@@ -75,6 +75,9 @@ full-db-test: ensure-test-db
 clients-test:
 	cd test/clients; python clients_test.py
 
+types-test:
+	mypy --py2 .
+
 test: unit-test registry-test registry-test-old certs-test
 
 ensure-test-db:

@@ -1,5 +1,6 @@
 import os
 
+from typing import List
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
 
@@ -111,6 +112,6 @@ class TestConfig(DefaultConfig):
 
     FEATURE_REPO_MIRROR = True
     FEATURE_GENERAL_OCI_SUPPORT = True
-    OCI_NAMESPACE_WHITELIST = []
+    OCI_NAMESPACE_WHITELIST = []  # type: List[str]
 
     FEATURE_USER_INITIALIZE = True
