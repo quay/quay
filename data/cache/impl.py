@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 
 from contextlib import contextmanager
 from datetime import datetime
@@ -9,10 +10,12 @@ from six import add_metaclass
 
 from data.database import CloseForLongOperation
 
-from pymemcache.client.base import Client
+from pymemcache.client.base import PooledClient
 
 from util.expiresdict import ExpiresDict
 from util.timedeltastring import convert_to_timedelta
+from util.workers import get_worker_connections_count
+
 
 logger = logging.getLogger(__name__)
 
@@ -111,21 +114,6 @@ _STRING_TYPE = 1
 _JSON_TYPE = 2
 
 
-@contextmanager
-def memcache_client(client_builder):
-    yielded = False
-    try:
-        client = client_builder()
-        yielded = True
-        yield client
-    finally:
-        if not yielded:
-            yield None
-
-        if client is not None:
-            client.close()
-
-
 class MemcachedModelCache(DataModelCache):
     """
     Implementation of the data model cache backed by a memcached.
@@ -137,11 +125,16 @@ class MemcachedModelCache(DataModelCache):
         timeout=_DEFAULT_MEMCACHE_TIMEOUT,
         connect_timeout=_DEFAULT_MEMCACHE_CONNECT_TIMEOUT,
     ):
+        max_pool_size = os.environ.get(
+            "MEMCACHE_POOL_MAX_SIZE", get_worker_connections_count("registry")
+        )
+
         self.endpoint = endpoint
         self.timeout = timeout
         self.connect_timeout = connect_timeout
+        self.client_pool = self._get_client_pool(max_pool_size)
 
-    def _get_client(self):
+    def _get_client_pool(self, max_pool_size=None):
         try:
             # Copied from the doc comment for Client.
             def serialize_json(key, value):
@@ -159,7 +152,7 @@ class MemcachedModelCache(DataModelCache):
 
                 raise Exception("Unknown flags for value: {1}".format(flags))
 
-            return Client(
+            return PooledClient(
                 self.endpoint,
                 no_delay=True,
                 timeout=self.timeout,
@@ -167,6 +160,7 @@ class MemcachedModelCache(DataModelCache):
                 key_prefix="data_model_cache__",
                 serializer=serialize_json,
                 deserializer=deserialize_json,
+                max_pool_size=max_pool_size,
                 ignore_exc=True,
             )
         except:
@@ -175,47 +169,45 @@ class MemcachedModelCache(DataModelCache):
 
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         not_found = [None]
-        with memcache_client(self._get_client) as client:
-            if client is not None:
-                logger.debug("Checking cache for key %s", cache_key.key)
-                try:
-                    result = client.get(cache_key.key, default=not_found)
-                    if result != not_found:
-                        logger.debug("Found result in cache for key %s: %s", cache_key.key, result)
-                        return result
-                except:
-                    logger.exception("Got exception when trying to retrieve key %s", cache_key.key)
+        client = self.client_pool
+        if client is not None:
+            logger.debug("Checking cache for key %s", cache_key.key)
+            try:
+                result = client.get(cache_key.key, default=not_found)
+                if result != not_found:
+                    logger.debug("Found result in cache for key %s: %s", cache_key.key, result)
+                    return result
+            except:
+                logger.exception("Got exception when trying to retrieve key %s", cache_key.key)
 
-            logger.debug("Found no result in cache for key %s; calling loader", cache_key.key)
-            result = loader()
-            logger.debug("Got loaded result for key %s: %s", cache_key.key, result)
-            if client is not None and should_cache(result):
-                try:
-                    logger.debug(
-                        "Caching loaded result for key %s with expiration %s: %s",
-                        cache_key.key,
-                        result,
-                        cache_key.expiration,
-                    )
-                    expires = (
-                        convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
-                    )
-                    client.set(
-                        cache_key.key,
-                        result,
-                        expire=int(expires.total_seconds()) if expires else None,
-                    )
-                    logger.debug(
-                        "Cached loaded result for key %s with expiration %s: %s",
-                        cache_key.key,
-                        result,
-                        cache_key.expiration,
-                    )
-                except:
-                    logger.exception(
-                        "Got exception when trying to set key %s to %s", cache_key.key, result
-                    )
-            else:
-                logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
+        logger.debug("Found no result in cache for key %s; calling loader", cache_key.key)
+        result = loader()
+        logger.debug("Got loaded result for key %s: %s", cache_key.key, result)
+        if client is not None and should_cache(result):
+            try:
+                logger.debug(
+                    "Caching loaded result for key %s with expiration %s: %s",
+                    cache_key.key,
+                    result,
+                    cache_key.expiration,
+                )
+                expires = (
+                    convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
+                )
+                client.set(
+                    cache_key.key, result, expire=int(expires.total_seconds()) if expires else None,
+                )
+                logger.debug(
+                    "Cached loaded result for key %s with expiration %s: %s",
+                    cache_key.key,
+                    result,
+                    cache_key.expiration,
+                )
+            except:
+                logger.exception(
+                    "Got exception when trying to set key %s to %s", cache_key.key, result
+                )
+        else:
+            logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
 
-            return result
+        return result
