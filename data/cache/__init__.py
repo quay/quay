@@ -26,8 +26,12 @@ def get_model_cache(config):
 
         timeout = cache_config.get("timeout")
         connect_timeout = cache_config.get("connect_timeout")
-        return DisconnectWrapper(
-            MemcachedModelCache(endpoint, timeout=timeout, connect_timeout=connect_timeout), config
-        )
+        predisconnect = cache_config.get("predisconnect_from_db")
+
+        cache = MemcachedModelCache(endpoint, timeout=timeout, connect_timeout=connect_timeout)
+        if predisconnect:
+            cache = DisconnectWrapper(cache, config)
+
+        return cache
 
     raise Exception("Unknown model cache engine `%s`" % engine)
