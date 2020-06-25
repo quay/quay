@@ -21,7 +21,7 @@ cd config-tool
 Generate files and install from source:
 
 ```
-make all
+make
 ```
 
 This will generate files for the Quay validator executable and install the `config-tool` CLI tool.
