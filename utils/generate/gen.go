@@ -346,15 +346,28 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 			}
 
 		}
+
 	})
 
 	constructor := jen.Comment("// New" + fgName + " creates a new " + fgName + "\n")
-	constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
-		jen.Id("new"+fgName).Op(":=").Op("&").Id(fgName).Values(),
-		jen.Qual("github.com/creasty/defaults", "Set").Call(jen.Id("new"+fgName)),
-		setValues,
-		jen.Return(jen.Id("new"+fgName)),
-	))
+
+	// If the field is just a map[string]interface{}
+	if len(fields) == 0 {
+		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
+			jen.Id("new"+fgName).Op(":=").Id(fgName).Values(),
+			jen.For(jen.List(jen.Id("key"), jen.Id("value")).Op(":=").Range().Id("fullConfig").Block(
+				jen.Id("new"+fgName).Index(jen.Id("key")).Op("=").Id("value"),
+			)),
+			jen.Return(jen.Id("&new"+fgName)),
+		))
+	} else {
+		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
+			jen.Id("new"+fgName).Op(":=").Op("&").Id(fgName).Values(),
+			jen.Qual("github.com/creasty/defaults", "Set").Call(jen.Id("new"+fgName)),
+			setValues,
+			jen.Return(jen.Id("new"+fgName)),
+		))
+	}
 
 	return append(innerConstructors, constructor)
 

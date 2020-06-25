@@ -94,7 +94,7 @@
       "ct-validate": "",
       "ct-fieldgroups": {
         "ActionLogArchiving": {
-          "ct-validate": "required_with=FeatureActionLogRotation"
+          "ct-validate": "required_with=FeatureActionLogRotation,omitempty,customValidateFoundInStorage"
         }
       }
     },
