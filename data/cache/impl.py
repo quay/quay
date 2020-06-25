@@ -125,8 +125,8 @@ class MemcachedModelCache(DataModelCache):
         timeout=_DEFAULT_MEMCACHE_TIMEOUT,
         connect_timeout=_DEFAULT_MEMCACHE_CONNECT_TIMEOUT,
     ):
-        max_pool_size = os.environ.get(
-            "MEMCACHE_POOL_MAX_SIZE", get_worker_connections_count("registry")
+        max_pool_size = int(
+            os.environ.get("MEMCACHE_POOL_MAX_SIZE", get_worker_connections_count("registry"))
         )
 
         self.endpoint = endpoint
