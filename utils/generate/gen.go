@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	"github.com/dave/jennifer/jen"
+	"github.com/iancoleman/strcase"
+	"github.com/jojomi/go-spew/spew"
 )
 
-// ConfigDefinition holds the information about different
+// ConfigDefinition holds the information about different field groups
 type ConfigDefinition map[string][]FieldDefinition
 
 // FieldDefinition is a struct that represents a single field from a fieldgroups.json file
@@ -24,21 +26,53 @@ type FieldDefinition struct {
 	Properties []FieldDefinition `json:"properties"`
 }
 
+// JSONSchema is a type used to represent a Json Schema file
+type JSONSchema struct {
+	Type        string                    `json:"object"`
+	Description string                    `json:"description"`
+	Properties  map[string]SchemaProperty `json:"properties"`
+}
+
+// SchemaProperty is a type that holds field data from a json schema file. This is how a field is represented before it is converted to a FieldDefinition.
+type SchemaProperty struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Default     string `json:"ct-default"`
+	Validate    string `json:"ct-validate"`
+	Items       []struct {
+		Type string `json:"type"`
+	} `json:"items"`
+	FieldGroupData map[string]map[string]interface{} `json:"ct-fieldgroups"`
+	Properties     map[string]SchemaProperty         `json:"properties"`
+}
+
 //go:generate go run gen.go
 func main() {
 
 	// Read config definition file
-	configDefPath := getFullInputPath("fieldgroups.json")
-	configDefFile, err := ioutil.ReadFile(configDefPath)
+	jsonSchemaPath := getFullInputPath("schema.json")
+	jsonSchemaFile, err := ioutil.ReadFile(jsonSchemaPath)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
 	// Load config definition file into struct
-	var configDef ConfigDefinition
-	if err = json.Unmarshal(configDefFile, &configDef); err != nil {
+	var jsonSchema JSONSchema
+	if err = json.Unmarshal(jsonSchemaFile, &jsonSchema); err != nil {
 		fmt.Println("error: " + err.Error())
 	}
+
+	// Convert JSON Schema to Config Definiton
+	configDef := jsonSchemaPropertiesToConfigDefinition(jsonSchema)
+
+	spew.Config.Indent = "\t"
+	spew.Config.DisableCapacities = true
+	spew.Config.DisablePointerAddresses = true
+	spew.Config.SortKeys = true
+	spew.Config.DisableMethods = true
+	spew.Config.DisableTypes = true
+	spew.Config.DisableLengths = true
+	spew.Dump(configDef)
 
 	// Create config.go
 	err = createConfigBase(configDef)
@@ -97,10 +131,25 @@ func createFieldGroups(configDef ConfigDefinition) error {
 			}
 		})
 
+		// Find custom validators in field group and register
+		customValidators := findCustomValidator(fields)
+		registerValidators := jen.Empty()
+		op = jen.Options{
+			Open:  "\n",
+			Multi: true,
+			Close: "\n",
+		}
+		registerValidators.CustomFunc(op, func(g *jen.Group) {
+			for _, customValidator := range customValidators {
+				g.Add(jen.Id("validate").Dot("RegisterValidation").Call(jen.List(jen.Lit(customValidator), jen.Id(customValidator))))
+			}
+		})
+
 		// Create Validator function
 		f.Comment("Validate checks the configuration settings for this field group")
 		f.Func().Params(jen.Id("fg *"+fgName+"FieldGroup")).Id("Validate").Params().Params(jen.Qual("github.com/go-playground/validator/v10", "ValidationErrors")).Block(
 			jen.Id("validate").Op(":=").Qual("github.com/go-playground/validator/v10", "New").Call(),
+			registerValidators,
 			jen.Id("err").Op(":=").Id("validate").Dot("Struct").Call(jen.Id("fg")),
 			jen.If(jen.Id("err").Op("==").Nil()).Block(
 				jen.Return(jen.Nil()),
@@ -211,17 +260,21 @@ func generateStructs(fgName string, fields []FieldDefinition, topLevel bool) (st
 			fieldValidate := field.Validate
 
 			switch field.Type {
-			case "[]interface{}":
+			case "array":
 				g.Id(fieldName).Index().Interface().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
-			case "bool":
+			case "boolean":
 				g.Id(fieldName).Bool().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
 			case "string":
 				g.Id(fieldName).String().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
-			case "int":
+			case "number":
 				g.Id(fieldName).Int().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
-			case "interface{}":
-				g.Id(fieldName).Id("*" + fieldName + "Struct")
-				innerStructs = append(innerStructs, generateStructs(fieldName, field.Properties, false)...)
+			case "object":
+				g.Id(fieldName).Id("*" + fieldName + "Struct").Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
+				if len(field.Properties) == 0 {
+					innerStructs = append(innerStructs, jen.Comment("// "+fieldName+"Struct represents the "+fieldName+" struct\n").Type().Id(fieldName+"Struct").Map(jen.String()).Interface())
+				} else {
+					innerStructs = append(innerStructs, generateStructs(fieldName, field.Properties, false)...)
+				}
 			default:
 
 			}
@@ -263,7 +316,7 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 		for _, field := range fields {
 
 			// If the field is a nested struct
-			if field.Type == "interface{}" {
+			if field.Type == "object" {
 				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
 					jen.Id("value").Op(":=").Id("fixInterface").Call(jen.Id("value").Assert(jen.Map(jen.Interface()).Interface())),
 					jen.Id("new"+fgName).Dot(field.Name).Op("=").Id("New"+field.Name+"Struct").Call(jen.Id("value")),
@@ -272,8 +325,23 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 				innerConstructors = append(innerConstructors, generateConstructors(field.Name, field.Properties, false)...)
 
 			} else { // If the field is a primitive
+
+				// Translate type to go type
+				var ftype string
+				switch field.Type {
+				case "array":
+					ftype = "[]interface{}"
+				case "boolean":
+					ftype = "bool"
+				case "string":
+					ftype = "string"
+				case "number":
+					ftype = "int"
+				default:
+				}
+
 				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
-					jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("value").Assert(jen.Id(field.Type)),
+					jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("value").Assert(jen.Id(ftype)),
 				)
 			}
 
@@ -290,6 +358,95 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 
 	return append(innerConstructors, constructor)
 
+}
+
+/**************************************************
+                Convert Format
+**************************************************/
+
+// jsonSchemaToConfigDefinition converts a JSON schema file to the config definition format
+func jsonSchemaPropertiesToConfigDefinition(jsonSchema JSONSchema) ConfigDefinition {
+
+	// Create output struct
+	configDef := ConfigDefinition{}
+
+	// Get properties
+	properties := jsonSchema.Properties
+
+	// Iterate through fields and add to field groups
+	for fieldName, fieldData := range properties {
+
+		// Convert to correct format
+		fieldDef := propertySchemaToFieldDefinition(fieldName, fieldData)
+
+		// Iterate through different field groups for this specific field
+		for fgName, fgSpecificData := range fieldData.FieldGroupData {
+
+			fieldDef := addFieldGroupSpecificData(fieldDef, fgSpecificData)
+
+			// If field group exists, append field definition
+			if fg, ok := configDef[fgName]; ok {
+				fg := append(fg, fieldDef)
+				configDef[fgName] = fg
+			} else { // Otherwise create list
+				configDef[fgName] = []FieldDefinition{fieldDef}
+			}
+
+		}
+
+	}
+
+	// Return config definition
+	return configDef
+}
+
+// propertySchemaToFieldDefinition will turn a single property schema into a field definition
+func propertySchemaToFieldDefinition(fieldName string, fieldData SchemaProperty) FieldDefinition {
+
+	// Get generic information
+	name := strcase.ToCamel(strings.ToLower(fieldName))
+	yaml := fieldName
+	ftype := fieldData.Type
+	fdefault := fieldData.Default
+	fvalidate := fieldData.Validate
+	nestedProperties := []FieldDefinition{}
+
+	// Get nested properties
+	for nestedPropName, nestedPropData := range fieldData.Properties {
+		nestedProperties = append(nestedProperties, propertySchemaToFieldDefinition(nestedPropName, nestedPropData))
+	}
+
+	// Create field definition for with generic information
+	fieldDef := FieldDefinition{
+		Name:       name,
+		YAML:       yaml,
+		Type:       ftype,
+		Default:    fdefault,
+		Validate:   fvalidate,
+		Properties: nestedProperties,
+	}
+
+	spew.Dump(fieldDef)
+
+	return fieldDef
+}
+
+// addFieldGroupSpecificData will append field group specific data to the Field Definition
+func addFieldGroupSpecificData(fieldDef FieldDefinition, fgSpecificData map[string]interface{}) FieldDefinition {
+
+	// Check to see if append value exists
+	if value, ok := fgSpecificData["ct-validate"]; ok {
+
+		// Check to determine necessity of comma
+		if len(fieldDef.Validate) == 0 {
+			fieldDef.Validate = value.(string)
+		} else {
+			fieldDef.Validate = strings.Join([]string{fieldDef.Validate, value.(string)}, ",")
+		}
+
+	}
+
+	return fieldDef
 }
 
 /************************************************
@@ -321,4 +478,27 @@ func reverseList(structs []*jen.Statement) []*jen.Statement {
 	}
 
 	return structs
+}
+
+// findCustomValidator find and register a custom validator
+func findCustomValidator(fields []FieldDefinition) []string {
+
+	// Create list of custom validators
+	var customValidators []string
+
+	// Iterate through fields
+	for _, field := range fields {
+		validatorTags := strings.Split(field.Validate, ",")
+
+		// Iterate through individual validator function
+		for _, tag := range validatorTags {
+
+			// If tag has custom prefix it is a custom validator
+			if strings.HasPrefix(tag, "custom") {
+				customValidators = append(customValidators, tag)
+			}
+		}
+	}
+
+	return customValidators
 }
