@@ -714,6 +714,9 @@ class DefaultConfig(ImmutableConfig):
     # The whitelist of namespaces whose app registry package list is cached for 1 hour.
     APP_REGISTRY_PACKAGE_LIST_CACHE_WHITELIST = []
 
+    # The whitelist of namespaces whose app registry show package is cached for 1 hour.
+    APP_REGISTRY_SHOW_PACKAGE_CACHE_WHITELIST = []
+
     # The maximum size of uploaded CNR layers.
     MAXIMUM_CNR_LAYER_SIZE = "2m"
 
