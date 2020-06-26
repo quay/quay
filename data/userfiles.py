@@ -30,6 +30,7 @@ class UserfilesHandlers(View):
             file_stream = self._storage.stream_read_file(self._locations, path)
             buffered = BufferedReader(file_stream)
             file_header_bytes = buffered.peek(1024)
+            buffered.seek(0)
             return send_file(
                 buffered,
                 mimetype=self._magic.from_buffer(file_header_bytes),
