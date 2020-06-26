@@ -315,6 +315,76 @@
           "ct-validate": "required"
         }
       }
+    },
+    "FEATURE_SECURITY_SCANNER": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to turn of/off the security scanner. Defaults to False",
+      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/security-scanning.html",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": {
+        "SecurityScanner": {
+          "ct-validate": ""
+        }
+      }
+    },
+    "SECURITY_SCANNER_ENDPOINT": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for the V2 security scanner",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": {
+        "SecurityScanner": {
+          "ct-validate": "required_with=FeatureSecurityScanner|,omitempty,url,customGetHost"
+        }
+      }
+    },
+    "SECURITY_SCANNER_NOTIFICATIONS": {
+      "type": "boolean",
+      "description": "Whether or not to the security scanner notification feature",
+      "x-example": "false",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": {
+        "SecurityScanner": {}
+      }
+    },
+    "SECURITY_SCANNER_INDEXING_INTERVAL": {
+      "x-example": 30,
+      "type": "number",
+      "description": "The number of seconds between indexing intervals in the security scanner. Defaults to 30.",
+      "ct-default": "30",
+      "ct-validate": "",
+      "ct-fieldgroups": {
+        "SecurityScanner": {}
+      }
+    },
+    "SECURITY_SCANNER_V4_ENDPOINT": {
+      "pattern": "^http(s)?://(.)+$",
+      "type": "string",
+      "description": "The endpoint for the V4 security scanner",
+      "x-example": "http://192.168.99.101:6060",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": {
+        "SecurityScanner": {
+          "ct-validate": "required_with=FeatureSecurityScanner,omitempty,url,customGetHost"
+        }
+      }
+    },
+    "SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": {
+      "type": "array",
+      "description": "The namespaces to which the security scanner should be enabled for",
+      "x-example": ["quay-team", "red hat"],
+      "ct-default": "[]",
+      "ct-validate": "",
+      "ct-fieldgroups": {
+        "SecurityScanner": {}
+      }
     }
+  
   }
 }

@@ -1,6 +1,7 @@
 package fieldgroups
 
 import (
+	"net/http"
 	"regexp"
 
 	"github.com/go-playground/validator/v10"
@@ -50,5 +51,26 @@ func customValidateFoundInStorage(fl validator.FieldLevel) bool {
 	}
 
 	return present
+
+}
+
+// customGetHost will check if a get request returns a 200 status code
+func customGetHost(fl validator.FieldLevel) bool {
+
+	// Get url from field
+	url := fl.Field().String()
+
+	// Make get request
+	resp, err := http.Get(url)
+	if err != nil {
+		return false
+	}
+
+	// Check status code
+	if resp.StatusCode != 200 {
+		return false
+	} else {
+		return true
+	}
 
 }
