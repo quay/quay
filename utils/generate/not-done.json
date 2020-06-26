@@ -232,11 +232,6 @@
       "type": ["number", "null"],
       "description": "If not None, the number of successive failures that can occur before a build trigger is automatically disabled. Defaults to 100."
     },
-    "FEATURE_APP_SPECIFIC_TOKENS": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "If enabled, users can create tokens for use by the Docker CLI. Defaults to True"
-    },
     "FEATURE_READER_BUILD_LOGS": {
       "x-example": false,
       "type": "boolean",
@@ -525,12 +520,6 @@
       "x-example": "myuser",
       "type": ["string", "null"],
       "description": "The SMTP username to use when sending e-mails."
-    },
-    "AUTHENTICATION_TYPE": {
-      "x-example": "Database",
-      "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken"],
-      "type": "string",
-      "description": "The authentication engine to use for credential authentication."
     },
     "FEATURE_ADVERTISE_V2": {
       "x-example": true,

@@ -17,11 +17,12 @@ type Config map[string]FieldGroup
 func NewConfig(fullConfig map[string]interface{}) Config {
 
 	newConfig := Config{}
+	newConfig["TeamSyncing"] = NewTeamSyncingFieldGroup(fullConfig)
+	newConfig["AppTokenAuthentication"] = NewAppTokenAuthenticationFieldGroup(fullConfig)
+	newConfig["Documentation"] = NewDocumentationFieldGroup(fullConfig)
+	newConfig["AccessSettings"] = NewAccessSettingsFieldGroup(fullConfig)
 	newConfig["ActionLogArchiving"] = NewActionLogArchivingFieldGroup(fullConfig)
 	newConfig["UserVisibleSettings"] = NewUserVisibleSettingsFieldGroup(fullConfig)
-	newConfig["AccessSettings"] = NewAccessSettingsFieldGroup(fullConfig)
-	newConfig["Documentation"] = NewDocumentationFieldGroup(fullConfig)
-	newConfig["TeamSyncing"] = NewTeamSyncingFieldGroup(fullConfig)
 
 	return newConfig
 }

@@ -8,8 +8,8 @@ import (
 // TeamSyncingFieldGroup represents the TeamSyncingFieldGroup config fields
 type TeamSyncingFieldGroup struct {
 	TeamResyncStaleTime                 string `default:"30m" validate:"customValidateTimePattern"`
-	FeatureTeamSyncing                  bool   `default:"false" validate:""`
 	FeatureNonsuperuserTeamSyncingSetup bool   `default:"false" validate:""`
+	FeatureTeamSyncing                  bool   `default:"false" validate:""`
 }
 
 // NewTeamSyncingFieldGroup creates a new TeamSyncingFieldGroup
@@ -20,11 +20,11 @@ func NewTeamSyncingFieldGroup(fullConfig map[string]interface{}) FieldGroup {
 	if value, ok := fullConfig["TEAM_RESYNC_STALE_TIME"]; ok {
 		newTeamSyncingFieldGroup.TeamResyncStaleTime = value.(string)
 	}
-	if value, ok := fullConfig["FEATURE_TEAM_SYNCING"]; ok {
-		newTeamSyncingFieldGroup.FeatureTeamSyncing = value.(bool)
-	}
 	if value, ok := fullConfig["FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP"]; ok {
 		newTeamSyncingFieldGroup.FeatureNonsuperuserTeamSyncingSetup = value.(bool)
+	}
+	if value, ok := fullConfig["FEATURE_TEAM_SYNCING"]; ok {
+		newTeamSyncingFieldGroup.FeatureTeamSyncing = value.(bool)
 	}
 
 	return newTeamSyncingFieldGroup

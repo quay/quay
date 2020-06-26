@@ -11,6 +11,9 @@
       "ct-fieldgroups": {
         "AccessSettings": {
           "ct-validate": "required_without_all=FeatureGithubLogin FeatureGoogleLogin"
+        },
+        "AppTokenAuthentication": {
+          "ct-validate": "isdefault"
         }
       }
     },
@@ -286,6 +289,31 @@
       "ct-validate": "customValidateTimePattern",
       "ct-fieldgroups": {
         "TeamSyncing": {}
+      }
+    },
+    "AUTHENTICATION_TYPE": {
+      "x-example": "Database",
+      "enum": ["Database", "LDAP", "JWT", "Keystone", "OIDC", "AppToken"],
+      "type": "string",
+      "description": "The authentication engine to use for credential authentication.",
+      "ct-default": "Database",
+      "ct-validate": "oneof=Database LDAP JTW Keystone OIDC AppToken",
+      "ct-fieldgroups": {
+        "AppTokenAuthentication": {
+          "ct-validate": "eq=AppToken"
+        }
+      }
+    },
+    "FEATURE_APP_SPECIFIC_TOKENS": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "If enabled, users can create tokens for use by the Docker CLI. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": {
+        "AppTokenAuthentication": {
+          "ct-validate": "required"
+        }
       }
     }
   }
