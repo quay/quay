@@ -6,7 +6,7 @@
 -e git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
 -e git+https://github.com/quay/py-bitbucket.git@85301693ce3682f8e1244e90bd8a903181844bde#egg=py_bitbucket
 -e git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
--e git+https://github.com/coderanger/supervisor-stdout.git@87632a7e522bf1888587c39e7fd61535b7a43cd7#egg=supervisor_stdout
+-e git+https://github.com/quay/supervisor-stdout.git@9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380#egg=supervisor_stdout
 aiowsgi==0.7
 alembic==1.3.3
 APScheduler==3.6.3
