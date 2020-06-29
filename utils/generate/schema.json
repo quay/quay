@@ -324,9 +324,7 @@
       "ct-default": "false",
       "ct-validate": "",
       "ct-fieldgroups": {
-        "SecurityScanner": {
-          "ct-validate": ""
-        }
+        "SecurityScanner": {}
       }
     },
     "SECURITY_SCANNER_ENDPOINT": {
@@ -338,7 +336,7 @@
       "ct-validate": "",
       "ct-fieldgroups": {
         "SecurityScanner": {
-          "ct-validate": "required_with=FeatureSecurityScanner|,omitempty,url,customGetHost"
+          "ct-validate": "required_with=FeatureSecurityScanner,omitempty,url,customGetHost"
         }
       }
     },
@@ -361,30 +359,6 @@
       "ct-fieldgroups": {
         "SecurityScanner": {}
       }
-    },
-    "SECURITY_SCANNER_V4_ENDPOINT": {
-      "pattern": "^http(s)?://(.)+$",
-      "type": "string",
-      "description": "The endpoint for the V4 security scanner",
-      "x-example": "http://192.168.99.101:6060",
-      "ct-default": "",
-      "ct-validate": "",
-      "ct-fieldgroups": {
-        "SecurityScanner": {
-          "ct-validate": "required_with=FeatureSecurityScanner,omitempty,url,customGetHost"
-        }
-      }
-    },
-    "SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": {
-      "type": "array",
-      "description": "The namespaces to which the security scanner should be enabled for",
-      "x-example": ["quay-team", "red hat"],
-      "ct-default": "[]",
-      "ct-validate": "",
-      "ct-fieldgroups": {
-        "SecurityScanner": {}
-      }
     }
-  
   }
 }

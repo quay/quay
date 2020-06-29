@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/dave/jennifer/jen"
@@ -386,8 +387,18 @@ func jsonSchemaPropertiesToConfigDefinition(jsonSchema JSONSchema) ConfigDefinit
 	// Get properties
 	properties := jsonSchema.Properties
 
-	// Iterate through fields and add to field groups
-	for fieldName, fieldData := range properties {
+	// Sort keys to enforce consistent order
+	var fieldNames []string
+	for fieldName := range properties {
+		fieldNames = append(fieldNames, fieldName)
+	}
+	sort.Strings(fieldNames)
+
+	// Iterate through keys and get data from properties
+	for _, fieldName := range fieldNames {
+
+		// Get field data for this field
+		fieldData := properties[fieldName]
 
 		// Convert to correct format
 		fieldDef := propertySchemaToFieldDefinition(fieldName, fieldData)
@@ -438,8 +449,6 @@ func propertySchemaToFieldDefinition(fieldName string, fieldData SchemaProperty)
 		Validate:   fvalidate,
 		Properties: nestedProperties,
 	}
-
-	spew.Dump(fieldDef)
 
 	return fieldDef
 }

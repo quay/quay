@@ -69,8 +69,7 @@ func customGetHost(fl validator.FieldLevel) bool {
 	// Check status code
 	if resp.StatusCode != 200 {
 		return false
-	} else {
-		return true
 	}
+	return true
 
 }

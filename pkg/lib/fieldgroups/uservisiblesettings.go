@@ -7,13 +7,13 @@ import (
 
 // UserVisibleSettingsFieldGroup represents the UserVisibleSettingsFieldGroup config fields
 type UserVisibleSettingsFieldGroup struct {
-	RegistryTitleShort       string          `default:"Project Quay" validate:""`
-	SearchResultsPerPage     int             `default:"10" validate:""`
-	RegistryTitle            string          `default:"Project Quay" validate:""`
-	ContactInfo              []interface{}   `default:"[]" validate:""`
 	AvatarKind               string          `default:"local" validate:"oneof=local gravatar"`
-	SearchMaxResultPageCount int             `default:"10" validate:""`
 	Branding                 *BrandingStruct `default:"" validate:""`
+	ContactInfo              []interface{}   `default:"[]" validate:""`
+	RegistryTitle            string          `default:"Project Quay" validate:""`
+	RegistryTitleShort       string          `default:"Project Quay" validate:""`
+	SearchMaxResultPageCount int             `default:"10" validate:""`
+	SearchResultsPerPage     int             `default:"10" validate:""`
 }
 
 // BrandingStruct represents the BrandingStruct config fields
@@ -28,27 +28,27 @@ func NewUserVisibleSettingsFieldGroup(fullConfig map[string]interface{}) FieldGr
 	newUserVisibleSettingsFieldGroup := &UserVisibleSettingsFieldGroup{}
 	defaults.Set(newUserVisibleSettingsFieldGroup)
 
-	if value, ok := fullConfig["REGISTRY_TITLE_SHORT"]; ok {
-		newUserVisibleSettingsFieldGroup.RegistryTitleShort = value.(string)
-	}
-	if value, ok := fullConfig["SEARCH_RESULTS_PER_PAGE"]; ok {
-		newUserVisibleSettingsFieldGroup.SearchResultsPerPage = value.(int)
-	}
-	if value, ok := fullConfig["REGISTRY_TITLE"]; ok {
-		newUserVisibleSettingsFieldGroup.RegistryTitle = value.(string)
-	}
-	if value, ok := fullConfig["CONTACT_INFO"]; ok {
-		newUserVisibleSettingsFieldGroup.ContactInfo = value.([]interface{})
-	}
 	if value, ok := fullConfig["AVATAR_KIND"]; ok {
 		newUserVisibleSettingsFieldGroup.AvatarKind = value.(string)
-	}
-	if value, ok := fullConfig["SEARCH_MAX_RESULT_PAGE_COUNT"]; ok {
-		newUserVisibleSettingsFieldGroup.SearchMaxResultPageCount = value.(int)
 	}
 	if value, ok := fullConfig["BRANDING"]; ok {
 		value := fixInterface(value.(map[interface{}]interface{}))
 		newUserVisibleSettingsFieldGroup.Branding = NewBrandingStruct(value)
+	}
+	if value, ok := fullConfig["CONTACT_INFO"]; ok {
+		newUserVisibleSettingsFieldGroup.ContactInfo = value.([]interface{})
+	}
+	if value, ok := fullConfig["REGISTRY_TITLE"]; ok {
+		newUserVisibleSettingsFieldGroup.RegistryTitle = value.(string)
+	}
+	if value, ok := fullConfig["REGISTRY_TITLE_SHORT"]; ok {
+		newUserVisibleSettingsFieldGroup.RegistryTitleShort = value.(string)
+	}
+	if value, ok := fullConfig["SEARCH_MAX_RESULT_PAGE_COUNT"]; ok {
+		newUserVisibleSettingsFieldGroup.SearchMaxResultPageCount = value.(int)
+	}
+	if value, ok := fullConfig["SEARCH_RESULTS_PER_PAGE"]; ok {
+		newUserVisibleSettingsFieldGroup.SearchResultsPerPage = value.(int)
 	}
 
 	return newUserVisibleSettingsFieldGroup
