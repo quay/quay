@@ -15,7 +15,7 @@ from workers.worker import Worker, with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
-POLL_PERIOD_SECONDS = 30 * 60  # 30 minutes
+POLL_PERIOD_SECONDS = 4 * 60 * 60  # 4 hours
 
 
 class RepositoryActionCountWorker(Worker):
@@ -34,8 +34,16 @@ class RepositoryActionCountWorker(Worker):
         if min_id is None or max_id is None:
             return
 
-        # 4^log10(total) gives us a scalable batch size into the billions.
-        batch_size = int(4 ** log10(max(10, max_id - min_id)))
+        # Check for the number RAC entries vs number of repos. If they are the same,
+        # nothing more to do.
+        repo_count = model.repository.get_repository_count()
+        rac_count = model.repositoryactioncount.found_entry_count(yesterday)
+        if rac_count >= repo_count:
+            logger.debug("All RAC entries found; nothing more to do")
+            return
+
+        # This gives us a scalable batch size into the millions.
+        batch_size = int(3 ** log10(max(10, max_id - min_id)))
 
         iterator = yield_random_entries(
             batch_query, database.Repository.id, batch_size, max_id, min_id,
