@@ -451,12 +451,14 @@ class BuildComponent(BaseComponent):
         Calls self._build_finished with ERROR _without_ logging the failed build.
         This allows to handle Redis failures.
         """
-        build_id = self._current_job.repo_build.uuid
+        if self._current_job is not None:
+            build_id = self._current_job.repo_build.uuid
 
-        # The build's phase should still be updated even without logging to avoid getting into
-        # a weird state where it was complete but wasn't updated from "building" because of
-        # Redis going down.
-        build_model.update_phase_then_close(build_id, BUILD_PHASE.INTERNAL_ERROR)
+            # The build's phase should still be updated even without logging to avoid getting into
+            # a weird state where it was complete but wasn't updated from "building" because of
+            # Redis going down.
+            build_model.update_phase_then_close(build_id, BUILD_PHASE.INTERNAL_ERROR)
+
         yield From(self._build_finished(BuildJobResult.ERROR))
 
     @trollius.coroutine
