@@ -177,6 +177,10 @@ class BuilderServer(object):
 
     @trollius.coroutine
     def _job_complete(self, build_job, job_status, executor_name=None, update_phase=False):
+        if build_job is None:
+            logger.warning("[BUILD INCOMPLETE: job complete] Build component job is None",)
+            raise Return()
+
         if update_phase:
             try:
                 status_handler = StatusHandler(self._build_logs, build_job.repo_build.uuid)
