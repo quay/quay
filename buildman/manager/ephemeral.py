@@ -797,8 +797,8 @@ class EphemeralBuilderManager(BaseManager):
                 metric.labels(executor, str(job_status)).observe(time.time() - start_time)
             else:
                 metric.labels(executor).observe(time.time() - start_time)
-        except Exception:
-            logger.exception("Could not write metric for realm %s", realm)
+        except Exception as e:
+            logger.warning("Could not write metric for realm %s - %s", realm, e)
 
     def num_workers(self):
         """

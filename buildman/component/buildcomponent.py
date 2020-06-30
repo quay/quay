@@ -380,7 +380,7 @@ class BuildComponent(BaseComponent):
         except RedisError as re:
             logger.warning("Failed to append log for build ID: %s - %s", build_id, re)
         except Exception as bse:
-            logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
+            logger.warning("Failed to set phase for build ID: %s - %s", build_id, bse)
             yield From(self._build_status_failure(bse))
             raise Return()
 
