@@ -61,6 +61,13 @@ def count_repository_actions(to_count, day):
     return actions
 
 
+def found_entry_count(day):
+    """
+    Returns the number of entries for the given day in the RAC table.
+    """
+    return RepositoryActionCount.select().where(RepositoryActionCount.date == day).count()
+
+
 def has_repository_action_count(repository, day):
     """
     Returns whether there is a stored action count for a repository for a specific day.
