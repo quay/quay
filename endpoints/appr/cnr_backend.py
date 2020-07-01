@@ -15,6 +15,7 @@ from cnr.models.package_base import PackageBase, manifest_media_type
 
 from flask import request
 from app import storage
+from digest.digest_tools import Digest, InvalidDigestException
 from endpoints.appr.models_cnr import model
 from util.request import get_request_ip
 
@@ -119,6 +120,12 @@ class Blob(BlobBase):
 
     @classmethod
     def upload_url(cls, digest):
+        # Ensure we have a valid digest.
+        try:
+            Digest.parse_digest("sha256:%s" % digest)
+        except InvalidDigestException:
+            return None
+
         return "cnr/blobs/sha256/%s/%s" % (digest[0:2], digest)
 
     def save(self, content_media_type):
@@ -131,6 +138,9 @@ class Blob(BlobBase):
     @classmethod
     def _fetch_b64blob(cls, package_name, digest):
         blobpath = cls.upload_url(digest)
+        if blobpath is None:
+            raise_package_not_found(package_name, digest)
+
         locations = model.get_blob_locations(digest)
         if not locations:
             raise_package_not_found(package_name, digest)
@@ -139,6 +149,9 @@ class Blob(BlobBase):
     @classmethod
     def download_url(cls, package_name, digest):
         blobpath = cls.upload_url(digest)
+        if blobpath is None:
+            raise_package_not_found(package_name, digest)
+
         locations = model.get_blob_locations(digest)
         if not locations:
             raise_package_not_found(package_name, digest)
