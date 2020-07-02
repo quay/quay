@@ -35,7 +35,7 @@ _TAG_RETRY_COUNT = 3  # Number of times to retry adding tags.
 _TAG_RETRY_SLEEP = 2  # Number of seconds to wait between tag retries.
 
 ENV = Environment(loader=FileSystemLoader(os.path.join(ROOT_DIR, "buildman/templates")))
-TEMPLATE = ENV.get_template("cloudconfig.yaml")
+TEMPLATE = ENV.get_template("cloudconfig.json")
 CloudConfigContext().populate_jinja_environment(ENV)
 
 

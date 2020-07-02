@@ -7,6 +7,7 @@ Originally from https://github.com/DevTable/container-cloud-config
 from functools import partial
 
 import base64
+import json
 import os
 import requests
 import logging
@@ -15,6 +16,7 @@ try:
     # Python 3
     from urllib.request import HTTPRedirectHandler, build_opener, install_opener, urlopen, Request
     from urllib.error import HTTPError
+    from urllib.parse import quote as urlquote
 except ImportError:
     # Python 2
     from urllib2 import (
@@ -25,6 +27,7 @@ except ImportError:
         Request,
         HTTPError,
     )
+    from urllib import quote as urlquote
 
 from jinja2 import FileSystemLoader, Environment, StrictUndefined
 
@@ -55,6 +58,8 @@ class CloudConfigContext(object):
         env.filters["registry"] = self.registry
         env.globals["flattened_url"] = self.flattened_url
         env.globals["dockersystemd"] = self._dockersystemd_template
+        env.globals["dataurl"] = self.data_url
+        env.globals["jsonify"] = json.dumps
 
     def _dockersystemd_template(
         self,
@@ -106,6 +111,12 @@ class CloudConfigContext(object):
             timeout_stop_sec=timeout_stop_sec,
             env_file=env_file,
         )
+
+    def data_url(self, content):
+        """ Encodes the content of an ignition file using RFC 2397. """
+        data = "," + urlquote(content)
+        return "data:" + data
+
 
     def flattened_url(self, container_name, tag_name, username, password):
         """ Generates a URL for downloading a flattened container image. """
