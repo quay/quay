@@ -88,7 +88,7 @@ class CloudConfigContext(object):
         path = os.path.join(os.path.dirname(__file__), "templates")
         env = Environment(loader=FileSystemLoader(path), undefined=StrictUndefined)
         self.populate_jinja_environment(env)
-        template = env.get_template("dockersystemd.yaml")
+        template = env.get_template("dockersystemd.json")
         return template.render(
             name=name,
             container=container,

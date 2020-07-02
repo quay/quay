@@ -1,0 +1,76 @@
+{% macro flattenedimageservice() -%}
+
+[Unit]
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/curl -s -f -L https://s3.amazonaws.com/devtable-public/importas -o /home/core/importas
+ExecStartPre=/bin/chmod u+x /home/core/importas
+ExecStart=/usr/bin/bash -c '/usr/bin/curl -s -f -L {{ flattened_url(container, tag, username, password) }} | /home/core/importas {{ container }} {{ tag }} | docker load'
+
+{%- endmacro %}
+
+
+{% macro dockerimageservice() -%}
+
+[Unit]
+After=docker.service
+Requires=docker.service
+{% if onfailure_units -%}
+OnFailure={% for failure in onfailure_units -%}{{ failure }} {% endfor %}
+{%- endif %}
+{% if flattened -%}
+After={{ name }}-image.service
+{%- endif %}
+{% for after in after_units -%}
+After={{ after }}
+{% endfor %}
+{% for requires in requires_units -%}
+Requires={{ requires }}
+{% endfor %}
+{% for wants in wants_units -%}
+Wants={{ wants }}
+{% endfor %}
+
+[Service]
+{% if env_file -%}
+EnvironmentFile={{ env_file }}
+{%- endif %}
+{% if oneshot -%}
+Type=oneshot
+{% else -%}
+Restart={{ restart_policy }}
+{%- endif %}
+TimeoutStartSec={{ timeout_start_sec|default(600) }}
+TimeoutStopSec={{ timeout_stop_sec|default(2000) }}
+{% if username and password and not flattened %}
+ExecStartPre=/usr/bin/docker login -u {{ username }} -p {{ password }} {{ container|registry }}
+{% endif %}
+ExecStart=/usr/bin/docker run --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
+{% for start_post in exec_start_post -%}
+ExecStartPost={{ start_post }}
+{% endfor %}
+{% if not oneshot -%}
+ExecStop=/usr/bin/docker stop {{ name }}
+{%- endif %}
+{% for stop_post in exec_stop_post -%}
+ExecStopPost={{ stop_post }}
+{% endfor %}
+
+{%- endmacro %}
+
+
+{% if flattened -%}
+{
+  "name": "{{ name }}-image.service",
+  "enabled": true,
+  "contents": {{ flattenedimageservice() | jsonify }}
+},
+{%- endif %}
+{
+  "name": "{{ name }}.service",
+  "enabled": true,
+  "contents": {{ dockerimageservice() | jsonify }}
+}
