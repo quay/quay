@@ -7,11 +7,11 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// customValidate validates that a field has the correct pattern
-func customValidateTimePattern(fl validator.FieldLevel) bool {
+// IsValidTimePattern validates that a field has the correct pattern
+func IsValidTimePattern(s string) bool {
 
 	re := regexp.MustCompile(`^[0-9]+(w|m|d|h|s)$`)
-	matches := re.FindAllString(fl.Field().String(), -1)
+	matches := re.FindAllString(s, -1)
 
 	if len(matches) != 1 {
 		return false

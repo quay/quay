@@ -43,8 +43,8 @@ type SchemaProperty struct {
 	Items       []struct {
 		Type string `json:"type"`
 	} `json:"items"`
-	FieldGroupData map[string]map[string]interface{} `json:"ct-fieldgroups"`
-	Properties     map[string]SchemaProperty         `json:"properties"`
+	FieldGroups []string                  `json:"ct-fieldgroups"`
+	Properties  map[string]SchemaProperty `json:"properties"`
 }
 
 //go:generate go run gen.go
@@ -65,15 +65,6 @@ func main() {
 
 	// Convert JSON Schema to Config Definiton
 	configDef := jsonSchemaPropertiesToConfigDefinition(jsonSchema)
-
-	spew.Config.Indent = "\t"
-	spew.Config.DisableCapacities = true
-	spew.Config.DisablePointerAddresses = true
-	spew.Config.SortKeys = true
-	spew.Config.DisableMethods = true
-	spew.Config.DisableTypes = true
-	spew.Config.DisableLengths = true
-	spew.Dump(configDef)
 
 	// Create config.go
 	err = createConfigBase(configDef)
@@ -146,18 +137,11 @@ func createFieldGroups(configDef ConfigDefinition) error {
 			}
 		})
 
-		// Create Validator function
-		f.Comment("Validate checks the configuration settings for this field group")
-		f.Func().Params(jen.Id("fg *"+fgName+"FieldGroup")).Id("Validate").Params().Params(jen.Qual("github.com/go-playground/validator/v10", "ValidationErrors")).Block(
-			jen.Id("validate").Op(":=").Qual("github.com/go-playground/validator/v10", "New").Call(),
-			registerValidators,
-			jen.Id("err").Op(":=").Id("validate").Dot("Struct").Call(jen.Id("fg")),
-			jen.If(jen.Id("err").Op("==").Nil()).Block(
-				jen.Return(jen.Nil()),
-			),
-			jen.Id("validationErrors").Op(":=").Id("err").Assert(jen.Id("validator").Dot("ValidationErrors")),
-			jen.Return(jen.Id("validationErrors")),
-		)
+		// // Create Validator function
+		// f.Comment("Validate checks the configuration settings for this field group")
+		// f.Func().Params(jen.Id("fg *" + fgName + "FieldGroup")).Id("Validate").Params().Params(jen.Index().Id("ValidationError")).Block(
+		// 	jen.Return(jen.Nil()),
+		// )
 
 		// Define outputfile name
 		outfile := strings.ToLower(fgName + ".go")
@@ -182,7 +166,15 @@ func createConfigBase(configDef ConfigDefinition) error {
 
 	// Write FieldGroup interface
 	f.Comment("FieldGroup is an interface that implements the Validate() function")
-	f.Type().Id("FieldGroup").Interface(jen.Id("Validate").Params().Parens(jen.List(jen.Qual("github.com/go-playground/validator/v10", "ValidationErrors"))))
+	f.Type().Id("FieldGroup").Interface(jen.Id("Validate").Params().Parens(jen.List(jen.Index().Id("ValidationError"))))
+
+	// Write ValidationError struct definition
+	f.Comment("Validation is a struct that holds information about a failed field group policy")
+	f.Type().Id("ValidationError").Struct(
+		jen.Id("Tags").Index().String(),
+		jen.Id("Policy").String(),
+		jen.Id("Message").String(),
+	)
 
 	// Write Config struct definition
 	f.Comment("Config is a struct that represents a configuration as a mapping of field groups")
@@ -195,17 +187,21 @@ func createConfigBase(configDef ConfigDefinition) error {
 		Close: "\n",
 	}
 	constructorBlock := jen.CustomFunc(op, func(g *jen.Group) {
-
+		g.Var().Id("err").Error()
 		g.Id("newConfig").Op(":=").Id("Config").Values()
 		for fgName := range configDef {
-			g.Id("newConfig").Index(jen.Lit(fgName)).Op("=").Id("New" + fgName + "FieldGroup").Call(jen.Id("fullConfig"))
+			g.List(jen.Id("new"+fgName+"FieldGroup"), jen.Id("err")).Op(":=").Id("New" + fgName + "FieldGroup").Call(jen.Id("fullConfig"))
+			g.If(jen.Id("err").Op("!=").Nil()).Block(
+				jen.Return(jen.List(jen.Id("newConfig"), jen.Id("err"))),
+			)
+			g.Id("newConfig").Index(jen.Lit(fgName)).Op("=").Id("new" + fgName + "FieldGroup")
 		}
 
 	})
 
 	// Write Config constructor
 	f.Comment("NewConfig creates a Config struct from a map[string]interface{}")
-	f.Func().Id("NewConfig").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id("Config").Block(constructorBlock, jen.Return(jen.Id("newConfig")))
+	f.Func().Id("NewConfig").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Parens(jen.List(jen.Id("Config"), jen.Error())).Block(constructorBlock, jen.Return(jen.List(jen.Id("newConfig"), jen.Nil())))
 
 	// Add helper function to fix maps
 	f.Comment("fixInterface converts a map[interface{}]interface{} into a map[string]interface{}")
@@ -319,8 +315,10 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 			// If the field is a nested struct
 			if field.Type == "object" {
 				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
+					jen.Var().Id("err").Error(),
 					jen.Id("value").Op(":=").Id("fixInterface").Call(jen.Id("value").Assert(jen.Map(jen.Interface()).Interface())),
-					jen.Id("new"+fgName).Dot(field.Name).Op("=").Id("New"+field.Name+"Struct").Call(jen.Id("value")),
+					jen.List(jen.Id("new"+fgName).Dot(field.Name), jen.Id("err")).Op("=").Id("New"+field.Name+"Struct").Call(jen.Id("value")),
+					jen.If(jen.Id("err").Op("!=").Nil()).Block(jen.Return(jen.List(jen.Id("new"+fgName), jen.Id("err")))),
 				)
 
 				innerConstructors = append(innerConstructors, generateConstructors(field.Name, field.Properties, false)...)
@@ -342,7 +340,8 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 				}
 
 				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
-					jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("value").Assert(jen.Id(ftype)),
+					jen.List(jen.Id("new"+fgName).Dot(field.Name), jen.Id("ok")).Op("=").Id("value").Assert(jen.Id(ftype)),
+					jen.If(jen.Id("!ok")).Block(jen.Return(jen.List(jen.Id("new"+fgName), jen.Qual("errors", "New").Call(jen.Lit(field.YAML+" must be of type "+ftype))))),
 				)
 			}
 
@@ -354,19 +353,19 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 
 	// If the field is just a map[string]interface{}
 	if len(fields) == 0 {
-		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
+		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Parens(jen.List(jen.Id(returnType), jen.Error())).Block(
 			jen.Id("new"+fgName).Op(":=").Id(fgName).Values(),
 			jen.For(jen.List(jen.Id("key"), jen.Id("value")).Op(":=").Range().Id("fullConfig").Block(
 				jen.Id("new"+fgName).Index(jen.Id("key")).Op("=").Id("value"),
 			)),
-			jen.Return(jen.Id("&new"+fgName)),
+			jen.Return(jen.List(jen.Id("&new"+fgName), jen.Nil())),
 		))
 	} else {
-		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
+		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Parens(jen.List(jen.Id(returnType), jen.Error())).Block(
 			jen.Id("new"+fgName).Op(":=").Op("&").Id(fgName).Values(),
 			jen.Qual("github.com/creasty/defaults", "Set").Call(jen.Id("new"+fgName)),
 			setValues,
-			jen.Return(jen.Id("new"+fgName)),
+			jen.Return(jen.List(jen.Id("new"+fgName), jen.Nil())),
 		))
 	}
 
@@ -404,9 +403,7 @@ func jsonSchemaPropertiesToConfigDefinition(jsonSchema JSONSchema) ConfigDefinit
 		fieldDef := propertySchemaToFieldDefinition(fieldName, fieldData)
 
 		// Iterate through different field groups for this specific field
-		for fgName, fgSpecificData := range fieldData.FieldGroupData {
-
-			fieldDef := addFieldGroupSpecificData(fieldDef, fgSpecificData)
+		for _, fgName := range fieldData.FieldGroups {
 
 			// If field group exists, append field definition
 			if fg, ok := configDef[fgName]; ok {
@@ -523,4 +520,16 @@ func findCustomValidator(fields []FieldDefinition) []string {
 	}
 
 	return customValidators
+}
+
+// dumpStruct will pretty print a struct
+func dumpStruct(i interface{}) string {
+	spew.Config.Indent = "\t"
+	spew.Config.DisableCapacities = true
+	spew.Config.DisablePointerAddresses = true
+	spew.Config.SortKeys = true
+	spew.Config.DisableMethods = true
+	spew.Config.DisableTypes = true
+	spew.Config.DisableLengths = true
+	return spew.Sdump(i)
 }

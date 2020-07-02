@@ -9,13 +9,12 @@ import (
 )
 
 // ValidateConf validates a config.yaml
-func ValidateConf(configPath string) fieldgroups.Config {
+func ValidateConf(configPath string) (fieldgroups.Config, error) {
 
 	// Read config file
 	configBytes, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil
+		return fieldgroups.Config{}, err
 	}
 
 	// Load config into struct
@@ -25,8 +24,11 @@ func ValidateConf(configPath string) fieldgroups.Config {
 	}
 
 	// Create field groups
-	configFieldGroups := fieldgroups.NewConfig(c)
+	configFieldGroups, err := fieldgroups.NewConfig(c)
+	if err != nil {
+		return fieldgroups.Config{}, err
+	}
 
-	return configFieldGroups
+	return configFieldGroups, nil
 
 }

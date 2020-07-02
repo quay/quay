@@ -1,13 +1,13 @@
 package fieldgroups
 
 import (
+	"errors"
 	"github.com/creasty/defaults"
-	"github.com/go-playground/validator/v10"
 )
 
 // UserVisibleSettingsFieldGroup represents the UserVisibleSettingsFieldGroup config fields
 type UserVisibleSettingsFieldGroup struct {
-	AvatarKind               string          `default:"local" validate:"oneof=local gravatar"`
+	AvatarKind               string          `default:"local" validate:""`
 	Branding                 *BrandingStruct `default:"" validate:""`
 	ContactInfo              []interface{}   `default:"[]" validate:""`
 	RegistryTitle            string          `default:"Project Quay" validate:""`
@@ -24,62 +24,81 @@ type BrandingStruct struct {
 }
 
 // NewUserVisibleSettingsFieldGroup creates a new UserVisibleSettingsFieldGroup
-func NewUserVisibleSettingsFieldGroup(fullConfig map[string]interface{}) FieldGroup {
+func NewUserVisibleSettingsFieldGroup(fullConfig map[string]interface{}) (FieldGroup, error) {
 	newUserVisibleSettingsFieldGroup := &UserVisibleSettingsFieldGroup{}
 	defaults.Set(newUserVisibleSettingsFieldGroup)
 
 	if value, ok := fullConfig["AVATAR_KIND"]; ok {
-		newUserVisibleSettingsFieldGroup.AvatarKind = value.(string)
+		newUserVisibleSettingsFieldGroup.AvatarKind, ok = value.(string)
+		if !ok {
+			return newUserVisibleSettingsFieldGroup, errors.New("AVATAR_KIND must be of type string")
+		}
 	}
 	if value, ok := fullConfig["BRANDING"]; ok {
+		var err error
 		value := fixInterface(value.(map[interface{}]interface{}))
-		newUserVisibleSettingsFieldGroup.Branding = NewBrandingStruct(value)
+		newUserVisibleSettingsFieldGroup.Branding, err = NewBrandingStruct(value)
+		if err != nil {
+			return newUserVisibleSettingsFieldGroup, err
+		}
 	}
 	if value, ok := fullConfig["CONTACT_INFO"]; ok {
-		newUserVisibleSettingsFieldGroup.ContactInfo = value.([]interface{})
+		newUserVisibleSettingsFieldGroup.ContactInfo, ok = value.([]interface{})
+		if !ok {
+			return newUserVisibleSettingsFieldGroup, errors.New("CONTACT_INFO must be of type []interface{}")
+		}
 	}
 	if value, ok := fullConfig["REGISTRY_TITLE"]; ok {
-		newUserVisibleSettingsFieldGroup.RegistryTitle = value.(string)
+		newUserVisibleSettingsFieldGroup.RegistryTitle, ok = value.(string)
+		if !ok {
+			return newUserVisibleSettingsFieldGroup, errors.New("REGISTRY_TITLE must be of type string")
+		}
 	}
 	if value, ok := fullConfig["REGISTRY_TITLE_SHORT"]; ok {
-		newUserVisibleSettingsFieldGroup.RegistryTitleShort = value.(string)
+		newUserVisibleSettingsFieldGroup.RegistryTitleShort, ok = value.(string)
+		if !ok {
+			return newUserVisibleSettingsFieldGroup, errors.New("REGISTRY_TITLE_SHORT must be of type string")
+		}
 	}
 	if value, ok := fullConfig["SEARCH_MAX_RESULT_PAGE_COUNT"]; ok {
-		newUserVisibleSettingsFieldGroup.SearchMaxResultPageCount = value.(int)
+		newUserVisibleSettingsFieldGroup.SearchMaxResultPageCount, ok = value.(int)
+		if !ok {
+			return newUserVisibleSettingsFieldGroup, errors.New("SEARCH_MAX_RESULT_PAGE_COUNT must be of type int")
+		}
 	}
 	if value, ok := fullConfig["SEARCH_RESULTS_PER_PAGE"]; ok {
-		newUserVisibleSettingsFieldGroup.SearchResultsPerPage = value.(int)
+		newUserVisibleSettingsFieldGroup.SearchResultsPerPage, ok = value.(int)
+		if !ok {
+			return newUserVisibleSettingsFieldGroup, errors.New("SEARCH_RESULTS_PER_PAGE must be of type int")
+		}
 	}
 
-	return newUserVisibleSettingsFieldGroup
+	return newUserVisibleSettingsFieldGroup, nil
 }
 
 // NewBrandingStruct creates a new BrandingStruct
-func NewBrandingStruct(fullConfig map[string]interface{}) *BrandingStruct {
+func NewBrandingStruct(fullConfig map[string]interface{}) (*BrandingStruct, error) {
 	newBrandingStruct := &BrandingStruct{}
 	defaults.Set(newBrandingStruct)
 
 	if value, ok := fullConfig["logo"]; ok {
-		newBrandingStruct.Logo = value.(string)
+		newBrandingStruct.Logo, ok = value.(string)
+		if !ok {
+			return newBrandingStruct, errors.New("logo must be of type string")
+		}
 	}
 	if value, ok := fullConfig["footer_img"]; ok {
-		newBrandingStruct.FooterImg = value.(string)
+		newBrandingStruct.FooterImg, ok = value.(string)
+		if !ok {
+			return newBrandingStruct, errors.New("footer_img must be of type string")
+		}
 	}
 	if value, ok := fullConfig["footer_url"]; ok {
-		newBrandingStruct.FooterUrl = value.(string)
+		newBrandingStruct.FooterUrl, ok = value.(string)
+		if !ok {
+			return newBrandingStruct, errors.New("footer_url must be of type string")
+		}
 	}
 
-	return newBrandingStruct
-}
-
-// Validate checks the configuration settings for this field group
-func (fg *UserVisibleSettingsFieldGroup) Validate() validator.ValidationErrors {
-	validate := validator.New()
-
-	err := validate.Struct(fg)
-	if err == nil {
-		return nil
-	}
-	validationErrors := err.(validator.ValidationErrors)
-	return validationErrors
+	return newBrandingStruct, nil
 }

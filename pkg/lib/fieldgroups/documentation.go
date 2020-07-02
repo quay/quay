@@ -1,8 +1,8 @@
 package fieldgroups
 
 import (
+	"errors"
 	"github.com/creasty/defaults"
-	"github.com/go-playground/validator/v10"
 )
 
 // DocumentationFieldGroup represents the DocumentationFieldGroup config fields
@@ -11,25 +11,16 @@ type DocumentationFieldGroup struct {
 }
 
 // NewDocumentationFieldGroup creates a new DocumentationFieldGroup
-func NewDocumentationFieldGroup(fullConfig map[string]interface{}) FieldGroup {
+func NewDocumentationFieldGroup(fullConfig map[string]interface{}) (FieldGroup, error) {
 	newDocumentationFieldGroup := &DocumentationFieldGroup{}
 	defaults.Set(newDocumentationFieldGroup)
 
 	if value, ok := fullConfig["DOCUMENTATION_ROOT"]; ok {
-		newDocumentationFieldGroup.DocumentationRoot = value.(string)
+		newDocumentationFieldGroup.DocumentationRoot, ok = value.(string)
+		if !ok {
+			return newDocumentationFieldGroup, errors.New("DOCUMENTATION_ROOT must be of type string")
+		}
 	}
 
-	return newDocumentationFieldGroup
-}
-
-// Validate checks the configuration settings for this field group
-func (fg *DocumentationFieldGroup) Validate() validator.ValidationErrors {
-	validate := validator.New()
-
-	err := validate.Struct(fg)
-	if err == nil {
-		return nil
-	}
-	validationErrors := err.(validator.ValidationErrors)
-	return validationErrors
+	return newDocumentationFieldGroup, nil
 }

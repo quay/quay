@@ -18,7 +18,7 @@ func TestValidateAppTokenAuthentication(t *testing.T) {
 		{name: "AuthenticationFeatureOff", config: map[string]interface{}{"AUTHENTICATION_TYPE": "AppToken", "FEATURE_APP_SPECIFIC_TOKENS": false}, want: "invalid"},
 		{name: "DirectLoginEnabled", config: map[string]interface{}{"AUTHENTICATION_TYPE": "AppToken", "FEATURE_APP_SPECIFIC_TOKENS": true, "FEATURE_DIRECT_LOGIN": true}, want: "invalid"},
 		{name: "AuthenticationTypeOnFeatureOnDirectLoginOff", config: map[string]interface{}{"AUTHENTICATION_TYPE": "AppToken", "FEATURE_APP_SPECIFIC_TOKENS": true, "FEATURE_DIRECT_LOGIN": false}, want: "valid"},
-		{name: "WrongAuthType", config: map[string]interface{}{"AUTHENTICATION_TYPE": "Database"}, want: "invalid"},
+		{name: "WrongAuthType", config: map[string]interface{}{"AUTHENTICATION_TYPE": "Database"}, want: "valid"},
 	}
 
 	// Iterate through tests
@@ -28,7 +28,12 @@ func TestValidateAppTokenAuthentication(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			// Get validation result
-			validationErrors := NewAppTokenAuthenticationFieldGroup(tt.config).Validate()
+			fg, err := NewAppTokenAuthenticationFieldGroup(tt.config)
+			if err != nil && tt.want != "typeError" {
+				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
+			}
+
+			validationErrors := fg.Validate()
 
 			// Get result type
 			received := ""

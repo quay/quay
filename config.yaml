@@ -1,3 +1,23 @@
-AUTHENTICATION_TYPE: "AppToken"
-FEATURE_DIRECT_LOGIN: false
-FEATURE_GITHUB_LOGIN: true
+AUTHENTICATION_TYPE: "Database"
+FEATURE_GITHUB_LOGIN: false
+FEATURE_BUILD_SUPPORT: true
+FEATURE_BITBUCKET_BUILD: true
+BITBUCKET_TRIGGER_CONFIG:
+  CONSUMER_KEY: A39bvHgf3ZJxdvAXyS
+  CONSUMER_SECRET: VtqYfxbjDNFUsYbsU3vcTTqbyGxbGvYf
+BRANDING:
+  logo: "y"
+  footer_img: "u"
+  footer_url: "u"
+FEATURE_DIRECT_LOGIN: true
+DB_URI: mysql://sql9351936:kBCXc7eizT@sql9.freesqldatabase.com:3306/sql9351936
+DOCUMENTATION_ROOT: "hi/there?"
+CONTACT_INFO:
+  - "mailto:jonathankingfc@gmail.com"
+
+LOGS_MODEL_CONFIG:
+  elasticsearch_config:
+    access_key: elastic
+    access_secret: nf567zCQgIVMrDvDGIpIHScG
+    host: bfd70499058e4485854f8bacf06af627.us-central1.gcp.cloud.es.io
+    port: 9243

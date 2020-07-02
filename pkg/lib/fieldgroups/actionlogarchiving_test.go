@@ -40,7 +40,12 @@ func TestValidateActionLogArchiving(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			// Get validation result
-			validationErrors := NewActionLogArchivingFieldGroup(tt.config).Validate()
+			fg, err := NewActionLogArchivingFieldGroup(tt.config)
+			if err != nil && tt.want != "typeError" {
+				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
+			}
+
+			validationErrors := fg.Validate()
 
 			// Get result type
 			received := ""

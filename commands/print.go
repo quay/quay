@@ -16,6 +16,8 @@ limitations under the License.
 package commands
 
 import (
+	"fmt"
+
 	"github.com/jojomi/go-spew/spew"
 	"github.com/quay/config-tool/pkg/lib/validation"
 	"github.com/spf13/cobra"
@@ -29,7 +31,11 @@ var printCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Validate Schema
-		configFieldGroups := validation.ValidateConf(configPath)
+		configFieldGroups, err := validation.ValidateConf(configPath)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 
 		spew.Config.Indent = "\t"
 		spew.Config.DisableCapacities = true

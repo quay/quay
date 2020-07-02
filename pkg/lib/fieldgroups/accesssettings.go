@@ -1,51 +1,54 @@
 package fieldgroups
 
 import (
+	"errors"
 	"github.com/creasty/defaults"
-	"github.com/go-playground/validator/v10"
 )
 
 // AccessSettingsFieldGroup represents the AccessSettingsFieldGroup config fields
 type AccessSettingsFieldGroup struct {
-	FeatureDirectLogin            bool `default:"true" validate:"required_without_all=FeatureGithubLogin FeatureGoogleLogin"`
-	FeatureGithubLogin            bool `default:"false" validate:"required_without_all=FeatureDirectLogin FeatureGoogleLogin"`
-	FeatureGoogleLogin            bool `default:"false" validate:"required_without_all=FeatureDirectLogin FeatureGithubLogin"`
+	FeatureDirectLogin            bool `default:"true" validate:""`
+	FeatureGithubLogin            bool `default:"false" validate:""`
+	FeatureGoogleLogin            bool `default:"false" validate:""`
 	FeatureInviteOnlyUserCreation bool `default:"false" validate:""`
-	FeatureUserCreation           bool `default:"true" validate:"required_with=FeatureInviteOnlyUserCreation"`
+	FeatureUserCreation           bool `default:"true" validate:""`
 }
 
 // NewAccessSettingsFieldGroup creates a new AccessSettingsFieldGroup
-func NewAccessSettingsFieldGroup(fullConfig map[string]interface{}) FieldGroup {
+func NewAccessSettingsFieldGroup(fullConfig map[string]interface{}) (FieldGroup, error) {
 	newAccessSettingsFieldGroup := &AccessSettingsFieldGroup{}
 	defaults.Set(newAccessSettingsFieldGroup)
 
 	if value, ok := fullConfig["FEATURE_DIRECT_LOGIN"]; ok {
-		newAccessSettingsFieldGroup.FeatureDirectLogin = value.(bool)
+		newAccessSettingsFieldGroup.FeatureDirectLogin, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("FEATURE_DIRECT_LOGIN must be of type bool")
+		}
 	}
 	if value, ok := fullConfig["FEATURE_GITHUB_LOGIN"]; ok {
-		newAccessSettingsFieldGroup.FeatureGithubLogin = value.(bool)
+		newAccessSettingsFieldGroup.FeatureGithubLogin, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("FEATURE_GITHUB_LOGIN must be of type bool")
+		}
 	}
 	if value, ok := fullConfig["FEATURE_GOOGLE_LOGIN"]; ok {
-		newAccessSettingsFieldGroup.FeatureGoogleLogin = value.(bool)
+		newAccessSettingsFieldGroup.FeatureGoogleLogin, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("FEATURE_GOOGLE_LOGIN must be of type bool")
+		}
 	}
 	if value, ok := fullConfig["FEATURE_INVITE_ONLY_USER_CREATION"]; ok {
-		newAccessSettingsFieldGroup.FeatureInviteOnlyUserCreation = value.(bool)
+		newAccessSettingsFieldGroup.FeatureInviteOnlyUserCreation, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("FEATURE_INVITE_ONLY_USER_CREATION must be of type bool")
+		}
 	}
 	if value, ok := fullConfig["FEATURE_USER_CREATION"]; ok {
-		newAccessSettingsFieldGroup.FeatureUserCreation = value.(bool)
+		newAccessSettingsFieldGroup.FeatureUserCreation, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("FEATURE_USER_CREATION must be of type bool")
+		}
 	}
 
-	return newAccessSettingsFieldGroup
-}
-
-// Validate checks the configuration settings for this field group
-func (fg *AccessSettingsFieldGroup) Validate() validator.ValidationErrors {
-	validate := validator.New()
-
-	err := validate.Struct(fg)
-	if err == nil {
-		return nil
-	}
-	validationErrors := err.(validator.ValidationErrors)
-	return validationErrors
+	return newAccessSettingsFieldGroup, nil
 }
