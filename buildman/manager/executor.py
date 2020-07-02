@@ -11,7 +11,8 @@ import uuid
 
 from functools import partial, wraps
 
-import boto.ec2
+import boto3
+import botocore
 import cachetools.func
 import requests
 
@@ -195,8 +196,9 @@ class EC2Executor(BuilderExecutor):
         Creates an ec2 connection which can be used to manage instances.
         """
         return AsyncWrapper(
-            boto.ec2.connect_to_region(
-                self.executor_config["EC2_REGION"],
+            boto3.client(
+                "ec2",
+                region_name=self.executor_config["EC2_REGION"],
                 aws_access_key_id=self.executor_config["AWS_ACCESS_KEY"],
                 aws_secret_access_key=self.executor_config["AWS_SECRET_KEY"],
             )
@@ -229,45 +231,50 @@ class EC2Executor(BuilderExecutor):
 
         ec2_conn = self._get_conn()
 
-        ssd_root_ebs = boto.ec2.blockdevicemapping.BlockDeviceType(
-            size=int(self.executor_config.get("BLOCK_DEVICE_SIZE", 48)),
-            volume_type="gp2",
-            delete_on_termination=True,
-        )
-        block_devices = boto.ec2.blockdevicemapping.BlockDeviceMapping()
-        block_devices["/dev/xvda"] = ssd_root_ebs
+        block_device_mappings = [
+            {
+                "DeviceName": "/dev/xvda",
+                "Ebs": {
+                    "VolumeSize": int(self.executor_config.get("BLOCK_DEVICE_SIZE", 48)),
+                    "VolumeType": "gp2",
+                    "DeleteOnTermination":True,
+                }
+            }
+        ]
 
         interfaces = None
         if self.executor_config.get("EC2_VPC_SUBNET_ID", None) is not None:
-            interface = boto.ec2.networkinterface.NetworkInterfaceSpecification(
-                subnet_id=self.executor_config["EC2_VPC_SUBNET_ID"],
-                groups=self.executor_config["EC2_SECURITY_GROUP_IDS"],
-                associate_public_ip_address=True,
-            )
-            interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(interface)
+            interfaces = [
+                {
+                    "SubnetId": self.executor_config["EC2_VPC_SUBNET_ID"],
+                    "Groups": self.executor_config["EC2_SECURITY_GROUP_IDS"],
+                    "AssociatePublicIpAddress": True,
+                }
+            ]
 
         try:
             reservation = await (
                 ec2_conn.run_instances(
-                    coreos_ami,
-                    instance_type=self.executor_config["EC2_INSTANCE_TYPE"],
-                    key_name=self.executor_config.get("EC2_KEY_NAME", None),
-                    user_data=user_data,
-                    instance_initiated_shutdown_behavior="terminate",
-                    block_device_map=block_devices,
-                    network_interfaces=interfaces,
+                    ImageId=coreos_ami,
+                    InstanceType=self.executor_config["EC2_INSTANCE_TYPE"],
+                    KeyName=self.executor_config.get("EC2_KEY_NAME", None),
+                    UserData=user_data,
+                    InstanceInitiatedShutdownBehavior="terminate",
+                    BlockDeviceMappings=block_device_mappings,
+                    NetworkInterfaces=interfaces,
                 )
             )
-        except boto.exception.EC2ResponseError as ec2e:
+        except (ec2_conn.exceptions.ClientError, botocore.exceptions.ClientError) as ec2e:
             logger.exception("Unable to spawn builder instance")
             raise ec2e
 
-        if not reservation.instances:
+        instances = reservation.get("Instances", [])
+        if not instances:
             raise ExecutorException("Unable to spawn builder instance.")
-        elif len(reservation.instances) != 1:
+        elif len(instances) != 1:
             raise ExecutorException("EC2 started wrong number of instances!")
 
-        launched = AsyncWrapper(reservation.instances[0])
+        launched = instances[0]
 
         # Sleep a few seconds to wait for AWS to spawn the instance.
         await asyncio.sleep(_TAG_RETRY_SLEEP)
@@ -276,21 +283,24 @@ class EC2Executor(BuilderExecutor):
         for i in range(0, _TAG_RETRY_COUNT):
             try:
                 await (
-                    launched.add_tags(
-                        {
-                            "Name": "Quay Ephemeral Builder",
-                            "Realm": realm,
-                            "Token": token,
-                            "BuildUUID": build_uuid,
-                        }
+                    ec2_conn.create_tags(
+                        Resources=[
+                            launched["InstanceId"]
+                        ],
+                        Tags=[
+                            {"Key": "Name", "Value": "Quay Ephemeral Builder"},
+                            {"Key": "Realm", "Value": realm},
+                            {"Key": "Token", "Value": token},
+                            {"Key": "BuildUUID", "Value": build_uuid},
+                        ]
                     )
                 )
-            except boto.exception.EC2ResponseError as ec2e:
-                if ec2e.error_code == "InvalidInstanceID.NotFound":
+            except (ec2_conn.exceptions.ClientError, botocore.exceptions.ClientError) as ec2e:
+                if ec2e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
                     if i < _TAG_RETRY_COUNT - 1:
                         logger.warning(
                             "Failed to write EC2 tags for instance %s for build %s (attempt #%s)",
-                            launched.id,
+                            launched["InstanceId"],
                             build_uuid,
                             i,
                         )
@@ -301,22 +311,22 @@ class EC2Executor(BuilderExecutor):
 
                 logger.exception("Failed to write EC2 tags (attempt #%s)", i)
 
-        logger.debug("Machine with ID %s started for build %s", launched.id, build_uuid)
-        return launched.id
+        logger.debug("Machine with ID %s started for build %s", launched["InstanceId"], build_uuid)
+        return launched["InstanceId"]
 
     async def stop_builder(self, builder_id):
         try:
             ec2_conn = self._get_conn()
-            terminated_instances = await ec2_conn.terminate_instances([builder_id])
-        except boto.exception.EC2ResponseError as ec2e:
-            if ec2e.error_code == "InvalidInstanceID.NotFound":
+            terminated_instances = await ec2_conn.terminate_instances(InstanceIds=[builder_id])
+        except (ec2_conn.exceptions.ClientError, botocore.exceptions.ClientError) as ec2e:
+            if ec2e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
                 logger.debug("Instance %s already terminated", builder_id)
                 return
 
             logger.exception("Exception when trying to terminate instance %s", builder_id)
             raise
 
-        if builder_id not in [si.id for si in terminated_instances]:
+        if builder_id not in [si["InstanceId"] for si in terminated_instances["TerminatingInstances"]]:
             raise ExecutorException("Unable to terminate instance: %s" % builder_id)
 
 
