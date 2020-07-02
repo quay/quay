@@ -1,6 +1,8 @@
 import asyncio
 import datetime
 import hashlib
+import io
+import json
 import logging
 import os
 import socket
@@ -156,24 +158,28 @@ class BuilderExecutor(object):
         if quay_password is None:
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
-        return TEMPLATE.render(
-            realm=realm,
-            token=token,
-            build_uuid=build_uuid,
-            quay_username=quay_username,
-            quay_password=quay_password,
-            manager_hostname=manager_hostname,
-            websocket_scheme=self.websocket_scheme,
-            coreos_channel=coreos_channel,
-            worker_image=self.executor_config.get(
-                "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
-            ),
-            worker_tag=self.executor_config["WORKER_TAG"],
-            logentries_token=self.executor_config.get("LOGENTRIES_TOKEN", None),
-            volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
-            max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
-            ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+        rendered_json = json.load(
+            io.StringIO(TEMPLATE.render(
+                realm=realm,
+                token=token,
+                build_uuid=build_uuid,
+                quay_username=quay_username,
+                quay_password=quay_password,
+                manager_hostname=manager_hostname,
+                websocket_scheme=self.websocket_scheme,
+                coreos_channel=coreos_channel,
+                worker_image=self.executor_config.get(
+                    "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
+                ),
+                worker_tag=self.executor_config["WORKER_TAG"],
+                logentries_token=self.executor_config.get("LOGENTRIES_TOKEN", None),
+                volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
+                max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
+                ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+            ))
         )
+
+        return json.dumps(rendered_json)
 
 
 class EC2Executor(BuilderExecutor):
