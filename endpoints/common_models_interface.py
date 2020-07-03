@@ -6,7 +6,7 @@ from collections import namedtuple
 from six import add_metaclass
 
 
-USER_FIELDS = ["uuid", "username", "email", "given_name", "family_name", "company", "location"]  # type: List[str]
+USER_FIELDS: List[str] = ["uuid", "username", "email", "given_name", "family_name", "company", "location"]
 
 
 class User(namedtuple("User", USER_FIELDS)):

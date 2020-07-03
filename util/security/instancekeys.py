@@ -9,7 +9,7 @@ class CachingKey(object):
         self._service_key = service_key
         self._cached_public_key = None
 
-    @property  # type: ignore
+    @property
     def public_key(self):
         cached_key = self._cached_public_key
         if cached_key is not None:
@@ -47,14 +47,14 @@ class InstanceKeys(object):
 
         return keys
 
-    @property  # type: ignore
+    @property
     def service_name(self):
         """
         Returns the name of the instance key's service (i.e. 'quay').
         """
         return self.app.config["INSTANCE_SERVICE_KEY_SERVICE"]
 
-    @property  # type: ignore
+    @property
     def service_key_expiration(self):
         """
         Returns the defined expiration for instance service keys, in minutes.

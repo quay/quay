@@ -238,7 +238,7 @@ def __generate_repository(user_obj, name, description, is_public, permissions, s
 
 
 db_initialized_for_testing = Event()
-testcases = {}  # type: Dict[unittest.TestCase, Dict[str, Any]]
+testcases: Dict[unittest.TestCase, Dict[str, Any]] = {}
 
 
 def finished_database_for_testing(testcase):

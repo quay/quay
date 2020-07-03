@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from storage.basestorage import BaseStorageV2
 
-_GLOBAL_FAKE_STORAGE_MAP = defaultdict(BytesIO)  # type: DefaultDict[Any, BytesIO]
+_GLOBAL_FAKE_STORAGE_MAP: DefaultDict[Any, BytesIO] = defaultdict(BytesIO)
 
 
 class FakeStorage(BaseStorageV2):

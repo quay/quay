@@ -18,7 +18,7 @@ from util.migrate.allocator import yield_random_entries
 
 logger = logging.getLogger(__name__)
 
-LOCATION_MAP = {}  # type: Dict[str, ImageStorageLocation]
+LOCATION_MAP: Dict[str, ImageStorageLocation] = {}
 
 
 def _get_location_row(location):

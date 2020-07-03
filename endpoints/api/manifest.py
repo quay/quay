@@ -36,7 +36,7 @@ from util.validation import VALID_LABEL_KEY_REGEX
 
 BASE_MANIFEST_ROUTE = '/v1/repository/<apirepopath:repository>/manifest/<regex("{0}"):manifestref>'
 MANIFEST_DIGEST_ROUTE = BASE_MANIFEST_ROUTE.format(digest_tools.DIGEST_PATTERN)
-ALLOWED_LABEL_MEDIA_TYPES = ["text/plain", "application/json"]  # type: List[Optional[str]]
+ALLOWED_LABEL_MEDIA_TYPES: List[Optional[str]] = ["text/plain", "application/json"]
 
 
 logger = logging.getLogger(__name__)
