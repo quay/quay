@@ -81,8 +81,8 @@ class TestConfig(DefaultConfig):
 
     PROMETHEUS_PUSHGATEWAY_URL = None
 
-    GITHUB_LOGIN_CONFIG = {}  # type: Optional[Dict[str, Any]]
-    GOOGLE_LOGIN_CONFIG = {}  # type: Optional[Dict[str, Any]]
+    GITHUB_LOGIN_CONFIG: Optional[Dict[str, Any]] = {}
+    GOOGLE_LOGIN_CONFIG: Optional[Dict[str, Any]] = {}
 
     FEATURE_GITHUB_LOGIN = True
     FEATURE_GOOGLE_LOGIN = True
@@ -112,6 +112,6 @@ class TestConfig(DefaultConfig):
 
     FEATURE_REPO_MIRROR = True
     FEATURE_GENERAL_OCI_SUPPORT = True
-    OCI_NAMESPACE_WHITELIST = []  # type: List[str]
+    OCI_NAMESPACE_WHITELIST: List[str] = []
 
     FEATURE_USER_INITIALIZE = True

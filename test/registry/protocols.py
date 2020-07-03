@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, Union, TYPE_CHECKING
 import json
 import tarfile
 
@@ -7,6 +7,10 @@ from collections import namedtuple
 from io import BytesIO
 from enum import Enum, unique
 from six import add_metaclass
+
+if TYPE_CHECKING:
+    from test.registry.protocol_v1 import V1ProtocolSteps
+    from test.registry.protocol_v2 import V2ProtocolSteps
 
 from image.docker.schema2 import EMPTY_LAYER_BYTES
 
@@ -105,7 +109,7 @@ class RegistryProtocol(object):
     Interface for protocols.
     """
 
-    FAILURE_CODES = {}  # type: Dict[Union[V1ProtocolSteps,V2ProtocolSteps], Dict[Failures, int]]
+    FAILURE_CODES: Dict[Union[V1ProtocolSteps,V2ProtocolSteps], Dict[Failures, int]] = {}
 
     @abstractmethod
     def login(self, session, username, password, scopes, expect_success):

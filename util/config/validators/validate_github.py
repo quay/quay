@@ -4,8 +4,8 @@ from util.config.validators import BaseValidator, ConfigValidationException
 
 
 class BaseGitHubValidator(BaseValidator):
-    name = None  # type: Optional[str]
-    config_key = None  # type: Optional[str]
+    name: Optional[str] = None
+    config_key: Optional[str] = None
 
     @classmethod
     def validate(cls, validator_context):
