@@ -109,7 +109,7 @@ class RegistryProtocol(object):
     Interface for protocols.
     """
 
-    FAILURE_CODES: Dict[Union[V1ProtocolSteps,V2ProtocolSteps], Dict[Failures, int]] = {}
+    FAILURE_CODES: Dict[Union[V1ProtocolSteps, V2ProtocolSteps], Dict[Failures, int]] = {}
 
     @abstractmethod
     def login(self, session, username, password, scopes, expect_success):
