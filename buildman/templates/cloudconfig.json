@@ -3,9 +3,6 @@
 REALM={{ realm }}
 TOKEN={{ token }}
 SERVER={{ websocket_scheme }}://{{ manager_hostname }}
-{% if logentries_token -%}
-LOGENTRIES_TOKEN={{ logentries_token }}
-{%- endif %}
 
 {%- endmacro %}
 
@@ -110,20 +107,10 @@ ExecStart=/bin/sh -xc "/bin/sleep {{ max_lifetime_s }}; /usr/bin/systemctl --no-
                        worker_tag,
                        extra_args='--net=host --privileged --env-file /root/overrides.list -v /var/run/docker.sock:/var/run/docker.sock -v /usr/share/ca-certificates:/etc/ssl/certs',
                        exec_stop_post=['/bin/sh -xc "/bin/sleep 120; /usr/bin/systemctl --no-block poweroff"'],
-                       flattened=False,
                        restart_policy='no'
-                      ) }},
-      {% if logentries_token -%}
-      {# https://github.com/kelseyhightower/journal-2-logentries/pull/11 so moved journal-2-logentries to coreos #}
-      {{ dockersystemd("builder-logs",
-                       "quay.io/coreos/journal-2-logentries",
-                       extra_args="--env-file /root/overrides.list -v /run/journald.sock:/run/journald.sock",
-                       flattened=False,
-                       after_units=["quay-builder.service"]
-                      ) }},
-      {%- endif %}
+                      ) | indent(6) }},
       {
-        "name": "systemd-journal-gatewayd.socket"
+        "name": "systemd-journal-gatewayd.socket",
         "enabled": true,
         "contents": {{ journalgatewayservice() | jsonify }}
       },

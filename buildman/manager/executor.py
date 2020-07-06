@@ -17,7 +17,6 @@ import boto.ec2
 import cachetools.func
 import requests
 
-from container_cloud_config import CloudConfigContext
 from jinja2 import FileSystemLoader, Environment
 from prometheus_client import Histogram
 
@@ -26,6 +25,7 @@ import release
 from _init import ROOT_DIR
 from app import app
 from buildman.asyncutil import AsyncWrapper
+from buildman.container_cloud_config import CloudConfigContext
 
 
 logger = logging.getLogger(__name__)
@@ -37,8 +37,8 @@ _TAG_RETRY_COUNT = 3  # Number of times to retry adding tags.
 _TAG_RETRY_SLEEP = 2  # Number of seconds to wait between tag retries.
 
 ENV = Environment(loader=FileSystemLoader(os.path.join(ROOT_DIR, "buildman/templates")))
-TEMPLATE = ENV.get_template("cloudconfig.json")
 CloudConfigContext().populate_jinja_environment(ENV)
+TEMPLATE = ENV.get_template("cloudconfig.json")
 
 
 build_start_duration = Histogram(
@@ -172,7 +172,6 @@ class BuilderExecutor(object):
                     "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
                 ),
                 worker_tag=self.executor_config["WORKER_TAG"],
-                logentries_token=self.executor_config.get("LOGENTRIES_TOKEN", None),
                 volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
                 max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
                 ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
