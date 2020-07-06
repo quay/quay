@@ -43,6 +43,8 @@ Description=Machine Lifetime Service
 [Service]
 Type=oneshot
 ExecStart=/bin/sh -xc "/bin/sleep {{ max_lifetime_s }}; /usr/bin/systemctl --no-block poweroff"
+[Install]
+WantedBy=multi-user.target
 
 {%- endmacro %}
 

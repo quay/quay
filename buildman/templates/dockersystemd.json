@@ -41,6 +41,9 @@ ExecStop=/usr/bin/docker stop {{ name }}
 ExecStopPost={{ stop_post }}
 {% endfor %}
 
+[Install]
+WantedBy=multi-user.target
+
 {%- endmacro %}
 
 
