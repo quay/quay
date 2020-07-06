@@ -1,7 +1,7 @@
 set -e
 set -o nounset
 
-TAG=${TAG:-"latest"}
+TAG=${TAG:-"stable"}
 
 CHANNEL=${CHANNEL:-"stable"}
 CHANNEL_MANIFEST_JSON=`curl https://builds.coreos.fedoraproject.org/streams/stable.json`
