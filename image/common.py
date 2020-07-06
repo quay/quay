@@ -46,6 +46,7 @@ class TarImageFormatter(object):
         """
         Returns the tar binary representation for a file with the given name and file contents.
         """
+        assert isinstance(contents, bytes)
         length = len(contents)
         tar_data = self.tar_file_header(name, length, mtime=mtime)
         tar_data += contents
@@ -57,9 +58,9 @@ class TarImageFormatter(object):
         Returns tar file padding for file data of the given length.
         """
         if length % 512 != 0:
-            return "\0" * (512 - (length % 512))
+            return b"\0" * (512 - (length % 512))
 
-        return ""
+        return b""
 
     def tar_file_header(self, name, file_size, mtime=None):
         """
@@ -84,5 +85,5 @@ class TarImageFormatter(object):
             info.mtime = mtime
 
         # allow the directory to be readable by non-root users
-        info.mode = 0755
+        info.mode = 0o755
         return info.tobuf()

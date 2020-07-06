@@ -139,7 +139,7 @@ class RedisBuildLogs(object):
                 connection.get(self._health_key())
                 return (True, None)
         except redis.RedisError as re:
-            return (False, "Could not connect to redis: %s" % re.message)
+            return (False, "Could not connect to redis: %s" % str(re))
 
 
 class BuildLogs(object):

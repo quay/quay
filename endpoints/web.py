@@ -421,7 +421,7 @@ def buildlogs(build_uuid):
 def exportedlogs(file_id):
     # Only enable this endpoint if local storage is available.
     has_local_storage = False
-    for storage_type, _ in app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values():
+    for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
         if storage_type == "LocalStorage":
             has_local_storage = True
             break
@@ -525,7 +525,7 @@ def confirm_repo_email():
     try:
         record = model.repository.confirm_email_authorization_for_repo(code)
     except model.DataModelException as ex:
-        return index("", error_info=dict(reason="confirmerror", error_message=ex.message))
+        return index("", error_info=dict(reason="confirmerror", error_message=str(ex)))
 
     message = """
   Your E-mail address has been authorized to receive notifications for repository
@@ -553,7 +553,7 @@ def confirm_email():
     try:
         user, new_email, old_email = model.user.confirm_user_email(code)
     except model.DataModelException as ex:
-        return index("", error_info=dict(reason="confirmerror", error_message=ex.message))
+        return index("", error_info=dict(reason="confirmerror", error_message=str(ex)))
 
     if new_email:
         send_email_changed(user.username, old_email, new_email)

@@ -4,7 +4,7 @@ kind: Template
 metadata:
   name: quay
 objects:
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
   metadata:
     name: ${{NAME}}
@@ -34,7 +34,13 @@ objects:
     - patch
     - update
     - watch
-- apiVersion: rbac.authorization.k8s.io/v1beta1
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: ${{NAME}}
+  imagePullSecrets:
+  - name: quayio-backup-image-pull-secret
+- apiVersion: rbac.authorization.k8s.io/v1
   kind: RoleBinding
   metadata:
     name: ${{NAME}}
@@ -44,7 +50,7 @@ objects:
     name: ${{NAME}}
   subjects:
   - kind: ServiceAccount
-    name: default
+    name: ${{NAME}}
 - apiVersion: v1
   kind: Service
   metadata:
@@ -77,22 +83,6 @@ objects:
       targetPort: 3000
     selector:
       app: prometheus
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: quay-loadbalancer-service
-    annotations:
-      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
-  spec:
-    ports:
-    - name: loadbalancer
-      protocol: TCP
-      port: ${{LOADBALANCER_SERVICE_PORT}}
-      targetPort: ${{LOADBALANCER_SERVICE_TARGET_PORT}}
-    loadBalancerIP:
-    type: LoadBalancer
-    selector:
-      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: v1
   kind: Service
   metadata:
@@ -144,6 +134,7 @@ objects:
         - name: configvolume
           secret:
             secretName: ${{QUAY_APP_CONFIG_SECRET}}
+        serviceAccountName: ${{NAME}}
         containers:
         - name: syslog-cloudwatch-bridge
           image:  ${SYSLOG_IMAGE}:${SYSLOG_IMAGE_TAG}
@@ -155,6 +146,13 @@ objects:
             protocol: TCP
             name: syslog-tcp-port
           env:
+          - name: STREAM_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: TICKER_TIME
+            value: ${TICKER_TIME}
           - name: PORT
             value: ${SYSLOG_PORT}
           - name: AWS_REGION
@@ -206,7 +204,6 @@ objects:
           - containerPort: 8443
           volumeMounts:
           - name: configvolume
-            readOnly: false
             mountPath: /conf/stack
           livenessProbe:
             exec:
@@ -248,8 +245,10 @@ objects:
             value: ${{SYSLOG_PROTO}}
           - name: QUAY_LOGGING
             value: ${{QUAY_LOGGING}}
-          - name: DB_CONNECTION_POOLING
-            value: ${{DB_CONNECTION_POOLING}}
+          - name: WORKER_MULTIPLIER_REGISTRY
+            value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
+          - name: WORKER_CONNECTION_COUNT_REGISTRY
+            value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
 parameters:
   - name: NAME
     value: "quay"
@@ -426,5 +425,16 @@ parameters:
     value: "3600"
     displayName: aws load balancer connection idle timeout
     description: aws load balancer connection idle timeout
+  - name: QUAY_WORKER_MULTIPLIER_REGISTRY
+    value: "2"
+    displayName: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
+    description: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
+  - name: QUAY_WORKER_CONNECTION_COUNT_REGISTRY
+    value: "50"
+    displayName: the maximum number of greenlets per gunicorn worker for the registry routes
+    description: the maximum number of greenlets per gunicorn worker for the registry routes
   - name: DB_CONNECTION_POOLING
     value: "true"
+  - name: TICKER_TIME
+    value: "200"
+

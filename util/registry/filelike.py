@@ -48,6 +48,9 @@ class BaseStreamFilelike(object):
         self._cursor_position += bytes_forward
         return bytes_forward
 
+    def readable(self):
+        return self._fileobj.readable()
+
 
 class SocketReader(BaseStreamFilelike):
     def __init__(self, fileobj):
@@ -72,13 +75,13 @@ def wrap_with_handler(in_fp, handler):
 
 class FilelikeStreamConcat(object):
     """
-    A file-like object which concats all the file-like objects in the specified generator into a
+    A buffered (binary) file-like object which concats all the file-like objects in the specified generator into a
     single stream.
     """
 
     def __init__(self, file_generator):
         self._file_generator = file_generator
-        self._current_file = file_generator.next()
+        self._current_file = next(file_generator)
         self._current_position = 0
         self._closed = False
 
@@ -89,7 +92,7 @@ class FilelikeStreamConcat(object):
         self._closed = True
 
     def read(self, size=READ_UNTIL_END):
-        buf = ""
+        buf = b""
         current_size = size
 
         while size == READ_UNTIL_END or len(buf) < size:
@@ -104,7 +107,7 @@ class FilelikeStreamConcat(object):
                 # That file was out of data, prime a new one
                 self._current_file.close()
                 try:
-                    self._current_file = self._file_generator.next()
+                    self._current_file = next(self._file_generator)
                 except StopIteration:
                     return buf
 

@@ -1,14 +1,16 @@
 import base64
+import pickle
 import string
 import json
 
 from random import SystemRandom
 
 import bcrypt
-import resumablehashlib
+import rehash
 
 from peewee import TextField, CharField, SmallIntegerField
 from data.text import prefix_search
+from util.bytes import Bytes
 
 
 def random_string(length=16):
@@ -17,42 +19,44 @@ def random_string(length=16):
 
 
 class _ResumableSHAField(TextField):
+    """
+    Base Class used to store the state of an in-progress hash in the database. This is particularly
+    useful for working with large byte streams and allows the hashing to be paused and resumed
+    as needed.
+    """
+
     def _create_sha(self):
         raise NotImplementedError
 
     def db_value(self, value):
+        """
+        Serialize the Hasher's state for storage in the database as plain-text.
+        """
         if value is None:
             return None
 
-        sha_state = value.state()
-
-        # One of the fields is a byte string, let's base64 encode it to make sure
-        # we can store and fetch it regardless of default collocation.
-        sha_state[3] = base64.b64encode(sha_state[3])
-
-        return json.dumps(sha_state)
+        serialized_state = base64.b64encode(pickle.dumps(value)).decode("ascii")
+        return serialized_state
 
     def python_value(self, value):
+        """
+        Restore the Hasher from its state stored in the database.
+        """
         if value is None:
             return None
 
-        sha_state = json.loads(value)
-
-        # We need to base64 decode the data bytestring.
-        sha_state[3] = base64.b64decode(sha_state[3])
-        to_resume = self._create_sha()
-        to_resume.set_state(sha_state)
-        return to_resume
+        hasher = pickle.loads(base64.b64decode(value.encode("ascii")))
+        return hasher
 
 
 class ResumableSHA256Field(_ResumableSHAField):
     def _create_sha(self):
-        return resumablehashlib.sha256()
+        return rehash.sha256()
 
 
 class ResumableSHA1Field(_ResumableSHAField):
     def _create_sha(self):
-        return resumablehashlib.sha1()
+        return rehash.sha1()
 
 
 class JSONField(TextField):
@@ -69,12 +73,12 @@ class Base64BinaryField(TextField):
     def db_value(self, value):
         if value is None:
             return None
-        return base64.b64encode(value)
+        return base64.b64encode(value).decode("ascii")
 
     def python_value(self, value):
         if value is None:
             return None
-        return base64.b64decode(value)
+        return base64.b64decode(value.encode("ascii"))
 
 
 class DecryptedValue(object):
@@ -84,7 +88,6 @@ class DecryptedValue(object):
 
     def __init__(self, decrypted_value):
         assert decrypted_value is not None
-        assert isinstance(decrypted_value, basestring)
         self.value = decrypted_value
 
     def decrypt(self):
@@ -179,6 +182,9 @@ def _add_encryption(field_class, requires_length_check=True):
                 return None
 
             return LazyEncryptedValue(value, self)
+
+        def __hash__(self):
+            return field_class.__hash__(self)
 
         def __eq__(self, _):
             raise Exception("Disallowed operation; use `matches`")
@@ -322,15 +328,15 @@ class CredentialField(CharField):
         if value is None:
             return None
 
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             raise Exception(
                 "A string cannot be given to a CredentialField; please wrap in a Credential"
             )
 
-        return value.hashed
+        return Bytes.for_string_or_unicode(value.hashed).as_unicode()
 
     def python_value(self, value):
         if value is None:
             return None
 
-        return Credential(value)
+        return Credential(Bytes.for_string_or_unicode(value).as_encoded_str())

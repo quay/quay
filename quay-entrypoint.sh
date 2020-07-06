@@ -44,9 +44,6 @@ EOF
 # The gunicorn-registry process DB_CONNECTION_POOLING must default to true
 export DB_CONNECTION_POOLING_REGISTRY=${DB_CONNECTION_POOLING:-"true"}
 
-# Forcibly export the scl environment
-eval "$(scl enable python27 rh-nginx112 'export -p')"
-
 case "$QUAYENTRY" in
     "shell")
         echo "Entering shell mode"

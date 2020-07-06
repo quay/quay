@@ -63,7 +63,9 @@ class SquashedDockerImageFormatter(TarImageFormatter):
         repository = tag.repository.name
         repositories[hostname + "/" + namespace + "/" + repository] = synthetic_layer_info
 
-        yield self.tar_file("repositories", json.dumps(repositories), mtime=image_mtime)
+        yield self.tar_file(
+            "repositories", json.dumps(repositories).encode("utf-8"), mtime=image_mtime
+        )
 
         # Yield the image ID folder.
         yield self.tar_folder(synthetic_image_id, mtime=image_mtime)
@@ -72,10 +74,12 @@ class SquashedDockerImageFormatter(TarImageFormatter):
         layer_json = SquashedDockerImageFormatter._build_layer_json(
             parsed_manifest, synthetic_image_id
         )
-        yield self.tar_file(synthetic_image_id + "/json", json.dumps(layer_json), mtime=image_mtime)
+        yield self.tar_file(
+            synthetic_image_id + "/json", json.dumps(layer_json).encode("utf-8"), mtime=image_mtime
+        )
 
         # Yield the VERSION file.
-        yield self.tar_file(synthetic_image_id + "/VERSION", "1.0", mtime=image_mtime)
+        yield self.tar_file(synthetic_image_id + "/VERSION", b"1.0", mtime=image_mtime)
 
         # Yield the merged layer data's header.
         estimated_file_size = 0
@@ -118,15 +122,15 @@ class SquashedDockerImageFormatter(TarImageFormatter):
             to_yield = estimated_file_size - yielded_size
             while to_yield > 0:
                 yielded = min(to_yield, GZIP_BUFFER_SIZE)
-                yield "\0" * yielded
+                yield b"\0" * yielded
                 to_yield -= yielded
 
         # Yield any file padding to 512 bytes that is necessary.
         yield self.tar_file_padding(estimated_file_size)
 
         # Last two records are empty in tar spec.
-        yield "\0" * 512
-        yield "\0" * 512
+        yield b"\0" * 512
+        yield b"\0" * 512
 
     @staticmethod
     def _build_layer_json(manifest, synthetic_image_id):

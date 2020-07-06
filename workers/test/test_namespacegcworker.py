@@ -12,6 +12,6 @@ def test_gc_namespace(initialized_db):
     assert not database.User.get(id=namespace).enabled
 
     worker = NamespaceGCWorker(None)
-    worker.process_queue_item({"marker_id": marker_id})
+    worker._perform_gc({"marker_id": marker_id})
 
     assert model.user.get_namespace_user("buynlarge") is None

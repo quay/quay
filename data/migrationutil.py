@@ -65,7 +65,7 @@ class DefinedDataMigration(DataMigration):
 
     @property
     def _error_suffix(self):
-        message = "Available values for this migration: %s. " % (self.phases.keys())
+        message = "Available values for this migration: %s. " % (list(self.phases.keys()))
         message += "If this is a new installation, please use `new-installation`."
         return message
 

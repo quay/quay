@@ -5,7 +5,7 @@ import features
 
 from app import namespace_gc_queue, all_queues
 from data import model
-from workers.queueworker import QueueWorker
+from workers.queueworker import QueueWorker, WorkerSleepException
 from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
 
@@ -30,6 +30,7 @@ class NamespaceGCWorker(QueueWorker):
                 self._perform_gc(job_details)
         except LockNotAcquiredException:
             logger.debug("Could not acquire global lock for garbage collection")
+            raise WorkerSleepException
 
     def _perform_gc(self, job_details):
         logger.debug("Got namespace GC queue item: %s", job_details)
@@ -42,7 +43,7 @@ if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
     if not features.NAMESPACE_GARBAGE_COLLECTION:
-        logger.info("Namespace garbage collection is disabled; skipping")
+        logger.debug("Namespace garbage collection is disabled; skipping")
         while True:
             time.sleep(100000)
 

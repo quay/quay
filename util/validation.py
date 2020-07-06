@@ -2,14 +2,14 @@ import string
 import re
 import json
 
-import anunidecode  # Don't listen to pylint's lies. This import is required.
+from text_unidecode import unidecode
 
 from peewee import OperationalError
 
 INVALID_PASSWORD_MESSAGE = (
     "Invalid password, password must be at least " + "8 characters and contain no whitespace."
 )
-VALID_CHARACTERS = string.digits + string.lowercase
+VALID_CHARACTERS = string.digits + string.ascii_lowercase
 
 MIN_USERNAME_LENGTH = 2
 MAX_USERNAME_LENGTH = 255
@@ -68,7 +68,7 @@ def _gen_filler_chars(num_filler_chars):
 
 
 def generate_valid_usernames(input_username):
-    normalized = input_username.encode("unidecode", "ignore").strip().lower()
+    normalized = unidecode(input_username).strip().lower()
     prefix = re.sub(INVALID_USERNAME_CHARACTERS, "_", normalized)[:MAX_USERNAME_LENGTH]
     prefix = re.sub(r"_{2,}", "_", prefix)
 

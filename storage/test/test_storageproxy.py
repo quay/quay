@@ -78,7 +78,7 @@ def test_storage_proxy_auth(
     storage, liveserver_app, liveserver_session, is_proxying_enabled, app_reloader
 ):
     # Activate direct download on the fake storage.
-    storage.put_content(["test"], "supports_direct_download", "true")
+    storage.put_content(["test"], "supports_direct_download", b"true")
 
     # Get the unwrapped URL.
     direct_download_url = storage.get_direct_download_url(["test"], "somepath")

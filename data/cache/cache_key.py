@@ -45,3 +45,12 @@ def for_appr_applications_list(namespace, limit):
     Returns a cache key for listing applications under the App Registry.
     """
     return CacheKey("appr_applications_list_%s_%s" % (namespace, limit), "3600s")
+
+
+def for_appr_show_package(namespace, package_name, release, media_type):
+    """
+    Returns a cache key for showing a package under the App Registry.
+    """
+    return CacheKey(
+        "appr_show_package_%s_%s_%s-%s" % (namespace, package_name, release, media_type), "3600s"
+    )

@@ -60,6 +60,25 @@ class RepoStateConfigException(Exception):
     pass
 
 
+def get_max_id():
+    """
+    Gets the maximum id for repository.
+    """
+    return Repository.select(fn.Max(Repository.id)).scalar()
+
+
+def get_min_id():
+    """
+    Gets the minimum id for repository.
+    """
+    return Repository.select(fn.Min(Repository.id)).scalar()
+
+
+def get_repository_count():
+    """ Returns the count of repositories. """
+    return Repository.select().count()
+
+
 def get_repo_kind_name(repo):
     return Repository.kind.get_name(repo.kind_id)
 
@@ -265,6 +284,7 @@ def get_visible_repositories(
             Namespace.username,
             Repository.visibility,
             Repository.kind,
+            Repository.state,
         )
         .switch(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))

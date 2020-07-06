@@ -33,5 +33,5 @@ class OIDCLoginValidator(BaseValidator):
                     msg = "Could not validate OIDC service %s" % service.service_id()
                     raise ConfigValidationException(msg)
             except DiscoveryFailureException as dfe:
-                msg = "Could not validate OIDC service %s: %s" % (service.service_id(), dfe.message)
+                msg = "Could not validate OIDC service %s: %s" % (service.service_id(), str(dfe))
                 raise ConfigValidationException(msg)

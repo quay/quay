@@ -11,7 +11,7 @@ from util.config.validator import EXTRA_CA_DIRECTORY
 def _create_temp_file_structure(file_structure):
     temp_dir = TemporaryDirectory()
 
-    for filename, data in file_structure.iteritems():
+    for filename, data in file_structure.items():
         if filename == EXTRA_CA_DIRECTORY:
             extra_ca_dir_path = os.path.join(temp_dir.name, EXTRA_CA_DIRECTORY)
             os.mkdir(extra_ca_dir_path)
@@ -36,14 +36,17 @@ def _create_temp_file_structure(file_structure):
         ),
         pytest.param(
             {"config.yaml": "test:true", "otherfile.ext": "im a file"},
-            {"config.yaml": "dGVzdDp0cnVl", "otherfile.ext": base64.b64encode("im a file")},
+            {
+                "config.yaml": "dGVzdDp0cnVl",
+                "otherfile.ext": base64.b64encode(b"im a file").decode("ascii"),
+            },
             id="config and another file",
         ),
         pytest.param(
             {"config.yaml": "test:true", "extra_ca_certs": [("cert.crt", "im a cert!"),]},
             {
                 "config.yaml": "dGVzdDp0cnVl",
-                "extra_ca_certs_cert.crt": base64.b64encode("im a cert!"),
+                "extra_ca_certs_cert.crt": base64.b64encode(b"im a cert!").decode("ascii"),
             },
             id="config and an extra cert",
         ),
@@ -58,11 +61,18 @@ def _create_temp_file_structure(file_structure):
             },
             {
                 "config.yaml": "dGVzdDp0cnVl",
-                "otherfile.ext": base64.b64encode("im a file"),
-                "extra_ca_certs_cert.crt": base64.b64encode("im a cert!"),
-                "extra_ca_certs_another.crt": base64.b64encode("im a different cert!"),
+                "otherfile.ext": base64.b64encode(b"im a file").decode("ascii"),
+                "extra_ca_certs_cert.crt": base64.b64encode(b"im a cert!").decode("ascii"),
+                "extra_ca_certs_another.crt": base64.b64encode(b"im a different cert!").decode(
+                    "ascii"
+                ),
             },
             id="config, files, and extra certs!",
+        ),
+        pytest.param(
+            {"config.yaml": "First line\nSecond line"},
+            {"config.yaml": "Rmlyc3QgbGluZQpTZWNvbmQgbGluZQ=="},
+            id="certificate includes newline characters",
         ),
     ],
 )

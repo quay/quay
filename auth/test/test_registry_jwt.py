@@ -73,7 +73,7 @@ def _token(token_data, key_id=None, private_key=None, skip_header=False, alg=Non
         token_headers = {}
 
     token_data = jwt.encode(token_data, private_key, alg or "RS256", headers=token_headers)
-    return "Bearer {0}".format(token_data)
+    return "Bearer {0}".format(token_data.decode("ascii"))
 
 
 def _parse_token(token):
@@ -228,7 +228,7 @@ def test_mixing_keys_e2e(initialized_db):
         _parse_token(deleted_key_token)
 
 
-@pytest.mark.parametrize("token", [u"someunicodetoken✡", u"\xc9\xad\xbd",])
+@pytest.mark.parametrize("token", ["someunicodetoken✡", "\xc9\xad\xbd",])
 def test_unicode_token(token):
     with pytest.raises(InvalidJWTException):
         _parse_token(token)

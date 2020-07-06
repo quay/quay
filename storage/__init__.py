@@ -66,14 +66,14 @@ class Storage(object):
 
     def init_app(self, app, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver):
         storages = {}
-        for location, storage_params in app.config.get("DISTRIBUTED_STORAGE_CONFIG").items():
+        for location, storage_params in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG").items()):
             storages[location] = get_storage_driver(
                 location, chunk_cleanup_queue, config_provider, ip_resolver, storage_params,
             )
 
         preference = app.config.get("DISTRIBUTED_STORAGE_PREFERENCE", None)
         if not preference:
-            preference = storages.keys()
+            preference = list(storages.keys())
 
         default_locations = app.config.get("DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS") or []
 

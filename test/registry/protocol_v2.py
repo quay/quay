@@ -128,9 +128,9 @@ class V2Protocol(RegistryProtocol):
 
         response = session.get("/v2/auth", params=params, auth=auth)
         if expect_success:
-            assert response.status_code / 100 == 2
+            assert response.status_code // 100 == 2
         else:
-            assert response.status_code / 100 == 4
+            assert response.status_code // 100 == 4
 
         return response
 
@@ -340,7 +340,7 @@ class V2Protocol(RegistryProtocol):
 
             # If invalid blob references were requested, just make it up.
             if options.manifest_invalid_blob_references:
-                checksum = "sha256:" + hashlib.sha256("notarealthing").hexdigest()
+                checksum = "sha256:" + hashlib.sha256(b"notarealthing").hexdigest()
 
             if not image.is_empty:
                 builder.add_layer(checksum, len(image.bytes), urls=image.urls)
@@ -387,7 +387,7 @@ class V2Protocol(RegistryProtocol):
 
             # If invalid blob references were requested, just make it up.
             if options.manifest_invalid_blob_references:
-                checksum = "sha256:" + hashlib.sha256("notarealthing").hexdigest()
+                checksum = "sha256:" + hashlib.sha256(b"notarealthing").hexdigest()
 
             if not image.is_empty:
                 builder.add_layer(checksum, len(image.bytes), urls=image.urls)
@@ -444,7 +444,7 @@ class V2Protocol(RegistryProtocol):
 
             # If invalid blob references were requested, just make it up.
             if options.manifest_invalid_blob_references:
-                checksum = "sha256:" + hashlib.sha256("notarealthing").hexdigest()
+                checksum = "sha256:" + hashlib.sha256(b"notarealthing").hexdigest()
 
             layer_dict = {"id": image.id, "parent": image.parent_id}
             if image.config is not None:
@@ -552,7 +552,7 @@ class V2Protocol(RegistryProtocol):
         return PushResult(manifests=manifests, headers=headers)
 
     def _push_blobs(self, blobs, session, namespace, repo_name, headers, options, expected_failure):
-        for blob_digest, blob_bytes in blobs.iteritems():
+        for blob_digest, blob_bytes in blobs.items():
             if not options.skip_head_checks:
                 # Blob data should not yet exist.
                 self.conduct(

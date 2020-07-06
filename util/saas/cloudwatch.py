@@ -2,7 +2,7 @@ import logging
 import time
 import random
 
-from Queue import Empty
+from queue import Empty
 from threading import Thread
 
 import boto

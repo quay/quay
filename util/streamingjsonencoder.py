@@ -30,8 +30,11 @@
 
 import collections
 import json
-from json.encoder import encode_basestring, encode_basestring_ascii, FLOAT_REPR, INFINITY
+from json.encoder import encode_basestring, encode_basestring_ascii, INFINITY
 from types import GeneratorType
+
+
+FLOAT_REPR = str
 
 
 class StreamingJSONEncoder(json.JSONEncoder):
@@ -57,12 +60,6 @@ class StreamingJSONEncoder(json.JSONEncoder):
             _encoder = encode_basestring_ascii
         else:
             _encoder = encode_basestring
-        if self.encoding != "utf-8":
-
-            def _encoder(o, _orig_encoder=_encoder, _encoding=self.encoding):
-                if isinstance(o, str):
-                    o = o.decode(_encoding)
-                return _orig_encoder(o)
 
         def floatstr(
             o, allow_nan=self.allow_nan, _repr=FLOAT_REPR, _inf=INFINITY, _neginf=-INFINITY
@@ -110,10 +107,7 @@ def _make_iterencode(
     _sort_keys,
     _skipkeys,
     _one_shot,
-    False=False,
-    True=True,
     ValueError=ValueError,
-    basestring=basestring,
     dict=dict,
     float=float,
     GeneratorType=GeneratorType,
@@ -121,7 +115,7 @@ def _make_iterencode(
     int=int,
     isinstance=isinstance,
     list=list,
-    long=long,
+    long=int,
     str=str,
     tuple=tuple,
 ):
@@ -156,7 +150,7 @@ def _make_iterencode(
                 first = False
             else:
                 buf = separator
-            if isinstance(value, basestring):
+            if isinstance(value, str):
                 yield buf + _encoder(value)
             elif value is None:
                 yield buf + "null"
@@ -164,7 +158,7 @@ def _make_iterencode(
                 yield buf + "true"
             elif value is False:
                 yield buf + "false"
-            elif isinstance(value, (int, long)):
+            elif isinstance(value, int):
                 yield buf + str(value)
             elif isinstance(value, float):
                 yield buf + _floatstr(value)
@@ -208,18 +202,18 @@ def _make_iterencode(
             item_separator = _item_separator
         first = True
         if _sort_keys:
-            items = dct.items()
+            items = list(dct.items())
             items.sort(key=lambda kv: kv[0])
         else:
-            items = dct.iteritems()
+            items = iter(dct.items())
         for key, value in items:
-            if isinstance(key, basestring):
+            if isinstance(key, str):
                 pass
             # JavaScript is weakly typed for these, so it makes sense to
             # also allow them.  Many encoders seem to do something like this.
             elif isinstance(key, float):
                 key = _floatstr(key)
-            elif isinstance(key, (int, long)):
+            elif isinstance(key, int):
                 key = str(key)
             elif key is True:
                 key = "true"
@@ -237,7 +231,7 @@ def _make_iterencode(
                 yield item_separator
             yield _encoder(key)
             yield _key_separator
-            if isinstance(value, basestring):
+            if isinstance(value, str):
                 yield _encoder(value)
             elif value is None:
                 yield "null"
@@ -245,7 +239,7 @@ def _make_iterencode(
                 yield "true"
             elif value is False:
                 yield "false"
-            elif isinstance(value, (int, long)):
+            elif isinstance(value, int):
                 yield str(value)
             elif isinstance(value, float):
                 yield _floatstr(value)
@@ -266,7 +260,7 @@ def _make_iterencode(
             del markers[markerid]
 
     def _iterencode(o, _current_indent_level):
-        if isinstance(o, basestring):
+        if isinstance(o, str):
             yield _encoder(o)
         elif o is None:
             yield "null"
@@ -274,7 +268,7 @@ def _make_iterencode(
             yield "true"
         elif o is False:
             yield "false"
-        elif isinstance(o, (int, long)):
+        elif isinstance(o, int):
             yield str(o)
         elif isinstance(o, float):
             yield _floatstr(o)

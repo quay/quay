@@ -22,7 +22,7 @@ from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase, Pooled
 
 from sqlalchemy.engine.url import make_url
 
-import resumablehashlib
+import rehash
 from cachetools.func import lru_cache
 
 from data.fields import (
@@ -362,7 +362,12 @@ def _wrap_for_retry(driver):
 
 
 def _db_from_url(
-    url, db_kwargs, connect_timeout=DEFAULT_DB_CONNECT_TIMEOUT, allow_pooling=True, allow_retry=True
+    url,
+    db_kwargs,
+    connect_timeout=DEFAULT_DB_CONNECT_TIMEOUT,
+    allow_pooling=True,
+    allow_retry=True,
+    is_read_replica=False,
 ):
     parsed_url = make_url(url)
 
@@ -397,16 +402,25 @@ def _db_from_url(
     else:
         logger.info("Connection pooling disabled for %s", parsed_url.drivername)
         db_kwargs.pop("stale_timeout", None)
+        db_kwargs.pop("timeout", None)
         db_kwargs.pop("max_connections", None)
 
-    for key, value in _EXTRA_ARGS.get(parsed_url.drivername, {}).iteritems():
+    for key, value in _EXTRA_ARGS.get(parsed_url.drivername, {}).items():
         if key not in db_kwargs:
             db_kwargs[key] = value
 
     if allow_retry:
         driver = _wrap_for_retry(driver)
 
+    driver_autocommit = False
+    if db_kwargs.get("_driver_autocommit"):
+        assert is_read_replica, "_driver_autocommit can only be set for a read replica"
+        driver_autocommit = db_kwargs["_driver_autocommit"]
+        db_kwargs.pop("_driver_autocommit", None)
+
     created = driver(parsed_url.database, **db_kwargs)
+    if driver_autocommit:
+        created.connect_params["autocommit"] = driver_autocommit
 
     # Revert the behavior "fixed" in:
     # https://github.com/coleifer/peewee/commit/36bd887ac07647c60dfebe610b34efabec675706
@@ -438,7 +452,14 @@ def configure(config_object, testing=False):
 
     read_replica_dbs = []
     if read_replicas:
-        read_replica_dbs = [_db_from_url(config["DB_URI"], db_kwargs) for config in read_replicas]
+        read_replica_dbs = [
+            _db_from_url(
+                ro_config["DB_URI"],
+                ro_config.get("DB_CONNECTION_ARGS", db_kwargs),
+                is_read_replica=True,
+            )
+            for ro_config in read_replicas
+        ]
 
     read_only_config.initialize(ReadOnlyConfig(is_read_only, read_replica_dbs))
 
@@ -1091,7 +1112,7 @@ class Image(BaseModel):
         """
         Returns an integer list of ancestor ids, ordered chronologically from root to direct parent.
         """
-        return map(int, self.ancestors.split("/")[1:-1])
+        return list(map(int, self.ancestors.split("/")[1:-1]))
 
 
 class DerivedStorageForImage(BaseModel):
@@ -1397,7 +1418,8 @@ class BlobUpload(BaseModel):
     repository = ForeignKeyField(Repository)
     uuid = CharField(index=True, unique=True)
     byte_count = BigIntegerField(default=0)
-    sha_state = ResumableSHA256Field(null=True, default=resumablehashlib.sha256)
+    # TODO(kleesc): Verify that this is backward compatible with resumablehashlib
+    sha_state = ResumableSHA256Field(null=True, default=rehash.sha256)
     location = ForeignKeyField(ImageStorageLocation)
     storage_metadata = JSONField(null=True, default={})
     chunk_count = IntegerField(default=0)

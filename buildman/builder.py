@@ -12,7 +12,7 @@ from buildman.manager.enterprise import EnterpriseManager
 from buildman.manager.ephemeral import EphemeralBuilderManager
 from buildman.server import BuilderServer
 
-from trollius import SSLContext
+from ssl import SSLContext
 from raven.handlers.logging import SentryHandler
 from raven.conf import setup_logging
 
@@ -103,7 +103,7 @@ def run_build_manager():
 
 
 if __name__ == "__main__":
-    logging.config.fileConfig(logfile_path(debug=True), disable_existing_loggers=False)
+    logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     logging.getLogger("peewee").setLevel(logging.WARN)
     logging.getLogger("boto").setLevel(logging.WARN)
 

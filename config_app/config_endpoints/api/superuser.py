@@ -138,11 +138,11 @@ class SuperUserCustomCertificates(ApiResource):
                     )
             except CertInvalidException as cie:
                 cert_views.append(
-                    {"path": extra_cert_path, "error": cie.message,}
+                    {"path": extra_cert_path, "error": str(cie),}
                 )
             except IOError as ioe:
                 cert_views.append(
-                    {"path": extra_cert_path, "error": ioe.message,}
+                    {"path": extra_cert_path, "error": str(ioe),}
                 )
 
         return {

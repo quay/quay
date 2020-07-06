@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from datetime import datetime, timedelta
-from urlparse import urlunparse
+from urllib.parse import urlunparse
 
 from jinja2 import Template
 from cachetools.func import lru_cache
@@ -85,7 +85,7 @@ def setup_jwt_proxy():
     else:
         # Generate the key for this Quay instance to use.
         minutes_until_expiration = app.config.get("INSTANCE_SERVICE_KEY_EXPIRATION", 120)
-        expiration = datetime.now() + timedelta(minutes=minutes_until_expiration)
+        expiration = datetime.utcnow() + timedelta(minutes=minutes_until_expiration)
         quay_key, quay_key_id = generate_key(
             app.config["INSTANCE_SERVICE_KEY_SERVICE"], get_audience(), expiration_date=expiration
         )
@@ -96,7 +96,7 @@ def setup_jwt_proxy():
 
         with open(app.config["INSTANCE_SERVICE_KEY_LOCATION"], mode="w") as f:
             f.truncate(0)
-            f.write(quay_key.exportKey())
+            f.write(quay_key.exportKey().decode("utf-8"))
 
     # Generate the JWT proxy configuration.
     audience = get_audience()

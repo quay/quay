@@ -1,3 +1,8 @@
+# NOTE: Must be before we import or call anything that may be synchronous.
+from gevent import monkey
+
+monkey.patch_all()
+
 import sys
 import os
 
@@ -7,7 +12,7 @@ import logging
 
 from Crypto import Random
 from util.log import logfile_path
-from util.workers import get_worker_count
+from util.workers import get_worker_count, get_worker_connections_count
 
 
 logconfig = logfile_path(debug=False)
@@ -15,6 +20,7 @@ logconfig = logfile_path(debug=False)
 bind = "unix:/tmp/gunicorn_web.sock"
 workers = get_worker_count("web", 2, minimum=2, maximum=32)
 worker_class = "gevent"
+worker_connections = get_worker_connections_count("web")
 pythonpath = "."
 preload_app = True
 

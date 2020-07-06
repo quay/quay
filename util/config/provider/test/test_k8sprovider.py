@@ -41,10 +41,12 @@ def fake_kubernetes_api(tmpdir_factory, files=None):
 
     config_dir = tmpdir_factory.mktemp("config")
     if files:
-        for filepath, value in files.iteritems():
+        for filepath, value in files.items():
             normalized_path = normalize_path(filepath)
             write_file(config_dir, filepath, value)
-            secret["data"][normalized_path] = base64.b64encode(value)
+            secret["data"][normalized_path] = base64.b64encode(value.encode("utf-8")).decode(
+                "ascii"
+            )
 
     @urlmatch(
         netloc=hostname,
@@ -61,10 +63,12 @@ def fake_kubernetes_api(tmpdir_factory, files=None):
     )
     def put_secret(_, request):
         updated_secret = json.loads(request.body)
-        for filepath, value in updated_secret["data"].iteritems():
+        for filepath, value in updated_secret["data"].items():
             if filepath not in secret["data"]:
                 # Add
-                write_file(config_dir, filepath, base64.b64decode(value))
+                write_file(
+                    config_dir, filepath, base64.b64decode(value.encode("utf-8")).decode("ascii")
+                )
 
         for filepath in secret["data"]:
             if filepath not in updated_secret["data"]:
@@ -81,7 +85,7 @@ def fake_kubernetes_api(tmpdir_factory, files=None):
 
     @urlmatch(netloc=hostname)
     def catch_all(url, _):
-        print url
+        print(url)
         return {"status_code": 404, "content": "{}"}
 
     with HTTMock(get_secret, put_secret, get_namespace, catch_all):
@@ -94,7 +98,7 @@ def fake_kubernetes_api(tmpdir_factory, files=None):
         )
 
         # Validate all the files.
-        for filepath, value in files.iteritems():
+        for filepath, value in files.items():
             normalized_path = normalize_path(filepath)
             assert provider.volume_file_exists(normalized_path)
             with provider.get_volume_file(normalized_path) as f:

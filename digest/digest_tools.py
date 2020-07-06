@@ -25,6 +25,9 @@ class Digest(object):
     def __eq__(self, rhs):
         return isinstance(rhs, Digest) and str(self) == str(rhs)
 
+    def __hash__(self):
+        return hash((self._hash_alg, self._hash_bytes))
+
     @staticmethod
     def parse_digest(digest):
         """
@@ -65,6 +68,7 @@ def sha256_digest(content):
     """
     Returns a sha256 hash of the content bytes in digest form.
     """
+    assert isinstance(content, bytes)
 
     def single_chunk_generator():
         yield content

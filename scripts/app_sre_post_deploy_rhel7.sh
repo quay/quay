@@ -4,27 +4,18 @@
 
 set -exv
 
-export DOCKER_CONF="$PWD/.docker"
-mkdir -p "${DOCKER_CONF}"
-
 BASE_IMG="quay"
 IMG="${BASE_IMG}:latest"
+BACKUP_BASE_IMG="quayio-backup"
+BACKUP_IMAGE="${BACKUP_URL}/${BACKUP_BASE_IMG}"
 
 GIT_HASH=`git rev-parse --short=7 HEAD`
 
-# login to the backup repository
-aws ecr get-login \
-    --region ${AWS_REGION} --no-include-email | \
-    sed 's/docker/docker --config="$DOCKER_CONF"/g' | \
-    /bin/bash
-
-# push the image
-skopeo copy \
-    --authfile "$DOCKER_CONF/config.json" \
+# push the image to backup repository
+skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
     "docker-daemon:${IMG}" \
-    "docker://${BACKUP_REPO_URL}:latest"
+    "docker://${BACKUP_IMAGE}:latest"
 
-skopeo copy \
-    --authfile "$DOCKER_CONF/config.json" \
+skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
     "docker-daemon:${IMG}" \
-    "docker://${BACKUP_REPO_URL}:${GIT_HASH}"
+    "docker://${BACKUP_IMAGE}:${GIT_HASH}"

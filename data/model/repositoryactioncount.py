@@ -1,7 +1,7 @@
 import logging
 
 from collections import namedtuple
-from peewee import IntegrityError
+from peewee import IntegrityError, JOIN
 
 from datetime import date, timedelta, datetime
 from data.database import (
@@ -34,30 +34,6 @@ SEARCH_BUCKETS = [
 RAC_RETENTION_PERIOD = timedelta(days=365)
 
 
-def find_uncounted_repository():
-    """
-    Returns a repository that has not yet had an entry added into the RepositoryActionCount table
-    for yesterday.
-    """
-    try:
-        # Get a random repository to count.
-        today = date.today()
-        yesterday = today - timedelta(days=1)
-        has_yesterday_actions = RepositoryActionCount.select(
-            RepositoryActionCount.repository
-        ).where(RepositoryActionCount.date == yesterday)
-
-        to_count = (
-            Repository.select()
-            .where(~(Repository.id << (has_yesterday_actions)))
-            .order_by(db_random_func())
-            .get()
-        )
-        return to_count
-    except Repository.DoesNotExist:
-        return None
-
-
 def count_repository_actions(to_count, day):
     """
     Aggregates repository actions from the LogEntry table for the specified day.
@@ -83,6 +59,24 @@ def count_repository_actions(to_count, day):
     )
 
     return actions
+
+
+def found_entry_count(day):
+    """
+    Returns the number of entries for the given day in the RAC table.
+    """
+    return RepositoryActionCount.select().where(RepositoryActionCount.date == day).count()
+
+
+def has_repository_action_count(repository, day):
+    """
+    Returns whether there is a stored action count for a repository for a specific day.
+    """
+    try:
+        RepositoryActionCount.get(repository=repository, date=day)
+        return True
+    except RepositoryActionCount.DoesNotExist:
+        return False
 
 
 def store_repository_action_count(repository, day, action_count):
@@ -159,6 +153,21 @@ def update_repository_score(repo):
     except IntegrityError:
         logger.debug("RepositorySearchScore row already existed; skipping")
         return False
+
+
+def missing_counts_query(date):
+    """ Returns a query to find all Repository's with missing RAC entries for the given date. """
+    subquery = (
+        RepositoryActionCount.select(RepositoryActionCount.id, RepositoryActionCount.repository)
+        .where(RepositoryActionCount.date == date)
+        .alias("rac")
+    )
+
+    return (
+        Repository.select()
+        .join(subquery, JOIN.LEFT_OUTER, on=(Repository.id == subquery.c.repository_id))
+        .where(subquery.c.id >> None)
+    )
 
 
 def delete_expired_entries(repo, limit=50):

@@ -21,7 +21,7 @@ def make_custom_sort(orders):
 
     def process(stuff):
         if isinstance(stuff, dict):
-            l = [(k, process(v)) for (k, v) in stuff.iteritems()]
+            l = [(k, process(v)) for (k, v) in stuff.items()]
             keys = set(stuff)
             for order in orders:
                 if keys.issubset(order) or keys.issuperset(order):

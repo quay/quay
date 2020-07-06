@@ -1,9 +1,8 @@
 -e git+https://github.com/DevTable/aniso8601-fake.git#egg=aniso8610
--e git+https://github.com/DevTable/anunidecode.git#egg=anunidecode
 -e git+https://github.com/DevTable/container-cloud-config.git#egg=container-cloud-config
 -e git+https://github.com/DevTable/python-etcd.git@sslfix#egg=python-etcd
 -e git+https://github.com/NateFerrero/oauth2lib.git#egg=oauth2lib
--e git+https://github.com/coreos/mockldap.git@v0.1.x#egg=mockldap
+-e git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
 -e git+https://github.com/coreos/py-bitbucket.git#egg=py-bitbucket
 -e git+https://github.com/coreos/resumablehashlib.git#egg=resumablehashlib
 -e git+https://github.com/app-registry/appr-server.git@c2ef3b88afe926a92ef5f2e11e7d4a259e286a17#egg=cnr_server  # naming has changed
@@ -26,6 +25,7 @@ bitmath
 boto3
 cachetools
 cryptography
+dumb-init
 elasticsearch>=7.0.4,<8.0.0
 elasticsearch-dsl>=7.0.0,<8.0.0
 flask
@@ -55,7 +55,7 @@ pyasn1
 py-bcrypt
 pyOpenSSL
 pycryptodome
-pygpgme
+gpg
 pyjwkest
 pyjwt
 pymemcache
@@ -70,7 +70,7 @@ pyyaml
 raven
 redis
 redlock
-reportlab==2.7
+reportlab
 requests-aws4auth
 semantic-version
 sqlalchemy
@@ -79,9 +79,9 @@ stripe
 supervisor
 supervisor-stdout
 supervisor-logging
+text_unidecode
 tldextract
 toposort
-trollius
 tzlocal
 xhtml2pdf
 recaptcha2

@@ -232,7 +232,7 @@ class V2SecurityScanner(SecurityScannerInterface):
                 try:
                     self._analyzer.analyze_recursively(candidate)
                 except PreemptedException:
-                    logger.info("Another worker pre-empted us for layer: %s", candidate.id)
+                    logger.debug("Another worker pre-empted us for layer: %s", candidate.id)
                     abt.set()
                 except APIRequestFailure:
                     logger.exception("Security scanner service unavailable")

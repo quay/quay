@@ -7,14 +7,14 @@ import botocore
 
 from data.logs_model import configure
 
-from test_elasticsearch import (
+from .test_elasticsearch import (
     app_config,
     logs_model_config,
     logs_model,
     mock_elasticsearch,
     mock_db_model,
 )
-from mock_elasticsearch import *
+from .mock_elasticsearch import *
 
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ def test_kafka_logs_producers(
     producer_config = kafka_logs_producer_config
     with patch("kafka.client_async.KafkaClient.check_version"), patch(
         "kafka.KafkaProducer.send"
-    ) as mock_send:
+    ) as mock_send, patch("kafka.KafkaProducer._max_usable_produce_magic"):
         configure(producer_config)
         logs_model.log_action(
             "pull_repo",
@@ -104,4 +104,4 @@ def test_kinesis_logs_producers(
 
         # Check that a PutRecord api call is made.
         # NOTE: The second arg of _make_api_call uses a randomized PartitionKey
-        mock_send.assert_called_once_with(u"PutRecord", mock_send.call_args_list[0][0][1])
+        mock_send.assert_called_once_with("PutRecord", mock_send.call_args_list[0][0][1])

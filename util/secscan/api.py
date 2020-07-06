@@ -3,7 +3,7 @@ import logging
 
 from abc import ABCMeta, abstractmethod
 from six import add_metaclass
-from urlparse import urljoin
+from urllib.parse import urljoin
 
 import requests
 
@@ -283,7 +283,7 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             auth_token = generate_bearer_token(
                 audience, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, self._instance_keys
             )
-            auth_header = "Bearer " + auth_token
+            auth_header = "Bearer " + auth_token.decode("ascii")
 
             uri = self._uri_creator(repository_and_namespace, image.storage.content_checksum)
 
@@ -401,7 +401,7 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             logger.error("Could not build analyze request for layer %s", layer.id)
             raise AnalyzeLayerException
 
-        logger.info("Analyzing layer %s", request["Layer"]["Name"])
+        logger.debug("Analyzing layer %s", request["Layer"]["Name"])
         try:
             response = self._call("POST", _API_METHOD_INSERT, body=request)
         except requests.exceptions.Timeout:

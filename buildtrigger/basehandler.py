@@ -277,7 +277,7 @@ class BuildTriggerHandler(object):
         """
         Returns whether the file is named Dockerfile or follows the convention <name>.Dockerfile.
         """
-        return file_name.endswith(".Dockerfile") or u"Dockerfile" == file_name
+        return file_name.endswith(".Dockerfile") or "Dockerfile" == file_name
 
     @classmethod
     def service_name(cls):
@@ -380,7 +380,7 @@ class BuildTriggerHandler(object):
             for tag_template in tag_templates:
                 try:
                     result = apply_data_to_obj(tag_template, updated_metadata, missing="$MISSING$")
-                    if "$MISSING$" in result:
+                    if result and "$MISSING$" in result:
                         result = None
                 except JSONTemplateParseException:
                     logger.exception("Got except when parsing tag template `%s`", tag_template)

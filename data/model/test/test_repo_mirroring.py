@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+
 from jsonschema import ValidationError
 
 from data.database import RepoMirrorConfig, RepoMirrorStatus, User
@@ -26,7 +26,9 @@ def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=N
     except model.InvalidRobotException:
         robot, _ = create_robot("robot", user)
 
-    repo = create_repository("mirror", repo_name, None, repo_kind="image", visibility="public")
+    repo = model.repository.create_repository(
+        "mirror", repo_name, None, repo_kind="image", visibility="public"
+    )
     repo.save()
 
     rule = model.repo_mirror.create_mirroring_rule(repo, rules)
@@ -39,7 +41,7 @@ def create_mirror_repo_robot(rules, repo_name="repo", external_registry_config=N
         "sync_interval": timedelta(days=1).total_seconds(),
         "external_registry_config": external_registry_config,
     }
-    mirror = enable_mirroring_for_repository(**mirror_kwargs)
+    mirror = model.repo_mirror.enable_mirroring_for_repository(**mirror_kwargs)
     mirror.sync_status = RepoMirrorStatus.NEVER_RUN
     mirror.sync_start_date = datetime.utcnow() - timedelta(days=1)
     mirror.sync_retries_remaining = 3

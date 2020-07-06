@@ -16,10 +16,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 3.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
@@ -31,7 +31,8 @@ jobs:
 
     - name: Check Formatting
       run: |
-        black --line-length=100 --target-version=py27 --check --diff .
+        # TODO(kleesc): Re-enable after buildman rewrite
+        black --line-length=100 --target-version=py36 --check --diff --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|buildman)/" .
 
   unit:
     name: Unit Test
@@ -39,20 +40,20 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-unit
+      run: tox -e py36-unit
 
   registry:
     name: E2E Registry Tests
@@ -60,20 +61,20 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-registry
+      run: tox -e py36-registry
 
   docker:
     name: Docker Build
@@ -89,15 +90,15 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig docker.io
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
@@ -105,7 +106,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-mysql
+      run: tox -e py36-mysql
 
   psql:
     name: E2E Postgres Test
@@ -113,15 +114,15 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 2.7
+    - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 2.7
+        python-version: 3.6
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev docker.io
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig docker.io
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
@@ -129,4 +130,47 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py27-psql
+      run: tox -e py36-psql
+
+  oci:
+    name: OCI Conformance
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: opencontainers/distribution-spec
+        path: dist-spec
+
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.6
+
+    - name: Set up Go 1.14
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+
+    - name: Set GOPATH
+      run: |
+        # temporary fix for https://github.com/actions/setup-go/issues/14
+        echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
+        echo "##[add-path]$(dirname $GITHUB_WORKSPACE)/bin"
+
+    - name: Install dependencies
+      run: |
+        # Quay
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        python -m pip install --upgrade pip
+        pip install -r <(cat requirements.txt requirements-dev.txt)
+
+        # Conformance
+        cd dist-spec/conformance
+        go mod vendor
+        CGO_ENABLED=0 go test -c -o conformance.test
+
+    - name: conformance
+      run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv --ignore=buildman # TODO(kleesc): Remove --ignore=buildman after rewrite

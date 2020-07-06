@@ -7,7 +7,7 @@ GZIP_BUFFER_SIZE = 1024 * 256
 class GzipWrap(object):
     def __init__(self, input, filename=None, compresslevel=1):
         self.input = iter(input)
-        self.buffer = ""
+        self.buffer = b""
         self.zipper = GzipFile(
             filename, mode="wb", fileobj=self, compresslevel=compresslevel, mtime=0
         )
@@ -30,10 +30,10 @@ class GzipWrap(object):
             is_done = False
 
             input_size = 0
-            input_buffer = ""
+            input_buffer = b""
             while input_size < GZIP_BUFFER_SIZE:
                 try:
-                    s = self.input.next()
+                    s = next(self.input)
                     input_buffer += s
                     input_size = input_size + len(s)
                 except StopIteration:

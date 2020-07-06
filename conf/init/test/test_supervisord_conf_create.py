@@ -50,7 +50,7 @@ def test_supervisord_conf_create_defaults():
     ):
         opts = ServerOptions()
 
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(mode="w") as f:
             f.write(rendered_config_file)
             f.flush()
 

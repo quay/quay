@@ -1,6 +1,6 @@
 import os
 import logging
-import urlparse
+import urllib.parse
 
 from uuid import uuid4
 from _pyio import BufferedReader
@@ -30,6 +30,7 @@ class UserfilesHandlers(View):
             file_stream = self._storage.stream_read_file(self._locations, path)
             buffered = BufferedReader(file_stream)
             file_header_bytes = buffered.peek(1024)
+            buffered.seek(0)
             return send_file(
                 buffered,
                 mimetype=self._magic.from_buffer(file_header_bytes),
@@ -100,7 +101,7 @@ class DelegateUserfiles(object):
             with self._app.app_context() as ctx:
                 ctx.url_adapter = self._build_url_adapter()
                 file_relative_url = url_for(self._handler_name, file_id=file_id)
-                file_url = urlparse.urljoin(get_app_url(self._app.config), file_relative_url)
+                file_url = urllib.parse.urljoin(get_app_url(self._app.config), file_relative_url)
                 return (file_url, file_id)
 
         return (url, file_id)
@@ -128,7 +129,7 @@ class DelegateUserfiles(object):
             with self._app.app_context() as ctx:
                 ctx.url_adapter = self._build_url_adapter()
                 file_relative_url = url_for(self._handler_name, file_id=file_id)
-                return urlparse.urljoin(get_app_url(self._app.config), file_relative_url)
+                return urllib.parse.urljoin(get_app_url(self._app.config), file_relative_url)
 
         return url
 

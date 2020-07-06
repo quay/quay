@@ -57,7 +57,7 @@ class SharedModel:
 
 
 def epoch_ms(dt):
-    return (timegm(dt.timetuple()) * 1000) + (dt.microsecond / 1000)
+    return (timegm(dt.timetuple()) * 1000) + (dt.microsecond // 1000)
 
 
 def get_kinds_filter(kinds):

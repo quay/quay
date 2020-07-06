@@ -71,7 +71,7 @@ MANIFEST_BYTES = json.dumps(
             },
         ],
     }
-)
+).encode("utf-8")
 
 REMOTE_MANIFEST_BYTES = json.dumps(
     {
@@ -106,7 +106,7 @@ REMOTE_MANIFEST_BYTES = json.dumps(
             },
         ],
     }
-)
+).encode("utf-8")
 
 
 def test_valid_manifest():
@@ -374,13 +374,13 @@ def test_unencoded_unicode_manifest():
 
     retriever = ContentRetrieverForTesting.for_config(
         {
-            "config": {"author": u"Sômé guy",},
+            "config": {"author": "Sômé guy",},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
                 {
                     "created": "2018-04-03T18:37:09.284840891Z",
                     "created_by": "base",
-                    "author": u"Sômé guy",
+                    "author": "Sômé guy",
                 },
             ],
         },
@@ -390,19 +390,19 @@ def test_unencoded_unicode_manifest():
     )
 
     layers = list(manifest.get_layers(retriever))
-    assert layers[0].author == u"Sômé guy"
+    assert layers[0].author == "Sômé guy"
 
 
 def test_build_unencoded_unicode_manifest():
     config_json = json.dumps(
         {
-            "config": {"author": u"Sômé guy",},
+            "config": {"author": "Sômé guy",},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
                 {
                     "created": "2018-04-03T18:37:09.284840891Z",
                     "created_by": "base",
-                    "author": u"Sômé guy",
+                    "author": "Sômé guy",
                 },
             ],
         },
@@ -419,13 +419,13 @@ def test_build_unencoded_unicode_manifest():
 
 def test_load_unicode_manifest():
     test_dir = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(test_dir, "unicode_manifest_config.json"), "r") as f:
+    with open(os.path.join(test_dir, "unicode_manifest_config.json"), "rb") as f:
         retriever = ContentRetrieverForTesting()
         retriever.add_digest(
             "sha256:5bdd65cdd055c7f3bbaecdc9fd6c75f155322520f85953aa0e2724cab006d407", f.read()
         )
 
-    with open(os.path.join(test_dir, "unicode_manifest.json"), "r") as f:
+    with open(os.path.join(test_dir, "unicode_manifest.json"), "rb") as f:
         manifest_bytes = f.read()
 
     manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(manifest_bytes))
@@ -434,4 +434,4 @@ def test_load_unicode_manifest():
     )
 
     layers = list(manifest.get_layers(retriever))
-    assert layers[-1].author == u"Sômé guy"
+    assert layers[-1].author == "Sômé guy"

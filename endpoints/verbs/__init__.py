@@ -117,8 +117,10 @@ def _sign_derived_image(verb, derived_image, queue_file):
     signature = None
     try:
         signature = signer.detached_sign(queue_file)
-    except:
-        logger.exception("Exception when signing %s deriving image %s", verb, derived_image)
+    except Exception as e:
+        logger.exception(
+            "Exception when signing %s deriving image %s: $s", verb, derived_image, str(e)
+        )
         return
 
     # Setup the database (since this is a new process) and then disconnect immediately
@@ -390,7 +392,7 @@ def _repo_verb(
     unique_id = (
         derived_image.unique_id
         if derived_image is not None
-        else hashlib.sha256("%s:%s" % (verb, uuid.uuid4())).hexdigest()
+        else hashlib.sha256(("%s:%s" % (verb, uuid.uuid4())).encode("utf-8")).hexdigest()
     )
     handlers = [hasher.update]
     reporter = VerbReporter(verb)

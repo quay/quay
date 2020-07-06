@@ -18,13 +18,15 @@ from cnr.exception import (
     UnauthorizedAccess,
     Unsupported,
 )
-from flask import jsonify, request
+from flask import jsonify, request, redirect
 
+from app import app, model_cache
 from auth.auth_context import get_authenticated_user
 from auth.credentials import validate_credentials
 from auth.decorators import process_auth
 from auth.permissions import CreateRepositoryPermission, ModifyRepositoryPermission
 from data.logs_model import logs_model
+from data.cache import cache_key
 from endpoints.appr import appr_bp, require_app_repo_read, require_app_repo_write
 from endpoints.appr.cnr_backend import Blob, Channel, Package, User
 from endpoints.appr.decorators import disallow_for_image_repository
@@ -72,10 +74,10 @@ def login():
     if not result.auth_valid:
         raise UnauthorizedAccess(result.error_message)
 
-    return jsonify({"token": "basic " + b64encode("%s:%s" % (username, password))})
+    auth = b64encode(b"%s:%s" % (username.encode("ascii"), password.encode("ascii")))
+    return jsonify({"token": "basic " + auth.decode("ascii")})
 
 
-# @TODO: Redirect to S3 url
 @appr_bp.route(
     "/api/v1/packages/<string:namespace>/<string:package_name>/blobs/sha256/<string:digest>",
     methods=["GET"],
@@ -89,6 +91,11 @@ def blobs(namespace, package_name, digest):
     reponame = repo_name(namespace, package_name)
     data = cnr_registry.pull_blob(reponame, digest, blob_class=Blob)
     json_format = request.args.get("format", None) == "json"
+    if not json_format:
+        download_url = Blob.download_url(reponame, digest)
+        if download_url:
+            return redirect(download_url)
+
     return _pull(data, json_format=json_format)
 
 
@@ -139,10 +146,21 @@ def delete_package(namespace, package_name, release, media_type):
 @check_region_blacklisted(namespace_name_kwarg="namespace")
 @anon_protect
 def show_package(namespace, package_name, release, media_type):
-    reponame = repo_name(namespace, package_name)
-    result = cnr_registry.show_package(
-        reponame, release, media_type, channel_class=Channel, package_class=Package
+    def _retrieve_package():
+        reponame = repo_name(namespace, package_name)
+        return cnr_registry.show_package(
+            reponame, release, media_type, channel_class=Channel, package_class=Package
+        )
+
+    namespace_whitelist = app.config.get("APP_REGISTRY_SHOW_PACKAGE_CACHE_WHITELIST", [])
+    if not namespace or namespace not in namespace_whitelist:
+        return jsonify(_retrieve_package())
+
+    show_package_cache_key = cache_key.for_appr_show_package(
+        namespace, package_name, release, media_type
     )
+
+    result = model_cache.retrieve(show_package_cache_key, _retrieve_package)
     return jsonify(result)
 
 

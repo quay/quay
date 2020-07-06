@@ -11,7 +11,7 @@ class QueueFile(object):
         self._queue = queue
         self._closed = False
         self._done = False
-        self._buffer = ""
+        self._buffer = b""
         self._total_size = 0
         self._name = name
         self.raised_exception = False
@@ -26,7 +26,7 @@ class QueueFile(object):
         if self._closed or self._done:
             if size == -1:
                 buf = self._buffer
-                self._buffer = ""
+                self._buffer = b""
                 return buf
 
             buf = self._buffer[0:size]
@@ -55,7 +55,7 @@ class QueueFile(object):
                     handled = True
 
                 if handled:
-                    return ""
+                    return b""
                 else:
                     raise exception
 
@@ -72,7 +72,7 @@ class QueueFile(object):
         # Return the requested slice of the buffer.
         if size == -1:
             buf = self._buffer
-            self._buffer = ""
+            self._buffer = b""
             return buf
 
         buf = self._buffer[0:size]

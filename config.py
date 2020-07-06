@@ -711,6 +711,12 @@ class DefaultConfig(ImmutableConfig):
     # The limit on the number of results returned by app registry listing operations.
     APP_REGISTRY_RESULTS_LIMIT = 100
 
+    # The whitelist of namespaces whose app registry package list is cached for 1 hour.
+    APP_REGISTRY_PACKAGE_LIST_CACHE_WHITELIST = []
+
+    # The whitelist of namespaces whose app registry show package is cached for 1 hour.
+    APP_REGISTRY_SHOW_PACKAGE_CACHE_WHITELIST = []
+
     # The maximum size of uploaded CNR layers.
     MAXIMUM_CNR_LAYER_SIZE = "2m"
 
@@ -730,3 +736,6 @@ class DefaultConfig(ImmutableConfig):
 
     # The root URL for documentation.
     DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3.3/"
+
+    # Feature Flag: Whether the repository action count worker is enabled.
+    FEATURE_REPOSITORY_ACTION_COUNTER = True

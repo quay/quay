@@ -2,7 +2,7 @@ from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 from xhtml2pdf import pisa
 
-import StringIO
+import io
 
 from app import app
 
@@ -18,7 +18,7 @@ def renderInvoiceToPdf(invoice, user):
     Renders a nice PDF display for the given invoice.
     """
     sourceHtml = renderInvoiceToHtml(invoice, user)
-    output = StringIO.StringIO()
+    output = io.StringIO()
     pisaStatus = pisa.CreatePDF(sourceHtml, dest=output)
     if pisaStatus.err:
         return None

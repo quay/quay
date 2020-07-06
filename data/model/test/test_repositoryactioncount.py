@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import pytest
 
 from data.database import RepositoryActionCount, RepositorySearchScore
-from data.model.repository import create_repository
+from data.model.repository import create_repository, Repository
 from data.model.repositoryactioncount import update_repository_score, SEARCH_BUCKETS
 from test.fixtures import *
 
@@ -39,3 +39,39 @@ def test_update_repository_score(bucket_sums, expected_score, initialized_db):
 
     assert update_repository_score(repo)
     assert RepositorySearchScore.get(repository=repo).score == expected_score
+
+
+def test_missing_counts_query(initialized_db):
+    # Clear all existing entries.
+    RepositoryActionCount.delete().execute()
+
+    # Ensure we find all repositories.
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    found = list(model.repositoryactioncount.missing_counts_query(yesterday))
+    for repository in Repository.select():
+        assert repository in found
+
+    # Add an entry for each repository.
+    for repository in Repository.select():
+        model.repositoryactioncount.store_repository_action_count(repository, yesterday, 1234)
+
+    # Ensure we no longer find the entries.
+    found = list(model.repositoryactioncount.missing_counts_query(yesterday))
+    assert not found
+
+    # Check another day.
+    two_days = datetime.utcnow() - timedelta(days=2)
+    found = list(model.repositoryactioncount.missing_counts_query(two_days))
+    assert found
+
+    # Add a single entry.
+    updated_repo = None
+    for repository in Repository.select().limit(1):
+        updated_repo = repository
+        model.repositoryactioncount.store_repository_action_count(repository, two_days, 1234)
+
+    # Verify we find all repositories but the one updated.
+    updated_found = list(model.repositoryactioncount.missing_counts_query(two_days))
+    assert updated_found
+
+    assert set(found) - set(updated_found) == {updated_repo}

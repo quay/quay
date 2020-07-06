@@ -31,7 +31,7 @@ def load_certificate(cert_contents):
         raise CertInvalidException(ex.args[0][0][2])
 
 
-_SUBJECT_ALT_NAME = "subjectAltName"
+_SUBJECT_ALT_NAME = b"subjectAltName"
 
 
 class SSLCertificate(object):

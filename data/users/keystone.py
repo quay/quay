@@ -83,10 +83,10 @@ class KeystoneV2Users(FederatedUsers):
             assert sess.get_user_id()  # Make sure we loaded a valid user.
         except KeystoneUnauthorized as kut:
             logger.exception("Keystone unauthorized admin")
-            return (False, "Keystone admin credentials are invalid: %s" % kut.message)
+            return (False, "Keystone admin credentials are invalid: %s" % str(kut))
         except ClientException as e:
             logger.exception("Keystone unauthorized admin")
-            return (False, "Keystone ping check failed: %s" % e.message)
+            return (False, "Keystone ping check failed: %s" % str(e))
 
         return (True, None)
 
@@ -105,7 +105,7 @@ class KeystoneV2Users(FederatedUsers):
         except ClientException as e:
             # Catch exceptions to give the user our custom error message
             logger.exception("Unable to list users in Keystone")
-            return (False, e.message)
+            return (False, str(e))
 
     def verify_credentials(self, username_or_email, password):
         try:
@@ -131,13 +131,13 @@ class KeystoneV2Users(FederatedUsers):
             user = admin_client.users.get(user_id)
         except KeystoneUnauthorized as kut:
             logger.exception("Keystone unauthorized admin")
-            return (None, "Keystone admin credentials are invalid: %s" % kut.message)
+            return (None, "Keystone admin credentials are invalid: %s" % str(kut))
 
         if self.requires_email and not hasattr(user, "email"):
             return (None, "Missing email field for user %s" % user_id)
 
         email = user.email if hasattr(user, "email") else None
-        return (UserInformation(username=username_or_email, email=email, id=user_id), None)
+        return (UserInformation(username=user.name, email=email, id=user_id), None)
 
     def query_users(self, query, limit=20):
         return (None, self.federated_service, "Unsupported in Keystone V2")
@@ -201,10 +201,10 @@ class KeystoneV3Users(FederatedUsers):
             assert sess.get_user_id()  # Make sure we loaded a valid user.
         except KeystoneUnauthorized as kut:
             logger.exception("Keystone unauthorized admin")
-            return (False, "Keystone admin credentials are invalid: %s" % kut.message)
+            return (False, "Keystone admin credentials are invalid: %s" % str(kut))
         except ClientException as cle:
             logger.exception("Keystone unauthorized admin")
-            return (False, "Keystone ping check failed: %s" % cle.message)
+            return (False, "Keystone ping check failed: %s" % str(cle))
 
         return (True, None)
 
@@ -217,7 +217,7 @@ class KeystoneV3Users(FederatedUsers):
         except ClientException as cle:
             # Catch exceptions to give the user our custom error message
             logger.exception("Unable to list users in Keystone")
-            return (False, cle.message)
+            return (False, str(cle))
 
     def verify_credentials(self, username_or_email, password):
         try:
@@ -274,13 +274,13 @@ class KeystoneV3Users(FederatedUsers):
             return (False, "Group not found")
         except KeystoneAuthorizationFailure as kaf:
             logger.exception("Keystone auth failure for admin user for group lookup %s", group_id)
-            return (False, kaf.message or "Invalid admin username or password")
+            return (False, str(kaf) or "Invalid admin username or password")
         except KeystoneUnauthorized as kut:
             logger.exception("Keystone unauthorized for admin user for group lookup %s", group_id)
-            return (False, kut.message or "Invalid admin username or password")
+            return (False, str(kut) or "Invalid admin username or password")
         except ClientException as cle:
             logger.exception("Keystone unauthorized for admin user for group lookup %s", group_id)
-            return (False, cle.message or "Invalid admin username or password")
+            return (False, str(cle) or "Invalid admin username or password")
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         group_id = group_lookup_args["group_id"]
@@ -302,13 +302,13 @@ class KeystoneV3Users(FederatedUsers):
             return (iterator(), None)
         except KeystoneAuthorizationFailure as kaf:
             logger.exception("Keystone auth failure for admin user for group lookup %s", group_id)
-            return (False, kaf.message or "Invalid admin username or password")
+            return (False, str(kaf) or "Invalid admin username or password")
         except KeystoneUnauthorized as kut:
             logger.exception("Keystone unauthorized for admin user for group lookup %s", group_id)
-            return (False, kut.message or "Invalid admin username or password")
+            return (False, str(kut) or "Invalid admin username or password")
         except ClientException as cle:
             logger.exception("Keystone unauthorized for admin user for group lookup %s", group_id)
-            return (False, cle.message or "Invalid admin username or password")
+            return (False, str(cle) or "Invalid admin username or password")
 
     @staticmethod
     def _user_info(user):
@@ -335,19 +335,19 @@ class KeystoneV3Users(FederatedUsers):
             return (
                 None,
                 self.federated_service,
-                kaf.message or "Invalid admin username or password",
+                str(kaf) or "Invalid admin username or password",
             )
         except KeystoneUnauthorized as kut:
             logger.exception("Keystone unauthorized for admin user for query %s", query)
             return (
                 None,
                 self.federated_service,
-                kut.message or "Invalid admin username or password",
+                str(kut) or "Invalid admin username or password",
             )
         except ClientException as cle:
             logger.exception("Keystone unauthorized for admin user for query %s", query)
             return (
                 None,
                 self.federated_service,
-                cle.message or "Invalid admin username or password",
+                str(cle) or "Invalid admin username or password",
             )

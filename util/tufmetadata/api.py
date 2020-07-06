@@ -1,6 +1,6 @@
 import logging
 
-from urlparse import urljoin
+from urllib.parse import urljoin
 from posixpath import join
 
 from abc import ABCMeta, abstractmethod
@@ -278,7 +278,7 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
             TOKEN_VALIDITY_LIFETIME_S,
             self._instance_keys,
         )
-        return {"Authorization": "Bearer %s" % token}
+        return {"Authorization": "Bearer %s" % token.decode("ascii")}
 
     def _get(self, gun, metadata_file):
         return self._call(

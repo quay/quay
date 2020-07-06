@@ -1,15 +1,21 @@
 import logging
 import json
+import os
 
+from contextlib import contextmanager
 from datetime import datetime
 
 from abc import ABCMeta, abstractmethod
 from six import add_metaclass
 
-from pymemcache.client.base import Client
+from data.database import CloseForLongOperation
+
+from pymemcache.client.base import PooledClient
 
 from util.expiresdict import ExpiresDict
 from util.timedeltastring import convert_to_timedelta
+from util.workers import get_worker_connections_count
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +38,21 @@ class DataModelCache(object):
         If none found, the loader is called to get a result and populate the cache.
         """
         pass
+
+
+class DisconnectWrapper(DataModelCache):
+    """
+    Wrapper around another data model cache that disconnects from the database before
+    invoking the cache, in case the cache call takes too long.
+    """
+
+    def __init__(self, cache, app_config):
+        self.cache = cache
+        self.app_config = app_config
+
+    def retrieve(self, cache_key, loader, should_cache=is_not_none):
+        with CloseForLongOperation(self.app_config):
+            return self.cache.retrieve(cache_key, loader, should_cache)
 
 
 class NoopDataModelCache(DataModelCache):
@@ -104,16 +125,16 @@ class MemcachedModelCache(DataModelCache):
         timeout=_DEFAULT_MEMCACHE_TIMEOUT,
         connect_timeout=_DEFAULT_MEMCACHE_CONNECT_TIMEOUT,
     ):
+        max_pool_size = int(
+            os.environ.get("MEMCACHE_POOL_MAX_SIZE", get_worker_connections_count("registry"))
+        )
+
         self.endpoint = endpoint
         self.timeout = timeout
         self.connect_timeout = connect_timeout
-        self.client = None
+        self.client_pool = self._get_client_pool(max_pool_size)
 
-    def _get_client(self):
-        client = self.client
-        if client is not None:
-            return client
-
+    def _get_client_pool(self, max_pool_size=None):
         try:
             # Copied from the doc comment for Client.
             def serialize_json(key, value):
@@ -131,7 +152,7 @@ class MemcachedModelCache(DataModelCache):
 
                 raise Exception("Unknown flags for value: {1}".format(flags))
 
-            self.client = Client(
+            return PooledClient(
                 self.endpoint,
                 no_delay=True,
                 timeout=self.timeout,
@@ -139,16 +160,16 @@ class MemcachedModelCache(DataModelCache):
                 key_prefix="data_model_cache__",
                 serializer=serialize_json,
                 deserializer=deserialize_json,
+                max_pool_size=max_pool_size,
                 ignore_exc=True,
             )
-            return self.client
         except:
             logger.exception("Got exception when creating memcached client to %s", self.endpoint)
             return None
 
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         not_found = [None]
-        client = self._get_client()
+        client = self.client_pool
         if client is not None:
             logger.debug("Checking cache for key %s", cache_key.key)
             try:
@@ -174,7 +195,7 @@ class MemcachedModelCache(DataModelCache):
                     convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
                 )
                 client.set(
-                    cache_key.key, result, expire=int(expires.total_seconds()) if expires else None
+                    cache_key.key, result, expire=int(expires.total_seconds()) if expires else None,
                 )
                 logger.debug(
                     "Cached loaded result for key %s with expiration %s: %s",

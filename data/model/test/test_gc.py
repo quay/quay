@@ -69,9 +69,10 @@ def _delete_temp_links(repo):
 
 
 def _populate_blob(repo, content):
-    digest = str(sha256_digest(content))
+    assert isinstance(content, bytes)
+    digest = sha256_digest(content)
     location = ImageStorageLocation.get(name="local_us")
-    storage.put_content(["local_us"], storage.blob_path(digest), "somecontent")
+    storage.put_content(["local_us"], storage.blob_path(digest), content)
     blob = model.blob.store_blob_record_and_temp_link_in_repo(
         repo, digest, location, len(content), 120
     )
@@ -83,7 +84,7 @@ def create_repository(namespace=ADMIN_ACCESS_USER, name=REPO, **kwargs):
     repo = model.repository.create_repository(namespace, name, user)
 
     # Populate the repository with the tags.
-    for tag_name, image_ids in kwargs.iteritems():
+    for tag_name, image_ids in kwargs.items():
         move_tag(repo, tag_name, image_ids, expect_gc=False)
 
     return repo
@@ -116,7 +117,7 @@ def move_tag(repository, tag, image_ids, expect_gc=True):
             config["parent"] = parent_id
 
         # Create a storage row for the layer blob.
-        _, layer_blob_digest = _populate_blob(repository, image_id)
+        _, layer_blob_digest = _populate_blob(repository, image_id.encode("ascii"))
 
         builder.insert_layer(layer_blob_digest, json.dumps(config))
         parent_id = image_id
@@ -584,7 +585,7 @@ def test_image_with_cas(default_tag_policy, initialized_db):
         repository = create_repository()
 
         # Create an image storage record under CAS.
-        content = "hello world"
+        content = b"hello world"
         digest = "sha256:" + hashlib.sha256(content).hexdigest()
         preferred = storage.preferred_locations[0]
         storage.put_content({preferred}, storage.blob_path(digest), content)
@@ -638,7 +639,7 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         repository = create_repository()
 
         # Create two image storage records with the same content checksum.
-        content = "hello world"
+        content = b"hello world"
         digest = "sha256:" + hashlib.sha256(content).hexdigest()
         preferred = storage.preferred_locations[0]
         storage.put_content({preferred}, storage.blob_path(digest), content)
