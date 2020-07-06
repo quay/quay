@@ -10,10 +10,10 @@ func TestValidateElasticSearch(t *testing.T) {
 	// Valid config
 	logsModelConfig := map[interface{}]interface{}{
 		"elasticsearch_config": map[interface{}]interface{}{
-			"access_key":    "key",
-			"access_secret": "secret",
-			"host":          "bfd70499058e4485854f8bacf06af627.us-central1.gcp.cloud.es.io",
-			"port":          9243,
+			"access_key": "elastic",
+			"secret_key": "nf567zCQgIVMrDvDGIpIHScG",
+			"host":       "bfd70499058e4485854f8bacf06af627.us-central1.gcp.cloud.es.io",
+			"port":       9243,
 		},
 	}
 

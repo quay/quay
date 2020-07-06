@@ -97,7 +97,6 @@
       "type": "boolean",
       "description": "If set to true, the _catalog endpoint returns public repositories. Otherwise, only private repositories can be returned. Defaults to False"
     },
-
     "RECAPTCHA_SECRET_KEY": {
       "type": ["string", "null"],
       "description": "If recaptcha is enabled, the secret key for the Recaptcha service"
@@ -304,11 +303,6 @@
       "description": "Maximum allowed size of an image layer. Defaults to 20G",
       "pattern": "^[0-9]+(G|M)$"
     },
-    "FEATURE_GITHUB_BUILD": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to support GitHub build triggers. Defaults to False"
-    },
     "SUPER_USERS": {
       "uniqueItems": true,
       "items": { "type": "string" },
@@ -386,36 +380,6 @@
       "type": ["number", "null"],
       "description": "If not None, the default maximum number of builds that can be queued in a namespace."
     },
-    "GITHUB_TRIGGER_CONFIG": {
-      "properties": {
-        "API_ENDPOINT": {
-          "x-example": "https://api.github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com"
-        },
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        },
-        "GITHUB_ENDPOINT": {
-          "x-example": "https://github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) being hit"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance; cannot be shared with GITHUB_LOGIN_CONFIG",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        }
-      },
-      "required": ["GITHUB_ENDPOINT", "CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using GitHub (Enterprise) for build triggers",
-      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-build.html"
-    },
     "FEATURE_PARTIAL_USER_AUTOCOMPLETE": {
       "x-example": true,
       "type": "boolean",
@@ -437,47 +401,6 @@
           "description": "The registered client ID for this Quay instance"
         }
       }
-    },
-    "GITHUB_LOGIN_CONFIG": {
-      "properties": {
-        "ALLOWED_ORGANIZATIONS": {
-          "uniqueItems": true,
-          "items": { "type": "string" },
-          "type": "array",
-          "description": "The names of the GitHub (Enterprise) organizations whitelisted to work with the ORG_RESTRICT option"
-        },
-        "ORG_RESTRICT": {
-          "x-example": true,
-          "type": "boolean",
-          "description": "If true, only users within the organization whitelist can login using this provider"
-        },
-        "API_ENDPOINT": {
-          "x-example": "https://api.github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com"
-        },
-        "GITHUB_ENDPOINT": {
-          "x-example": "https://github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) being hit"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance; cannot be shared with GITHUB_TRIGGER_CONFIG",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        },
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        }
-      },
-      "required": ["CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using GitHub (Enterprise) as an external login provider",
-      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-auth.html"
     },
     "FEATURE_CHANGE_TAG_EXPIRATION": {
       "x-example": false,

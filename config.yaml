@@ -1,6 +1,14 @@
 AUTHENTICATION_TYPE: "Database"
 FEATURE_GITHUB_LOGIN: false
 FEATURE_BUILD_SUPPORT: true
+FEATURE_GITHUB_BUILD: true
+GITHUB_TRIGGER_CONFIG:
+  CLIENT_SECRET: "hello"
+  GITHUB_ENDPOINT: "http://google.com"
+  CLIENT_ID: "hello"
+  ORG_RESTRICT: true
+  ALLOWED_ORGANIZATIONS:
+    - ""
 FEATURE_BITBUCKET_BUILD: true
 BITBUCKET_TRIGGER_CONFIG:
   CONSUMER_KEY: A39bvHgf3ZJxdvAXyS
@@ -11,13 +19,13 @@ BRANDING:
   footer_url: "u"
 FEATURE_DIRECT_LOGIN: true
 DB_URI: mysql://sql9351936:kBCXc7eizT@sql9.freesqldatabase.com:3306/sql9351936
-DOCUMENTATION_ROOT: "hi/there?"
+DOCUMENTATION_ROOT: "/documentation"
 CONTACT_INFO:
   - "mailto:jonathankingfc@gmail.com"
-
+LOGS_MODEL: "elasticsearch"
 LOGS_MODEL_CONFIG:
   elasticsearch_config:
     access_key: elastic
-    access_secret: nf567zCQgIVMrDvDGIpIHScG
+    secret_key: nf567zCQgIVMrDvDGIpIHScG
     host: bfd70499058e4485854f8bacf06af627.us-central1.gcp.cloud.es.io
     port: 9243

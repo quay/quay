@@ -11,6 +11,7 @@ require (
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
 	github.com/lib/pq v1.0.0
+	github.com/markbates/goth v1.64.2
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/olekukonko/tablewriter v0.0.5-0.20200416053754-163badb3bac6
 	github.com/qri-io/jsonschema v0.2.0

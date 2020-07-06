@@ -15,7 +15,8 @@ func TestValidateDatabase(t *testing.T) {
 	}{
 
 		{name: "dbURIMissing", config: map[string]interface{}{}, want: "invalid"},
-		{name: "dbURIBadFormat", config: map[string]interface{}{"DB_URI": ""}, want: "invalid"},
+		{name: "dbURIMissing", config: map[string]interface{}{"DB_URI": ""}, want: "invalid"},
+		{name: "dbURIInvalid", config: map[string]interface{}{"DB_URI": "not a url"}, want: "invalid"},
 		{name: "dbURIEmpty", config: map[string]interface{}{"DB_URI": "mysql://sql9351936:kBCXc7eizT@sql9.freesqldatabase.com:3306/sql9351936"}, want: "valid"},
 	}
 

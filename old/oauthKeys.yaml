@@ -1,0 +1,10 @@
+BITBUCKET_TRIGGER_CONFIG:
+  CONSUMER_KEY: A39bvHgf3ZJxdvAXyS
+  CONSUMER_SECRET: VtqYfxbjDNFUsYbsU3vcTTqbyGxbGvYf
+
+LOGS_MODEL_CONFIG:
+  elasticsearch_config:
+    access_key: elastic
+    access_secret: nf567zCQgIVMrDvDGIpIHScG
+    host: bfd70499058e4485854f8bacf06af627.us-central1.gcp.cloud.es.io
+    port: 9243

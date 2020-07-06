@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"runtime"
 	"sort"
@@ -91,7 +92,7 @@ func createFieldGroups(configDef ConfigDefinition) error {
 	for fgName, fields := range configDef {
 
 		// Create file for field group
-		f := jen.NewFile("fieldgroups")
+		f := jen.NewFile(fgName)
 
 		// Import statements based on presence
 		f.ImportName("github.com/creasty/defaults", "defaults")
@@ -143,12 +144,20 @@ func createFieldGroups(configDef ConfigDefinition) error {
 		// 	jen.Return(jen.Nil()),
 		// )
 
+		// check if folder exists
+
 		// Define outputfile name
-		outfile := strings.ToLower(fgName + ".go")
-		outfilePath := getFullOutputPath(outfile)
-		if err := f.Save(outfilePath); err != nil {
-			return err
+		packagePath := getFullOutputPath(fgName)
+		if _, err := os.Stat(packagePath); os.IsNotExist(err) {
+			fmt.Println("Making package " + fgName)
+			os.Mkdir(packagePath, os.ModeDir)
 		}
+
+		// outfile := strings.ToLower(fgName + ".go")
+		// outfilePath := getFullOutputPath(outfile)
+		// if err := f.Save(outfilePath); err != nil {
+		// 	return err
+		// }
 
 	}
 	return nil
