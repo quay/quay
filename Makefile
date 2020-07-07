@@ -76,7 +76,7 @@ clients-test:
 	cd test/clients; python clients_test.py
 
 types-test:
-	mypy --py2 .
+	mypy .
 
 test: unit-test registry-test registry-test-old certs-test
 
