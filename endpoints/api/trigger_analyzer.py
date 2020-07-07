@@ -29,7 +29,7 @@ def is_parent(context, dockerfile_path):
     return normalized_subdir.startswith(normalized_context)
 
 
-class TriggerAnalyzer:
+class TriggerAnalyzer(object):
     """
     This analyzes triggers and returns the appropriate trigger and robot view to the frontend.
     """
@@ -110,7 +110,10 @@ class TriggerAnalyzer:
 
         # If the repository is private and the user cannot see that repo, then
         # mark it as not found.
-        can_read = permissions.ReadRepositoryPermission(base_namespace, base_repository)
+        can_read = False
+        if base_namespace == self.namespace_name:
+            can_read = permissions.ReadRepositoryPermission(base_namespace, base_repository)
+
         if found_repository.visibility.name != "public" and not can_read:
             return self.analyze_view(
                 self.namespace_name,
@@ -127,7 +130,7 @@ class TriggerAnalyzer:
     def analyze_view(self, image_namespace, image_repository, status, message=None):
         # Retrieve the list of robots and mark whether they have read access already.
         robots = []
-        if self.admin_org_permission:
+        if self.admin_org_permission and self.namespace_name == image_namespace:
             if image_repository is not None:
                 perm_query = model.user.get_all_repo_users_transitive(
                     image_namespace, image_repository
@@ -137,15 +140,20 @@ class TriggerAnalyzer:
                 user_ids_with_permission = set()
 
             def robot_view(robot):
-                return {
+                assert robot.username.startswith(self.namespace_name + "+"), (
+                    "Expected robot under namespace %s, Found: %s"
+                    % (self.namespace_name, robot.username)
+                )
+                result = {
                     "name": robot.username,
                     "kind": "user",
                     "is_robot": True,
                     "can_read": robot.id in user_ids_with_permission,
                 }
+                return result
 
             robots = [
-                robot_view(robot) for robot in model.user.list_namespace_robots(image_namespace)
+                robot_view(robot) for robot in model.user.list_namespace_robots(self.namespace_name)
             ]
 
         return {
