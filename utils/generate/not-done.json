@@ -46,11 +46,7 @@
       "type": "boolean",
       "description": "Whether non-encrypted passwords (as opposed to encrypted tokens) can be used for basic auth. Defaults to False"
     },
-    "FEATURE_USER_LOG_ACCESS": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If set to true, users will have access to audit logs for their namespace. Defaults to False"
-    },
+
     "ENABLE_HEALTH_DEBUG_SECRET": {
       "x-example": "somesecrethere",
       "type": ["string", "null"],
@@ -106,38 +102,7 @@
       "type": "boolean",
       "description": "Whether to enable conversion to ACIs. Defaults to False"
     },
-    "GITLAB_TRIGGER_CONFIG": {
-      "required": ["GITLAB_ENDPOINT", "CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using Gitlab (Enterprise) for external authentication",
-      "properties": {
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance"
-        },
-        "GITLAB_ENDPOINT": {
-          "x-example": "https://gitlab.com",
-          "type": "string",
-          "description": "The endpoint at which Gitlab(Enterprise) is running"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance"
-        }
-      }
-    },
-    "FEATURE_USER_LAST_ACCESSED": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "Whether to record the last time a user was accessed. Defaults to True"
-    },
-    "FEATURE_USERNAME_CONFIRMATION": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "If set to true, users can confirm their generated usernames. Defaults to True"
-    },
+
     "FEATURE_SECURITY_NOTIFICATIONS": {
       "x-example": false,
       "type": "boolean",
@@ -148,11 +113,7 @@
       "type": ["string", "null"],
       "description": "Duration of time expired external app tokens will remain before being garbage collected. Defaults to 1d."
     },
-    "FEATURE_ANONYMOUS_ACCESS": {
-      "x-example": true,
-      "type": "boolean",
-      "description": " Whether to allow anonymous users to browse and pull public repositories. Defaults to True"
-    },
+
     "BLACKLISTED_EMAIL_DOMAINS": {
       "x-example": ["example.com", "example.org"],
       "type": "array",
@@ -179,11 +140,7 @@
       "type": "string",
       "description": "The URL scheme to use when hitting Quay. If Quay is behind SSL *at all*, this *must* be `https`"
     },
-    "FEATURE_USER_RENAME": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If set to true, users can rename their own namespace. Defaults to False"
-    },
+
     "SUCCESSIVE_TRIGGER_FAILURE_DISABLE_THRESHOLD": {
       "x-example": 50,
       "type": ["number", "null"],
@@ -215,11 +172,7 @@
       "type": ["string", "null"],
       "description": "The expiration for external app tokens. Defaults to None."
     },
-    "FEATURE_USER_METADATA": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to collect and support user metadata. Defaults to False"
-    },
+
     "SERVER_HOSTNAME": {
       "x-example": "quay.io",
       "type": "string",
@@ -272,11 +225,7 @@
       "type": "boolean",
       "description": "Whether to allow exporting of action logs. Defaults to True"
     },
-    "FEATURE_MAILING": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "Whether emails are enabled. Defaults to True"
-    },
+
     "ACTION_LOG_ROTATION_THRESHOLD": {
       "x-example": "30d",
       "type": "string",
@@ -319,17 +268,7 @@
       "type": "boolean",
       "description": "Whether the v2/ endpoint is visible. Defaults to True"
     },
-    "USER_RECOVERY_TOKEN_LIFETIME": {
-      "x-example": "10m",
-      "type": "string",
-      "description": "The length of time a token for recovering a user accounts is valid. Defaults to 30m.",
-      "pattern": "^[0-9]+(w|m|d|h|s)$"
-    },
-    "FRESH_LOGIN_TIMEOUT": {
-      "x-example": "5m",
-      "type": "string",
-      "description": "The time after which a fresh login requires users to reenter their password"
-    },
+
     "USERFILES_PATH": {
       "x-example": "userfiles",
       "type": "string",
@@ -380,28 +319,7 @@
       "type": ["number", "null"],
       "description": "If not None, the default maximum number of builds that can be queued in a namespace."
     },
-    "FEATURE_PARTIAL_USER_AUTOCOMPLETE": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If set to true, autocompletion will apply to partial usernames. Defaults to True"
-    },
-    "GOOGLE_LOGIN_CONFIG": {
-      "required": ["CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using Google for external authentication",
-      "properties": {
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance"
-        }
-      }
-    },
+
     "FEATURE_CHANGE_TAG_EXPIRATION": {
       "x-example": false,
       "type": "boolean",
@@ -424,28 +342,7 @@
       ],
       "description": "The configured health check."
     },
-    "BUILDLOGS_REDIS": {
-      "required": ["host"],
-      "type": "object",
-      "description": "Connection information for Redis for build logs caching",
-      "properties": {
-        "host": {
-          "x-example": "my.redis.cluster",
-          "type": "string",
-          "description": "The hostname at which Redis is accessible"
-        },
-        "password": {
-          "x-example": "mypassword",
-          "type": "string",
-          "description": "The password to connect to the Redis instance"
-        },
-        "port": {
-          "x-example": 1234,
-          "type": "number",
-          "description": "The port at which Redis is accessible"
-        }
-      }
-    },
+
     "REPO_MIRROR_SERVER_HOSTNAME": {
       "x-example": "openshift-quay-service",
       "type": "string",
@@ -463,11 +360,6 @@
       "type": "array",
       "description": "If specified, the nginx-defined list of SSL ciphers to enabled and disabled",
       "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_ciphers"
-    },
-    "FEATURE_GITLAB_BUILD": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to support GitLab build triggers. Defaults to False"
     },
     "DEFAULT_TAG_EXPIRATION": {
       "pattern": "^[0-9]+(w|m|d|h|s)$",
@@ -489,28 +381,6 @@
       "x-example": true,
       "type": "boolean",
       "description": "Whether to App repositories are read-only. Defaults to False"
-    },
-    "USER_EVENTS_REDIS": {
-      "required": ["host"],
-      "type": "object",
-      "description": "Connection information for Redis for user event handling",
-      "properties": {
-        "host": {
-          "x-example": "my.redis.cluster",
-          "type": "string",
-          "description": "The hostname at which Redis is accessible"
-        },
-        "password": {
-          "x-example": "mypassword",
-          "type": "string",
-          "description": "The password to connect to the Redis instance"
-        },
-        "port": {
-          "x-example": 1234,
-          "type": "number",
-          "description": "The port at which Redis is accessible"
-        }
-      }
     }
   }
 }

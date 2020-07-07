@@ -1,3 +1,0 @@
-curl -X POST -u "A39bvHgf3ZJxdvAXyS:VtqYfxbjDNFUsYbsU3vcTTqbyGxbGvYf" \
-  https://bitbucket.org/site/oauth2/access_token \
-  -d grant_type=authorization_code -d code={code}

@@ -7,6 +7,7 @@ require (
 	github.com/creasty/defaults v1.4.0
 	github.com/dave/jennifer v1.4.0
 	github.com/go-playground/validator/v10 v10.3.0
+	github.com/go-redis/redis/v8 v8.0.0-beta.6
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
