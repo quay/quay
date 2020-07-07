@@ -14,10 +14,7 @@ func TestValidateRedis(t *testing.T) {
 		want   string
 	}{
 
-		{name: "NotSpecified", config: map[string]interface{}{}, want: "valid"},
-		{name: "ValidURL", config: map[string]interface{}{"DOCUMENTATION_ROOT": "https://www.fakewebsite.com/docs"}, want: "valid"},
-		{name: "ValidPathURL", config: map[string]interface{}{"DOCUMENTATION_ROOT": "good/path"}, want: "invalid"},
-		{name: "InvalidURL", config: map[string]interface{}{"DOCUMENTATION_ROOT": "not a url"}, want: "invalid"},
+		{name: "NotSpecified", config: map[string]interface{}{}, want: "invalid"},
 	}
 
 	// Iterate through tests

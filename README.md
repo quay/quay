@@ -29,151 +29,35 @@ The CLI tool contains two main commands:
 
 ```
 {
-        "AccessSettings": (*accesssettings.AccessSettingsFieldGroup)({
-                AuthenticationType: "InvalidType",
-                FeatureAnonymousAccess: true,
-                FeatureDirectLogin: false,
-                FeatureGithubLogin: false,
-                FeatureGoogleLogin: true,
-                FeatureInviteOnlyUserCreation: false,
-                FeaturePartialUserAutocomplete: true,
-                FeatureUsernameConfirmation: true,
-                FeatureUserCreation: true,
-                FeatureUserLastAccessed: true,
-                FeatureUserLogAccess: false,
-                FeatureUserMetadata: false,
-                FeatureUserRename: false,
-                FreshLoginTimeout: "10m",
-                UserRecoveryTokenLifetime: "30m"
+        "HostSettings": (*fieldgroups.HostSettingsFieldGroup)({
+                ServerHostname: "quay:8081",
+                PreferredURLScheme: "https",
+                ExternalTLSTermination: false
         }),
-        "ActionLogArchiving": (*actionlogarchiving.ActionLogArchivingFieldGroup)({
-                ActionLogArchiveLocation: "aws_bucket",
-                ActionLogArchivePath: "path/to/path",
-                DistributedStorageConfig: (*actionlogarchiving.DistributedStorageConfigStruct)({
-                        "LocalStorage": {
-                                ["aws", "path/to/storage"
-                        },
-
-                }),
-                FeatureActionLogRotation: true
-        }),
-        "AppTokenAuthentication": (*apptokenauthentication.AppTokenAuthenticationFieldGroup)({
-                AuthenticationType: "InvalidType",
-                FeatureAppSpecificTokens: true,
-                FeatureDirectLogin: false
-        }),
-        "BitbucketBuildTrigger": (*bitbucketbuildtrigger.BitbucketBuildTriggerFieldGroup)({
-                BitbucketTriggerConfig: (*bitbucketbuildtrigger.BitbucketTriggerConfigStruct)({
-                        ConsumerSecret: "client_seccret",
-                        ConsumerKey: "client_id"
-                }),
-                FeatureBitbucketBuild: true,
-                FeatureBuildSupport: true
-        }),
-        "Database": (*database.DatabaseFieldGroup)({
-                DbConnectionArgs: (*database.DbConnectionArgsStruct)(<nil>),
-                DbUri: "mysql://user:pass@host:port/db_name"
-        }),
-        "ElasticSearch": (*elasticsearch.ElasticSearchFieldGroup)({
-                LogsModel: "elasticsearch",
-                LogsModelConfig: (*elasticsearch.LogsModelConfigStruct)({
-                        ElasticsearchConfig: (*elasticsearch.ElasticsearchConfigStruct)({
-                                AwsRegion: "",
-                                Port: 9243,
-                                AccessKey: "elastic",
-                                Host: "bfd70499058e4485854f8bacf06af627.us-central1.gcp.cloud.es.io",
-                                IndexPrefix: "logentry_",
-                                IndexSettings: (*elasticsearch.IndexSettingsStruct)(<nil>),
-                                UseSsl: true,
-                                SecretKey: "client_secret"
-                        }),
-                        KinesisStreamConfig: (*elasticsearch.KinesisStreamConfigStruct)(<nil>),
-                        Producer: "",
-                        KafkaConfig: (*elasticsearch.KafkaConfigStruct)(<nil>)
-                })
-        }),
-        "GitHubBuildTrigger": (*githubbuildtrigger.GitHubBuildTriggerFieldGroup)({
-                FeatureBuildSupport: true,
-                FeatureGithubBuild: true,
-                GithubTriggerConfig: (*githubbuildtrigger.GithubTriggerConfigStruct)({
-                        OrgRestrict: false,
-                        ApiEndpoint: "",
-                        ClientSecret: "client_secret",
-                        GithubEndpoint: "https://www.google.com",
-                        ClientId: "client_id",
-                        AllowedOrganizations: {
-                        }
-                })
-        }),
-        "GitHubLogin": (*githublogin.GitHubLoginFieldGroup)({
-                FeatureGithubLogin: false,
-                GithubLoginConfig: (*githublogin.GithubLoginConfigStruct)(<nil>)
-        }),
-        "GitLabBuildTrigger": (*gitlabbuildtrigger.GitLabBuildTriggerFieldGroup)({
-                FeatureBuildSupport: true,
-                FeatureGitlabBuild: true,
-                GitlabTriggerConfig: (*gitlabbuildtrigger.GitlabTriggerConfigStruct)({
-                        ClientSecret: "client_secret",
-                        GitlabEndpoint: "https://google.com",
-                        ClientId: "client_id"
-                })
-        }),
-        "GoogleLogin": (*googlelogin.GoogleLoginFieldGroup)({
-                FeatureGoogleLogin: true,
-                GoogleLoginConfig: (*googlelogin.GoogleLoginConfigStruct)({
-                        ClientSecret: "client_secret",
-                        ClientId: "client_id"
-                })
-        }),
-        "JWTAuthentication": (*jwtauthentication.JWTAuthenticationFieldGroup)({
-                AuthenticationType: "green",
-                FeatureMailing: true,
-                JwtAuthIssuer: "",
-                JwtGetuserEndpoint: "",
-                JwtQueryEndpoint: "",
-                JwtVerifyEndpoint: ""
-        }),
-        "QuayDocumentation": (*quaydocumentation.QuayDocumentationFieldGroup)({
-                DocumentationRoot: "/documentation"
-        }),
-        "Redis": (*redis.RedisFieldGroup)({
-                BuildlogsRedis: (*redis.BuildlogsRedisStruct)(<nil>),
-                UserEventsRedis: (*redis.UserEventsRedisStruct)(<nil>)
-        }),
-        "SecurityScanner": (*securityscanner.SecurityScannerFieldGroup)({
-                FeatureSecurityScanner: true,
-                SecurityScannerEndpoint: "htp://google.com",
-                SecurityScannerIndexingInterval: 30,
-                SecurityScannerNotifications: false,
-                SecurityScannerV4Endpoint: "https://this-is-a-fake-website.com/",
-                SecurityScannerV4NamespaceWhitelist: {
+        "TagExpiration": (*fieldgroups.TagExpirationFieldGroup)({
+                FeatureChangeTagExpiration: false,
+                DefaultTagExpiration: "2w",
+                TagExpirationOptions: {
+                        "0s",
+                        "1d",
+                        "1w",
+                        "2w",
+                        "4w"
                 }
         }),
-        "SigningEngine": (*signingengine.SigningEngineFieldGroup)({
-                Gpg2PrivateKeyFilename: "",
-                Gpg2PrivateKeyName: "",
-                Gpg2PublicKeyFilename: "",
-                SigningEngine: ""
-        }),
-        "TeamSyncing": (*teamsyncing.TeamSyncingFieldGroup)({
-                FeatureNonsuperuserTeamSyncingSetup: false,
-                FeatureTeamSyncing: false,
-                TeamResyncStaleTime: "30m"
-        }),
-        "UserVisibleSettings": (*uservisiblesettings.UserVisibleSettingsFieldGroup)({
-                AvatarKind: "local",
-                Branding: (*uservisiblesettings.BrandingStruct)({
-                        Logo: "logo.svg",
-                        FooterImg: "footer.svg",
-                        FooterUrl: "footer_url.svg"
-                }),
-                ContactInfo: {
-                        "mailto:joking@redhat.com"
-                },
+        "UserVisibleSettings": (*fieldgroups.UserVisibleSettingsFieldGroup)({
                 RegistryTitle: "Project Quay",
                 RegistryTitleShort: "Project Quay",
+                SearchResultsPerPage: 10,
                 SearchMaxResultPageCount: 10,
-                SearchResultsPerPage: 10
+                ContactInfo: {
+                },
+                AvatarKind: "local",
+                Branding: (*fieldgroups.BrandingStruct)({
+                        Logo: "not_a_url",
+                        FooterIMG: "also_not_a_url",
+                        FooterURL: ""
+                })
         })
 }
 ```
@@ -182,35 +66,12 @@ The CLI tool contains two main commands:
 
 ```
 $ config-tool validate -c <path-to-config.yaml>
------------------------------------------------------------------------------+--------+
-| BitbucketBuildTrigger  | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| Database               | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| ElasticSearch          | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| GitHubBuildTrigger     | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| GitHubLogin            | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| GitLabBuildTrigger     | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| GoogleLogin            | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| JWTAuthentication      | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| QuayDocumentation      | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| Redis                  | BUILD_LOGS_REDIS is required                                                 | 🔴     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| SecurityScanner        | Cannot reach htp://google.com                                                | 🔴     |
-+                        +------------------------------------------------------------------------------+--------+
-|                        | Cannot reach https://this-is-a-fake-website.com/                             | 🔴     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| SigningEngine          | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| TeamSyncing            | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
-| UserVisibleSettings    | -                                                                            | 🟢     |
-+------------------------+------------------------------------------------------------------------------+--------+
++---------------------+--------------------+-------------------------+--------+
+|     FIELD GROUP     |       FIELD        |          ERROR          | STATUS |
++---------------------+--------------------+-------------------------+--------+
+| HostSettings        | -                  | -                       | 🟢     |
+| TagExpiration       | -                  | -                       | 🟢     |
+| UserVisibleSettings | BRANDING.Logo      | Field enforces tag: url | 🔴     |
+|                     | BRANDING.FooterIMG | Field enforces tag: url | 🔴     |
++---------------------+--------------------+-------------------------+--------+
 ```
