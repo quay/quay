@@ -1,4 +1,4 @@
-all: generate install
+all: 
 
 generate: 
 	go run ./utils/generate/gen.go

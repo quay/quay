@@ -11,17 +11,12 @@ This tool includes the following features:
 
 ## Installation
 
-Clone this repository:
+Install using the Go tool:
 
 ```
-git clone github.com/quay/config-tool
-cd config-tool
+go get -u github.com/quay/config-tool/...
 ```
 
-Generate files and install from source:
-
-```
-make
 ```
 
 This will generate files for the Quay validator executable and install the `config-tool` CLI tool.
@@ -35,50 +30,56 @@ The CLI tool contains two main commands:
 #### The `print` command is used to output the entire configuration with defaults specified
 
 ```
+
 {
-        "HostSettings": (*fieldgroups.HostSettingsFieldGroup)({
-                ServerHostname: "quay:8081",
-                PreferredURLScheme: "https",
-                ExternalTLSTermination: false
-        }),
-        "TagExpiration": (*fieldgroups.TagExpirationFieldGroup)({
-                FeatureChangeTagExpiration: false,
-                DefaultTagExpiration: "2w",
-                TagExpirationOptions: {
-                        "0s",
-                        "1d",
-                        "1w",
-                        "2w",
-                        "4w"
-                }
-        }),
-        "UserVisibleSettings": (*fieldgroups.UserVisibleSettingsFieldGroup)({
-                RegistryTitle: "Project Quay",
-                RegistryTitleShort: "Project Quay",
-                SearchResultsPerPage: 10,
-                SearchMaxResultPageCount: 10,
-                ContactInfo: {
-                },
-                AvatarKind: "local",
-                Branding: (*fieldgroups.BrandingStruct)({
-                        Logo: "not_a_url",
-                        FooterIMG: "also_not_a_url",
-                        FooterURL: ""
-                })
-        })
+"HostSettings": (*fieldgroups.HostSettingsFieldGroup)({
+ServerHostname: "quay:8081",
+PreferredURLScheme: "https",
+ExternalTLSTermination: false
+}),
+"TagExpiration": (*fieldgroups.TagExpirationFieldGroup)({
+FeatureChangeTagExpiration: false,
+DefaultTagExpiration: "2w",
+TagExpirationOptions: {
+"0s",
+"1d",
+"1w",
+"2w",
+"4w"
 }
+}),
+"UserVisibleSettings": (*fieldgroups.UserVisibleSettingsFieldGroup)({
+RegistryTitle: "Project Quay",
+RegistryTitleShort: "Project Quay",
+SearchResultsPerPage: 10,
+SearchMaxResultPageCount: 10,
+ContactInfo: {
+},
+AvatarKind: "local",
+Branding: (*fieldgroups.BrandingStruct)({
+Logo: "not_a_url",
+FooterIMG: "also_not_a_url",
+FooterURL: ""
+})
+})
+}
+
 ```
 
 #### The `validate` command is used to show while field groups have been validated succesully
 
 ```
-$ config-tool validate -c <path-to-config.yaml>
+
+\$ config-tool validate -c <path-to-config.yaml>
 +---------------------+--------------------+-------------------------+--------+
-|     FIELD GROUP     |       FIELD        |          ERROR          | STATUS |
+| FIELD GROUP | FIELD | ERROR | STATUS |
 +---------------------+--------------------+-------------------------+--------+
-| HostSettings        | -                  | -                       | 🟢     |
-| TagExpiration       | -                  | -                       | 🟢     |
-| UserVisibleSettings | Branding.Logo      | Field enforces tag: url | 🔴     |
-|                     | Branding.FooterIMG | Field enforces tag: url | 🔴     |
+| HostSettings | - | - | 🟢 |
+| TagExpiration | - | - | 🟢 |
+| UserVisibleSettings | Branding.Logo | Field enforces tag: url | 🔴 |
+| | Branding.FooterIMG | Field enforces tag: url | 🔴 |
 +---------------------+--------------------+-------------------------+--------+
+
+```
+
 ```

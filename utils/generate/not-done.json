@@ -46,11 +46,7 @@
       "type": "boolean",
       "description": "Whether non-encrypted passwords (as opposed to encrypted tokens) can be used for basic auth. Defaults to False"
     },
-    "FEATURE_USER_LOG_ACCESS": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If set to true, users will have access to audit logs for their namespace. Defaults to False"
-    },
+
     "ENABLE_HEALTH_DEBUG_SECRET": {
       "x-example": "somesecrethere",
       "type": ["string", "null"],
@@ -92,17 +88,10 @@
       "type": "boolean",
       "description": "Whether garbage collection of repositories is enabled. Defaults to True"
     },
-
     "FEATURE_PUBLIC_CATALOG": {
       "x-example": false,
       "type": "boolean",
       "description": "If set to true, the _catalog endpoint returns public repositories. Otherwise, only private repositories can be returned. Defaults to False"
-    },
-    "LOGS_MODEL": {
-      "x-example": "database",
-      "enum": ["database", "transition_reads_both_writes_es", "elasticsearch"],
-      "type": "string",
-      "description": "Logs model for action logs"
     },
     "RECAPTCHA_SECRET_KEY": {
       "type": ["string", "null"],
@@ -113,56 +102,7 @@
       "type": "boolean",
       "description": "Whether to enable conversion to ACIs. Defaults to False"
     },
-    "GITLAB_TRIGGER_CONFIG": {
-      "required": ["GITLAB_ENDPOINT", "CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using Gitlab (Enterprise) for external authentication",
-      "properties": {
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance"
-        },
-        "GITLAB_ENDPOINT": {
-          "x-example": "https://gitlab.com",
-          "type": "string",
-          "description": "The endpoint at which Gitlab(Enterprise) is running"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance"
-        }
-      }
-    },
-    "FEATURE_USER_LAST_ACCESSED": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "Whether to record the last time a user was accessed. Defaults to True"
-    },
-    "BITBUCKET_TRIGGER_CONFIG": {
-      "properties": {
-        "CONSUMER_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered consumer secret (client secret) for this Quay instance"
-        },
-        "CONSUMER_KEY": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered consumer key (client ID) for this Quay instance"
-        }
-      },
-      "required": ["CONSUMER_KEY", "CONSUMER_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using BitBucket for build triggers",
-      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/bitbucket-build.html"
-    },
-    "FEATURE_USERNAME_CONFIRMATION": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "If set to true, users can confirm their generated usernames. Defaults to True"
-    },
+
     "FEATURE_SECURITY_NOTIFICATIONS": {
       "x-example": false,
       "type": "boolean",
@@ -173,17 +113,12 @@
       "type": ["string", "null"],
       "description": "Duration of time expired external app tokens will remain before being garbage collected. Defaults to 1d."
     },
-    "FEATURE_ANONYMOUS_ACCESS": {
-      "x-example": true,
-      "type": "boolean",
-      "description": " Whether to allow anonymous users to browse and pull public repositories. Defaults to True"
-    },
+
     "BLACKLISTED_EMAIL_DOMAINS": {
       "x-example": ["example.com", "example.org"],
       "type": "array",
       "description": "The array of email-address domains that is used if FEATURE_BLACKLISTED_EMAILS is set to true."
     },
-
     "FEATURE_APP_REGISTRY": {
       "x-example": false,
       "type": "boolean",
@@ -205,11 +140,7 @@
       "type": "string",
       "description": "The URL scheme to use when hitting Quay. If Quay is behind SSL *at all*, this *must* be `https`"
     },
-    "FEATURE_USER_RENAME": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If set to true, users can rename their own namespace. Defaults to False"
-    },
+
     "SUCCESSIVE_TRIGGER_FAILURE_DISABLE_THRESHOLD": {
       "x-example": 50,
       "type": ["number", "null"],
@@ -236,43 +167,12 @@
       "type": "boolean",
       "description": "If TLS is supported, but terminated at a layer before Quay, must be true."
     },
-    "DB_CONNECTION_ARGS": {
-      "required": ["threadlocals", "autorollback"],
-      "type": "object",
-      "description": "If specified, connection arguments for the database such as timeouts and SSL.",
-      "properties": {
-        "ssl": {
-          "required": ["ca"],
-          "type": "object",
-          "description": "SSL connection configuration",
-          "properties": {
-            "ca": {
-              "x-example": "conf/stack/ssl-ca-cert.pem",
-              "type": "string",
-              "description": "*Absolute container path* to the CA certificate to use for SSL connections"
-            }
-          }
-        },
-        "threadlocals": {
-          "type": "boolean",
-          "description": "Whether to use thread-local connections. Should *ALWAYS* be `true`"
-        },
-        "autorollback": {
-          "type": "boolean",
-          "description": "Whether to use auto-rollback connections. Should *ALWAYS* be `true`"
-        }
-      }
-    },
     "APP_SPECIFIC_TOKEN_EXPIRATION": {
       "pattern": "^[0-9]+(w|m|d|h|s)$",
       "type": ["string", "null"],
       "description": "The expiration for external app tokens. Defaults to None."
     },
-    "FEATURE_USER_METADATA": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to collect and support user metadata. Defaults to False"
-    },
+
     "SERVER_HOSTNAME": {
       "x-example": "quay.io",
       "type": "string",
@@ -315,12 +215,6 @@
       "type": ["string", "null"],
       "description": "The SMTP password to use when sending e-mails."
     },
-    "DB_URI": {
-      "x-example": "mysql+pymysql://username:password@dns.of.database/quay",
-      "type": "string",
-      "description": "The URI at which to access the database, including any credentials.",
-      "x-reference": "https://www.postgresql.org/docs/9.3/static/libpq-connect.html#AEN39495"
-    },
     "MAIL_PORT": {
       "x-example": 588,
       "type": "number",
@@ -331,137 +225,7 @@
       "type": "boolean",
       "description": "Whether to allow exporting of action logs. Defaults to True"
     },
-    "FEATURE_MAILING": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "Whether emails are enabled. Defaults to True"
-    },
-    "LOGS_MODEL_CONFIG": {
-      "properties": {
-        "elasticsearch_config": {
-          "type": "object",
-          "description": "Elasticsearch cluster configuration",
-          "properties": {
-            "access_key": {
-              "x-example": "some_string",
-              "type": "string",
-              "description": "Elasticsearch user (or IAM key for AWS ES)"
-            },
-            "host": {
-              "x-example": "host.elasticsearch.example",
-              "type": "string",
-              "description": "Elasticsearch cluster endpoint"
-            },
-            "index_prefix": {
-              "x-example": "logentry_",
-              "type": "string",
-              "description": "Elasticsearch's index prefix"
-            },
-            "index_settings": {
-              "type": "object",
-              "description": "Elasticsearch's index settings"
-            },
-            "use_ssl": {
-              "x-example": true,
-              "type": "boolean",
-              "description": "Use ssl for Elasticsearch. Defaults to True"
-            },
-            "secret_key": {
-              "x-example": "some_secret_string",
-              "type": "string",
-              "description": "Elasticsearch password (or IAM secret for AWS ES)"
-            },
-            "aws_region": {
-              "x-example": "us-east-1",
-              "type": "string",
-              "description": "Amazon web service region"
-            },
-            "port": {
-              "x-example": 1234,
-              "type": "number",
-              "description": "Elasticsearch cluster endpoint port"
-            }
-          }
-        },
-        "kinesis_stream_config": {
-          "type": "object",
-          "description": "AWS Kinesis Stream configuration",
-          "properties": {
-            "aws_secret_key": {
-              "x-example": "some_secret_key",
-              "type": "string",
-              "description": "AWS secret key"
-            },
-            "stream_name": {
-              "x-example": "logentry-kinesis-stream",
-              "type": "string",
-              "description": "Kinesis stream to send action logs to"
-            },
-            "aws_access_key": {
-              "x-example": "some_access_key",
-              "type": "string",
-              "description": "AWS access key"
-            },
-            "retries": {
-              "x-example": 5,
-              "type": "number",
-              "description": "Max number of attempts made on a single request"
-            },
-            "read_timeout": {
-              "x-example": 5,
-              "type": "number",
-              "description": "Number of seconds before timeout when reading from a connection"
-            },
-            "max_pool_connections": {
-              "x-example": 10,
-              "type": "number",
-              "description": "The maximum number of connections to keep in a connection pool"
-            },
-            "aws_region": {
-              "x-example": "us-east-1",
-              "type": "string",
-              "description": "AWS region"
-            },
-            "connect_timeout": {
-              "x-example": 5,
-              "type": "number",
-              "description": "Number of seconds before timeout when attempting to make a connection"
-            }
-          }
-        },
-        "producer": {
-          "x-example": "kafka",
-          "enum": ["kafka", "elasticsearch", "kinesis_stream"],
-          "type": "string",
-          "description": "Logs producer if logging to Elasticsearch"
-        },
-        "kafka_config": {
-          "type": "object",
-          "description": "Kafka cluster configuration",
-          "properties": {
-            "topic": {
-              "x-example": "logentry",
-              "type": "string",
-              "description": "Kafka topic to publish log entries to"
-            },
-            "bootstrap_servers": {
-              "uniqueItems": true,
-              "items": { "type": "string" },
-              "type": "array",
-              "description": "List of Kafka brokers to bootstrap the client from"
-            },
-            "max_block_seconds": {
-              "x-example": 10,
-              "type": "number",
-              "description": "Max number of seconds to block during a `send()`, either because the buffer is full or metadata unavailable"
-            }
-          }
-        }
-      },
-      "type": "object",
-      "description": "Logs model config for action logs",
-      "x-reference": "https://www.elastic.co/guide/en/elasticsearch/guide/master/_index_settings.html"
-    },
+
     "ACTION_LOG_ROTATION_THRESHOLD": {
       "x-example": "30d",
       "type": "string",
@@ -488,11 +252,6 @@
       "description": "Maximum allowed size of an image layer. Defaults to 20G",
       "pattern": "^[0-9]+(G|M)$"
     },
-    "FEATURE_GITHUB_BUILD": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to support GitHub build triggers. Defaults to False"
-    },
     "SUPER_USERS": {
       "uniqueItems": true,
       "items": { "type": "string" },
@@ -509,22 +268,7 @@
       "type": "boolean",
       "description": "Whether the v2/ endpoint is visible. Defaults to True"
     },
-    "FEATURE_BITBUCKET_BUILD": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to support Bitbucket build triggers. Defaults to False"
-    },
-    "USER_RECOVERY_TOKEN_LIFETIME": {
-      "x-example": "10m",
-      "type": "string",
-      "description": "The length of time a token for recovering a user accounts is valid. Defaults to 30m.",
-      "pattern": "^[0-9]+(w|m|d|h|s)$"
-    },
-    "FRESH_LOGIN_TIMEOUT": {
-      "x-example": "5m",
-      "type": "string",
-      "description": "The time after which a fresh login requires users to reenter their password"
-    },
+
     "USERFILES_PATH": {
       "x-example": "userfiles",
       "type": "string",
@@ -575,104 +319,7 @@
       "type": ["number", "null"],
       "description": "If not None, the default maximum number of builds that can be queued in a namespace."
     },
-    "FEATURE_BUILD_SUPPORT": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "Whether to support Dockerfile build. Defaults to True"
-    },
-    "GITHUB_TRIGGER_CONFIG": {
-      "properties": {
-        "API_ENDPOINT": {
-          "x-example": "https://api.github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com"
-        },
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        },
-        "GITHUB_ENDPOINT": {
-          "x-example": "https://github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) being hit"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance; cannot be shared with GITHUB_LOGIN_CONFIG",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        }
-      },
-      "required": ["GITHUB_ENDPOINT", "CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using GitHub (Enterprise) for build triggers",
-      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-build.html"
-    },
-    "FEATURE_PARTIAL_USER_AUTOCOMPLETE": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If set to true, autocompletion will apply to partial usernames. Defaults to True"
-    },
-    "GOOGLE_LOGIN_CONFIG": {
-      "required": ["CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using Google for external authentication",
-      "properties": {
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance"
-        }
-      }
-    },
-    "GITHUB_LOGIN_CONFIG": {
-      "properties": {
-        "ALLOWED_ORGANIZATIONS": {
-          "uniqueItems": true,
-          "items": { "type": "string" },
-          "type": "array",
-          "description": "The names of the GitHub (Enterprise) organizations whitelisted to work with the ORG_RESTRICT option"
-        },
-        "ORG_RESTRICT": {
-          "x-example": true,
-          "type": "boolean",
-          "description": "If true, only users within the organization whitelist can login using this provider"
-        },
-        "API_ENDPOINT": {
-          "x-example": "https://api.github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) API to use. Must be overridden for github.com"
-        },
-        "GITHUB_ENDPOINT": {
-          "x-example": "https://github.com/",
-          "type": "string",
-          "description": "The endpoint of the GitHub (Enterprise) being hit"
-        },
-        "CLIENT_ID": {
-          "x-example": "0e8dbe15c4c7630b6780",
-          "type": "string",
-          "description": "The registered client ID for this Quay instance; cannot be shared with GITHUB_TRIGGER_CONFIG",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        },
-        "CLIENT_SECRET": {
-          "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
-          "type": "string",
-          "description": "The registered client secret for this Quay instance",
-          "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-app.html"
-        }
-      },
-      "required": ["CLIENT_ID", "CLIENT_SECRET"],
-      "type": ["object", "null"],
-      "description": "Configuration for using GitHub (Enterprise) as an external login provider",
-      "x-reference": "https://coreos.com/quay-enterprise/docs/latest/github-auth.html"
-    },
+
     "FEATURE_CHANGE_TAG_EXPIRATION": {
       "x-example": false,
       "type": "boolean",
@@ -696,28 +343,6 @@
       "description": "The configured health check."
     },
 
-    "BUILDLOGS_REDIS": {
-      "required": ["host"],
-      "type": "object",
-      "description": "Connection information for Redis for build logs caching",
-      "properties": {
-        "host": {
-          "x-example": "my.redis.cluster",
-          "type": "string",
-          "description": "The hostname at which Redis is accessible"
-        },
-        "password": {
-          "x-example": "mypassword",
-          "type": "string",
-          "description": "The password to connect to the Redis instance"
-        },
-        "port": {
-          "x-example": 1234,
-          "type": "number",
-          "description": "The port at which Redis is accessible"
-        }
-      }
-    },
     "REPO_MIRROR_SERVER_HOSTNAME": {
       "x-example": "openshift-quay-service",
       "type": "string",
@@ -735,11 +360,6 @@
       "type": "array",
       "description": "If specified, the nginx-defined list of SSL ciphers to enabled and disabled",
       "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_ciphers"
-    },
-    "FEATURE_GITLAB_BUILD": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to support GitLab build triggers. Defaults to False"
     },
     "DEFAULT_TAG_EXPIRATION": {
       "pattern": "^[0-9]+(w|m|d|h|s)$",
@@ -761,51 +381,6 @@
       "x-example": true,
       "type": "boolean",
       "description": "Whether to App repositories are read-only. Defaults to False"
-    },
-    "USER_EVENTS_REDIS": {
-      "required": ["host"],
-      "type": "object",
-      "description": "Connection information for Redis for user event handling",
-      "properties": {
-        "host": {
-          "x-example": "my.redis.cluster",
-          "type": "string",
-          "description": "The hostname at which Redis is accessible"
-        },
-        "password": {
-          "x-example": "mypassword",
-          "type": "string",
-          "description": "The password to connect to the Redis instance"
-        },
-        "port": {
-          "x-example": 1234,
-          "type": "number",
-          "description": "The port at which Redis is accessible"
-        }
-      }
-    },
-    "SECURITY_SCANNER_V4_ENDPOINT": {
-      "pattern": "^http(s)?://(.)+$",
-      "type": "string",
-      "description": "The endpoint for the V4 security scanner",
-      "x-example": "http://192.168.99.101:6060",
-      "ct-default": "",
-      "ct-validate": "",
-      "ct-fieldgroups": {
-        "SecurityScanner": {
-          "ct-validate": "required_with=FeatureSecurityScanner,omitempty,url,customGetHost"
-        }
-      }
-    },
-    "SECURITY_SCANNER_V4_NAMESPACE_WHITELIST": {
-      "type": "array",
-      "description": "The namespaces to which the security scanner should be enabled for",
-      "x-example": ["quay-team", "red hat"],
-      "ct-default": "[]",
-      "ct-validate": "",
-      "ct-fieldgroups": {
-        "SecurityScanner": {}
-      }
     }
   }
 }

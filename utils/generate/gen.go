@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"runtime"
 	"sort"
@@ -43,8 +44,8 @@ type SchemaProperty struct {
 	Items       []struct {
 		Type string `json:"type"`
 	} `json:"items"`
-	FieldGroupData map[string]map[string]interface{} `json:"ct-fieldgroups"`
-	Properties     map[string]SchemaProperty         `json:"properties"`
+	FieldGroups []string                  `json:"ct-fieldgroups"`
+	Properties  map[string]SchemaProperty `json:"properties"`
 }
 
 //go:generate go run gen.go
@@ -65,15 +66,6 @@ func main() {
 
 	// Convert JSON Schema to Config Definiton
 	configDef := jsonSchemaPropertiesToConfigDefinition(jsonSchema)
-
-	spew.Config.Indent = "\t"
-	spew.Config.DisableCapacities = true
-	spew.Config.DisablePointerAddresses = true
-	spew.Config.SortKeys = true
-	spew.Config.DisableMethods = true
-	spew.Config.DisableTypes = true
-	spew.Config.DisableLengths = true
-	spew.Dump(configDef)
 
 	// Create config.go
 	err = createConfigBase(configDef)
@@ -100,11 +92,12 @@ func createFieldGroups(configDef ConfigDefinition) error {
 	for fgName, fields := range configDef {
 
 		// Create file for field group
-		f := jen.NewFile("fieldgroups")
+		f := jen.NewFile(strings.ToLower(fgName))
 
 		// Import statements based on presence
 		f.ImportName("github.com/creasty/defaults", "defaults")
 		f.ImportName("github.com/go-playground/validator/v10", "validator")
+		f.ImportName("github.com/quay/config-tool/pkg/lib/shared", "shared")
 
 		// Struct Definitions
 		structsList := reverseList(generateStructs(fgName, fields, true))
@@ -146,25 +139,62 @@ func createFieldGroups(configDef ConfigDefinition) error {
 			}
 		})
 
-		// Create Validator function
-		f.Comment("Validate checks the configuration settings for this field group")
-		f.Func().Params(jen.Id("fg *"+fgName+"FieldGroup")).Id("Validate").Params().Params(jen.Qual("github.com/go-playground/validator/v10", "ValidationErrors")).Block(
-			jen.Id("validate").Op(":=").Qual("github.com/go-playground/validator/v10", "New").Call(),
-			registerValidators,
-			jen.Id("err").Op(":=").Id("validate").Dot("Struct").Call(jen.Id("fg")),
-			jen.If(jen.Id("err").Op("==").Nil()).Block(
-				jen.Return(jen.Nil()),
-			),
-			jen.Id("validationErrors").Op(":=").Id("err").Assert(jen.Id("validator").Dot("ValidationErrors")),
-			jen.Return(jen.Id("validationErrors")),
+		// Create Validator file
+		v := jen.NewFile(strings.ToLower(fgName))
+		v.ImportName("github.com/quay/config-tool/pkg/lib/shared", "shared")
+		v.Comment("Validate checks the configuration settings for this field group")
+		v.Func().Params(jen.Id("fg *" + fgName + "FieldGroup")).Id("Validate").Params().Params(jen.Index().Qual("github.com/quay/config-tool/pkg/lib/shared", "ValidationError")).Block(
+			jen.Return(jen.Nil()),
 		)
 
-		// Define outputfile name
-		outfile := strings.ToLower(fgName + ".go")
-		outfilePath := getFullOutputPath(outfile)
-		if err := f.Save(outfilePath); err != nil {
-			return err
+		// Create test file
+		t := jen.NewFile(strings.ToLower(fgName))
+		t.ImportName("testing", "testing")
+		t.Comment("TestValidate" + fgName + " tests the Validate function")
+		t.Func().Id("TestValidate"+fgName).Params(jen.Id("t").Qual("testing", "T")).Block(
+			jen.Var().Id("tests").Op("=").Index().Struct(
+				jen.Id("name").String(),
+				jen.Id("config").Map(jen.String()).Interface(),
+				jen.Id("want").String(),
+			).Values(jen.Values(jen.Dict{
+				jen.Id("name"):   jen.Lit("testOne"),
+				jen.Id("config"): jen.Map(jen.String()).Interface().Values(jen.Dict{}),
+				jen.Id("want"):   jen.Lit("valid"),
+			})),
+			jen.For().List(jen.Id("_"), jen.Id("tt")).Op(":=").Range().Id("tests").Block(
+				jen.Qual("fmt", "Println").Call(jen.Lit("hello")),
+			),
+		)
+
+		// Output files if package does not already exist
+		packagePath := getFullPackageOutputPath(strings.ToLower(fgName))
+		if _, err := os.Stat(packagePath); os.IsNotExist(err) {
+
+			// create directory
+			os.Mkdir(packagePath, 0777)
+
+			// Generate file path
+			dOutfile := getFullFileOutputPath(strings.ToLower(fgName), strings.ToLower(fgName)+".go")
+			fmt.Println(dOutfile)
+			f.Save(dOutfile)
+
+			vOutfile := getFullFileOutputPath(strings.ToLower(fgName), strings.ToLower(fgName)+"_validator.go")
+			if err := v.Save(vOutfile); err != nil {
+				fmt.Println(err.Error())
+			}
+
+			tOutfile := getFullFileOutputPath(strings.ToLower(fgName), strings.ToLower(fgName)+"_test.go")
+			if err := t.Save(tOutfile); err != nil {
+				fmt.Println(err.Error())
+			}
+
 		}
+
+		// outfile := strings.ToLower(fgName + ".go")
+		// outfilePath := getFullOutputPath(outfile)
+		// if err := f.Save(outfilePath); err != nil {
+		// 	return err
+		// }
 
 	}
 	return nil
@@ -175,18 +205,12 @@ func createFieldGroups(configDef ConfigDefinition) error {
 func createConfigBase(configDef ConfigDefinition) error {
 
 	// Create file for QuayConfig
-	f := jen.NewFile("fieldgroups")
-
-	// Import packages
-	f.ImportName("github.com/go-playground/validator/v10", "validator")
-
-	// Write FieldGroup interface
-	f.Comment("FieldGroup is an interface that implements the Validate() function")
-	f.Type().Id("FieldGroup").Interface(jen.Id("Validate").Params().Parens(jen.List(jen.Qual("github.com/go-playground/validator/v10", "ValidationErrors"))))
+	f := jen.NewFile("config")
+	f.ImportName("github.com/quay/config-tool/pkg/lib/shared", "shared")
 
 	// Write Config struct definition
 	f.Comment("Config is a struct that represents a configuration as a mapping of field groups")
-	f.Type().Id("Config").Map(jen.String()).Id("FieldGroup")
+	f.Type().Id("Config").Map(jen.String()).Qual("github.com/quay/config-tool/pkg/lib/shared", "FieldGroup")
 
 	// Generate Config constructor block
 	op := jen.Options{
@@ -195,32 +219,25 @@ func createConfigBase(configDef ConfigDefinition) error {
 		Close: "\n",
 	}
 	constructorBlock := jen.CustomFunc(op, func(g *jen.Group) {
-
+		g.Var().Id("err").Error()
 		g.Id("newConfig").Op(":=").Id("Config").Values()
 		for fgName := range configDef {
-			g.Id("newConfig").Index(jen.Lit(fgName)).Op("=").Id("New" + fgName + "FieldGroup").Call(jen.Id("fullConfig"))
+			g.List(jen.Id("new"+fgName+"FieldGroup"), jen.Id("err")).Op(":=").Id(strings.ToLower(fgName) + ".New" + fgName + "FieldGroup").Call(jen.Id("fullConfig"))
+			g.If(jen.Id("err").Op("!=").Nil()).Block(
+				jen.Return(jen.List(jen.Id("newConfig"), jen.Id("err"))),
+			)
+			g.Id("newConfig").Index(jen.Lit(fgName)).Op("=").Id("new" + fgName + "FieldGroup")
 		}
 
 	})
 
 	// Write Config constructor
 	f.Comment("NewConfig creates a Config struct from a map[string]interface{}")
-	f.Func().Id("NewConfig").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id("Config").Block(constructorBlock, jen.Return(jen.Id("newConfig")))
-
-	// Add helper function to fix maps
-	f.Comment("fixInterface converts a map[interface{}]interface{} into a map[string]interface{}")
-	f.Func().Id("fixInterface").Params(jen.Id("input").Map(jen.Interface()).Interface()).Map(jen.String()).Interface().Block(
-		jen.Id("output").Op(":=").Make(jen.Map(jen.String()).Interface()),
-		jen.For(jen.List(jen.Id("key"), jen.Id("value")).Op(":=").Range().Id("input").Block(
-			jen.Id("strKey").Op(":=").Qual("fmt", "Sprintf").Call(jen.List(jen.Lit("%v"), jen.Id("key"))),
-			jen.Id("output").Index(jen.Id("strKey")).Op("=").Id("value"),
-		)),
-		jen.Return(jen.Id("output")),
-	)
+	f.Func().Id("NewConfig").Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Parens(jen.List(jen.Id("Config"), jen.Error())).Block(constructorBlock, jen.Return(jen.List(jen.Id("newConfig"), jen.Nil())))
 
 	// Define outputfile name
 	outfile := "config.go"
-	outfilePath := getFullOutputPath(outfile)
+	outfilePath := getFullConfigOutputPath("config", outfile)
 	if err := f.Save(outfilePath); err != nil {
 		return err
 	}
@@ -299,7 +316,7 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 	// If top level is true, this struct is a field group
 	if topLevel {
 		fgName = fgName + "FieldGroup"
-		returnType = "FieldGroup"
+		returnType = "*" + fgName
 
 	} else { // Otherwise it is a inner struct
 		fgName = fgName + "Struct"
@@ -319,8 +336,10 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 			// If the field is a nested struct
 			if field.Type == "object" {
 				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
-					jen.Id("value").Op(":=").Id("fixInterface").Call(jen.Id("value").Assert(jen.Map(jen.Interface()).Interface())),
-					jen.Id("new"+fgName).Dot(field.Name).Op("=").Id("New"+field.Name+"Struct").Call(jen.Id("value")),
+					jen.Var().Id("err").Error(),
+					jen.Id("value").Op(":=").Id("shared.FixInterface").Call(jen.Id("value").Assert(jen.Map(jen.Interface()).Interface())),
+					jen.List(jen.Id("new"+fgName).Dot(field.Name), jen.Id("err")).Op("=").Id("New"+field.Name+"Struct").Call(jen.Id("value")),
+					jen.If(jen.Id("err").Op("!=").Nil()).Block(jen.Return(jen.List(jen.Id("new"+fgName), jen.Id("err")))),
 				)
 
 				innerConstructors = append(innerConstructors, generateConstructors(field.Name, field.Properties, false)...)
@@ -342,7 +361,8 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 				}
 
 				g.If(jen.List(jen.Id("value"), jen.Id("ok")).Op(":=").Id("fullConfig").Index(jen.Lit(field.YAML)), jen.Id("ok")).Block(
-					jen.Id("new" + fgName).Dot(field.Name).Op("=").Id("value").Assert(jen.Id(ftype)),
+					jen.List(jen.Id("new"+fgName).Dot(field.Name), jen.Id("ok")).Op("=").Id("value").Assert(jen.Id(ftype)),
+					jen.If(jen.Id("!ok")).Block(jen.Return(jen.List(jen.Id("new"+fgName), jen.Qual("errors", "New").Call(jen.Lit(field.YAML+" must be of type "+ftype))))),
 				)
 			}
 
@@ -354,19 +374,19 @@ func generateConstructors(fgName string, fields []FieldDefinition, topLevel bool
 
 	// If the field is just a map[string]interface{}
 	if len(fields) == 0 {
-		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
+		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Parens(jen.List(jen.Id(returnType), jen.Error())).Block(
 			jen.Id("new"+fgName).Op(":=").Id(fgName).Values(),
 			jen.For(jen.List(jen.Id("key"), jen.Id("value")).Op(":=").Range().Id("fullConfig").Block(
 				jen.Id("new"+fgName).Index(jen.Id("key")).Op("=").Id("value"),
 			)),
-			jen.Return(jen.Id("&new"+fgName)),
+			jen.Return(jen.List(jen.Id("&new"+fgName), jen.Nil())),
 		))
 	} else {
-		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Id(returnType).Block(
+		constructor.Add(jen.Func().Id("New"+fgName).Params(jen.Id("fullConfig").Map(jen.String()).Interface()).Parens(jen.List(jen.Id(returnType), jen.Error())).Block(
 			jen.Id("new"+fgName).Op(":=").Op("&").Id(fgName).Values(),
 			jen.Qual("github.com/creasty/defaults", "Set").Call(jen.Id("new"+fgName)),
 			setValues,
-			jen.Return(jen.Id("new"+fgName)),
+			jen.Return(jen.List(jen.Id("new"+fgName), jen.Nil())),
 		))
 	}
 
@@ -404,9 +424,7 @@ func jsonSchemaPropertiesToConfigDefinition(jsonSchema JSONSchema) ConfigDefinit
 		fieldDef := propertySchemaToFieldDefinition(fieldName, fieldData)
 
 		// Iterate through different field groups for this specific field
-		for fgName, fgSpecificData := range fieldData.FieldGroupData {
-
-			fieldDef := addFieldGroupSpecificData(fieldDef, fgSpecificData)
+		for _, fgName := range fieldData.FieldGroups {
 
 			// If field group exists, append field definition
 			if fg, ok := configDef[fgName]; ok {
@@ -485,10 +503,26 @@ func getFullInputPath(fileName string) string {
 }
 
 // getFullOutputPath returns the full path to an output file
-func getFullOutputPath(fileName string) string {
+func getFullPackageOutputPath(packageName string) string {
 	// Get root of project
 	_, b, _, _ := runtime.Caller(0)
 	projRoot := path.Join(path.Dir(path.Dir(path.Dir(b))), path.Join("pkg", "lib", "fieldgroups"))
+	fullPath := path.Join(projRoot, packageName)
+	return fullPath
+}
+
+func getFullFileOutputPath(packageName, fileName string) string {
+	// Get root of project
+	_, b, _, _ := runtime.Caller(0)
+	projRoot := path.Join(path.Dir(path.Dir(path.Dir(b))), path.Join("pkg", "lib", "fieldgroups", packageName))
+	fullPath := path.Join(projRoot, fileName)
+	return fullPath
+}
+
+func getFullConfigOutputPath(packageName, fileName string) string {
+	// Get root of project
+	_, b, _, _ := runtime.Caller(0)
+	projRoot := path.Join(path.Dir(path.Dir(path.Dir(b))), path.Join("pkg", "lib", packageName))
 	fullPath := path.Join(projRoot, fileName)
 	return fullPath
 }
@@ -523,4 +557,16 @@ func findCustomValidator(fields []FieldDefinition) []string {
 	}
 
 	return customValidators
+}
+
+// dumpStruct will pretty print a struct
+func dumpStruct(i interface{}) string {
+	spew.Config.Indent = "\t"
+	spew.Config.DisableCapacities = true
+	spew.Config.DisablePointerAddresses = true
+	spew.Config.SortKeys = true
+	spew.Config.DisableMethods = true
+	spew.Config.DisableTypes = true
+	spew.Config.DisableLengths = true
+	return spew.Sdump(i)
 }

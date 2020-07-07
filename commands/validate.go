@@ -16,6 +16,7 @@ limitations under the License.
 package commands
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -33,44 +34,51 @@ var validateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Validate Schema
-		configFieldGroups := validation.ValidateConf(configPath)
+		configFieldGroups, err := validation.ValidateConf(configPath)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
 
 		// Sort keys
-		keys := []string{}
-		for key := range configFieldGroups {
-			keys = append(keys, key)
+		fgNames := []string{}
+		for fgName := range configFieldGroups {
+			fgNames = append(fgNames, fgName)
 		}
-		sort.Strings(keys)
+		sort.Strings(fgNames)
 
 		// Initialize validaiton status grid
 		validationStatus := [][]string{}
 
-		for _, key := range keys {
+		for _, fgName := range fgNames {
 
 			// Get field group for key
-			fieldGroup := configFieldGroups[key]
+			fieldGroup := configFieldGroups[fgName]
 
 			// Validate
 			validationErrors := fieldGroup.Validate()
 
 			// If no errors, append row
 			if len(validationErrors) == 0 {
-				validationStatus = append(validationStatus, []string{key, "-", "-", "🟢"})
+				validationStatus = append(validationStatus, []string{fgName, "-", "🟢"})
 			}
 
+			// Append error messages
 			for _, err := range validationErrors {
 
-				fieldName := removeFieldGroupPrefix(err.Namespace())
-				validationStatus = append(validationStatus, []string{key, fieldName, "Field enforces tag: " + err.Tag(), "🔴"})
+				// Append field group policy violation
+				validationStatus = append(validationStatus, []string{fgName, err.Message, "🔴"})
 			}
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Field Group", "Field", "Error", "Status"})
+		table.SetHeader([]string{"Field Group", "Error", "Status"})
 		table.SetBorder(true)
-
+		table.SetAutoFormatHeaders(false)
+		table.SetAutoWrapText(false)
 		table.AppendBulk(validationStatus)
-
+		table.SetColWidth(1000)
+		table.SetRowLine(true)
 		table.SetAutoMergeCellsByColumnIndex([]int{0})
 		table.Render()
 

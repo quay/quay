@@ -33,3 +33,15 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    container: docker.io/library/golang:1.14-buster
+    services:
+      postgres:
+        image: postgres:10.12
+        env:
+          POSTGRES_USER: "user"
+          POSTGRES_PASSWORD: "password"
+          POSTGRES_DB: "quay"
