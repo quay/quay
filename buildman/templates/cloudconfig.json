@@ -107,7 +107,7 @@ WantedBy=multi-user.target
                        quay_username,
                        quay_password,
                        worker_tag,
-                       extra_args='--net=host --privileged --env-file /root/overrides.list -v /var/run/docker.sock:/var/run/docker.sock -v /usr/share/ca-certificates:/etc/ssl/certs',
+                       extra_args='--net=host --privileged --env-file /root/overrides.list -v /var/run/docker.sock:/var/run/docker.sock -v /usr/share/pki/ca-trust-source/anchors:/etc/ssl/certs',
                        exec_stop_post=['/bin/sh -xc "/bin/sleep 120; /usr/bin/systemctl --no-block poweroff"'],
                        restart_policy='no'
                       ) | indent(6) }},
