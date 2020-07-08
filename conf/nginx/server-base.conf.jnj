@@ -338,3 +338,9 @@ location ~ ^/b1/socket(/?)(.*) {
     proxy_set_header Connection "upgrade";
     proxy_read_timeout 300;
 }
+
+location /userfiles/	{
+    proxy_pass http://registry_app_server;
+    client_max_body_size 100M;
+}
+
