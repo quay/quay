@@ -340,7 +340,7 @@ location ~ ^/b1/socket(/?)(.*) {
 }
 
 location /userfiles/	{
-    proxy_pass http://registry_app_server;
+    proxy_pass http://web_app_server;
     client_max_body_size 100M;
 }
 
