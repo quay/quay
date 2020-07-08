@@ -161,7 +161,7 @@ class MemcachedModelCache(DataModelCache):
                 serializer=serialize_json,
                 deserializer=deserialize_json,
                 max_pool_size=max_pool_size,
-                ignore_exc=True,
+                ignore_exc=False,
             )
         except:
             logger.exception("Got exception when creating memcached client to %s", self.endpoint)
@@ -178,7 +178,7 @@ class MemcachedModelCache(DataModelCache):
                     logger.debug("Found result in cache for key %s: %s", cache_key.key, result)
                     return result
             except:
-                logger.exception("Got exception when trying to retrieve key %s", cache_key.key)
+                logger.warning("Got exception when trying to retrieve key %s", cache_key.key)
 
         logger.debug("Found no result in cache for key %s; calling loader", cache_key.key)
         result = loader()
@@ -204,7 +204,7 @@ class MemcachedModelCache(DataModelCache):
                     cache_key.expiration,
                 )
             except:
-                logger.exception(
+                logger.warning(
                     "Got exception when trying to set key %s to %s", cache_key.key, result
                 )
         else:
