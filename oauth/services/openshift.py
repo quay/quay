@@ -111,7 +111,11 @@ class OpenshiftOAuthService(OAuthLoginService):
         oauth_server = self.config.get("OPENSHIFT_SERVER", DEFAULT_OAUTH_HOST)
 
         discovery_url = urllib.parse.urljoin(oauth_server, OAUTH_WELLKNOWN)
-        discovery = self._http_client.get(discovery_url, timeout=5, verify=is_debugging is False)
+
+        # openshift.default.svc is signed by `kube-apiserver-service-network-signer` and the Quay pod may not trust
+        # this OR python3 requests may not support TLS SNI?
+        verify = (is_debugging is False) or (oauth_server == DEFAULT_OAUTH_HOST)
+        discovery = self._http_client.get(discovery_url, timeout=5, verify=verify)
         if discovery.status_code // 100 != 2:
             logger.debug(
                 "Got %s response for OpenShift OAuth discovery: %s", discovery.status_code, discovery.text
