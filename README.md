@@ -69,6 +69,34 @@ High-level features include:
 [JBoss JIRA]: https://issues.jboss.org/projects/PROJQUAY
 [security@redhat.com]: mailto:security@redhat.com
 
+## Quay Bug Bash!
+
+From July 13, 2020 through August 14, 2020, Project Quay is having a Bug Bash.  We have migrated Quay from python 2 to python 3 in our master branch.  This means nearly every line of code in Quay has been touched so our risk of regression bugs is high.  We need *your* help to help find them!
+
+### How Do I Participate?
+
+Just grab the Quay registry codebase (quay, quay-builder), checkout master branch, build a local copy and start testing!  If you find an issue, please raise a [JIRA] or (even better) raise [a pull request].  We are considering all community contributions against master during this time period as counting towards the Bug Bash.
+
+[JIRA]: https://issues.redhat.com/projects/PROJQUAY/summary
+[a pull request]: https://github.com/quay/quay/pulls
+
+### What's in it for me?
+
+Aside from the peace of mind that you've helped to make Quay a better code base, we're prepared to offer you some Project Quay swag- an official Project Quay t-shirt!
+
+* Submit a pull request?  We'll send you a t-shirt.
+* Find three (3) new bugs and submit JIRA tickets for each?  We'll send you a t-shirt.
+
+In addition, we will be tracking community involvement on our [Bug Bash Leaderboard] so you can get the credit for your work.
+
+[Bug Bash Leaderboard]: https://docs.google.com/spreadsheets/d/1NhMcaS49jUk0IElTnXYkvfLckjv3GKr9pQWf3ejYcf4/edit#gid=0
+
+### Have a Question?
+
+Check out our [Bug Bash FAQ].
+
+[Bug Bash FAQ]: https://docs.google.com/document/d/1dGvTGDA3KGxOTUkql3w0NC7j_Cf_VeSUTXPxg6lxH5U/edit?ts=5f03355b
+
 ## License
 
 Project Quay is under the Apache 2.0 license.
