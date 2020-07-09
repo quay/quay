@@ -54,3 +54,35 @@ command:
 $ oc sa get-token quay-oauth
 ```
 
+Note that you do not need to modify the cluster `OAuth` resource to support this configuration.
+
+## Configuration using the Quay Config App ##
+
+> TODO
+
+## Externally Hosted Quay ##
+
+You can still use an OpenShift OAuth service from an externally hosted Project Quay instance.
+
+
+### Configuration Reference ###
+
+OpenShift Integrated OAuth adds the following configuration items:
+
+```yaml
+# Enable OpenShift Integrated Login
+FEATURE_OPENSHIFT_LOGIN: true
+
+OPENSHIFT_LOGIN_CONFIG:
+  # Show debug logs
+  DEBUGGING: true
+
+  # If you aren't hosting Quay on the cluster you are authenticating to, you can specify an external cluster
+  OPENSHIFT_SERVER: "https://api.<clusterid>.<domain>:6443/"
+
+  CLIENT_ID: "system:serviceaccount:quay-enterprise:quay-oauth"
+  CLIENT_SECRET: "ABCDEF...."
+
+# Custom Query Parameters sent to the OpenShift OAuth Service
+OPENSHIFT_ENDPOINT_CUSTOM_PARAMS: ""
+```

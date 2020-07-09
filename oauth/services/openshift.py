@@ -1,13 +1,12 @@
+from typing import Tuple
 import logging
 import urllib.parse
 import json
 
 from cachetools.func import lru_cache
 
-import features
 from oauth.base import OAuthEndpoint, OAuthExchangeCodeException, OAuthGetUserInfoException
 from oauth.login import OAuthLoginService, OAuthLoginException
-from util import slash_join
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +99,7 @@ class OpenshiftOAuthService(OAuthLoginService):
 
     @lru_cache(maxsize=1)
     def _oauth_config(self):
-        if self.config.get("OPENSHIFT_SERVER"):
-            return self._load_oauth_config_via_discovery(self.config.get("DEBUGGING", False))
-        else:
-            return {}
+        return self._load_oauth_config_via_discovery(self.config.get("DEBUGGING", False))
 
     def _load_oauth_config_via_discovery(self, is_debugging):
         """
@@ -134,7 +130,7 @@ class OpenshiftOAuthService(OAuthLoginService):
             "OAUTH": True,
         }
 
-    def exchange_code_for_login(self, app_config, http_client, code, redirect_suffix):
+    def exchange_code_for_login(self, app_config, http_client, code, redirect_suffix) -> Tuple[str, str, str]:
         """
         Exchanges the given OAuth access code for user information on behalf of a user trying to
         login or attach their account.
