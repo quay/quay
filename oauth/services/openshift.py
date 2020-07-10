@@ -32,15 +32,6 @@ class OpenshiftOAuthService(OAuthLoginService):
     def login_enabled(self, config):
         return config.get("FEATURE_OPENSHIFT_LOGIN", False)
 
-    def get_login_service_id(self, user_info):
-        return user_info['metadata']['name']
-
-    def get_login_service_username(self, user_info):
-        return user_info['metadata']['name']
-
-    def get_verified_user_email(self, app_config, http_client, token, user_info):
-        pass
-
     def get_icon(self):
         return "fa-redhat"
 
@@ -110,7 +101,6 @@ class OpenshiftOAuthService(OAuthLoginService):
         DiscoveryFailureException on failure.
         """
         oauth_server = self.config.get("OPENSHIFT_SERVER", DEFAULT_OAUTH_HOST)
-
         discovery_url = urllib.parse.urljoin(oauth_server, OAUTH_WELLKNOWN)
 
         # openshift.default.svc is signed by `kube-apiserver-service-network-signer` and the Quay pod may not trust
@@ -135,57 +125,42 @@ class OpenshiftOAuthService(OAuthLoginService):
             "OAUTH": True,
         }
 
-    def exchange_code_for_login(self, app_config, http_client, code, redirect_suffix) -> Tuple[str, str, str]:
-        """
-        Exchanges the given OAuth access code for user information on behalf of a user trying to
-        login or attach their account.
+    def get_login_service_id(self, user_info):
+        return user_info['metadata']['name']
 
-        Raises a OAuthLoginService exception on failure. Returns a tuple consisting of (service_id,
-        service_username, email)
-        """
+    def get_login_service_username(self, user_info):
+        return user_info['metadata']['name']
 
-        # Retrieve the token for the OAuth code.
-        try:
-            token = self.exchange_code_for_token(
-                app_config,
-                http_client,
-                code,
-                redirect_suffix=redirect_suffix,
-                form_encode=self.requires_form_encoding(),
-            )
-        except OAuthExchangeCodeException as oce:
-            raise OAuthLoginException(str(oce))
+    def get_verified_user_email(self, app_config, http_client, token, user_info):
+        """OpenShift does not store E-mail as a standard attribute."""
+        return None
 
-        # Retrieve the user's information with the token.
-        try:
-            user_info = self.get_user_info(http_client, token)
-        except OAuthGetUserInfoException as oge:
-            raise OAuthLoginException(str(oge))
+    def get_user_info(self, http_client, token):
+        """OpenShift does not provide a standard OAuth user-info endpoint, but it does provide
+        API access to the Kubernetes `User` object. In this case, we map the necessary attributes
+        back into something that Quay expects."""
+        token_param = {
+            "alt": "json",
+        }
 
-        # if user_info.get("id", None) is None:
-        #     logger.debug("Got user info response %s", user_info)
-        #     raise OAuthLoginException("Missing `id` column in returned user information")
+        headers = {
+            "Authorization": "Bearer %s" % token,
+        }
 
-        # Perform any custom verification for this login service.
-        # self.service_verify_user_info_for_login(app_config, http_client, token, user_info)
-
-        # Retrieve the user's email address (if necessary).
-        # email_address = self.get_verified_user_email(app_config, http_client, token, user_info)
-        # if features.MAILING and email_address is None:
-        #     raise OAuthLoginException(
-        #         "A verified email address is required to login with this service"
-        #     )
-        #
-        email_address = None
-        service_user_id = self.get_login_service_id(user_info)
-        service_username = self.get_login_service_username(user_info)
-
-        logger.debug(
-            "Completed successful exchange for service %s: %s, %s, %s",
-            self.service_id(),
-            service_user_id,
-            service_username,
-            email_address,
+        got_user = http_client.get(
+            self.user_endpoint().to_url(), params=token_param, headers=headers
         )
+        if got_user.status_code // 100 != 2:
+            raise OAuthGetUserInfoException(
+                "Non-2XX response code for user_info call: %s" % got_user.status_code
+            )
 
-        return (service_user_id, service_username, email_address)
+        user_info = got_user.json()
+        if user_info is None or 'metadata' not in user_info:
+            raise OAuthGetUserInfoException()
+
+        # Unfortunately, `exchange_code_for_login` requires an `id` attribute regardless of the get_login_service_id
+        # implementation.
+        user_id = self.get_login_service_id(user_info)
+        user_info['id'] = user_id
+        return user_info
