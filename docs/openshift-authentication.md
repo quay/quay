@@ -6,7 +6,9 @@ In this way, it guarantees a one-to-one relationship between users provisioned i
 users that are able to access quay. This means that the end user does not need to develop a user provisioning
 strategy, other than deploying Quay manually or via the Operator.
 
-## Pre-requisites ##
+## Quay ON OpenShift ##
+
+### Pre-requisites ###
 
 To allow Quay to be a client of the OpenShift internal OAuth service, you must first create an OAuth client
 configuration. This can be done by creating a Service Account with a special annotation. This can also be done
@@ -56,13 +58,31 @@ $ oc sa get-token quay-oauth
 
 Note that you do not need to modify the cluster `OAuth` resource to support this configuration.
 
+### Troubleshooting ###
+
+#### invalid_request: The request is missing a required parameter, includes an invalid parameter value, ... ####
+
+This may be because Quay is asking for a different redirect URL to the one you annotated the *ServiceAccount* with.
+
+Have a look at the `redirect_uri` parameter in the URL to figure out what Quay is asking for, and compare it against
+the annotation.
+
+You can get more information about failed OAuth attempts from the Pods in the `openshift-authentication` namespace.
+
+Keep in mind these configuration variables affect the `redirect_uri`:
+
+- PREFERRED_URL_SCHEME
+- SERVER_HOSTNAME
+
+## Quay WITH OpenShift ##
+
+You can still use an OpenShift OAuth service from an externally hosted Project Quay instance.
+
+
 ## Configuration using the Quay Config App ##
 
 > TODO
 
-## Externally Hosted Quay ##
-
-You can still use an OpenShift OAuth service from an externally hosted Project Quay instance.
 
 
 ### Configuration Reference ###
