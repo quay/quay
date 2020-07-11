@@ -250,6 +250,9 @@ class DefaultConfig(ImmutableConfig):
     # Google Config.
     GOOGLE_LOGIN_CONFIG = None
 
+    # OpenShift Integrated Config.
+    OPENSHIFT_LOGIN_CONFIG = None
+
     # Bitbucket Config.
     BITBUCKET_TRIGGER_CONFIG = None
 

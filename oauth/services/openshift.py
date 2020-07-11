@@ -11,18 +11,24 @@ from oauth.login import OAuthLoginService, OAuthLoginException
 logger = logging.getLogger(__name__)
 
 OAUTH_WELLKNOWN = ".well-known/oauth-authorization-server"
-DEFAULT_OAUTH_HOST = "https://openshift.default.svc/"
+DEFAULT_API_HOST = "https://openshift.default.svc/"
 
 
 class DiscoveryFailureException(Exception):
     """
     Exception raised when OAuth discovery fails.
     """
-
     pass
 
 
 class OpenshiftOAuthService(OAuthLoginService):
+    """The OpenShift OAuth service implements the OAuth v2 (not OIDC) implementation for Quay.
+
+    NOTES:
+        - The OpenShift OAuth service (https://github.com/openshift/oauth-proxy) does not implement a user-info endpoint
+          so the user details are returned from the Kubernetes/OpenShift users API.
+        - OpenShift does not store E-mail addresses for each user, so mailing features will not be available.
+    """
 
     def __init__(self, config, key_name, client=None):
         super(OpenshiftOAuthService, self).__init__(config, key_name)
@@ -59,7 +65,7 @@ class OpenshiftOAuthService(OAuthLoginService):
         Which is used by https://github.com/openshift/oauth-proxy/blob/master/providers/openshift/provider.go#L415
         to retrieve the E-mail attribute.
         """
-        return OAuthEndpoint(self.config.get("OPENSHIFT_SERVER", DEFAULT_OAUTH_HOST) +
+        return OAuthEndpoint(self.config.get("OPENSHIFT_API_URL", DEFAULT_API_HOST) +
                              "apis/user.openshift.io/v1/users/~")
 
     def validate_client_id_and_secret(self, http_client, url_scheme_and_hostname):
@@ -100,12 +106,12 @@ class OpenshiftOAuthService(OAuthLoginService):
         If is_debugging is True, non-secure connections are alllowed. Raises an
         DiscoveryFailureException on failure.
         """
-        oauth_server = self.config.get("OPENSHIFT_SERVER", DEFAULT_OAUTH_HOST)
+        oauth_server = self.config.get("OPENSHIFT_API_URL", DEFAULT_API_HOST)
         discovery_url = urllib.parse.urljoin(oauth_server, OAUTH_WELLKNOWN)
 
         # openshift.default.svc is signed by `kube-apiserver-service-network-signer` and the Quay pod may not trust
         # this OR python3 requests may not support TLS SNI?
-        verify = (is_debugging is False) and (oauth_server != DEFAULT_OAUTH_HOST)
+        verify = (is_debugging is False) and (oauth_server != DEFAULT_API_HOST)
         discovery = self._http_client.get(discovery_url, timeout=5, verify=verify)
         if discovery.status_code // 100 != 2:
             logger.debug(
