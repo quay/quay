@@ -18,6 +18,7 @@ class DiscoveryFailureException(Exception):
     """
     Exception raised when OAuth discovery fails.
     """
+
     pass
 
 
@@ -65,8 +66,10 @@ class OpenshiftOAuthService(OAuthLoginService):
         Which is used by https://github.com/openshift/oauth-proxy/blob/master/providers/openshift/provider.go#L415
         to retrieve the E-mail attribute.
         """
-        return OAuthEndpoint(self.config.get("OPENSHIFT_API_URL", DEFAULT_API_HOST) +
-                             "apis/user.openshift.io/v1/users/~")
+        return OAuthEndpoint(
+            self.config.get("OPENSHIFT_API_URL", DEFAULT_API_HOST)
+            + "apis/user.openshift.io/v1/users/~"
+        )
 
     def validate_client_id_and_secret(self, http_client, url_scheme_and_hostname):
         """TODO: provide means of validation with internal OAuth service."""
@@ -86,7 +89,9 @@ class OpenshiftOAuthService(OAuthLoginService):
         (scheme, netloc, path, query, fragment) = urllib.parse.urlsplit(endpoint)
 
         # Add the query parameters from the kwargs and the config.
-        custom_parameters = self.config.get("OPENSHIFT_ENDPOINT_CUSTOM_PARAMS", {}).get(endpoint_key, {})
+        custom_parameters = self.config.get("OPENSHIFT_ENDPOINT_CUSTOM_PARAMS", {}).get(
+            endpoint_key, {}
+        )
 
         query_params = urllib.parse.parse_qs(query, keep_blank_values=True)
         query_params.update(kwargs)
@@ -115,7 +120,9 @@ class OpenshiftOAuthService(OAuthLoginService):
         discovery = self._http_client.get(discovery_url, timeout=5, verify=verify)
         if discovery.status_code // 100 != 2:
             logger.debug(
-                "Got %s response for OpenShift OAuth discovery: %s", discovery.status_code, discovery.text
+                "Got %s response for OpenShift OAuth discovery: %s",
+                discovery.status_code,
+                discovery.text,
             )
             raise DiscoveryFailureException("Could not load OpenShift OAuth discovery information")
 
@@ -132,10 +139,10 @@ class OpenshiftOAuthService(OAuthLoginService):
         }
 
     def get_login_service_id(self, user_info):
-        return user_info['metadata']['name']
+        return user_info["metadata"]["name"]
 
     def get_login_service_username(self, user_info):
-        return user_info['metadata']['name']
+        return user_info["metadata"]["name"]
 
     def get_verified_user_email(self, app_config, http_client, token, user_info):
         """OpenShift does not store E-mail as a standard attribute."""
@@ -162,11 +169,11 @@ class OpenshiftOAuthService(OAuthLoginService):
             )
 
         user_info = got_user.json()
-        if user_info is None or 'metadata' not in user_info:
+        if user_info is None or "metadata" not in user_info:
             raise OAuthGetUserInfoException()
 
         # Unfortunately, `exchange_code_for_login` requires an `id` attribute regardless of the get_login_service_id
         # implementation.
         user_id = self.get_login_service_id(user_info)
-        user_info['id'] = user_id
+        user_info["id"] = user_id
         return user_info

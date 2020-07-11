@@ -78,7 +78,9 @@ class NoopIPResolver(IPResolverInterface):
 class IPResolver(IPResolverInterface):
     def __init__(self, app):
         self.app = app
-        self.geoip_db = geoip2.database.Reader(os.path.dirname(os.path.realpath(__file__)) + "/GeoLite2-Country.mmdb")
+        self.geoip_db = geoip2.database.Reader(
+            os.path.dirname(os.path.realpath(__file__)) + "/GeoLite2-Country.mmdb"
+        )
         self.amazon_ranges = None
         self.sync_token = None
 
