@@ -92,7 +92,6 @@ func ValidateDatabaseConnection(uri *url.URL) error {
 		// Database is Postgres
 	} else if scheme == "postgresql" {
 
-		fmt.Println(dbname)
 		var psqlInfo string
 		host, port, err := net.SplitHostPort(fullHostName)
 		if err != nil {
@@ -116,7 +115,6 @@ func ValidateDatabaseConnection(uri *url.URL) error {
 	// Try to ping database
 	err = db.Ping()
 	if err != nil {
-		fmt.Println("b", err.Error())
 		return err
 	}
 
