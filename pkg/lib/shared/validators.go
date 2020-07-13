@@ -140,7 +140,7 @@ func ValidateRedisConnection(options *redis.Options, field, fgName string) (bool
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
 		newError := ValidationError{
-			Tags:    []string{"field"},
+			Tags:    []string{field},
 			Policy:  "Redis Connect",
 			Message: "Could not connect to Redis with values provided in " + field,
 		}

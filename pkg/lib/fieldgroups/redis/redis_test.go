@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -15,6 +16,7 @@ func TestValidateRedis(t *testing.T) {
 	}{
 
 		{name: "NotSpecified", config: map[string]interface{}{}, want: "invalid"},
+		{name: "Works", config: map[string]interface{}{"BUILDLOGS_REDIS": map[interface{}]interface{}{"host": "redis", "port": 6379}, "USER_EVENTS_REDIS": map[interface{}]interface{}{"host": "redis", "port": 6379}}, want: "valid"},
 	}
 
 	// Iterate through tests
@@ -42,6 +44,7 @@ func TestValidateRedis(t *testing.T) {
 			// Compare with expected
 			if tt.want != received {
 				t.Errorf("Expected %s. Received %s", tt.want, received)
+				fmt.Println(validationErrors[0].Message)
 			}
 
 		})

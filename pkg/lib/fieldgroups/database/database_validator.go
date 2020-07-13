@@ -2,6 +2,9 @@ package database
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"net"
 	"net/url"
 
 	_ "github.com/go-sql-driver/mysql" //mysql driver
@@ -58,25 +61,61 @@ func (fg *DatabaseFieldGroup) Validate() []shared.ValidationError {
 // ValidateDatabaseConnection checks that the Bitbucker OAuth credentials are correct
 func ValidateDatabaseConnection(uri *url.URL) error {
 
-	// Get parameters from uri
+	// Declare db and error
+	var db *sql.DB
+	var err error
+
+	// Get database type
 	scheme := uri.Scheme
+
+	// Get credentials
 	user := uri.User.Username()
 	password, _ := uri.User.Password()
-	host := uri.Host
+	credentials := uri.User.String()
+
+	// Get full host name
+	fullHostName := uri.Host
+
+	// Get database name
 	dbname := uri.Path
 
-	// Add tcp to host
-	dsn := user + ":" + password + "@tcp(" + host + ")" + dbname
+	// Database is MySQL
+	if scheme == "mysql" {
 
-	// Define connection
-	db, err := sql.Open(scheme, dsn)
-	if err != nil {
-		return err
+		// Create db client
+		dsn := credentials + "@tcp(" + fullHostName + ")" + dbname
+		db, err = sql.Open("mysql", dsn)
+		if err != nil {
+			return err
+		}
+
+		// Database is Postgres
+	} else if scheme == "postgresql" {
+
+		var psqlInfo string
+		host, port, err := net.SplitHostPort(fullHostName)
+		if err != nil {
+			// String if there is no port
+			psqlInfo = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", host, user, password, dbname)
+		} else {
+			// String if there is a port
+			psqlInfo = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+		}
+
+		db, err = sql.Open("postgres", psqlInfo)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		return errors.New("You must use a valid scheme")
 	}
+	defer db.Close()
 
 	// Try to ping database
 	err = db.Ping()
 	if err != nil {
+		fmt.Println("b", err.Error())
 		return err
 	}
 

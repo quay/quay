@@ -20,7 +20,7 @@ BRANDING:
   footer_img: "u"
   footer_url: "u"
 
-DB_URI: mysql://sql9351936:kBCXc7eizT@sql9.freesqldatabase.com:3306/sql9351936
+DB_URI: postgresql://claircore:5434/claircore
 DOCUMENTATION_ROOT: "/documentation"
 CONTACT_INFO:
   - "mailto:jonathankingfc@gmail.com"
@@ -53,5 +53,5 @@ DISTRIBUTED_STORAGE_CONFIG:
     - woah
 
 FEATURE_SECURITY_SCANNER: true
-SECURITY_SCANNER_ENDPOINT: htp://google.com
+SECURITY_SCANNER_ENDPOINT: http://google.com
 SECURITY_SCANNER_V4_ENDPOINT: https://this-is-a-fake-website.com/
