@@ -2,15 +2,16 @@ package signingengine
 
 import (
 	"errors"
+
 	"github.com/creasty/defaults"
 )
 
 // SigningEngineFieldGroup represents the SigningEngineFieldGroup config fields
 type SigningEngineFieldGroup struct {
-	Gpg2PrivateKeyFilename string `default:"" validate:""`
-	Gpg2PrivateKeyName     string `default:"" validate:""`
-	Gpg2PublicKeyFilename  string `default:"" validate:""`
-	SigningEngine          string `default:"" validate:""`
+	Gpg2PrivateKeyFilename string `default:"" validate:"" yaml:"GPG2_PRIVATE_KEY_FILENAME"`
+	Gpg2PrivateKeyName     string `default:"" validate:"" yaml:"GPG2_PRIVATE_KEY_NAME"`
+	Gpg2PublicKeyFilename  string `default:"" validate:"" yaml:"GPG2_PUBLIC_KEY_FILENAME"`
+	SigningEngine          string `default:"" validate:"" yaml:"SIGNING_ENGINE"`
 }
 
 // NewSigningEngineFieldGroup creates a new SigningEngineFieldGroup

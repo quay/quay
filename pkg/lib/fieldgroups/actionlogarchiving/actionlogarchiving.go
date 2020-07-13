@@ -9,10 +9,10 @@ import (
 
 // ActionLogArchivingFieldGroup represents the ActionLogArchivingFieldGroup config fields
 type ActionLogArchivingFieldGroup struct {
-	ActionLogArchiveLocation string                          `default:"" validate:""`
-	ActionLogArchivePath     string                          `default:"" validate:""`
-	DistributedStorageConfig *DistributedStorageConfigStruct `default:"" validate:""`
-	FeatureActionLogRotation bool                            `default:"false" validate:""`
+	ActionLogArchiveLocation string                          `default:"" validate:"" yaml:"ACTION_LOG_ARCHIVE_LOCATION"`
+	ActionLogArchivePath     string                          `default:"" validate:"" yaml:"ACTION_LOG_ARCHIVE_PATH"`
+	DistributedStorageConfig *DistributedStorageConfigStruct `default:"" validate:"" yaml:"DISTRIBUTED_STORAGE_CONFIG"`
+	FeatureActionLogRotation bool                            `default:"false" validate:"" yaml:"FEATURE_ACTION_LOG_ROTATION"`
 }
 
 // DistributedStorageConfigStruct represents the DistributedStorageConfig struct

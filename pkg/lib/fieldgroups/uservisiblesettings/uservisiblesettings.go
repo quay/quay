@@ -9,20 +9,20 @@ import (
 
 // UserVisibleSettingsFieldGroup represents the UserVisibleSettingsFieldGroup config fields
 type UserVisibleSettingsFieldGroup struct {
-	AvatarKind               string          `default:"local" validate:""`
-	Branding                 *BrandingStruct `default:"" validate:""`
-	ContactInfo              []interface{}   `default:"[]" validate:""`
-	RegistryTitle            string          `default:"Project Quay" validate:""`
-	RegistryTitleShort       string          `default:"Project Quay" validate:""`
-	SearchMaxResultPageCount int             `default:"10" validate:""`
-	SearchResultsPerPage     int             `default:"10" validate:""`
+	AvatarKind               string          `default:"local" validate:"" yaml:"AVATAR_KIND"`
+	Branding                 *BrandingStruct `default:"" validate:"" yaml:"BRANDING"`
+	ContactInfo              []interface{}   `default:"[]" validate:"" yaml:"CONTACT_INFO"`
+	RegistryTitle            string          `default:"Project Quay" validate:"" yaml:"REGISTRY_TITLE"`
+	RegistryTitleShort       string          `default:"Project Quay" validate:"" yaml:"REGISTRY_TITLE_SHORT"`
+	SearchMaxResultPageCount int             `default:"10" validate:"" yaml:"SEARCH_MAX_RESULT_PAGE_COUNT"`
+	SearchResultsPerPage     int             `default:"10" validate:"" yaml:"SEARCH_RESULTS_PER_PAGE"`
 }
 
 // BrandingStruct represents the BrandingStruct config fields
 type BrandingStruct struct {
-	Logo      string `default:"/static/img/quay-horizontal-color.svg" validate:"url"`
-	FooterImg string `default:"" validate:"url"`
-	FooterUrl string `default:"" validate:"url"`
+	Logo      string `default:"/static/img/quay-horizontal-color.svg" validate:"url" yaml:"logo"`
+	FooterImg string `default:"" validate:"url" yaml:"footer_img"`
+	FooterUrl string `default:"" validate:"url" yaml:"footer_url"`
 }
 
 // NewUserVisibleSettingsFieldGroup creates a new UserVisibleSettingsFieldGroup

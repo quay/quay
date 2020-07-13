@@ -9,16 +9,16 @@ import (
 
 // GitLabBuildTriggerFieldGroup represents the GitLabBuildTriggerFieldGroup config fields
 type GitLabBuildTriggerFieldGroup struct {
-	FeatureBuildSupport bool                       `default:"" validate:""`
-	FeatureGitlabBuild  bool                       `default:"false" validate:""`
-	GitlabTriggerConfig *GitlabTriggerConfigStruct `default:"" validate:""`
+	FeatureBuildSupport bool                       `default:"" validate:"" yaml:"FEATURE_BUILD_SUPPORT"`
+	FeatureGitlabBuild  bool                       `default:"false" validate:"" yaml:"FEATURE_GITLAB_BUILD"`
+	GitlabTriggerConfig *GitlabTriggerConfigStruct `default:"" validate:"" yaml:"GITLAB_TRIGGER_CONFIG"`
 }
 
 // GitlabTriggerConfigStruct represents the GitlabTriggerConfigStruct config fields
 type GitlabTriggerConfigStruct struct {
-	ClientSecret   string `default:"" validate:""`
-	GitlabEndpoint string `default:"" validate:""`
-	ClientId       string `default:"" validate:""`
+	GitlabEndpoint string `default:"" validate:"" yaml:"GITLAB_ENDPOINT"`
+	ClientId       string `default:"" validate:"" yaml:"CLIENT_ID"`
+	ClientSecret   string `default:"" validate:"" yaml:"CLIENT_SECRET"`
 }
 
 // NewGitLabBuildTriggerFieldGroup creates a new GitLabBuildTriggerFieldGroup
@@ -55,12 +55,6 @@ func NewGitlabTriggerConfigStruct(fullConfig map[string]interface{}) (*GitlabTri
 	newGitlabTriggerConfigStruct := &GitlabTriggerConfigStruct{}
 	defaults.Set(newGitlabTriggerConfigStruct)
 
-	if value, ok := fullConfig["CLIENT_SECRET"]; ok {
-		newGitlabTriggerConfigStruct.ClientSecret, ok = value.(string)
-		if !ok {
-			return newGitlabTriggerConfigStruct, errors.New("CLIENT_SECRET must be of type string")
-		}
-	}
 	if value, ok := fullConfig["GITLAB_ENDPOINT"]; ok {
 		newGitlabTriggerConfigStruct.GitlabEndpoint, ok = value.(string)
 		if !ok {
@@ -71,6 +65,12 @@ func NewGitlabTriggerConfigStruct(fullConfig map[string]interface{}) (*GitlabTri
 		newGitlabTriggerConfigStruct.ClientId, ok = value.(string)
 		if !ok {
 			return newGitlabTriggerConfigStruct, errors.New("CLIENT_ID must be of type string")
+		}
+	}
+	if value, ok := fullConfig["CLIENT_SECRET"]; ok {
+		newGitlabTriggerConfigStruct.ClientSecret, ok = value.(string)
+		if !ok {
+			return newGitlabTriggerConfigStruct, errors.New("CLIENT_SECRET must be of type string")
 		}
 	}
 

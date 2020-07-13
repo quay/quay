@@ -9,15 +9,15 @@ import (
 
 // BitbucketBuildTriggerFieldGroup represents the BitbucketBuildTriggerFieldGroup config fields
 type BitbucketBuildTriggerFieldGroup struct {
-	BitbucketTriggerConfig *BitbucketTriggerConfigStruct `default:"" validate:""`
-	FeatureBitbucketBuild  bool                          `default:"false" validate:""`
-	FeatureBuildSupport    bool                          `default:"" validate:""`
+	BitbucketTriggerConfig *BitbucketTriggerConfigStruct `default:"" validate:"" yaml:"BITBUCKET_TRIGGER_CONFIG"`
+	FeatureBitbucketBuild  bool                          `default:"false" validate:"" yaml:"FEATURE_BITBUCKET_BUILD"`
+	FeatureBuildSupport    bool                          `default:"" validate:"" yaml:"FEATURE_BUILD_SUPPORT"`
 }
 
 // BitbucketTriggerConfigStruct represents the BitbucketTriggerConfigStruct config fields
 type BitbucketTriggerConfigStruct struct {
-	ConsumerSecret string `default:"" validate:""`
-	ConsumerKey    string `default:"" validate:""`
+	ConsumerKey    string `default:"" validate:"" yaml:"CONSUMER_KEY"`
+	ConsumerSecret string `default:"" validate:"" yaml:"CONSUMER_SECRET"`
 }
 
 // NewBitbucketBuildTriggerFieldGroup creates a new BitbucketBuildTriggerFieldGroup
@@ -54,16 +54,16 @@ func NewBitbucketTriggerConfigStruct(fullConfig map[string]interface{}) (*Bitbuc
 	newBitbucketTriggerConfigStruct := &BitbucketTriggerConfigStruct{}
 	defaults.Set(newBitbucketTriggerConfigStruct)
 
-	if value, ok := fullConfig["CONSUMER_SECRET"]; ok {
-		newBitbucketTriggerConfigStruct.ConsumerSecret, ok = value.(string)
-		if !ok {
-			return newBitbucketTriggerConfigStruct, errors.New("CONSUMER_SECRET must be of type string")
-		}
-	}
 	if value, ok := fullConfig["CONSUMER_KEY"]; ok {
 		newBitbucketTriggerConfigStruct.ConsumerKey, ok = value.(string)
 		if !ok {
 			return newBitbucketTriggerConfigStruct, errors.New("CONSUMER_KEY must be of type string")
+		}
+	}
+	if value, ok := fullConfig["CONSUMER_SECRET"]; ok {
+		newBitbucketTriggerConfigStruct.ConsumerSecret, ok = value.(string)
+		if !ok {
+			return newBitbucketTriggerConfigStruct, errors.New("CONSUMER_SECRET must be of type string")
 		}
 	}
 

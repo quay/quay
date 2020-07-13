@@ -9,19 +9,19 @@ import (
 
 // GitHubBuildTriggerFieldGroup represents the GitHubBuildTriggerFieldGroup config fields
 type GitHubBuildTriggerFieldGroup struct {
-	FeatureBuildSupport bool                       `default:"" validate:""`
-	FeatureGithubBuild  bool                       `default:"false" validate:""`
-	GithubTriggerConfig *GithubTriggerConfigStruct `default:"" validate:""`
+	FeatureBuildSupport bool                       `default:"" validate:"" yaml:"FEATURE_BUILD_SUPPORT"`
+	FeatureGithubBuild  bool                       `default:"false" validate:"" yaml:"FEATURE_GITHUB_BUILD"`
+	GithubTriggerConfig *GithubTriggerConfigStruct `default:"" validate:"" yaml:"GITHUB_TRIGGER_CONFIG"`
 }
 
 // GithubTriggerConfigStruct represents the GithubTriggerConfigStruct config fields
 type GithubTriggerConfigStruct struct {
-	OrgRestrict          bool          `default:"false" validate:""`
-	ApiEndpoint          string        `default:"" validate:""`
-	ClientSecret         string        `default:"" validate:""`
-	GithubEndpoint       string        `default:"" validate:""`
-	ClientId             string        `default:"" validate:""`
-	AllowedOrganizations []interface{} `default:"[]" validate:""`
+	AllowedOrganizations []interface{} `default:"[]" validate:"" yaml:"ALLOWED_ORGANIZATIONS"`
+	OrgRestrict          bool          `default:"false" validate:"" yaml:"ORG_RESTRICT"`
+	ApiEndpoint          string        `default:"" validate:"" yaml:"API_ENDPOINT"`
+	ClientSecret         string        `default:"" validate:"" yaml:"CLIENT_SECRET"`
+	GithubEndpoint       string        `default:"" validate:"" yaml:"GITHUB_ENDPOINT"`
+	ClientId             string        `default:"" validate:"" yaml:"CLIENT_ID"`
 }
 
 // NewGitHubBuildTriggerFieldGroup creates a new GitHubBuildTriggerFieldGroup
@@ -58,6 +58,12 @@ func NewGithubTriggerConfigStruct(fullConfig map[string]interface{}) (*GithubTri
 	newGithubTriggerConfigStruct := &GithubTriggerConfigStruct{}
 	defaults.Set(newGithubTriggerConfigStruct)
 
+	if value, ok := fullConfig["ALLOWED_ORGANIZATIONS"]; ok {
+		newGithubTriggerConfigStruct.AllowedOrganizations, ok = value.([]interface{})
+		if !ok {
+			return newGithubTriggerConfigStruct, errors.New("ALLOWED_ORGANIZATIONS must be of type []interface{}")
+		}
+	}
 	if value, ok := fullConfig["ORG_RESTRICT"]; ok {
 		newGithubTriggerConfigStruct.OrgRestrict, ok = value.(bool)
 		if !ok {
@@ -86,12 +92,6 @@ func NewGithubTriggerConfigStruct(fullConfig map[string]interface{}) (*GithubTri
 		newGithubTriggerConfigStruct.ClientId, ok = value.(string)
 		if !ok {
 			return newGithubTriggerConfigStruct, errors.New("CLIENT_ID must be of type string")
-		}
-	}
-	if value, ok := fullConfig["ALLOWED_ORGANIZATIONS"]; ok {
-		newGithubTriggerConfigStruct.AllowedOrganizations, ok = value.([]interface{})
-		if !ok {
-			return newGithubTriggerConfigStruct, errors.New("ALLOWED_ORGANIZATIONS must be of type []interface{}")
 		}
 	}
 

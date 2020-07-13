@@ -8,12 +8,12 @@ import (
 
 // SecurityScannerFieldGroup represents the SecurityScannerFieldGroup config fields
 type SecurityScannerFieldGroup struct {
-	FeatureSecurityScanner              bool          `default:"false" validate:""`
-	SecurityScannerEndpoint             string        `default:"" validate:""`
-	SecurityScannerIndexingInterval     int           `default:"30" validate:""`
-	SecurityScannerNotifications        bool          `default:"false" validate:""`
-	SecurityScannerV4Endpoint           string        `default:"" validate:""`
-	SecurityScannerV4NamespaceWhitelist []interface{} `default:"[]" validate:""`
+	FeatureSecurityScanner              bool          `default:"false" validate:"" yaml:"FEATURE_SECURITY_SCANNER"`
+	SecurityScannerEndpoint             string        `default:"" validate:"" yaml:"SECURITY_SCANNER_ENDPOINT"`
+	SecurityScannerIndexingInterval     int           `default:"30" validate:"" yaml:"SECURITY_SCANNER_INDEXING_INTERVAL"`
+	SecurityScannerNotifications        bool          `default:"false" validate:"" yaml:"SECURITY_SCANNER_NOTIFICATIONS"`
+	SecurityScannerV4Endpoint           string        `default:"" validate:"" yaml:"SECURITY_SCANNER_V4_ENDPOINT"`
+	SecurityScannerV4NamespaceWhitelist []interface{} `default:"[]" validate:"" yaml:"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"`
 }
 
 // NewSecurityScannerFieldGroup creates a new SecurityScannerFieldGroup

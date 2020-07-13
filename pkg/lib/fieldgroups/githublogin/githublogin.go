@@ -9,18 +9,18 @@ import (
 
 // GitHubLoginFieldGroup represents the GitHubLoginFieldGroup config fields
 type GitHubLoginFieldGroup struct {
-	FeatureGithubLogin bool                     `default:"false" validate:""`
-	GithubLoginConfig  *GithubLoginConfigStruct `default:"" validate:""`
+	FeatureGithubLogin bool                     `default:"false" validate:"" yaml:"FEATURE_GITHUB_LOGIN"`
+	GithubLoginConfig  *GithubLoginConfigStruct `default:"" validate:"" yaml:"GITHUB_LOGIN_CONFIG"`
 }
 
 // GithubLoginConfigStruct represents the GithubLoginConfigStruct config fields
 type GithubLoginConfigStruct struct {
-	AllowedOrganizations []interface{} `default:"[]" validate:""`
-	OrgRestrict          bool          `default:"false" validate:""`
-	ApiEndpoint          string        `default:"" validate:""`
-	GithubEndpoint       string        `default:"" validate:""`
-	ClientId             string        `default:"" validate:""`
-	ClientSecret         string        `default:"" validate:""`
+	AllowedOrganizations []interface{} `default:"[]" validate:"" yaml:"ALLOWED_ORGANIZATIONS"`
+	OrgRestrict          bool          `default:"false" validate:"" yaml:"ORG_RESTRICT"`
+	ApiEndpoint          string        `default:"" validate:"" yaml:"API_ENDPOINT"`
+	GithubEndpoint       string        `default:"" validate:"" yaml:"GITHUB_ENDPOINT"`
+	ClientId             string        `default:"" validate:"" yaml:"CLIENT_ID"`
+	ClientSecret         string        `default:"" validate:"" yaml:"CLIENT_SECRET"`
 }
 
 // NewGitHubLoginFieldGroup creates a new GitHubLoginFieldGroup

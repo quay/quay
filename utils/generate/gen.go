@@ -276,18 +276,19 @@ func generateStructs(fgName string, fields []FieldDefinition, topLevel bool) (st
 			fieldName := field.Name
 			fieldDefault := strings.Replace(field.Default, `"`, `\"`, -1)
 			fieldValidate := field.Validate
+			fieldYAML := field.YAML
 
 			switch field.Type {
 			case "array":
-				g.Id(fieldName).Index().Interface().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
+				g.Id(fieldName).Index().Interface().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate, "yaml": fieldYAML})
 			case "boolean":
-				g.Id(fieldName).Bool().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
+				g.Id(fieldName).Bool().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate, "yaml": fieldYAML})
 			case "string":
-				g.Id(fieldName).String().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
+				g.Id(fieldName).String().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate, "yaml": fieldYAML})
 			case "number":
-				g.Id(fieldName).Int().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
+				g.Id(fieldName).Int().Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate, "yaml": fieldYAML})
 			case "object":
-				g.Id(fieldName).Id("*" + fieldName + "Struct").Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate})
+				g.Id(fieldName).Id("*" + fieldName + "Struct").Tag(map[string]string{"default": fieldDefault, "validate": fieldValidate, "yaml": fieldYAML})
 				if len(field.Properties) == 0 {
 					innerStructs = append(innerStructs, jen.Comment("// "+fieldName+"Struct represents the "+fieldName+" struct\n").Type().Id(fieldName+"Struct").Map(jen.String()).Interface())
 				} else {

@@ -2,15 +2,14 @@ package teamsyncing
 
 import (
 	"errors"
-
 	"github.com/creasty/defaults"
 )
 
 // TeamSyncingFieldGroup represents the TeamSyncingFieldGroup config fields
 type TeamSyncingFieldGroup struct {
-	FeatureNonsuperuserTeamSyncingSetup bool   `default:"false" validate:""`
-	FeatureTeamSyncing                  bool   `default:"false" validate:""`
-	TeamResyncStaleTime                 string `default:"30m" validate:"customValidateTimePattern"`
+	FeatureNonsuperuserTeamSyncingSetup bool   `default:"false" validate:"" yaml:"FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP"`
+	FeatureTeamSyncing                  bool   `default:"false" validate:"" yaml:"FEATURE_TEAM_SYNCING"`
+	TeamResyncStaleTime                 string `default:"30m" validate:"customValidateTimePattern" yaml:"TEAM_RESYNC_STALE_TIME"`
 }
 
 // NewTeamSyncingFieldGroup creates a new TeamSyncingFieldGroup

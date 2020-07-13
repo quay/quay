@@ -7,12 +7,12 @@ import (
 
 // JWTAuthenticationFieldGroup represents the JWTAuthenticationFieldGroup config fields
 type JWTAuthenticationFieldGroup struct {
-	AuthenticationType string `default:"Database" validate:"oneof=Database LDAP JTW Keystone OIDC AppToken"`
-	FeatureMailing     bool   `default:"true" validate:""`
-	JwtAuthIssuer      string `default:"" validate:""`
-	JwtGetuserEndpoint string `default:"" validate:""`
-	JwtQueryEndpoint   string `default:"" validate:""`
-	JwtVerifyEndpoint  string `default:"" validate:""`
+	AuthenticationType string `default:"Database" validate:"" yaml:"AUTHENTICATION_TYPE"`
+	FeatureMailing     bool   `default:"true" validate:"" yaml:"FEATURE_MAILING"`
+	JwtAuthIssuer      string `default:"" validate:"" yaml:"JWT_AUTH_ISSUER"`
+	JwtGetuserEndpoint string `default:"" validate:"" yaml:"JWT_GETUSER_ENDPOINT"`
+	JwtQueryEndpoint   string `default:"" validate:"" yaml:"JWT_QUERY_ENDPOINT"`
+	JwtVerifyEndpoint  string `default:"" validate:"" yaml:"JWT_VERIFY_ENDPOINT"`
 }
 
 // NewJWTAuthenticationFieldGroup creates a new JWTAuthenticationFieldGroup

@@ -2,12 +2,13 @@ package quaydocumentation
 
 import (
 	"errors"
+
 	"github.com/creasty/defaults"
 )
 
 // QuayDocumentationFieldGroup represents the QuayDocumentationFieldGroup config fields
 type QuayDocumentationFieldGroup struct {
-	DocumentationRoot string `default:"" validate:""`
+	DocumentationRoot string `default:"" validate:"" yaml:"DOCUMENTATION_ROOT"`
 }
 
 // NewQuayDocumentationFieldGroup creates a new QuayDocumentationFieldGroup
