@@ -2,12 +2,15 @@ package shared
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -207,19 +210,16 @@ func ValidateIsURL(input string, field string, fgName string) (bool, ValidationE
 // ValidateHostIsReachable will check if a get request returns a 200 status code
 func ValidateHostIsReachable(input string, field string, fgName string) (bool, ValidationError) {
 
-	// Make get request
-	resp, err := http.Get(input)
-	if err != nil {
-		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Is URL",
-			Message: "Cannot reach " + input,
-		}
-		return false, newError
-	}
+	// Set timeout
+	timeout := 1 * time.Second
 
-	// Check status code
-	if resp.StatusCode != 200 {
+	// Get raw hostname without protocol
+	url := strings.TrimPrefix(input, "https://")
+	url = strings.TrimPrefix(url, "http://")
+
+	fmt.Println(url)
+	_, err := net.DialTimeout("tcp", url, timeout)
+	if err != nil {
 		newError := ValidationError{
 			Tags:    []string{field},
 			Policy:  "Is URL",

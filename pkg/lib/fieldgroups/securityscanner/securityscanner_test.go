@@ -15,7 +15,7 @@ func TestValidateSecurityScanner(t *testing.T) {
 	}{
 		{name: "checkFeatureOff", config: map[string]interface{}{"FEATURE_SECURITY_SCANNER": false}, want: "valid"},
 		{name: "checkFeatureOnMissigEndpoint", config: map[string]interface{}{"FEATURE_SECURITY_SCANNER": true}, want: "invalid"},
-		{name: "checkFeatureOnGoodEnpoint", config: map[string]interface{}{"FEATURE_SECURITY_SCANNER": true, "SECURITY_SCANNER_ENDPOINT": "http://google.com"}, want: "valid"},
+		{name: "checkFeatureOnGoodEnpointWProtocol", config: map[string]interface{}{"FEATURE_SECURITY_SCANNER": true, "SECURITY_SCANNER_ENDPOINT": "https://www.google.com:80"}, want: "valid"},
 		{name: "checkFeatureOnBadEndpoint", config: map[string]interface{}{"FEATURE_SECURITY_SCANNER": true, "SECURITY_SCANNER_ENDPOINT": "http://notarealwebsite.com/"}, want: "invalid"},
 		{name: "checkEndpointNotURL", config: map[string]interface{}{"FEATURE_SECURITY_SCANNER": true, "SECURITY_SCANNER_ENDPOINT": "not_a_url"}, want: "invalid"},
 	}
