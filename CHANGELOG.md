@@ -1,4 +1,10 @@
-### master
+### solo
+
+- Note: built on python3
+- Added: numerous internal performance improvements
+- Fixed: build triggers may disclose robot account names (CVE-2020-14313)
+- Known issue: build manager disabled pending updating to python3 (PROJQUAY-703)
+- Known issue: config app fails to generate clair security.pem (PROJQUAY-850)
 
 ### qui-gon
 
