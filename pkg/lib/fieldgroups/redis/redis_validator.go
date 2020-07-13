@@ -1,6 +1,9 @@
 package redis
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/quay/config-tool/pkg/lib/shared"
 )
@@ -12,13 +15,13 @@ func (fg *RedisFieldGroup) Validate() []shared.ValidationError {
 	errors := []shared.ValidationError{}
 
 	// Check for build logs config
-	if ok, err := shared.ValidateRequiredObject(fg.BuildlogsRedis, "BUILD_LOGS_REDIS", "Redis"); !ok {
+	if ok, err := shared.ValidateRequiredObject(fg.BuildlogsRedis, "BUILDLOGS_REDIS", "Redis"); !ok {
 		errors = append(errors, err)
 		return errors
 	}
 
 	// Check for build log host
-	if ok, err := shared.ValidateRequiredString(fg.BuildlogsRedis.Host, "BUILD_LOGS_REDIS.HOST", "Redis"); !ok {
+	if ok, err := shared.ValidateRequiredString(fg.BuildlogsRedis.Host, "BUILDLOGS_REDIS.HOST", "Redis"); !ok {
 		errors = append(errors, err)
 	}
 
@@ -33,19 +36,28 @@ func (fg *RedisFieldGroup) Validate() []shared.ValidationError {
 		errors = append(errors, err)
 	}
 
-	// Build redis options for build logs
+	// Build options for build logs and connect
+	addr := fg.BuildlogsRedis.Host
+	if fg.BuildlogsRedis.Port != 0 {
+		addr = addr + ":" + strconv.Itoa(fg.BuildlogsRedis.Port)
+	}
+	fmt.Println(addr)
 	options := &redis.Options{
-		Addr:     fg.BuildlogsRedis.Host + ":" + string(fg.BuildlogsRedis.Port),
+		Addr:     addr,
 		Password: fg.BuildlogsRedis.Password,
 		DB:       0,
 	}
-	if ok, err := shared.ValidateRedisConnection(options, "BUILD_LOGS_REDIS", "Redis"); !ok {
+	if ok, err := shared.ValidateRedisConnection(options, "BUILDLOGS_REDIS", "Redis"); !ok {
 		errors = append(errors, err)
 	}
 
-	// Build redis options for user events
+	// Build options for user events and connect
+	addr = fg.UserEventsRedis.Host
+	if fg.UserEventsRedis.Port != 0 {
+		addr = addr + ":" + strconv.Itoa(fg.UserEventsRedis.Port)
+	}
 	options = &redis.Options{
-		Addr:     fg.UserEventsRedis.Host + ":" + string(fg.UserEventsRedis.Port),
+		Addr:     addr,
 		Password: fg.UserEventsRedis.Password,
 		DB:       0,
 	}
