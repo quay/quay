@@ -15,12 +15,14 @@ time qemu-img resize ./coreos_production_qemu_image.qcow2 "${VM_VOLUME_SIZE}"
 qemu-system-x86_64 \
         -enable-kvm \
         -cpu host \
-        -device virtio-9p-pci,fsdev=conf,mount_tag=config-2 \
         -nographic \
         -drive if=virtio,file=./coreos_production_qemu_image.qcow2 \
-        -fsdev local,id=conf,security_model=none,readonly,path=/userdata \
+        -fw_cfg name=opt/com.coreos/config,file=/userdata/openstack/latest/user_data \
         -m "${VM_MEMORY}" \
         -machine accel=kvm \
         -net nic,model=virtio \
         -net user,hostfwd=tcp::2222-:22 \
-        -smp 2
+        -smp 2 \
+        # TODO(kleesc): Investigate if the options below are still needed
+        -fsdev local,id=conf,security_model=none,readonly,path=/userdata \
+        -device virtio-9p-pci,fsdev=conf,mount_tag=config-2
