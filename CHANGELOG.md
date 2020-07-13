@@ -3,6 +3,7 @@
 **Fixed**
 - Config app installs supplied TLS certs at startup
 - Tech preview clair-v4 correctly reindexes manifests
+- Build triggers may disclose robot account names (CVE-2020-14313)
 
 
 ### v3.3.0

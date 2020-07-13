@@ -5,6 +5,8 @@ from auth import permissions
 from data import model
 from endpoints.api.trigger_analyzer import TriggerAnalyzer
 from util import dockerfileparse
+from test.fixtures import *
+from app import app as real_app
 
 BAD_PATH = '"server_hostname/" is not a valid Quay repository path'
 
@@ -14,7 +16,7 @@ GOOD_CONF = {"context": "/", "dockerfile_path": "/file"}
 
 BAD_CONF = {"context": "context", "dockerfile_path": "dockerfile_path"}
 
-ONE_ROBOT = {"can_read": False, "is_robot": True, "kind": "user", "name": "name"}
+ONE_ROBOT = {"can_read": False, "is_robot": True, "kind": "user", "name": "namespace+name"}
 
 DOCKERFILE_NOT_CHILD = "Dockerfile, context, is not a child of the context, dockerfile_path."
 
@@ -41,7 +43,7 @@ def patch_permissions(monkeypatch, can_read=False):
 
 def patch_list_namespace_robots(monkeypatch):
     my_mock = Mock()
-    my_mock.configure_mock(**{"username": "name"})
+    my_mock.configure_mock(**{"username": "namespace+name"})
     return_value = [my_mock]
 
     def return_list_mocks(namesapce):
@@ -121,7 +123,7 @@ def return_path():
 @pytest.mark.parametrize(
     "handler_fn, config_dict, admin_org_permission, status, message, get_base_image, robots, server_hostname, get_repository, can_read, namespace, name",
     [
-        (
+        pytest.param(
             return_none,
             EMPTY_CONF,
             False,
@@ -134,8 +136,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test1",
         ),
-        (
+        pytest.param(
             return_none,
             EMPTY_CONF,
             True,
@@ -148,8 +151,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test2",
         ),
-        (
+        pytest.param(
             return_content,
             BAD_CONF,
             False,
@@ -162,8 +166,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test3",
         ),
-        (
+        pytest.param(
             return_none,
             EMPTY_CONF,
             False,
@@ -176,8 +181,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test4",
         ),
-        (
+        pytest.param(
             return_none,
             EMPTY_CONF,
             True,
@@ -190,8 +196,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test5",
         ),
-        (
+        pytest.param(
             return_content,
             BAD_CONF,
             False,
@@ -204,8 +211,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test6",
         ),
-        (
+        pytest.param(
             return_content,
             GOOD_CONF,
             False,
@@ -218,8 +226,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test7",
         ),
-        (
+        pytest.param(
             return_content,
             GOOD_CONF,
             False,
@@ -232,8 +241,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test8",
         ),
-        (
+        pytest.param(
             return_content,
             GOOD_CONF,
             False,
@@ -246,8 +256,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test9",
         ),
-        (
+        pytest.param(
             return_content,
             GOOD_CONF,
             False,
@@ -260,8 +271,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test10",
         ),
-        (
+        pytest.param(
             return_content,
             GOOD_CONF,
             False,
@@ -274,22 +286,9 @@ def return_path():
             False,
             "namespace",
             None,
+            id="test11",
         ),
-        (
-            return_content,
-            GOOD_CONF,
-            False,
-            "requiresrobot",
-            None,
-            return_path,
-            [],
-            "server_hostname",
-            "nonpublic",
-            True,
-            "path",
-            "file",
-        ),
-        (
+        pytest.param(
             return_content,
             GOOD_CONF,
             False,
@@ -302,6 +301,7 @@ def return_path():
             True,
             "path",
             "file",
+            id="test12",
         ),
     ],
 )
@@ -319,6 +319,7 @@ def test_trigger_analyzer(
     namespace,
     name,
     get_monkeypatch,
+    client,
 ):
     patch_list_namespace_robots(get_monkeypatch)
     patch_get_all_repo_users_transitive(get_monkeypatch)
@@ -338,3 +339,48 @@ def test_trigger_analyzer(
         "message": message,
         "is_admin": admin_org_permission,
     }
+
+
+class FakeHandler(object):
+    def load_dockerfile_contents(self):
+        return """
+            FROM localhost:5000/devtable/simple
+        """
+
+
+def test_inherited_robot_accounts(get_monkeypatch, initialized_db, client):
+    patch_permissions(get_monkeypatch, False)
+    analyzer = TriggerAnalyzer(FakeHandler(), "anothernamespace", "localhost:5000", {}, True)
+    assert analyzer.analyze_trigger()["status"] == "error"
+
+
+def test_inherited_robot_accounts_same_namespace(get_monkeypatch, initialized_db, client):
+    patch_permissions(get_monkeypatch, True)
+    analyzer = TriggerAnalyzer(FakeHandler(), "devtable", "localhost:5000", {}, True)
+
+    result = analyzer.analyze_trigger()
+    assert result["status"] == "requiresrobot"
+    for robot in result["robots"]:
+        assert robot["name"].startswith("devtable+")
+        assert "token" not in robot
+
+
+def test_inherited_robot_accounts_same_namespace_no_read_permission(
+    get_monkeypatch, initialized_db, client
+):
+    patch_permissions(get_monkeypatch, False)
+    analyzer = TriggerAnalyzer(FakeHandler(), "devtable", "localhost:5000", {}, True)
+
+    result = analyzer.analyze_trigger()
+    assert analyzer.analyze_trigger()["status"] == "error"
+
+
+def test_inherited_robot_accounts_same_namespace_not_org_admin(
+    get_monkeypatch, initialized_db, client
+):
+    patch_permissions(get_monkeypatch, True)
+    analyzer = TriggerAnalyzer(FakeHandler(), "devtable", "localhost:5000", {}, False)
+
+    result = analyzer.analyze_trigger()
+    assert result["status"] == "requiresrobot"
+    assert not result["robots"]
