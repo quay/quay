@@ -1,6 +1,8 @@
 import asyncio
 import datetime
 import hashlib
+import io
+import json
 import logging
 import os
 import socket
@@ -16,7 +18,6 @@ import botocore
 import cachetools.func
 import requests
 
-from container_cloud_config import CloudConfigContext
 from jinja2 import FileSystemLoader, Environment
 from prometheus_client import Histogram
 
@@ -25,6 +26,7 @@ import release
 from _init import ROOT_DIR
 from app import app
 from buildman.asyncutil import AsyncWrapper
+from buildman.container_cloud_config import CloudConfigContext
 
 
 logger = logging.getLogger(__name__)
@@ -36,8 +38,8 @@ _TAG_RETRY_COUNT = 3  # Number of times to retry adding tags.
 _TAG_RETRY_SLEEP = 2  # Number of seconds to wait between tag retries.
 
 ENV = Environment(loader=FileSystemLoader(os.path.join(ROOT_DIR, "buildman/templates")))
-TEMPLATE = ENV.get_template("cloudconfig.yaml")
 CloudConfigContext().populate_jinja_environment(ENV)
+TEMPLATE = ENV.get_template("cloudconfig.json")
 
 
 build_start_duration = Histogram(
@@ -157,24 +159,27 @@ class BuilderExecutor(object):
         if quay_password is None:
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
-        return TEMPLATE.render(
-            realm=realm,
-            token=token,
-            build_uuid=build_uuid,
-            quay_username=quay_username,
-            quay_password=quay_password,
-            manager_hostname=manager_hostname,
-            websocket_scheme=self.websocket_scheme,
-            coreos_channel=coreos_channel,
-            worker_image=self.executor_config.get(
-                "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
-            ),
-            worker_tag=self.executor_config["WORKER_TAG"],
-            logentries_token=self.executor_config.get("LOGENTRIES_TOKEN", None),
-            volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
-            max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
-            ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+        rendered_json = json.load(
+            io.StringIO(TEMPLATE.render(
+                realm=realm,
+                token=token,
+                build_uuid=build_uuid,
+                quay_username=quay_username,
+                quay_password=quay_password,
+                manager_hostname=manager_hostname,
+                websocket_scheme=self.websocket_scheme,
+                coreos_channel=coreos_channel,
+                worker_image=self.executor_config.get(
+                    "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
+                ),
+                worker_tag=self.executor_config["WORKER_TAG"],
+                volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
+                max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
+                ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+            ))
         )
+
+        return json.dumps(rendered_json)
 
 
 class EC2Executor(BuilderExecutor):
@@ -182,9 +187,9 @@ class EC2Executor(BuilderExecutor):
     Implementation of BuilderExecutor which uses libcloud to start machines on a variety of cloud
     providers.
     """
-
+    COREOS_STACK_ARCHITECTURE = "x86_64"
     COREOS_STACK_URL = (
-        "http://%s.release.core-os.net/amd64-usr/current/coreos_production_ami_hvm.txt"
+        "https://builds.coreos.fedoraproject.org/streams/%s.json"
     )
 
     def __init__(self, *args, **kwargs):
@@ -210,9 +215,9 @@ class EC2Executor(BuilderExecutor):
         """
         Retrieve the CoreOS AMI id from the canonical listing.
         """
-        stack_list_string = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).text
-        stack_amis = dict([stack.split("=") for stack in stack_list_string.split("|")])
-        return stack_amis[ec2_region]
+        stack_list_json = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).json()
+        stack_amis = stack_list_json['architectures'][EC2Executor.COREOS_STACK_ARCHITECTURE]['images']['aws']['regions']
+        return stack_amis[ec2_region]['image']
 
     @async_observe(build_start_duration, "ec2")
     async def start_builder(self, realm, token, build_uuid):
@@ -394,7 +399,7 @@ class KubernetesExecutor(BuilderExecutor):
         self._loop = asyncio.get_event_loop()
         self.namespace = self.executor_config.get("BUILDER_NAMESPACE", "builder")
         self.image = self.executor_config.get(
-            "BUILDER_VM_CONTAINER_IMAGE", "quay.io/quay/quay-builder-qemu-coreos:stable"
+            "BUILDER_VM_CONTAINER_IMAGE", "quay.io/quay/quay-builder-qemu-fedoracoreos:stable"
         )
 
     async def _request(self, method, path, **kwargs):

@@ -10,15 +10,14 @@ set -o nounset
 mkdir -p /userdata/openstack/latest
 echo "${USERDATA}" > /userdata/openstack/latest/user_data
 
-time qemu-img resize ./coreos_production_qemu_image.img "${VM_VOLUME_SIZE}"
+time qemu-img resize ./coreos_production_qemu_image.qcow2 "${VM_VOLUME_SIZE}"
 
-qemu-system-x86_64 \
+/usr/libexec/qemu-kvm \
         -enable-kvm \
         -cpu host \
-        -device virtio-9p-pci,fsdev=conf,mount_tag=config-2 \
         -nographic \
-        -drive if=virtio,file=./coreos_production_qemu_image.img \
-        -fsdev local,id=conf,security_model=none,readonly,path=/userdata \
+        -drive if=virtio,file=./coreos_production_qemu_image.qcow2 \
+        -fw_cfg name=opt/com.coreos/config,file=/userdata/openstack/latest/user_data \
         -m "${VM_MEMORY}" \
         -machine accel=kvm \
         -net nic,model=virtio \

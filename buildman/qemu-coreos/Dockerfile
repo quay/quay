@@ -1,23 +1,24 @@
-FROM debian
+FROM centos:8 as executor-img
+ARG location
+ARG channel
+ARG version
 
-RUN apt-get clean && apt-get update && apt-get upgrade -y # 03APR2017
-RUN apt-get install -y \
-  bzip2 \
-  curl \
-  openssh-client \
-  qemu-kvm
+RUN [ -z "${location}" ] || [ -z "${channel}" ] || [ -z "${version}" ] && echo "ARG location, channel, version are required" && exit 1 || true
 
-ARG channel=stable
-ARG version=current
+RUN echo "Downloading" ${location}
+RUN curl -s -o coreos_production_qemu_image.qcow2.xz ${location} && unxz coreos_production_qemu_image.qcow2.xz
 
-RUN echo "Downloading http://${channel}.release.core-os.net/amd64-usr/${version}/coreos_production_qemu_image.img.bz2"
-RUN curl -s -O http://${channel}.release.core-os.net/amd64-usr/${version}/coreos_production_qemu_image.img.bz2 && \
-  bzip2 -d coreos_production_qemu_image.img.bz2
 
-RUN apt-get remove -y curl bzip2 && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+FROM centos:8
+ARG location
+ARG channel
+ARG version
 
+RUN yum -y update && \
+  yum -y install openssh-clients qemu-kvm && \
+  yum -y clean all
+
+COPY --from=executor-img /coreos_production_qemu_image.qcow2 /coreos_production_qemu_image.qcow2
 COPY start.sh /start.sh
 
 LABEL com.coreos.channel ${channel}
