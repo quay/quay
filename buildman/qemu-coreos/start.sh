@@ -12,7 +12,7 @@ echo "${USERDATA}" > /userdata/openstack/latest/user_data
 
 time qemu-img resize ./coreos_production_qemu_image.qcow2 "${VM_VOLUME_SIZE}"
 
-qemu-system-x86_64 \
+/usr/libexec/qemu-kvm \
         -enable-kvm \
         -cpu host \
         -nographic \
@@ -22,7 +22,4 @@ qemu-system-x86_64 \
         -machine accel=kvm \
         -net nic,model=virtio \
         -net user,hostfwd=tcp::2222-:22 \
-        -smp 2 \
-        # TODO(kleesc): Investigate if the options below are still needed
-        -fsdev local,id=conf,security_model=none,readonly,path=/userdata \
-        -device virtio-9p-pci,fsdev=conf,mount_tag=config-2
+        -smp 2
