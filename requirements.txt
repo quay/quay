@@ -5,7 +5,6 @@
 -e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
 -e git+https://github.com/DevTable/anunidecode.git@d59236a822e578ba3a0e5e5abbd3855873fa7a88#egg=anunidecode
 -e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
--e git+https://github.com/DevTable/container-cloud-config.git@44e06879a710661f01054b300dc78a12a268b6b5#egg=container_cloud_config
 -e git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
 -e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
 -e git+https://github.com/jepcastelein/marketo-rest-python.git@d151205aaa70fa69c14cf3ed5d8f3162e99b8236#egg=marketorestpython
