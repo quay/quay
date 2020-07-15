@@ -74,7 +74,7 @@ def main():
         if not os.path.exists(KUBE_EXTRA_CA_CERTDIR):
             os.mkdir(KUBE_EXTRA_CA_CERTDIR)
 
-        cert_value = base64.b64decode(secret_data[cert_key])
+        cert_value = base64.b64decode(secret_data[cert_key]).decode("utf-8")
         cert_filename = cert_key.replace(EXTRA_CA_DIRECTORY_PREFIX, "")
         logger.info("Found an extra cert %s in config-secret, copying to kube ca dir")
 
