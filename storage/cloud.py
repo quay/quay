@@ -105,20 +105,43 @@ class _CloudStorage(BaseStorageV2):
             self._cloud_bucket = self._cloud_conn.get_bucket(self._bucket_name, validate=False)
             self._initialized = True
 
-    def _debug_key(self, key):
+    def _debug_key(self, obj):
         """
         Used for debugging only.
         """
-        orig_meth = key.bucket.connection.make_request
+        import types
+        valid_debug_methods = [
+            "copy",
+            "copy_from",
+            "delete",
+            "download_file",
+            "download_fileobj",
+            "get",
+            "get_available_subresources",
+            "initiate_multipart_upload",
+            "load",
+            "put",
+            "reload",
+            "restore_object",
+            "upload_file",
+            "upload_fileobj",
+        ]
 
-        def new_meth(*args, **kwargs):
-            print("#" * 16)
-            print(args)
-            print(kwargs)
-            print("#" * 16)
-            return orig_meth(*args, **kwargs)
+        # Wraps the method to debug
+        def debug_method_decorator(f):
+            @wraps(f)
+            def wrapper(self, *args, **kwargs):
+                print("#" * 16)
+                print(args)
+                print(kwargs)
+                print("#" * 16)
+                return f(*args, **kwargs)
+            return wrapper
 
-        key.bucket.connection.make_request = new_meth
+        # Binds the new methods to the instance
+        for method in valid_debug_methods:
+            new_meth = debug_method_decorator(getattr(obj, method))
+            obj.__setattr__(method, types.MethodType(new_meth, obj))
 
     def _init_path(self, path=None):
         path = os.path.join(self._root_path, path) if path else self._root_path
