@@ -8,10 +8,10 @@ from io import BufferedIOBase, StringIO, BytesIO
 from itertools import chain
 from uuid import uuid4
 
-import boto.s3.connection
-import boto.s3.multipart
+import botocore.config
+import botocore.exceptions
+import boto3.session
 import boto.gs.connection
-import boto.s3.key
 import boto.gs.key
 
 from boto.exception import S3ResponseError
@@ -40,13 +40,37 @@ multipart_uploads_completed = Counter(
 )
 
 
+_PartUpload = namedtuple("_PartUpload", ["part_number", "e_tag"])
 _PartUploadMetadata = namedtuple("_PartUploadMetadata", ["path", "offset", "length"])
 _CHUNKS_KEY = "chunks"
 
 
+# This is for HEAD requests to check if a key exists.
+# Since the HEAD request does not have a response body, boto3 uses the status code as error code
+# Ref: https://github.com/boto/boto3/issues/2442
+_MISSING_KEY_ERROR_CODES = ("NoSuchKey", "404")
+
+
 class StreamReadKeyAsFile(BufferedIOBase):
+    """
+    Wrapper for botocore.StreamingBody
+
+    NOTE: Moving from boto2 to boto3, the file-like interface implementation between bn both versions behave differently.
+          In boto3, once the stream is out of data, it will keep returning an empty string until it is closed.
+          In boto2, once the stream is out of data, it will return an empty string once, and subsequent read will start reading
+          the stream from the beginning again (by making a new GET request, since it is server streaming the content
+          (calling `close()` does not seem to have any effect). This wrapper provides a more consistent file-like interface and
+          allows to check whether a key is closed or not.
+
+          References:
+          - https://github.com/boto/boto/blob/develop/boto/s3/key.py#L51 (boto2's "Key")
+          - https://github.com/boto/botocore/blob/develop/botocore/response.py (boto3's "StreamingBody")
+          - https://github.com/boto/boto3/issues/564
+    """
+
     def __init__(self, key):
         self._key = key
+        self._closed = False
 
     def read(self, amt=None):
         if self.closed:
@@ -60,10 +84,11 @@ class StreamReadKeyAsFile(BufferedIOBase):
 
     @property
     def closed(self):
-        return self._key.closed
+        return self._closed
 
     def close(self):
-        self._key.close(fast=True)
+        self._closed = True
+        self._key.close()
 
 
 class _CloudStorage(BaseStorageV2):
@@ -71,7 +96,6 @@ class _CloudStorage(BaseStorageV2):
         self,
         context,
         connection_class,
-        key_class,
         connect_kwargs,
         upload_params,
         storage_path,
@@ -90,7 +114,6 @@ class _CloudStorage(BaseStorageV2):
         self._secret_key = secret_key
         self._root_path = storage_path
         self._connection_class = connection_class
-        self._key_class = key_class
         self._upload_params = upload_params
         self._connect_kwargs = connect_kwargs
         self._cloud_conn = None
@@ -99,10 +122,19 @@ class _CloudStorage(BaseStorageV2):
 
     def _initialize_cloud_conn(self):
         if not self._initialized:
-            self._cloud_conn = self._connection_class(
-                self._access_key, self._secret_key, **self._connect_kwargs
+            session = self._connection_class(
+                aws_access_key_id=self._access_key,
+                aws_secret_access_key=self._secret_key,
             )
-            self._cloud_bucket = self._cloud_conn.get_bucket(self._bucket_name, validate=False)
+
+            # Low-level client. Needed to generate presigned urls
+            self._cloud_conn = session.client("s3", **self._connect_kwargs)
+            self._cloud_bucket = session.resource("s3", **self._connect_kwargs).Bucket(
+                self._bucket_name
+            )
+            # This will raise a ClientError if the bucket does ot exists.
+            # We actually want an exception raised if the bucket does not exists (same as in boto2)
+            self._cloud_conn.head_bucket(Bucket=self._bucket_name)
             self._initialized = True
 
     def _debug_key(self, obj):
@@ -110,6 +142,7 @@ class _CloudStorage(BaseStorageV2):
         Used for debugging only.
         """
         import types
+
         valid_debug_methods = [
             "copy",
             "copy_from",
@@ -136,6 +169,7 @@ class _CloudStorage(BaseStorageV2):
                 print(kwargs)
                 print("#" * 16)
                 return f(*args, **kwargs)
+
             return wrapper
 
         # Binds the new methods to the instance
@@ -159,13 +193,13 @@ class _CloudStorage(BaseStorageV2):
     def get_content(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
+        obj = self.get_cloud_bucket().Object(path)
         try:
-            return key.get_contents_as_string()
-        except S3ResponseError as s3r:
+            return obj.get()["Body"].read()
+        except botocore.exceptions.ClientError as s3r:
             # Raise an IOError in case the key was not found, to maintain the current
             # interface.
-            if s3r.error_code == "NoSuchKey":
+            if s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
                 raise IOError("No such key: '{0}'".format(path))
 
             raise
@@ -173,8 +207,8 @@ class _CloudStorage(BaseStorageV2):
     def put_content(self, path, content):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
-        key.set_contents_from_string(content, **self._upload_params)
+        obj = self.get_cloud_bucket().Object(path)
+        obj.put(Body=content, **self._upload_params)
         return path
 
     def get_supports_resumable_downloads(self):
@@ -185,55 +219,78 @@ class _CloudStorage(BaseStorageV2):
     ):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        k = self._key_class(self._cloud_bucket, path)
+
+        client_method = "get_object"
         if head:
-            return k.generate_url(expires_in, "HEAD")
-        return k.generate_url(expires_in)
+            client_method = "head_object"
+
+        return self.get_cloud_conn().generate_presigned_url(
+            client_method,
+            Params={"Bucket": self._bucket_name, "Key": path},
+            ExpiresIn=expires_in,
+        )
 
     def get_direct_upload_url(self, path, mime_type, requires_cors=True):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
-        url = key.generate_url(300, "PUT", headers={"Content-Type": mime_type}, encrypt_key=True)
-        return url
+        return self.get_cloud_conn().generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": self._bucket_name,
+                "Key": path,
+                "ServerSideEncryption": "AES256",
+                "ContentType": mime_type,
+            },
+            ExpiresIn=300,
+        )
 
     def stream_read(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
-        if not key.exists():
-            raise IOError("No such key: '{0}'".format(path))
+        obj = self.get_cloud_bucket().Object(path)
+        try:
+            obj.load()
+        except botocore.exceptions.ClientError as s3r:
+            if s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
+                raise IOError("No such key: '{0}'".format(path))
+            raise
+
+        buf = obj.get()["Body"]
         while True:
-            buf = key.read(self.buffer_size)
-            if not buf:
+            data = buf.read(self.buffer_size)
+            if not data:
                 break
-            yield buf
+            yield data
 
     def stream_read_file(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
-        if not key.exists():
-            raise IOError("No such key: '{0}'".format(path))
-        return StreamReadKeyAsFile(key)
+        obj = self.get_cloud_bucket().Object(path)
+        try:
+            obj.load()
+        except botocore.exceptions.ClientError as s3r:
+            if s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
+                raise IOError("No such key: '{0}'".format(path))
+            raise
+        return StreamReadKeyAsFile(obj.get()["Body"])
 
     def __initiate_multipart_upload(self, path, content_type, content_encoding):
         # Minimum size of upload part size on S3 is 5MB
         self._initialize_cloud_conn()
         path = self._init_path(path)
+        obj = self.get_cloud_bucket().Object(path)
 
         metadata = {}
         if content_type is not None:
-            metadata["Content-Type"] = content_type
+            metadata["ContentType"] = content_type
 
         if content_encoding is not None:
-            metadata["Content-Encoding"] = content_encoding
+            metadata["ContentEncoding"] = content_encoding
+
+        metadata = {**metadata, **self._upload_params}
 
         multipart_uploads_started.inc()
-
-        return self._cloud_bucket.initiate_multipart_upload(
-            path, metadata=metadata, **self._upload_params
-        )
+        return obj.initiate_multipart_upload(**metadata)
 
     def stream_write(self, path, fp, content_type=None, content_encoding=None):
         """
@@ -266,9 +323,12 @@ class _CloudStorage(BaseStorageV2):
 
         try:
             mp = self.__initiate_multipart_upload(path, content_type, content_encoding)
-        except S3ResponseError as e:
+        except botocore.exceptions.ClientError as s3r:
             logger.exception("Exception when initiating multipart upload")
-            return 0, e
+            return 0, s3r
+
+        # [_PartUpload]
+        upload_parts = []
 
         # We are going to reuse this but be VERY careful to only read the number of bytes written to it
         buf = BytesIO()
@@ -289,10 +349,15 @@ class _CloudStorage(BaseStorageV2):
                     break
 
                 buf.seek(0)
-                mp.upload_part_from_file(buf, num_part, size=bytes_staged)
+                part = mp.Part(num_part)
+                part_upload = part.upload(
+                    Body=buf,
+                    ContentLength=bytes_staged,
+                )
+                upload_parts.append(_PartUpload(num_part, part_upload["ETag"]))
                 total_bytes_written += bytes_staged
                 num_part += 1
-            except (S3ResponseError, IOError) as e:
+            except (botocore.exceptions.ClientError, IOError) as e:
                 logger.warn(
                     "Error when writing to stream in stream_write_internal at path %s: %s", path, e
                 )
@@ -302,8 +367,8 @@ class _CloudStorage(BaseStorageV2):
 
                 if cancel_on_error:
                     try:
-                        mp.cancel_upload()
-                    except (S3ResponseError, IOError):
+                        mp.abort()
+                    except (botocore.exceptions.ClientError, IOError):
                         logger.exception("Could not cancel upload")
 
                     return 0, write_error
@@ -312,40 +377,60 @@ class _CloudStorage(BaseStorageV2):
 
         if total_bytes_written > 0:
             multipart_uploads_completed.inc()
-
-            self._perform_action_with_retry(mp.complete_upload)
+            self._perform_action_with_retry(
+                mp.complete,
+                MultipartUpload={
+                    "Parts": [{"ETag": p.e_tag, "PartNumber": p.part_number} for p in upload_parts],
+                },
+            )
 
         return total_bytes_written, write_error
 
     def exists(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
-        return key.exists()
+        obj = self.get_cloud_bucket().Object(path)
+        try:
+            obj.load()
+        except botocore.exceptions.ClientError as s3r:
+            if s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
+                return False
+            raise
+        return True
 
     def remove(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
-        if key.exists():
-            # It's a file
-            key.delete()
+        obj = self.get_cloud_bucket().Object(path)
+        try:
+            obj.load()
+            obj.delete()
             return
+        except botocore.exceptions.ClientError as s3r:
+            if not s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
+                raise
         # We assume it's a directory
         if not path.endswith("/"):
             path += "/"
-        for key in self._cloud_bucket.list(prefix=path):
-            key.delete()
+
+        paginator = self.get_cloud_conn().get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self._bucket_name, Prefix=path):
+            for content in page.get("Contents", ()):
+                obj = self.get_cloud_bucket().Object(content["key"])
+                obj.delete()
 
     def get_checksum(self, path):
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
-        k = self._cloud_bucket.lookup(key)
-        if k is None:
-            raise IOError("No such key: '{0}'".format(path))
+        obj = self.get_cloud_bucket().Object(path)
+        try:
+            obj.load()
+        except botocore.exceptions.ClientError as s3r:
+            if s3r.response["Error"]["Code"] in _MISSING_KEY_ERROR_CODES:
+                raise IOError("No such key: '{0}'".format(path))
+            raise
 
-        return k.etag[1:-1][:7]
+        return obj.e_tag[1:-1][:7]
 
     def copy_to(self, destination, path):
         """
@@ -390,10 +475,11 @@ class _CloudStorage(BaseStorageV2):
             )
 
             source_path = self._init_path(path)
-            source_key = self._key_class(self._cloud_bucket, source_path)
+            source_obj = self.get_cloud_bucket().Object(source_path)
 
             dest_path = destination._init_path(path)
-            source_key.copy(destination._cloud_bucket, dest_path)
+            dest_obj = destination.get_cloud_bucket().Object(dest_path)
+            dest_obj.copy_from(CopySource={"Bucket": source_obj.bucket_name, "Key": source_obj.key})
             return
 
         # Fallback to a slower, default copy.
@@ -448,12 +534,14 @@ class _CloudStorage(BaseStorageV2):
             abs_final_path = self._init_path(final_path)
 
             # Let the copy raise an exception if it fails.
-            self._cloud_bucket.copy_key(abs_final_path, self._bucket_name, chunk_path)
+            self.get_cloud_bucket().copy(
+                {"Bucket": self._bucket_name, "Key": chunk_path}, abs_final_path
+            )
 
             # Attempt to clean up the old chunk.
             try:
-                self._cloud_bucket.delete_key(chunk_path)
-            except IOError:
+                self.get_cloud_bucket().Object(chunk_path).delete()
+            except (botocore.exceptions.ClientError, IOError):
                 # We failed to delete a chunk. This sucks, but we shouldn't fail the push.
                 msg = "Failed to clean up chunk %s for move of %s"
                 logger.exception(msg, chunk_path, abs_final_path)
@@ -465,8 +553,8 @@ class _CloudStorage(BaseStorageV2):
             # Attempt to clean up all the chunks.
             for chunk in chunk_list:
                 try:
-                    self._cloud_bucket.delete_key(self._init_path(chunk.path))
-                except IOError:
+                    self.get_cloud_bucket().Object(chunk.path).delete()
+                except (botocore.exceptions.ClientError, IOError):
                     # We failed to delete a chunk. This sucks, but we shouldn't fail the push.
                     msg = "Failed to clean up chunk %s for reupload of %s"
                     logger.exception(msg, chunk.path, final_path)
@@ -477,10 +565,14 @@ class _CloudStorage(BaseStorageV2):
         # an action. The recommendation is to simply try calling the action again.
         for remaining_retries in range(2, -1, -1):
             try:
-                action(*args, **kwargs)
+                return action(*args, **kwargs)
                 break
-            except S3ResponseError as s3re:
-                if remaining_retries and s3re.status == 200 and s3re.error_code == "InternalError":
+            except botocore.exceptions.ClientError as s3re:
+                if (
+                    remaining_retries
+                    and s3re.response["Error"]["HTTPStatusCode"] == 200
+                    and s3re.response["Error"]["Code"] == "InternalError"
+                ):
                     # Weird internal error case. Retry.
                     continue
 
@@ -534,23 +626,40 @@ class _CloudStorage(BaseStorageV2):
                     [_CloudStorage._rechunk(c, self.maximum_chunk_size) for c in chunk_list]
                 )
 
+                # [_PartUpload]
+                upload_parts = []
                 for index, chunk in enumerate(updated_chunks):
                     abs_chunk_path = self._init_path(chunk.path)
-                    self._perform_action_with_retry(
-                        mpu.copy_part_from_key,
-                        self.get_cloud_bucket().name,
-                        abs_chunk_path,
-                        index + 1,
-                        start=chunk.offset,
-                        end=chunk.length + chunk.offset - 1,
+
+                    part = mpu.Part(index + 1)
+                    part_copy = part.copy_from(
+                        CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
+                        CopySourceRange="bytes=%s-%s"
+                        % (chunk.offset, chunk.length + chunk.offset - 1),
                     )
 
-                self._perform_action_with_retry(mpu.complete_upload)
-            except IOError as ioe:
+                    part_copy = self._perform_action_with_retry(
+                        mpu.Part(index + 1).copy_from,
+                        CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
+                        CopySourceRange="bytes=%s-%s"
+                        % (chunk.offset, chunk.length + chunk.offset - 1),
+                    )
+
+                    upload_parts.append(_PartUpload(index + 1, part_copy["CopyPartResult"]["ETag"]))
+
+                self._perform_action_with_retry(
+                    mpu.complete,
+                    MultipartUpload={
+                        "Parts": [
+                            {"ETag": p.e_tag, "PartNumber": p.part_number} for p in upload_parts
+                        ]
+                    },
+                )
+            except (botocore.exceptions.ClientError, IOError) as ioe:
                 # Something bad happened, log it and then give up
                 msg = "Exception when attempting server-side assembly for: %s"
                 logger.exception(msg, final_path)
-                mpu.cancel_upload()
+                mpu.abort()
                 raise ioe
 
         else:
@@ -577,23 +686,22 @@ class S3Storage(_CloudStorage):
         host=None,
         port=None,
     ):
-        upload_params = {
-            "encrypt_key": True,
-        }
+        upload_params = {"ServerSideEncryption": "AES256"}
         connect_kwargs = {}
         if host:
             if host.startswith("http:") or host.startswith("https:"):
                 raise ValueError("host name must not start with http:// or https://")
 
-            connect_kwargs["host"] = host
+            connect_kwargs["endpoint_url"] = host
 
         if port:
-            connect_kwargs["port"] = int(port)
+            connect_kwargs["endpoint_url"] += ":" + port
+
+        connect_kwargs["config"] = botocore.config.Config(s3={'addressing_style': 'virtual'})
 
         super(S3Storage, self).__init__(
             context,
-            boto.s3.connection.S3Connection,
-            boto.s3.key.Key,
+            boto3.session.Session,
             connect_kwargs,
             upload_params,
             storage_path,
@@ -605,24 +713,23 @@ class S3Storage(_CloudStorage):
         self.maximum_chunk_size = 5 * 1024 * 1024 * 1024  # 5GB.
 
     def setup(self):
-        self.get_cloud_bucket().set_cors_xml(
-            """<?xml version="1.0" encoding="UTF-8"?>
-      <CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-          <CORSRule>
-              <AllowedOrigin>*</AllowedOrigin>
-              <AllowedMethod>GET</AllowedMethod>
-              <MaxAgeSeconds>3000</MaxAgeSeconds>
-              <AllowedHeader>Authorization</AllowedHeader>
-          </CORSRule>
-          <CORSRule>
-              <AllowedOrigin>*</AllowedOrigin>
-              <AllowedMethod>PUT</AllowedMethod>
-              <MaxAgeSeconds>3000</MaxAgeSeconds>
-              <AllowedHeader>Content-Type</AllowedHeader>
-              <AllowedHeader>x-amz-acl</AllowedHeader>
-              <AllowedHeader>origin</AllowedHeader>
-          </CORSRule>
-      </CORSConfiguration>"""
+        self.get_cloud_bucket().Cors().put(
+            CORSConfiguration={
+                "CORSRules": [
+                    {
+                        "AllowedOrigins": ["*"],
+                        "AllowedMethods": ["GET"],
+                        "MaxAgeSeconds": 3000,
+                        "AllowedHeaders": ["Authorization"],
+                    },
+                    {
+                        "AllowedOrigins": ["*"],
+                        "AllowedMethods": ["PUT"],
+                        "MaxAgeSeconds": 3000,
+                        "AllowedHeaders": ["Content-Type", "x-amz-acl", "origin"],
+                    },
+                ]
+            }
         )
 
 
@@ -724,18 +831,17 @@ class RadosGWStorage(_CloudStorage):
     ):
         upload_params = {}
         connect_kwargs = {
-            "host": hostname,
-            "is_secure": is_secure,
-            "calling_format": boto.s3.connection.OrdinaryCallingFormat(),
+            "endpoint_url": hostname,
+            "use_ssl": is_secure,
+            "config": botocore.config.Config(s3={"addressing_style": "path"}),
         }
 
         if port:
-            connect_kwargs["port"] = int(port)
+            connect_kwargs["endpoint_url"] += ":" + port
 
         super(RadosGWStorage, self).__init__(
             context,
-            boto.s3.connection.S3Connection,
-            boto.s3.key.Key,
+            boto3.session.Session,
             connect_kwargs,
             upload_params,
             storage_path,

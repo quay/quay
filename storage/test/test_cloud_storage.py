@@ -5,9 +5,10 @@ from io import BytesIO
 import pytest
 
 import moto
-import boto
+import botocore.exceptions
+import boto3
 
-from moto import mock_s3_deprecated as mock_s3
+from moto import mock_s3
 
 from storage import S3Storage, StorageContext
 from storage.cloud import _CloudStorage, _PartUploadMetadata
@@ -25,7 +26,7 @@ _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 def storage_engine():
     with mock_s3():
         # Create a test bucket and put some test content.
-        boto.connect_s3().create_bucket(_TEST_BUCKET)
+        boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
         engine = S3Storage(_TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD)
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
 
@@ -67,7 +68,7 @@ def test_copy(bucket, username, password, storage_engine):
     another_engine = S3Storage(
         _TEST_CONTEXT, "another/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD
     )
-    boto.connect_s3().create_bucket("another_bucket")
+    boto3.client("s3").create_bucket(Bucket="another_bucket")
     storage_engine.copy_to(another_engine, _TEST_PATH)
 
     # Verify it can be retrieved.
@@ -107,7 +108,9 @@ def test_stream_write_error():
         with pytest.raises(IOError):
             engine.stream_write(_TEST_PATH, BytesIO(b"hello world"), content_type="Cool/Type")
 
-        assert not engine.exists(_TEST_PATH)
+        with pytest.raises(botocore.exceptions.ClientError) as excinfo:
+            engine.exists(_TEST_PATH)
+            assert s3r.value.response["Error"]["Code"] == "NoSuchBucket"
 
 
 @pytest.mark.parametrize(
@@ -115,6 +118,7 @@ def test_stream_write_error():
     [
         0,
         1,
+        2,
         50,
     ],
 )
