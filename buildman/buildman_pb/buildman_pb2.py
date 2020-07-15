@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z)github.com/quay/quay/buildman/buildman_pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0e\x62uildman.proto\x12\x0b\x62uildman_pb\"\r\n\x0bPingRequest\"\x1a\n\tPingReply\x12\r\n\x05reply\x18\x01 \x01(\t\"$\n\x0c\x42uildJobArgs\x12\x14\n\x0cregister_jwt\x18\x01 \x01(\t\"\xaa\x03\n\tBuildPack\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x15\n\x0bpackage_url\x18\x02 \x01(\tH\x00\x12\x38\n\x0bgit_package\x18\x03 \x01(\x0b\x32!.buildman_pb.BuildPack.GitPackageH\x00\x12\x0f\n\x07\x63ontext\x18\x04 \x01(\t\x12\x17\n\x0f\x64ockerfile_path\x18\x05 \x01(\t\x12\x12\n\nrepository\x18\x06 \x01(\t\x12\x10\n\x08registry\x18\x07 \x01(\t\x12\x12\n\npull_token\x18\x08 \x01(\t\x12\x12\n\npush_token\x18\t \x01(\t\x12\x11\n\ttag_names\x18\n \x03(\t\x12\x34\n\nbase_image\x18\x0b \x01(\x0b\x32 .buildman_pb.BuildPack.BaseImage\x1a/\n\tBaseImage\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x1a;\n\nGitPackage\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\x0b\n\x03sha\x18\x02 \x01(\t\x12\x13\n\x0bprivate_key\x18\x03 \x01(\tB\x0c\n\nbuild_pack\"#\n\x10HeartbeatRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\"\"\n\x11HeartbeatResponse\x12\r\n\x05reply\x18\x01 \x01(\x08\"^\n\x0fSetPhaseRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12!\n\x05phase\x18\x03 \x01(\x0e\x32\x12.buildman_pb.Phase\"<\n\x10SetPhaseResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\"a\n\x11LogMessageRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12\x13\n\x0blog_message\x18\x03 \x01(\t\x12\r\n\x05phase\x18\x04 \x01(\t\">\n\x12LogMessageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\"k\n\x10\x43\x61\x63hedTagRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0f\x62\x61se_image_name\x18\x02 \x01(\t\x12\x16\n\x0e\x62\x61se_image_tag\x18\x03 \x01(\t\x12\x15\n\rbase_image_id\x18\x04 \x01(\t\"\x1e\n\tCachedTag\x12\x11\n\tCachedTag\x18\x01 \x01(\t*d\n\x05Phase\x12\x0b\n\x07WAITING\x10\x00\x12\r\n\tUNPACKING\x10\x01\x12\x0b\n\x07PULLING\x10\x02\x12\x0c\n\x08\x42UILDING\x10\x03\x12\x0b\n\x07PUSHING\x10\x04\x12\x0c\n\x08\x43OMPLETE\x10\x05\x12\t\n\x05\x45RROR\x10\x06\x32\xd4\x03\n\x0c\x42uildManager\x12:\n\x04Ping\x12\x18.buildman_pb.PingRequest\x1a\x16.buildman_pb.PingReply\"\x00\x12G\n\x10RegisterBuildJob\x12\x19.buildman_pb.BuildJobArgs\x1a\x16.buildman_pb.BuildPack\"\x00\x12P\n\tHeartbeat\x12\x1d.buildman_pb.HeartbeatRequest\x1a\x1e.buildman_pb.HeartbeatResponse\"\x00(\x01\x30\x01\x12I\n\x08SetPhase\x12\x1c.buildman_pb.SetPhaseRequest\x1a\x1d.buildman_pb.SetPhaseResponse\"\x00\x12S\n\nLogMessage\x12\x1e.buildman_pb.LogMessageRequest\x1a\x1f.buildman_pb.LogMessageResponse\"\x00(\x01\x30\x01\x12M\n\x12\x44\x65termineCachedTag\x12\x1d.buildman_pb.CachedTagRequest\x1a\x16.buildman_pb.CachedTag\"\x00\x42+Z)github.com/quay/quay/buildman/buildman_pbb\x06proto3'
+  serialized_pb=b'\n\x0e\x62uildman.proto\x12\x0b\x62uildman_pb\"\r\n\x0bPingRequest\"\x1a\n\tPingReply\x12\r\n\x05reply\x18\x01 \x01(\t\"$\n\x0c\x42uildJobArgs\x12\x14\n\x0cregister_jwt\x18\x01 \x01(\t\"\xaa\x03\n\tBuildPack\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x15\n\x0bpackage_url\x18\x02 \x01(\tH\x00\x12\x38\n\x0bgit_package\x18\x03 \x01(\x0b\x32!.buildman_pb.BuildPack.GitPackageH\x00\x12\x0f\n\x07\x63ontext\x18\x04 \x01(\t\x12\x17\n\x0f\x64ockerfile_path\x18\x05 \x01(\t\x12\x12\n\nrepository\x18\x06 \x01(\t\x12\x10\n\x08registry\x18\x07 \x01(\t\x12\x12\n\npull_token\x18\x08 \x01(\t\x12\x12\n\npush_token\x18\t \x01(\t\x12\x11\n\ttag_names\x18\n \x03(\t\x12\x34\n\nbase_image\x18\x0b \x01(\x0b\x32 .buildman_pb.BuildPack.BaseImage\x1a/\n\tBaseImage\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x1a;\n\nGitPackage\x12\x0b\n\x03url\x18\x01 \x01(\t\x12\x0b\n\x03sha\x18\x02 \x01(\t\x12\x13\n\x0bprivate_key\x18\x03 \x01(\tB\x0c\n\nbuild_pack\"#\n\x10HeartbeatRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\"\"\n\x11HeartbeatResponse\x12\r\n\x05reply\x18\x01 \x01(\x08\"\x89\x02\n\x0fSetPhaseRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12!\n\x05phase\x18\x03 \x01(\x0e\x32\x12.buildman_pb.Phase\x12@\n\rpull_metadata\x18\x04 \x01(\x0b\x32).buildman_pb.SetPhaseRequest.PullMetadata\x1ag\n\x0cPullMetadata\x12\x14\n\x0cregistry_url\x18\x01 \x01(\t\x12\x12\n\nbase_image\x18\x02 \x01(\t\x12\x16\n\x0e\x62\x61se_image_tag\x18\x03 \x01(\t\x12\x15\n\rpull_username\x18\x04 \x01(\t\"<\n\x10SetPhaseResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\"a\n\x11LogMessageRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\x12\x13\n\x0blog_message\x18\x03 \x01(\t\x12\r\n\x05phase\x18\x04 \x01(\t\">\n\x12LogMessageResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x17\n\x0fsequence_number\x18\x02 \x01(\x05\"k\n\x10\x43\x61\x63hedTagRequest\x12\x0f\n\x07job_jwt\x18\x01 \x01(\t\x12\x17\n\x0f\x62\x61se_image_name\x18\x02 \x01(\t\x12\x16\n\x0e\x62\x61se_image_tag\x18\x03 \x01(\t\x12\x15\n\rbase_image_id\x18\x04 \x01(\t\"\x1e\n\tCachedTag\x12\x11\n\tCachedTag\x18\x01 \x01(\t*d\n\x05Phase\x12\x0b\n\x07WAITING\x10\x00\x12\r\n\tUNPACKING\x10\x01\x12\x0b\n\x07PULLING\x10\x02\x12\x0c\n\x08\x42UILDING\x10\x03\x12\x0b\n\x07PUSHING\x10\x04\x12\x0c\n\x08\x43OMPLETE\x10\x05\x12\t\n\x05\x45RROR\x10\x06\x32\xd4\x03\n\x0c\x42uildManager\x12:\n\x04Ping\x12\x18.buildman_pb.PingRequest\x1a\x16.buildman_pb.PingReply\"\x00\x12G\n\x10RegisterBuildJob\x12\x19.buildman_pb.BuildJobArgs\x1a\x16.buildman_pb.BuildPack\"\x00\x12P\n\tHeartbeat\x12\x1d.buildman_pb.HeartbeatRequest\x1a\x1e.buildman_pb.HeartbeatResponse\"\x00(\x01\x30\x01\x12I\n\x08SetPhase\x12\x1c.buildman_pb.SetPhaseRequest\x1a\x1d.buildman_pb.SetPhaseResponse\"\x00\x12S\n\nLogMessage\x12\x1e.buildman_pb.LogMessageRequest\x1a\x1f.buildman_pb.LogMessageResponse\"\x00(\x01\x30\x01\x12M\n\x12\x44\x65termineCachedTag\x12\x1d.buildman_pb.CachedTagRequest\x1a\x16.buildman_pb.CachedTag\"\x00\x42+Z)github.com/quay/quay/buildman/buildman_pbb\x06proto3'
 )
 
 _PHASE = _descriptor.EnumDescriptor(
@@ -68,8 +68,8 @@ _PHASE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1076,
-  serialized_end=1176,
+  serialized_start=1248,
+  serialized_end=1348,
 )
 _sym_db.RegisterEnumDescriptor(_PHASE)
 
@@ -427,6 +427,58 @@ _HEARTBEATRESPONSE = _descriptor.Descriptor(
 )
 
 
+_SETPHASEREQUEST_PULLMETADATA = _descriptor.Descriptor(
+  name='PullMetadata',
+  full_name='buildman_pb.SetPhaseRequest.PullMetadata',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='registry_url', full_name='buildman_pb.SetPhaseRequest.PullMetadata.registry_url', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='base_image', full_name='buildman_pb.SetPhaseRequest.PullMetadata.base_image', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='base_image_tag', full_name='buildman_pb.SetPhaseRequest.PullMetadata.base_image_tag', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='pull_username', full_name='buildman_pb.SetPhaseRequest.PullMetadata.pull_username', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=777,
+  serialized_end=880,
+)
+
 _SETPHASEREQUEST = _descriptor.Descriptor(
   name='SetPhaseRequest',
   full_name='buildman_pb.SetPhaseRequest',
@@ -456,10 +508,17 @@ _SETPHASEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='pull_metadata', full_name='buildman_pb.SetPhaseRequest.pull_metadata', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
-  nested_types=[],
+  nested_types=[_SETPHASEREQUEST_PULLMETADATA, ],
   enum_types=[
   ],
   serialized_options=None,
@@ -468,8 +527,8 @@ _SETPHASEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=614,
-  serialized_end=708,
+  serialized_start=615,
+  serialized_end=880,
 )
 
 
@@ -507,8 +566,8 @@ _SETPHASERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=710,
-  serialized_end=770,
+  serialized_start=882,
+  serialized_end=942,
 )
 
 
@@ -560,8 +619,8 @@ _LOGMESSAGEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=772,
-  serialized_end=869,
+  serialized_start=944,
+  serialized_end=1041,
 )
 
 
@@ -599,8 +658,8 @@ _LOGMESSAGERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=871,
-  serialized_end=933,
+  serialized_start=1043,
+  serialized_end=1105,
 )
 
 
@@ -652,8 +711,8 @@ _CACHEDTAGREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=935,
-  serialized_end=1042,
+  serialized_start=1107,
+  serialized_end=1214,
 )
 
 
@@ -684,8 +743,8 @@ _CACHEDTAG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1044,
-  serialized_end=1074,
+  serialized_start=1216,
+  serialized_end=1246,
 )
 
 _BUILDPACK_BASEIMAGE.containing_type = _BUILDPACK
@@ -698,7 +757,9 @@ _BUILDPACK.fields_by_name['package_url'].containing_oneof = _BUILDPACK.oneofs_by
 _BUILDPACK.oneofs_by_name['build_pack'].fields.append(
   _BUILDPACK.fields_by_name['git_package'])
 _BUILDPACK.fields_by_name['git_package'].containing_oneof = _BUILDPACK.oneofs_by_name['build_pack']
+_SETPHASEREQUEST_PULLMETADATA.containing_type = _SETPHASEREQUEST
 _SETPHASEREQUEST.fields_by_name['phase'].enum_type = _PHASE
+_SETPHASEREQUEST.fields_by_name['pull_metadata'].message_type = _SETPHASEREQUEST_PULLMETADATA
 DESCRIPTOR.message_types_by_name['PingRequest'] = _PINGREQUEST
 DESCRIPTOR.message_types_by_name['PingReply'] = _PINGREPLY
 DESCRIPTOR.message_types_by_name['BuildJobArgs'] = _BUILDJOBARGS
@@ -773,11 +834,19 @@ HeartbeatResponse = _reflection.GeneratedProtocolMessageType('HeartbeatResponse'
 _sym_db.RegisterMessage(HeartbeatResponse)
 
 SetPhaseRequest = _reflection.GeneratedProtocolMessageType('SetPhaseRequest', (_message.Message,), {
+
+  'PullMetadata' : _reflection.GeneratedProtocolMessageType('PullMetadata', (_message.Message,), {
+    'DESCRIPTOR' : _SETPHASEREQUEST_PULLMETADATA,
+    '__module__' : 'buildman_pb2'
+    # @@protoc_insertion_point(class_scope:buildman_pb.SetPhaseRequest.PullMetadata)
+    })
+  ,
   'DESCRIPTOR' : _SETPHASEREQUEST,
   '__module__' : 'buildman_pb2'
   # @@protoc_insertion_point(class_scope:buildman_pb.SetPhaseRequest)
   })
 _sym_db.RegisterMessage(SetPhaseRequest)
+_sym_db.RegisterMessage(SetPhaseRequest.PullMetadata)
 
 SetPhaseResponse = _reflection.GeneratedProtocolMessageType('SetPhaseResponse', (_message.Message,), {
   'DESCRIPTOR' : _SETPHASERESPONSE,
@@ -824,8 +893,8 @@ _BUILDMANAGER = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=1179,
-  serialized_end=1647,
+  serialized_start=1351,
+  serialized_end=1819,
   methods=[
   _descriptor.MethodDescriptor(
     name='Ping',

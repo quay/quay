@@ -1,5 +1,6 @@
 import jsonschema
 import jwt
+import logging
 
 from app import instance_keys
 from util.security import jwtutil
@@ -8,6 +9,9 @@ from util.security.registry_jwt import \
     InvalidBearerTokenException, \
     ALGORITHM, \
     JWT_CLOCK_SKEW_SECONDS
+
+
+logger = logging.getLogger(__name__)
 
 
 ANONYMOUS_SUB = "(anonymous)"
@@ -62,7 +66,7 @@ def verify_build_token(token, aud, token_type, instance_keys):
     try:
         headers = jwt.get_unverified_header(token)
     except jwtutil.InvalidTokenError as ite:
-        logger.exception("Invalid token reason: %s", ite)
+        logger.error("Invalid token reason: %s", ite)
         raise InvalidBuildTokenException(ite)
 
     kid = headers.get("kid", None)
@@ -86,7 +90,7 @@ def verify_build_token(token, aud, token_type, instance_keys):
             leeway=JWT_CLOCK_SKEW_SECONDS
         )
     except jwtutil.InvalidTokenError as ite:
-        logger.exception("Invalid token reason: %s", ite)
+        logger.error("Invalid token reason: %s", ite)
         raise InvalidBuildTokenException(ite)
 
     if "sub" not in payload:
