@@ -13,3 +13,7 @@ def test_handler(manifest_id, hash_salt):
             index,
         )
 
+
+def test_invalid_value():
+    handler = SyntheticIDHandler("somehash")
+    assert handler.decode("invalidvalue") == ()
