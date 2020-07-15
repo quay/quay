@@ -3,10 +3,10 @@ import os
 
 from datetime import datetime, timedelta
 
-import boto
+import boto3
 
 from httmock import urlmatch, HTTMock
-from moto import mock_s3_deprecated as mock_s3
+from moto import mock_s3
 
 from app import storage as test_storage
 from data import model, database
@@ -32,7 +32,7 @@ def storage_engine(request):
     else:
         with mock_s3():
             # Create a test bucket and put some test content.
-            boto.connect_s3().create_bucket(_TEST_BUCKET)
+            boto3.client('s3').create_bucket(Bucket=_TEST_BUCKET)
             engine = DistributedStorage(
                 {
                     "foo": S3Storage(
