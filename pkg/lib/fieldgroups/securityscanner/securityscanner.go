@@ -8,12 +8,12 @@ import (
 
 // SecurityScannerFieldGroup represents the SecurityScannerFieldGroup config fields
 type SecurityScannerFieldGroup struct {
-	FeatureSecurityScanner              bool          `default:"false" validate:"" yaml:"FEATURE_SECURITY_SCANNER"`
-	SecurityScannerEndpoint             string        `default:"" validate:"" yaml:"SECURITY_SCANNER_ENDPOINT"`
-	SecurityScannerIndexingInterval     int           `default:"30" validate:"" yaml:"SECURITY_SCANNER_INDEXING_INTERVAL"`
-	SecurityScannerNotifications        bool          `default:"false" validate:"" yaml:"SECURITY_SCANNER_NOTIFICATIONS"`
-	SecurityScannerV4Endpoint           string        `default:"" validate:"" yaml:"SECURITY_SCANNER_V4_ENDPOINT"`
-	SecurityScannerV4NamespaceWhitelist []interface{} `default:"[]" validate:"" yaml:"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"`
+	FeatureSecurityScanner              bool     `default:"false" validate:"" yaml:"FEATURE_SECURITY_SCANNER"`
+	SecurityScannerEndpoint             string   `default:"" validate:"" yaml:"SECURITY_SCANNER_ENDPOINT"`
+	SecurityScannerIndexingInterval     int      `default:"30" validate:"" yaml:"SECURITY_SCANNER_INDEXING_INTERVAL"`
+	SecurityScannerNotifications        bool     `default:"false" validate:"" yaml:"SECURITY_SCANNER_NOTIFICATIONS"`
+	SecurityScannerV4Endpoint           string   `default:"" validate:"" yaml:"SECURITY_SCANNER_V4_ENDPOINT"`
+	SecurityScannerV4NamespaceWhitelist []string `default:"[]" validate:"" yaml:"SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"`
 }
 
 // NewSecurityScannerFieldGroup creates a new SecurityScannerFieldGroup
@@ -52,9 +52,9 @@ func NewSecurityScannerFieldGroup(fullConfig map[string]interface{}) (*SecurityS
 		}
 	}
 	if value, ok := fullConfig["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"]; ok {
-		newSecurityScannerFieldGroup.SecurityScannerV4NamespaceWhitelist, ok = value.([]interface{})
+		newSecurityScannerFieldGroup.SecurityScannerV4NamespaceWhitelist, ok = value.([]string)
 		if !ok {
-			return newSecurityScannerFieldGroup, errors.New("SECURITY_SCANNER_V4_NAMESPACE_WHITELIST must be of type []interface{}")
+			return newSecurityScannerFieldGroup, errors.New("SECURITY_SCANNER_V4_NAMESPACE_WHITELIST must be of type []string")
 		}
 	}
 
