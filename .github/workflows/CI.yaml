@@ -98,7 +98,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig docker.io
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
@@ -122,7 +122,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig docker.io
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
