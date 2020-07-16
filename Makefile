@@ -7,5 +7,9 @@ install:
 
 	go install ./...
 
+test:
+	go test ./pkg/lib/fieldgroups/...
+
 clean: 
 	rm ./pkg/lib/fieldgroups/*
+
