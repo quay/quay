@@ -9,14 +9,14 @@ import (
 
 // GoogleLoginFieldGroup represents the GoogleLoginFieldGroup config fields
 type GoogleLoginFieldGroup struct {
-	FeatureGoogleLogin bool                     `default:"false" validate:"" yaml:"FEATURE_GOOGLE_LOGIN"`
-	GoogleLoginConfig  *GoogleLoginConfigStruct `default:"" validate:"" yaml:"GOOGLE_LOGIN_CONFIG"`
+	FeatureGoogleLogin bool                     `default:"false" validate:"" json:"FEATURE_GOOGLE_LOGIN" yaml:"FEATURE_GOOGLE_LOGIN"`
+	GoogleLoginConfig  *GoogleLoginConfigStruct `default:"" validate:"" json:"GOOGLE_LOGIN_CONFIG" yaml:"GOOGLE_LOGIN_CONFIG"`
 }
 
 // GoogleLoginConfigStruct represents the GoogleLoginConfigStruct config fields
 type GoogleLoginConfigStruct struct {
-	ClientSecret string `default:"" validate:"" yaml:"CLIENT_SECRET"`
-	ClientId     string `default:"" validate:"" yaml:"CLIENT_ID"`
+	ClientSecret string `default:"" validate:"" json:"CLIENT_SECRET" yaml:"CLIENT_SECRET"`
+	ClientId     string `default:"" validate:"" json:"CLIENT_ID" yaml:"CLIENT_ID"`
 }
 
 // NewGoogleLoginFieldGroup creates a new GoogleLoginFieldGroup

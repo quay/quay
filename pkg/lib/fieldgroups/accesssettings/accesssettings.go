@@ -8,21 +8,21 @@ import (
 
 // AccessSettingsFieldGroup represents the AccessSettingsFieldGroup config fields
 type AccessSettingsFieldGroup struct {
-	AuthenticationType             string `default:"Database" validate:"" yaml:"AUTHENTICATION_TYPE"`
-	FeatureAnonymousAccess         bool   `default:"true" validate:"" yaml:"FEATURE_ANONYMOUS_ACCESS"`
-	FeatureDirectLogin             bool   `default:"true" validate:"" yaml:"FEATURE_DIRECT_LOGIN"`
-	FeatureGithubLogin             bool   `default:"false" validate:"" yaml:"FEATURE_GITHUB_LOGIN"`
-	FeatureGoogleLogin             bool   `default:"false" validate:"" yaml:"FEATURE_GOOGLE_LOGIN"`
-	FeatureInviteOnlyUserCreation  bool   `default:"false" validate:"" yaml:"FEATURE_INVITE_ONLY_USER_CREATION"`
-	FeaturePartialUserAutocomplete bool   `default:"true" validate:"" yaml:"FEATURE_PARTIAL_USER_AUTOCOMPLETE"`
-	FeatureUsernameConfirmation    bool   `default:"true" validate:"" yaml:"FEATURE_USERNAME_CONFIRMATION"`
-	FeatureUserCreation            bool   `default:"true" validate:"" yaml:"FEATURE_USER_CREATION"`
-	FeatureUserLastAccessed        bool   `default:"true" validate:"" yaml:"FEATURE_USER_LAST_ACCESSED"`
-	FeatureUserLogAccess           bool   `default:"false" validate:"" yaml:"FEATURE_USER_LOG_ACCESS"`
-	FeatureUserMetadata            bool   `default:"false" validate:"" yaml:"FEATURE_USER_METADATA"`
-	FeatureUserRename              bool   `default:"false" validate:"" yaml:"FEATURE_USER_RENAME"`
-	FreshLoginTimeout              string `default:"10m" validate:"" yaml:"FRESH_LOGIN_TIMEOUT"`
-	UserRecoveryTokenLifetime      string `default:"30m" validate:"" yaml:"USER_RECOVERY_TOKEN_LIFETIME"`
+	AuthenticationType             string `default:"Database" validate:"" json:"AUTHENTICATION_TYPE" yaml:"AUTHENTICATION_TYPE"`
+	FeatureAnonymousAccess         bool   `default:"true" validate:"" json:"FEATURE_ANONYMOUS_ACCESS" yaml:"FEATURE_ANONYMOUS_ACCESS"`
+	FeatureDirectLogin             bool   `default:"true" validate:"" json:"FEATURE_DIRECT_LOGIN" yaml:"FEATURE_DIRECT_LOGIN"`
+	FeatureGithubLogin             bool   `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN" yaml:"FEATURE_GITHUB_LOGIN"`
+	FeatureGoogleLogin             bool   `default:"false" validate:"" json:"FEATURE_GOOGLE_LOGIN" yaml:"FEATURE_GOOGLE_LOGIN"`
+	FeatureInviteOnlyUserCreation  bool   `default:"false" validate:"" json:"FEATURE_INVITE_ONLY_USER_CREATION" yaml:"FEATURE_INVITE_ONLY_USER_CREATION"`
+	FeaturePartialUserAutocomplete bool   `default:"true" validate:"" json:"FEATURE_PARTIAL_USER_AUTOCOMPLETE" yaml:"FEATURE_PARTIAL_USER_AUTOCOMPLETE"`
+	FeatureUsernameConfirmation    bool   `default:"true" validate:"" json:"FEATURE_USERNAME_CONFIRMATION" yaml:"FEATURE_USERNAME_CONFIRMATION"`
+	FeatureUserCreation            bool   `default:"true" validate:"" json:"FEATURE_USER_CREATION" yaml:"FEATURE_USER_CREATION"`
+	FeatureUserLastAccessed        bool   `default:"true" validate:"" json:"FEATURE_USER_LAST_ACCESSED" yaml:"FEATURE_USER_LAST_ACCESSED"`
+	FeatureUserLogAccess           bool   `default:"false" validate:"" json:"FEATURE_USER_LOG_ACCESS" yaml:"FEATURE_USER_LOG_ACCESS"`
+	FeatureUserMetadata            bool   `default:"false" validate:"" json:"FEATURE_USER_METADATA" yaml:"FEATURE_USER_METADATA"`
+	FeatureUserRename              bool   `default:"false" validate:"" json:"FEATURE_USER_RENAME" yaml:"FEATURE_USER_RENAME"`
+	FreshLoginTimeout              string `default:"10m" validate:"" json:"FRESH_LOGIN_TIMEOUT" yaml:"FRESH_LOGIN_TIMEOUT"`
+	UserRecoveryTokenLifetime      string `default:"30m" validate:"" json:"USER_RECOVERY_TOKEN_LIFETIME" yaml:"USER_RECOVERY_TOKEN_LIFETIME"`
 }
 
 // NewAccessSettingsFieldGroup creates a new AccessSettingsFieldGroup

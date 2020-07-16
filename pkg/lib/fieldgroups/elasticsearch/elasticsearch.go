@@ -9,40 +9,40 @@ import (
 
 // ElasticSearchFieldGroup represents the ElasticSearchFieldGroup config fields
 type ElasticSearchFieldGroup struct {
-	LogsModel       string                 `default:"database" validate:"" yaml:"LOGS_MODEL"`
-	LogsModelConfig *LogsModelConfigStruct `default:"" validate:"" yaml:"LOGS_MODEL_CONFIG"`
+	LogsModel       string                 `default:"database" validate:"" json:"LOGS_MODEL" yaml:"LOGS_MODEL"`
+	LogsModelConfig *LogsModelConfigStruct `default:"" validate:"" json:"LOGS_MODEL_CONFIG" yaml:"LOGS_MODEL_CONFIG"`
 }
 
 // LogsModelConfigStruct represents the LogsModelConfigStruct config fields
 type LogsModelConfigStruct struct {
-	KafkaConfig         *KafkaConfigStruct         `default:"" validate:"" yaml:"kafka_config"`
-	ElasticsearchConfig *ElasticsearchConfigStruct `default:"" validate:"" yaml:"elasticsearch_config"`
-	KinesisStreamConfig *KinesisStreamConfigStruct `default:"" validate:"" yaml:"kinesis_stream_config"`
-	Producer            string                     `default:"" validate:"" yaml:"producer"`
+	KafkaConfig         *KafkaConfigStruct         `default:"" validate:"" json:"kafka_config" yaml:"kafka_config"`
+	ElasticsearchConfig *ElasticsearchConfigStruct `default:"" validate:"" json:"elasticsearch_config" yaml:"elasticsearch_config"`
+	KinesisStreamConfig *KinesisStreamConfigStruct `default:"" validate:"" json:"kinesis_stream_config" yaml:"kinesis_stream_config"`
+	Producer            string                     `default:"" validate:"" json:"producer" yaml:"producer"`
 }
 
 // KinesisStreamConfigStruct represents the KinesisStreamConfigStruct config fields
 type KinesisStreamConfigStruct struct {
-	Retries            int    `default:"" validate:"" yaml:"retries"`
-	ReadTimeout        int    `default:"" validate:"" yaml:"read_timeout"`
-	MaxPoolConnections int    `default:"" validate:"" yaml:"max_pool_connections"`
-	AwsRegion          string `default:"" validate:"" yaml:"aws_region"`
-	ConnectTimeout     int    `default:"" validate:"" yaml:"connect_timeout"`
-	AwsSecretKey       string `default:"" validate:"" yaml:"aws_secret_key"`
-	StreamName         string `default:"" validate:"" yaml:"stream_name"`
-	AwsAccessKey       string `default:"" validate:"" yaml:"aws_access_key"`
+	Retries            int    `default:"" validate:"" json:"retries" yaml:"retries"`
+	ReadTimeout        int    `default:"" validate:"" json:"read_timeout" yaml:"read_timeout"`
+	MaxPoolConnections int    `default:"" validate:"" json:"max_pool_connections" yaml:"max_pool_connections"`
+	AwsRegion          string `default:"" validate:"" json:"aws_region" yaml:"aws_region"`
+	ConnectTimeout     int    `default:"" validate:"" json:"connect_timeout" yaml:"connect_timeout"`
+	AwsSecretKey       string `default:"" validate:"" json:"aws_secret_key" yaml:"aws_secret_key"`
+	StreamName         string `default:"" validate:"" json:"stream_name" yaml:"stream_name"`
+	AwsAccessKey       string `default:"" validate:"" json:"aws_access_key" yaml:"aws_access_key"`
 }
 
 // ElasticsearchConfigStruct represents the ElasticsearchConfigStruct config fields
 type ElasticsearchConfigStruct struct {
-	AwsRegion     string               `default:"" validate:"" yaml:"aws_region"`
-	Port          int                  `default:"" validate:"" yaml:"port"`
-	AccessKey     string               `default:"" validate:"" yaml:"access_key"`
-	Host          string               `default:"" validate:"" yaml:"host"`
-	IndexPrefix   string               `default:"logentry_" validate:"" yaml:"index_prefix"`
-	IndexSettings *IndexSettingsStruct `default:"" validate:"" yaml:"index_settings"`
-	UseSsl        bool                 `default:"true" validate:"" yaml:"use_ssl"`
-	SecretKey     string               `default:"" validate:"" yaml:"secret_key"`
+	AwsRegion     string               `default:"" validate:"" json:"aws_region" yaml:"aws_region"`
+	Port          int                  `default:"" validate:"" json:"port" yaml:"port"`
+	AccessKey     string               `default:"" validate:"" json:"access_key" yaml:"access_key"`
+	Host          string               `default:"" validate:"" json:"host" yaml:"host"`
+	IndexPrefix   string               `default:"logentry_" validate:"" json:"index_prefix" yaml:"index_prefix"`
+	IndexSettings *IndexSettingsStruct `default:"" validate:"" json:"index_settings" yaml:"index_settings"`
+	UseSsl        bool                 `default:"true" validate:"" json:"use_ssl" yaml:"use_ssl"`
+	SecretKey     string               `default:"" validate:"" json:"secret_key" yaml:"secret_key"`
 }
 
 // IndexSettingsStruct represents the IndexSettings struct
@@ -50,9 +50,9 @@ type IndexSettingsStruct map[string]interface{}
 
 // KafkaConfigStruct represents the KafkaConfigStruct config fields
 type KafkaConfigStruct struct {
-	Topic            string        `default:"" validate:"" yaml:"topic"`
-	BootstrapServers []interface{} `default:"" validate:"" yaml:"bootstrap_servers"`
-	MaxBlockSeconds  int           `default:"" validate:"" yaml:"max_block_seconds"`
+	Topic            string        `default:"" validate:"" json:"topic" yaml:"topic"`
+	BootstrapServers []interface{} `default:"" validate:"" json:"bootstrap_servers" yaml:"bootstrap_servers"`
+	MaxBlockSeconds  int           `default:"" validate:"" json:"max_block_seconds" yaml:"max_block_seconds"`
 }
 
 // NewElasticSearchFieldGroup creates a new ElasticSearchFieldGroup

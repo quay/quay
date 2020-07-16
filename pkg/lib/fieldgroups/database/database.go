@@ -9,20 +9,20 @@ import (
 
 // DatabaseFieldGroup represents the DatabaseFieldGroup config fields
 type DatabaseFieldGroup struct {
-	DbConnectionArgs *DbConnectionArgsStruct `default:"" validate:"" yaml:"DB_CONNECTION_ARGS"`
-	DbUri            string                  `default:"" validate:"" yaml:"DB_URI"`
+	DbConnectionArgs *DbConnectionArgsStruct `default:"" validate:"" json:"DB_CONNECTION_ARGS" yaml:"DB_CONNECTION_ARGS"`
+	DbUri            string                  `default:"" validate:"" json:"DB_URI" yaml:"DB_URI"`
 }
 
 // DbConnectionArgsStruct represents the DbConnectionArgsStruct config fields
 type DbConnectionArgsStruct struct {
-	Ssl          *SslStruct `default:"" validate:"" yaml:"ssl"`
-	Threadlocals bool       `default:"true" validate:"" yaml:"threadlocals"`
-	Autorollback bool       `default:"true" validate:"" yaml:"autorollback"`
+	Ssl          *SslStruct `default:"" validate:"" json:"ssl" yaml:"ssl"`
+	Threadlocals bool       `default:"true" validate:"" json:"threadlocals" yaml:"threadlocals"`
+	Autorollback bool       `default:"true" validate:"" json:"autorollback" yaml:"autorollback"`
 }
 
 // SslStruct represents the SslStruct config fields
 type SslStruct struct {
-	Ca string `default:"" validate:"" yaml:"ca"`
+	Ca string `default:"" validate:"" json:"ca" yaml:"ca"`
 }
 
 // NewDatabaseFieldGroup creates a new DatabaseFieldGroup

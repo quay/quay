@@ -9,22 +9,22 @@ import (
 
 // RedisFieldGroup represents the RedisFieldGroup config fields
 type RedisFieldGroup struct {
-	BuildlogsRedis  *BuildlogsRedisStruct  `default:"" validate:"" yaml:"BUILDLOGS_REDIS"`
-	UserEventsRedis *UserEventsRedisStruct `default:"" validate:"" yaml:"USER_EVENTS_REDIS"`
+	BuildlogsRedis  *BuildlogsRedisStruct  `default:"" validate:"" json:"BUILDLOGS_REDIS" yaml:"BUILDLOGS_REDIS"`
+	UserEventsRedis *UserEventsRedisStruct `default:"" validate:"" json:"USER_EVENTS_REDIS" yaml:"USER_EVENTS_REDIS"`
 }
 
 // UserEventsRedisStruct represents the UserEventsRedisStruct config fields
 type UserEventsRedisStruct struct {
-	Password string `default:"" validate:"" yaml:"password"`
-	Port     int    `default:"" validate:"" yaml:"port"`
-	Host     string `default:"" validate:"" yaml:"host"`
+	Password string `default:"" validate:"" json:"password" yaml:"password"`
+	Port     int    `default:"" validate:"" json:"port" yaml:"port"`
+	Host     string `default:"" validate:"" json:"host" yaml:"host"`
 }
 
 // BuildlogsRedisStruct represents the BuildlogsRedisStruct config fields
 type BuildlogsRedisStruct struct {
-	Password string `default:"" validate:"" yaml:"password"`
-	Port     int    `default:"" validate:"" yaml:"port"`
-	Host     string `default:"" validate:"" yaml:"host"`
+	Password string `default:"" validate:"" json:"password" yaml:"password"`
+	Port     int    `default:"" validate:"" json:"port" yaml:"port"`
+	Host     string `default:"" validate:"" json:"host" yaml:"host"`
 }
 
 // NewRedisFieldGroup creates a new RedisFieldGroup

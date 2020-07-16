@@ -2,14 +2,15 @@ package apptokenauthentication
 
 import (
 	"errors"
+
 	"github.com/creasty/defaults"
 )
 
 // AppTokenAuthenticationFieldGroup represents the AppTokenAuthenticationFieldGroup config fields
 type AppTokenAuthenticationFieldGroup struct {
-	AuthenticationType       string `default:"Database" validate:"" yaml:"AUTHENTICATION_TYPE"`
-	FeatureAppSpecificTokens bool   `default:"true" validate:"" yaml:"FEATURE_APP_SPECIFIC_TOKENS"`
-	FeatureDirectLogin       bool   `default:"true" validate:"" yaml:"FEATURE_DIRECT_LOGIN"`
+	AuthenticationType       string `default:"Database" validate:"" json:"AUTHENTICATION_TYPE" yaml:"AUTHENTICATION_TYPE"`
+	FeatureAppSpecificTokens bool   `default:"true" validate:"" json:"FEATURE_APP_SPECIFIC_TOKENS" yaml:"FEATURE_APP_SPECIFIC_TOKENS"`
+	FeatureDirectLogin       bool   `default:"true" validate:"" json:"FEATURE_DIRECT_LOGIN" yaml:"FEATURE_DIRECT_LOGIN"`
 }
 
 // NewAppTokenAuthenticationFieldGroup creates a new AppTokenAuthenticationFieldGroup
