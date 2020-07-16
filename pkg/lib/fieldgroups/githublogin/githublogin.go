@@ -9,18 +9,18 @@ import (
 
 // GitHubLoginFieldGroup represents the GitHubLoginFieldGroup config fields
 type GitHubLoginFieldGroup struct {
-	FeatureGithubLogin bool                     `default:"false" validate:"" yaml:"FEATURE_GITHUB_LOGIN"`
-	GithubLoginConfig  *GithubLoginConfigStruct `default:"" validate:"" yaml:"GITHUB_LOGIN_CONFIG"`
+	FeatureGithubLogin bool                     `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN" yaml:"FEATURE_GITHUB_LOGIN"`
+	GithubLoginConfig  *GithubLoginConfigStruct `default:"" validate:"" json:"GITHUB_LOGIN_CONFIG" yaml:"GITHUB_LOGIN_CONFIG"`
 }
 
 // GithubLoginConfigStruct represents the GithubLoginConfigStruct config fields
 type GithubLoginConfigStruct struct {
-	AllowedOrganizations []interface{} `default:"[]" validate:"" yaml:"ALLOWED_ORGANIZATIONS"`
-	OrgRestrict          bool          `default:"false" validate:"" yaml:"ORG_RESTRICT"`
-	ApiEndpoint          string        `default:"" validate:"" yaml:"API_ENDPOINT"`
-	GithubEndpoint       string        `default:"" validate:"" yaml:"GITHUB_ENDPOINT"`
-	ClientId             string        `default:"" validate:"" yaml:"CLIENT_ID"`
-	ClientSecret         string        `default:"" validate:"" yaml:"CLIENT_SECRET"`
+	AllowedOrganizations []interface{} `default:"[]" validate:"" json:"ALLOWED_ORGANIZATIONS" yaml:"ALLOWED_ORGANIZATIONS"`
+	OrgRestrict          bool          `default:"false" validate:"" json:"ORG_RESTRICT" yaml:"ORG_RESTRICT"`
+	ApiEndpoint          string        `default:"" validate:"" json:"API_ENDPOINT" yaml:"API_ENDPOINT"`
+	GithubEndpoint       string        `default:"" validate:"" json:"GITHUB_ENDPOINT" yaml:"GITHUB_ENDPOINT"`
+	ClientId             string        `default:"" validate:"" json:"CLIENT_ID" yaml:"CLIENT_ID"`
+	ClientSecret         string        `default:"" validate:"" json:"CLIENT_SECRET" yaml:"CLIENT_SECRET"`
 }
 
 // NewGitHubLoginFieldGroup creates a new GitHubLoginFieldGroup

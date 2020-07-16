@@ -9,15 +9,15 @@ import (
 
 // BitbucketBuildTriggerFieldGroup represents the BitbucketBuildTriggerFieldGroup config fields
 type BitbucketBuildTriggerFieldGroup struct {
-	BitbucketTriggerConfig *BitbucketTriggerConfigStruct `default:"" validate:"" yaml:"BITBUCKET_TRIGGER_CONFIG"`
-	FeatureBitbucketBuild  bool                          `default:"false" validate:"" yaml:"FEATURE_BITBUCKET_BUILD"`
-	FeatureBuildSupport    bool                          `default:"" validate:"" yaml:"FEATURE_BUILD_SUPPORT"`
+	BitbucketTriggerConfig *BitbucketTriggerConfigStruct `default:"" validate:"" json:"BITBUCKET_TRIGGER_CONFIG" yaml:"BITBUCKET_TRIGGER_CONFIG"`
+	FeatureBitbucketBuild  bool                          `default:"false" validate:"" json:"FEATURE_BITBUCKET_BUILD" yaml:"FEATURE_BITBUCKET_BUILD"`
+	FeatureBuildSupport    bool                          `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT" yaml:"FEATURE_BUILD_SUPPORT"`
 }
 
 // BitbucketTriggerConfigStruct represents the BitbucketTriggerConfigStruct config fields
 type BitbucketTriggerConfigStruct struct {
-	ConsumerKey    string `default:"" validate:"" yaml:"CONSUMER_KEY"`
-	ConsumerSecret string `default:"" validate:"" yaml:"CONSUMER_SECRET"`
+	ConsumerKey    string `default:"" validate:"" json:"CONSUMER_KEY" yaml:"CONSUMER_KEY"`
+	ConsumerSecret string `default:"" validate:"" json:"CONSUMER_SECRET" yaml:"CONSUMER_SECRET"`
 }
 
 // NewBitbucketBuildTriggerFieldGroup creates a new BitbucketBuildTriggerFieldGroup

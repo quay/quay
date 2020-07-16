@@ -2,17 +2,18 @@ package jwtauthentication
 
 import (
 	"errors"
+
 	"github.com/creasty/defaults"
 )
 
 // JWTAuthenticationFieldGroup represents the JWTAuthenticationFieldGroup config fields
 type JWTAuthenticationFieldGroup struct {
-	AuthenticationType string `default:"Database" validate:"" yaml:"AUTHENTICATION_TYPE"`
-	FeatureMailing     bool   `default:"true" validate:"" yaml:"FEATURE_MAILING"`
-	JwtAuthIssuer      string `default:"" validate:"" yaml:"JWT_AUTH_ISSUER"`
-	JwtGetuserEndpoint string `default:"" validate:"" yaml:"JWT_GETUSER_ENDPOINT"`
-	JwtQueryEndpoint   string `default:"" validate:"" yaml:"JWT_QUERY_ENDPOINT"`
-	JwtVerifyEndpoint  string `default:"" validate:"" yaml:"JWT_VERIFY_ENDPOINT"`
+	AuthenticationType string `default:"Database" validate:"" json:"AUTHENTICATION_TYPE" yaml:"AUTHENTICATION_TYPE"`
+	FeatureMailing     bool   `default:"true" validate:"" json:"FEATURE_MAILING" yaml:"FEATURE_MAILING"`
+	JwtAuthIssuer      string `default:"" validate:"" json:"JWT_AUTH_ISSUER" yaml:"JWT_AUTH_ISSUER"`
+	JwtGetuserEndpoint string `default:"" validate:"" json:"JWT_GETUSER_ENDPOINT" yaml:"JWT_GETUSER_ENDPOINT"`
+	JwtQueryEndpoint   string `default:"" validate:"" json:"JWT_QUERY_ENDPOINT" yaml:"JWT_QUERY_ENDPOINT"`
+	JwtVerifyEndpoint  string `default:"" validate:"" json:"JWT_VERIFY_ENDPOINT" yaml:"JWT_VERIFY_ENDPOINT"`
 }
 
 // NewJWTAuthenticationFieldGroup creates a new JWTAuthenticationFieldGroup
