@@ -1,29 +1,24 @@
+**Issue:** https://issues.redhat.com/browse/PROJQUAY-???
+Pull-request title must start with "PROJQUAY-??? - "
 
-### Description of Changes
+**Changelog:** 
 
-* details about the implementation of the changes
-* motivation for the change (broken code, new feature, etc)
-* contrast with previous behavior
+**Docs:** 
 
+**Testing:** 
 
-#### Changes:
+**Details:** 
 
-* ..
-* ..
+------
+(_This section may be deleted._)
+**All fields are required.** If a field is not applicable (eg. no relevant CHANGELOG.md), specify "none" or "n/a".
 
-#### Issue: <link to story or task>
+Issue: This is the PROJQUAY jira reference. Pull-request title must start with issue name "PROJQUAY-1234 - ".
 
+Changelog: One line description to be added to CHANGELOG.md during release builds. Typically starts with "Added:", "Fixed:", "Note:", etc.
 
-**TESTING** ->
+Docs: Detailed description of changes necessary to docs.projectquay.io. Examples would be addition of config.yaml, indication of UI changes and screenshot impact, and changes in behavior of features.
 
-**BREAKING CHANGE** ->
+Testing: Detailed description of how to test changes manually. This section combined with the _Docs_ section above must be sufficiently clear for full test cases to be performed.
 
-
----
-
-## Reviewer Checklist
-
-- [ ] It works!
-- [ ] Comments provide sufficient explanations for the next contributor
-- [ ] Tests cover changes and corner cases
-- [ ] Follows Quay syntax patterns and format
+Details: Other information meant for pull-request reviewers and developers.
