@@ -9,7 +9,7 @@ import (
 
 // DatabaseFieldGroup represents the DatabaseFieldGroup config fields
 type DatabaseFieldGroup struct {
-	DbConnectionArgs *DbConnectionArgsStruct `default:"" validate:"" json:"DB_CONNECTION_ARGS" yaml:"DB_CONNECTION_ARGS"`
+	DbConnectionArgs *DbConnectionArgsStruct `default:"" validate:"" json:"DB_CONNECTION_ARGS,omitempty" yaml:"DB_CONNECTION_ARGS,omitempty"`
 	DbUri            string                  `default:"" validate:"" json:"DB_URI" yaml:"DB_URI"`
 }
 
