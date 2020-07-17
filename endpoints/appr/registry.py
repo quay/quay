@@ -94,7 +94,10 @@ def blobs(namespace, package_name, digest):
     if not json_format:
         download_url = Blob.download_url(reponame, digest)
         if download_url:
-            return redirect(download_url)
+            resp = redirect(download_url)
+            resp.headers["Content-Disposition"] = data["filename"]
+            resp.mimetype = "application/x-gzip"
+            return resp
 
     return _pull(data, json_format=json_format)
 
