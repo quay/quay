@@ -18,7 +18,7 @@ from cnr.exception import (
     UnauthorizedAccess,
     Unsupported,
 )
-from flask import jsonify, request, redirect
+from flask import jsonify, request
 
 from app import app, model_cache
 from auth.auth_context import get_authenticated_user
@@ -78,6 +78,7 @@ def login():
     return jsonify({"token": "basic " + auth.decode("ascii")})
 
 
+# @TODO: Redirect to S3 url
 @appr_bp.route(
     "/api/v1/packages/<string:namespace>/<string:package_name>/blobs/sha256/<string:digest>",
     methods=["GET"],
@@ -91,11 +92,6 @@ def blobs(namespace, package_name, digest):
     reponame = repo_name(namespace, package_name)
     data = cnr_registry.pull_blob(reponame, digest, blob_class=Blob)
     json_format = request.args.get("format", None) == "json"
-    if not json_format:
-        download_url = Blob.download_url(reponame, digest)
-        if download_url:
-            return redirect(download_url)
-
     return _pull(data, json_format=json_format)
 
 
