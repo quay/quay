@@ -29,91 +29,91 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 
 	var err error
 	newConfig := Config{}
-	newTeamSyncingFieldGroup, err := teamsyncing.NewTeamSyncingFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["TeamSyncing"] = newTeamSyncingFieldGroup
-	newAppTokenAuthenticationFieldGroup, err := apptokenauthentication.NewAppTokenAuthenticationFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["AppTokenAuthentication"] = newAppTokenAuthenticationFieldGroup
-	newGitLabBuildTriggerFieldGroup, err := gitlabbuildtrigger.NewGitLabBuildTriggerFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["GitLabBuildTrigger"] = newGitLabBuildTriggerFieldGroup
-	newJWTAuthenticationFieldGroup, err := jwtauthentication.NewJWTAuthenticationFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["JWTAuthentication"] = newJWTAuthenticationFieldGroup
-	newDatabaseFieldGroup, err := database.NewDatabaseFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["Database"] = newDatabaseFieldGroup
-	newSecurityScannerFieldGroup, err := securityscanner.NewSecurityScannerFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["SecurityScanner"] = newSecurityScannerFieldGroup
-	newActionLogArchivingFieldGroup, err := actionlogarchiving.NewActionLogArchivingFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["ActionLogArchiving"] = newActionLogArchivingFieldGroup
 	newAccessSettingsFieldGroup, err := accesssettings.NewAccessSettingsFieldGroup(fullConfig)
 	if err != nil {
 		return newConfig, err
 	}
 	newConfig["AccessSettings"] = newAccessSettingsFieldGroup
-	newGitHubLoginFieldGroup, err := githublogin.NewGitHubLoginFieldGroup(fullConfig)
+	newAppTokenAuthenticationFieldGroup, err := apptokenauthentication.NewAppTokenAuthenticationFieldGroup(fullConfig)
 	if err != nil {
 		return newConfig, err
 	}
-	newConfig["GitHubLogin"] = newGitHubLoginFieldGroup
-	newSigningEngineFieldGroup, err := signingengine.NewSigningEngineFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["SigningEngine"] = newSigningEngineFieldGroup
-	newElasticSearchFieldGroup, err := elasticsearch.NewElasticSearchFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["ElasticSearch"] = newElasticSearchFieldGroup
-	newRedisFieldGroup, err := redis.NewRedisFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["Redis"] = newRedisFieldGroup
-	newGitHubBuildTriggerFieldGroup, err := githubbuildtrigger.NewGitHubBuildTriggerFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["GitHubBuildTrigger"] = newGitHubBuildTriggerFieldGroup
-	newQuayDocumentationFieldGroup, err := quaydocumentation.NewQuayDocumentationFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["QuayDocumentation"] = newQuayDocumentationFieldGroup
-	newGoogleLoginFieldGroup, err := googlelogin.NewGoogleLoginFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["GoogleLogin"] = newGoogleLoginFieldGroup
+	newConfig["AppTokenAuthentication"] = newAppTokenAuthenticationFieldGroup
 	newUserVisibleSettingsFieldGroup, err := uservisiblesettings.NewUserVisibleSettingsFieldGroup(fullConfig)
 	if err != nil {
 		return newConfig, err
 	}
 	newConfig["UserVisibleSettings"] = newUserVisibleSettingsFieldGroup
+	newDatabaseFieldGroup, err := database.NewDatabaseFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["Database"] = newDatabaseFieldGroup
+	newQuayDocumentationFieldGroup, err := quaydocumentation.NewQuayDocumentationFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["QuayDocumentation"] = newQuayDocumentationFieldGroup
 	newBitbucketBuildTriggerFieldGroup, err := bitbucketbuildtrigger.NewBitbucketBuildTriggerFieldGroup(fullConfig)
 	if err != nil {
 		return newConfig, err
 	}
 	newConfig["BitbucketBuildTrigger"] = newBitbucketBuildTriggerFieldGroup
+	newGitHubBuildTriggerFieldGroup, err := githubbuildtrigger.NewGitHubBuildTriggerFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["GitHubBuildTrigger"] = newGitHubBuildTriggerFieldGroup
+	newGitHubLoginFieldGroup, err := githublogin.NewGitHubLoginFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["GitHubLogin"] = newGitHubLoginFieldGroup
+	newSecurityScannerFieldGroup, err := securityscanner.NewSecurityScannerFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["SecurityScanner"] = newSecurityScannerFieldGroup
+	newSigningEngineFieldGroup, err := signingengine.NewSigningEngineFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["SigningEngine"] = newSigningEngineFieldGroup
+	newActionLogArchivingFieldGroup, err := actionlogarchiving.NewActionLogArchivingFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["ActionLogArchiving"] = newActionLogArchivingFieldGroup
+	newRedisFieldGroup, err := redis.NewRedisFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["Redis"] = newRedisFieldGroup
+	newGitLabBuildTriggerFieldGroup, err := gitlabbuildtrigger.NewGitLabBuildTriggerFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["GitLabBuildTrigger"] = newGitLabBuildTriggerFieldGroup
+	newGoogleLoginFieldGroup, err := googlelogin.NewGoogleLoginFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["GoogleLogin"] = newGoogleLoginFieldGroup
+	newElasticSearchFieldGroup, err := elasticsearch.NewElasticSearchFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["ElasticSearch"] = newElasticSearchFieldGroup
+	newJWTAuthenticationFieldGroup, err := jwtauthentication.NewJWTAuthenticationFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["JWTAuthentication"] = newJWTAuthenticationFieldGroup
+	newTeamSyncingFieldGroup, err := teamsyncing.NewTeamSyncingFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["TeamSyncing"] = newTeamSyncingFieldGroup
 
 	return newConfig, nil
 }

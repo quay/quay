@@ -190,11 +190,21 @@ func createFieldGroups(configDef ConfigDefinition) error {
 
 		}
 
-		// outfile := strings.ToLower(fgName + ".go")
-		// outfilePath := getFullOutputPath(outfile)
-		// if err := f.Save(outfilePath); err != nil {
-		// 	return err
-		// }
+		// Implement fields function
+		fFile := jen.NewFile(strings.ToLower(fgName))
+		fFile.Comment("Fields returns a list of strings representing the fields in this field group")
+		fFile.Func().Params(jen.Id("fg *" + fgName + "FieldGroup")).Id("Fields").Params().Params(jen.Index().String()).Block(
+			jen.Return(jen.Index().String().ValuesFunc(func(g *jen.Group) {
+				for _, field := range fields {
+					g.Lit(field.YAML)
+				}
+			}),
+			),
+		)
+		fOutfile := getFullFileOutputPath(strings.ToLower(fgName), strings.ToLower(fgName)+"_fields.go")
+		if err := fFile.Save(fOutfile); err != nil {
+			fmt.Println(err.Error())
+		}
 
 	}
 	return nil
