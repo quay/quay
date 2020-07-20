@@ -98,7 +98,6 @@ class CloudConfigContext(object):
         data = "," + urlquote(content)
         return "data:" + data
 
-
     def registry(self, container_name):
         """ Parse the registry from repositories of the following formats:
         quay.io/quay/quay:tagname -> quay.io

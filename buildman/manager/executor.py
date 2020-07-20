@@ -161,23 +161,25 @@ class BuilderExecutor(object):
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
         rendered_json = json.load(
-            io.StringIO(TEMPLATE.render(
-                realm=realm,
-                token=token,
-                build_uuid=build_uuid,
-                quay_username=quay_username,
-                quay_password=quay_password,
-                manager_hostname=manager_hostname,
-                websocket_scheme=self.websocket_scheme,
-                coreos_channel=coreos_channel,
-                worker_image=self.executor_config.get(
-                    "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
-                ),
-                worker_tag=self.executor_config["WORKER_TAG"],
-                volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
-                max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
-                ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
-            ))
+            io.StringIO(
+                TEMPLATE.render(
+                    realm=realm,
+                    token=token,
+                    build_uuid=build_uuid,
+                    quay_username=quay_username,
+                    quay_password=quay_password,
+                    manager_hostname=manager_hostname,
+                    websocket_scheme=self.websocket_scheme,
+                    coreos_channel=coreos_channel,
+                    worker_image=self.executor_config.get(
+                        "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
+                    ),
+                    worker_tag=self.executor_config["WORKER_TAG"],
+                    volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
+                    max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
+                    ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+                )
+            )
         )
 
         return json.dumps(rendered_json)
@@ -188,10 +190,9 @@ class EC2Executor(BuilderExecutor):
     Implementation of BuilderExecutor which uses libcloud to start machines on a variety of cloud
     providers.
     """
+
     COREOS_STACK_ARCHITECTURE = "x86_64"
-    COREOS_STACK_URL = (
-        "https://builds.coreos.fedoraproject.org/streams/%s.json"
-    )
+    COREOS_STACK_URL = "https://builds.coreos.fedoraproject.org/streams/%s.json"
 
     def __init__(self, *args, **kwargs):
         self._loop = get_event_loop()
@@ -216,8 +217,10 @@ class EC2Executor(BuilderExecutor):
         Retrieve the CoreOS AMI id from the canonical listing.
         """
         stack_list_json = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).json()
-        stack_amis = stack_list_json['architectures'][EC2Executor.COREOS_STACK_ARCHITECTURE]['images']['aws']['regions']
-        return stack_amis[ec2_region]['image']
+        stack_amis = stack_list_json["architectures"][EC2Executor.COREOS_STACK_ARCHITECTURE][
+            "images"
+        ]["aws"]["regions"]
+        return stack_amis[ec2_region]["image"]
 
     @coroutine
     @async_observe(build_start_duration, "ec2")
