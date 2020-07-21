@@ -38,6 +38,7 @@ class SkopeoMirror(object):
             args = args + ["--debug"]
         args = args + [
             "copy",
+            "--all",
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]
