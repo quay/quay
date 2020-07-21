@@ -19,7 +19,7 @@ else
             -subj "/C=US/ST=NY/L=NYC/O=Dis/CN=self-signed" \
             -keyout quay-config-key.pem  -out quay-config.pem
         else
-            openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
+        openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 \
             -subj "/C=US/ST=NY/L=NYC/O=Dis/CN=${QUAY_CONFIG_HOSTNAME}" \
             -keyout quay-config-key.pem  -out quay-config.pem
     fi
