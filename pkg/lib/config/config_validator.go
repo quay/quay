@@ -16,7 +16,7 @@ func (c Config) Validate() []shared.ValidationError {
 
 		// If errors were present, append to config errors
 		if len(fgErrors) > 0 {
-			fgErrors = append(configErrors, fgErrors...)
+			configErrors = append(configErrors, fgErrors...)
 		}
 	}
 
