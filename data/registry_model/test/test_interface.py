@@ -764,7 +764,8 @@ def test_unicode_emoji(registry_model):
     assert found.get_parsed_manifest().digest == manifest.digest
 
 
-def test_lookup_active_repository_tags(oci_model):
+@pytest.mark.parametrize("test_cached", [False, True,])
+def test_lookup_active_repository_tags(test_cached, oci_model):
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
     manifest = oci_model.get_manifest_for_tag(latest_tag)
@@ -785,7 +786,14 @@ def test_lookup_active_repository_tags(oci_model):
     tags_found = set()
     tag_id = None
     while True:
-        tags = oci_model.lookup_active_repository_tags(repository_ref, tag_id, 11)
+        if test_cached:
+            model_cache = InMemoryDataModelCache()
+            tags = oci_model.lookup_cached_active_repository_tags(
+                model_cache, repository_ref, tag_id, 11
+            )
+        else:
+            tags = oci_model.lookup_active_repository_tags(repository_ref, tag_id, 11)
+
         assert len(tags) <= 11
         for tag in tags[0:10]:
             assert tag.name not in tags_found
