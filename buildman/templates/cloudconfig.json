@@ -1,8 +1,7 @@
 {% macro overridelist() -%}
 
-REALM={{ realm }}
 TOKEN={{ token }}
-SERVER={{ websocket_scheme }}://{{ manager_hostname }}
+SERVER={{ http_scheme }}://{{ manager_hostname }}
 
 {%- endmacro %}
 
