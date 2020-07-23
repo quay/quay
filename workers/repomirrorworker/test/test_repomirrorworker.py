@@ -91,6 +91,7 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=False",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -148,6 +149,7 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -204,6 +206,7 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
                 "/usr/bin/skopeo",
                 "--debug",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -267,6 +270,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -281,6 +285,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -295,6 +300,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -313,9 +319,9 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             assert args == skopeo_call["args"]
             assert proxy == {}
 
-            if args[1] == "copy" and args[6].endswith(":updated"):
+            if args[1] == "copy" and args[7].endswith(":updated"):
                 _create_tag(repo, "updated")
-            elif args[1] == "copy" and args[6].endswith(":created"):
+            elif args[1] == "copy" and args[7].endswith(":created"):
                 _create_tag(repo, "created")
 
             return skopeo_call["results"]
@@ -375,6 +381,7 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
                 "/usr/bin/skopeo",
                 "--debug",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -438,6 +445,7 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -500,6 +508,7 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
