@@ -473,7 +473,9 @@ class EphemeralBuilderManager(BaseManager):
             )
         except KeyError:
             logger.warning(
-                "Job: %s already exists in orchestrator, timeout may be misconfigured. Removing key %s from Redis.", build_uuid, job_key
+                "Job: %s already exists in orchestrator, timeout may be misconfigured. Removing key %s from Redis.",
+                build_uuid,
+                job_key,
             )
             yield From(self._orchestrator.delete_key(job_key))
             raise Return(False, EPHEMERAL_API_TIMEOUT)

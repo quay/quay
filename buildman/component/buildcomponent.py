@@ -115,7 +115,7 @@ class BuildComponent(BaseComponent):
         try:
             self._build_status = StatusHandler(self.build_logs, build_id)
         except Exception as bse:
-            logger.exception(
+            logger.warning(
                 "Failed to set phase for start build for build ID: %s - %s", build_id, bse
             )
             yield From(self._build_status_failure(bse))
@@ -368,7 +368,7 @@ class BuildComponent(BaseComponent):
             build_model.update_phase_then_close(build_id, phase)
         except Exception as bse:
             # Fail the build on other error types
-            logger.exception("Failed to set phase for on log for build ID: %s - %s", build_id, bse)
+            logger.warning("Failed to set phase for on log for build ID: %s - %s", build_id, bse)
             yield From(self._build_status_failure(bse))
             raise Return()
 
@@ -395,7 +395,7 @@ class BuildComponent(BaseComponent):
                 status_dict["total_commands"] = len(command_comments) + 1
         except Exception as bse:
             build_id = self._current_job.repo_build.uuid
-            logger.exception("Failed to set phase for cache for build ID: %s - %s", build_id, bse)
+            logger.warning("Failed to set phase for cache for build ID: %s - %s", build_id, bse)
             yield From(self._build_status_failure(bse))
             raise Return()
 
@@ -433,7 +433,7 @@ class BuildComponent(BaseComponent):
             )
         except Exception as bse:
             build_id = self._current_job.repo_build.uuid
-            logger.exception("Failed to set phase for build ID: %s - %s", build_id, bse)
+            logger.warning("Failed to set phase for build ID: %s - %s", build_id, bse)
             yield From(self._build_status_failure(bse))
             raise Return()
 
@@ -536,7 +536,7 @@ class BuildComponent(BaseComponent):
 
                 # Mark the build as completed.
                 if worker_error.is_internal_error():
-                    logger.exception(
+                    logger.warning(
                         "[BUILD INTERNAL ERROR: Remote] Build ID: %s: %s",
                         build_id,
                         worker_error.public_message(),
@@ -689,7 +689,7 @@ class BuildComponent(BaseComponent):
                     )
                 )
         except Exception as bse:
-            logger.exception("Failed to set phase for timeout for build ID: %s - %s", build_id, bse)
+            logger.warning("Failed to set phase for timeout for build ID: %s - %s", build_id, bse)
             yield From(self._build_status_failure(bse))
             raise Return()
 
