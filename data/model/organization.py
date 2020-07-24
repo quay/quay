@@ -128,7 +128,7 @@ def remove_organization_member(org, user_obj):
             TeamMember.delete().where(TeamMember.id << members).execute()
 
 
-def get_organization_member_set(org, include_robots=False, users_filter=None):
+def get_organization_member_set(org, include_robots=False, user_ids_filter=None):
     """
     Returns the set of all member usernames under the given organization, with optional filtering by
     robots and/or by a specific set of User objects.
@@ -145,12 +145,11 @@ def get_organization_member_set(org, include_robots=False, users_filter=None):
     if not include_robots:
         org_users = org_users.where(User.robot == False)
 
-    if users_filter is not None:
-        ids_list = [u.id for u in users_filter if u is not None]
-        if not ids_list:
+    if user_ids_filter is not None:
+        if not user_ids_filter:
             return set()
 
-        org_users = org_users.where(User.id << ids_list)
+        org_users = org_users.where(User.id << user_ids_filter)
 
     return {user.username for user in org_users}
 

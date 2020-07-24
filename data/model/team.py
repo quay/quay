@@ -3,7 +3,7 @@ import re
 import uuid
 
 from datetime import datetime
-from peewee import fn
+from peewee import fn, JOIN
 
 from data.database import (
     Team,
@@ -195,15 +195,17 @@ def get_matching_user_teams(team_prefix, user_obj, limit=10):
 
 
 def get_organization_team(orgname, teamname):
-    joined = Team.select().join(User)
-    query = joined.where(
-        Team.name == teamname, User.organization == True, User.username == orgname
-    ).limit(1)
-    result = list(query)
-    if not result:
+    try:
+        return (
+            Team.select(Team, User, TeamRole)
+            .join(User)
+            .switch(Team)
+            .join(TeamRole)
+            .where(Team.name == teamname, User.organization == True, User.username == orgname)
+            .get()
+        )
+    except Team.DoesNotExist:
         raise InvalidTeamException("Team does not exist: %s/%s", orgname, teamname)
-
-    return result[0]
 
 
 def get_matching_admined_teams(team_prefix, user_obj, limit=10):
@@ -342,7 +344,12 @@ def lookup_team_invites(user_obj):
 def lookup_team_invite(code, user_obj=None):
     # Lookup the invite code.
     try:
-        found = TeamMemberInvite.get(TeamMemberInvite.invite_token == code)
+        found = (
+            TeamMemberInvite.select(TeamMemberInvite, User)
+            .join(User, JOIN.LEFT_OUTER)
+            .where(TeamMemberInvite.invite_token == code)
+            .get()
+        )
     except TeamMemberInvite.DoesNotExist:
         raise DataModelException("Invalid confirmation code.")
 

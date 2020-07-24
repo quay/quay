@@ -571,8 +571,7 @@ class TeamPermissions(ApiResource):
                 raise NotFound()
 
             permissions = model.permission.list_team_permissions(team)
-
-            return {"permissions": [permission_view(permission) for permission in permissions]}
+            return {"permissions": [permission_view(perm) for perm in permissions]}
 
         raise Unauthorized()
 

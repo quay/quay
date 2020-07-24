@@ -744,8 +744,11 @@ def validate_reset_code(token):
 
     # Find the reset code.
     try:
-        code = EmailConfirmation.get(
-            EmailConfirmation.code == result.public_code, EmailConfirmation.pw_reset == True
+        code = (
+            EmailConfirmation.select(EmailConfirmation, User)
+            .join(User)
+            .where(EmailConfirmation.code == result.public_code, EmailConfirmation.pw_reset == True)
+            .get()
         )
     except EmailConfirmation.DoesNotExist:
         return None
@@ -1211,7 +1214,12 @@ def delete_namespace_via_marker(marker_id, queues):
     Deletes a namespace referenced by the given DeletedNamespace marker ID.
     """
     try:
-        marker = DeletedNamespace.get(id=marker_id)
+        marker = (
+            DeletedNamespace.select(DeletedNamespace, User)
+            .join(User)
+            .where(DeletedNamespace.id == marker_id)
+            .get()
+        )
     except DeletedNamespace.DoesNotExist:
         return True
 

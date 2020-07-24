@@ -137,11 +137,11 @@ class PermissionPrototypeList(ApiResource):
 
             permissions = model.permission.get_prototype_permissions(org)
 
-            users_filter = {p.activating_user for p in permissions} | {
-                p.delegate_user for p in permissions
+            user_ids_filter = {p.activating_user.id for p in permissions if p.activating_user} | {
+                p.delegate_user.id for p in permissions if p.delegate_user
             }
             org_members = model.organization.get_organization_member_set(
-                org, users_filter=users_filter
+                org, user_ids_filter=user_ids_filter
             )
             return {"prototypes": [prototype_view(p, org_members) for p in permissions]}
 
@@ -201,9 +201,9 @@ class PermissionPrototypeList(ApiResource):
             )
             log_prototype_action("create_prototype_permission", orgname, prototype)
 
-            users_filter = {prototype.activating_user, prototype.delegate_user}
+            user_ids_filter = {prototype.activating_user_id, prototype.delegate_user_id}
             org_members = model.organization.get_organization_member_set(
-                org, users_filter=users_filter
+                org, user_ids_filter=user_ids_filter
             )
             return prototype_view(prototype, org_members)
 
@@ -284,9 +284,9 @@ class PermissionPrototype(ApiResource):
                 "modify_prototype_permission", orgname, prototype, original_role=existing.role.name
             )
 
-            users_filter = {prototype.activating_user, prototype.delegate_user}
+            user_ids_filter = {prototype.activating_user_id, prototype.delegate_user_id}
             org_members = model.organization.get_organization_member_set(
-                org, users_filter=users_filter
+                org, user_ids_filter=user_ids_filter
             )
             return prototype_view(prototype, org_members)
 

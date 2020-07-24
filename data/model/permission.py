@@ -18,21 +18,19 @@ from util.names import parse_robot_username
 
 def list_team_permissions(team):
     return (
-        RepositoryPermission.select(RepositoryPermission)
+        RepositoryPermission.select(RepositoryPermission, Repository, Role)
         .join(Repository)
         .join(Visibility)
         .switch(RepositoryPermission)
         .join(Role)
-        .switch(RepositoryPermission)
         .where(RepositoryPermission.team == team)
     )
 
 
 def list_robot_permissions(robot_name):
     return (
-        RepositoryPermission.select(RepositoryPermission, User, Repository)
+        RepositoryPermission.select(RepositoryPermission, User, Repository, Role)
         .join(Repository)
-        .join(Visibility)
         .switch(RepositoryPermission)
         .join(Role)
         .switch(RepositoryPermission)
@@ -126,18 +124,24 @@ def get_prototype_permissions(org):
     ActivatingUser = User.alias()
     DelegateUser = User.alias()
     query = (
-        PermissionPrototype.select()
+        PermissionPrototype.select(PermissionPrototype, ActivatingUser, DelegateUser, Team, Role)
         .where(PermissionPrototype.org == org)
+        .switch(PermissionPrototype)
         .join(
             ActivatingUser,
             JOIN.LEFT_OUTER,
-            on=(ActivatingUser.id == PermissionPrototype.activating_user),
+            on=(PermissionPrototype.activating_user == ActivatingUser.id).alias("activating_user"),
         )
+        .switch(PermissionPrototype)
         .join(
-            DelegateUser, JOIN.LEFT_OUTER, on=(DelegateUser.id == PermissionPrototype.delegate_user)
+            DelegateUser,
+            JOIN.LEFT_OUTER,
+            on=(PermissionPrototype.delegate_user == DelegateUser.id).alias("delegate_user"),
         )
-        .join(Team, JOIN.LEFT_OUTER, on=(Team.id == PermissionPrototype.delegate_team))
-        .join(Role, JOIN.LEFT_OUTER, on=(Role.id == PermissionPrototype.role))
+        .switch(PermissionPrototype)
+        .join(Team, JOIN.LEFT_OUTER)
+        .switch(PermissionPrototype)
+        .join(Role, JOIN.LEFT_OUTER)
     )
     return query
 
@@ -316,8 +320,13 @@ def __set_entity_repo_permission(
     # Fetch any existing permission for this entity on the repo
     try:
         entity_attr = getattr(RepositoryPermission, permission_entity_property)
-        perm = RepositoryPermission.get(
-            entity_attr == entity, RepositoryPermission.repository == repo
+        perm = (
+            RepositoryPermission.select(RepositoryPermission, Team, User)
+            .where(entity_attr == entity, RepositoryPermission.repository == repo)
+            .join(User, JOIN.LEFT_OUTER)
+            .switch(RepositoryPermission)
+            .join(Team, JOIN.LEFT_OUTER)
+            .get()
         )
         perm.role = new_role
         perm.save()
@@ -354,7 +363,7 @@ def set_user_repo_permission(username, namespace_name, repository_name, role_nam
 def set_team_repo_permission(team_name, namespace_name, repository_name, role_name):
     try:
         team = (
-            Team.select()
+            Team.select(Team, User)
             .join(User)
             .where(Team.name == team_name, User.username == namespace_name)
             .get()

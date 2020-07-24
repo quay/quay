@@ -4,7 +4,7 @@ from flask import request, make_response, Blueprint
 
 from app import billing as stripe, app
 from data import model
-from data.database import RepositoryState
+from data.database import RepositoryState, Repository
 from auth.decorators import process_auth
 from auth.permissions import ModifyRepositoryPermission
 from util.invoice import renderInvoiceToHtml
@@ -109,11 +109,18 @@ def build_trigger_webhook(trigger_uuid, **kwargs):
     if ModifyRepositoryPermission(namespace, repository).can():
         handler = BuildTriggerHandler.get_handler(trigger)
 
-        if trigger.repository.kind.name != "image":
+        if Repository.kind.get_name(trigger.repository.kind_id) != "image":
             abort(501, "Build triggers cannot be invoked on application repositories")
 
         if trigger.repository.state != RepositoryState.NORMAL:
             abort(503, "Repository is currently in read only or mirror mode")
+
+        if not trigger.enabled:
+            logger.debug("Build trigger %s is disabled", trigger_uuid)
+            abort(
+                403,
+                message="This build trigger is currently disabled. Please re-enable to continue.",
+            )
 
         logger.debug("Passing webhook request to handler %s", handler)
         try:
@@ -140,7 +147,7 @@ def build_trigger_webhook(trigger_uuid, **kwargs):
         except BuildTriggerDisabledException:
             logger.debug("Build trigger %s is disabled", trigger_uuid)
             abort(
-                400,
+                403,
                 message="This build trigger is currently disabled. Please re-enable to continue.",
             )
 

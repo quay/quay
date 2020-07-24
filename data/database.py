@@ -521,7 +521,7 @@ class QuayUserField(ForeignKeyField):
         super(QuayUserField, self).__init__(*args, **kwargs)
 
 
-@lru_cache(maxsize=16)
+@lru_cache(maxsize=32)
 def _get_enum_field_values(enum_field):
     values = []
     for row in enum_field.rel_model.select():
@@ -1391,8 +1391,8 @@ class ExternalNotificationMethod(BaseModel):
 class RepositoryNotification(BaseModel):
     uuid = CharField(default=uuid_generator, index=True)
     repository = ForeignKeyField(Repository)
-    event = ForeignKeyField(ExternalNotificationEvent)
-    method = ForeignKeyField(ExternalNotificationMethod)
+    event = EnumField(ExternalNotificationEvent)
+    method = EnumField(ExternalNotificationMethod)
     title = CharField(null=True)
     config_json = TextField()
     event_config_json = TextField(default="{}")

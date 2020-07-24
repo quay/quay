@@ -201,7 +201,9 @@ def approve_service_key(kid, approval_type, approver=None, notes=""):
 def _list_service_keys_query(
     kid=None, service=None, approved_only=True, alive_only=True, approval_type=None
 ):
-    query = ServiceKey.select().join(ServiceKeyApproval, JOIN.LEFT_OUTER)
+    query = ServiceKey.select(ServiceKey, ServiceKeyApproval).join(
+        ServiceKeyApproval, JOIN.LEFT_OUTER
+    )
 
     if approved_only:
         query = query.where(~(ServiceKey.approval >> None))
