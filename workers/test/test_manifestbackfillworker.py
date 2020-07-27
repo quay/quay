@@ -29,5 +29,6 @@ def test_basic(initialized_db):
         )
         layers_compressed_size = parsed.layers_compressed_size or 0
         assert manifest_row.layers_compressed_size == layers_compressed_size
+        assert manifest_row.config_media_type == parsed.config_media_type
 
     assert not worker._backfill_manifests()

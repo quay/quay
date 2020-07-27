@@ -20,8 +20,8 @@ WORKER_FREQUENCY = app.config.get("MANIFEST_BACKFILL_WORKER_FREQUENCY", 60 * 60)
 
 class ManifestBackfillWorker(Worker):
     """
-    Worker which backfills the newly added layers compressed size field on
-    Manifest.
+    Worker which backfills the newly added layers compressed size and config media type
+    fields onto Manifest.
     """
 
     def __init__(self):
@@ -51,6 +51,7 @@ class ManifestBackfillWorker(Worker):
 
             logger.debug("Setting layers compressed size for manifest %s", manifest_row.id)
             layers_compressed_size = -1
+            config_media_type = None
             manifest_bytes = Bytes.for_string_or_unicode(manifest_row.manifest_bytes)
 
             try:
@@ -60,6 +61,8 @@ class ManifestBackfillWorker(Worker):
                 layers_compressed_size = parsed.layers_compressed_size
                 if layers_compressed_size is None:
                     layers_compressed_size = 0
+
+                config_media_type = parsed.config_media_type or None
             except ManifestException as me:
                 logger.warning(
                     "Got exception when trying to parse manifest %s: %s", manifest_row.id, me
@@ -67,7 +70,10 @@ class ManifestBackfillWorker(Worker):
 
             assert layers_compressed_size is not None
             updated = (
-                Manifest.update(layers_compressed_size=layers_compressed_size)
+                Manifest.update(
+                    layers_compressed_size=layers_compressed_size,
+                    config_media_type=config_media_type,
+                )
                 .where(Manifest.id == manifest_row.id, Manifest.layers_compressed_size >> None)
                 .execute()
             )
