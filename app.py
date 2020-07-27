@@ -152,10 +152,10 @@ class RequestWithId(Request):
 @app.before_request
 def _request_start():
     if os.getenv("PYDEV_DEBUG", None):
-        import pydevd
+        import pydevd_pycharm
 
         host, port = os.getenv("PYDEV_DEBUG").split(":")
-        pydevd.settrace(
+        pydevd_pycharm.settrace(
             host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False,
         )
 
