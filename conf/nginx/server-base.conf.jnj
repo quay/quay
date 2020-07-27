@@ -341,6 +341,6 @@ location ~ ^/b1/socket(/?)(.*) {
 
 location /userfiles/	{
     proxy_pass http://web_app_server;
-    client_max_body_size 100M;
+    client_max_body_size {{ max_upload_size }};
 }
 

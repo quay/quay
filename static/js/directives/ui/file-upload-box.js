@@ -19,10 +19,11 @@ angular.module('quay').directive('fileUploadBox', function () {
 
       'reset': '=?reset'
     },
-    controller: function($rootScope, $scope, $element, ApiService) {
-      var MEGABYTE = 1000000;
+    controller: function($rootScope, $scope, $element, ApiService, Config) {
+	    // nginx uses MiB 
+      var MEGABYTE = 1048576;
       var MAX_FILE_SIZE = MAX_FILE_SIZE_MB * MEGABYTE;
-      var MAX_FILE_SIZE_MB = 100;
+      var MAX_FILE_SIZE_MB = parseInt(Config['USERFILES_UPLOAD_FILE_SIZE']);
 
       var number = $rootScope.__fileUploadBoxIdCounter || 0;
       $rootScope.__fileUploadBoxIdCounter = number + 1;

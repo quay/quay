@@ -98,6 +98,7 @@ def generate_server_config(config):
     maximum_layer_size = config.get("MAXIMUM_LAYER_SIZE", "20G")
     maximum_cnr_layer_size = config.get("MAXIMUM_CNR_LAYER_SIZE", "1M")
     enable_rate_limits = config.get("FEATURE_RATE_LIMITS", False)
+    max_upload_size = config.get("USERFILES_UPLOAD_FILE_SIZE", "100M")
 
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/server-base.conf"),
@@ -108,6 +109,7 @@ def generate_server_config(config):
         maximum_cnr_layer_size=maximum_cnr_layer_size,
         enable_rate_limits=enable_rate_limits,
         static_dir=STATIC_DIR,
+		max_upload_size=max_upload_size,
     )
 
 

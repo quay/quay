@@ -1736,15 +1736,28 @@
           <div class="config-bool-field" binding="config.FEATURE_BUILD_SUPPORT">
             Enable Dockerfile Build
           </div>
-
           <div ng-if="config.FEATURE_BUILD_SUPPORT" style="margin-top: 10px">
             <strong>Note: Build workers are required for this feature.</strong>
             See <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#set-up-the-build-workers" ng-safenewtab>Adding Build
               Workers</a> for instructions on how to setup build workers.
           </div>
+          <table class="config-table" ng-if="config.FEATURE_BUILD_SUPPORT" style="margin-top: 10px">
+            <tr>
+              <td>Upload file size:</td>
+              <td colspan="2">
+                <span class="config-string-field" item-title="Upload file size" binding="config.USERFILES_UPLOAD_FILE_SIZE" 
+                      item-pattern="/[0-9]+(M)/" is-optional="true"></span>
+                <div class="help-text">
+                  This <strong>only</strong> affects build packs uploaded via the UI.<br>
+                  Must be expressed in the following form: <code>300M</code>. The default is 100 MB.
+                </div>
+              </td>
+            </tr>
+          </table> 
         </div>
-      </div> <!-- /Build Support -->
-
+      </div> 
+      <!-- /Build Support -->
+      
       <!-- GitHub Trigger -->
       <div class="co-panel" ng-if="config.FEATURE_BUILD_SUPPORT" style="margin-top: 20px;">
         <div class="co-panel-heading">
