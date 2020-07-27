@@ -956,6 +956,31 @@
       "ct-default": "",
       "ct-validate": "",
       "ct-fieldgroups": ["SigningEngine"]
+    },
+    "SERVER_HOSTNAME": {
+      "x-example": "quay.io",
+      "type": "string",
+      "description": "The URL at which Quay is accessible, without the scheme.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["HostSettings"]
+    },
+    "PREFERRED_URL_SCHEME": {
+      "x-example": "https",
+      "enum": ["http", "https"],
+      "type": "string",
+      "description": "The URL scheme to use when hitting Quay. If Quay is behind SSL *at all*, this *must* be `https`",
+      "ct-default": "http",
+      "ct-validate": "",
+      "ct-fieldgroups": ["HostSettings"]
+    },
+    "EXTERNAL_TLS_TERMINATION": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If TLS is supported, but terminated at a layer before Quay, must be true.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["HostSettings"]
     }
   }
 }

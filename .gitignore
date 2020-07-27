@@ -20,3 +20,6 @@
 playground.go
 
 config.yaml
+
+config.tar.gz
+/testdata

@@ -44,6 +44,8 @@ jobs:
           POSTGRES_DB: "quay"
       redis:
         image: redis:latest
+      jwt:
+        image: quay.io/coreos/jwt-auth-example:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2

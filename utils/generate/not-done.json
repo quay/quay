@@ -134,12 +134,6 @@
       "type": "string",
       "description": "The prefix applied to all exposed Prometheus metrics. Defaults to `quay`"
     },
-    "PREFERRED_URL_SCHEME": {
-      "x-example": "https",
-      "enum": ["http", "https"],
-      "type": "string",
-      "description": "The URL scheme to use when hitting Quay. If Quay is behind SSL *at all*, this *must* be `https`"
-    },
 
     "SUCCESSIVE_TRIGGER_FAILURE_DISABLE_THRESHOLD": {
       "x-example": 50,
@@ -162,22 +156,12 @@
       "type": "array",
       "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost"
     },
-    "EXTERNAL_TLS_TERMINATION": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If TLS is supported, but terminated at a layer before Quay, must be true."
-    },
     "APP_SPECIFIC_TOKEN_EXPIRATION": {
       "pattern": "^[0-9]+(w|m|d|h|s)$",
       "type": ["string", "null"],
       "description": "The expiration for external app tokens. Defaults to None."
     },
 
-    "SERVER_HOSTNAME": {
-      "x-example": "quay.io",
-      "type": "string",
-      "description": "The URL at which Quay is accessible, without the scheme."
-    },
     "BROWSER_API_CALLS_XHR_ONLY": {
       "x-example": false,
       "type": "boolean",

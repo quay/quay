@@ -20,6 +20,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/quay/config-tool/pkg/lib/validation"
@@ -47,28 +48,45 @@ var validateCmd = &cobra.Command{
 		}
 		sort.Strings(fgNames)
 
+		// Create wait group
+		var wg sync.WaitGroup
+
 		// Initialize validaiton status grid
 		validationStatus := [][]string{}
 
 		for _, fgName := range fgNames {
 
-			// Get field group for key
-			fieldGroup := configFieldGroups[fgName]
+			// Add to wait group
+			wg.Add(1)
 
-			// Validate
-			validationErrors := fieldGroup.Validate()
+			// Call func conncurrently
+			go func(wg *sync.WaitGroup) {
 
-			// If no errors, append row
-			if len(validationErrors) == 0 {
-				validationStatus = append(validationStatus, []string{fgName, "-", "🟢"})
-			}
+				// Call done at the end of func
+				defer wg.Done()
 
-			// Append error messages
-			for _, err := range validationErrors {
+				// Get field group for key
+				fieldGroup := configFieldGroups[fgName]
 
-				// Append field group policy violation
-				validationStatus = append(validationStatus, []string{fgName, err.Message, "🔴"})
-			}
+				// Validate
+				validationErrors := fieldGroup.Validate()
+
+				// If no errors, append row
+				if len(validationErrors) == 0 {
+					validationStatus = append(validationStatus, []string{fgName, "-", "🟢"})
+				}
+
+				// Append error messages
+				for _, err := range validationErrors {
+
+					// Append field group policy violation
+					validationStatus = append(validationStatus, []string{fgName, err.Message, "🔴"})
+				}
+			}(&wg)
+
+			// Wait for calls to finish
+			wg.Wait()
+
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
