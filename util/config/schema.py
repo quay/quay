@@ -322,7 +322,7 @@ CONFIG_SCHEMA = {
             "items": {"type": "string", "uniqueItems": True,},
             "x-example": ["s3_us_east", "s3_us_west"],
         },
-        "USERFILES_UPLOAD_FILE_SIZE":	{
+        "USERFILES_UPLOAD_FILE_SIZE": {
             "type": "string",
             "description": "Maximum allowed size of a build bundle uploaded through the UI. Defaults to 100M",
             "x-example": "100M",

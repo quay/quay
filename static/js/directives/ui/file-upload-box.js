@@ -19,8 +19,8 @@ angular.module('quay').directive('fileUploadBox', function () {
 
       'reset': '=?reset'
     },
-    controller: function($rootScope, $scope, $element, ApiService, Config) {
-	    // nginx uses MiB 
+    controller: function ($rootScope, $scope, $element, ApiService, Config) {
+      // nginx uses MiB 
       var MEGABYTE = 1048576;
       var MAX_FILE_SIZE = MAX_FILE_SIZE_MB * MEGABYTE;
       var MAX_FILE_SIZE_MB = parseInt(Config['USERFILES_UPLOAD_FILE_SIZE']);
@@ -32,34 +32,34 @@ angular.module('quay').directive('fileUploadBox', function () {
       $scope.state = 'clear';
       $scope.selectedFiles = [];
 
-      var conductUpload = function(file, url, fileId, mimeType, progressCb, doneCb) {
+      var conductUpload = function (file, url, fileId, mimeType, progressCb, doneCb) {
         var request = new XMLHttpRequest();
         request.open('PUT', url, true);
         request.setRequestHeader('Content-Type', mimeType);
-        request.onprogress = function(e) {
-          $scope.$apply(function() {
+        request.onprogress = function (e) {
+          $scope.$apply(function () {
             if (e.lengthComputable) { progressCb((e.loaded / e.total) * 100); }
           });
         };
 
-        request.onerror = function() {
-          $scope.$apply(function() { doneCb(false, 'Error when uploading'); });
+        request.onerror = function () {
+          $scope.$apply(function () { doneCb(false, 'Error when uploading'); });
         };
 
-        request.onreadystatechange = function() {
+        request.onreadystatechange = function () {
           var state = request.readyState;
           var status = request.status;
 
           if (state == 4) {
             if (Math.floor(status / 100) == 2) {
-              $scope.$apply(function() { doneCb(true, fileId); });
+              $scope.$apply(function () { doneCb(true, fileId); });
             } else {
               var message = request.statusText;
               if (status == 413) {
                 message = 'Selected file too large to upload';
               }
 
-              $scope.$apply(function() { doneCb(false, message); });
+              $scope.$apply(function () { doneCb(false, message); });
             }
           }
         };
@@ -67,15 +67,15 @@ angular.module('quay').directive('fileUploadBox', function () {
         request.send(file);
       };
 
-      var uploadFiles = function(callback) {
+      var uploadFiles = function (callback) {
         var currentIndex = 0;
         var fileIds = [];
 
-        var progressCb = function(progress) {
+        var progressCb = function (progress) {
           $scope.uploadProgress = progress;
         };
 
-        var doneCb = function(status, messageOrId) {
+        var doneCb = function (status, messageOrId) {
           if (status) {
             fileIds.push(messageOrId);
             currentIndex++;
@@ -85,7 +85,7 @@ angular.module('quay').directive('fileUploadBox', function () {
           }
         };
 
-        var performFileUpload = function() {
+        var performFileUpload = function () {
           // If we have finished uploading all of the files, invoke the overall callback
           // with the list of file IDs.
           if (currentIndex >= $scope.selectedFiles.length) {
@@ -103,10 +103,10 @@ angular.module('quay').directive('fileUploadBox', function () {
           $scope.currentlyUploadingFile = currentFile;
           $scope.uploadProgress = 0;
 
-          ApiService.getFiledropUrl(data).then(function(resp) {
+          ApiService.getFiledropUrl(data).then(function (resp) {
             // Perform the upload.
             conductUpload(currentFile, resp.url, resp.file_id, mimeType, progressCb, doneCb);
-          }, function() {
+          }, function () {
             callback(false, 'Could not retrieve upload URL');
           });
         };
@@ -116,7 +116,7 @@ angular.module('quay').directive('fileUploadBox', function () {
         performFileUpload();
       };
 
-      $scope.handleFilesChanged = function(files) {
+      $scope.handleFilesChanged = function (files) {
         if ($scope.state == 'uploading') { return; }
 
         $scope.message = null;
@@ -130,7 +130,7 @@ angular.module('quay').directive('fileUploadBox', function () {
             if (files[i].size > MAX_FILE_SIZE) {
               $scope.state = 'error';
               $scope.message = 'File ' + files[i].name + ' is larger than the maximum file ' +
-                               'size of ' + MAX_FILE_SIZE_MB + ' MB';
+                'size of ' + MAX_FILE_SIZE_MB + ' MB';
               return;
             }
           }
@@ -138,7 +138,7 @@ angular.module('quay').directive('fileUploadBox', function () {
           $scope.state = 'checking';
           $scope.filesSelected({
             'files': files,
-            'callback': function(status, message) {
+            'callback': function (status, message) {
               $scope.state = status ? 'okay' : 'error';
               $scope.message = message;
 
@@ -153,7 +153,7 @@ angular.module('quay').directive('fileUploadBox', function () {
         }
       };
 
-      $scope.getAccepts = function(extensions) {
+      $scope.getAccepts = function (extensions) {
         if (!extensions || !extensions.length) {
           return '*';
         }
@@ -161,7 +161,7 @@ angular.module('quay').directive('fileUploadBox', function () {
         return extensions.join(',');
       };
 
-      $scope.$watch('reset', function(reset) {
+      $scope.$watch('reset', function (reset) {
         if (reset) {
           $scope.state = 'clear';
           $element.find('#file-drop-' + $scope.boxId).parent().trigger('reset');
@@ -169,5 +169,5 @@ angular.module('quay').directive('fileUploadBox', function () {
       });
     }
   };
-  return  directiveDefinitionObject;
+  return directiveDefinitionObject;
 });

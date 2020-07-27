@@ -385,7 +385,6 @@ class DefaultConfig(ImmutableConfig):
     # namespaces.
     PUBLIC_NAMESPACES = []
 
-
     # The namespace to use for library repositories.
     # Note: This must remain 'library' until Docker removes their hard-coded namespace for libraries.
     # See: https://github.com/docker/docker/blob/master/registry/session.go#L320
@@ -405,8 +404,8 @@ class DefaultConfig(ImmutableConfig):
     HEALTH_CHECKER = ("LocalHealthCheck", {})
 
     # Userfiles
-    # Defines a maximum upload file size through the UI. By default, it's 100 MB.
-    USERFILES_UPLOAD_FILE_SIZE = "100M"
+    # Defines a maximum upload file size through the UI. By default, it's 10 MB.
+    USERFILES_UPLOAD_FILE_SIZE = "10M"
     USERFILES_LOCATION = "local_us"
     USERFILES_PATH = "userfiles/"
 
