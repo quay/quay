@@ -3,7 +3,7 @@ Access usage logs for organizations or repositories.
 """
 from datetime import datetime, timedelta
 
-from flask import request
+from flask import abort, request
 
 import features
 
@@ -75,7 +75,7 @@ def _get_logs(
 ):
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
-        abort(400, message="Invalid starttime/endtime range for logs")
+        abort(400)
     log_entry_page = logs_model.lookup_logs(
         start_time,
         end_time,

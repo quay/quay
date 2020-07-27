@@ -5,7 +5,7 @@ from mock import patch
 
 from app import export_action_logs_queue
 from endpoints.api.test.shared import conduct_api_call
-from endpoints.api.logs import ExportOrgLogs
+from endpoints.api.logs import ExportOrgLogs, OrgLogs, _validate_logs_arguments
 from endpoints.test.shared import client_with_identity
 
 from test.fixtures import *
@@ -37,3 +37,20 @@ def test_export_logs(client):
 
             # Ensure the request was queued.
             assert export_action_logs_queue.get() is not None
+
+
+def test_invalid_date_range(client):
+    starttime = "02/02/2020"
+    endtime = "01/01/2020"
+    parsed_starttime, parsed_endtime = _validate_logs_arguments(starttime, endtime)
+    assert parsed_starttime >= parsed_endtime
+
+    with client_with_identity("devtable", client) as cl:
+        conduct_api_call(
+            cl,
+            OrgLogs,
+            "GET",
+            {"orgname": "buynlarge", "starttime": starttime, "endtime": endtime},
+            {},
+            expected_code=400,
+        )
