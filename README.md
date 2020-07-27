@@ -11,6 +11,8 @@ This tool includes the following features:
 
 ## Installation
 
+### Build from Source
+
 Install using the Go tool:
 
 ```
@@ -18,6 +20,23 @@ go get -u github.com/quay/config-tool/...
 ```
 
 This will generate files for the Quay validator executable and install the `config-tool` CLI tool.
+
+### Build from Dockerfile
+
+Clone this repo and build an image:
+
+```
+git clone https://github.com/quay/config-tool.git
+cd config-tool
+sudo podman build -t config-tool .
+```
+
+Start the container and execute command:
+
+```
+sudo podman run -it config-tool bash
+config-tool ...
+```
 
 #### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/config-tool/tree/master/utils/generate)
 
