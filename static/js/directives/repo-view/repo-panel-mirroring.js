@@ -39,7 +39,7 @@ angular.module('quay').directive('repoPanelMirror', function () {
       vm.robot = null;
       vm.status = null;
       vm.syncInterval = null;
-      vm.syncStartDate = null;
+      vm.syncStartDate = moment().unix();
       vm.tags = null;
       vm.username = null;
       vm.verifyTLS = null;
@@ -440,8 +440,7 @@ angular.module('quay').directive('repoPanelMirror', function () {
       vm.setupMirror = function() {
 
         // Apply transformations
-        let now = vm.timestampToISO(moment().unix());
-        let syncStartDate = vm.timestampToISO(vm.syncStartDate) || now;
+        let syncStartDate = vm.timestampToISO(vm.syncStartDate || moment().unix());
         let patterns = Array.from(new Set(vm.tags.split(',').map(s => s.trim()))); // trim + de-dupe
 
         let requestBody = {
