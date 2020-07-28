@@ -125,9 +125,9 @@ class SkopeoMirror(object):
         stderr = ""
         while True:
             stdout_nextline = job.stdout.readline()
-            stdout = stdout + stdout_nextline
+            stdout = stdout + stdout_nextline.decode("utf-8")
             stderr_nextline = job.stderr.readline()
-            stderr = stderr + stderr_nextline
+            stderr = stderr + stderr_nextline.decode("utf-8")
             if stdout_nextline == "" and stderr_nextline == "" and job.poll() is not None:
                 break
             logger.debug("Skopeo [STDERR]: %s" % stderr_nextline)
