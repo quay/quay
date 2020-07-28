@@ -9,7 +9,7 @@ from threading import Thread
 
 from termcolor import colored
 
-from .client import DockerClient, PodmanClient, Command, FileCopy
+from test.clients.client import DockerClient, PodmanClient, Command, FileCopy
 
 
 def remove_control_characters(s):
@@ -41,14 +41,6 @@ BOXES = [
     ("yungsang/coreos --box-version=1.0.0", DockerClient(requires_email=True)),  # docker 1.0.1
     ("yungsang/coreos --box-version=0.9.10", DockerClient(requires_email=True)),  # docker 1.0.0
     ("yungsang/coreos --box-version=0.9.6", DockerClient(requires_email=True)),  # docker 0.11.1
-    (
-        "yungsang/coreos --box-version=0.9.1",
-        DockerClient(requires_v1=True, requires_email=True),
-    ),  # docker 0.10.0
-    (
-        "yungsang/coreos --box-version=0.3.1",
-        DockerClient(requires_v1=True, requires_email=True),
-    ),  # docker 0.9.0
 ]
 
 
@@ -59,7 +51,7 @@ def _check_vagrant():
         for path in os.environ.get("PATH").split(":")
     )
     vagrant_plugins = subprocess.check_output([vagrant_command, "plugin", "list"])
-    return (vagrant, "vagrant-scp" in vagrant_plugins)
+    return (vagrant, "vagrant-scp" in vagrant_plugins.decode("utf-8"))
 
 
 def _load_ca(box, ca_cert):
@@ -103,7 +95,7 @@ class SpinOutputter(Thread):
                 yield cursor
 
     def set_next(self, text):
-        first_line = text.split("\n")[0].strip()
+        first_line = text.split(b"\n")[0].strip()
         first_line = remove_control_characters(first_line)
         self.next_line = first_line[:80]
 
@@ -141,9 +133,9 @@ def _run_and_wait(command, error_allowed=False):
     outputter = SpinOutputter("Running command %s" % command)
     outputter.start()
 
-    output = ""
+    output = b""
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    for line in iter(process.stdout.readline, ""):
+    for line in iter(process.stdout.readline, b""):
         output += line
         outputter.set_next(line)
 
@@ -153,15 +145,17 @@ def _run_and_wait(command, error_allowed=False):
     failed = result != 0 and not error_allowed
     # vagrant scp doesn't report auth failure as non-0 exit
     failed = failed or (
-        len(command) > 1 and command[1] == "scp" and "authentication failures" in output
+        len(command) > 1
+        and command[1] == "scp"
+        and "authentication failures" in output.decode("utf-8")
     )
 
     if failed:
         print(colored(">>> Command `%s` Failed:" % command, "red"))
-        print(output)
+        print(output.decode("utf-8"))
         raise CommandFailedException()
 
-    return output
+    return output.decode("utf-8")
 
 
 def _indent(text, amount):
@@ -200,7 +194,9 @@ def _run_commands(commands):
             last_result = _run_and_wait(["vagrant", "ssh", "-c", command.command])
         else:
             try:
-                last_result = _run_and_wait(["vagrant", "scp", command.source, command.destination])
+                last_result = _run_and_wait(
+                    ["vagrant", "scp", "test/clients/%s" % command.source, command.destination]
+                )
             except CommandFailedException as e:
                 print(colored(">>> Retry FileCopy command without vagrant scp...", "red"))
                 # sometimes the vagrant scp fails because of invalid ssh configuration.
