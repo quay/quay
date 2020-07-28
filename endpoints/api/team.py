@@ -49,7 +49,7 @@ def permission_view(permission):
     return {
         "repository": {
             "name": permission.repository.name,
-            "is_public": permission.repository.visibility.name == "public",
+            "is_public": model.repository.is_repository_public(permission.repository),
         },
         "role": permission.role.name,
     }

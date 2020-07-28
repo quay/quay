@@ -25,7 +25,7 @@ class RobotPreOCIModel(RobotInterface):
         return [
             Permission(
                 permission.repository.name,
-                permission.repository.visibility.name,
+                model.repositoy.repository_visibility_name(permission.repository),
                 permission.role.name,
             )
             for permission in permissions

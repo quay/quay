@@ -68,9 +68,9 @@ futures==3.1.1
 geoip2==3.0.0
 gevent==1.4.0
 gipc==1.0.1
-gpg==1.10.0
 greenlet==0.4.15
 gunicorn==20.0.4
+hashids==1.2.0
 hiredis==1.0.1
 html5lib==1.0.1
 httmock==1.3.0

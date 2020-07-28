@@ -56,6 +56,12 @@ class ManifestInterface(object):
         Returns None if this cannot be computed locally.
         """
 
+    @abstractproperty
+    def config_media_type(self):
+        """ Returns the media type of the config of this manifest or None if
+            this manifest does not support a configuration type.
+        """
+
     @abstractmethod
     def validate(self, content_retriever):
         """
@@ -181,6 +187,19 @@ class ManifestInterface(object):
         Returns a version of this schema that has a media type found in the given media type set.
 
         If not possible, or an error occurs, returns None.
+        """
+
+
+@add_metaclass(ABCMeta)
+class ManifestListInterface(object):
+    """
+    Defines the interface for the various manifest list types supported.
+    """
+
+    @abstractmethod
+    def amd64_linux_manifest_digest(self):
+        """ Returns the digest of the AMD64+Linux manifest in this list, if any, or None
+            if none.
         """
 
 

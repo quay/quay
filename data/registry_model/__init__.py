@@ -13,6 +13,9 @@ class RegistryModelProxy(object):
     def __getattr__(self, attr):
         return getattr(self._model, attr)
 
+    def set_id_hash_salt(self, hash_salt):
+        self._model.set_id_hash_salt(hash_salt)
+
 
 registry_model = RegistryModelProxy()
 logger.info("===============================")

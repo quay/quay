@@ -3,10 +3,9 @@ import pytest
 from app import app
 from endpoints.v1 import v1_bp
 from endpoints.v2 import v2_bp
-from endpoints.verbs import verbs
 
 
-@pytest.mark.parametrize("blueprint", [v2_bp, v1_bp, verbs,])
+@pytest.mark.parametrize("blueprint", [v2_bp, v1_bp,])
 def test_verify_blueprint(blueprint):
     class Checker(object):
         def __init__(self):

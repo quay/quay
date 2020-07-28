@@ -1087,7 +1087,7 @@ class StarredRepositoryList(ApiResource):
                 "namespace": repo_obj.namespace_user.username,
                 "name": repo_obj.name,
                 "description": repo_obj.description,
-                "is_public": repo_obj.visibility.name == "public",
+                "is_public": model.repository.is_repository_public(repo_obj),
             }
 
         return {"repositories": [repo_view(repo) for repo in repos]}, next_page_token

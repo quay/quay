@@ -1,0 +1,11 @@
+<div class="popover image-tag-tooltip" tabindex="-1">
+  <div class="image-tag-tooltip-header"
+       ng-style="::{'backgroundColor': trackEntryForManifest[tag.manifest_digest].color, 
+                    'color': constrastingColor(trackEntryForManifest[tag.manifest_digest].color)}">
+      Manifest {{ tag.manifest_digest.substr(7, 12) }}
+   </div>
+   <ul class="image-tag-tooltip-tags">
+      <li ng-repeat="tag in manifestMap[tag.manifest_digest] | limitTo:5"><i class="fa fa-tag"></i>{{ tag.name }}</li>
+   </ul>
+   <div class="image-tag-tooltip-tags-more" ng-if="manifestMap[tag.manifest_digest].length > 5">and {{ manifestMap[tag.manifest_digest].length - 5 }} more tags</div>
+</div>

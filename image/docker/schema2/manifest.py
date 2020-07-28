@@ -172,7 +172,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
         Raises a ManifestException on failure.
         """
-        # Nothing to validate.
+        self._get_built_config(content_retriever)
 
     @property
     def is_manifest_list(self):
@@ -221,6 +221,12 @@ class DockerSchema2Manifest(ManifestInterface):
     @property
     def layers_compressed_size(self):
         return sum(layer.compressed_size for layer in self.filesystem_layers)
+
+    @property
+    def config_media_type(self):
+        return self._parsed[DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY][
+            DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY
+        ]
 
     @property
     def has_remote_layer(self):

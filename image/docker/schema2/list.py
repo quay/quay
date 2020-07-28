@@ -6,7 +6,7 @@ from jsonschema import validate as validate_schema, ValidationError
 
 from digest import digest_tools
 from image.shared import ManifestException
-from image.shared.interfaces import ManifestInterface
+from image.shared.interfaces import ManifestListInterface
 from image.shared.schemautil import LazyManifestLoader
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema1 import DockerSchema1Manifest
@@ -53,7 +53,7 @@ class MismatchManifestException(MalformedSchema2ManifestList):
     pass
 
 
-class DockerSchema2ManifestList(ManifestInterface):
+class DockerSchema2ManifestList(ManifestListInterface):
     METASCHEMA = {
         "type": "object",
         "properties": {
@@ -228,6 +228,10 @@ class DockerSchema2ManifestList(ManifestInterface):
     def layers_compressed_size(self):
         return None
 
+    @property
+    def config_media_type(self):
+        return None
+
     @lru_cache(maxsize=1)
     def manifests(self, content_retriever):
         """
@@ -248,6 +252,20 @@ class DockerSchema2ManifestList(ManifestInterface):
             )
             for m in manifests
         ]
+
+    @property
+    def amd64_linux_manifest_digest(self):
+        """ Returns the digest of the AMD64+Linux manifest in this list, if any, or None
+            if none.
+        """
+        for manifest_ref in self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MANIFESTS_KEY]:
+            platform = manifest_ref[DOCKER_SCHEMA2_MANIFESTLIST_PLATFORM_KEY]
+            architecture = platform[DOCKER_SCHEMA2_MANIFESTLIST_ARCHITECTURE_KEY]
+            os = platform[DOCKER_SCHEMA2_MANIFESTLIST_OS_KEY]
+            if architecture == "amd64" and os == "linux":
+                return manifest_ref[DOCKER_SCHEMA2_MANIFESTLIST_DIGEST_KEY]
+
+        return None
 
     def validate(self, content_retriever):
         """

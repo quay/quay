@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 
 from collections import namedtuple
 
@@ -10,6 +12,10 @@ from data.database import (
     ManifestBlob,
     ManifestLegacyImage,
     ManifestChild,
+    ImageStorage,
+    ImageStoragePlacement,
+    ImageStorageTransformation,
+    ImageStorageSignature,
     db_transaction,
 )
 from data.model import BlobDoesNotExist
@@ -17,11 +23,12 @@ from data.model.blob import get_or_create_shared_blob, get_shared_blob
 from data.model.oci.tag import filter_to_alive_tags, create_temporary_tag_if_necessary
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
-from data.model.storage import lookup_repo_storages_by_content_checksum
+from data.model.storage import lookup_repo_storages_by_content_checksum, create_v1_storage
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException
 from image.docker.schema2.list import MalformedSchema2ManifestList
+from util.canonicaljson import canonicalize
 from util.validation import is_json
 
 
@@ -206,91 +213,17 @@ def _create_manifest(
             child_manifest_rows[child_manifest_info.manifest.digest] = child_manifest_info.manifest
             child_manifest_label_dicts.append(labels)
 
-    # Ensure all the blobs in the manifest exist.
-    digests = set(manifest_interface_instance.local_blob_digests)
-    blob_map = {}
-
-    # If the special empty layer is required, simply load it directly. This is much faster
-    # than trying to load it on a per repository basis, and that is unnecessary anyway since
-    # this layer is predefined.
-    if EMPTY_LAYER_BLOB_DIGEST in digests:
-        digests.remove(EMPTY_LAYER_BLOB_DIGEST)
-        blob_map[EMPTY_LAYER_BLOB_DIGEST] = get_shared_blob(EMPTY_LAYER_BLOB_DIGEST)
-        if not blob_map[EMPTY_LAYER_BLOB_DIGEST]:
-            if raise_on_error:
-                raise CreateManifestException("Unable to retrieve specialized empty blob")
-
-            logger.warning("Could not find the special empty blob in storage")
-            return None
-
-    if digests:
-        query = lookup_repo_storages_by_content_checksum(repository_id, digests)
-        blob_map.update({s.content_checksum: s for s in query})
-        for digest_str in digests:
-            if digest_str not in blob_map:
-                logger.warning(
-                    "Unknown blob `%s` under manifest `%s` for repository `%s`",
-                    digest_str,
-                    manifest_interface_instance.digest,
-                    repository_id,
-                )
-
-                if raise_on_error:
-                    raise CreateManifestException("Unknown blob `%s`" % digest_str)
-
-                return None
-
-    # Special check: If the empty layer blob is needed for this manifest, add it to the
-    # blob map. This is necessary because Docker decided to elide sending of this special
-    # empty layer in schema version 2, but we need to have it referenced for GC and schema version 1.
-    if EMPTY_LAYER_BLOB_DIGEST not in blob_map:
-        try:
-            requires_empty_layer = manifest_interface_instance.get_requires_empty_layer_blob(
-                retriever
-            )
-        except ManifestException as ex:
-            if raise_on_error:
-                raise CreateManifestException(str(ex))
-
-            return None
-
-        if requires_empty_layer is None:
-            if raise_on_error:
-                raise CreateManifestException("Could not load configuration blob")
-
-            return None
-
-        if requires_empty_layer:
-            shared_blob = get_or_create_shared_blob(
-                EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES, storage
-            )
-            assert not shared_blob.uploading
-            assert shared_blob.content_checksum == EMPTY_LAYER_BLOB_DIGEST
-            blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
-
-    # Determine and populate the legacy image if necessary. Manifest lists will not have a legacy
-    # image.
-    legacy_image = None
-    if manifest_interface_instance.has_legacy_image:
-        try:
-            legacy_image_id = _populate_legacy_image(
-                repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error
-            )
-        except ManifestException as me:
-            logger.error("Got manifest error when populating legacy images: %s", me)
-            if raise_on_error:
-                raise CreateManifestException(
-                    "Attempt to create an invalid manifest: %s. Please report this issue." % me
-                )
-
-            return None
-
-        if legacy_image_id is None:
-            return None
-
-        legacy_image = get_image(repository_id, legacy_image_id)
-        if legacy_image is None:
-            return None
+    # Build the map from required blob digests to the blob objects.
+    blob_map = _build_blob_map(
+        repository_id,
+        manifest_interface_instance,
+        retriever,
+        storage,
+        raise_on_error,
+        require_empty_layer=False,
+    )
+    if blob_map is None:
+        return None
 
     # Create the manifest and its blobs.
     media_type = Manifest.media_type.get_id(manifest_interface_instance.media_type)
@@ -314,6 +247,8 @@ def _create_manifest(
                 digest=manifest_interface_instance.digest,
                 media_type=media_type,
                 manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
+                config_media_type=manifest_interface_instance.config_media_type,
+                layers_compressed_size=manifest_interface_instance.layers_compressed_size,
             )
         except IntegrityError as ie:
             try:
@@ -338,12 +273,6 @@ def _create_manifest(
         ]
         if blobs_to_insert:
             ManifestBlob.insert_many(blobs_to_insert).execute()
-
-        # Set the legacy image (if applicable).
-        if legacy_image is not None:
-            ManifestLegacyImage.create(
-                repository=repository_id, image=legacy_image, manifest=manifest
-            )
 
         # Insert the manifest child rows (if applicable).
         if child_manifest_rows:
@@ -390,6 +319,131 @@ def _create_manifest(
         labels_to_apply = dict(labels_to_apply)
 
     return CreatedManifest(manifest=manifest, newly_created=True, labels_to_apply=labels_to_apply)
+
+
+def _build_blob_map(
+    repository_id,
+    manifest_interface_instance,
+    retriever,
+    storage,
+    raise_on_error=False,
+    require_empty_layer=True,
+):
+    """ Builds a map containing the digest of each blob referenced by the given manifest,
+        to its associated Blob row in the database. This method also verifies that the blob
+        is accessible under the given repository. Returns None on error (unless raise_on_error
+        is specified). If require_empty_layer is set to True, the method will check if the manifest
+        references the special shared empty layer blob and, if so, add it to the map. Otherwise,
+        the empty layer blob is only returned if it was *explicitly* referenced in the manifest.
+        This is necessary because Docker V2_2/OCI manifests can implicitly reference an empty blob
+        layer for image layers that only change metadata.
+    """
+
+    # Ensure all the blobs in the manifest exist.
+    digests = set(manifest_interface_instance.local_blob_digests)
+    blob_map = {}
+
+    # If the special empty layer is required, simply load it directly. This is much faster
+    # than trying to load it on a per repository basis, and that is unnecessary anyway since
+    # this layer is predefined.
+    if EMPTY_LAYER_BLOB_DIGEST in digests:
+        digests.remove(EMPTY_LAYER_BLOB_DIGEST)
+        blob_map[EMPTY_LAYER_BLOB_DIGEST] = get_shared_blob(EMPTY_LAYER_BLOB_DIGEST)
+        if not blob_map[EMPTY_LAYER_BLOB_DIGEST]:
+            if raise_on_error:
+                raise CreateManifestException("Unable to retrieve specialized empty blob")
+
+            logger.warning("Could not find the special empty blob in storage")
+            return None
+
+    if digests:
+        query = lookup_repo_storages_by_content_checksum(repository_id, digests, with_uploads=True)
+        blob_map.update({s.content_checksum: s for s in query})
+        for digest_str in digests:
+            if digest_str not in blob_map:
+                logger.warning(
+                    "Unknown blob `%s` under manifest `%s` for repository `%s`",
+                    digest_str,
+                    manifest_interface_instance.digest,
+                    repository_id,
+                )
+
+                if raise_on_error:
+                    raise CreateManifestException("Unknown blob `%s`" % digest_str)
+
+                return None
+
+    # Special check: If the empty layer blob is needed for this manifest, add it to the
+    # blob map. This is necessary because Docker decided to elide sending of this special
+    # empty layer in schema version 2, but we need to have it referenced for schema version 1.
+    if require_empty_layer and EMPTY_LAYER_BLOB_DIGEST not in blob_map:
+        try:
+            requires_empty_layer = manifest_interface_instance.get_requires_empty_layer_blob(
+                retriever
+            )
+        except ManifestException as ex:
+            if raise_on_error:
+                raise CreateManifestException(str(ex))
+
+            return None
+
+        if requires_empty_layer is None:
+            if raise_on_error:
+                raise CreateManifestException("Could not load configuration blob")
+
+            return None
+
+        if requires_empty_layer:
+            shared_blob = get_or_create_shared_blob(
+                EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES, storage
+            )
+            assert not shared_blob.uploading
+            assert shared_blob.content_checksum == EMPTY_LAYER_BLOB_DIGEST
+            blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
+
+    return blob_map
+
+
+def populate_legacy_images_for_testing(manifest, manifest_interface_instance, storage):
+    """ Populates the legacy image rows for the given manifest. """
+    # NOTE: This method is only kept around for use by legacy tests that still require
+    # legacy images. As a result, we make sure we're in testing mode before we run.
+    assert os.getenv("TEST") == "true"
+
+    repository_id = manifest.repository_id
+    retriever = RepositoryContentRetriever.for_repository(repository_id, storage)
+
+    blob_map = _build_blob_map(
+        repository_id, manifest_interface_instance, storage, True, require_empty_layer=True
+    )
+    if blob_map is None:
+        return None
+
+    # Determine and populate the legacy image if necessary. Manifest lists will not have a legacy
+    # image.
+    legacy_image = None
+    if manifest_interface_instance.has_legacy_image:
+        try:
+            legacy_image_id = _populate_legacy_image(
+                repository_id, manifest_interface_instance, blob_map, retriever, True
+            )
+        except ManifestException as me:
+            raise CreateManifestException(
+                "Attempt to create an invalid manifest: %s. Please report this issue." % me
+            )
+
+        if legacy_image_id is None:
+            return None
+
+        legacy_image = get_image(repository_id, legacy_image_id)
+        if legacy_image is None:
+            return None
+
+        # Set the legacy image (if applicable).
+        if legacy_image is not None:
+            ManifestLegacyImage.create(
+                repository=repository_id, image=legacy_image, manifest=manifest
+            )
 
 
 def _populate_legacy_image(

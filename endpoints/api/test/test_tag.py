@@ -69,10 +69,10 @@ def test_move_tag(image_exists, test_tag, expected_status, client, app):
         test_image = "unknown"
         if image_exists:
             repo_ref = registry_model.lookup_repository("devtable", "simple")
-            tag_ref = registry_model.get_repo_tag(repo_ref, "latest", include_legacy_image=True)
+            tag_ref = registry_model.get_repo_tag(repo_ref, "latest")
             assert tag_ref
 
-            test_image = tag_ref.legacy_image.docker_image_id
+            test_image = tag_ref.manifest.legacy_image_root_id
 
         params = {"repository": "devtable/simple", "tag": test_tag}
         request_body = {"image": test_image}
@@ -86,12 +86,12 @@ def test_move_tag(image_exists, test_tag, expected_status, client, app):
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, query_count",
     [
-        ("devtable", "simple", 5),
-        ("devtable", "history", 5),
-        ("devtable", "complex", 5),
-        ("devtable", "gargantuan", 5),
-        ("buynlarge", "orgrepo", 7),  # +2 for permissions checks.
-        ("buynlarge", "anotherorgrepo", 7),  # +2 for permissions checks.
+        ("devtable", "simple", 4),
+        ("devtable", "history", 4),
+        ("devtable", "complex", 4),
+        ("devtable", "gargantuan", 4),
+        ("buynlarge", "orgrepo", 6),  # +2 for permissions checks.
+        ("buynlarge", "anotherorgrepo", 6),  # +2 for permissions checks.
     ],
 )
 def test_list_repo_tags(repo_namespace, repo_name, client, query_count, app):
@@ -109,18 +109,15 @@ def test_list_repo_tags(repo_namespace, repo_name, client, query_count, app):
 
 
 @pytest.mark.parametrize(
-    "repository, tag, owned, expect_images",
+    "repository, tag, expect_images",
     [
-        ("devtable/simple", "prod", False, True),
-        ("devtable/simple", "prod", True, False),
-        ("devtable/simple", "latest", False, True),
-        ("devtable/simple", "latest", True, False),
-        ("devtable/complex", "prod", False, True),
-        ("devtable/complex", "prod", True, True),
+        ("devtable/simple", "prod", True),
+        ("devtable/simple", "latest", True),
+        ("devtable/complex", "prod", True),
     ],
 )
-def test_list_tag_images(repository, tag, owned, expect_images, client, app):
+def test_list_tag_images(repository, tag, expect_images, client, app):
     with client_with_identity("devtable", client) as cl:
-        params = {"repository": repository, "tag": tag, "owned": owned}
+        params = {"repository": repository, "tag": tag}
         result = conduct_api_call(cl, RepositoryTagImages, "get", params, None, 200).json
         assert bool(result["images"]) == expect_images

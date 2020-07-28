@@ -26,7 +26,6 @@ from endpoints.appr import appr_bp
 from endpoints.web import web
 from endpoints.v1 import v1_bp
 from endpoints.v2 import v2_bp
-from endpoints.verbs import verbs as verbs_bp
 from endpoints.webhooks import webhooks
 
 from initdb import initialize_database, populate_database
@@ -312,7 +311,6 @@ def app(appconfig, initialized_db):
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(appr_bp, url_prefix="/cnr")
     app.register_blueprint(web, url_prefix="/")
-    app.register_blueprint(verbs_bp, url_prefix="/c1")
     app.register_blueprint(v1_bp, url_prefix="/v1")
     app.register_blueprint(v2_bp, url_prefix="/v2")
     app.register_blueprint(webhooks, url_prefix="/webhooks")

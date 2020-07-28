@@ -2,7 +2,7 @@ import re
 
 from datetime import datetime, timedelta
 
-from peewee import IntegrityError, fn
+from peewee import IntegrityError, fn, JOIN
 from jsonschema import ValidationError
 
 from data.database import (
@@ -14,6 +14,7 @@ from data.database import (
     Repository,
     uuid_generator,
     db_transaction,
+    User,
 )
 from data.fields import DecryptedValue
 from data.model import DataModelException
@@ -362,7 +363,14 @@ def get_mirror(repository):
     Return the RepoMirrorConfig associated with the given Repository, or None if it doesn't exist.
     """
     try:
-        return RepoMirrorConfig.get(repository=repository)
+        return (
+            RepoMirrorConfig.select(RepoMirrorConfig, User, RepoMirrorRule)
+            .join(User, JOIN.LEFT_OUTER)
+            .switch(RepoMirrorConfig)
+            .join(RepoMirrorRule)
+            .where(RepoMirrorConfig.repository == repository)
+            .get()
+        )
     except RepoMirrorConfig.DoesNotExist:
         return None
 

@@ -48,15 +48,6 @@ def add_enterprise_config_defaults(config_obj, current_secret_key):
     config_obj["REPO_MIRROR_TLS_VERIFY"] = config_obj.get("REPO_MIRROR_TLS_VERIFY", True)
     config_obj["REPO_MIRROR_SERVER_HOSTNAME"] = config_obj.get("REPO_MIRROR_SERVER_HOSTNAME", None)
 
-    # Default the signer config.
-    config_obj["GPG2_PRIVATE_KEY_FILENAME"] = config_obj.get(
-        "GPG2_PRIVATE_KEY_FILENAME", "signing-private.gpg"
-    )
-    config_obj["GPG2_PUBLIC_KEY_FILENAME"] = config_obj.get(
-        "GPG2_PUBLIC_KEY_FILENAME", "signing-public.gpg"
-    )
-    config_obj["SIGNING_ENGINE"] = config_obj.get("SIGNING_ENGINE", "gpg2")
-
     # Default security scanner config.
     config_obj["FEATURE_SECURITY_NOTIFICATIONS"] = config_obj.get(
         "FEATURE_SECURITY_NOTIFICATIONS", True

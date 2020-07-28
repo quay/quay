@@ -34,6 +34,7 @@ geoip2
 gevent
 gipc
 gunicorn
+hashids
 hiredis
 html5lib==0.9999999 # pinned due to xhtml2pdf
 httmock
