@@ -138,7 +138,7 @@ class KubernetesAccessorSingleton(object):
                 )
 
             with open(write_path, "w") as f:
-                f.write(base64.b64decode(data))
+                f.write(base64.b64decode(data).decode("utf-8"))
 
         return 200
 
