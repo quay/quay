@@ -501,6 +501,7 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
             performer_id=performer_id,
             ip=ip,
             metadata_json=metadata_json,
+            metadata=metadata or {},
             repository_id=repository_id,
             datetime=timestamp,
         )

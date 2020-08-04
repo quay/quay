@@ -173,6 +173,8 @@ def mock_elasticsearch():
         index = url.path.split("/")[1]
         body = json.loads(req.body)
         body["metadata_json"] = json.loads(body["metadata_json"])
+        body["metadata"] = body["metadata_json"]
+
         return mock.index(index, body)
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/logentry_([0-9\-]*|\*)/_count")

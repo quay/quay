@@ -78,6 +78,9 @@ INDEX_REQUEST_2019_01_01 = [
         "metadata_json": json.loads(
             '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1520479800}'
         ),
+        "metadata": json.loads(
+            '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1520479800}'
+        ),
         "performer_id": 1,
         "kind_id": 1,
     },
@@ -92,6 +95,9 @@ INDEX_REQUEST_2017_03_08 = [
         "random_id": 233,
         "datetime": "2017-03-08T03:30:00",
         "metadata_json": json.loads(
+            '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1520479800}'
+        ),
+        "metadata": json.loads(
             '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1520479800}'
         ),
         "performer_id": 1,
