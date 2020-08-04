@@ -199,11 +199,13 @@ class GithubBuildTrigger(BuildTriggerHandler):
         # Add a deploy key to the GitHub repository.
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key,},
+            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
         ]
 
         try:
-            deploy_key = gh_repo.create_key("%s Builder" % app.config["REGISTRY_TITLE"], public_key)
+            deploy_key = gh_repo.create_key(
+                "%s Builder" % app.config["REGISTRY_TITLE"], public_key.decode("ascii")
+            )
             config["deploy_key_id"] = deploy_key.id
         except GithubException as ghe:
             default_msg = "Unable to add deploy key to repository: %s" % new_build_source
@@ -225,7 +227,7 @@ class GithubBuildTrigger(BuildTriggerHandler):
             msg = GithubBuildTrigger._get_error_message(ghe, default_msg)
             raise TriggerActivationException(msg)
 
-        return config, {"private_key": private_key}
+        return config, {"private_key": private_key.decode("ascii")}
 
     @_catch_ssl_errors
     def deactivate(self):
