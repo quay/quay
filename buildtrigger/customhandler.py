@@ -194,11 +194,11 @@ class CustomBuildTrigger(BuildTriggerHandler):
         config = self.config
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key,},
+            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
             {"name": "Webhook Endpoint URL", "value": standard_webhook_url,},
         ]
         self.config = config
-        return config, {"private_key": private_key}
+        return config, {"private_key": private_key.decode("ascii")}
 
     def deactivate(self):
         config = self.config

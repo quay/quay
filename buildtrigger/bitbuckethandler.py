@@ -310,12 +310,12 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         # Add a deploy key to the repository.
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key,},
+            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
         ]
 
         repository = self._get_repository_client()
         (result, created_deploykey, err_msg) = repository.deploykeys().create(
-            app.config["REGISTRY_TITLE"] + " webhook key", public_key
+            app.config["REGISTRY_TITLE"] + " webhook key", public_key.decode("ascii")
         )
 
         if not result:
@@ -337,7 +337,7 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
 
         config["webhook_id"] = created_webhook["uuid"]
         self.config = config
-        return config, {"private_key": private_key}
+        return config, {"private_key": private_key.decode("ascii")}
 
     def deactivate(self):
         config = self.config

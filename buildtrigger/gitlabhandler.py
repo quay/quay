@@ -227,7 +227,7 @@ class GitLabBuildTrigger(BuildTriggerHandler):
         # Add a deploy key to the repository.
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key,},
+            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
         ]
 
         key = gl_project.keys.create(
@@ -259,7 +259,7 @@ class GitLabBuildTrigger(BuildTriggerHandler):
 
         config["hook_id"] = hook.get_id()
         self.config = config
-        return config, {"private_key": private_key}
+        return config, {"private_key": private_key.decode("ascii")}
 
     def deactivate(self):
         config = self.config
