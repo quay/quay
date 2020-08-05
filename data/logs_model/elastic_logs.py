@@ -50,7 +50,6 @@ class LogEntry(Document):
     performer_id = Integer()
     repository_id = Integer()
     ip = Ip()
-    metadata_json = Text()
     metadata = Object()
     datetime = Date()
 

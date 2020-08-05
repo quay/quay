@@ -492,7 +492,6 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
         if repository is not None:
             repository_id = repository.id
 
-        metadata_json = json.dumps(metadata or {}, default=_json_serialize)
         kind_id = model.log._get_log_entry_kind(kind_name)
         log = LogEntry(
             random_id=_random_id(),
@@ -500,7 +499,6 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
             account_id=account_id,
             performer_id=performer_id,
             ip=ip,
-            metadata_json=metadata_json,
             metadata=metadata or {},
             repository_id=repository_id,
             datetime=timestamp,
