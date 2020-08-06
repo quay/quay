@@ -75,9 +75,7 @@ INDEX_REQUEST_2019_01_01 = [
         "ip": "192.168.1.1",
         "random_id": 233,
         "datetime": "2019-01-01T03:30:00",
-        "metadata_json": json.loads(
-            '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1520479800}'
-        ),
+        "metadata": {"key": "value", "time": "2018-03-08T03:30:00", "😂": "😂👌👌👌👌"},
         "performer_id": 1,
         "kind_id": 1,
     },
@@ -91,9 +89,7 @@ INDEX_REQUEST_2017_03_08 = [
         "ip": "192.168.1.1",
         "random_id": 233,
         "datetime": "2017-03-08T03:30:00",
-        "metadata_json": json.loads(
-            '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1520479800}'
-        ),
+        "metadata": {"key": "value", "time": "2018-03-08T03:30:00", "😂": "😂👌👌👌👌"},
         "performer_id": 1,
         "kind_id": 2,
     },
@@ -136,7 +132,7 @@ _hit2 = {
 }
 
 _log1 = Log(
-    '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1520479800}',
+    "{}",
     "192.168.1.1",
     parse("2018-03-08T03:30"),
     "user1.email",
@@ -149,7 +145,7 @@ _log1 = Log(
     1,
 )
 _log2 = Log(
-    '{"\\ud83d\\ude02": "\\ud83d\\ude02\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c\\ud83d\\udc4c", "key": "value", "time": 1522639800}',
+    "{}",
     "192.168.1.2",
     parse("2018-04-02T03:30"),
     "user1.email",

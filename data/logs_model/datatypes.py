@@ -127,7 +127,7 @@ class Log(
             pass
 
         return Log(
-            log.metadata_json,
+            json.dumps(log.metadata.to_dict()),
             str(log.ip),
             log.datetime,
             performer_email,

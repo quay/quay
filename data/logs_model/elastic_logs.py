@@ -7,7 +7,7 @@ from requests_aws4auth import AWS4Auth
 
 from elasticsearch import RequestsHttpConnection
 from elasticsearch.exceptions import NotFoundError, AuthorizationException
-from elasticsearch_dsl import Index, Document, Integer, Date, Text, Ip, Keyword
+from elasticsearch_dsl import Index, Document, Integer, Date, Text, Ip, Keyword, Object
 from elasticsearch_dsl.connections import connections
 
 
@@ -50,7 +50,7 @@ class LogEntry(Document):
     performer_id = Integer()
     repository_id = Integer()
     ip = Ip()
-    metadata_json = Text()
+    metadata = Object()
     datetime = Date()
 
     _initialized = False

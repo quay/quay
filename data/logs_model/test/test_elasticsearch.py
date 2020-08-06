@@ -172,7 +172,7 @@ def mock_elasticsearch():
     def index(url, req):
         index = url.path.split("/")[1]
         body = json.loads(req.body)
-        body["metadata_json"] = json.loads(body["metadata_json"])
+
         return mock.index(index, body)
 
     @urlmatch(netloc=FAKE_ES_HOST_PATTERN, path=r"/logentry_([0-9\-]*|\*)/_count")
@@ -326,7 +326,8 @@ def test_log_action(
             repository_name,
             timestamp,
         )
-        mock_elasticsearch.index.assert_called_with(*expected_request)
+
+        mock_elasticsearch.index.assert_called_with(expected_request[0], expected_request[1])
 
 
 @pytest.mark.parametrize(

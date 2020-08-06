@@ -80,7 +80,20 @@ def log_dict(log):
     Pretty prints a LogEntry in JSON.
     """
     try:
-        metadata_json = json.loads(str(log.metadata_json))
+        # The `metadata_json` text field is replaced by `metadata` object field
+        # when the logs model is set to elasticsearch
+        if hasattr(log, "metadata_json"):
+            metadata_json = json.loads(str(log.metadata_json))
+        elif hasattr(log, "metadata") and log.metadata:
+            metadata_json = log.metadata.to_dict()
+        else:
+            metadata_json = {}
+    except AttributeError:
+        logger.exception(
+            "Could not get metadata for log entry %s",
+            log.id if hasattr(log, "id") else log.random_id,
+        )
+        metadata_json = {}
     except ValueError:
         # The results returned by querying Elasticsearch does not have
         # a top-level attribute `id` like when querying with Peewee.
