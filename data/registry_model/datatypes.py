@@ -346,6 +346,7 @@ class Manifest(
         """
         return repository
 
+    @property
     @optionalinput("legacy_image_row")
     def _legacy_image_row(self, legacy_image_row):
         return legacy_image_row
