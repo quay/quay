@@ -256,6 +256,9 @@ def test_repository_tag_history(
             # Retrieve the manifest to ensure it doesn't issue extra queries.
             tag.manifest
 
+            # Verify that looking up the size doesn't issue extra queries.
+            tag.manifest_layers_size
+
     if has_expired:
         # Ensure the latest tag is marked expired, since there is an expired one.
         with assert_query_count(1):
