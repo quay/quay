@@ -68,6 +68,14 @@ def _gen_filler_chars(num_filler_chars):
 
 
 def generate_valid_usernames(input_username):
+    if isinstance(input_username, bytes):
+        try:
+            input_username = input_username.decode("utf-8")
+        except UnicodeDecodeError as ude:
+            raise UnicodeDecodeError(
+                "Username %s contains invalid characters: %s", input_username, ude
+            )
+
     normalized = unidecode(input_username).strip().lower()
     prefix = re.sub(INVALID_USERNAME_CHARACTERS, "_", normalized)[:MAX_USERNAME_LENGTH]
     prefix = re.sub(r"_{2,}", "_", prefix)
