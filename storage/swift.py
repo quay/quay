@@ -37,6 +37,7 @@ _SEGMENT_DIRECTORY = "segments"
 _MAXIMUM_SEGMENT_SIZE = 200000000  # ~200 MB
 _DEFAULT_SWIFT_CONNECT_TIMEOUT = 5  # seconds
 _CHUNK_CLEANUP_DELAY = 30  # seconds
+_DEFAULT_RETRY_COUNT = 5
 
 
 class SwiftStorage(BaseStorage):
@@ -72,7 +73,12 @@ class SwiftStorage(BaseStorage):
 
         self._temp_url_key = temp_url_key
         self._connect_timeout = connect_timeout
-        self._retry_count = retry_count
+
+        try:
+            self._retry_count = int(retry_count or _DEFAULT_RETRY_COUNT)
+        except ValueError:
+            self._retry_count = _DEFAULT_RETRY_COUNT
+
         self._retry_on_ratelimit = retry_on_ratelimit
 
         try:
@@ -94,7 +100,7 @@ class SwiftStorage(BaseStorage):
             os_options=self._os_options,
             retry_on_ratelimit=self._retry_on_ratelimit,
             timeout=self._connect_timeout or _DEFAULT_SWIFT_CONNECT_TIMEOUT,
-            retries=self._retry_count or 5,
+            retries=self._retry_count,
         )
 
     def _normalize_path(self, object_path):
