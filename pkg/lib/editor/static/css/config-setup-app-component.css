@@ -1,0 +1,93 @@
+.config-setup-wrapper {
+    display: flex;
+}
+
+.config-setup_option {
+    font-size: 22px;
+    height: 250px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    margin: 15px;
+    justify-content: space-evenly;
+}
+
+.config-setup_option i {
+    padding-bottom: 10px;
+}
+
+.config-setup_option div {
+    text-align: center;
+    min-height: 100px;
+}
+
+.config-setup_option:hover {
+    background-color: #dddddd;
+    text-decoration: none;
+}
+
+/* Overrides for fixing old quay styles*/
+
+.quay-config-app .alert-danger {
+    padding: 25px;
+    display: flex;
+}
+
+.quay-config-app .alert-danger:before {
+    content: "\f071";
+    font-family: Font Awesome\ 5 Free;
+    font-weight: 900;
+    font-size: 30px;
+    padding-right: 15px;
+    color: #c53c3f;
+    text-align: center;
+}
+
+.quay-config-app .co-alert.co-alert-success {
+    padding: 25px;
+    display: flex;
+    margin-bottom: 0;
+    text-align: left;
+}
+
+.quay-config-app .co-alert.co-alert-success:before {
+    font-family: Font Awesome\ 5 Free;
+    font-weight: 900;
+    font-size: 30px;
+    padding-right: 15px;
+    color: green;
+    text-align: center;
+    position: static;
+}
+
+.co-alert.co-alert-danger:after {
+    /* Ignore the exclamation mark, it also messes with spacing elements */
+    content: none;
+}
+
+/* Fixes the transition to font awesome 5 */
+.quay-config-app .co-alert.co-alert-warning::before {
+    font-family: Font Awesome\ 5 Free;
+    font-weight: 900;
+}
+
+.quay-config-app .co-alert.co-alert-info::before {
+    font-family: Font Awesome\ 5 Free;
+    font-weight: 900;
+}
+
+.quay-config-app .co-alert.co-alert-danger::after {
+    font-family: Font Awesome\ 5 Free;
+    font-weight: 900;
+    /* Font Awesome 5's icons are slightly bigger, so we have to adjust this one because it is inside another icon */
+    font-size: 12px;
+    top: 18px;
+    left: 20.75px;
+}
+
+.quay-config-app .co-modify-link::after {
+    font-family: Font Awesome\ 5 Free;
+    font-weight: 900;
+}
