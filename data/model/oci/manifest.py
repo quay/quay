@@ -270,7 +270,10 @@ def _create_manifest(
                 for storage_id in storage_ids
             ]
             if blobs_to_insert:
-                ManifestBlob.insert_many(blobs_to_insert).execute()
+                try:
+                    ManifestBlob.insert_many(blobs_to_insert).execute()
+                except IntegrityError as ie:
+                    raise _ManifestAlreadyExists(ie)
 
             # Insert the manifest child rows (if applicable).
             if child_manifest_rows:
@@ -278,7 +281,10 @@ def _create_manifest(
                     dict(manifest=manifest, child_manifest=child_manifest, repository=repository_id)
                     for child_manifest in list(child_manifest_rows.values())
                 ]
-                ManifestChild.insert_many(children_to_insert).execute()
+                try:
+                    ManifestChild.insert_many(children_to_insert).execute()
+                except IntegrityError as ie:
+                    raise _ManifestAlreadyExists(ie)
 
             # If this manifest is being created not for immediate tagging, add a temporary tag to the
             # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're
