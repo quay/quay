@@ -8,9 +8,9 @@ import (
 
 // HostSettingsFieldGroup represents the HostSettingsFieldGroup config fields
 type HostSettingsFieldGroup struct {
-	ExternalTlsTermination bool   `default:"false" validate:"" yaml:"EXTERNAL_TLS_TERMINATION"`
-	PreferredUrlScheme     string `default:"http" validate:"" yaml:"PREFERRED_URL_SCHEME"`
-	ServerHostname         string `default:"" validate:"" yaml:"SERVER_HOSTNAME"`
+	ExternalTlsTermination bool   `default:"false" validate:"" json:"EXTERNAL_TLS_TERMINATION,omitempty" yaml:"EXTERNAL_TLS_TERMINATION"`
+	PreferredUrlScheme     string `default:"http" validate:"" json:"PREFERRED_URL_SCHEME,omitempty" yaml:"PREFERRED_URL_SCHEME"`
+	ServerHostname         string `default:"" validate:"" json:"SERVER_HOSTNAME,omitempty" yaml:"SERVER_HOSTNAME"`
 }
 
 // NewHostSettingsFieldGroup creates a new HostSettingsFieldGroup
