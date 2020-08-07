@@ -314,16 +314,11 @@ def _create_manifest(
                     manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
                 )
             except IntegrityError as ie:
-                try:
-                    manifest = Manifest.get(
-                        repository=repository_id, digest=manifest_interface_instance.digest
-                    )
-                except Manifest.DoesNotExist:
-                    # NOTE: An IntegrityError means (barring a bug) that the manifest was created by
-                    # another caller while we were attempting to create it. Since we need to return
-                    # the manifest, we raise a specialized exception here to break out of the
-                    # transaction so we can retrieve it.
-                    raise _ManifestAlreadyExists(ie)
+                # NOTE: An IntegrityError means (barring a bug) that the manifest was created by
+                # another caller while we were attempting to create it. Since we need to return
+                # the manifest, we raise a specialized exception here to break out of the
+                # transaction so we can retrieve it.
+                raise _ManifestAlreadyExists(ie)
 
             # Insert the blobs.
             blobs_to_insert = [
