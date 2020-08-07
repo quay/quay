@@ -49,8 +49,6 @@ var printCmd = &cobra.Command{
 	},
 }
 
-var configPath string
-
 func init() {
 
 	// Add validation command

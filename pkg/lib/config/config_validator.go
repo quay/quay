@@ -3,7 +3,7 @@ package config
 import "github.com/quay/config-tool/pkg/lib/shared"
 
 // Validate checks the configuration settings for this field group
-func (c Config) Validate() []shared.ValidationError {
+func (c Config) Validate(opts shared.Options) []shared.ValidationError {
 
 	// Make empty errors
 	configErrors := []shared.ValidationError{}
@@ -12,7 +12,7 @@ func (c Config) Validate() []shared.ValidationError {
 	for _, val := range c {
 
 		// Validate specific field group
-		fgErrors := val.Validate()
+		fgErrors := val.Validate(opts)
 
 		// If errors were present, append to config errors
 		if len(fgErrors) > 0 {

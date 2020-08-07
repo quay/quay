@@ -9,7 +9,7 @@ import (
 )
 
 // Validate checks the configuration settings for this field group
-func (fg *RedisFieldGroup) Validate() []shared.ValidationError {
+func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
 	// Make empty errors
 	errors := []shared.ValidationError{}

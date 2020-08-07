@@ -6,7 +6,7 @@ import (
 )
 
 // Validate checks the configuration settings for this field group
-func (fg *GitHubBuildTriggerFieldGroup) Validate() []shared.ValidationError {
+func (fg *GitHubBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
 	// Make empty errors
 	errors := []shared.ValidationError{}

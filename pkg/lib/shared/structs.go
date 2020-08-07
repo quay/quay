@@ -2,7 +2,8 @@ package shared
 
 // Options is a struct that tells the validator how to validate
 type Options struct {
-	ConfigDir string
+	Mode         string // One of Online, Offline, Testing
+	Certificates map[string][]byte
 }
 
 // ValidationError is a struct that holds information about a failed field group policy

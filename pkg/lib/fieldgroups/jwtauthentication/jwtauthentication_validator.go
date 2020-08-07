@@ -7,7 +7,7 @@ import (
 )
 
 // Validate checks the configuration settings for this field group
-func (fg *JWTAuthenticationFieldGroup) Validate() []shared.ValidationError {
+func (fg *JWTAuthenticationFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
 	var errors []shared.ValidationError
 

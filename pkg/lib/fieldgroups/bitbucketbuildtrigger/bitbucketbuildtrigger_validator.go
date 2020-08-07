@@ -10,7 +10,7 @@ import (
 )
 
 // Validate checks the configuration settings for this field group
-func (fg *BitbucketBuildTriggerFieldGroup) Validate() []shared.ValidationError {
+func (fg *BitbucketBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
 	// Make empty errors
 	errors := []shared.ValidationError{}

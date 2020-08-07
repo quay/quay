@@ -9,7 +9,7 @@ import (
 )
 
 // Validate checks the configuration settings for this field group
-func (fg *GoogleLoginFieldGroup) Validate() []shared.ValidationError {
+func (fg *GoogleLoginFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
 	var errors []shared.ValidationError
 

@@ -2,6 +2,8 @@ package actionlogarchiving
 
 import (
 	"testing"
+
+	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // TestValidateSchema tests the ValidateSchema function
@@ -45,7 +47,11 @@ func TestValidateActionLogArchiving(t *testing.T) {
 				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
 			}
 
-			validationErrors := fg.Validate()
+			opts := shared.Options{
+				Mode: "testing",
+			}
+
+			validationErrors := fg.Validate(opts)
 
 			// Get result type
 			received := ""

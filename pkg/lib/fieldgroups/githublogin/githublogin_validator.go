@@ -6,7 +6,7 @@ import (
 )
 
 // Validate checks the configuration settings for this field group
-func (fg *GitHubLoginFieldGroup) Validate() []shared.ValidationError {
+func (fg *GitHubLoginFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
 	// Make empty errors
 	errors := []shared.ValidationError{}

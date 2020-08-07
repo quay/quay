@@ -9,7 +9,7 @@ import (
 )
 
 // Validate checks the configuration settings for this field group
-func (fg *ElasticSearchFieldGroup) Validate() []shared.ValidationError {
+func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
 	// Make empty errors
 	errors := []shared.ValidationError{}

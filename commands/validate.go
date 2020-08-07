@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/quay/config-tool/pkg/lib/shared"
 	"github.com/quay/config-tool/pkg/lib/validation"
 	"github.com/spf13/cobra"
 )
@@ -68,8 +69,13 @@ var validateCmd = &cobra.Command{
 				// Get field group for key
 				fieldGroup := configFieldGroups[fgName]
 
+				// Set options
+				opts := shared.Options{
+					Mode: validationMode,
+				}
+
 				// Validate
-				validationErrors := fieldGroup.Validate()
+				validationErrors := fieldGroup.Validate(opts)
 
 				// If no errors, append row
 				if len(validationErrors) == 0 {
@@ -111,6 +117,9 @@ func init() {
 	// Add --config flag
 	validateCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
 	validateCmd.MarkFlagRequired("configPath")
+
+	validateCmd.Flags().StringVarP(&validationMode, "mode", "m", "", "The mode to validate the config. Must be either online, offline, or testing (for development only)")
+	validateCmd.MarkFlagRequired("mode")
 
 }
 
