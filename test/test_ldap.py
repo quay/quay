@@ -153,7 +153,7 @@ def mock_ldap(requires_email=True, user_filter=None):
 
     mockldap = MockLdap(mock_data)
 
-    def initializer(uri, trace_level=0):
+    def initializer(uri, trace_level=0, bytes_mode=False):
         obj = mockldap[uri]
 
         # Seed to "support" wildcard queries, which MockLDAP does not support natively.
