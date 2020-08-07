@@ -9,7 +9,7 @@ from mock import MagicMock, patch
 from swiftclient.client import ClientException, ReadableToIterable
 
 from storage import StorageContext
-from storage.swift import SwiftStorage, _EMPTY_SEGMENTS_KEY
+from storage.swift import SwiftStorage, _EMPTY_SEGMENTS_KEY, _DEFAULT_RETRY_COUNT
 
 base_args = {
     "context": StorageContext("nyc", None, None, None),
@@ -33,7 +33,7 @@ class MockSwiftStorage(SwiftStorage):
 class FakeSwiftStorage(SwiftStorage):
     def __init__(self, fail_checksum=False, connection=None, *args, **kwargs):
         super(FakeSwiftStorage, self).__init__(*args, **kwargs)
-        self._retry_count = kwargs.get("retry_count") or 5
+        self._retry_count = kwargs.get("retry_count") or _DEFAULT_RETRY_COUNT
         self._connection = connection or FakeSwift(
             fail_checksum=fail_checksum, temp_url_key=kwargs.get("temp_url_key")
         )
