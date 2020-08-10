@@ -9,6 +9,7 @@ from data import model
 from data.cache import cache_key
 from data.model import oci, DataModelException
 from data.model.oci.retriever import RepositoryContentRetriever
+from data.readreplica import ReadOnlyModeException
 from data.database import (
     db_transaction,
     Image,
@@ -37,7 +38,7 @@ from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1ManifestBuilder,
 )
-from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST
+from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 
 
 logger = logging.getLogger(__name__)
@@ -617,7 +618,7 @@ class OCIModel(RegistryDataInterface):
             repository_ref._db_id, parsed_manifest, storage, include_placements=include_placements,
         )
 
-    def get_manifest_local_blobs(self, manifest, include_placements=False):
+    def get_manifest_local_blobs(self, manifest, storage, include_placements=False):
         """
         Returns the set of local blobs for the given manifest or None if none.
         """
@@ -627,7 +628,7 @@ class OCIModel(RegistryDataInterface):
             return None
 
         return self._get_manifest_local_blobs(
-            manifest, manifest_row.repository_id, include_placements
+            manifest, manifest_row.repository_id, include_placements, storage
         )
 
     def find_repository_with_garbage(self, limit_to_gc_policy_s):
@@ -889,7 +890,7 @@ class OCIModel(RegistryDataInterface):
             manifest_row, manifest.get_parsed_manifest(), storage
         )
 
-    def _get_manifest_local_blobs(self, manifest, repo_id, include_placements=False):
+    def _get_manifest_local_blobs(self, manifest, repo_id, storage, include_placements=False):
         parsed = manifest.get_parsed_manifest()
         if parsed is None:
             return None
@@ -898,7 +899,9 @@ class OCIModel(RegistryDataInterface):
         if not len(local_blob_digests):
             return []
 
-        blob_query = self._lookup_repo_storages_by_content_checksum(repo_id, local_blob_digests)
+        blob_query = self._lookup_repo_storages_by_content_checksum(
+            repo_id, local_blob_digests, storage
+        )
         blobs = []
         for image_storage in blob_query:
             placements = None
@@ -932,7 +935,9 @@ class OCIModel(RegistryDataInterface):
             blob_digests.append(EMPTY_LAYER_BLOB_DIGEST)
 
         if blob_digests:
-            blob_query = self._lookup_repo_storages_by_content_checksum(repo_id, blob_digests)
+            blob_query = self._lookup_repo_storages_by_content_checksum(
+                repo_id, blob_digests, storage
+            )
             storage_map = {blob.content_checksum: blob for blob in blob_query}
 
         layers = parsed.get_layers(retriever)
@@ -970,7 +975,7 @@ class OCIModel(RegistryDataInterface):
 
         return manifest_layers
 
-    def _get_shared_storage(self, blob_digest):
+    def _get_shared_storage(self, blob_digest, storage=None):
         """
         Returns an ImageStorage row for the blob digest if it is a globally shared storage.
         """
@@ -979,17 +984,28 @@ class OCIModel(RegistryDataInterface):
         # can be incredibly slow, and, since it is defined as a globally shared layer, this is extra
         # work we don't need to do.
         if blob_digest == EMPTY_LAYER_BLOB_DIGEST:
-            return model.blob.get_shared_blob(EMPTY_LAYER_BLOB_DIGEST)
+            found = model.blob.get_shared_blob(EMPTY_LAYER_BLOB_DIGEST)
+            if found is None and storage is not None:
+                # If we have the storage and the shared blob was not found, then simply create
+                # it now. This will handle the case where the data was never pushed.
+                try:
+                    return model.blob.get_or_create_shared_blob(
+                        EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
+                    )
+                except ReadOnlyModeException:
+                    return None
+
+            return found
 
         return None
 
-    def _lookup_repo_storages_by_content_checksum(self, repo, checksums):
+    def _lookup_repo_storages_by_content_checksum(self, repo, checksums, storage):
         checksums = set(checksums)
 
         # Load any shared storages first.
         extra_storages = []
         for checksum in list(checksums):
-            shared_storage = self._get_shared_storage(checksum)
+            shared_storage = self._get_shared_storage(checksum, storage=storage)
             if shared_storage is not None:
                 extra_storages.append(shared_storage)
                 checksums.remove(checksum)

@@ -318,7 +318,7 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
 
         # Queue all blob manifests for replication.
         if features.STORAGE_REPLICATION:
-            blobs = registry_model.get_manifest_local_blobs(manifest)
+            blobs = registry_model.get_manifest_local_blobs(manifest, storage)
             if blobs is None:
                 logger.error("Could not lookup blobs for manifest `%s`", manifest.digest)
             else:
