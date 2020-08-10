@@ -49,7 +49,20 @@ class BaseStreamFilelike(object):
         return bytes_forward
 
     def readable(self):
-        return self._fileobj.readable()
+        # Depending on the "transfer-encoding" header, the returned stream will either be a
+        # Flask stream, or a gunicorn wrapped stream (see endpoints/v2/__init__.py):
+        # - https://github.com/pallets/werkzeug/blob/master/src/werkzeug/wsgi.py#L205
+        # - https://github.com/benoitc/gunicorn/blob/master/gunicorn/http/body.py#L177
+        #
+        # In the latter case, gunicorn's wrapper class does not implement the full object-file
+        # api expected (e.g `readable` is missing).
+        if hasattr(self._fileobj, "readable"):
+            return self._fileobj.readable()
+        try:
+            self.read(0)
+            return True
+        except ValueError:
+            return False
 
 
 class SocketReader(BaseStreamFilelike):

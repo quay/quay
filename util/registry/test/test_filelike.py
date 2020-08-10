@@ -149,3 +149,69 @@ def test_slice_explictread():
     assert stream.read(2) == b"is"
     assert stream.read(5) == b" a"
     assert len(b"is a") == stream.tell()
+
+
+def test_non_filelike_obj_read_limit():
+    from gunicorn.http.body import Body
+
+    content = b"this will not really be a real fileobj"
+    fileobj = BytesIO(content)
+    body = Body(fileobj)
+    ls = LimitingStream(body)
+
+    assert ls.readable()
+    assert ls.read(-1) == content
+    assert len(content) == ls.tell()
+
+
+def test_non_filelike_obj():
+    from gunicorn.http.body import Body
+
+    content = b"this will not really be a real fileobj"
+    fileobj = BytesIO(content)
+    body = Body(fileobj)
+    ls = LimitingStream(body)
+
+    assert ls.readable()
+    assert ls.read(-1) == content
+    assert ls.read(1) == b""
+    assert len(content) == ls.tell()
+
+
+def test_non_filelike_obj_read():
+    from gunicorn.http.body import Body
+
+    content = b"this will not really be a real fileobj"
+    fileobj = BytesIO(content)
+
+    # Limited
+    body1 = Body(fileobj)
+    ls1 = LimitingStream(body1, 4)
+    assert ls1.readable()
+
+    resp1 = b""
+    while True:
+        buf = ls1.read(-1)
+        if not buf:
+            break
+        resp1 += buf
+
+    assert resp1 == content[:4]
+    assert ls1.read(1) == b""
+    assert 4 == ls1.tell()
+
+    # Non limited
+    fileobj.seek(0)
+    body2 = Body(fileobj)
+    ls2 = LimitingStream(body2)
+
+    resp2 = b""
+    while True:
+        buf = ls2.read(-1)
+        if not buf:
+            break
+        resp2 += buf
+
+    assert resp2 == content
+    assert ls2.read(1) == b""
+    assert len(content) == ls2.tell()
