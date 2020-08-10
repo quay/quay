@@ -14,7 +14,7 @@ func (fg *HostSettingsFieldGroup) Validate(opts shared.Options) []shared.Validat
 	}
 
 	// check that hostname is url
-	if ok, err := shared.ValidateIsURL(fg.ServerHostname, "SERVER_HOSTNAME", "HostSettings"); !ok {
+	if ok, err := shared.ValidateIsHostname(fg.ServerHostname, "SERVER_HOSTNAME", "HostSettings"); !ok {
 		errors = append(errors, err)
 	}
 
@@ -24,10 +24,21 @@ func (fg *HostSettingsFieldGroup) Validate(opts shared.Options) []shared.Validat
 	}
 
 	// // If SSL is enabled
-	// if fg.PreferredUrlScheme == "https" && !fg.ExternalTlsTermination {
+	if fg.PreferredUrlScheme == "https" && !fg.ExternalTlsTermination {
 
-	// 	shared.ValidateFileExists()
-	// }
+		// Validate certs are present
+		if ok, err := shared.ValidateCertsPresent(opts, []string{"ssl.cert", "ssl.key"}, "HostSettings"); !ok {
+			errors = append(errors, err)
+			return errors
+		}
+
+		// Validate cert pair and hostname
+		if ok, err := shared.ValidateCertPairWithHostname(opts.Certificates["ssl.cert"], opts.Certificates["ssl.key"], fg.ServerHostname, "HostSettigns"); !ok {
+			errors = append(errors, err)
+			return errors
+		}
+
+	}
 
 	return errors
 }

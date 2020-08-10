@@ -12,3 +12,7 @@ type ValidationError struct {
 	Policy  string
 	Message string
 }
+
+func (ve ValidationError) String() string {
+	return ve.Message
+}

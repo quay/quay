@@ -2,6 +2,8 @@ package shared
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -207,6 +209,26 @@ func ValidateIsURL(input string, field string, fgName string) (bool, ValidationE
 	return true, ValidationError{}
 }
 
+// ValidateIsHostname tests a string to determine if it is a well-structured hostname or not.
+func ValidateIsHostname(input string, field string, fgName string) (bool, ValidationError) {
+
+	// trim whitespace
+	input = strings.Trim(input, " ")
+
+	// check against regex
+	re, _ := regexp.Compile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$`)
+	if !re.MatchString(input) {
+		newError := ValidationError{
+			Tags:    []string{field},
+			Policy:  "Is Hostname",
+			Message: field + " must be of type Hostname",
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
+}
+
 // ValidateHostIsReachable will check if a get request returns a 200 status code
 func ValidateHostIsReachable(input string, field string, fgName string) (bool, ValidationError) {
 
@@ -266,4 +288,65 @@ func ValidateTimePattern(input string, field string, fgName string) (bool, Valid
 	}
 
 	return true, ValidationError{}
+}
+
+// ValidateCertsPresent validates that all required certificates are present in the options struct
+func ValidateCertsPresent(opts Options, requiredCertNames []string, fgName string) (bool, ValidationError) {
+
+	// If no certificates are passed
+	if opts.Certificates == nil {
+		newError := ValidationError{
+			Tags:    []string{"Certificates"},
+			Policy:  "Certificates Required",
+			Message: "Certificates are required for SSL but are not present",
+		}
+		return false, newError
+	}
+
+	// Check that all required certificates are present
+	for _, certName := range requiredCertNames {
+
+		// Check that cert has been included
+		if _, ok := opts.Certificates[certName]; !ok {
+			newError := ValidationError{
+				Tags:    []string{"Certificates"},
+				Policy:  "Certificates Required",
+				Message: "Certificate " + certName + " is required for " + fgName + " .",
+			}
+			return false, newError
+		}
+	}
+
+	return true, ValidationError{}
+
+}
+
+// ValidateCertPairWithHostname will validate that a public private key pair are valid and have the correct hostname
+func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName string) (bool, ValidationError) {
+
+	// Load key pair, this will check the public, private keys are paired
+	certChain, err := tls.X509KeyPair(cert, key)
+	if err != nil {
+		newError := ValidationError{
+			Tags:    []string{"Certificates"},
+			Policy:  "Valid Key Pair",
+			Message: err.Error(),
+		}
+		return false, newError
+	}
+
+	certificate, err := x509.ParseCertificate(certChain.Certificate[0])
+
+	err = certificate.VerifyHostname(hostname)
+	if err != nil {
+		newError := ValidationError{
+			Tags:    []string{"Certificates"},
+			Policy:  "Invalid Cert Hostname",
+			Message: err.Error(),
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
+
 }
