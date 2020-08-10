@@ -214,6 +214,28 @@ class V4SecurityScanner(SecurityScannerInterface):
         for candidate, abt, num_remaining in iterator:
             manifest = ManifestDataType.for_manifest(candidate, None)
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
+            if layers is None:
+                logger.warning(
+                    "Cannot index %s/%s@%s due to manifest being invalid"
+                    % (
+                        candidate.repository.namespace_user,
+                        candidate.repository.name,
+                        manifest.digest,
+                    )
+                )
+                with db_transaction():
+                    ManifestSecurityStatus.delete().where(
+                        ManifestSecurityStatus.manifest == candidate
+                    ).execute()
+                    ManifestSecurityStatus.create(
+                        manifest=candidate,
+                        repository=candidate.repository,
+                        index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+                        indexer_hash="none",
+                        indexer_version=IndexerVersion.V4,
+                        metadata_json={},
+                    )
+                continue
 
             logger.debug(
                 "Indexing %s/%s@%s"

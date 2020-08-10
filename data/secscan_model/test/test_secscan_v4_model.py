@@ -15,6 +15,7 @@ from data.database import (
     IndexStatus,
     IndexerVersion,
     User,
+    ManifestBlob,
 )
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
@@ -343,3 +344,17 @@ def test_features_for():
     generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
 
     assert generated == expected
+
+
+def test_perform_indexing_invalid_manifest(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    # Delete all ManifestBlob rows to cause the manifests to be invalid.
+    ManifestBlob.delete().execute()
+
+    secscan.perform_indexing()
+
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.MANIFEST_UNSUPPORTED
