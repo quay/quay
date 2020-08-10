@@ -467,7 +467,7 @@ def test_layers_and_blobs(repo_namespace, repo_name, registry_model):
             assert manifest_layer.estimated_size(1) is not None
             assert isinstance(manifest_layer.layer_info, ManifestImageLayer)
 
-        blobs = registry_model.get_manifest_local_blobs(manifest, include_placements=True)
+        blobs = registry_model.get_manifest_local_blobs(manifest, storage, include_placements=True)
         assert {b.digest for b in blobs} == set(parsed.local_blob_digests)
 
 
@@ -563,7 +563,7 @@ def test_mount_blob_into_repository(registry_model):
 
     target_repository_ref = registry_model.lookup_repository("devtable", "complex")
 
-    blobs = registry_model.get_manifest_local_blobs(manifest, include_placements=True)
+    blobs = registry_model.get_manifest_local_blobs(manifest, storage, include_placements=True)
     assert blobs
 
     for blob in blobs:
@@ -589,7 +589,7 @@ def test_get_cached_repo_blob(registry_model):
     latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
     manifest = registry_model.get_manifest_for_tag(latest_tag)
 
-    blobs = registry_model.get_manifest_local_blobs(manifest, include_placements=True)
+    blobs = registry_model.get_manifest_local_blobs(manifest, storage, include_placements=True)
     assert blobs
 
     blob = blobs[0]

@@ -269,7 +269,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_manifest_local_blobs(self, manifest, include_placements=False):
+    def get_manifest_local_blobs(self, manifest, storage, include_placements=False):
         """
         Returns the set of local blobs for the given manifest or None if none.
         """

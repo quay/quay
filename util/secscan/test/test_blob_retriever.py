@@ -17,7 +17,7 @@ def test_generate_url(initialized_db):
     repo_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repo_ref, "latest")
     manifest = tag.manifest
-    blobs = registry_model.get_manifest_local_blobs(manifest)
+    blobs = registry_model.get_manifest_local_blobs(manifest, storage)
 
     retriever = BlobURLRetriever(storage, instance_keys, application)
     headers = retriever.headers_for_download(repo_ref, blobs[0])
