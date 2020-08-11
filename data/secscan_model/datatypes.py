@@ -30,7 +30,7 @@ Vulnerability = namedtuple(
     ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
 )
 Feature = namedtuple(
-    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
+    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities", "Metadata"]
 )
 Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
 
@@ -67,6 +67,7 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                             )
                             for vuln in f.get("Vulnerabilities", [])
                         ],
+                        Metadata=f.get("Metadata", None),
                     )
                     for f in data_dict["Layer"].get("Features", [])
                 ],
@@ -99,6 +100,7 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                             }
                             for v in f.Vulnerabilities
                         ],
+                        "Metadata": f.Metadata
                     }
                     for f in self.Layer.Features
                 ],

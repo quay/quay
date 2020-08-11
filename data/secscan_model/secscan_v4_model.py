@@ -285,6 +285,9 @@ def features_for(report):
     features = []
     for pkg_id, pkg in report["packages"].items():
         pkg_env = report["environments"][pkg_id][0]
+        pkg_repo_id = pkg_env["repository_ids"][0] if pkg_env["repository_ids"] else ""
+        pkg_repo = report["repository"].get(pkg_repo_id, {})
+        pkg_metadata = {"RepoName": pkg_repo.get("name"), "RepoLink": pkg_repo.get("uri")} if pkg_repo else None
         pkg_vulns = [
             report["vulnerabilities"][vuln_id]
             for vuln_id in report["package_vulnerabilities"].get(pkg_id, [])
@@ -307,10 +310,11 @@ def features_for(report):
                         vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",
                         vuln["description"],
                         vuln["name"],
-                        None,
+                        {"updater": vuln["updater"]},
                     )
                     for vuln in pkg_vulns
                 ],
+                pkg_metadata
             )
         )
 
