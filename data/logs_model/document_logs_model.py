@@ -335,6 +335,8 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
             after_random_id = page_token["random_id"]
 
         if after_datetime is not None:
+            if after_datetime < start_datetime:
+                return LogEntriesPage([], None)
             end_datetime = min(end_datetime, after_datetime)
 
         all_logs = []
