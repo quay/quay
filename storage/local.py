@@ -34,7 +34,7 @@ class LocalStorage(BaseStorageV2):
     def put_content(self, path, content):
         path = self._init_path(path, create=True)
         with open(path, mode="w") as f:
-            f.write(content)
+            f.buffer.write(content)
         return path
 
     def stream_read(self, path):
