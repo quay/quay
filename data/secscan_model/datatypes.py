@@ -27,10 +27,14 @@ class ScanLookupStatus(IntEnum):
 
 Vulnerability = namedtuple(
     "Vulnerability",
-    ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
+    ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "UpdatedBy", "Metadata"],
+)
+InstalledFrom = namedtuple(
+    "InstalledFrom",
+    ["Name", "Link"],
 )
 Feature = namedtuple(
-    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities", "Metadata"]
+    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities", "InstalledFrom"]
 )
 Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
 
@@ -96,11 +100,16 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                 "FixedBy": v.FixedBy,
                                 "Description": v.Description,
                                 "Name": v.Name,
+                                "UpdatedBy": v.UpdatedBy,
                                 "Metadata": v.Metadata,
                             }
                             for v in f.Vulnerabilities
                         ],
-                        "Metadata": f.Metadata
+                        "InstalledFrom":
+                            {
+                                "Name": f.InstalledFrom.Name,
+                                "Link": f.InstalledFrom.Link,
+                            }
                     }
                     for f in self.Layer.Features
                 ],
