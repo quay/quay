@@ -311,11 +311,11 @@ def features_for(report):
                         vuln["description"],
                         vuln["name"],
                         vuln["updater"],
-                        None
+                        None,
                     )
                     for vuln in pkg_vulns
                 ],
-                InstalledFrom(pkg_repo.get("name"), pkg_repo.get("uri"))
+                InstalledFrom(pkg_repo.get("name"), pkg_repo.get("uri")),
             )
         )
 

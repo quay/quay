@@ -27,14 +27,29 @@ class ScanLookupStatus(IntEnum):
 
 Vulnerability = namedtuple(
     "Vulnerability",
-    ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "UpdatedBy", "Metadata"],
+    [
+        "Severity",
+        "NamespaceName",
+        "Link",
+        "FixedBy",
+        "Description",
+        "Name",
+        "UpdatedBy",
+        "Metadata",
+    ],
 )
-InstalledFrom = namedtuple(
-    "InstalledFrom",
-    ["Name", "Link"],
-)
+InstalledFrom = namedtuple("InstalledFrom", ["Name", "Link"],)
 Feature = namedtuple(
-    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities", "InstalledFrom"]
+    "Feature",
+    [
+        "Name",
+        "VersionFormat",
+        "NamespaceName",
+        "AddedBy",
+        "Version",
+        "Vulnerabilities",
+        "InstalledFrom",
+    ],
 )
 Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
 
@@ -72,7 +87,7 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                             )
                             for vuln in f.get("Vulnerabilities", [])
                         ],
-                        InstalledFrom(
+                        InstalledFrom=InstalledFrom(
                             Name=f.get("InstalledFrom", {}).get("Name", None),
                             Link=f.get("InstalledFrom", {}).get("Link", None),
                         ),
@@ -109,11 +124,10 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                             }
                             for v in f.Vulnerabilities
                         ],
-                        "InstalledFrom":
-                            {
-                                "Name": f.InstalledFrom.Name,
-                                "Link": f.InstalledFrom.Link,
-                            }
+                        "InstalledFrom": {
+                            "Name": f.InstalledFrom.Name,
+                            "Link": f.InstalledFrom.Link,
+                        },
                     }
                     for f in self.Layer.Features
                 ],
