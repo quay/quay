@@ -21,7 +21,7 @@ from data.database import (
 from data.model import BlobDoesNotExist
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
 from data.model.oci.tag import filter_to_alive_tags, create_temporary_tag_if_necessary
-from data.model.oci.label import create_manifest_label
+from data.model.oci.label import batch_create_manifest_labels
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum, create_v1_storage
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
@@ -37,7 +37,7 @@ TEMP_TAG_EXPIRATION_SEC = 300  # 5 minutes
 
 logger = logging.getLogger(__name__)
 
-CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "labels_to_apply"])
+CreatedManifest = namedtuple("CreatedManifest", ["manifest", "newly_created", "loaded_labels"])
 
 
 class CreateManifestException(Exception):
@@ -141,7 +141,7 @@ def get_or_create_manifest(
         temp_tag_expiration_sec=temp_tag_expiration_sec,
     )
     if existing is not None:
-        return CreatedManifest(manifest=existing, newly_created=False, labels_to_apply=None)
+        return CreatedManifest(manifest=existing, newly_created=False, loaded_labels=None)
 
     return _create_manifest(
         repository_id,
@@ -177,7 +177,6 @@ def _create_manifest(
     # Load, parse and get/create the child manifests, if any.
     child_manifest_refs = manifest_interface_instance.child_manifests(retriever)
     child_manifest_rows = {}
-    child_manifest_label_dicts = []
 
     if child_manifest_refs is not None:
         for child_manifest_ref in child_manifest_refs:
@@ -199,15 +198,6 @@ def _create_manifest(
 
                 return None
 
-            # Retrieve its labels.
-            labels = child_manifest.get_manifest_labels(retriever)
-            if labels is None:
-                if raise_on_error:
-                    raise CreateManifestException("Unable to retrieve manifest labels")
-
-                logger.exception("Could not load manifest labels for child manifest")
-                return None
-
             # Get/create the child manifest in the database.
             child_manifest_info = get_or_create_manifest(
                 repository_id, child_manifest, storage, raise_on_error=raise_on_error
@@ -220,7 +210,6 @@ def _create_manifest(
                 return None
 
             child_manifest_rows[child_manifest_info.manifest.digest] = child_manifest_info.manifest
-            child_manifest_label_dicts.append(labels)
 
     # Build the map from required blob digests to the blob objects.
     blob_map = _build_blob_map(
@@ -294,36 +283,34 @@ def _create_manifest(
             if not for_tagging:
                 create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
 
-        # Define the labels for the manifest (if any).
-        # TODO: Once the old data model is gone, turn this into a batch operation and make the label
-        # application to the manifest occur under the transaction.
+        # Determine the labels to create.
         labels = manifest_interface_instance.get_manifest_labels(retriever)
+        labels_to_create = []
         if labels:
             for key, value in labels.items():
                 # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
-                # such `labels`, as they don't really mean anything.
+                # such "labels", as they don't really mean anything.
                 if not key:
                     continue
 
                 media_type = "application/json" if is_json(value) else "text/plain"
-                create_manifest_label(manifest, key, value, "manifest", media_type)
+                labels_to_create.append(
+                    {
+                        "key": key,
+                        "value": value,
+                        "media_type_name": media_type,
+                        "source_type_name": "manifest",
+                    }
+                )
 
-        # Return the dictionary of labels to apply (i.e. those labels that cause an action to be taken
-        # on the manifest or its resulting tags). We only return those labels either defined on
-        # the manifest or shared amongst all the child manifests. We intersect amongst all child manifests
-        # to ensure that any action performed is defined in all manifests.
-        labels_to_apply = labels or {}
-        if child_manifest_label_dicts:
-            labels_to_apply = child_manifest_label_dicts[0].items()
-            for child_manifest_label_dict in child_manifest_label_dicts[1:]:
-                # Intersect the key+values of the labels to ensure we get the exact same result
-                # for all the child manifests.
-                labels_to_apply = labels_to_apply & child_manifest_label_dict.items()
-
-            labels_to_apply = dict(labels_to_apply)
+        # Add the labels to the manifest.
+        # NOTE: We keep this outside the transaction due to the number of queries involved.
+        # mean there is a (very) slight chance that we save a manifest without its labels.
+        if labels_to_create:
+            batch_create_manifest_labels(manifest.id, labels_to_create)
 
         return CreatedManifest(
-            manifest=manifest, newly_created=True, labels_to_apply=labels_to_apply
+            manifest=manifest, newly_created=True, loaded_labels=labels_to_create
         )
     except _ManifestAlreadyExists as mae:
         try:
@@ -343,7 +330,7 @@ def _create_manifest(
 
             return None
 
-        return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
+        return CreatedManifest(manifest=manifest, newly_created=False, loaded_labels=None)
 
 
 def _build_blob_map(

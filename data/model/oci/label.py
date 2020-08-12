@@ -22,6 +22,28 @@ from util.validation import is_json
 logger = logging.getLogger(__name__)
 
 
+def lookup_manifest_labels(manifest_id, keys):
+    """
+    Returns all labels found on the given manifest with a key in the key set.
+    """
+    if not keys:
+        return []
+
+    keys = list(set(keys))
+    query = (
+        Label.select(Label, MediaType)
+        .join(MediaType)
+        .switch(Label)
+        .join(LabelSourceType)
+        .switch(Label)
+        .join(ManifestLabel)
+        .where(ManifestLabel.manifest == manifest_id)
+        .where(Label.key << list(keys))
+    )
+
+    return query
+
+
 def list_manifest_labels(manifest_id, prefix_filter=None):
     """
     Lists all labels found on the given manifest, with an optional filter by key prefix.
@@ -60,15 +82,12 @@ def get_manifest_label(label_uuid, manifest):
         return None
 
 
-def create_manifest_label(manifest_id, key, value, source_type_name, media_type_name=None):
-    """
-    Creates a new manifest label on a specific tag manifest.
-    """
+def _check_and_translate_label(key, value, source_type_name, media_type_name):
     if not key:
         raise InvalidLabelKeyException("Missing key on label")
 
-    # Note that we don't prevent invalid label names coming from the manifest to be stored, as Docker
-    # does not currently prevent them from being put into said manifests.
+    # NOTE: We don't prevent storing "invalid" label names coming from the manifest, as
+    # clients do not prevent them from being put into manifests.
     if source_type_name != "manifest" and not validate_label_key(key):
         raise InvalidLabelKeyException("Key `%s` is invalid or reserved" % key)
 
@@ -84,6 +103,42 @@ def create_manifest_label(manifest_id, key, value, source_type_name, media_type_
         raise InvalidMediaTypeException()
 
     source_type_id = Label.source_type.get_id(source_type_name)
+    return dict(key=key, value=value, source_type=source_type_id, media_type=media_type_id)
+
+
+def batch_create_manifest_labels(manifest_id, labels):
+    """ Creates labels on a manifest in a batch fashion. The labels argument
+        should be an iterator or list containing dict's whose values matches the
+        arguments to create_manifest_label (minus the manifest_id)
+    """
+    translated = [_check_and_translate_label(**label) for label in labels]
+
+    # Ensure the manifest exists.
+    try:
+        manifest = Manifest.get(id=manifest_id)
+    except Manifest.DoesNotExist:
+        return None
+
+    label_ids = list()
+
+    # Create the labels. We do this non-batch-wise because we need the returned IDs.
+    for translated_label in translated:
+        label_ids.append(Label.create(**translated_label).id)
+
+    # Batch insert the manifest rows.
+    ManifestLabel.bulk_create(
+        [
+            ManifestLabel(manifest=manifest_id, label=label_id, repository=manifest.repository_id)
+            for label_id in label_ids
+        ],
+        batch_size=100,
+    )
+
+
+def create_manifest_label(manifest_id, key, value, source_type_name, media_type_name=None):
+    """
+    Creates a new manifest label on a specific tag manifest.
+    """
 
     # Ensure the manifest exists.
     try:
@@ -97,11 +152,10 @@ def create_manifest_label(manifest_id, key, value, source_type_name, media_type_
         return None
 
     repository = manifest.repository
+    label_args = _check_and_translate_label(key, value, source_type_name, media_type_name)
 
     with db_transaction():
-        label = Label.create(
-            key=key, value=value, source_type=source_type_id, media_type=media_type_id
-        )
+        label = Label.create(**label_args)
         manifest_label = ManifestLabel.create(
             manifest=manifest_id, label=label, repository=repository
         )

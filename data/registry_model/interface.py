@@ -101,15 +101,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def batch_create_manifest_labels(self, manifest):
-        """
-        Returns a context manager for batch creation of labels on a manifest.
-
-        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending on the validation
-        errors.
-        """
-
-    @abstractmethod
     def list_manifest_labels(self, manifest, key_prefix=None):
         """
         Returns all labels found on the manifest.
@@ -359,12 +350,6 @@ class RegistryDataInterface(object):
         is being pushed. Returns False if the mounting fails. Note that this function does *not*
         check security for mounting the blob and the caller is responsible for doing this check (an
         example can be found in endpoints/v2/blob.py).
-        """
-
-    @abstractmethod
-    def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
-        """
-        Sets the expiration on all tags that point to the given manifest to that specified.
         """
 
     @abstractmethod

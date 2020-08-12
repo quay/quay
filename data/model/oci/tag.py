@@ -439,34 +439,6 @@ def filter_to_alive_tags(query, now_ms=None, model=Tag):
     return filter_to_visible_tags(query)
 
 
-def set_tag_expiration_sec_for_manifest(manifest_id, expiration_seconds):
-    """
-    Sets the tag expiration for any tags that point to the given manifest ID.
-    """
-    query = Tag.select().where(Tag.manifest == manifest_id)
-    query = filter_to_alive_tags(query)
-    tags = list(query)
-    for tag in tags:
-        assert not tag.hidden
-        set_tag_end_ms(tag, tag.lifetime_start_ms + (expiration_seconds * 1000))
-
-    return tags
-
-
-def set_tag_expiration_for_manifest(manifest_id, expiration_datetime):
-    """
-    Sets the tag expiration for any tags that point to the given manifest ID.
-    """
-    query = Tag.select().where(Tag.manifest == manifest_id)
-    query = filter_to_alive_tags(query)
-    tags = list(query)
-    for tag in tags:
-        assert not tag.hidden
-        change_tag_expiration(tag, expiration_datetime)
-
-    return tags
-
-
 def change_tag_expiration(tag_id, expiration_datetime):
     """
     Changes the expiration of the specified tag to the given expiration datetime.

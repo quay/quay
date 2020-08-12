@@ -31,7 +31,7 @@ from data.registry_model.datatypes import (
     RepositoryReference,
     ManifestLayer,
 )
-from data.registry_model.label_handlers import apply_label_to_manifest
+from data.registry_model.label_handlers import apply_label_to_tag, tag_label_action_keys
 from data.registry_model.shared import SyntheticIDHandler
 from image.shared import ManifestException
 from image.docker.schema1 import (
@@ -174,42 +174,7 @@ class OCIModel(RegistryDataInterface):
         if label is None:
             return None
 
-        # Apply any changes to the manifest that the label prescribes.
-        apply_label_to_manifest(label_data, manifest, self)
-
         return Label.for_label(label)
-
-    @contextmanager
-    def batch_create_manifest_labels(self, manifest):
-        """
-        Returns a context manager for batch creation of labels on a manifest.
-
-        Can raise InvalidLabelKeyException or InvalidMediaTypeException depending on the validation
-        errors.
-        """
-        labels_to_add = []
-
-        def add_label(key, value, source_type_name, media_type_name=None):
-            labels_to_add.append(
-                dict(
-                    key=key,
-                    value=value,
-                    source_type_name=source_type_name,
-                    media_type_name=media_type_name,
-                )
-            )
-
-        yield add_label
-
-        # TODO: make this truly batch once we've fully transitioned to V2_2 and no longer need
-        # the mapping tables.
-        for label_data in labels_to_add:
-            with db_transaction():
-                # Create the label itself.
-                oci.label.create_manifest_label(manifest._db_id, **label_data)
-
-                # Apply any changes to the manifest that the label prescribes.
-                apply_label_to_manifest(label_data, manifest, self)
 
     def list_manifest_labels(self, manifest, key_prefix=None):
         """
@@ -360,20 +325,13 @@ class OCIModel(RegistryDataInterface):
             if tag is None:
                 return (None, None)
 
-            wrapped_manifest = Manifest.for_manifest(
-                created_manifest.manifest, self._legacy_image_id_handler
+            # Apply any action labels to the tag.
+            tag = self._apply_action_labels_to_tag(
+                tag, created_manifest.manifest.id, labels=created_manifest.loaded_labels,
             )
 
-            # Apply any labels that should modify the created tag.
-            if created_manifest.labels_to_apply:
-                for key, value in created_manifest.labels_to_apply.items():
-                    apply_label_to_manifest(dict(key=key, value=value), wrapped_manifest, self)
-
-                # Reload the tag in case any updates were applied.
-                tag = database.Tag.get(id=tag.id)
-
             return (
-                wrapped_manifest,
+                Manifest.for_manifest(created_manifest.manifest, self._legacy_image_id_handler),
                 Tag.for_tag(
                     tag, self._legacy_image_id_handler, manifest_row=created_manifest.manifest
                 ),
@@ -427,7 +385,45 @@ class OCIModel(RegistryDataInterface):
                     manifest_id = created.manifest.id
 
             tag = oci.tag.retarget_tag(tag_name, manifest_id, is_reversion=is_reversion)
+            if not is_reversion:
+                # Apply any action labels to the tag.
+                tag = self._apply_action_labels_to_tag(tag, manifest_id)
+
             return Tag.for_tag(tag, self._legacy_image_id_handler)
+
+    def _apply_action_labels_to_tag(self, tag_row, manifest_id, labels=None):
+        """ Processes any labels found on the manifest and applies them to the given
+            tag. Returns the updated tag row (if applicable). Uses labels if specified,
+            otherwise loads the action labels from the database for the manifest.
+        """
+        keys = tag_label_action_keys()
+        if not keys:
+            return tag_row
+
+        # Lookup any labels on the manifest matching the keys.
+        if labels is None:
+            labels = [
+                {"key": label.key, "value": label.value}
+                for label in oci.label.lookup_manifest_labels(manifest_id, keys)
+            ]
+            if not labels:
+                return tag_row
+
+        has_change = False
+        tag = Tag.for_tag(tag_row, self._legacy_image_id_handler)
+        for label in labels:
+            result = apply_label_to_tag(dict(key=label["key"], value=label["value"]), tag, self)
+            if result:
+                has_change = True
+
+        if has_change:
+            # Reload the tag for any changes.
+            try:
+                return database.Tag.get(id=tag_row.id)
+            except database.Tag.DoesNotExist:
+                return None
+
+        return tag_row
 
     def delete_tag(self, repository_ref, tag_name):
         """
@@ -514,13 +510,6 @@ class OCIModel(RegistryDataInterface):
         return self._list_manifest_layers(
             manifest_obj.repository_id, parsed, storage, include_placements
         )
-
-    def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
-        """
-        Sets the expiration on all tags that point to the given manifest to that specified.
-        """
-        with db_disallow_replica_use():
-            oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
 
     def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
         """
