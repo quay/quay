@@ -990,7 +990,7 @@ class OCIModel(RegistryDataInterface):
                 # it now. This will handle the case where the data was never pushed.
                 try:
                     return model.blob.get_or_create_shared_blob(
-                        EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
+                        EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES, storage
                     )
                 except ReadOnlyModeException:
                     return None
