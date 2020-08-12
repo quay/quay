@@ -67,11 +67,15 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                 FixedBy=vuln.get("FixedBy", None),
                                 Description=vuln.get("Description", None),
                                 Name=vuln.get("Name", None),
+                                UpdatedBy=vuln.get("UpdatedBy", None),
                                 Metadata=vuln.get("Metadata", None),
                             )
                             for vuln in f.get("Vulnerabilities", [])
                         ],
-                        Metadata=f.get("Metadata", None),
+                        InstalledFrom(
+                            Name=f.get("InstalledFrom", {}).get("Name", None),
+                            Link=f.get("InstalledFrom", {}).get("Link", None),
+                        ),
                     )
                     for f in data_dict["Layer"].get("Features", [])
                 ],
