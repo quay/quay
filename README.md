@@ -69,9 +69,9 @@ High-level features include:
 [JBoss JIRA]: https://issues.jboss.org/projects/PROJQUAY
 [security@redhat.com]: mailto:security@redhat.com
 
-## Quay Bug Bash!
+## Quay Bug Bash - Now Extended!
 
-From July 13, 2020 through August 14, 2020, Project Quay is having a Bug Bash.  We have migrated Quay from python 2 to python 3 in our master branch.  This means nearly every line of code in Quay has been touched so our risk of regression bugs is high.  We need *your* help to help find them!
+From July 13, 2020 through September 30, 2020, Project Quay is having a Bug Bash.  We have migrated Quay from python 2 to python 3 in our master branch.  This means nearly every line of code in Quay has been touched so our risk of regression bugs is high.  We need *your* help to help find them!
 
 ### How Do I Participate?
 
