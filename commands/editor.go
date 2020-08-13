@@ -1,0 +1,46 @@
+/*
+Copyright © 2020 NAME HERE <EMAIL ADDRESS>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package commands
+
+import (
+	"github.com/quay/config-tool/pkg/lib/editor"
+	"github.com/spf13/cobra"
+)
+
+var editorPassword string
+
+// editorCmd represents the validate command
+var editorCmd = &cobra.Command{
+	Use:   "editor",
+	Short: "Runs a browser-based editor for your config.yaml",
+
+	Run: func(cmd *cobra.Command, args []string) {
+		editor.RunConfigEditor(editorPassword, configPath)
+	},
+}
+
+func init() {
+	// Add editor command
+	rootCmd.AddCommand(editorCmd)
+
+	// Add --config flag
+	editorCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
+	editorCmd.MarkFlagRequired("configPath")
+
+	// Add --password flag
+	editorCmd.Flags().StringVarP(&editorPassword, "password", "p", "", "The password to enter the editor")
+	editorCmd.MarkFlagRequired("password")
+}

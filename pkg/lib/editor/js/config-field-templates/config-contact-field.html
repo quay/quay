@@ -1,0 +1,46 @@
+<div class="config-contact-field-element">
+  <table>
+  <tr>
+  <td>
+    <div class="dropdown">
+      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+        <span ng-switch="kind">
+          <span ng-switch-when="mailto"><i class="fa fa-envelope"></i>E-mail</span>
+          <span ng-switch-when="irc"><i class="fa fa-comment"></i>IRC</span>
+          <span ng-switch-when="tel"><i class="fa fa-phone"></i>Phone</span>
+          <span ng-switch-default><i class="fa fa-ticket-alt"></i>URL</span>
+        </span>
+        <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu" role="menu">
+        <li role="presentation">
+          <a role="menuitem" tabindex="-1" ng-click="kind = 'mailto'">
+            <i class="fa fa-envelope"></i> E-mail
+          </a>
+        </li>
+        <li role="presentation">
+          <a role="menuitem" tabindex="-1" ng-click="kind = 'irc'">
+            <i class="fa fa-comment"></i> IRC
+          </a>
+        </li>
+        <li role="presentation">
+          <a role="menuitem" tabindex="-1" ng-click="kind = 'tel'">
+            <i class="fa fa-phone"></i> Telephone
+          </a>
+        </li>
+        <li role="presentation">
+          <a role="menuitem" tabindex="-1" ng-click="kind = 'http'">
+            <i class="fa fa-ticket-alt"></i> URL
+          </a>
+        </li>
+      </ul>
+    </div>
+  </td>
+  <td>
+    <form>
+      <input class="form-control" placeholder="{{ getPlaceholder(kind) }}" ng-model="value">
+    </form>
+  </td>
+  </tr>
+  </table>
+</div>
