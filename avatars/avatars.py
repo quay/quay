@@ -135,6 +135,20 @@ class GravatarAvatar(BaseAvatar):
         )
 
 
+class AdorableAvatar(BaseAvatar):
+    """
+    Avatar system that uses gravatar for generating avatars.
+    """
+
+    def _get_url(self, hash_value, size=40):
+
+        return "%s://api.adorable.io/avatars/%s/%s" % (
+            self.preferred_url_scheme,
+            size,
+            hash_value,
+        )
+
+
 class LocalAvatar(BaseAvatar):
     """
     Avatar system that uses the local system for generating avatars.
@@ -143,4 +157,4 @@ class LocalAvatar(BaseAvatar):
     pass
 
 
-AVATAR_CLASSES = {"gravatar": GravatarAvatar, "local": LocalAvatar}
+AVATAR_CLASSES = {"gravatar": GravatarAvatar, "adorable": AdorableAvatar, "local": LocalAvatar}

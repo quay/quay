@@ -22,6 +22,10 @@ export class AvatarServiceImpl implements AvatarService {
       case 'gravatar':
         avatarURL = `//www.gravatar.com/avatar/${hash}?d=${notFound}&size=${size}`;
         break;
+      
+      case 'adorable':
+        avatarURL = `//api.adorable/avatars/${size}/${hash}`;
+        break;
     }
 
     return avatarURL;
@@ -41,6 +45,14 @@ export class AvatarServiceImpl implements AvatarService {
           hash = name[0] + hash;
         } else if (email) {
           hash = email[0] + hash;
+        }
+        break;
+      
+      case 'adorable':
+        if (name) {
+          hash = name[0];
+        } else if (email) {
+          hash = email[0];
         }
         break;
     }
