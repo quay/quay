@@ -14,6 +14,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	config "github.com/quay/config-tool/pkg/lib/config"
+	shared "github.com/quay/config-tool/pkg/lib/shared"
 )
 
 const port = 8080
@@ -49,7 +50,11 @@ func configValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	errors := loaded.Validate()
+	opts := shared.Options{
+		Mode: "online",
+	}
+
+	errors := loaded.Validate(opts)
 	js, err := json.Marshal(errors)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
