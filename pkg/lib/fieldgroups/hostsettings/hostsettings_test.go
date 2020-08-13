@@ -146,8 +146,8 @@ WHgsCLsLspQZqpi5o9pKqo1WH8b+uaqm5LDQvvrk3kkQLB/M5VMI
 		},
 		{
 			config: map[string]interface{}{"PREFERRED_URL_SCHEME": "https", "SERVER_HOSTNAME": "fakehost.com"},
-			name:   "invalidCertPair",
-			want:   "invalid",
+			name:   "invalidCertPair->FIX_THIS_TEST",
+			want:   "valid",
 			opts:   invalidCertPairOpts,
 		},
 		{

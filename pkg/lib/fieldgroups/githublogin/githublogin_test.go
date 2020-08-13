@@ -20,8 +20,8 @@ func TestValidateGitHubLoginTrigger(t *testing.T) {
 
 		{name: "FeatureGithubBuildOff", config: map[string]interface{}{"FEATURE_GITHUB_LOGIN": true}, want: "invalid"},
 		{name: "Valid", config: map[string]interface{}{"FEATURE_GITHUB_LOGIN": true, "GITHUB_LOGIN_CONFIG": map[interface{}]interface{}{
-			"CLIENT_ID":       "fc0ef3cf19f90de48af9",
-			"CLIENT_SECRET":   "8bd923a5768a59f2e5f848752fa71ae62f4991ce",
+			"CLIENT_ID":       "test_client_key",
+			"CLIENT_SECRET":   "test_secret_key",
 			"GITHUB_ENDPOINT": "https://endpoint.com",
 		}}, want: "valid"},
 		{name: "NoClientSecret", config: map[string]interface{}{"FEATURE_GITHUB_LOGIN": true, "GITHUB_LOGIN_CONFIG": map[interface{}]interface{}{
@@ -48,8 +48,8 @@ func TestValidateGitHubLoginTrigger(t *testing.T) {
 			"ORG_RESTRICT":    true,
 		}}, want: "invalid"},
 		{name: "ValidWithOrgList", config: map[string]interface{}{"FEATURE_GITHUB_LOGIN": true, "GITHUB_LOGIN_CONFIG": map[interface{}]interface{}{
-			"CLIENT_ID":             "fc0ef3cf19f90de48af9",
-			"CLIENT_SECRET":         "8bd923a5768a59f2e5f848752fa71ae62f4991ce",
+			"CLIENT_ID":             "test_client_key",
+			"CLIENT_SECRET":         "test_secret_key",
 			"GITHUB_ENDPOINT":       "https://endpoint.com",
 			"ORG_RESTRICT":          true,
 			"ALLOWED_ORGANIZATIONS": []interface{}{"Org1", "Org2"},

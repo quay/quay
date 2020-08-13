@@ -78,7 +78,12 @@ func (fg *GitHubLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	}
 
 	// Check OAuth endpoint
-	success := shared.ValidateGitHubOAuth(fg.GithubLoginConfig.ClientId, fg.GithubLoginConfig.ClientSecret)
+	var success bool
+	if opts.Mode != "testing" {
+		success = shared.ValidateGitHubOAuth(fg.GithubLoginConfig.ClientId, fg.GithubLoginConfig.ClientSecret)
+	} else {
+		success = (fg.GithubLoginConfig.ClientId == "test_client_key") && (fg.GithubLoginConfig.ClientSecret == "test_secret_key")
+	}
 	if !success {
 		newError := shared.ValidationError{
 			Tags:    []string{"GITHUB_TRIGGER_CONFIG.CLIENT_ID", "GITHUB_TRIGGER_CONFIG.CLIENT_SECRET"},
@@ -87,7 +92,6 @@ func (fg *GitHubLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 		}
 		errors = append(errors, newError)
 	}
-
 	return errors
 
 }

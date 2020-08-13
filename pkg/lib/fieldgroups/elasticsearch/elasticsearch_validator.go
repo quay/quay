@@ -80,14 +80,23 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 		errors = append(errors, newError)
 	}
 
-	// Get parameters to build url
-	host := fg.LogsModelConfig.ElasticsearchConfig.Host
-	port := strconv.Itoa(fg.LogsModelConfig.ElasticsearchConfig.Port)
-	//indexPrefix := fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix
+	// Validate OAuth
+	var success bool
+	if opts.Mode != "testing" {
+		// Get parameters to build url
+		host := fg.LogsModelConfig.ElasticsearchConfig.Host
+		port := strconv.Itoa(fg.LogsModelConfig.ElasticsearchConfig.Port)
+		//indexPrefix := fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix
 
-	// Build url
-	url := "https://" + host + ":" + port + "/" + fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix + "*"
-	success := ValidateElasticSearchCredentials(url, fg.LogsModelConfig.ElasticsearchConfig.AccessKey, fg.LogsModelConfig.ElasticsearchConfig.SecretKey)
+		// Build url
+		url := "https://" + host + ":" + port + "/" + fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix + "*"
+		success = ValidateElasticSearchCredentials(url, fg.LogsModelConfig.ElasticsearchConfig.AccessKey, fg.LogsModelConfig.ElasticsearchConfig.SecretKey)
+
+	} else {
+		// Mock test
+		success = (fg.LogsModelConfig.ElasticsearchConfig.AccessKey == "test_client_key") && (fg.LogsModelConfig.ElasticsearchConfig.SecretKey == "test_secret_key")
+	}
+
 	if !success {
 		newError := shared.ValidationError{
 			Tags:    []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY", "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY"},
