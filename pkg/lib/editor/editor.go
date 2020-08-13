@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -55,6 +54,8 @@ func configValidator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errors := loaded.Validate(opts)
+
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	js, err := json.Marshal(errors)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
