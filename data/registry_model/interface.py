@@ -14,16 +14,13 @@ class RegistryDataInterface(object):
     @abstractmethod
     def get_tag_legacy_image_id(self, repository_ref, tag_name, storage):
         """
-        Returns the legacy image ID for the tag with a legacy images in the repository.
-
-        Returns None if None.
+        Returns the legacy image ID for the tag in the repository or None if none.
         """
 
     @abstractmethod
     def get_legacy_tags_map(self, repository_ref, storage):
         """
-        Returns a map from tag name to its legacy image ID, for all tags with legacy images in the
-        repository.
+        Returns a map from tag name to its legacy image ID, for all tags in the repository.
 
         Note that this can be a *very* heavy operation.
         """
@@ -51,19 +48,14 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_manifest_for_tag(self, tag, backfill_if_necessary=False, include_legacy_image=False):
+    def get_manifest_for_tag(self, tag):
         """
         Returns the manifest associated with the given tag.
         """
 
     @abstractmethod
     def lookup_manifest_by_digest(
-        self,
-        repository_ref,
-        manifest_digest,
-        allow_dead=False,
-        include_legacy_image=False,
-        require_available=False,
+        self, repository_ref, manifest_digest, allow_dead=False, require_available=False,
     ):
         """
         Looks up the manifest with the given digest under the given repository and returns it or
@@ -92,15 +84,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_legacy_images(self, repository_ref):
-        """
-        Returns an iterator of all the LegacyImage's defined in the matching repository.
-        """
-
-    @abstractmethod
-    def get_legacy_image(
-        self, repository_ref, docker_image_id, include_parents=False, include_blob=False
-    ):
+    def get_legacy_image(self, repository_ref, docker_image_id, storage, include_blob=False):
         """
         Returns the matching LegacyImages under the matching repository, if any.
 
@@ -170,12 +154,12 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def list_all_active_repository_tags(self, repository_ref, include_legacy_images=False):
+    def list_all_active_repository_tags(self, repository_ref):
         """
         Returns a list of all the active tags in the repository.
 
         Note that this is a *HEAVY* operation on repositories with a lot of tags, and should only be
-        used for testing or where other more specific operations are not possible.
+        used for testing or legacy operations.
         """
 
     @abstractmethod
@@ -204,7 +188,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_repo_tag(self, repository_ref, tag_name, include_legacy_image=False):
+    def get_repo_tag(self, repository_ref, tag_name):
         """
         Returns the latest, *active* tag found in the repository, with the matching name or None if
         none.
@@ -260,12 +244,6 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_legacy_images_owned_by_tag(self, tag):
-        """
-        Returns all legacy images *solely owned and used* by the given tag.
-        """
-
-    @abstractmethod
     def get_security_status(self, manifest_or_legacy_image):
         """
         Returns the security status for the given manifest or legacy image or None if none.
@@ -291,7 +269,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_manifest_local_blobs(self, manifest, include_placements=False):
+    def get_manifest_local_blobs(self, manifest, storage, include_placements=False):
         """
         Returns the set of local blobs for the given manifest or None if none.
         """
@@ -317,57 +295,6 @@ class RegistryDataInterface(object):
 
         The layer information in `layer_info` will be of type
         `image.docker.types.ManifestImageLayer`. Should not be called for a manifest list.
-        """
-
-    @abstractmethod
-    def lookup_derived_image(
-        self, manifest, verb, storage, varying_metadata=None, include_placements=False
-    ):
-        """
-        Looks up the derived image for the given manifest, verb and optional varying metadata and
-        returns it or None if none.
-        """
-
-    @abstractmethod
-    def lookup_or_create_derived_image(
-        self,
-        manifest,
-        verb,
-        storage_location,
-        storage,
-        varying_metadata=None,
-        include_placements=False,
-    ):
-        """
-        Looks up the derived image for the given maniest, verb and optional varying metadata and
-        returns it.
-
-        If none exists, a new derived image is created.
-        """
-
-    @abstractmethod
-    def get_derived_image_signature(self, derived_image, signer_name):
-        """
-        Returns the signature associated with the derived image and a specific signer or None if
-        none.
-        """
-
-    @abstractmethod
-    def set_derived_image_signature(self, derived_image, signer_name, signature):
-        """
-        Sets the calculated signature for the given derived image and signer to that specified.
-        """
-
-    @abstractmethod
-    def delete_derived_image(self, derived_image):
-        """
-        Deletes a derived image and all of its storage.
-        """
-
-    @abstractmethod
-    def set_derived_image_size(self, derived_image, compressed_size):
-        """
-        Sets the compressed size on the given derived image.
         """
 
     @abstractmethod
@@ -475,16 +402,13 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def yield_tags_for_vulnerability_notification(self, layer_id_pairs):
-        """
-        Yields tags that contain one (or more) of the given layer ID pairs, in repositories which
-        have been registered for vulnerability_found notifications.
-
-        Returns an iterator of LikelyVulnerableTag instances.
-        """
-
-    @abstractmethod
     def find_repository_with_garbage(self, limit_to_gc_policy_s):
         """ Returns a repository reference to a repository that contains garbage for collection
             or None if none.
+        """
+
+    @abstractmethod
+    def populate_legacy_images_for_testing(self, manifest, storage):
+        """ Populates legacy images for the given manifest, for testing only. This call
+            will fail if called under non-testing code.
         """

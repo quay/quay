@@ -129,12 +129,13 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
         headers=headers,
     )
 
+    repository = model.repository.get_repository("devtable", "building")
+
     if expect_success:
         # Ensure the blob now exists under the repo.
-        model.blob.get_repo_blob_by_digest("devtable", "building", mount_digest)
+        assert model.oci.blob.get_repository_blob_by_digest(repository, mount_digest)
     else:
-        with pytest.raises(model.blob.BlobDoesNotExist):
-            model.blob.get_repo_blob_by_digest("devtable", "building", mount_digest)
+        assert model.oci.blob.get_repository_blob_by_digest(repository, mount_digest) is None
 
 
 def test_blob_upload_offset(client, app):

@@ -123,7 +123,14 @@ def list_repository_tag_history(
     Note that the returned Manifest will not contain the manifest contents.
     """
     query = (
-        Tag.select(Tag, Manifest.id, Manifest.digest, Manifest.media_type)
+        Tag.select(
+            Tag,
+            Manifest.id,
+            Manifest.digest,
+            Manifest.media_type,
+            Manifest.layers_compressed_size,
+            Manifest.config_media_type,
+        )
         .join(Manifest)
         .where(Tag.repository == repository_id)
         .order_by(Tag.lifetime_start_ms.desc(), Tag.name)
@@ -141,29 +148,12 @@ def list_repository_tag_history(
 
     if active_tags_only:
         query = filter_to_alive_tags(query)
+    else:
+        query = filter_to_visible_tags(query)
 
-    query = filter_to_visible_tags(query)
     results = list(query)
 
     return results[0:page_size], len(results) > page_size
-
-
-def get_legacy_images_for_tags(tags):
-    """
-    Returns a map from tag ID to the legacy image for the tag.
-    """
-    if not tags:
-        return {}
-
-    query = (
-        ManifestLegacyImage.select(ManifestLegacyImage, Image, ImageStorage)
-        .join(Image)
-        .join(ImageStorage)
-        .where(ManifestLegacyImage.manifest << [tag.manifest_id for tag in tags])
-    )
-
-    by_manifest = {mli.manifest_id: mli.image for mli in query}
-    return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
 
 
 def find_matching_tag(repository_id, tag_names, tag_kinds=None):
@@ -417,7 +407,6 @@ def delete_tags_for_manifest(manifest):
     """
     query = Tag.select().where(Tag.manifest == manifest)
     query = filter_to_alive_tags(query)
-    query = filter_to_visible_tags(query)
 
     tags = list(query)
     now_ms = get_epoch_timestamp_ms()
@@ -446,9 +435,8 @@ def filter_to_alive_tags(query, now_ms=None, model=Tag):
     if now_ms is None:
         now_ms = get_epoch_timestamp_ms()
 
-    return query.where((model.lifetime_end_ms >> None) | (model.lifetime_end_ms > now_ms)).where(
-        model.hidden == False
-    )
+    query = query.where((model.lifetime_end_ms >> None) | (model.lifetime_end_ms > now_ms))
+    return filter_to_visible_tags(query)
 
 
 def set_tag_expiration_sec_for_manifest(manifest_id, expiration_seconds):
@@ -578,70 +566,6 @@ def tags_containing_legacy_image(image):
     return filter_to_alive_tags(tags)
 
 
-def lookup_notifiable_tags_for_legacy_image(docker_image_id, storage_uuid, event_name):
-    """
-    Yields any alive Tags found in repositories with an event with the given name registered and
-    whose legacy Image has the given docker image ID and storage UUID.
-    """
-    event = ExternalNotificationEvent.get(name=event_name)
-    images = (
-        Image.select()
-        .join(ImageStorage)
-        .where(Image.docker_image_id == docker_image_id, ImageStorage.uuid == storage_uuid)
-    )
-
-    for image in list(images):
-        # Ensure the image is under a repository that supports the event.
-        try:
-            RepositoryNotification.get(repository=image.repository_id, event=event)
-        except RepositoryNotification.DoesNotExist:
-            continue
-
-        # If found in a repository with the valid event, yield the tag(s) that contains the image.
-        for tag in tags_containing_legacy_image(image):
-            yield tag
-
-
-def get_tags_for_legacy_image(image_id):
-    """ Returns the Tag's that have the associated legacy image. 
-    
-        NOTE: This is for legacy support in the old security notification worker and should
-        be removed once that code is no longer necessary.
-    """
-    return filter_to_alive_tags(
-        Tag.select()
-        .distinct()
-        .join(Manifest)
-        .join(ManifestLegacyImage)
-        .where(ManifestLegacyImage.image == image_id)
-    )
-
-
-def _filter_has_repository_event(query, event):
-    """ Filters the query by ensuring the repositories returned have the given event.
-    
-        NOTE: This is for legacy support in the old security notification worker and should
-        be removed once that code is no longer necessary.
-    """
-    return (
-        query.join(Repository)
-        .join(RepositoryNotification)
-        .where(RepositoryNotification.event == event)
-    )
-
-
-def filter_tags_have_repository_event(query, event):
-    """ Filters the query by ensuring the tags live in a repository that has the given
-        event. Also orders the results by lifetime_start_ms.
-    
-        NOTE: This is for legacy support in the old security notification worker and should
-        be removed once that code is no longer necessary.
-    """
-    query = _filter_has_repository_event(query, event)
-    query = query.switch(Tag).order_by(Tag.lifetime_start_ms.desc())
-    return query
-
-
 def find_repository_with_garbage(limit_to_gc_policy_s):
     """ Returns a repository that has garbage (defined as an expired Tag that is past
         the repo's namespace's expiration window) or None if none.
@@ -680,3 +604,20 @@ def find_repository_with_garbage(limit_to_gc_policy_s):
         return None
     except Repository.DoesNotExist:
         return None
+
+
+def get_legacy_images_for_tags(tags):
+    """
+    Returns a map from tag ID to the legacy image for the tag.
+    """
+    if not tags:
+        return {}
+
+    query = (
+        ManifestLegacyImage.select(ManifestLegacyImage, Image)
+        .join(Image)
+        .where(ManifestLegacyImage.manifest << [tag.manifest_id for tag in tags])
+    )
+
+    by_manifest = {mli.manifest_id: mli.image for mli in query}
+    return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}

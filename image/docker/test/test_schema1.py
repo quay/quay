@@ -37,10 +37,12 @@ MANIFEST_BYTES = json.dumps(
         "tag": "latest",
         "architecture": "amd64",
         "fsLayers": [
+            {"blobSum": "sha256:cd8567d70002e957612902a8e985ea129d831ebe04057d88fb644857caa45d11"},
             {"blobSum": "sha256:cc8567d70002e957612902a8e985ea129d831ebe04057d88fb644857caa45d11"},
             {"blobSum": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"},
         ],
         "history": [
+            {"v1Compatibility": '{"id":"sizedid", "parent": "someid", "Size": 1234}'},
             {"v1Compatibility": '{"id":"someid", "parent": "anotherid"}'},
             {"v1Compatibility": '{"id":"anotherid"}'},
         ],
@@ -71,10 +73,12 @@ def test_valid_manifest():
     assert manifest.namespace == ""
     assert manifest.repo_name == "hello-world"
     assert manifest.tag == "latest"
-    assert manifest.image_ids == {"someid", "anotherid"}
-    assert manifest.parent_image_ids == {"anotherid"}
+    assert manifest.image_ids == {"sizedid", "someid", "anotherid"}
+    assert manifest.parent_image_ids == {"someid", "anotherid"}
+    assert manifest.layers_compressed_size == 1234
+    assert manifest.config_media_type is None
 
-    assert len(manifest.layers) == 2
+    assert len(manifest.layers) == 3
 
     assert manifest.layers[0].v1_metadata.image_id == "anotherid"
     assert manifest.layers[0].v1_metadata.parent_image_id is None
@@ -82,10 +86,14 @@ def test_valid_manifest():
     assert manifest.layers[1].v1_metadata.image_id == "someid"
     assert manifest.layers[1].v1_metadata.parent_image_id == "anotherid"
 
+    assert manifest.layers[2].v1_metadata.image_id == "sizedid"
+    assert manifest.layers[2].v1_metadata.parent_image_id == "someid"
+
     assert manifest.layers[0].compressed_size is None
     assert manifest.layers[1].compressed_size is None
+    assert manifest.layers[2].compressed_size == 1234
 
-    assert manifest.leaf_layer == manifest.layers[1]
+    assert manifest.leaf_layer == manifest.layers[2]
     assert manifest.created_datetime is None
 
     unsigned = manifest.unsigned()
@@ -97,8 +105,8 @@ def test_valid_manifest():
     assert unsigned.digest != manifest.digest
 
     image_layers = list(manifest.get_layers(None))
-    assert len(image_layers) == 2
-    for index in range(0, 2):
+    assert len(image_layers) == 3
+    for index in range(0, 3):
         assert image_layers[index].layer_id == manifest.layers[index].v1_metadata.image_id
         assert image_layers[index].blob_digest == manifest.layers[index].digest
         assert image_layers[index].command == manifest.layers[index].v1_metadata.command

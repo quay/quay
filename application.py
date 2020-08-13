@@ -13,7 +13,6 @@ from app import app as application
 
 # Bind all of the blueprints
 import web
-import verbs
 import registry
 import secscan
 

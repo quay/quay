@@ -29,14 +29,12 @@ def default_services():
         "notificationworker": {"autostart": "true"},
         "queuecleanupworker": {"autostart": "true"},
         "repositoryactioncounter": {"autostart": "true"},
-        "security_notification_worker": {"autostart": "true"},
         "securityworker": {"autostart": "true"},
         "storagereplication": {"autostart": "true"},
         "teamsyncworker": {"autostart": "true"},
         "dnsmasq": {"autostart": "true"},
         "gunicorn-registry": {"autostart": "true"},
         "gunicorn-secscan": {"autostart": "true"},
-        "gunicorn-verbs": {"autostart": "true"},
         "gunicorn-web": {"autostart": "true"},
         "ip-resolver-update-worker": {"autostart": "true"},
         "jwtproxy": {"autostart": "true"},
@@ -45,6 +43,7 @@ def default_services():
         "pushgateway": {"autostart": "true"},
         "servicekey": {"autostart": "true"},
         "repomirrorworker": {"autostart": "false"},
+        "backfillmanifestworker": {"autostart": "false"},
     }
 
 

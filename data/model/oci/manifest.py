@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 
 from collections import namedtuple
 
@@ -10,6 +12,10 @@ from data.database import (
     ManifestBlob,
     ManifestLegacyImage,
     ManifestChild,
+    ImageStorage,
+    ImageStoragePlacement,
+    ImageStorageTransformation,
+    ImageStorageSignature,
     db_transaction,
 )
 from data.model import BlobDoesNotExist
@@ -17,11 +23,12 @@ from data.model.blob import get_or_create_shared_blob, get_shared_blob
 from data.model.oci.tag import filter_to_alive_tags, create_temporary_tag_if_necessary
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
-from data.model.storage import lookup_repo_storages_by_content_checksum
+from data.model.storage import lookup_repo_storages_by_content_checksum, create_v1_storage
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException
 from image.docker.schema2.list import MalformedSchema2ManifestList
+from util.canonicaljson import canonicalize
 from util.validation import is_json
 
 
@@ -37,6 +44,15 @@ class CreateManifestException(Exception):
     """
     Exception raised when creating a manifest fails and explicit exception raising is requested.
     """
+
+
+class _ManifestAlreadyExists(Exception):
+    """
+    Exception raised to break out of manifest creation due to the manifest already existing.
+    """
+
+    def __init__(self, internal_exception):
+        self.internal_exception = internal_exception
 
 
 def lookup_manifest(
@@ -206,6 +222,148 @@ def _create_manifest(
             child_manifest_rows[child_manifest_info.manifest.digest] = child_manifest_info.manifest
             child_manifest_label_dicts.append(labels)
 
+    # Build the map from required blob digests to the blob objects.
+    blob_map = _build_blob_map(
+        repository_id,
+        manifest_interface_instance,
+        retriever,
+        storage,
+        raise_on_error,
+        require_empty_layer=False,
+    )
+    if blob_map is None:
+        return None
+
+    # Create the manifest and its blobs.
+    media_type = Manifest.media_type.get_id(manifest_interface_instance.media_type)
+    storage_ids = {storage.id for storage in list(blob_map.values())}
+
+    # Check for the manifest, in case it was created since we checked earlier.
+    try:
+        manifest = Manifest.get(repository=repository_id, digest=manifest_interface_instance.digest)
+        return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
+    except Manifest.DoesNotExist:
+        pass
+
+    try:
+        with db_transaction():
+            # Create the manifest.
+            try:
+                manifest = Manifest.create(
+                    repository=repository_id,
+                    digest=manifest_interface_instance.digest,
+                    media_type=media_type,
+                    manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
+                    config_media_type=manifest_interface_instance.config_media_type,
+                    layers_compressed_size=manifest_interface_instance.layers_compressed_size,
+                )
+            except IntegrityError as ie:
+                # NOTE: An IntegrityError means (barring a bug) that the manifest was created by
+                # another caller while we were attempting to create it. Since we need to return
+                # the manifest, we raise a specialized exception here to break out of the
+                # transaction so we can retrieve it.
+                raise _ManifestAlreadyExists(ie)
+
+            # Insert the blobs.
+            blobs_to_insert = [
+                dict(manifest=manifest, repository=repository_id, blob=storage_id)
+                for storage_id in storage_ids
+            ]
+            if blobs_to_insert:
+                try:
+                    ManifestBlob.insert_many(blobs_to_insert).execute()
+                except IntegrityError as ie:
+                    raise _ManifestAlreadyExists(ie)
+
+            # Insert the manifest child rows (if applicable).
+            if child_manifest_rows:
+                children_to_insert = [
+                    dict(manifest=manifest, child_manifest=child_manifest, repository=repository_id)
+                    for child_manifest in list(child_manifest_rows.values())
+                ]
+                try:
+                    ManifestChild.insert_many(children_to_insert).execute()
+                except IntegrityError as ie:
+                    raise _ManifestAlreadyExists(ie)
+
+            # If this manifest is being created not for immediate tagging, add a temporary tag to the
+            # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're
+            # creating a new one here, it cannot be GCed (since it isn't referenced by anything yet), so
+            # its safe to elide the temp tag operation. If we ever change GC code to collect *all* manifests
+            # in a repository for GC, then we will have to reevaluate this optimization at that time.
+            if not for_tagging:
+                create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
+
+        # Define the labels for the manifest (if any).
+        # TODO: Once the old data model is gone, turn this into a batch operation and make the label
+        # application to the manifest occur under the transaction.
+        labels = manifest_interface_instance.get_manifest_labels(retriever)
+        if labels:
+            for key, value in labels.items():
+                # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
+                # such `labels`, as they don't really mean anything.
+                if not key:
+                    continue
+
+                media_type = "application/json" if is_json(value) else "text/plain"
+                create_manifest_label(manifest, key, value, "manifest", media_type)
+
+        # Return the dictionary of labels to apply (i.e. those labels that cause an action to be taken
+        # on the manifest or its resulting tags). We only return those labels either defined on
+        # the manifest or shared amongst all the child manifests. We intersect amongst all child manifests
+        # to ensure that any action performed is defined in all manifests.
+        labels_to_apply = labels or {}
+        if child_manifest_label_dicts:
+            labels_to_apply = child_manifest_label_dicts[0].items()
+            for child_manifest_label_dict in child_manifest_label_dicts[1:]:
+                # Intersect the key+values of the labels to ensure we get the exact same result
+                # for all the child manifests.
+                labels_to_apply = labels_to_apply & child_manifest_label_dict.items()
+
+            labels_to_apply = dict(labels_to_apply)
+
+        return CreatedManifest(
+            manifest=manifest, newly_created=True, labels_to_apply=labels_to_apply
+        )
+    except _ManifestAlreadyExists as mae:
+        try:
+            manifest = Manifest.get(
+                repository=repository_id, digest=manifest_interface_instance.digest
+            )
+        except Manifest.DoesNotExist:
+            # NOTE: If we've reached this point, then somehow we had an IntegrityError without it
+            # being due to a duplicate manifest. We therefore log the error.
+            logger.error(
+                "Got integrity error when trying to create manifest: %s", mae.internal_exception
+            )
+            if raise_on_error:
+                raise CreateManifestException(
+                    "Attempt to create an invalid manifest. Please report this issue."
+                )
+
+            return None
+
+        return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
+
+
+def _build_blob_map(
+    repository_id,
+    manifest_interface_instance,
+    retriever,
+    storage,
+    raise_on_error=False,
+    require_empty_layer=True,
+):
+    """ Builds a map containing the digest of each blob referenced by the given manifest,
+        to its associated Blob row in the database. This method also verifies that the blob
+        is accessible under the given repository. Returns None on error (unless raise_on_error
+        is specified). If require_empty_layer is set to True, the method will check if the manifest
+        references the special shared empty layer blob and, if so, add it to the map. Otherwise,
+        the empty layer blob is only returned if it was *explicitly* referenced in the manifest.
+        This is necessary because Docker V2_2/OCI manifests can implicitly reference an empty blob
+        layer for image layers that only change metadata.
+    """
+
     # Ensure all the blobs in the manifest exist.
     digests = set(manifest_interface_instance.local_blob_digests)
     blob_map = {}
@@ -224,7 +382,7 @@ def _create_manifest(
             return None
 
     if digests:
-        query = lookup_repo_storages_by_content_checksum(repository_id, digests)
+        query = lookup_repo_storages_by_content_checksum(repository_id, digests, with_uploads=True)
         blob_map.update({s.content_checksum: s for s in query})
         for digest_str in digests:
             if digest_str not in blob_map:
@@ -242,8 +400,8 @@ def _create_manifest(
 
     # Special check: If the empty layer blob is needed for this manifest, add it to the
     # blob map. This is necessary because Docker decided to elide sending of this special
-    # empty layer in schema version 2, but we need to have it referenced for GC and schema version 1.
-    if EMPTY_LAYER_BLOB_DIGEST not in blob_map:
+    # empty layer in schema version 2, but we need to have it referenced for schema version 1.
+    if require_empty_layer and EMPTY_LAYER_BLOB_DIGEST not in blob_map:
         try:
             requires_empty_layer = manifest_interface_instance.get_requires_empty_layer_blob(
                 retriever
@@ -268,22 +426,36 @@ def _create_manifest(
             assert shared_blob.content_checksum == EMPTY_LAYER_BLOB_DIGEST
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 
+    return blob_map
+
+
+def populate_legacy_images_for_testing(manifest, manifest_interface_instance, storage):
+    """ Populates the legacy image rows for the given manifest. """
+    # NOTE: This method is only kept around for use by legacy tests that still require
+    # legacy images. As a result, we make sure we're in testing mode before we run.
+    assert os.getenv("TEST") == "true"
+
+    repository_id = manifest.repository_id
+    retriever = RepositoryContentRetriever.for_repository(repository_id, storage)
+
+    blob_map = _build_blob_map(
+        repository_id, manifest_interface_instance, storage, True, require_empty_layer=True
+    )
+    if blob_map is None:
+        return None
+
     # Determine and populate the legacy image if necessary. Manifest lists will not have a legacy
     # image.
     legacy_image = None
     if manifest_interface_instance.has_legacy_image:
         try:
             legacy_image_id = _populate_legacy_image(
-                repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error
+                repository_id, manifest_interface_instance, blob_map, retriever, True
             )
         except ManifestException as me:
-            logger.error("Got manifest error when populating legacy images: %s", me)
-            if raise_on_error:
-                raise CreateManifestException(
-                    "Attempt to create an invalid manifest: %s. Please report this issue." % me
-                )
-
-            return None
+            raise CreateManifestException(
+                "Attempt to create an invalid manifest: %s. Please report this issue." % me
+            )
 
         if legacy_image_id is None:
             return None
@@ -292,104 +464,11 @@ def _create_manifest(
         if legacy_image is None:
             return None
 
-    # Create the manifest and its blobs.
-    media_type = Manifest.media_type.get_id(manifest_interface_instance.media_type)
-    storage_ids = {storage.id for storage in list(blob_map.values())}
-
-    with db_transaction():
-        # Check for the manifest. This is necessary because Postgres doesn't handle IntegrityErrors
-        # well under transactions.
-        try:
-            manifest = Manifest.get(
-                repository=repository_id, digest=manifest_interface_instance.digest
-            )
-            return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
-        except Manifest.DoesNotExist:
-            pass
-
-        # Create the manifest.
-        try:
-            manifest = Manifest.create(
-                repository=repository_id,
-                digest=manifest_interface_instance.digest,
-                media_type=media_type,
-                manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
-            )
-        except IntegrityError as ie:
-            try:
-                manifest = Manifest.get(
-                    repository=repository_id, digest=manifest_interface_instance.digest
-                )
-            except Manifest.DoesNotExist:
-                logger.error("Got integrity error when trying to create manifest: %s", ie)
-                if raise_on_error:
-                    raise CreateManifestException(
-                        "Attempt to create an invalid manifest. Please report this issue."
-                    )
-
-                return None
-
-            return CreatedManifest(manifest=manifest, newly_created=False, labels_to_apply=None)
-
-        # Insert the blobs.
-        blobs_to_insert = [
-            dict(manifest=manifest, repository=repository_id, blob=storage_id)
-            for storage_id in storage_ids
-        ]
-        if blobs_to_insert:
-            ManifestBlob.insert_many(blobs_to_insert).execute()
-
         # Set the legacy image (if applicable).
         if legacy_image is not None:
             ManifestLegacyImage.create(
                 repository=repository_id, image=legacy_image, manifest=manifest
             )
-
-        # Insert the manifest child rows (if applicable).
-        if child_manifest_rows:
-            children_to_insert = [
-                dict(manifest=manifest, child_manifest=child_manifest, repository=repository_id)
-                for child_manifest in list(child_manifest_rows.values())
-            ]
-            ManifestChild.insert_many(children_to_insert).execute()
-
-        # If this manifest is being created not for immediate tagging, add a temporary tag to the
-        # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're
-        # creating a new one here, it cannot be GCed (since it isn't referenced by anything yet), so
-        # its safe to elide the temp tag operation. If we ever change GC code to collect *all* manifests
-        # in a repository for GC, then we will have to reevaluate this optimization at that time.
-        if not for_tagging:
-            create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
-
-    # Define the labels for the manifest (if any).
-    # TODO: Once the old data model is gone, turn this into a batch operation and make the label
-    # application to the manifest occur under the transaction.
-    labels = manifest_interface_instance.get_manifest_labels(retriever)
-    if labels:
-        for key, value in labels.items():
-            # NOTE: There can technically be empty label keys via Dockerfile's. We ignore any
-            # such `labels`, as they don't really mean anything.
-            if not key:
-                continue
-
-            media_type = "application/json" if is_json(value) else "text/plain"
-            create_manifest_label(manifest, key, value, "manifest", media_type)
-
-    # Return the dictionary of labels to apply (i.e. those labels that cause an action to be taken
-    # on the manifest or its resulting tags). We only return those labels either defined on
-    # the manifest or shared amongst all the child manifests. We intersect amongst all child manifests
-    # to ensure that any action performed is defined in all manifests.
-    labels_to_apply = labels or {}
-    if child_manifest_label_dicts:
-        labels_to_apply = child_manifest_label_dicts[0].items()
-        for child_manifest_label_dict in child_manifest_label_dicts[1:]:
-            # Intersect the key+values of the labels to ensure we get the exact same result
-            # for all the child manifests.
-            labels_to_apply = labels_to_apply & child_manifest_label_dict.items()
-
-        labels_to_apply = dict(labels_to_apply)
-
-    return CreatedManifest(manifest=manifest, newly_created=True, labels_to_apply=labels_to_apply)
 
 
 def _populate_legacy_image(

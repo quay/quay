@@ -30,6 +30,7 @@ from data.database import (
     TagToRepositoryTag,
     ImageStorageLocation,
     RepositoryTag,
+    UploadedBlob,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from digest.digest_tools import sha256_digest
@@ -61,11 +62,7 @@ def default_tag_policy(initialized_db):
 
 def _delete_temp_links(repo):
     """ Deletes any temp links to blobs. """
-    for hidden in list(
-        RepositoryTag.select().where(RepositoryTag.hidden == True, RepositoryTag.repository == repo)
-    ):
-        hidden.delete_instance()
-        hidden.image.delete_instance()
+    UploadedBlob.delete().where(UploadedBlob.repository == repo).execute()
 
 
 def _populate_blob(repo, content):
@@ -128,6 +125,10 @@ def move_tag(repository, tag, image_ids, expect_gc=True):
         repo_ref, manifest, tag, storage, raise_on_error=True
     )
 
+    tag_ref = registry_model.get_repo_tag(repo_ref, tag)
+    manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
+    registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
+
     if expect_gc:
         assert model.gc.garbage_collect_repo(repository) == expect_gc
 
@@ -156,10 +157,17 @@ def _get_dangling_storage_count():
     storage_ids = set([current.id for current in ImageStorage.select()])
     referenced_by_image = set([image.storage_id for image in Image.select()])
     referenced_by_manifest = set([blob.blob_id for blob in ManifestBlob.select()])
-    referenced_by_derived = set(
+    referenced_by_uploaded = set([upload.blob_id for upload in UploadedBlob.select()])
+    referenced_by_derived_image = set(
         [derived.derivative_id for derived in DerivedStorageForImage.select()]
     )
-    return len(storage_ids - referenced_by_image - referenced_by_derived - referenced_by_manifest)
+    return len(
+        storage_ids
+        - referenced_by_image
+        - referenced_by_derived_image
+        - referenced_by_manifest
+        - referenced_by_uploaded
+    )
 
 
 def _get_dangling_label_count():
@@ -199,7 +207,7 @@ def assert_gc_integrity(expect_storage_removed=True):
     for blob_row in ApprBlob.select():
         existing_digests.add(blob_row.digest)
 
-    # Store the number of dangling storages and labels.
+    # Store the number of dangling objects.
     existing_storage_count = _get_dangling_storage_count()
     existing_label_count = _get_dangling_label_count()
     existing_manifest_count = _get_dangling_manifest_count()
@@ -244,6 +252,13 @@ def assert_gc_integrity(expect_storage_removed=True):
             shared = (
                 ManifestBlob.select()
                 .where(ManifestBlob.blob == removed_image_and_storage.storage_id)
+                .count()
+            )
+
+        if shared == 0:
+            shared = (
+                UploadedBlob.select()
+                .where(UploadedBlob.blob == removed_image_and_storage.storage_id)
                 .count()
             )
 
@@ -672,6 +687,10 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
             repo_ref, manifest, "first", storage, raise_on_error=True
         )
 
+        tag_ref = registry_model.get_repo_tag(repo_ref, "first")
+        manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
+        registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
+
         # Store another as `second`.
         builder = DockerSchema1ManifestBuilder(
             repository.namespace_user.username, repository.name, "second"
@@ -681,6 +700,10 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         created, _ = registry_model.create_manifest_and_retarget_tag(
             repo_ref, manifest, "second", storage, raise_on_error=True
         )
+
+        tag_ref = registry_model.get_repo_tag(repo_ref, "second")
+        manifest_ref = registry_model.get_manifest_for_tag(tag_ref)
+        registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
 
         # Manually retarget the second manifest's blob to the second row.
         try:

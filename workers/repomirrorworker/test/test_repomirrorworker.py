@@ -56,14 +56,18 @@ def _create_tag(repo, name):
         )
         upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
         blob = upload.commit_to_blob(app_config)
+        assert blob
+
     builder = DockerSchema2ManifestBuilder()
     builder.set_config_digest(blob.digest, blob.compressed_size)
     builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
     manifest = builder.build()
 
     manifest, tag = registry_model.create_manifest_and_retarget_tag(
-        repo_ref, manifest, name, storage
+        repo_ref, manifest, name, storage, raise_on_error=True
     )
+    assert tag
+    assert tag.name == name
 
 
 @disable_existing_mirrors
@@ -91,6 +95,7 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=False",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -148,6 +153,7 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -204,6 +210,7 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
                 "/usr/bin/skopeo",
                 "--debug",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -267,6 +274,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -281,6 +289,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -295,6 +304,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -313,9 +323,9 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             assert args == skopeo_call["args"]
             assert proxy == {}
 
-            if args[1] == "copy" and args[6].endswith(":updated"):
+            if args[1] == "copy" and args[7].endswith(":updated"):
                 _create_tag(repo, "updated")
-            elif args[1] == "copy" and args[6].endswith(":created"):
+            elif args[1] == "copy" and args[7].endswith(":created"):
                 _create_tag(repo, "created")
 
             return skopeo_call["results"]
@@ -375,6 +385,7 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
                 "/usr/bin/skopeo",
                 "--debug",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -438,6 +449,7 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",
@@ -500,6 +512,7 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
             "args": [
                 "/usr/bin/skopeo",
                 "copy",
+                "--all",
                 "--src-tls-verify=True",
                 "--dest-tls-verify=True",
                 "--dest-creds",

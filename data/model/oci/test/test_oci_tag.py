@@ -18,7 +18,6 @@ from data.model.oci.tag import (
     get_most_recent_tag,
     get_most_recent_tag_lifetime_start,
     list_alive_tags,
-    get_legacy_images_for_tags,
     filter_to_alive_tags,
     filter_to_visible_tags,
     list_repository_tag_history,
@@ -92,13 +91,6 @@ def test_list_alive_tags(initialized_db):
     for tag in filter_to_visible_tags(filter_to_alive_tags(Tag.select())):
         tags = list_alive_tags(tag.repository)
         assert tag in tags
-
-        with assert_query_count(1):
-            legacy_images = get_legacy_images_for_tags(tags)
-
-        for tag in tags:
-            assert ManifestLegacyImage.get(manifest=tag.manifest).image == legacy_images[tag.id]
-
         found = True
 
     assert found
@@ -153,6 +145,11 @@ def test_list_repository_tag_history(namespace_name, repo_name, initialized_db):
 
     assert results
     assert not has_more
+
+    assert results[0].manifest.id is not None
+    assert results[0].manifest.digest is not None
+    assert results[0].manifest.media_type is not None
+    assert results[0].manifest.layers_compressed_size is not None
 
 
 def test_list_repository_tag_history_with_history(initialized_db):

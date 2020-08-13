@@ -15,6 +15,7 @@ from data.database import (
     IndexStatus,
     IndexerVersion,
     User,
+    ManifestBlob,
 )
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
@@ -33,8 +34,8 @@ def set_secscan_config():
 
 def test_load_security_information_queued(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.NOT_YET_INDEXED
@@ -42,8 +43,8 @@ def test_load_security_information_queued(initialized_db, set_secscan_config):
 
 def test_load_security_information_failed_to_index(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -61,8 +62,8 @@ def test_load_security_information_failed_to_index(initialized_db, set_secscan_c
 
 def test_load_security_information_api_returns_none(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -83,8 +84,8 @@ def test_load_security_information_api_returns_none(initialized_db, set_secscan_
 
 def test_load_security_information_api_request_failure(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     mss = ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -106,8 +107,8 @@ def test_load_security_information_api_request_failure(initialized_db, set_secsc
 
 def test_load_security_information_success(initialized_db, set_secscan_config):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     ManifestSecurityStatus.create(
         manifest=manifest._db_id,
@@ -140,11 +141,6 @@ def test_load_security_information_success(initialized_db, set_secscan_config):
 
 
 def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
-    expected_manifests = (
-        Manifest.select().join(Repository).join(User).where(User.username == "devtable")
-    )
-
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
@@ -155,38 +151,15 @@ def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
 
     next_token = secscan.perform_indexing()
 
-    assert secscan._secscan_api.index.call_count == expected_manifests.count()
-    for mss in ManifestSecurityStatus.select():
-        assert mss.repository.namespace_user.username == "devtable"
-    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
-    assert (
-        Manifest.get_by_id(next_token.min_id - 1).repository.namespace_user.username == "devtable"
-    )
-
-
-def test_perform_indexing_empty_whitelist(initialized_db, set_secscan_config):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = []
-    secscan = V4SecurityScanner(app, instance_keys, storage)
-    secscan._secscan_api = mock.Mock()
-    secscan._secscan_api.state.return_value = {"state": "abc"}
-    secscan._secscan_api.index.return_value = (
-        {"err": None, "state": IndexReportState.Index_Finished},
-        "abc",
-    )
-
-    next_token = secscan.perform_indexing()
-
-    assert secscan._secscan_api.index.call_count == 0
-    assert ManifestSecurityStatus.select().count() == 0
     assert next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
+
+    assert secscan._secscan_api.index.call_count == Manifest.select().count()
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.COMPLETED
 
 
 def test_perform_indexing_failed(initialized_db, set_secscan_config):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
-    expected_manifests = (
-        Manifest.select().join(Repository).join(User).where(User.username == "devtable")
-    )
-
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
@@ -195,7 +168,7 @@ def test_perform_indexing_failed(initialized_db, set_secscan_config):
         "abc",
     )
 
-    for manifest in expected_manifests:
+    for manifest in Manifest.select():
         ManifestSecurityStatus.create(
             manifest=manifest,
             repository=manifest.repository,
@@ -210,16 +183,13 @@ def test_perform_indexing_failed(initialized_db, set_secscan_config):
 
     secscan.perform_indexing()
 
-    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.COMPLETED
 
 
 def test_perform_indexing_failed_within_reindex_threshold(initialized_db, set_secscan_config):
     app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 300
-    expected_manifests = (
-        Manifest.select().join(Repository).join(User).where(User.username == "devtable")
-    )
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -229,7 +199,7 @@ def test_perform_indexing_failed_within_reindex_threshold(initialized_db, set_se
         "abc",
     )
 
-    for manifest in expected_manifests:
+    for manifest in Manifest.select():
         ManifestSecurityStatus.create(
             manifest=manifest,
             repository=manifest.repository,
@@ -242,17 +212,12 @@ def test_perform_indexing_failed_within_reindex_threshold(initialized_db, set_se
 
     secscan.perform_indexing()
 
-    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.FAILED
 
 
 def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
-    expected_manifests = (
-        Manifest.select().join(Repository).join(User).where(User.username == "devtable")
-    )
-
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "xyz"}
@@ -261,7 +226,7 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
         "xyz",
     )
 
-    for manifest in expected_manifests:
+    for manifest in Manifest.select():
         ManifestSecurityStatus.create(
             manifest=manifest,
             repository=manifest.repository,
@@ -276,7 +241,7 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
 
     secscan.perform_indexing()
 
-    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.indexer_hash == "xyz"
 
@@ -285,10 +250,6 @@ def test_perform_indexing_needs_reindexing_within_reindex_threshold(
     initialized_db, set_secscan_config
 ):
     app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] = 300
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
-    expected_manifests = (
-        Manifest.select().join(Repository).join(User).where(User.username == "devtable")
-    )
 
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
@@ -298,7 +259,7 @@ def test_perform_indexing_needs_reindexing_within_reindex_threshold(
         "xyz",
     )
 
-    for manifest in expected_manifests:
+    for manifest in Manifest.select():
         ManifestSecurityStatus.create(
             manifest=manifest,
             repository=manifest.repository,
@@ -311,14 +272,12 @@ def test_perform_indexing_needs_reindexing_within_reindex_threshold(
 
     secscan.perform_indexing()
 
-    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.indexer_hash == "abc"
 
 
 def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_config):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
-
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.side_effect = APIRequestFailure()
@@ -330,14 +289,6 @@ def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_
 
 
 def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_config):
-    app.config["SECURITY_SCANNER_V4_NAMESPACE_WHITELIST"] = ["devtable"]
-    expected_manifests = (
-        Manifest.select(fn.Max(Manifest.id))
-        .join(Repository)
-        .join(User)
-        .where(User.username == "devtable")
-    )
-
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "abc"}
@@ -357,8 +308,8 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
 
     next_token = secscan.perform_indexing()
 
-    assert next_token.min_id == expected_manifests.scalar() + 1
-    assert ManifestSecurityStatus.select().count() == expected_manifests.count()
+    assert next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
+    assert ManifestSecurityStatus.select().count() == Manifest.select(fn.Max(Manifest.id)).count()
 
 
 def test_features_for():
@@ -393,3 +344,17 @@ def test_features_for():
     generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
 
     assert generated == expected
+
+
+def test_perform_indexing_invalid_manifest(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    # Delete all ManifestBlob rows to cause the manifests to be invalid.
+    ManifestBlob.delete().execute()
+
+    secscan.perform_indexing()
+
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.MANIFEST_UNSUPPORTED

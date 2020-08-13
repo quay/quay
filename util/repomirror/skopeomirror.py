@@ -38,6 +38,7 @@ class SkopeoMirror(object):
             args = args + ["--debug"]
         args = args + [
             "copy",
+            "--all",
             "--src-tls-verify=%s" % src_tls_verify,
             "--dest-tls-verify=%s" % dest_tls_verify,
         ]
@@ -123,14 +124,16 @@ class SkopeoMirror(object):
         stdout = ""
         stderr = ""
         while True:
-            stdout_nextline = job.stdout.readline()
+            stdout_nextline = job.stdout.readline().decode("utf-8")
             stdout = stdout + stdout_nextline
-            stderr_nextline = job.stderr.readline()
+            stderr_nextline = job.stderr.readline().decode("utf-8")
             stderr = stderr + stderr_nextline
             if stdout_nextline == "" and stderr_nextline == "" and job.poll() is not None:
                 break
-            logger.debug("Skopeo [STDERR]: %s" % stderr_nextline)
-            logger.debug("Skopeo [STDOUT]: %s" % stdout_nextline)
+            if stderr_nextline != "":
+                logger.debug("Skopeo [STDERR]: %s" % stderr_nextline)
+            if stdout_nextline != "":
+                logger.debug("Skopeo [STDOUT]: %s" % stdout_nextline)
 
         job.communicate()
 

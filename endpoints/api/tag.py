@@ -9,6 +9,7 @@ from auth.auth_context import get_authenticated_user
 from data.registry_model import registry_model
 from endpoints.api import (
     resource,
+    deprecated,
     nickname,
     require_repo_read,
     require_repo_write,
@@ -40,18 +41,11 @@ def _tag_dict(tag):
     if tag.lifetime_end_ts and tag.lifetime_end_ts > 0:
         tag_info["end_ts"] = tag.lifetime_end_ts
 
-    # TODO: Remove this once fully on OCI data model.
-    if tag.legacy_image_if_present:
-        tag_info["docker_image_id"] = tag.legacy_image.docker_image_id
-        tag_info["image_id"] = tag.legacy_image.docker_image_id
-        tag_info["size"] = tag.legacy_image.aggregate_size
-
-    # TODO: Remove this check once fully on OCI data model.
-    if tag.manifest_digest:
-        tag_info["manifest_digest"] = tag.manifest_digest
-
-        if tag.manifest:
-            tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
+    tag_info["manifest_digest"] = tag.manifest_digest
+    tag_info["is_manifest_list"] = tag.manifest.is_manifest_list
+    tag_info["size"] = tag.manifest_layers_size
+    tag_info["docker_image_id"] = tag.manifest.legacy_image_root_id
+    tag_info["image_id"] = tag.manifest.legacy_image_root_id
 
     if tag.lifetime_start_ts and tag.lifetime_start_ts > 0:
         last_modified = format_date(datetime.utcfromtimestamp(tag.lifetime_start_ts))
@@ -188,7 +182,7 @@ class RepositoryTag(RepositoryParamResource):
                 raise InvalidRequest("Could not update tag expiration; Tag has probably changed")
 
         if "image" in request.get_json() or "manifest_digest" in request.get_json():
-            existing_tag = registry_model.get_repo_tag(repo_ref, tag, include_legacy_image=True)
+            existing_tag = registry_model.get_repo_tag(repo_ref, tag)
 
             manifest_or_image = None
             image_id = None
@@ -201,7 +195,7 @@ class RepositoryTag(RepositoryParamResource):
                 )
             else:
                 image_id = request.get_json()["image"]
-                manifest_or_image = registry_model.get_legacy_image(repo_ref, image_id)
+                manifest_or_image = registry_model.get_legacy_image(repo_ref, image_id, storage)
 
             if manifest_or_image is None:
                 raise NotFound()
@@ -272,6 +266,7 @@ class RepositoryTagImages(RepositoryParamResource):
     @nickname("listTagImages")
     @disallow_for_app_repositories
     @parse_args()
+    @deprecated()
     @query_param(
         "owned",
         "If specified, only images wholely owned by this tag are returned.",
@@ -286,30 +281,42 @@ class RepositoryTagImages(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        tag_ref = registry_model.get_repo_tag(repo_ref, tag, include_legacy_image=True)
+        tag_ref = registry_model.get_repo_tag(repo_ref, tag)
         if tag_ref is None:
             raise NotFound()
 
-        if tag_ref.legacy_image_if_present is None:
+        if parsed_args["owned"]:
+            # NOTE: This is deprecated, so we just return empty now.
             return {"images": []}
 
-        image_id = tag_ref.legacy_image.docker_image_id
+        manifest = registry_model.get_manifest_for_tag(tag_ref)
+        if manifest is None:
+            raise NotFound()
 
-        all_images = None
-        if parsed_args["owned"]:
-            # TODO: Remove the `owned` image concept once we are fully on V2_2.
-            all_images = registry_model.get_legacy_images_owned_by_tag(tag_ref)
-        else:
-            image_with_parents = registry_model.get_legacy_image(
-                repo_ref, image_id, include_parents=True
-            )
-            if image_with_parents is None:
-                raise NotFound()
+        legacy_image = registry_model.get_legacy_image(
+            repo_ref, manifest.legacy_image_root_id, storage
+        )
+        if legacy_image is None:
+            raise NotFound()
 
-            all_images = [image_with_parents] + image_with_parents.parents
-
+        # NOTE: This is replicating our older response for this endpoint, but
+        # returns empty for the metadata fields. This is to ensure back-compat
+        # for callers still using the deprecated API, while not having to load
+        # all the manifests from storage.
         return {
-            "images": [image_dict(image) for image in all_images],
+            "images": [
+                {
+                    "id": image_id,
+                    "created": format_date(datetime.utcfromtimestamp(tag_ref.lifetime_start_ts)),
+                    "comment": "",
+                    "command": "",
+                    "size": 0,
+                    "uploading": False,
+                    "sort_index": 0,
+                    "ancestors": "",
+                }
+                for image_id in legacy_image.full_image_id_chain
+            ]
         }
 
 
@@ -374,7 +381,7 @@ class RestoreTag(RepositoryParamResource):
                 repo_ref, manifest_digest, allow_dead=True, require_available=True
             )
         elif image_id is not None:
-            manifest_or_legacy_image = registry_model.get_legacy_image(repo_ref, image_id)
+            manifest_or_legacy_image = registry_model.get_legacy_image(repo_ref, image_id, storage)
 
         if manifest_or_legacy_image is None:
             raise NotFound()

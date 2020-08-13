@@ -27,7 +27,6 @@ from app import (
     billing as stripe,
     build_logs,
     avatar,
-    signer,
     log_archive,
     config_provider,
     get_app_url,
@@ -142,17 +141,6 @@ def org_view(path):
 @no_cache
 def user_view(path):
     return index("")
-
-
-@route_show_if(features.ACI_CONVERSION)
-@web.route("/aci-signing-key")
-@no_cache
-@anon_protect
-def aci_signing_key():
-    if not signer.name:
-        abort(404)
-
-    return send_file(signer.open_public_key_file(), mimetype=PGP_KEY_MIMETYPE)
 
 
 @web.route("/plans/")

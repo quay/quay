@@ -1,6 +1,8 @@
 import asyncio
 import datetime
 import hashlib
+import io
+import json
 import logging
 import os
 import socket
@@ -11,11 +13,11 @@ import uuid
 
 from functools import partial, wraps
 
-import boto.ec2
+import boto3
+import botocore
 import cachetools.func
 import requests
 
-from container_cloud_config import CloudConfigContext
 from jinja2 import FileSystemLoader, Environment
 from prometheus_client import Histogram
 
@@ -24,6 +26,7 @@ import release
 from _init import ROOT_DIR
 from app import app
 from buildman.asyncutil import AsyncWrapper
+from buildman.container_cloud_config import CloudConfigContext
 
 
 logger = logging.getLogger(__name__)
@@ -35,8 +38,8 @@ _TAG_RETRY_COUNT = 3  # Number of times to retry adding tags.
 _TAG_RETRY_SLEEP = 2  # Number of seconds to wait between tag retries.
 
 ENV = Environment(loader=FileSystemLoader(os.path.join(ROOT_DIR, "buildman/templates")))
-TEMPLATE = ENV.get_template("cloudconfig.yaml")
 CloudConfigContext().populate_jinja_environment(ENV)
+TEMPLATE = ENV.get_template("cloudconfig.json")
 
 
 build_start_duration = Histogram(
@@ -156,24 +159,27 @@ class BuilderExecutor(object):
         if quay_password is None:
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
-        return TEMPLATE.render(
-            realm=realm,
-            token=token,
-            build_uuid=build_uuid,
-            quay_username=quay_username,
-            quay_password=quay_password,
-            manager_hostname=manager_hostname,
-            websocket_scheme=self.websocket_scheme,
-            coreos_channel=coreos_channel,
-            worker_image=self.executor_config.get(
-                "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
-            ),
-            worker_tag=self.executor_config["WORKER_TAG"],
-            logentries_token=self.executor_config.get("LOGENTRIES_TOKEN", None),
-            volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
-            max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
-            ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+        rendered_json = json.load(
+            io.StringIO(TEMPLATE.render(
+                realm=realm,
+                token=token,
+                build_uuid=build_uuid,
+                quay_username=quay_username,
+                quay_password=quay_password,
+                manager_hostname=manager_hostname,
+                websocket_scheme=self.websocket_scheme,
+                coreos_channel=coreos_channel,
+                worker_image=self.executor_config.get(
+                    "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
+                ),
+                worker_tag=self.executor_config["WORKER_TAG"],
+                volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
+                max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
+                ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+            ))
         )
+
+        return json.dumps(rendered_json)
 
 
 class EC2Executor(BuilderExecutor):
@@ -181,9 +187,9 @@ class EC2Executor(BuilderExecutor):
     Implementation of BuilderExecutor which uses libcloud to start machines on a variety of cloud
     providers.
     """
-
+    COREOS_STACK_ARCHITECTURE = "x86_64"
     COREOS_STACK_URL = (
-        "http://%s.release.core-os.net/amd64-usr/current/coreos_production_ami_hvm.txt"
+        "https://builds.coreos.fedoraproject.org/streams/%s.json"
     )
 
     def __init__(self, *args, **kwargs):
@@ -195,8 +201,9 @@ class EC2Executor(BuilderExecutor):
         Creates an ec2 connection which can be used to manage instances.
         """
         return AsyncWrapper(
-            boto.ec2.connect_to_region(
-                self.executor_config["EC2_REGION"],
+            boto3.client(
+                "ec2",
+                region_name=self.executor_config["EC2_REGION"],
                 aws_access_key_id=self.executor_config["AWS_ACCESS_KEY"],
                 aws_secret_access_key=self.executor_config["AWS_SECRET_KEY"],
             )
@@ -208,9 +215,9 @@ class EC2Executor(BuilderExecutor):
         """
         Retrieve the CoreOS AMI id from the canonical listing.
         """
-        stack_list_string = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).text
-        stack_amis = dict([stack.split("=") for stack in stack_list_string.split("|")])
-        return stack_amis[ec2_region]
+        stack_list_json = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).json()
+        stack_amis = stack_list_json['architectures'][EC2Executor.COREOS_STACK_ARCHITECTURE]['images']['aws']['regions']
+        return stack_amis[ec2_region]['image']
 
     @async_observe(build_start_duration, "ec2")
     async def start_builder(self, realm, token, build_uuid):
@@ -229,45 +236,53 @@ class EC2Executor(BuilderExecutor):
 
         ec2_conn = self._get_conn()
 
-        ssd_root_ebs = boto.ec2.blockdevicemapping.BlockDeviceType(
-            size=int(self.executor_config.get("BLOCK_DEVICE_SIZE", 48)),
-            volume_type="gp2",
-            delete_on_termination=True,
-        )
-        block_devices = boto.ec2.blockdevicemapping.BlockDeviceMapping()
-        block_devices["/dev/xvda"] = ssd_root_ebs
+        block_device_mappings = [
+            {
+                "DeviceName": "/dev/xvda",
+                "Ebs": {
+                    "VolumeSize": int(self.executor_config.get("BLOCK_DEVICE_SIZE", 48)),
+                    "VolumeType": "gp2",
+                    "DeleteOnTermination":True,
+                }
+            }
+        ]
 
         interfaces = None
         if self.executor_config.get("EC2_VPC_SUBNET_ID", None) is not None:
-            interface = boto.ec2.networkinterface.NetworkInterfaceSpecification(
-                subnet_id=self.executor_config["EC2_VPC_SUBNET_ID"],
-                groups=self.executor_config["EC2_SECURITY_GROUP_IDS"],
-                associate_public_ip_address=True,
-            )
-            interfaces = boto.ec2.networkinterface.NetworkInterfaceCollection(interface)
+            interfaces = [
+                {
+                    "DeviceIndex": 0,
+                    "SubnetId": self.executor_config["EC2_VPC_SUBNET_ID"],
+                    "Groups": self.executor_config["EC2_SECURITY_GROUP_IDS"],
+                    "AssociatePublicIpAddress": True,
+                }
+            ]
 
         try:
             reservation = await (
                 ec2_conn.run_instances(
-                    coreos_ami,
-                    instance_type=self.executor_config["EC2_INSTANCE_TYPE"],
-                    key_name=self.executor_config.get("EC2_KEY_NAME", None),
-                    user_data=user_data,
-                    instance_initiated_shutdown_behavior="terminate",
-                    block_device_map=block_devices,
-                    network_interfaces=interfaces,
+                    ImageId=coreos_ami,
+                    InstanceType=self.executor_config["EC2_INSTANCE_TYPE"],
+                    KeyName=self.executor_config.get("EC2_KEY_NAME", None),
+                    UserData=user_data,
+                    InstanceInitiatedShutdownBehavior="terminate",
+                    BlockDeviceMappings=block_device_mappings,
+                    NetworkInterfaces=interfaces,
+                    MinCount=1,
+                    MaxCount=1,
                 )
             )
-        except boto.exception.EC2ResponseError as ec2e:
+        except (ec2_conn.exceptions.ClientError, botocore.exceptions.ClientError) as ec2e:
             logger.exception("Unable to spawn builder instance")
             raise ec2e
 
-        if not reservation.instances:
+        instances = reservation.get("Instances", [])
+        if not instances:
             raise ExecutorException("Unable to spawn builder instance.")
-        elif len(reservation.instances) != 1:
+        elif len(instances) != 1:
             raise ExecutorException("EC2 started wrong number of instances!")
 
-        launched = AsyncWrapper(reservation.instances[0])
+        launched = instances[0]
 
         # Sleep a few seconds to wait for AWS to spawn the instance.
         await asyncio.sleep(_TAG_RETRY_SLEEP)
@@ -276,21 +291,24 @@ class EC2Executor(BuilderExecutor):
         for i in range(0, _TAG_RETRY_COUNT):
             try:
                 await (
-                    launched.add_tags(
-                        {
-                            "Name": "Quay Ephemeral Builder",
-                            "Realm": realm,
-                            "Token": token,
-                            "BuildUUID": build_uuid,
-                        }
+                    ec2_conn.create_tags(
+                        Resources=[
+                            launched["InstanceId"]
+                        ],
+                        Tags=[
+                            {"Key": "Name", "Value": "Quay Ephemeral Builder"},
+                            {"Key": "Realm", "Value": realm},
+                            {"Key": "Token", "Value": token},
+                            {"Key": "BuildUUID", "Value": build_uuid},
+                        ]
                     )
                 )
-            except boto.exception.EC2ResponseError as ec2e:
-                if ec2e.error_code == "InvalidInstanceID.NotFound":
+            except (ec2_conn.exceptions.ClientError, botocore.exceptions.ClientError) as ec2e:
+                if ec2e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
                     if i < _TAG_RETRY_COUNT - 1:
                         logger.warning(
                             "Failed to write EC2 tags for instance %s for build %s (attempt #%s)",
-                            launched.id,
+                            launched["InstanceId"],
                             build_uuid,
                             i,
                         )
@@ -301,22 +319,22 @@ class EC2Executor(BuilderExecutor):
 
                 logger.exception("Failed to write EC2 tags (attempt #%s)", i)
 
-        logger.debug("Machine with ID %s started for build %s", launched.id, build_uuid)
-        return launched.id
+        logger.debug("Machine with ID %s started for build %s", launched["InstanceId"], build_uuid)
+        return launched["InstanceId"]
 
     async def stop_builder(self, builder_id):
         try:
             ec2_conn = self._get_conn()
-            terminated_instances = await ec2_conn.terminate_instances([builder_id])
-        except boto.exception.EC2ResponseError as ec2e:
-            if ec2e.error_code == "InvalidInstanceID.NotFound":
+            terminated_instances = await ec2_conn.terminate_instances(InstanceIds=[builder_id])
+        except (ec2_conn.exceptions.ClientError, botocore.exceptions.ClientError) as ec2e:
+            if ec2e.response["Error"]["Code"] == "InvalidInstanceID.NotFound":
                 logger.debug("Instance %s already terminated", builder_id)
                 return
 
             logger.exception("Exception when trying to terminate instance %s", builder_id)
             raise
 
-        if builder_id not in [si.id for si in terminated_instances]:
+        if builder_id not in [si["InstanceId"] for si in terminated_instances["TerminatingInstances"]]:
             raise ExecutorException("Unable to terminate instance: %s" % builder_id)
 
 
@@ -381,7 +399,7 @@ class KubernetesExecutor(BuilderExecutor):
         self._loop = asyncio.get_event_loop()
         self.namespace = self.executor_config.get("BUILDER_NAMESPACE", "builder")
         self.image = self.executor_config.get(
-            "BUILDER_VM_CONTAINER_IMAGE", "quay.io/quay/quay-builder-qemu-coreos:stable"
+            "BUILDER_VM_CONTAINER_IMAGE", "quay.io/quay/quay-builder-qemu-fedoracoreos:stable"
         )
 
     async def _request(self, method, path, **kwargs):

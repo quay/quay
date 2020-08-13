@@ -240,8 +240,8 @@ class SuperUserServiceKeyManagement(ApiResource):
                 "kid": key_id,
                 "name": body.get("name", ""),
                 "service": body["service"],
-                "public_key": private_key.publickey().exportKey("PEM"),
-                "private_key": private_key.exportKey("PEM"),
+                "public_key": private_key.publickey().exportKey("PEM").decode("ascii"),
+                "private_key": private_key.exportKey("PEM").decode("ascii"),
             }
         )
 

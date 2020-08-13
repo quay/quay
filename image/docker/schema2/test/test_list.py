@@ -50,7 +50,7 @@ MANIFESTLIST_BYTES = json.dumps(
             },
             {
                 "mediaType": "application/vnd.docker.distribution.manifest.v1+json",
-                "size": 878,
+                "size": 1051,
                 "digest": "sha256:5b",
                 "platform": {"architecture": "amd64", "os": "linux", "features": ["sse4"]},
             },
@@ -84,6 +84,8 @@ def test_valid_manifestlist():
     assert manifestlist.bytes.as_encoded_str() == MANIFESTLIST_BYTES
     assert manifestlist.manifest_dict == json.loads(MANIFESTLIST_BYTES)
     assert manifestlist.get_layers(retriever) is None
+    assert manifestlist.config_media_type is None
+    assert manifestlist.layers_compressed_size is None
     assert not manifestlist.blob_digests
 
     for index, manifest in enumerate(manifestlist.manifests(retriever)):
@@ -114,6 +116,8 @@ def test_valid_manifestlist():
     # Ensure it validates.
     manifestlist.validate(retriever)
 
+    assert manifestlist.amd64_linux_manifest_digest == "sha256:5b"
+
 
 def test_get_schema1_manifest_no_matching_list():
     manifestlist = DockerSchema2ManifestList(Bytes.for_string_or_unicode(NO_AMD_MANIFESTLIST_BYTES))
@@ -121,6 +125,7 @@ def test_get_schema1_manifest_no_matching_list():
 
     assert manifestlist.media_type == "application/vnd.docker.distribution.manifest.list.v2+json"
     assert manifestlist.bytes.as_encoded_str() == NO_AMD_MANIFESTLIST_BYTES
+    assert manifestlist.amd64_linux_manifest_digest is None
 
     compatible_manifest = manifestlist.get_schema1_manifest("foo", "bar", "baz", retriever)
     assert compatible_manifest is None
@@ -130,10 +135,22 @@ def test_builder():
     existing = DockerSchema2ManifestList(Bytes.for_string_or_unicode(MANIFESTLIST_BYTES))
     builder = DockerSchema2ManifestListBuilder()
     for index, manifest in enumerate(existing.manifests(retriever)):
-        builder.add_manifest(manifest.manifest_obj, "amd64", "os")
+        builder.add_manifest(manifest.manifest_obj, "amd64", "linux")
 
     built = builder.build()
     assert len(built.manifests(retriever)) == 2
+    assert built.amd64_linux_manifest_digest is not None
+
+
+def test_builder_no_amd():
+    existing = DockerSchema2ManifestList(Bytes.for_string_or_unicode(MANIFESTLIST_BYTES))
+    builder = DockerSchema2ManifestListBuilder()
+    for index, manifest in enumerate(existing.manifests(retriever)):
+        builder.add_manifest(manifest.manifest_obj, "intel386", "os")
+
+    built = builder.build()
+    assert len(built.manifests(retriever)) == 2
+    assert built.amd64_linux_manifest_digest is None
 
 
 def test_invalid_manifestlist():

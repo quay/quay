@@ -13,12 +13,12 @@ from test.fixtures import *
 @pytest.mark.parametrize("endpoint", [RepositoryImageSecurity, RepositoryManifestSecurity,])
 def test_get_security_info_with_pull_secret(endpoint, client):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
-    tag = registry_model.get_repo_tag(repository_ref, "latest", include_legacy_image=True)
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
 
     params = {
         "repository": "devtable/simple",
-        "imageid": tag.legacy_image.docker_image_id,
+        "imageid": tag.manifest.legacy_image_root_id,
         "manifestref": manifest.digest,
     }
 

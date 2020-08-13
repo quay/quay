@@ -40,10 +40,10 @@ class RepoMirrorWorker(Worker):
 
 if __name__ == "__main__":
     if os.getenv("PYDEV_DEBUG", None):
-        import pydevd
+        import pydevd_pycharm
 
         host, port = os.getenv("PYDEV_DEBUG").split(":")
-        pydevd.settrace(
+        pydevd_pycharm.settrace(
             host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False
         )
 

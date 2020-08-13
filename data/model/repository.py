@@ -32,7 +32,6 @@ from data.database import (
     RepositoryActionCount,
     Role,
     RepositoryAuthorizedEmail,
-    DerivedStorageForImage,
     Label,
     db_for_update,
     get_epoch_timestamp,
@@ -498,6 +497,10 @@ def lookup_repository(repo_id):
         return Repository.get(Repository.id == repo_id)
     except Repository.DoesNotExist:
         return None
+
+
+def repository_visibility_name(repository):
+    return "public" if is_repository_public(repository) else "private"
 
 
 def is_repository_public(repository):

@@ -28,12 +28,12 @@ class LocalStorage(BaseStorageV2):
 
     def get_content(self, path):
         path = self._init_path(path)
-        with open(path, mode="r") as f:
+        with open(path, mode="rb") as f:
             return f.read()
 
     def put_content(self, path, content):
         path = self._init_path(path, create=True)
-        with open(path, mode="w") as f:
+        with open(path, mode="wb") as f:
             f.write(content)
         return path
 
@@ -73,7 +73,7 @@ class LocalStorage(BaseStorageV2):
     def get_checksum(self, path):
         path = self._init_path(path)
         sha_hash = hashlib.sha256()
-        with open(path, "r") as to_hash:
+        with open(path, "rb") as to_hash:
             while True:
                 buf = to_hash.read(self.buffer_size)
                 if not buf:
@@ -88,7 +88,7 @@ class LocalStorage(BaseStorageV2):
         new_uuid = str(uuid4())
 
         # Just create an empty file at the path
-        with open(self._init_path(self._rel_upload_path(new_uuid), create=True), "w"):
+        with open(self._init_path(self._rel_upload_path(new_uuid), create=True), "wb"):
             pass
 
         return new_uuid, {}

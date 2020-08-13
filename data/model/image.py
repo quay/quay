@@ -23,12 +23,9 @@ from data.database import (
     ImageStorage,
     ImageStorageLocation,
     RepositoryPermission,
-    DerivedStorageForImage,
     ImageStorageTransformation,
     User,
 )
-
-from util.canonicaljson import canonicalize
 
 logger = logging.getLogger(__name__)
 
@@ -554,62 +551,3 @@ def set_secscan_status(image, indexed, version):
         .where((Image.security_indexed_engine != version) | (Image.security_indexed != indexed))
         .execute()
     ) != 0
-
-
-def _get_uniqueness_hash(varying_metadata):
-    if not varying_metadata:
-        return None
-
-    return hashlib.sha256(json.dumps(canonicalize(varying_metadata)).encode("utf-8")).hexdigest()
-
-
-def find_or_create_derived_storage(
-    source_image, transformation_name, preferred_location, varying_metadata=None
-):
-    existing = find_derived_storage_for_image(source_image, transformation_name, varying_metadata)
-    if existing is not None:
-        return existing
-
-    uniqueness_hash = _get_uniqueness_hash(varying_metadata)
-    trans = ImageStorageTransformation.get(name=transformation_name)
-    new_storage = storage.create_v1_storage(preferred_location)
-
-    try:
-        derived = DerivedStorageForImage.create(
-            source_image=source_image,
-            derivative=new_storage,
-            transformation=trans,
-            uniqueness_hash=uniqueness_hash,
-        )
-    except IntegrityError:
-        # Storage was created while this method executed. Just return the existing.
-        ImageStoragePlacement.delete().where(ImageStoragePlacement.storage == new_storage).execute()
-        new_storage.delete_instance()
-        return find_derived_storage_for_image(source_image, transformation_name, varying_metadata)
-
-    return derived
-
-
-def find_derived_storage_for_image(source_image, transformation_name, varying_metadata=None):
-    uniqueness_hash = _get_uniqueness_hash(varying_metadata)
-
-    try:
-        found = (
-            DerivedStorageForImage.select(ImageStorage, DerivedStorageForImage)
-            .join(ImageStorage)
-            .switch(DerivedStorageForImage)
-            .join(ImageStorageTransformation)
-            .where(
-                DerivedStorageForImage.source_image == source_image,
-                ImageStorageTransformation.name == transformation_name,
-                DerivedStorageForImage.uniqueness_hash == uniqueness_hash,
-            )
-            .get()
-        )
-        return found
-    except DerivedStorageForImage.DoesNotExist:
-        return None
-
-
-def delete_derived_storage(derived_storage):
-    derived_storage.derivative.delete_instance(recursive=True)

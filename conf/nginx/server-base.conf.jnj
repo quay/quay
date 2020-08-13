@@ -306,19 +306,6 @@ location = /v1/_ping {
     return 200 'true';
 }
 
-location /c1/ {
-    proxy_buffering off;
-
-    proxy_request_buffering off;
-
-    proxy_pass   http://verbs_app_server;
-    proxy_temp_path /tmp 1 2;
-
-    {% if enable_rate_limits %}
-    limit_req zone=staticauth burst=5 nodelay;
-    {% endif %}
-}
-
 location /static/ {
     # checks for static file, if not found proxy to app
     alias      {{static_dir}}/;

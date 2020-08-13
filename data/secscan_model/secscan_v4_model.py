@@ -148,18 +148,10 @@ class V4SecurityScanner(SecurityScannerInterface):
         )
 
     def perform_indexing(self, start_token=None):
-        whitelisted_namespaces = self.app.config.get("SECURITY_SCANNER_V4_NAMESPACE_WHITELIST", [])
         try:
             indexer_state = self._secscan_api.state()
         except APIRequestFailure:
             return None
-
-        def eligible_manifests(base_query):
-            return (
-                base_query.join(Repository)
-                .join(User)
-                .where(User.username << whitelisted_namespaces)
-            )
 
         min_id = (
             start_token.min_id
@@ -178,16 +170,14 @@ class V4SecurityScanner(SecurityScannerInterface):
         # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
             return (
-                eligible_manifests(Manifest.select())
-                .switch(Manifest)
+                Manifest.select()
                 .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
                 .where(ManifestSecurityStatus.id >> None)
             )
 
         def index_error_query():
             return (
-                eligible_manifests(Manifest.select())
-                .switch(Manifest)
+                Manifest.select()
                 .join(ManifestSecurityStatus)
                 .where(
                     ManifestSecurityStatus.index_status == IndexStatus.FAILED,
@@ -197,8 +187,7 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         def needs_reindexing_query(indexer_hash):
             return (
-                eligible_manifests(Manifest.select())
-                .switch(Manifest)
+                Manifest.select()
                 .join(ManifestSecurityStatus)
                 .where(
                     ManifestSecurityStatus.indexer_hash != indexer_hash,
@@ -209,6 +198,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         # 4^log10(total) gives us a scalable batch size into the billions.
         batch_size = int(4 ** log10(max(10, max_id - min_id)))
 
+        # TODO(alecmerdler): We want to index newer manifests first, while backfilling older manifests...
         iterator = itertools.chain(
             yield_random_entries(not_indexed_query, Manifest.id, batch_size, max_id, min_id,),
             yield_random_entries(index_error_query, Manifest.id, batch_size, max_id, min_id,),
@@ -224,6 +214,28 @@ class V4SecurityScanner(SecurityScannerInterface):
         for candidate, abt, num_remaining in iterator:
             manifest = ManifestDataType.for_manifest(candidate, None)
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
+            if layers is None:
+                logger.warning(
+                    "Cannot index %s/%s@%s due to manifest being invalid"
+                    % (
+                        candidate.repository.namespace_user,
+                        candidate.repository.name,
+                        manifest.digest,
+                    )
+                )
+                with db_transaction():
+                    ManifestSecurityStatus.delete().where(
+                        ManifestSecurityStatus.manifest == candidate
+                    ).execute()
+                    ManifestSecurityStatus.create(
+                        manifest=candidate,
+                        repository=candidate.repository,
+                        index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+                        indexer_hash="none",
+                        indexer_version=IndexerVersion.V4,
+                        metadata_json={},
+                    )
+                continue
 
             logger.debug(
                 "Indexing %s/%s@%s"

@@ -32,7 +32,6 @@ class FakeSecurityScanner(object):
         self.hostname = hostname
         self.index_version = index_version
         self.layers = {}
-        self.notifications = {}
         self.layer_vulns = {}
 
         self.ok_layer_id = None
@@ -84,42 +83,6 @@ class FakeSecurityScanner(object):
         """
         return layer_id in self.layers
 
-    def has_notification(self, notification_id):
-        """
-        Returns whether a notification with the given ID is found in the scanner.
-        """
-        return notification_id in self.notifications
-
-    def add_notification(
-        self,
-        old_layer_ids,
-        new_layer_ids,
-        old_vuln,
-        new_vuln,
-        max_per_page=100,
-        indexed_old_layer_ids=None,
-        indexed_new_layer_ids=None,
-    ):
-        """
-        Adds a new notification over the given sets of layer IDs and vulnerability information,
-        returning the structural data of the notification created.
-        """
-        notification_id = str(uuid.uuid4())
-        if old_vuln is None:
-            old_vuln = dict(new_vuln)
-
-        self.notifications[notification_id] = dict(
-            old_layer_ids=old_layer_ids,
-            new_layer_ids=new_layer_ids,
-            old_vuln=old_vuln,
-            new_vuln=new_vuln,
-            max_per_page=max_per_page,
-            indexed_old_layer_ids=indexed_old_layer_ids,
-            indexed_new_layer_ids=indexed_new_layer_ids,
-        )
-
-        return self._get_notification_data(notification_id, 0, 100)
-
     def layer_id(self, layer):
         """
         Returns the Quay Security Scanner layer ID for the given layer (Image row).
@@ -161,62 +124,6 @@ class FakeSecurityScanner(object):
                     "Vulnerabilities": self.layer_vulns[layer_id],
                 }
             )
-
-    def _get_notification_data(self, notification_id, page, limit):
-        """
-        Returns the structural data for the notification with the given ID, paginated using the
-        given page and limit.
-        """
-        notification = self.notifications[notification_id]
-        limit = min(limit, notification["max_per_page"])
-
-        notification_data = {
-            "Name": notification_id,
-            "Created": "1456247389",
-            "Notified": "1456246708",
-            "Limit": limit,
-        }
-
-        start_index = page * limit
-        end_index = (page + 1) * limit
-        has_additional_page = False
-
-        if notification.get("old_vuln"):
-            old_layer_ids = notification["old_layer_ids"]
-            old_layer_ids = old_layer_ids[start_index:end_index]
-            has_additional_page = has_additional_page or bool(len(old_layer_ids[end_index - 1 :]))
-
-            notification_data["Old"] = {
-                "Vulnerability": notification["old_vuln"],
-                "LayersIntroducingVulnerability": old_layer_ids,
-            }
-
-            if notification.get("indexed_old_layer_ids", None):
-                indexed_old_layer_ids = notification["indexed_old_layer_ids"][start_index:end_index]
-                notification_data["Old"][
-                    "OrderedLayersIntroducingVulnerability"
-                ] = indexed_old_layer_ids
-
-        if notification.get("new_vuln"):
-            new_layer_ids = notification["new_layer_ids"]
-            new_layer_ids = new_layer_ids[start_index:end_index]
-            has_additional_page = has_additional_page or bool(len(new_layer_ids[end_index - 1 :]))
-
-            notification_data["New"] = {
-                "Vulnerability": notification["new_vuln"],
-                "LayersIntroducingVulnerability": new_layer_ids,
-            }
-
-            if notification.get("indexed_new_layer_ids", None):
-                indexed_new_layer_ids = notification["indexed_new_layer_ids"][start_index:end_index]
-                notification_data["New"][
-                    "OrderedLayersIntroducingVulnerability"
-                ] = indexed_new_layer_ids
-
-        if has_additional_page:
-            notification_data["NextPage"] = str(page + 1)
-
-        return notification_data
 
     def get_endpoints(self):
         """
@@ -338,43 +245,6 @@ class FakeSecurityScanner(object):
                 "content": json.dumps({"Layer": self.layers[layer["Name"]],}),
             }
 
-        @urlmatch(
-            netloc=r"(.*\.)?" + self.hostname, path=r"/v1/notifications/(.+)$", method="DELETE"
-        )
-        def delete_notification(url, _):
-            notification_id = url.path[len("/v1/notifications/") :]
-            if notification_id not in self.notifications:
-                return {
-                    "status_code": 404,
-                    "content": json.dumps({"Error": {"Message": "Unknown notification"}}),
-                }
-
-            self.notifications.pop(notification_id)
-            return {
-                "status_code": 204,
-                "content": "",
-            }
-
-        @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/v1/notifications/(.+)$", method="GET")
-        def get_notification(url, _):
-            notification_id = url.path[len("/v1/notifications/") :]
-            if notification_id not in self.notifications:
-                return {
-                    "status_code": 404,
-                    "content": json.dumps({"Error": {"Message": "Unknown notification"}}),
-                }
-
-            query_params = urllib.parse.parse_qs(url.query)
-            limit = int(query_params.get("limit", [2])[0])
-            page = int(query_params.get("page", [0])[0])
-
-            notification_data = self._get_notification_data(notification_id, page, limit)
-            response = {"Notification": notification_data}
-            return {
-                "status_code": 200,
-                "content": json.dumps(response),
-            }
-
         @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/v1/metrics$", method="GET")
         def metrics(url, _):
             return {
@@ -393,8 +263,6 @@ class FakeSecurityScanner(object):
             get_layer_mock,
             post_layer_mock,
             remove_layer_mock,
-            get_notification,
-            delete_notification,
             metrics,
             response_content,
         ]

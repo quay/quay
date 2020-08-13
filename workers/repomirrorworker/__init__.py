@@ -132,7 +132,7 @@ def perform_mirror(skopeo, mirror):
             % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
             tags=", ".join(tags),
             stdout="Not applicable",
-            stderr=traceback.format_exc(e),
+            stderr=traceback.format_exc(),
         )
         release_mirror(mirror, RepoMirrorStatus.FAIL)
         return
@@ -242,7 +242,7 @@ def perform_mirror(skopeo, mirror):
             % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
             tags=", ".join(tags),
             stdout="Not applicable",
-            stderr=traceback.format_exc(e),
+            stderr=traceback.format_exc(),
         )
         release_mirror(mirror, overall_status)
         return

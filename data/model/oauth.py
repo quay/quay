@@ -352,8 +352,13 @@ def lookup_access_token_by_uuid(token_uuid):
 
 def lookup_access_token_for_user(user_obj, token_uuid):
     try:
-        return OAuthAccessToken.get(
-            OAuthAccessToken.authorized_user == user_obj, OAuthAccessToken.uuid == token_uuid
+        return (
+            OAuthAccessToken.select(OAuthAccessToken, User)
+            .join(User)
+            .where(
+                OAuthAccessToken.authorized_user == user_obj, OAuthAccessToken.uuid == token_uuid
+            )
+            .get()
         )
     except OAuthAccessToken.DoesNotExist:
         return None

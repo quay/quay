@@ -66,7 +66,6 @@ from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
 from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
-from util.security.signing import Signer
 from util.greenlet_tracing import enable_tracing
 
 
@@ -152,10 +151,10 @@ class RequestWithId(Request):
 @app.before_request
 def _request_start():
     if os.getenv("PYDEV_DEBUG", None):
-        import pydevd
+        import pydevd_pycharm
 
         host, port = os.getenv("PYDEV_DEBUG").split(":")
-        pydevd.settrace(
+        pydevd_pycharm.settrace(
             host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False,
         )
 
@@ -244,7 +243,6 @@ build_logs = BuildLogs(app)
 authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY)
 userevents = UserEventsBuilderModule(app)
 superusers = SuperUserManager(app)
-signer = Signer(app, config_provider)
 instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
@@ -260,9 +258,6 @@ dockerfile_build_queue = WorkQueue(
     app.config["DOCKERFILE_BUILD_QUEUE_NAME"], tf, has_namespace=True
 )
 notification_queue = WorkQueue(app.config["NOTIFICATION_QUEUE_NAME"], tf, has_namespace=True)
-secscan_notification_queue = WorkQueue(
-    app.config["SECSCAN_NOTIFICATION_QUEUE_NAME"], tf, has_namespace=False
-)
 export_action_logs_queue = WorkQueue(
     app.config["EXPORT_ACTION_LOGS_QUEUE_NAME"], tf, has_namespace=True
 )
@@ -277,7 +272,6 @@ all_queues = [
     image_replication_queue,
     dockerfile_build_queue,
     notification_queue,
-    secscan_notification_queue,
     chunk_cleanup_queue,
     repository_gc_queue,
     namespace_gc_queue,
@@ -315,9 +309,12 @@ model.config.store = storage
 model.config.register_repo_cleanup_callback(tuf_metadata_api.delete_metadata)
 
 secscan_model.configure(app, instance_keys, storage)
-secscan_model.register_model_cleanup_callbacks(model.config)
 
 logs_model.configure(app.config)
+
+# NOTE: We re-use the page token key here as this is just to obfuscate IDs for V1, and
+# does not need to actually be secure.
+registry_model.set_id_hash_salt(app.config.get("PAGE_TOKEN_KEY"))
 
 
 @login_manager.user_loader

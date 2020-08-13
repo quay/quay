@@ -68,7 +68,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
         image_pulls.labels("v2", "tag", 404).inc()
         raise ManifestUnknown()
 
-    manifest = registry_model.get_manifest_for_tag(tag, backfill_if_necessary=True)
+    manifest = registry_model.get_manifest_for_tag(tag)
     if manifest is None:
         # Something went wrong.
         image_pulls.labels("v2", "tag", 400).inc()
@@ -318,7 +318,7 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
 
         # Queue all blob manifests for replication.
         if features.STORAGE_REPLICATION:
-            blobs = registry_model.get_manifest_local_blobs(manifest)
+            blobs = registry_model.get_manifest_local_blobs(manifest, storage)
             if blobs is None:
                 logger.error("Could not lookup blobs for manifest `%s`", manifest.digest)
             else:

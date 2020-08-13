@@ -161,7 +161,7 @@ class PreOCIModel(RepositoryDataInterface):
                     repo.namespace_user.username,
                     repo.name,
                     repo.rid in star_set,
-                    repo.visibility_id == model.repository.get_public_repo_visibility().id,
+                    model.repository.is_repository_public(repo),
                     repo_kind,
                     repo.description,
                     repo.namespace_user.organization,
@@ -257,8 +257,8 @@ class PreOCIModel(RepositoryDataInterface):
             tags = [
                 Tag(
                     tag.name,
-                    tag.legacy_image.docker_image_id if tag.legacy_image_if_present else None,
-                    tag.legacy_image.aggregate_size if tag.legacy_image_if_present else None,
+                    tag.manifest.legacy_image_root_id,
+                    tag.manifest_layers_size,
                     tag.lifetime_start_ts,
                     tag.manifest_digest,
                     tag.lifetime_end_ts,

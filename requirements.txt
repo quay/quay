@@ -1,7 +1,6 @@
 -e git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b#egg=cnr_server
 -e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
--e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
--e git+https://github.com/DevTable/container-cloud-config.git@7d6c1545554b81ac65edd6d1bd1ab9f8c462209a#egg=container_cloud_config
+-e git+https://github.com/quay/boto.git@0041500f529547f592194c73c0a7d23275ed81c6#egg=boto
 -e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
 -e git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
 -e git+https://github.com/quay/py-bitbucket.git@85301693ce3682f8e1244e90bd8a903181844bde#egg=py_bitbucket
@@ -69,9 +68,9 @@ futures==3.1.1
 geoip2==3.0.0
 gevent==1.4.0
 gipc==1.0.1
-gpg==1.10.0
 greenlet==0.4.15
 gunicorn==20.0.4
+hashids==1.2.0
 hiredis==1.0.1
 html5lib==1.0.1
 httmock==1.3.0

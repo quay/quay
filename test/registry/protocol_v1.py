@@ -153,6 +153,9 @@ class V1Protocol(RegistryProtocol):
                 assert expected_failure == Failures.UNKNOWN_TAG
                 return None
 
+            if expected_failure == Failures.UNKNOWN_TAG:
+                return None
+
             tag_image_id = image_ids[tag_name]
             assert image_id_data.json() == tag_image_id
 
@@ -331,7 +334,7 @@ class V1Protocol(RegistryProtocol):
         namespace,
         repo_name,
         tag_name,
-        image,
+        image_id,
         credentials=None,
         expected_failure=None,
         options=None,
@@ -341,7 +344,7 @@ class V1Protocol(RegistryProtocol):
             session,
             "PUT",
             "/v1/repositories/%s/tags/%s" % (self.repo_name(namespace, repo_name), tag_name),
-            data='"%s"' % image.id,
+            data='"%s"' % image_id,
             auth=auth,
             expected_status=(200, expected_failure, V1ProtocolSteps.PUT_TAG),
         )

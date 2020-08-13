@@ -8,14 +8,11 @@ from urllib.parse import urljoin
 import requests
 
 from data import model
-from data.database import CloseForLongOperation, TagManifest, Image, Manifest, ManifestLegacyImage
-from data.model.storage import get_storage_locations
-from data.model.image import get_image_with_storage
+from data.database import CloseForLongOperation, Image, Manifest, ManifestLegacyImage
 from data.registry_model.datatypes import Manifest as ManifestDataType, LegacyImage
 from util.abchelpers import nooper
 from util.failover import failover, FailoverException
 from util.secscan.validator import V2SecurityConfigValidator
-from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
 
 from _init import CONF_DIR
 
@@ -28,31 +25,6 @@ MITM_CERT_PATH = os.path.join(CONF_DIR, "mitm.cert")
 DEFAULT_HTTP_HEADERS = {"Connection": "close"}
 
 logger = logging.getLogger(__name__)
-
-
-class AnalyzeLayerException(Exception):
-    """
-    Exception raised when a layer fails to analyze due to a request issue.
-    """
-
-
-class AnalyzeLayerRetryException(Exception):
-    """
-    Exception raised when a layer fails to analyze due to a request issue, and the request should be
-    retried.
-    """
-
-
-class MissingParentLayerException(AnalyzeLayerException):
-    """
-    Exception raised when the parent of the layer is missing from the security scanner.
-    """
-
-
-class InvalidLayerException(AnalyzeLayerException):
-    """
-    Exception raised when the layer itself cannot be handled by the security scanner.
-    """
 
 
 class APIRequestFailure(Exception):
@@ -71,11 +43,7 @@ class Non200ResponseException(Exception):
         self.response = response
 
 
-_API_METHOD_INSERT = "layers"
 _API_METHOD_GET_LAYER = "layers/%s"
-_API_METHOD_DELETE_LAYER = "layers/%s"
-_API_METHOD_MARK_NOTIFICATION_READ = "notifications/%s"
-_API_METHOD_GET_NOTIFICATION = "notifications/%s"
 _API_METHOD_PING = "metrics"
 
 
@@ -83,18 +51,13 @@ def compute_layer_id(layer):
     """
     Returns the ID for the layer in the security scanner.
     """
-    # NOTE: this is temporary until we switch to Clair V3.
-    if isinstance(layer, ManifestDataType):
-        if layer._is_tag_manifest:
-            layer = TagManifest.get(id=layer._db_id).tag.image
-        else:
-            manifest = Manifest.get(id=layer._db_id)
-            try:
-                layer = ManifestLegacyImage.get(manifest=manifest).image
-            except ManifestLegacyImage.DoesNotExist:
-                return None
-    elif isinstance(layer, LegacyImage):
-        layer = Image.get(id=layer._db_id)
+    assert isinstance(layer, ManifestDataType)
+
+    manifest = Manifest.get(id=layer._db_id)
+    try:
+        layer = ManifestLegacyImage.get(manifest=manifest).image
+    except ManifestLegacyImage.DoesNotExist:
+        return None
 
     assert layer.docker_image_id
     assert layer.storage.uuid
@@ -148,14 +111,6 @@ class SecurityScannerAPIInterface(object):
     """
 
     @abstractmethod
-    def cleanup_layers(self, layers):
-        """
-        Callback invoked by garbage collection to cleanup any layers that no longer need to be
-        stored in the security scanner.
-        """
-        pass
-
-    @abstractmethod
     def ping(self):
         """
         Calls GET on the metrics endpoint of the security scanner to ensure it is running and
@@ -166,42 +121,9 @@ class SecurityScannerAPIInterface(object):
         pass
 
     @abstractmethod
-    def delete_layer(self, layer):
-        """
-        Calls DELETE on the given layer in the security scanner, removing it from its database.
-        """
-        pass
-
-    @abstractmethod
-    def analyze_layer(self, layer):
-        """
-        Posts the given layer to the security scanner for analysis, blocking until complete.
-
-        Returns the analysis version on success or raises an exception deriving from
-        AnalyzeLayerException on failure. Callers should handle all cases of AnalyzeLayerException.
-        """
-        pass
-
-    @abstractmethod
     def check_layer_vulnerable(self, layer_id, cve_name):
         """
         Checks to see if the layer with the given ID is vulnerable to the specified CVE.
-        """
-        pass
-
-    @abstractmethod
-    def get_notification(self, notification_name, layer_limit=100, page=None):
-        """
-        Gets the data for a specific notification, with optional page token.
-
-        Returns a tuple of the data (None on failure) and whether to retry.
-        """
-        pass
-
-    @abstractmethod
-    def mark_notification_read(self, notification_name):
-        """
-        Marks a security scanner notification as read.
         """
         pass
 
@@ -242,94 +164,6 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
         self._target_version = config.get("SECURITY_SCANNER_ENGINE_VERSION_TARGET", 2)
         self._uri_creator = uri_creator
 
-    def _get_image_url_and_auth(self, image):
-        """
-        Returns a tuple of the url and the auth header value that must be used to fetch the layer
-        data itself.
-
-        If the image can't be addressed, we return None.
-        """
-        if self._instance_keys is None:
-            raise Exception("No Instance keys provided to Security Scanner API")
-
-        path = model.storage.get_layer_path(image.storage)
-        locations = self._default_storage_locations
-
-        if not self._storage.exists(locations, path):
-            locations = get_storage_locations(image.storage.uuid)
-            if not locations or not self._storage.exists(locations, path):
-                logger.warning(
-                    "Could not find a valid location to download layer %s out of %s",
-                    compute_layer_id(image),
-                    locations,
-                )
-                return None, None
-
-        uri = self._storage.get_direct_download_url(locations, path)
-        auth_header = None
-        if uri is None:
-            # Use the registry API instead, with a signed JWT giving access
-            repo_name = image.repository.name
-            namespace_name = image.repository.namespace_user.username
-            repository_and_namespace = "/".join([namespace_name, repo_name])
-
-            # Generate the JWT which will authorize this
-            audience = self._server_hostname
-            context, subject = build_context_and_subject()
-            access = [
-                {"type": "repository", "name": repository_and_namespace, "actions": ["pull"],}
-            ]
-
-            auth_token = generate_bearer_token(
-                audience, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, self._instance_keys
-            )
-            auth_header = "Bearer " + auth_token.decode("ascii")
-
-            uri = self._uri_creator(repository_and_namespace, image.storage.content_checksum)
-
-        return uri, auth_header
-
-    def _new_analyze_request(self, layer):
-        """
-        Create the request body to submit the given layer for analysis.
-
-        If the layer's URL cannot be found, returns None.
-        """
-        layer_id = compute_layer_id(layer)
-        if layer_id is None:
-            return None
-
-        url, auth_header = self._get_image_url_and_auth(layer)
-        if url is None:
-            return None
-
-        layer_request = {
-            "Name": layer_id,
-            "Path": url,
-            "Format": "Docker",
-        }
-
-        if auth_header is not None:
-            layer_request["Headers"] = {
-                "Authorization": auth_header,
-            }
-
-        if layer.parent is not None:
-            if layer.parent.docker_image_id and layer.parent.storage.uuid:
-                layer_request["ParentName"] = compute_layer_id(layer.parent)
-
-        return {
-            "Layer": layer_request,
-        }
-
-    def cleanup_layers(self, layers):
-        """
-        Callback invoked by garbage collection to cleanup any layers that no longer need to be
-        stored in the security scanner.
-        """
-        for layer in layers:
-            self.delete_layer(layer)
-
     def ping(self):
         """
         Calls GET on the metrics endpoint of the security scanner to ensure it is running and
@@ -355,95 +189,6 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             msg = "Exception when trying to connect to security scanner endpoint: %s" % ve
             raise Exception(msg)
 
-    def delete_layer(self, layer):
-        """
-        Calls DELETE on the given layer in the security scanner, removing it from its database.
-        """
-        layer_id = compute_layer_id(layer)
-        if layer_id is None:
-            return None
-
-        # NOTE: We are adding an extra check here for the time being just to be sure we're
-        # not hitting any overlap.
-        docker_image_id, layer_storage_uuid = layer_id.split(".")
-        if get_image_with_storage(docker_image_id, layer_storage_uuid):
-            logger.warning("Found shared Docker ID and storage for layer %s", layer_id)
-            return False
-
-        try:
-            self._call("DELETE", _API_METHOD_DELETE_LAYER % layer_id)
-            return True
-        except Non200ResponseException:
-            return False
-        except requests.exceptions.RequestException:
-            logger.exception("Failed to delete layer: %s", layer_id)
-            return False
-
-    def analyze_layer(self, layer):
-        """
-        Posts the given layer to the security scanner for analysis, blocking until complete.
-
-        Returns the analysis version on success or raises an exception deriving from
-        AnalyzeLayerException on failure. Callers should handle all cases of AnalyzeLayerException.
-        """
-
-        def _response_json(request, response):
-            try:
-                return response.json()
-            except ValueError:
-                logger.exception(
-                    "Failed to decode JSON when analyzing layer %s", request["Layer"]["Name"]
-                )
-                raise AnalyzeLayerException
-
-        request = self._new_analyze_request(layer)
-        if not request:
-            logger.error("Could not build analyze request for layer %s", layer.id)
-            raise AnalyzeLayerException
-
-        logger.debug("Analyzing layer %s", request["Layer"]["Name"])
-        try:
-            response = self._call("POST", _API_METHOD_INSERT, body=request)
-        except requests.exceptions.Timeout:
-            logger.exception("Timeout when trying to post layer data response for %s", layer.id)
-            raise AnalyzeLayerRetryException
-        except requests.exceptions.ConnectionError:
-            logger.exception(
-                "Connection error when trying to post layer data response for %s", layer.id
-            )
-            raise AnalyzeLayerRetryException
-        except (requests.exceptions.RequestException) as re:
-            logger.exception("Failed to post layer data response for %s: %s", layer.id, re)
-            raise AnalyzeLayerException
-        except Non200ResponseException as ex:
-            message = _response_json(request, ex.response).get("Error").get("Message", "")
-            logger.warning(
-                "A warning event occurred when analyzing layer %s (status code %s): %s",
-                request["Layer"]["Name"],
-                ex.response.status_code,
-                message,
-            )
-            # 400 means the layer could not be analyzed due to a bad request.
-            if ex.response.status_code == 400:
-                if message == UNKNOWN_PARENT_LAYER_ERROR_MSG:
-                    raise MissingParentLayerException(
-                        "Bad request to security scanner: %s" % message
-                    )
-                else:
-                    logger.exception("Got non-200 response for analyze of layer %s", layer.id)
-                    raise AnalyzeLayerException("Bad request to security scanner: %s" % message)
-            # 422 means that the layer could not be analyzed:
-            # - the layer could not be extracted (might be a manifest or an invalid .tar.gz)
-            # - the layer operating system / package manager is unsupported
-            elif ex.response.status_code == 422:
-                raise InvalidLayerException
-
-            # Otherwise, it is some other error and we should retry.
-            raise AnalyzeLayerRetryException
-
-        # Return the parsed API version.
-        return _response_json(request, response)["Layer"]["IndexedByVersion"]
-
     def check_layer_vulnerable(self, layer_id, cve_name):
         """
         Checks to see if the layer with the given ID is vulnerable to the specified CVE.
@@ -458,51 +203,6 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
                     return True
 
         return False
-
-    def get_notification(self, notification_name, layer_limit=100, page=None):
-        """
-        Gets the data for a specific notification, with optional page token.
-
-        Returns a tuple of the data (None on failure) and whether to retry.
-        """
-        try:
-            params = {"limit": layer_limit}
-
-            if page is not None:
-                params["page"] = page
-
-            response = self._call(
-                "GET", _API_METHOD_GET_NOTIFICATION % notification_name, params=params
-            )
-            json_response = response.json()
-        except requests.exceptions.Timeout:
-            logger.exception("Timeout when trying to get notification for %s", notification_name)
-            return None, True
-        except requests.exceptions.ConnectionError:
-            logger.exception(
-                "Connection error when trying to get notification for %s", notification_name
-            )
-            return None, True
-        except (requests.exceptions.RequestException, ValueError):
-            logger.exception("Failed to get notification for %s", notification_name)
-            return None, False
-        except Non200ResponseException as ex:
-            return None, ex.response.status_code != 404 and ex.response.status_code != 400
-
-        return json_response, False
-
-    def mark_notification_read(self, notification_name):
-        """
-        Marks a security scanner notification as read.
-        """
-        try:
-            self._call("DELETE", _API_METHOD_MARK_NOTIFICATION_READ % notification_name)
-            return True
-        except Non200ResponseException:
-            return False
-        except requests.exceptions.RequestException:
-            logger.exception("Failed to mark notification as read: %s", notification_name)
-            return False
 
     def get_layer_data(self, layer, include_features=False, include_vulnerabilities=False):
         """
