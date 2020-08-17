@@ -497,8 +497,8 @@ class EphemeralBuilderManager(BaseManager):
             # Check if we can use this executor based on its whitelist, by namespace.
             namespace = build_job.namespace
             if not executor.allowed_for_namespace(namespace):
-                logger.debug(
-                    "Job %s (namespace: %s) cannot use executor %s",
+                logger.warning(
+                    "Job %s (namespace: %s) cannot use executor %s - Falling back to next configured executor",
                     build_uuid,
                     namespace,
                     executor.name,
@@ -508,8 +508,8 @@ class EphemeralBuilderManager(BaseManager):
             # Check if we can use this executor based on the retries remaining.
             if executor.minimum_retry_threshold > build_job.retries_remaining:
                 build_fallback.labels(executor.name).inc()
-                logger.debug(
-                    "Job %s cannot use executor %s as it is below retry threshold %s (retry #%s)",
+                logger.error(
+                    "Job %s cannot use executor %s as it is below retry threshold %s (retry #%s) - Falling back to next configured executor",
                     build_uuid,
                     executor.name,
                     executor.minimum_retry_threshold,
@@ -523,8 +523,12 @@ class EphemeralBuilderManager(BaseManager):
 
             try:
                 execution_id = yield From(executor.start_builder(realm, token, build_uuid))
-            except:
-                logger.exception("Exception when starting builder for job: %s", build_uuid)
+            except Exception as e:
+                logger.exception(
+                    "Exception when starting builder for job: %s (%s) - Falling back to next configured executor",
+                    build_uuid,
+                    e,
+                )
                 continue
 
             started_with_executor = executor
