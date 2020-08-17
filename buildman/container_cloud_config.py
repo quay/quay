@@ -62,10 +62,18 @@ class CloudConfigContext(object):
         onfailure_units=[],
         requires_units=[],
         wants_units=[],
-        timeout_start_sec=None,
-        timeout_stop_sec=None,
+        timeout_start_sec=600,
+        timeout_stop_sec=2000,
         autostart=True,
     ):
+        try:
+            timeout_start_sec = int(timeout_start_sec)
+            timeout_stop_sec = int(timeout_stop_sec)
+        except (ValueError, TypeError):
+            logger.error("Invalid timeouts (%s, %s): values should be integers",
+                         timeout_start_sec,
+                         timeout_stop_sec)
+            raise
 
         path = os.path.join(os.path.dirname(__file__), "templates")
         env = Environment(loader=FileSystemLoader(path), undefined=StrictUndefined)
