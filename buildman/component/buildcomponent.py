@@ -93,6 +93,10 @@ class BuildComponent(BaseComponent):
         """
         Starts a build.
         """
+        if build_job is None:
+            logger.error("Error starting build on realm %s, no job given", self.builder_realm)
+            raise Return()
+
         if self._component_status not in (ComponentStatus.WAITING, ComponentStatus.RUNNING):
             logger.debug(
                 "Could not start build for component %s (build %s, worker version: %s): %s",
@@ -468,6 +472,10 @@ class BuildComponent(BaseComponent):
 
         Handles any errors and calls self._build_finished.
         """
+        if self._current_job is None:
+            logger.error("Build on realm %s has already been completed", self.builder_realm)
+            raise Return()
+
         build_id = self._current_job.repo_build.uuid
 
         try:
@@ -668,12 +676,11 @@ class BuildComponent(BaseComponent):
         yield From(self._set_status(ComponentStatus.TIMED_OUT))
         logger.warning("Build component with realm %s has timed out", self.builder_realm)
 
-        build_id = self._current_job.repo_build.uuid
-
         # If we still have a running job, then it has not completed and we need to tell the parent
         # manager.
         try:
             if self._current_job is not None:
+                build_id = self._current_job.repo_build.uuid
                 yield From(
                     self._build_status.set_error(
                         "Build worker timed out",
