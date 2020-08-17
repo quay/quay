@@ -589,6 +589,12 @@ class KubernetesExecutor(BuilderExecutor):
         # schedule
         create_job = yield From(self._request("POST", self._jobs_path(), json=resource))
         if int(create_job.status_code / 100) != 2:
+            logger.error(
+                "Failed to create kubernetes job for build %s: %s - %s",
+                build_uuid,
+                create_job.status_code,
+                create_job.text,
+            )
             raise ExecutorException(
                 "Failed to create job: %s: %s: %s"
                 % (build_uuid, create_job.status_code, create_job.text)
