@@ -25,8 +25,8 @@ Type=oneshot
 {% else -%}
 Restart={{ restart_policy }}
 {%- endif %}
-TimeoutStartSec={{ timeout_start_sec|default(600) }}
-TimeoutStopSec={{ timeout_stop_sec|default(2000) }}
+TimeoutStartSec={{ timeout_start_sec if timeout_start_sec else 600 }}
+TimeoutStopSec={{ timeout_stop_sec if timeout_stop_sec else 2000 }}
 {% if username and password %}
 ExecStartPre=/usr/bin/docker login -u {{ username }} -p {{ password }} {{ container|registry }}
 {% endif %}
