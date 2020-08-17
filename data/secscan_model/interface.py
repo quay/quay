@@ -55,3 +55,24 @@ class SecurityScannerInterface(object):
         """
         Exposes the legacy security scan API for legacy workers that need it or None if none.
         """
+
+    @abstractmethod
+    def lookup_notification_page(self, notification_id, page_index=None):
+        """
+        Performs the lookup of a page of results for an incoming notification from the security
+        scanner.
+
+        Returns a PaginatedNotificationResult or None if this engine doesn't support this method.
+        """
+
+    @abstractmethod
+    def process_notification_page(self, page_result):
+        """
+        Processes the page of notification information given and yields UpdatedVulnerability's.
+        """
+
+    @abstractmethod
+    def mark_notification_handled(self, notification_id):
+        """ 
+        Marks that a security notification from the scanner has been handled.
+        """

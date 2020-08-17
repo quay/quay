@@ -176,3 +176,31 @@ class SecurityInformationLookupResult(object):
         None otherwise.
         """
         return self._request_error
+
+
+@unique
+class PaginatedNotificationStatus(IntEnum):
+    # Indicates that an error has occurred and that the lookup should be retried again in the
+    # future.
+    RETRYABLE_ERROR = 0
+
+    # Indicates that an error has occurred and that the lookup should not be retried again in
+    # the future
+    FATAL_ERROR = 1
+
+    # Indicates that the lookup was successful and more data is available for processing.
+    SUCCESS = 2
+
+
+class PaginatedNotificationResult(
+    namedtuple("PaginatedNotificationResult", ["status", "data", "next_page_index"])
+):
+    """ Named tuple that contains the result of a paginated notification lookup in the security scanner. """
+
+
+class UpdatedVulnerability(
+    namedtuple("UpdatedVulnerability", ["manifest_digest", "vulnerability"])
+):
+    """ Named tuple that represents an updated vulnerability for a manifest.
+    """
+

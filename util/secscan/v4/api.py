@@ -77,6 +77,13 @@ class SecurityScannerAPIInterface(object):
         """
         pass
 
+    @abstractmethod
+    def retrieve_notification_page(self, notification_id, next_param=None):
+        """
+        Retrieves a page of results from a notification.
+        """
+        pass
+
 
 Action = namedtuple("Action", ["name", "payload"])
 
@@ -88,6 +95,17 @@ actions = {
     ),
     "GetVulnerabilityReport": lambda manifest_hash: Action(
         "GetVulnerabilityReport", ("GET", "vulnerability_report/" + manifest_hash, None,)
+    ),
+    "DeleteNotification": lambda notification_id: Action(
+        "DeleteNotification", ("DELETE", "notification/%s" % (notification_id), None,)
+    ),
+    "RetrieveNotificationPage": lambda notification_id, next_param: Action(
+        "RetrieveNotificationPage",
+        (
+            "GET",
+            "notification/%s%s" % (notification_id, "?next=" + next_param if next_param else ""),
+            None,
+        ),
     ),
 }
 
@@ -144,6 +162,29 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         assert resp.headers["etag"]
 
         return (resp.json(), resp.headers["etag"].strip('"'))
+
+    def retrieve_notification_page(self, notification_id, next_param=None):
+        try:
+            resp = self._perform(actions["RetrieveNotificationPage"](notification_id, next_param))
+        except IncompatibleAPIResponse as ex:
+            raise APIRequestFailure(ex)
+        except Non200ResponseException as ex:
+            if ex.response.status_code == 404:
+                return None
+            raise APIRequestFailure(ex)
+
+        return resp.json()
+
+    def delete_notification(self, notification_id):
+        try:
+            resp = self._perform(actions["DeleteNotification"](notification_id))
+        except IncompatibleAPIResponse as ex:
+            raise APIRequestFailure(ex)
+        except Non200ResponseException as ex:
+            if ex.response.status_code == 404:
+                return
+
+            raise APIRequestFailure(ex)
 
     def index_report(self, manifest_hash):
         try:
@@ -205,13 +246,18 @@ def is_valid_response(action, resp={}):
         "Index": "IndexReport",
         "GetIndexReport": "IndexReport",
         "GetVulnerabilityReport": "VulnerabilityReport",
+        # TODO: Add the notification responses in here
     }
     filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clair-v4.openapi.json")
 
     with open(filename) as openapi_file:
         openapi = json.load(openapi_file)
         resolver = RefResolver(base_uri="", referrer=openapi)
-        schema = openapi["components"]["schemas"][schema_for[action.name]]
+        schema_name = schema_for.get(action.name)
+        if schema_name is None:
+            return True
+
+        schema = openapi["components"]["schemas"][schema_name]
 
         try:
             validate(resp, schema, resolver=resolver)

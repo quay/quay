@@ -1,7 +1,8 @@
 import json
 
-from httmock import urlmatch, HTTMock, all_requests
+from collections import defaultdict
 from contextlib import contextmanager
+from httmock import urlmatch, HTTMock, all_requests
 
 
 @contextmanager
@@ -35,12 +36,71 @@ class FakeSecurityScanner(object):
         self.manifests = {}
         self.index_reports = {}
         self.vulnerability_reports = {}
+        self.notifications = defaultdict(list)
+
+    def add_notification(self, notification_id, manifest_digest, reason, vulnerability):
+        """
+        Adds a notification to be returned by the fake.
+        """
+        self.notifications[notification_id].append(
+            {
+                "ID": notification_id,
+                "Manifest": manifest_digest,
+                "Reason": reason,
+                "Vulnerability": vulnerability,
+            }
+        )
 
     @property
     def endpoints(self):
         """
         The HTTMock endpoint definitions for the fake security scanner.
         """
+
+        @urlmatch(
+            netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/notification/(.+)", method="GET"
+        )
+        def get_notification(url, request):
+            notification_id = url.path[len("/api/v1/notification/") :]
+            if notification_id not in self.notifications:
+                return {
+                    "status_code": 404,
+                    "content": json.dumps(
+                        {"code": "not-found", "message": "notification not found"}
+                    ),
+                }
+
+            return {
+                "status_code": 200,
+                "content": json.dumps(
+                    {
+                        "notifications": self.notifications[notification_id],
+                        "page": {"size": len(self.notifications[notification_id]),},
+                    }
+                ),
+                "headers": {"etag": self.indexer_state,},
+            }
+
+        @urlmatch(
+            netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/notification/(.+)", method="DELETE"
+        )
+        def delete_notification(url, request):
+            notification_id = url.path[len("/api/v1/notification/") :]
+            if notification_id not in self.notifications:
+                return {
+                    "status_code": 404,
+                    "content": json.dumps(
+                        {"code": "not-found", "message": "notification not found"}
+                    ),
+                }
+
+            del self.notifications[notification_id]
+
+            return {
+                "status_code": 204,
+                "content": json.dumps({}),
+                "headers": {"etag": self.indexer_state,},
+            }
 
         @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/index_state", method="GET")
         def state(url, request):
@@ -146,6 +206,8 @@ class FakeSecurityScanner(object):
             index,
             index_report,
             vulnerability_report,
+            get_notification,
+            delete_notification,
             response_content,
         ]
 

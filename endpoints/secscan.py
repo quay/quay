@@ -1,8 +1,11 @@
 import logging
 
-from flask import make_response, Blueprint, jsonify
+import features
+
+from app import secscan_notification_queue
+from flask import make_response, Blueprint, jsonify, abort
 from data.database import ManifestSecurityStatus, Manifest
-from endpoints.decorators import anon_allowed
+from endpoints.decorators import anon_allowed, route_show_if
 
 logger = logging.getLogger(__name__)
 secscan = Blueprint("secscan", __name__)
@@ -12,6 +15,27 @@ secscan = Blueprint("secscan", __name__)
 @anon_allowed
 def internal_ping():
     return make_response("true", 200)
+
+
+@route_show_if(features.SECURITY_SCANNER)
+@secscan.route("/notification", methods=["POST"])
+@anon_allowed
+def secscan_notification():
+    # TODO: verify the JWT header is signed by the security scanner
+
+    data = request.get_json()
+    logger.debug("Got notification from V4 Security Scanner: %s", data)
+    if "NotificationID" not in data or "Callback" not in data:
+        abort(400)
+
+    notification_id = data["NotificationID"]
+    name = ["with_id", notification_id]
+    if not secscan_notification_queue.alive(name):
+        secscan_notification_queue.put(
+            name, json.dumps({"notification_id": notification_id}),
+        )
+
+    return make_response("Okay")
 
 
 @secscan.route("/_backfill_status")

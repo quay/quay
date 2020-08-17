@@ -75,10 +75,6 @@ location ~ ^/v2/_catalog(.*)$ {
 }
 
 location /secscan/ {
-    proxy_pass http://jwtproxy_secscan;
-}
-
-location /secscan/_internal_ping {
     proxy_pass http://secscan_app_server;
 }
 

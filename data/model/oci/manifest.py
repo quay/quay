@@ -16,6 +16,9 @@ from data.database import (
     ImageStoragePlacement,
     ImageStorageTransformation,
     ImageStorageSignature,
+    Repository,
+    RepositoryNotification,
+    ExternalNotificationEvent,
     db_transaction,
 )
 from data.model import BlobDoesNotExist
@@ -53,6 +56,19 @@ class _ManifestAlreadyExists(Exception):
 
     def __init__(self, internal_exception):
         self.internal_exception = internal_exception
+
+
+def find_manifests_for_sec_notification(manifest_digest):
+    """ Finds all manifests matching the given digest that live in a repository with a registered
+        notification event for security scan results.
+    """
+    event_kind = ExternalNotificationEvent.get(name="vulnerability_found")
+    return (
+        Manifest.select(Manifest, Repository)
+        .join(Repository)
+        .join(RepositoryNotification)
+        .where(Manifest.digest == manifest_digest, RepositoryNotification.event == event_kind)
+    )
 
 
 def lookup_manifest(

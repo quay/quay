@@ -7,7 +7,12 @@ import json
 from datetime import datetime, timedelta
 
 from data.secscan_model.secscan_v4_model import V4SecurityScanner, IndexReportState, features_for
-from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformation, Layer
+from data.secscan_model.datatypes import (
+    ScanLookupStatus,
+    SecurityInformation,
+    Layer,
+    PaginatedNotificationStatus,
+)
 from data.database import (
     Manifest,
     Repository,
@@ -20,6 +25,7 @@ from data.database import (
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
 from util.secscan.v4.api import APIRequestFailure
+from util.secscan.v4.fake import fake_security_scanner
 from util.canonicaljson import canonicalize
 
 from test.fixtures import *
@@ -358,3 +364,83 @@ def test_perform_indexing_invalid_manifest(initialized_db, set_secscan_config):
     assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.MANIFEST_UNSUPPORTED
+
+
+def test_lookup_notification_page_invalid(initialized_db, set_secscan_config):
+    with fake_security_scanner(
+        hostname=app.config["SECURITY_SCANNER_V4_ENDPOINT"][len("http://") :]
+    ):
+        secscan = V4SecurityScanner(app, instance_keys, storage)
+        result = secscan.lookup_notification_page("someinvalidid")
+        assert result.status == PaginatedNotificationStatus.FATAL_ERROR
+
+
+def test_lookup_notification_page_valid(initialized_db, set_secscan_config):
+    with fake_security_scanner(
+        hostname=app.config["SECURITY_SCANNER_V4_ENDPOINT"][len("http://") :]
+    ) as fake:
+        fake.add_notification("somevalidid", "sha256:abcd", "added", {})
+
+        secscan = V4SecurityScanner(app, instance_keys, storage)
+        result = secscan.lookup_notification_page("somevalidid")
+        assert result.status == PaginatedNotificationStatus.SUCCESS
+        assert result.next_page_index is None
+        assert result.data[0]["Manifest"] == "sha256:abcd"
+
+
+def test_mark_notification_handled(initialized_db, set_secscan_config):
+    with fake_security_scanner(
+        hostname=app.config["SECURITY_SCANNER_V4_ENDPOINT"][len("http://") :]
+    ) as fake:
+        fake.add_notification("somevalidid", "sha256:abcd", "added", {})
+
+        secscan = V4SecurityScanner(app, instance_keys, storage)
+        result = secscan.lookup_notification_page("somevalidid")
+        assert result.status == PaginatedNotificationStatus.SUCCESS
+        assert result.next_page_index is None
+        assert result.data[0]["Manifest"] == "sha256:abcd"
+
+        secscan.mark_notification_handled("somevalidid")
+        result = secscan.lookup_notification_page("somevalidid")
+        assert result.status == PaginatedNotificationStatus.FATAL_ERROR
+
+
+def test_process_notification_page(initialized_db, set_secscan_config):
+    with fake_security_scanner(
+        hostname=app.config["SECURITY_SCANNER_V4_ENDPOINT"][len("http://") :]
+    ) as fake:
+        secscan = V4SecurityScanner(app, instance_keys, storage)
+        result = secscan.lookup_notification_page("somevalidid")
+
+        # Removed vulns get skipped.
+        assert len(list(secscan.process_notification_page([{"Reason": "removed",}]))) == 0
+
+        results = list(
+            secscan.process_notification_page(
+                [
+                    {"Reason": "removed",},
+                    {
+                        "Reason": "added",
+                        "Manifest": "sha256:abcd",
+                        "Vulnerability": {
+                            "Severity": "s",
+                            "Description": "d",
+                            "Package": "p",
+                            "Name": "n",
+                            "FixedBy": "f",
+                            "Link": "l",
+                        },
+                    },
+                ]
+            )
+        )
+
+        assert len(results) == 1
+        assert results[0].manifest_digest == "sha256:abcd"
+        assert results[0].vulnerability.Severity == "s"
+        assert results[0].vulnerability.Description == "d"
+        assert results[0].vulnerability.NamespaceName == "p"
+        assert results[0].vulnerability.Name == "n"
+        assert results[0].vulnerability.FixedBy == "f"
+        assert results[0].vulnerability.Link == "l"
+

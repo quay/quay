@@ -43,6 +43,8 @@ from data.database import (
     ManifestLegacyImage,
     Manifest,
     ManifestChild,
+    ExternalNotificationEvent,
+    RepositoryNotification,
 )
 from data.text import prefix_search
 from util.itertoolrecipes import take
@@ -57,6 +59,25 @@ class RepoStateConfigException(Exception):
     """
 
     pass
+
+
+def lookup_secscan_notification_severities(repository_id):
+    """ Returns the configured security scanner notification severities for the repository
+        or None if none.
+    """
+    try:
+        repo = Repository.get(id=repository_id)
+    except Repository.DoesNotExist:
+        return None
+
+    event_kind = ExternalNotificationEvent.get(name="vulnerability_found")
+    for event in RepositoryNotification.select().where(
+        RepositoryNotification.repository == repository_id,
+        RepositoryNotification.event == event_kind,
+    ):
+        severity = json.loads(event.event_config_json).get("vulnerability", {}).get("priority")
+        if severity:
+            yield severity
 
 
 def get_max_id():

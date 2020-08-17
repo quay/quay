@@ -78,6 +78,16 @@ def get_tag(repository_id, tag_name):
         return None
 
 
+def tag_names_for_manifest(manifest_id, limit=None):
+    """ Returns the names of the tags pointing to the given manifest. """
+    query = Tag.select(Tag.id, Tag.name).where(Tag.manifest == manifest_id)
+
+    if limit is not None:
+        query = query.limit(limit)
+
+    return [tag.name for tag in filter_to_alive_tags(query)]
+
+
 def lookup_alive_tags_shallow(repository_id, start_pagination_id=None, limit=None):
     """
     Returns a list of the tags alive in the specified repository. Note that the tags returned.

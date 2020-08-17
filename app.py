@@ -258,6 +258,9 @@ dockerfile_build_queue = WorkQueue(
     app.config["DOCKERFILE_BUILD_QUEUE_NAME"], tf, has_namespace=True
 )
 notification_queue = WorkQueue(app.config["NOTIFICATION_QUEUE_NAME"], tf, has_namespace=True)
+secscan_notification_queue = WorkQueue(
+    app.config["SECSCAN_V4_NOTIFICATION_QUEUE_NAME"], tf, has_namespace=False
+)
 export_action_logs_queue = WorkQueue(
     app.config["EXPORT_ACTION_LOGS_QUEUE_NAME"], tf, has_namespace=True
 )

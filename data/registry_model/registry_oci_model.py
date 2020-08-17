@@ -881,6 +881,28 @@ class OCIModel(RegistryDataInterface):
             )
         )
 
+    def find_manifests_for_sec_notification(self, manifest_digest):
+        """ Finds all manifests with the given digest that live in repositories that have
+            registered security notifications.
+        """
+        found = model.oci.manifest.find_manifests_for_sec_notification(manifest_digest)
+        for manifest in found:
+            yield Manifest.for_manifest(manifest, self._legacy_image_id_handler)
+
+    def lookup_secscan_notification_severities(self, repository):
+        """ Returns the security notification severities for security events within
+            a repository or None if none.
+        """
+        return model.repository.lookup_secscan_notification_severities(repository.id)
+
+    def tag_names_for_manifest(self, manifest, limit):
+        """ Returns the names of the tags that point to the given manifest, up to the given
+            limit.
+        """
+        # TODO: Do we want to also return the tags that *contain* the given manifest via
+        # ManifestChild?
+        return model.oci.tag.tag_names_for_manifest(manifest._db_id, limit)
+
     def populate_legacy_images_for_testing(self, manifest, storage):
         """ Populates legacy images for the given manifest, for testing only. This call
             will fail if called under non-testing code.

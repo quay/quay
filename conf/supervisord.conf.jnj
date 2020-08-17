@@ -228,6 +228,22 @@ autostart = {{ config['servicekey']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:manifestbackfillworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command=python -m workers.manifestbackfillworker
+autostart = {{ config['manifestbackfillworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
+[program:securityscanningnotificationworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command=python -m workers.securityscanningnotificationworker
+autostart = {{ config['securityscanningnotificationworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:repomirrorworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s

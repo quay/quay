@@ -153,3 +153,12 @@ class V2SecurityScanner(SecurityScannerInterface):
         NOTE: Raises `NotImplementedError` because indexing for v2 is not supported.
         """
         raise NotImplementedError("Unsupported for this security scanner version")
+
+    def lookup_notification_page(self, notification_id, page_index=None):
+        return None
+
+    def process_notification_page(self, page_result):
+        raise NotImplementedError("Unsupported for this security scanner version")
+
+    def mark_notification_handled(self, notification_id):
+        raise NotImplementedError("Unsupported for this security scanner version")

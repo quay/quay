@@ -15,6 +15,9 @@ from data.secscan_model.datatypes import (
     Feature,
     Layer,
     Vulnerability,
+    PaginatedNotificationResult,
+    PaginatedNotificationStatus,
+    UpdatedVulnerability,
 )
 from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatypes import Manifest as ManifestDataType
@@ -70,6 +73,15 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
 
     @property
     def legacy_api_handler(self):
+        raise NotImplementedError("Unsupported for this security scanner version")
+
+    def lookup_notification_page(self, notification_id, page_index=None):
+        return None
+
+    def process_notification_page(self, page_result):
+        raise NotImplementedError("Unsupported for this security scanner version")
+
+    def mark_notification_handled(self, notification_id):
         raise NotImplementedError("Unsupported for this security scanner version")
 
 
@@ -267,6 +279,53 @@ class V4SecurityScanner(SecurityScannerInterface):
                 )
 
         return ScanToken(max_id + 1)
+
+    def lookup_notification_page(self, notification_id, page_index=None):
+        try:
+            notification_page_results = self._secscan_api.retrieve_notification_page(
+                notification_id, page_index
+            )
+
+            # If we get back None, then the notification no longer exists.
+            if notification_page_results is None:
+                return PaginatedNotificationResult(
+                    PaginatedNotificationStatus.FATAL_ERROR, None, None
+                )
+        except APIRequestFailure:
+            return PaginatedNotificationResult(
+                PaginatedNotificationStatus.RETRYABLE_ERROR, None, None
+            )
+
+        return PaginatedNotificationResult(
+            PaginatedNotificationStatus.SUCCESS,
+            notification_page_results["notifications"],
+            notification_page_results.get("page", {}).get("next"),
+        )
+
+    def mark_notification_handled(self, notification_id):
+        try:
+            self._secscan_api.delete_notification(notification_id)
+            return True
+        except APIRequestFailure:
+            return False
+
+    def process_notification_page(self, page_result):
+        for notification_data in page_result:
+            if notification_data["Reason"] != "added":
+                continue
+
+            yield UpdatedVulnerability(
+                notification_data["Manifest"],
+                Vulnerability(
+                    Severity=notification_data["Vulnerability"]["Severity"],
+                    Description=notification_data["Vulnerability"]["Description"],
+                    NamespaceName=notification_data["Vulnerability"]["Package"],
+                    Name=notification_data["Vulnerability"]["Name"],
+                    FixedBy=notification_data["Vulnerability"].get("FixedBy"),
+                    Link=notification_data["Vulnerability"].get("Link"),
+                    Metadata={},
+                ),
+            )
 
     def register_model_cleanup_callbacks(self, data_model_config):
         pass
