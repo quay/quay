@@ -133,6 +133,71 @@
         </div>
       </div>
 
+      <!-- Database Configuration -->
+      <div class="co-panel">
+        <div class="co-panel-heading">
+          <i class="fa fa-database"></i> Database
+        </div>
+        <div class="co-panel-body">
+          <div class="description">
+            <p>Quay uses a database as its primary metadata storage.</p>
+          </div>
+          <table class="config-table">
+            <tr>
+              <td class="non-input">Database Type:</td>
+              <td>
+                 <select ng-model="mapped.database.kind">
+                    <option value="mysql+pymysql">MySQL</option>
+                    <option value="postgresql">Postgres</option>
+                 </select>
+              </td>
+            </tr>
+            <tr ng-show="mapped.database.kind">
+              <td>Database Server:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.database.server"
+                      placeholder="dbserverhost"
+                      pattern="{{ HOSTNAME_REGEX }}"
+                      validator="validateHostname(value)">></span>
+                <div class="help-text">
+                  The server (and optionally, custom port) where the database lives
+                </div>
+              </td>
+            </tr>
+            <tr ng-show="mapped.database.kind">
+              <td>Username:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.database.username"
+                      placeholder="someuser"></span>
+                <div class="help-text">This user must have <strong>full access</strong> to the database</div>
+              </td>
+            </tr>
+            <tr ng-show="mapped.database.kind">
+              <td>Password:</td>
+              <td>
+                <input class="form-control" type="password" ng-model="mapped.database.password"></span>
+              </td>
+            </tr>
+            <tr ng-show="mapped.database.kind">
+              <td>Database Name:</td>
+              <td>
+                <span class="config-string-field" binding="mapped.database.database"
+                      placeholder="registry-database"></span>
+              </td>
+            </tr>
+            <tr ng-show="mapped.database.kind">
+              <td>SSL Certificate:</td>
+              <td>
+                <span class="config-file-field" filename="database.pem"
+                      skip-check-file="true" has-file="currentState.hasDatabaseSSLCert"></span>
+                <div class="help-text">Optional SSL certicate (in PEM format) to use to connect to the database</div>
+              </td>
+            </tr>
+          </table>
+        </div>    
+      </div>
+
+
       <!-- Consistency Settings -->
       <div class="co-panel">
         <div class="co-panel-heading">
@@ -220,7 +285,7 @@
       <!-- Redis -->
       <div class="co-panel">
         <div class="co-panel-heading">
-          <img src="/static/img/redis-small.png"> redis
+          <img src="/static/img/redis-small.png"> Redis
         </div>
         <div class="co-panel-body">
           <div class="description">

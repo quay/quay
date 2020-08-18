@@ -312,6 +312,20 @@ angular.module("quay-config")
           });
         };
 
+        var parseDbUri = function(value) {
+          if (!value) { return null; }
+
+          // Format: mysql+pymysql://<username>:<url escaped password>@<hostname>/<database_name>
+          var uri = URI(value);
+          return {
+              'kind': uri.protocol(),
+              'username': uri.username(),
+              'password': uri.password(),
+              'server': uri.host(),
+              'database': uri.path() ? uri.path().substr(1) : ''
+          };
+      };
+
         $scope.allowChangeLocationStorageConfig = function(location) {
           if (!$scope.serverStorageConfig[location]) { return true };
 
@@ -458,6 +472,10 @@ angular.module("quay-config")
               $scope.mapped['LOGS_MODEL_CONFIG']['elasticsearch_config'] = config['LOGS_MODEL_CONFIG']['elasticsearch_config'];
             }
           }
+
+          $scope.mapped['database'] = {}
+          $scope.mapped['database'] = parseDbUri(getKey(config, "DB_URI"))
+          
         };
 
         var tlsSetter = function(value) {
@@ -502,6 +520,28 @@ angular.module("quay-config")
             $scope.config['BUILDLOGS_REDIS'][keyname] = value;
             $scope.config['USER_EVENTS_REDIS'][keyname] = value;
           };
+        };
+
+        var databaseSetter = function(fields) {
+          if (value == null || !$scope.config) { return; }
+
+          if (!fields['server']) { return ''; }
+          if (!fields['database']) { return ''; }
+
+          var uri = URI();
+          try {
+              uri = uri && uri.host(fields['server']);
+              uri = uri && uri.protocol(fields['kind']);
+              uri = uri && uri.username(fields['username']);
+              uri = uri && uri.password(fields['password']);
+              uri = uri && uri.path('/' + (fields['database'] || ''));
+              uri = uri && uri.toString();
+          } catch (ex) {
+              return '';
+          }
+
+          $scope.config['DB_URI'] = uri
+          
         };
 
         var logsModelSelector = function(keyname) {
@@ -570,6 +610,8 @@ angular.module("quay-config")
         $scope.$watch('mapped.redis.host', redisSetter('host'));
         $scope.$watch('mapped.redis.port', redisSetter('port'));
         $scope.$watch('mapped.redis.password', redisSetter('password'));
+
+        $scope.$watch('mapped.database', databaseSetter);
 
         $scope.$watch('mapped.LOGS_MODEL', logsModelSelector('LOGS_MODEL'));
         $scope.$watch('mapped.LOGS_MODEL_CONFIG.producer', logsProducerSetter);
