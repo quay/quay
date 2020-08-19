@@ -19,13 +19,13 @@ func (fg *SigningEngineFieldGroup) Validate(opts shared.Options) []shared.Valida
 	}
 
 	// Check required fields
-	if ok, err := shared.ValidateRequiredString(fg.Gpg2PublicKeyFilename, "GPG2_PUBLIC_KEY_FILENAME", "SigningEngine"); ok {
+	if ok, err := shared.ValidateRequiredString(fg.Gpg2PublicKeyFilename, "GPG2_PUBLIC_KEY_FILENAME", "SigningEngine"); !ok {
 		errors = append(errors, err)
 	}
-	if ok, err := shared.ValidateRequiredString(fg.Gpg2PrivateKeyFilename, "GPG2_PRIVATE_KEY_FILENAME", "SigningEngine"); ok {
+	if ok, err := shared.ValidateRequiredString(fg.Gpg2PrivateKeyFilename, "GPG2_PRIVATE_KEY_FILENAME", "SigningEngine"); !ok {
 		errors = append(errors, err)
 	}
-	if ok, err := shared.ValidateRequiredString(fg.Gpg2PrivateKeyName, "GPG2_PRIVATE_KEY_NAME", "SigningEngine"); ok {
+	if ok, err := shared.ValidateRequiredString(fg.Gpg2PrivateKeyName, "GPG2_PRIVATE_KEY_NAME", "SigningEngine"); !ok {
 		errors = append(errors, err)
 	}
 

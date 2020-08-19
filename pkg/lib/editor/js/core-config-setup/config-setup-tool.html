@@ -20,6 +20,21 @@
         <div class="co-panel-body">
           <table class="config-table">
             <tr>
+              <td class="non-input">Registry Title:</td>
+              <td colspan="2">
+                <span class="config-string-field" binding="config.REGISTRY_TITLE"></span>
+                <div class="help-text" style="margin-top: 10px;">
+                  Name of registry to be displayed in the Contact Page. 
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="non-input">Registry Title Short:</td>
+              <td colspan="2">
+                <span class="config-string-field" binding="config.REGISTRY_TITLE_SHORT"></span>
+              </td>
+            </tr>
+            <tr>
               <td>Enterprise Logo URL:</td>
               <td>
                 <span class="config-string-field" binding="config.ENTERPRISE_LOGO_URL"
@@ -41,7 +56,7 @@
                   is displayed.
                 </div>
               </td>
-            </tr>
+            </tr>           
           </table>
         </div>
       </div>
@@ -699,18 +714,7 @@
           </div>
 
           <table class="config-table" ng-if="config.FEATURE_SECURITY_SCANNER">
-            <tr>
-              <td>Authentication Key:</td>
-              <td>
-                <span class="config-service-key-field"
-                      service-name="{{ config.SECURITY_SCANNER_ISSUER_NAME || 'secscan' }}"></span>
-                <div class="help-text">
-                  The security scanning service requires an authorized service key to speak to Quay. Once setup, the
-                  key
-                  can be managed in the Service Keys panel under the Super User Admin Panel.
-                </div>
-              </td>
-            </tr>
+           
             <tr>
               <td>Security Scanner Endpoint:</td>
               <td>

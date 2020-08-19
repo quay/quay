@@ -6,7 +6,8 @@
   "scripts": {
     "clean": "rm -f static/build/*",
     "watch": "npm run clean && webpack --watch --mode=development",
-    "build": "npm run clean && NODE_ENV=production webpack --mode=production --progress"
+    "build": "npm run clean && NODE_ENV=production webpack --mode=production --progress",
+    "dev-build": "npm run clean && webpack --mode=development"
   },
   "repository": {
     "type": "git",

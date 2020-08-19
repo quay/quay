@@ -6,6 +6,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"path"
 
 	auth "github.com/abbot/go-http-auth"
 	bcrypt "golang.org/x/crypto/bcrypt"
@@ -55,6 +56,9 @@ func configValidator(w http.ResponseWriter, r *http.Request) {
 
 	errors := loaded.Validate(opts)
 
+	for _, err := range errors {
+		fmt.Println(err)
+	}
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	js, err := json.Marshal(errors)
 	if err != nil {
@@ -74,7 +78,8 @@ func configHandler(configPath string) func(http.ResponseWriter, *http.Request) {
 		}
 
 		// Read config file
-		configBytes, err := ioutil.ReadFile(configPath)
+		configFilePath := path.Join(configPath, "config.yaml")
+		configBytes, err := ioutil.ReadFile(configFilePath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return

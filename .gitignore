@@ -25,3 +25,5 @@ config.tar.gz
 /testdata
 
 node_modules
+
+build
