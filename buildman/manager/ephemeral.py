@@ -508,7 +508,7 @@ class EphemeralBuilderManager(BaseManager):
             # Check if we can use this executor based on the retries remaining.
             if executor.minimum_retry_threshold > build_job.retries_remaining:
                 build_fallback.labels(executor.name).inc()
-                logger.error(
+                logger.warning(
                     "Job %s cannot use executor %s as it is below retry threshold %s (retry #%s) - Falling back to next configured executor",
                     build_uuid,
                     executor.name,
