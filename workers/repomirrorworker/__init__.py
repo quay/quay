@@ -61,7 +61,7 @@ def process_mirrors(skopeo, token=None):
         return None
 
     iterator, next_token = model.repositories_to_mirror(start_token=token)
-    if iterator is None:
+    if not iterator:
         logger.debug("Found no additional repositories to mirror")
         return next_token
 
@@ -94,7 +94,7 @@ def perform_mirror(skopeo, mirror):
         verbose_logs = False
 
     mirror = claim_mirror(mirror)
-    if mirror == None:
+    if not mirror:
         raise PreemptedException
 
     emit_log(
@@ -152,8 +152,6 @@ def perform_mirror(skopeo, mirror):
     now_ms = database.get_epoch_timestamp_ms()
     overall_status = RepoMirrorStatus.SUCCESS
     try:
-        delete_obsolete_tags(mirror, tags)
-
         try:
             username = (
                 mirror.external_registry_username.decrypt()
@@ -176,6 +174,11 @@ def perform_mirror(skopeo, mirror):
         )
 
         for tag in tags:
+            reclaimed_mirror = claim_mirror(mirror)
+            if not reclaimed_mirror:
+                raise PreemptedException
+            mirror = reclaimed_mirror
+
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
             dest_image = "docker://%s/%s/%s:%s" % (
                 dest_server,
@@ -223,15 +226,26 @@ def perform_mirror(skopeo, mirror):
                 )
                 logger.info("Source '%s' successful sync." % src_image)
 
-            mirror = claim_mirror(mirror)
-            if mirror is None:
-                emit_log(
-                    mirror,
-                    "repo_mirror_sync_failed",
-                    "lost",
-                    "'%s' with tag pattern '%s'"
-                    % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
-                )
+        reclaimed_mirror = claim_mirror(mirror)
+        if not reclaimed_mirror:
+            raise PreemptedException
+        mirror = reclaimed_mirror
+        delete_obsolete_tags(mirror, tags)
+
+    except PreemptedException as e:
+        overall_status = RepoMirrorStatus.FAIL
+        emit_log(
+            mirror,
+            "repo_mirror_sync_failed",
+            "lost",
+            "'%s' job lost" % (mirror.external_reference),
+            tags="",
+            stdout="Not applicable",
+            stderr="Not applicable",
+        )
+        release_mirror(mirror, overall_status)
+        return
+
     except Exception as e:
         overall_status = RepoMirrorStatus.FAIL
         emit_log(
@@ -332,11 +346,10 @@ def _skopeo_inspect_failure(result):
 
 def rollback(mirror, since_ms):
     """
-
-  :param mirror: Mirror to perform rollback on
-  :param start_time: Time mirror was started; all changes after will be undone
-  :return:
-  """
+    :param mirror: Mirror to perform rollback on
+    :param start_time: Time mirror was started; all changes after will be undone
+    :return:
+    """
 
     repository_ref = registry_model.lookup_repository(
         mirror.repository.namespace_user.username, mirror.repository.name
@@ -378,6 +391,7 @@ def delete_obsolete_tags(mirror, tags):
     obsolete_tags = list([tag for tag in existing_tags if tag.name not in tags])
 
     for tag in obsolete_tags:
+        logger.debug("Repo mirroring delete obsolete tag '%s'" % tag.name)
         delete_tag(mirror.repository, tag.name)
 
     return obsolete_tags
