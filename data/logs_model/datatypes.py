@@ -143,7 +143,7 @@ class Log(
     def to_dict(self, avatar, include_namespace=False):
         view = {
             "kind": _kinds()[self.kind_id],
-            "metadata": json.loads(self.metadata_json or {}),
+            "metadata": json.loads(self.metadata_json or "{}"),
             "ip": self.ip,
             "datetime": _format_date(self.datetime),
         }
