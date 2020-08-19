@@ -1,26 +1,33 @@
 import base64
 from hashlib import md5
+
+import os.path
 import pytest
 import io
 
 from contextlib import contextmanager
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 from httmock import urlmatch, HTTMock
 from xml.dom import minidom
 
-from azure.storage.blob import BlockBlobService
+from azure.storage.blob import BlobServiceClient
 
-from storage.azurestorage import AzureStorage
+from storage.azurestorage import AzureStorage, AZURE_STORAGE_URL_STRING
 
 
 @contextmanager
 def fake_azure_storage(files=None):
-    service = BlockBlobService(is_emulated=True)
-    endpoint = service.primary_endpoint.split("/")
     container_name = "somecontainer"
+    account_name = "someaccount"
+    account_key = "somekey"
+    storage_path = ""
+
+    service = BlobServiceClient(AZURE_STORAGE_URL_STRING.format("someaccount"))
+    endpoint = service.primary_hostname
     files = files if files is not None else {}
 
-    container_prefix = "/" + endpoint[1] + "/" + container_name
+    container_prefix = os.path.join("/" + container_name, storage_path).rstrip("/")
 
     @urlmatch(netloc=endpoint[0], path=container_prefix + "$")
     def get_container(url, request):
@@ -30,19 +37,26 @@ def fake_azure_storage(files=None):
     def container_file(url, request):
         filename = url.path[len(container_prefix) + 1 :]
 
-        if request.method == "GET" or request.method == "HEAD":
+        if request.method == "GET":
             return {
                 "status_code": 200 if filename in files else 404,
-                "content": files.get(filename),
                 "headers": {"ETag": "foobar",},
+                "content": files.get(filename) if filename in files else "",
+            }
+
+        if request.method == "HEAD":
+            return {
+                "status_code": 200 if filename in files else 404,
+                "headers": {"ETag": "foobar",}
+                if filename in files
+                else {"x-ms-error-code": "ResourceNotFound"},
+                "content": "",
             }
 
         if request.method == "DELETE":
             files.pop(filename)
             return {
-                "status_code": 201,
-                "content": "",
-                "headers": {"ETag": "foobar",},
+                "status_code": 202,
             }
 
         if request.method == "PUT":
@@ -65,7 +79,7 @@ def fake_azure_storage(files=None):
                     "status_code": 201,
                     "content": "{}",
                     "headers": {
-                        "Content-MD5": base64.b64encode(md5(request.body).digest()),
+                        "Content-MD5": base64.b64encode(md5(request.body).digest()).decode("ascii"),
                         "ETag": "foo",
                         "x-ms-request-server-encrypted": "false",
                         "last-modified": "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -84,7 +98,9 @@ def fake_azure_storage(files=None):
                     "status_code": 201,
                     "content": "{}",
                     "headers": {
-                        "Content-MD5": base64.b64encode(md5(files[filename]).digest()),
+                        "Content-MD5": base64.b64encode(md5(files[filename]).digest()).decode(
+                            "ascii"
+                        ),
                         "ETag": "foo",
                         "x-ms-request-server-encrypted": "false",
                         "last-modified": "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -93,11 +109,12 @@ def fake_azure_storage(files=None):
 
             if request.headers.get("x-ms-copy-source"):
                 copy_source = request.headers["x-ms-copy-source"]
+                print("DEBUG REQUEST SOURCE:", copy_source)
                 copy_path = urlparse(copy_source).path[len(container_prefix) + 1 :]
                 files[filename] = files[copy_path]
                 return {
-                    "status_code": 201,
-                    "content": "{}",
+                    "status_code": 202,
+                    "content": "",
                     "headers": {
                         "x-ms-request-server-encrypted": "false",
                         "x-ms-copy-status": "success",
@@ -111,7 +128,7 @@ def fake_azure_storage(files=None):
                 "status_code": 201,
                 "content": "{}",
                 "headers": {
-                    "Content-MD5": base64.b64encode(md5(request.body).digest()),
+                    "Content-MD5": base64.b64encode(md5(request.body).digest()).decode("ascii"),
                     "ETag": "foo",
                     "x-ms-request-server-encrypted": "false",
                     "last-modified": "Wed, 21 Oct 2015 07:28:00 GMT",
@@ -125,7 +142,7 @@ def fake_azure_storage(files=None):
         return {"status_code": 405, "content": ""}
 
     with HTTMock(get_container, container_file, catchall):
-        yield AzureStorage(None, "somecontainer", "", "someaccount", is_emulated=True)
+        yield AzureStorage(None, container_name, storage_path, account_name)
 
 
 def test_validate():
@@ -176,7 +193,10 @@ def test_stream_write():
 
 @pytest.mark.parametrize("chunk_size", [(1), (5), (10),])
 def test_chunked_uploading(chunk_size):
-    with fake_azure_storage() as s:
+    with fake_azure_storage() as s, patch(
+        "storage.azurestorage.generate_blob_sas",
+        return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+    ):
         string_data = b"hello world!"
         chunks = [
             string_data[index : index + chunk_size]
@@ -206,8 +226,12 @@ def test_chunked_uploading(chunk_size):
 
 def test_get_direct_download_url():
     with fake_azure_storage() as s:
-        s.put_content("hello", b"world")
-        assert "sig" in s.get_direct_download_url("hello")
+        with patch(
+            "storage.azurestorage.generate_blob_sas",
+            return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+        ):
+            s.put_content("hello", b"world")
+            assert "sig" in s.get_direct_download_url("hello")
 
 
 def test_copy_to():
@@ -215,6 +239,9 @@ def test_copy_to():
 
     with fake_azure_storage(files=files) as s:
         s.put_content("hello", b"hello world")
-        with fake_azure_storage(files=files) as s2:
+        with fake_azure_storage(files=files) as s2, patch(
+            "storage.azurestorage.generate_blob_sas",
+            return_value="se=2020-08-18T18%3A24%3A36Z&sp=r&sv=2019-12-12&sr=b&sig=SOMESIG",
+        ):
             s.copy_to(s2, "hello")
             assert s2.exists("hello")
