@@ -17,6 +17,7 @@ from app import app, storage as store, tf, docker_v2_signing_key
 from email.utils import formatdate
 from data.database import (
     db,
+    db_encrypter,
     all_models,
     Role,
     TeamRole,
@@ -58,6 +59,7 @@ from data.database import (
 )
 from data import model
 from data.decorators import is_deprecated_model
+from data.encryption import FieldEncrypter
 from data.fields import Credential
 from data.logs_model import logs_model
 from data.queue import WorkQueue
@@ -293,6 +295,7 @@ def setup_database_for_testing(testcase):
 
 
 def initialize_database():
+    db_encrypter.initialize(FieldEncrypter("anothercrazykey!"))
     db.create_tables(all_models)
 
     Role.create(name="admin")

@@ -1,13 +1,13 @@
 """
 Manage user and organization robot accounts.
 """
-
 from endpoints.api import (
     resource,
     nickname,
     ApiResource,
     log_action,
     related_user_resource,
+    request_error,
     require_user_admin,
     require_scope,
     path_param,
@@ -141,9 +141,14 @@ class UserRobot(ApiResource):
         Delete an existing robot.
         """
         parent = get_authenticated_user()
-        model.delete_robot(format_robot_username(parent.username, robot_shortname))
-        log_action("delete_robot", parent.username, {"robot": robot_shortname})
-        return "", 204
+        robot_username = format_robot_username(parent.username, robot_shortname)
+
+        if not model.robot_has_mirror(robot_username):
+            model.delete_robot(robot_username)
+            log_action("delete_robot", parent.username, {"robot": robot_shortname})
+            return "", 204
+        else:
+            raise request_error(message="Robot is being used by a mirror")
 
 
 @resource("/v1/organization/<orgname>/robots")
@@ -255,9 +260,13 @@ class OrgRobot(ApiResource):
         """
         permission = AdministerOrganizationPermission(orgname)
         if permission.can():
-            model.delete_robot(format_robot_username(orgname, robot_shortname))
-            log_action("delete_robot", orgname, {"robot": robot_shortname})
-            return "", 204
+            robot_username = format_robot_username(orgname, robot_shortname)
+            if not model.robot_has_mirror(robot_username):
+                model.delete_robot(robot_username)
+                log_action("delete_robot", orgname, {"robot": robot_shortname})
+                return "", 204
+            else:
+                raise request_error(message="Robot is being used by a mirror")
 
         raise Unauthorized()
 

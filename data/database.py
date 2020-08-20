@@ -1941,9 +1941,7 @@ class RepoMirrorConfig(BaseModel):
 
     # Mirror Configuration
     mirror_type = ClientEnumField(RepoMirrorType, default=RepoMirrorType.PULL)
-    internal_robot = QuayUserField(
-        allows_robots=True, null=True, backref="mirrorpullrobot", robot_null_delete=True
-    )
+    internal_robot = QuayUserField(allows_robots=True, backref="mirrorpullrobot",)
     external_reference = CharField()
     external_registry_username = EncryptedCharField(max_length=2048, null=True)
     external_registry_password = EncryptedCharField(max_length=2048, null=True)
