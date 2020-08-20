@@ -7,13 +7,13 @@ ENV UPDATE_APT 2
 RUN apt-get update
 
 # Install LAMP
-RUN apt-get install -y lamp-server^
+RUN apt-get --no-install-recommends -y install lamp-server^
 
 # Install phpMyAdmin
 RUN mysqld & \
 	service apache2 start; \
 	sleep 5; \
-	printf y\\n\\n\\n1\\n | apt-get install -y phpmyadmin; \
+	printf y\\n\\n\\n1\\n | apt-get --no-install-recommends -y install phpmyadmin; \
 	sleep 15; \
 	mysqladmin -u root shutdown
 

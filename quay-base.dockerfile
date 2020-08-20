@@ -23,7 +23,7 @@ RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
 RUN curl -sL https://deb.nodesource.com/setup_8.x | bash -
 # Install system packages
 RUN apt-get update && apt-get upgrade -y \
-    && apt-get install -y \
+    && apt-get --no-install-recommends -y install \
      dnsmasq           \
      g++               \
      gdb               \
