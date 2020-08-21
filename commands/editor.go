@@ -21,6 +21,7 @@ import (
 )
 
 var editorPassword string
+var operatorEndpoint string
 
 // editorCmd represents the validate command
 var editorCmd = &cobra.Command{
@@ -28,7 +29,7 @@ var editorCmd = &cobra.Command{
 	Short: "Runs a browser-based editor for your config.yaml",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		editor.RunConfigEditor(editorPassword, configPath)
+		editor.RunConfigEditor(editorPassword, configPath, operatorEndpoint)
 	},
 }
 
@@ -43,4 +44,8 @@ func init() {
 	// Add --password flag
 	editorCmd.Flags().StringVarP(&editorPassword, "password", "p", "", "The password to enter the editor")
 	editorCmd.MarkFlagRequired("password")
+
+	// Add --operatorEndpoint flag
+	editorCmd.Flags().StringVarP(&operatorEndpoint, "operatorEndpoint", "e", "", "The endpoint to commit a validated config bundle to")
+	editorCmd.MarkFlagRequired("operatorEndpoint")
 }

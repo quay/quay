@@ -1,7 +1,13 @@
 package shared
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 )
 
@@ -36,4 +42,92 @@ func GetFields(fg FieldGroup) []string {
 	}
 
 	return fieldNames
+}
+
+// LoadCerts will load certificates in a config directory
+func LoadCerts() map[string][]byte {
+
+	// Get filenames in directory
+	certs := make(map[string][]byte)
+	err := filepath.Walk("/conf", func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		data, _ := ioutil.ReadFile(path)
+		certs[path] = data
+		return nil
+	})
+	if err != nil {
+		fmt.Println("fail")
+	}
+
+	return certs
+}
+
+// Create archive will create a tar file from a directory
+func CreateArchive(directory string, buf io.Writer) error {
+	gw := gzip.NewWriter(buf)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	files := []string{}
+	err := filepath.Walk("/conf", func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		err := addToArchive(tw, file)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Helper function for creation of arhive
+func addToArchive(tw *tar.Writer, filename string) error {
+
+	// Open the file which will be written into the archive
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Get FileInfo about our file providing file size, mode, etc.
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	// Create a tar Header from the FileInfo data
+	header, err := tar.FileInfoHeader(info, info.Name())
+	if err != nil {
+		return err
+	}
+
+	header.Name = filename
+
+	// Write file header to the tar archive
+	err = tw.WriteHeader(header)
+	if err != nil {
+		return err
+	}
+
+	// Copy file content to tar archive
+	_, err = io.Copy(tw, file)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
