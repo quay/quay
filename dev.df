@@ -14,7 +14,7 @@ RUN apt-get install -y git python-virtualenv python-dev libjpeg8 libjpeg62 libjp
 # Build the python dependencies
 ADD requirements.txt requirements.txt
 RUN virtualenv --distribute venv
-RUN venv/bin/pip install -r requirements.txt
+RUN venv/bin/pip install --no-cache-dir -r requirements.txt
 
 ARG src_subdir
 

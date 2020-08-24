@@ -8,8 +8,7 @@ ENV OS=linux \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8 \
     LC_ALL=C.UTF-8 \
-    LANG=C.UTF-8 \
-    PIP_NO_CACHE_DIR=off
+    LANG=C.UTF-8
 
 ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
@@ -39,8 +38,8 @@ RUN INSTALL_PKGS="\
 COPY . .
 
 RUN alternatives --set python /usr/bin/python3 && \
-    python -m pip install --upgrade setuptools pip && \
-    python -m pip install -r requirements.txt --no-cache && \
+    python -m pip install --no-cache-dir --upgrade setuptools pip && \
+    python -m pip install --no-cache-dir -r requirements.txt --no-cache && \
     python -m pip freeze && \
     mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
