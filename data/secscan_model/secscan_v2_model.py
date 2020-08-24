@@ -57,6 +57,15 @@ class NoopV2SecurityScanner(SecurityScannerInterface):
     def register_model_cleanup_callbacks(self, data_model_config):
         pass
 
+    def lookup_notification_page(self, notification_id, page_index=None):
+        pass
+
+    def process_notification_page(self, page_result):
+        pass
+
+    def mark_notification_handled(self, notification_id):
+        pass
+
     @property
     def legacy_api_handler(self):
         return None
