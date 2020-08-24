@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 )
 
 // FixInterface converts a map[interface{}]interface{} into a map[string]interface{}
@@ -51,6 +52,9 @@ func LoadCerts() map[string][]byte {
 	certs := make(map[string][]byte)
 	err := filepath.Walk("/conf", func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, "/config.yaml") {
 			return nil
 		}
 		data, _ := ioutil.ReadFile(path)

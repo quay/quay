@@ -39,7 +39,7 @@ func commitToOperator(operatorEndpoint string) func(w http.ResponseWriter, r *ht
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		fmt.Println(operatorEndpoint)
+		fmt.Println("Endpoint: " + operatorEndpoint)
 		if r.Method != "POST" {
 			w.WriteHeader(404)
 			return
@@ -54,7 +54,6 @@ func commitToOperator(operatorEndpoint string) func(w http.ResponseWriter, r *ht
 
 		certs := shared.LoadCerts()
 
-		// Build response
 		preSecret := map[string]interface{}{
 			"config.yaml": conf,
 			"certs":       certs,
@@ -64,7 +63,7 @@ func commitToOperator(operatorEndpoint string) func(w http.ResponseWriter, r *ht
 		js, err := json.Marshal(preSecret)
 
 		// currently hardcoding
-		req, err := http.NewRequest("POST", "https://webhook.site/82875d14-4712-42d0-af6a-4ff451c92410", bytes.NewBuffer(js))
+		req, err := http.NewRequest("POST", operatorEndpoint, bytes.NewBuffer(js))
 		req.Header.Set("Content-Type", "application/json")
 		client := &http.Client{}
 		resp, err := client.Do(req)
@@ -202,6 +201,7 @@ func RunConfigEditor(password string, configPath string, operatorEndpoint string
 	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
 
 	log.Printf("Running the configuration editor on port %v with username %s", port, editorUsername)
+	log.Printf("Using Operator Endpoint: " + operatorEndpoint)
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(password), 5)
 	authenticator := auth.NewBasicAuthenticator(editorUsername, func(user, realm string) string {
