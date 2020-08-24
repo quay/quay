@@ -2698,39 +2698,26 @@ def test_attempt_pull_by_manifest_digest_for_deleted_tag(
 
 
 @pytest.mark.parametrize(
-    "state,         use_robot,   create_mirror,   robot_exists,  expected_failure",
+    "state, use_robot, create_mirror, expected_failure",
     [
-        ("NORMAL", True, True, True, None),
-        ("NORMAL", False, True, True, None),
-        ("NORMAL", True, True, False, Failures.INVALID_AUTHENTICATION),
-        ("NORMAL", False, True, False, None),
-        ("NORMAL", True, False, True, None),
-        ("NORMAL", False, False, True, None),
-        ("NORMAL", True, False, False, Failures.INVALID_AUTHENTICATION),
-        ("NORMAL", False, False, False, None),
-        ("READ_ONLY", True, True, True, Failures.READ_ONLY),
-        ("READ_ONLY", False, True, True, Failures.READ_ONLY),
-        ("READ_ONLY", True, True, False, Failures.INVALID_AUTHENTICATION),
-        ("READ_ONLY", False, True, False, Failures.READ_ONLY),
-        ("READ_ONLY", True, False, True, Failures.READ_ONLY),
-        ("READ_ONLY", False, False, True, Failures.READ_ONLY),
-        ("READ_ONLY", True, False, False, Failures.INVALID_AUTHENTICATION),
-        ("READ_ONLY", False, False, False, Failures.READ_ONLY),
-        ("MIRROR", True, True, True, None),
-        ("MIRROR", False, True, True, Failures.MIRROR_ONLY),
-        ("MIRROR", True, False, True, Failures.MIRROR_MISCONFIGURED),
-        ("MIRROR", False, False, True, Failures.MIRROR_MISCONFIGURED),
-        ("MIRROR", True, True, False, Failures.INVALID_AUTHENTICATION),
-        ("MIRROR", False, True, False, Failures.MIRROR_ROBOT_MISSING),
-        ("MIRROR", True, False, False, Failures.INVALID_AUTHENTICATION),
-        ("MIRROR", False, False, False, Failures.MIRROR_MISCONFIGURED),
+        ("NORMAL", True, True, None),
+        ("NORMAL", False, True, None),
+        ("NORMAL", True, False, None),
+        ("NORMAL", False, False, None),
+        ("READ_ONLY", True, True, Failures.READ_ONLY),
+        ("READ_ONLY", False, True, Failures.READ_ONLY),
+        ("READ_ONLY", True, False, Failures.READ_ONLY),
+        ("READ_ONLY", False, False, Failures.READ_ONLY),
+        ("MIRROR", True, True, None),
+        ("MIRROR", False, True, Failures.MIRROR_ONLY),
+        ("MIRROR", True, False, Failures.MIRROR_MISCONFIGURED),
+        ("MIRROR", False, False, Failures.MIRROR_MISCONFIGURED),
     ],
 )
 def test_repository_states(
     state,
     use_robot,
     create_mirror,
-    robot_exists,
     expected_failure,
     pusher,
     puller,
@@ -2806,10 +2793,9 @@ def test_repository_states(
     # Verify pulls/reads still work
     puller.pull(liveserver_session, namespace, repo, tag, basic_images, credentials=credentials)
 
-    # Verify the case where the robot user no longer exists
-    if not robot_exists:
-        resp = api_caller.delete("/api/v1/user/robots/%s" % robot)
-        assert resp
+    # Should not be able to delete a robot attached to a mirror
+    resp = api_caller.delete("/api/v1/user/robots/%s" % robot)
+    assert resp.status_code == 400
 
     # Verify that the Repository.state determines whether pushes/changes are allowed
     options = ProtocolOptions()

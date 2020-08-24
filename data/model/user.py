@@ -507,6 +507,9 @@ def delete_robot(robot_username):
     except User.DoesNotExist:
         raise InvalidRobotException("Could not find robot with username: %s" % robot_username)
 
+    except IntegrityError:
+        DataModelException("Could not delete robot with username: %s" % robot_username)
+
 
 def list_namespace_robots(namespace):
     """

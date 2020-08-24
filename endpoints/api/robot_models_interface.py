@@ -207,3 +207,11 @@ class RobotInterface(object):
       list of Robot objects
 
     """
+
+    @abstractmethod
+    def robot_has_mirror(self, robot_username):
+        """
+        Returns:
+          True if robot is being used by mirror,
+          False otherwise.
+        """

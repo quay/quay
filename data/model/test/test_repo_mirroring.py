@@ -248,3 +248,10 @@ def test_release_mirror(initialized_db):
     mirror = release_mirror(mirror, RepoMirrorStatus.FAIL)
     assert mirror.sync_retries_remaining == 3
     assert mirror.sync_start_date > original_sync_start_date
+
+
+def test_repo_mirror_robot(initialized_db):
+    mirror, _ = create_mirror_repo_robot(["updated", "created"], repo_name="first")
+    assert mirror
+    assert mirror.internal_robot
+    assert model.repo_mirror.robot_has_mirror(mirror.internal_robot)

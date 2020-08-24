@@ -375,6 +375,17 @@ def get_mirror(repository):
         return None
 
 
+def robot_has_mirror(robot):
+    """
+    Check whether the given robot is being used by any mirrors.
+    """
+    try:
+        RepoMirrorConfig.get(internal_robot=robot)
+        return True
+    except RepoMirrorConfig.DoesNotExist:
+        return False
+
+
 def enable_mirror(repository):
     """
     Enables a RepoMirrorConfig.
