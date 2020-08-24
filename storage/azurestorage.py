@@ -141,7 +141,7 @@ class AzureStorage(BaseStorage):
     def put_content(self, path, content):
         blob_name = self._blob_name_from_path(path)
         try:
-            self._blob(blob_name).upload_blob(content, blob_type=BlobType.BlockBlob)
+            self._blob(blob_name).upload_blob(content, blob_type=BlobType.BlockBlob, overwrite=True)
         except AzureError:
             logger.exception("Exception when trying to put path %s", path)
             raise IOError("Exception when trying to put path")
@@ -174,7 +174,7 @@ class AzureStorage(BaseStorage):
         )
 
         try:
-            self._blob(blob_name).upload_blob(fp, content_settings=content_settings)
+            self._blob(blob_name).upload_blob(fp, content_settings=content_settings, overwrite=True)
         except AzureError as ae:
             logger.exception("Exception when trying to stream_write path %s", path)
             raise IOError("Exception when trying to stream_write path", ae)
