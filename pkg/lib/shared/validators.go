@@ -147,7 +147,7 @@ func ValidateRedisConnection(options *redis.Options, field, fgName string) (bool
 		newError := ValidationError{
 			Tags:    []string{field},
 			Policy:  "Redis Connect",
-			Message: "Could not connect to Redis with values provided in " + field,
+			Message: "Could not connect to Redis with values provided in " + field + ". Error: " + err.Error(),
 		}
 		return false, newError
 	}

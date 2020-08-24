@@ -47,7 +47,7 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 		newError := shared.ValidationError{
 			Tags:    []string{"DB_URI"},
 			Policy:  "Database Connection",
-			Message: "Could not connect to database.",
+			Message: "Could not connect to database. Error: " + err.Error(),
 		}
 		errors = append(errors, newError)
 		return errors
