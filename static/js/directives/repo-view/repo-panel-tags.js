@@ -159,7 +159,7 @@ angular.module('quay').directive('repoPanelTags', function () {
               var canAddToCurrentTrack = true;
               for (var j = 0; j < currentTrack.entries.length; ++j) {
                 var currentTrackEntry = currentTrack.entries[j];
-                var entryInfo = manifestIndexMap[currentTrackEntry.image_id];
+                var entryInfo = manifestIndexMap[currentTrackEntry.manifest_digest];
                 if (Math.max(entryInfo.start, manifestIndexRange.start) <= Math.min(entryInfo.end, manifestIndexRange.end)) {
                   canAddToCurrentTrack = false;
                   break;
