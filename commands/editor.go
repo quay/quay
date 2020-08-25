@@ -29,7 +29,7 @@ var editorCmd = &cobra.Command{
 	Short: "Runs a browser-based editor for your config.yaml",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		editor.RunConfigEditor(editorPassword, configPath, operatorEndpoint)
+		editor.RunConfigEditor(editorPassword, configDir, operatorEndpoint)
 	},
 }
 
@@ -38,8 +38,8 @@ func init() {
 	rootCmd.AddCommand(editorCmd)
 
 	// Add --config flag
-	editorCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
-	editorCmd.MarkFlagRequired("configPath")
+	editorCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "The directory containing your config files")
+	editorCmd.MarkFlagRequired("configDir")
 
 	// Add --password flag
 	editorCmd.Flags().StringVarP(&editorPassword, "password", "p", "", "The password to enter the editor")

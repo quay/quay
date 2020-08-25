@@ -23,13 +23,13 @@ import (
 )
 
 var cfgFile string
-var configPath string
+var configDir string
 var validationMode string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "config-tool",
-	Short: "A Configuration Validation Tool for Quay!!",
+	Short: "A Configuration Validation Tool for Quay",
 	Long:  `This tool allows Quay users to validate their configuration bundles11`,
 }
 

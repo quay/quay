@@ -46,11 +46,11 @@ func GetFields(fg FieldGroup) []string {
 }
 
 // LoadCerts will load certificates in a config directory
-func LoadCerts() map[string][]byte {
+func LoadCerts(dir string) map[string][]byte {
 
 	// Get filenames in directory
 	certs := make(map[string][]byte)
-	err := filepath.Walk("/conf", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
@@ -68,7 +68,7 @@ func LoadCerts() map[string][]byte {
 	return certs
 }
 
-// Create archive will create a tar file from a directory
+// CreateArchive will create a tar file from a directory
 func CreateArchive(directory string, buf io.Writer) error {
 	gw := gzip.NewWriter(buf)
 	defer gw.Close()

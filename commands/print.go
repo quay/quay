@@ -17,10 +17,13 @@ package commands
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path"
 
 	"github.com/jojomi/go-spew/spew"
-	"github.com/quay/config-tool/pkg/lib/validation"
+	"github.com/quay/config-tool/pkg/lib/config"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 // validateCmd represents the validate command
@@ -30,8 +33,20 @@ var printCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// Validate Schema
-		configFieldGroups, err := validation.ValidateConf(configPath)
+		// Read config file
+		configFilePath := path.Join(configDir, "config.yaml")
+		configBytes, err := ioutil.ReadFile(configFilePath)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		// Load config into struct
+		var conf map[string]interface{}
+		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
+			fmt.Println(err.Error())
+		}
+
+		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
@@ -55,7 +70,7 @@ func init() {
 	rootCmd.AddCommand(printCmd)
 
 	// Add --config flag
-	printCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
-	printCmd.MarkFlagRequired("configPath")
+	printCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "The directory containing your config files")
+	printCmd.MarkFlagRequired("configDir")
 
 }

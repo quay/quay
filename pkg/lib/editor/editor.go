@@ -52,8 +52,7 @@ func commitToOperator(operatorEndpoint string) func(w http.ResponseWriter, r *ht
 			return
 		}
 
-		certs := shared.LoadCerts()
-
+		certs := shared.LoadCerts("/conf")
 		preSecret := map[string]interface{}{
 			"config.yaml": conf,
 			"certs":       certs,
@@ -127,7 +126,7 @@ func configValidator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	certs := shared.LoadCerts()
+	certs := shared.LoadCerts("/conf")
 	opts := shared.Options{
 		Mode:         "online",
 		Certificates: certs,
