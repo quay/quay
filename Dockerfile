@@ -19,18 +19,18 @@ RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
 RUN INSTALL_PKGS="\
-        python3 \
-        nginx \
-        openldap \
-        gcc-c++ git \
-        openldap-devel \
-        python3-devel \
-        python3-gpg \
-        dnsmasq \
-        memcached \
-        openssl \
-        skopeo \
-        " && \
+    python3 \
+    nginx \
+    openldap \
+    gcc-c++ git \
+    openldap-devel \
+    python3-devel \
+    python3-gpg \
+    dnsmasq \
+    memcached \
+    openssl \
+    skopeo \
+    " && \
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
@@ -70,6 +70,15 @@ RUN curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${P
     rm -rf "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}" && \
     chmod +x /usr/local/bin/pushgateway
 
+# Install Go binary
+ENV GOLANG_VERSION 1.15
+ENV GOROOT /usr/local/go
+ENV GOPATH /go
+ENV PATH $PATH:$GOPATH/bin:$GOROOT/bin
+RUN curl -fsSL "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz" -o "go${GOLANG_VERSION}.linux-amd64.tar.gz" && \
+    tar -C /usr/local -xzf "go${GOLANG_VERSION}.linux-amd64.tar.gz"
+RUN go get -u github.com/quay/config-tool/cmd/...
+
 # Update local copy of AWS IP Ranges.
 RUN curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json
 
@@ -80,13 +89,13 @@ RUN ln -s $QUAYCONF /conf && \
 
 # Cleanup
 RUN UNINSTALL_PKGS="\
-        gcc-c++ git \
-        openldap-devel \
-        gpgme-devel \
-        python3-devel \
-        optipng \
-        kernel-headers \
-        " && \
+    gcc-c++ git \
+    openldap-devel \
+    gpgme-devel \
+    python3-devel \
+    optipng \
+    kernel-headers \
+    " && \
     yum remove -y $UNINSTALL_PKGS && \
     yum clean all && \
     rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache
