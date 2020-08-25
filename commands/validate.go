@@ -38,6 +38,8 @@ var validateCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
+		isValid := true
+
 		// Read config file
 		configFilePath := path.Join(configDir, "config.yaml")
 		configBytes, err := ioutil.ReadFile(configFilePath)
@@ -102,6 +104,7 @@ var validateCmd = &cobra.Command{
 
 					// Append field group policy violation
 					validationStatus = append(validationStatus, []string{fgName, err.Message, "🔴"})
+					isValid = false
 				}
 			}(&wg)
 
@@ -120,6 +123,10 @@ var validateCmd = &cobra.Command{
 		table.SetRowLine(true)
 		table.SetAutoMergeCellsByColumnIndex([]int{0})
 		table.Render()
+
+		if !isValid {
+			os.Exit(1)
+		}
 
 	},
 }
