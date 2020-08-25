@@ -224,6 +224,18 @@ angular.module("quay-config")
           }, errorDisplay);
         };
 
+        $scope.commitToOperator = function() {
+          ApiService.commitToOperator($scope.config).then(function(resp) {
+            console.log(resp)
+          })
+        }
+
+        $scope.downloadConfig = function() {
+          ApiService.downloadConfig($scope.config).then(function(resp) {
+            console.log(resp)
+          })
+        }
+
         $scope.checkValidateAndSave = function() {
           if ($scope.configform.$valid) {
             saveStorageConfig();
@@ -727,8 +739,9 @@ angular.module("quay-config")
           if (!value) { return; }
 
           ApiService.getConfig().then(function(resp) {
-            $scope.config = resp || {};
-            $scope.originalConfig = Object.assign({}, resp || {});;
+            $scope.config = resp["config.yaml"] || {};
+            $scope.certs = resp["certs"] || {}
+            $scope.originalConfig = Object.assign({}, resp["config.yaml"] || {});;
             initializeMappedLogic($scope.config);
             initializeStorageConfig($scope);
             $scope.mapped['$hasChanges'] = false;

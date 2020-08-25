@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // ValidateGitHubOAuth checks that the Bitbucker OAuth credentials are correct
@@ -147,7 +149,7 @@ func ValidateRedisConnection(options *redis.Options, field, fgName string) (bool
 		newError := ValidationError{
 			Tags:    []string{field},
 			Policy:  "Redis Connect",
-			Message: "Could not connect to Redis with values provided in " + field,
+			Message: "Could not connect to Redis with values provided in " + field + ". Error: " + err.Error(),
 		}
 		return false, newError
 	}
@@ -349,4 +351,23 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 
 	return true, ValidationError{}
 
+}
+
+// ValidateMinioStorage will validate a S3 storage connection.
+func ValidateMinioStorage(args *DistributedStorageArgs, fgName string) (bool, ValidationError) {
+
+	_, err := minio.New(args.Hostname, &minio.Options{
+		Creds:  credentials.NewStaticV4(args.AccessKey, args.SecretKey, ""),
+		Secure: args.IsSecure,
+	})
+	if err != nil {
+		newError := ValidationError{
+			Tags:    []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			Policy:  "Bad Storage Credentials",
+			Message: "Could not connect to storage. Error: " + err.Error(),
+		}
+		return false, newError
+	}
+
+	return true, ValidationError{}
 }

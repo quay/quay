@@ -1,3 +1,10 @@
+<div id="padding-container">
+  <div class="page-content">
+    <div class="cor-title">
+      <span class="cor-title-link"></span>
+      <span class="cor-title-content">Red Hat Quay Setup</span>
+    </div>
+    <div class="co-main-content-panel" style="padding: 20px;">
 <div class="config-setup-tool-element">
   <div class="cor-loader" ng-if="!config"></div>
   <div ng-show="true">
@@ -190,7 +197,7 @@
             <tr ng-show="mapped.database.kind">
               <td>Password:</td>
               <td>
-                <input class="form-control" type="password" ng-model="mapped.database.password"></span>
+                <input class="form-control" type="password" ng-model="mapped.database.password">
               </td>
             </tr>
             <tr ng-show="mapped.database.kind">
@@ -1991,6 +1998,16 @@
         <span ng-if="mapped.$hasChanges">Validate Configuration Changes</span>
         <span ng-if="!mapped.$hasChanges">Configuration Saved</span>
       </button>
+      <button class="btn" ng-class="mapped.$hasChanges ? 'btn-primary' : 'btn-success'"
+              ng-click="commitToOperator()" ng-show="configform.$valid">
+        <i class="fa fa-lg" ng-class="mapped.$hasChanges ? 'fa-dot-circle-o' : 'fa-check-circle'"></i>
+        <span ng-if="mapped.$hasChanges">Commit to Operator</span>
+      </button>
+      <button class="btn" ng-class="mapped.$hasChanges ? 'btn-primary' : 'btn-success'"
+              ng-click="downloadConfig()" ng-show="configform.$valid">
+        <i class="fa fa-lg" ng-class="mapped.$hasChanges ? 'fa-dot-circle-o' : 'fa-check-circle'"></i>
+        <span ng-if="mapped.$hasChanges">Save and Download</span>
+      </button>
       <button class="btn btn-warning" ng-click="checkValidateAndSave()" ng-show="!configform.$valid"
               ng-click="checkValidateAndSave()">
         <i class="fa fa-lg fa-sort"></i>
@@ -2070,3 +2087,6 @@
     </div><!-- /.modal -->
 
   </div>
+  </div>
+</div>
+</div>

@@ -17,26 +17,43 @@ package commands
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/quay/config-tool/pkg/lib/config"
 	"github.com/quay/config-tool/pkg/lib/shared"
-	"github.com/quay/config-tool/pkg/lib/validation"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 // validateCmd represents the validate command
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate your config.yaml",
+	Short: "Validate your config bundle",
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// Validate Schema
-		configFieldGroups, err := validation.ValidateConf(configPath)
+		isValid := true
+
+		// Read config file
+		configFilePath := path.Join(configDir, "config.yaml")
+		configBytes, err := ioutil.ReadFile(configFilePath)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		// Load config into struct
+		var conf map[string]interface{}
+		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
+			fmt.Println(err.Error())
+		}
+
+		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
@@ -87,6 +104,7 @@ var validateCmd = &cobra.Command{
 
 					// Append field group policy violation
 					validationStatus = append(validationStatus, []string{fgName, err.Message, "🔴"})
+					isValid = false
 				}
 			}(&wg)
 
@@ -106,6 +124,10 @@ var validateCmd = &cobra.Command{
 		table.SetAutoMergeCellsByColumnIndex([]int{0})
 		table.Render()
 
+		if !isValid {
+			os.Exit(1)
+		}
+
 	},
 }
 
@@ -115,8 +137,8 @@ func init() {
 	rootCmd.AddCommand(validateCmd)
 
 	// Add --config flag
-	validateCmd.Flags().StringVarP(&configPath, "configPath", "c", "", "The path to a config file")
-	validateCmd.MarkFlagRequired("configPath")
+	validateCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "A directory containing your config files")
+	validateCmd.MarkFlagRequired("configDir")
 
 	validateCmd.Flags().StringVarP(&validationMode, "mode", "m", "", "The mode to validate the config. Must be either online, offline, or testing (for development only)")
 	validateCmd.MarkFlagRequired("mode")

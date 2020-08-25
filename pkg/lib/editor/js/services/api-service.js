@@ -13,6 +13,14 @@ angular.module('quay-config').factory('ApiService', ['Restangular', '$q', 'UtilS
     return Restangular.one('config/validate').post(null, config);
   };
 
+  apiService.commitToOperator = function(config) {
+    return Restangular.one('config/commitToOperator').post(null, config);
+  };
+
+  apiService.downloadConfig = function(config) {
+    return Restangular.one('config/downloadConfig').get()
+  }
+
   apiService.getErrorMessage = function(resp, defaultMessage) {
     var message = defaultMessage;
     if (resp && resp['data']) {
