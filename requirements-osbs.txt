@@ -58,6 +58,7 @@ geoip2==3.0.0
 gevent==1.4.0
 gipc==1.0.1
 greenlet==0.4.15
+grpcio==1.30.0
 gunicorn==20.0.4
 hashids==1.2.0
 hiredis==1.0.1
@@ -111,6 +112,7 @@ pip==20.2.3
 pipdeptree==1.0.0
 ply==3.11
 prometheus-client==0.7.1
+protobuf==3.12.2
 psutil==5.6.7
 psycopg2-binary==2.8.4
 pyasn1==0.4.8

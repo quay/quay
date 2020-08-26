@@ -8,6 +8,7 @@ mockredispy==2.9.3
 pytest
 pytest-cov
 pytest-flask
+pytest-grpc
 pytest-runner
 pytest-timeout
 pytest-xdist
