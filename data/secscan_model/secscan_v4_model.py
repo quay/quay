@@ -312,7 +312,13 @@ def features_for(report):
                         vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",
                         vuln["description"],
                         vuln["name"],
-                        Metadata(vuln["updater"],pkg_repo.get("name"), pkg_repo.get("uri"), distro.get("name"), distro.get("version"),),
+                        Metadata(
+                            vuln["updater"],
+                            pkg_repo.get("name"),
+                            pkg_repo.get("uri"),
+                            distro.get("name"),
+                            distro.get("version"),
+                        ),
                     )
                     for vuln in pkg_vulns
                 ],
