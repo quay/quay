@@ -1,3 +1,30 @@
+
+###################
+FROM golang:1.15 as config-tool
+
+WORKDIR /go/src/config-tool
+RUN go get -u github.com/quay/config-tool/...
+
+
+###################
+FROM centos:8 as config-editor
+
+WORKDIR /config-editor
+
+RUN INSTALL_PKGS="\
+        git \
+        " && \
+    yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS
+
+RUN git clone https://github.com/thomasmckay/config-tool.git --branch npm
+RUN cd /config-editor/config-tool/pkg/lib/editor && \
+    yum install -y nodejs && \
+    npm install&& \
+    npm build
+
+
+
+###################
 FROM centos:8
 LABEL maintainer "thomasmckay@redhat.com"
 
@@ -13,6 +40,10 @@ ENV OS=linux \
 ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
 ENV QUAYPATH "."
+
+COPY --from=config-tool /go/bin/config-tool /bin
+RUN mkdir /config-editor
+COPY --from=config-editor /config-editor/config-tool/pkg/lib/editor /config-editor
 
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
@@ -43,19 +74,12 @@ RUN alternatives --set python /usr/bin/python3 && \
     mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
     mkdir -p $QUAYDIR/static/ldn && \
-    PYTHONPATH=$QUAYPATH python -m external_libraries && \
-    cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
-    cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
-    cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
+    PYTHONPATH=$QUAYPATH python -m external_libraries
 
-RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
-    yum install -y nodejs && \
-    curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
-    rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
-    yum install -y yarn && \
-    yarn install --ignore-engines && \
-    yarn build && \
-    yarn build-config-app
+
+RUN yum install -y nodejs && \
+    npm install --ignore-engines && \
+    npm run build
 
 
 ENV JWTPROXY_VERSION=0.0.3

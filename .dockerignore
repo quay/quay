@@ -7,6 +7,8 @@ screenshots
 tools
 test/data/registry
 venv
+.venv
+.local
 .git
 !.git/HEAD
 .gitignore
