@@ -19,7 +19,7 @@ RUN INSTALL_PKGS="\
 RUN git clone https://github.com/thomasmckay/config-tool.git --branch npm
 RUN cd /config-editor/config-tool/pkg/lib/editor && \
     yum install -y nodejs && \
-    npm install&& \
+    npm install --ignore-engines && \
     npm build
 
 
