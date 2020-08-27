@@ -58,6 +58,7 @@ RUN INSTALL_PKGS="\
         python3-gpg \
         dnsmasq \
         memcached \
+        nodejs \
         openssl \
         skopeo \
         " && \
@@ -70,14 +71,13 @@ COPY . .
 RUN alternatives --set python /usr/bin/python3 && \
     python -m pip install --no-cache-dir --upgrade setuptools pip && \
     python -m pip install --no-cache-dir -r requirements.txt --no-cache && \
-    python -m pip freeze && \
-    mkdir -p $QUAYDIR/static/webfonts && \
+    python -m pip freeze
+
+
+RUN mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
     mkdir -p $QUAYDIR/static/ldn && \
-    PYTHONPATH=$QUAYPATH python -m external_libraries
-
-
-RUN yum install -y nodejs && \
+    PYTHONPATH=$QUAYPATH python -m external_libraries && \
     npm install --ignore-engines && \
     npm run build
 
