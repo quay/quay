@@ -1,14 +1,10 @@
-FROM centos:latest as jsbuild
+FROM centos:8 as jsbuild
 
 WORKDIR /jssrc
 COPY pkg/lib/editor .
-RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
-    yum install -y nodejs && \
-    curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
-    rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
-    yum install -y yarn && \
-    yarn install --ignore-engines && \
-    yarn build
+RUN yum install -y nodejs && \
+    npm install --ignore-engines && \
+    npm run build
 
 FROM golang:1.15
 
