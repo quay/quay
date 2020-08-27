@@ -55,9 +55,6 @@ RUN scl enable python36 "\
     PYTHONPATH=$QUAYPATH python -m external_libraries \
     "
 
-RUN cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
-    cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
-    cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
 
 # Check python dependencies for GPL
 # Due to the following bug, pip results must be piped to a file before grepping:

@@ -1,4 +1,3 @@
-# TODO to extract the discovery stuff into a util at the top level and then use it both here and config_app discovery.py
 """
 API discovery information.
 """

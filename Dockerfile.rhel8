@@ -44,10 +44,7 @@ RUN alternatives --set python /usr/bin/python3 && \
     mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
     mkdir -p $QUAYDIR/static/ldn && \
-    PYTHONPATH=$QUAYPATH python -m external_libraries && \
-    cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
-    cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
-    cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
+    PYTHONPATH=$QUAYPATH python -m external_libraries
 
 
 RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
