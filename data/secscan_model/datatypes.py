@@ -27,13 +27,13 @@ class ScanLookupStatus(IntEnum):
 
 Vulnerability = namedtuple(
     "Vulnerability",
-    ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata",],
+    ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
 )
 Metadata = namedtuple(
-    "Metadata", ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion"],
+    "Metadata", ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion"]
 )
 Feature = namedtuple(
-    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities",],
+    "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
 )
 Layer = namedtuple("Layer", ["Name", "NamespaceName", "ParentName", "IndexedByVersion", "Features"])
 
