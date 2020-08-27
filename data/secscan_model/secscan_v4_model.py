@@ -13,8 +13,8 @@ from data.secscan_model.datatypes import (
     SecurityInformationLookupResult,
     SecurityInformation,
     Feature,
-    InstalledFrom,
     Layer,
+    Metadata,
     Vulnerability,
 )
 from data.readreplica import ReadOnlyModeException
@@ -286,8 +286,10 @@ def features_for(report):
     features = []
     for pkg_id, pkg in report["packages"].items():
         pkg_env = report["environments"][pkg_id][0]
-        pkg_repo_id = pkg_env["repository_ids"][0] if pkg_env.get("repository_ids", None) else ""
+        pkg_repo_id = pkg_env.get("repository_ids", [""])[0]
         pkg_repo = report["repository"].get(pkg_repo_id, {})
+        pkg_distro_id = pkg_env.get("distribution_id", "")
+        distro = report["distribution"].get(pkg_distro_id, {})
         pkg_vulns = [
             report["vulnerabilities"][vuln_id]
             for vuln_id in report["package_vulnerabilities"].get(pkg_id, [])
@@ -310,12 +312,10 @@ def features_for(report):
                         vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",
                         vuln["description"],
                         vuln["name"],
-                        vuln["updater"],
-                        None,
+                        Metadata(vuln["updater"],pkg_repo.get("name"), pkg_repo.get("uri"), distro.get("name"), distro.get("version"),),
                     )
                     for vuln in pkg_vulns
                 ],
-                InstalledFrom(pkg_repo.get("name"), pkg_repo.get("uri")),
             )
         )
 
