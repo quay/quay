@@ -98,31 +98,41 @@ class MalformedOCIManifest(ManifestException):
 
 
 class OCIManifest(ManifestInterface):
-    METASCHEMA = {
-        "type": "object",
-        "properties": {
-            OCI_MANIFEST_VERSION_KEY: {
-                "type": "number",
-                "description": "The version of the schema. Must always be `2`.",
-                "minimum": 2,
-                "maximum": 2,
+    def get_meta_schema(self):
+        """
+        Since the layers are dynamic based on config, populate them here before using
+        """
+        METASCHEMA = {
+            "type": "object",
+            "properties": {
+                OCI_MANIFEST_VERSION_KEY: {
+                    "type": "number",
+                    "description": "The version of the schema. Must always be `2`.",
+                    "minimum": 2,
+                    "maximum": 2,
+                },
+                OCI_MANIFEST_MEDIATYPE_KEY: {
+                    "type": "string",
+                    "description": "The media type of the schema.",
+                    "enum": [OCI_IMAGE_MANIFEST_CONTENT_TYPE],
+                },
+                OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(ALLOWED_ARTIFACT_TYPES),
+                OCI_MANIFEST_LAYERS_KEY: {
+                    "type": "array",
+                    "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
+                    "items": get_descriptor_schema(
+                        OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
+                    ),
+                },
             },
-            OCI_MANIFEST_MEDIATYPE_KEY: {
-                "type": "string",
-                "description": "The media type of the schema.",
-                "enum": [OCI_IMAGE_MANIFEST_CONTENT_TYPE],
-            },
-            OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(ALLOWED_ARTIFACT_TYPES),
-            OCI_MANIFEST_LAYERS_KEY: {
-                "type": "array",
-                "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
-                "items": get_descriptor_schema(
-                    OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
-                ),
-            },
-        },
-        "required": [OCI_MANIFEST_VERSION_KEY, OCI_MANIFEST_CONFIG_KEY, OCI_MANIFEST_LAYERS_KEY,],
-    }
+            "required": [
+                OCI_MANIFEST_VERSION_KEY,
+                OCI_MANIFEST_CONFIG_KEY,
+                OCI_MANIFEST_LAYERS_KEY,
+            ],
+        }
+
+        return METASCHEMA
 
     def __init__(self, manifest_bytes, validate=False):
         assert isinstance(manifest_bytes, Bytes)
@@ -138,7 +148,7 @@ class OCIManifest(ManifestInterface):
             raise MalformedOCIManifest("malformed manifest data: %s" % ve)
 
         try:
-            validate_schema(self._parsed, OCIManifest.METASCHEMA)
+            validate_schema(self._parsed, self.get_meta_schema())
         except ValidationError as ve:
             raise MalformedOCIManifest("manifest data does not match schema: %s" % ve)
 
