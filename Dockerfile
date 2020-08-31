@@ -1,12 +1,5 @@
 
 ###################
-FROM golang:1.15 as config-tool
-
-WORKDIR /go/src/config-tool
-RUN go get -u github.com/quay/config-tool/...
-
-
-###################
 FROM centos:8 as config-editor
 
 WORKDIR /config-editor
@@ -16,12 +9,23 @@ RUN INSTALL_PKGS="\
         " && \
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS
 
-RUN git clone https://github.com/thomasmckay/config-tool.git --branch npm
-RUN cd /config-editor/config-tool/pkg/lib/editor && \
-    yum install -y nodejs && \
+RUN git clone https://github.com/thomasmckay/config-tool.git --branch npm /config-editor && \
+    cp -R pkg/lib/editor/* .
+RUN yum install -y nodejs && \
     npm install --ignore-engines && \
-    npm build
+    npm run build
 
+
+###################
+FROM golang:1.15 as config-tool
+
+WORKDIR /go/src/config-tool
+RUN git clone https://github.com/thomasmckay/config-tool.git --branch npm /go/src/config-tool
+RUN rm -rf /go/src/config-tool/pkg/lib/editor/static/build
+COPY --from=config-editor /config-editor/static/build  /go/src/config-tool/pkg/lib/editor/static/build
+
+RUN go get -d -v ./...
+RUN go install -v ./...
 
 
 ###################
@@ -43,7 +47,8 @@ ENV QUAYPATH "."
 
 COPY --from=config-tool /go/bin/config-tool /bin
 RUN mkdir /config-editor
-COPY --from=config-editor /config-editor/config-tool/pkg/lib/editor /config-editor
+COPY --from=config-editor /config-editor /config-editor
+COPY --from=config-editor /config-editor/static /static
 
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
