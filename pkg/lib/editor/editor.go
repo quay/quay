@@ -39,7 +39,6 @@ func commitToOperator(operatorEndpoint string) func(w http.ResponseWriter, r *ht
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		fmt.Println("Endpoint: " + operatorEndpoint)
 		if r.Method != "POST" {
 			w.WriteHeader(404)
 			return
@@ -99,7 +98,6 @@ func downloadConfig(configPath string) func(http.ResponseWriter, *http.Request) 
 		if err != nil {
 			log.Fatalln("Error creating archive:", err)
 		}
-		fmt.Println("made file")
 
 		w.Header().Set("Content-type", "application/zip")
 		http.ServeFile(w, r, "/tmp/quay-config.tar.gz")
@@ -194,6 +192,42 @@ func configHandler(configPath string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+func getCertificates(configPath string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			w.WriteHeader(404)
+			return
+		}
+
+		certMeta := []map[string]interface{}{}
+		certs := shared.LoadCerts("/conf")
+
+		for name := range certs {
+			md := map[string]interface{}{
+				"path":    name,
+				"names":   name,
+				"expired": false,
+			}
+			certMeta = append(certMeta, md)
+		}
+
+		resp := map[string]interface{}{
+			"status": "directory",
+			"certs":  certMeta,
+		}
+
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
+		js, err := json.Marshal(resp)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("Content-Type", "application/json")
+		w.Write(js)
+	}
+}
+
 // RunConfigEditor runs the configuration editor server.
 func RunConfigEditor(password string, configPath string, operatorEndpoint string) {
 	mime.AddExtensionType(".css", "text/css; charset=utf-8")
@@ -212,9 +246,11 @@ func RunConfigEditor(password string, configPath string, operatorEndpoint string
 
 	http.HandleFunc("/", auth.JustCheck(authenticator, handler))
 	http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, configHandler(configPath)))
+	http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, getCertificates(configPath)))
 	http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
 	http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator))
 	http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(operatorEndpoint)))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticContentPath))))
+
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
 }

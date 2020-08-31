@@ -11,6 +11,8 @@ import (
 // Validate checks the configuration settings for this field group
 func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
+	fgName := "ElasticSearch"
+
 	// Make empty errors
 	errors := []shared.ValidationError{}
 
@@ -22,9 +24,9 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 	// If log model config is missing
 	if fg.LogsModelConfig == nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"LOGS_MODEL_CONFIG"},
-			Policy:  "A is Required",
-			Message: "LOGS_MODEL_CONFIG is required for Elasticsearch",
+			Tags:       []string{"LOGS_MODEL_CONFIG"},
+			FieldGroup: fgName,
+			Message:    "LOGS_MODEL_CONFIG is required for Elasticsearch",
 		}
 		errors = append(errors, newError)
 		return errors
@@ -33,9 +35,9 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 	// Check for elastic search config
 	if fg.LogsModelConfig.ElasticsearchConfig == nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG"},
-			Policy:  "A is Required",
-			Message: "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG is required for Elasticsearch",
+			Tags:       []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG"},
+			FieldGroup: fgName,
+			Message:    "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG is required for Elasticsearch",
 		}
 		errors = append(errors, newError)
 		return errors
@@ -44,9 +46,9 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 	// Check that host is available
 	if fg.LogsModelConfig.ElasticsearchConfig.Host == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.HOST"},
-			Policy:  "A is Required",
-			Message: "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.HOST is required for Elasticsearch",
+			Tags:       []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.HOST"},
+			FieldGroup: fgName,
+			Message:    "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.HOST is required for Elasticsearch",
 		}
 		errors = append(errors, newError)
 	}
@@ -54,9 +56,9 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 	// Check for port
 	if fg.LogsModelConfig.ElasticsearchConfig.Port == 0 {
 		newError := shared.ValidationError{
-			Tags:    []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.PORT"},
-			Policy:  "A is Required",
-			Message: "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.PORT is required for Elasticsearch",
+			Tags:       []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.PORT"},
+			FieldGroup: fgName,
+			Message:    "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.PORT is required for Elasticsearch",
 		}
 		errors = append(errors, newError)
 	}
@@ -64,18 +66,18 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 	// Check for access key
 	if fg.LogsModelConfig.ElasticsearchConfig.AccessKey == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.ACCESS_KEY"},
-			Policy:  "A is Required",
-			Message: "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.ACCESS_KEY is required for Elasticsearch",
+			Tags:       []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.ACCESS_KEY"},
+			FieldGroup: fgName,
+			Message:    "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.ACCESS_KEY is required for Elasticsearch",
 		}
 		errors = append(errors, newError)
 	}
 
 	if fg.LogsModelConfig.ElasticsearchConfig.SecretKey == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY"},
-			Policy:  "A is Required",
-			Message: "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY is required for Elasticsearch",
+			Tags:       []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY"},
+			FieldGroup: fgName,
+			Message:    "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY is required for Elasticsearch",
 		}
 		errors = append(errors, newError)
 	}
@@ -99,9 +101,9 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 
 	if !success {
 		newError := shared.ValidationError{
-			Tags:    []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY", "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY"},
-			Policy:  "Auth",
-			Message: "Could not validate Elasticsearch credentials",
+			Tags:       []string{"LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY", "LOGS_MODEL_CONFIG.ELASTIC_SEARCH_CONFIG.SECRET_KEY"},
+			FieldGroup: fgName,
+			Message:    "Could not validate Elasticsearch credentials",
 		}
 		errors = append(errors, newError)
 	}

@@ -12,6 +12,8 @@ import (
 // Validate checks the configuration settings for this field group
 func (fg *BitbucketBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
+	fgName := "BitbucketBuildTrigger"
+
 	// Make empty errors
 	errors := []shared.ValidationError{}
 
@@ -28,9 +30,9 @@ func (fg *BitbucketBuildTriggerFieldGroup) Validate(opts shared.Options) []share
 	// Make sure config is set up correctly
 	if fg.BitbucketTriggerConfig == nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"BITBUCKET_TRIGGER_CONFIG"},
-			Policy:  "A is Required",
-			Message: "BITBUCKET_TRIGGER_CONFIG is required",
+			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG"},
+			FieldGroup: fgName,
+			Message:    "BITBUCKET_TRIGGER_CONFIG is required",
 		}
 		errors = append(errors, newError)
 		return errors
@@ -39,9 +41,9 @@ func (fg *BitbucketBuildTriggerFieldGroup) Validate(opts shared.Options) []share
 	// Check for consumer key
 	if fg.BitbucketTriggerConfig.ConsumerKey == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_KEY"},
-			Policy:  "A is Required",
-			Message: "BITBUCKET_TRIGGER_CONFIG.CONSUMER_KEY is required",
+			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_KEY"},
+			FieldGroup: fgName,
+			Message:    "BITBUCKET_TRIGGER_CONFIG.CONSUMER_KEY is required",
 		}
 		errors = append(errors, newError)
 	}
@@ -49,9 +51,9 @@ func (fg *BitbucketBuildTriggerFieldGroup) Validate(opts shared.Options) []share
 	// Check consumer secret
 	if fg.BitbucketTriggerConfig.ConsumerSecret == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET"},
-			Policy:  "A is Required",
-			Message: "BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET is required",
+			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET"},
+			FieldGroup: fgName,
+			Message:    "BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET is required",
 		}
 		errors = append(errors, newError)
 	}
@@ -59,9 +61,9 @@ func (fg *BitbucketBuildTriggerFieldGroup) Validate(opts shared.Options) []share
 	// Check OAuth credentials
 	if !ValidateBitbucketOAuth(fg.BitbucketTriggerConfig.ConsumerKey, fg.BitbucketTriggerConfig.ConsumerSecret) {
 		newError := shared.ValidationError{
-			Tags:    []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_ID", "BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET"},
-			Policy:  "OAuth",
-			Message: "Cannot validate BITBUCKET_TRIGGER_CONFIG credentials",
+			Tags:       []string{"BITBUCKET_TRIGGER_CONFIG.CONSUMER_ID", "BITBUCKET_TRIGGER_CONFIG.CONSUMER_SECRET"},
+			FieldGroup: fgName,
+			Message:    "Cannot validate BITBUCKET_TRIGGER_CONFIG credentials",
 		}
 		errors = append(errors, newError)
 	}

@@ -26,16 +26,16 @@ This will generate files for the Quay validator executable and install the `conf
 Clone this repo and build an image:
 
 ```
-git clone https://github.com/quay/config-tool.git
-cd config-tool
-sudo podman build -t config-tool .
+$ git clone https://github.com/quay/config-tool.git
+$ cd config-tool
+$ sudo podman build -t config-tool .
 ```
 
 Start the container and execute command:
 
 ```
-sudo podman run -it config-tool bash
-config-tool ...
+$ sudo podman run -it config-tool bash
+$ config-tool [...]
 ```
 
 #### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/config-tool/tree/master/utils/generate)
@@ -84,7 +84,7 @@ The CLI tool contains two main commands:
 #### The `validate` command is used to show while field groups have been validated succesully
 
 ```
-$ config-tool validate -c <path-to-config.yaml>
+$ config-tool validate -c <path-to-config-dir>
 +---------------------+--------------------+-------------------------+--------+
 |     FIELD GROUP     |       FIELD        |          ERROR          | STATUS |
 +---------------------+--------------------+-------------------------+--------+
@@ -93,4 +93,10 @@ $ config-tool validate -c <path-to-config.yaml>
 | UserVisibleSettings | BRANDING.Logo      | Field enforces tag: url | 🔴     |
 |                     | BRANDING.FooterIMG | Field enforces tag: url | 🔴     |
 +---------------------+--------------------+-------------------------+--------+
+```
+
+#### The `editor` command will bring up an interactive UI to reconfigure and validate a config bundle.
+
+```
+$ config-tool editor -c <path-to-config-dir> -p <editor-password> -e <operator-endpoint>
 ```

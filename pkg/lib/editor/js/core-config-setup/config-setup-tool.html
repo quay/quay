@@ -156,7 +156,7 @@
       </div>
 
       <!-- Database Configuration -->
-      <div class="co-panel">
+      <div id="fg-database" class="co-panel">
         <div class="co-panel-heading">
           <i class="fa fa-database"></i> Database
         </div>
@@ -2036,7 +2036,7 @@
             <div class="validation-issue-container" ng-if="validationStatus == 'error'">
               <div class="validation-issue" ng-repeat="err in validationResult">
                 <i class="fa fa-lg fa-warning"></i>
-                {{ err['Message'] }}
+                {{ err['FieldGroup'] }}:{{ err['Message'] }}
               </div>
             </div>
           </div>

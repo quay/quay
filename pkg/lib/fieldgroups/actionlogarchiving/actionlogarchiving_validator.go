@@ -38,9 +38,9 @@ func (fg *ActionLogArchivingFieldGroup) Validate(opts shared.Options) []shared.V
 	}
 	if !validLocation {
 		newError := shared.ValidationError{
-			Tags:    []string{"ACTION_LOG_ARCHIVE_LOCATION", "DISTRIBUTED_STORAGE_CONFIG"},
-			Policy:  "A In DistributedStorageConfig",
-			Message: "ACTION_LOG_ARCHIVE_LOCATION must be in DISTRIBUTED_STORAGE_CONFIG",
+			Tags:       []string{"ACTION_LOG_ARCHIVE_LOCATION", "DISTRIBUTED_STORAGE_CONFIG"},
+			FieldGroup: "ActionLogArchiving",
+			Message:    "ACTION_LOG_ARCHIVE_LOCATION must be in DISTRIBUTED_STORAGE_CONFIG",
 		}
 		errors = append(errors, newError)
 	}

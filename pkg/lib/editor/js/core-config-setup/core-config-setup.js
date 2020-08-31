@@ -148,7 +148,7 @@ angular.module("quay-config")
           '$hasChanges': false
         };
 
-        $scope.hasfile = {};
+        $scope.certs = {};
         $scope.savingConfiguration = false;
 
         $scope.validationStatus = 'none';
@@ -243,9 +243,9 @@ angular.module("quay-config")
             return;
           }
 
-          var query = $element.find("input.ng-invalid:first");
-
+          var query = $element.find("ng-invalid:first");
           if (query && query.length) {
+            
             query[0].scrollIntoView();
             query.focus();
           }
@@ -487,6 +487,7 @@ angular.module("quay-config")
 
           $scope.mapped['database'] = {}
           $scope.mapped['database'] = parseDbUri(getKey(config, "DB_URI"))
+          console.log($scope.mapped['database'])
           
         };
 
@@ -512,7 +513,12 @@ angular.module("quay-config")
         };
 
         var redisSetter = function(keyname) {
+
           return function(value) {
+
+            console.log("changing redis ")
+
+
             if (value == null || !$scope.config) { return; }
 
             if (!$scope.config['BUILDLOGS_REDIS']) {
@@ -535,7 +541,7 @@ angular.module("quay-config")
         };
 
         var databaseSetter = function(fields) {
-          if (value == null || !$scope.config) { return; }
+          if (fields == null || !$scope.config) { return; }
 
           if (!fields['server']) { return ''; }
           if (!fields['database']) { return ''; }
@@ -623,7 +629,7 @@ angular.module("quay-config")
         $scope.$watch('mapped.redis.port', redisSetter('port'));
         $scope.$watch('mapped.redis.password', redisSetter('password'));
 
-        $scope.$watch('mapped.database', databaseSetter);
+        $scope.$watch('mapped.database', databaseSetter, true);
 
         $scope.$watch('mapped.LOGS_MODEL', logsModelSelector('LOGS_MODEL'));
         $scope.$watch('mapped.LOGS_MODEL_CONFIG.producer', logsProducerSetter);
@@ -1228,89 +1234,7 @@ angular.module("quay-config")
     };
     return directiveDefinitionObject;
   })
-
-  .directive('configServiceKeyField', function (ApiService) {
-    var directiveDefinitionObject = {
-      priority: 0,
-      templateUrl: urlServiceKeyField,
-      replace: false,
-      transclude: false,
-      restrict: 'C',
-      scope: {
-        'serviceName': '@serviceName',
-      },
-      controller: function($scope, $element) {
-        $scope.foundKeys = [];
-        $scope.loading = false;
-        $scope.loadError = false;
-        $scope.hasValidKey = false;
-        $scope.hasValidKeyStr = null;
-
-        $scope.updateKeys = function() {
-          $scope.foundKeys = [];
-          $scope.loading = true;
-
-          ApiService.listServiceKeys().then(function(resp) {
-            $scope.loading = false;
-            $scope.loadError = false;
-
-            resp['keys'].forEach(function(key) {
-              if (key['service'] == $scope.serviceName) {
-                $scope.foundKeys.push(key);
-              }
-            });
-
-            $scope.hasValidKey = checkValidKey($scope.foundKeys);
-            $scope.hasValidKeyStr = $scope.hasValidKey ? 'true' : '';
-          }, function() {
-            $scope.loading = false;
-            $scope.loadError = true;
-          });
-        };
-
-        // Perform initial loading of the keys.
-        $scope.updateKeys();
-
-        $scope.isKeyExpired = function(key) {
-          if (key.expiration_date != null) {
-            var expiration_date = moment(key.expiration_date);
-            return moment().isAfter(expiration_date);
-          }
-          return false;
-        };
-
-        $scope.showRequestServiceKey = function(opt_newKey) {
-          $scope.requestKeyInfo = {
-            'service': $scope.serviceName,
-            'newKey': opt_newKey
-          };
-        };
-
-        $scope.handleKeyCreated = function() {
-          $scope.updateKeys();
-        };
-
-        var checkValidKey = function(keys) {
-          for (var i = 0; i < keys.length; ++i) {
-            var key = keys[i];
-            if (!key.approval) {
-              continue;
-            }
-
-            if ($scope.isKeyExpired(key)) {
-              continue;
-            }
-
-            return true;
-          }
-
-          return false;
-        };
-      }
-    };
-    return directiveDefinitionObject;
-  })
-
+  
   .directive('configStringField', function () {
     var directiveDefinitionObject = {
       priority: 0,
@@ -1429,15 +1353,16 @@ angular.module("quay-config")
       controller: function($scope, $element, ApiService) {
         $scope.resetUpload = 0;
         $scope.certsUploading = false;
+        $scope.certInfo = null
 
         var loadCertificates = function() {
-          // FIXME: Load certificates.
-          /*
-          $scope.certificatesResource = ApiService.getCustomCertificatesAsResource().get(function(resp) {
-            $scope.certInfo = resp;
+
+          $scope.certsUploading = true;
+          ApiService.getCertificates().then(function(resp) {
+            $scope.certInfo = resp || {};
             $scope.certsUploading = false;
-          });
-          */
+          })
+  
         };
 
         loadCertificates();
