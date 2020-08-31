@@ -111,9 +111,10 @@ def format_local_name(url):
 
 
 def _download_url(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "Quay (External Library Downloader)",})
     for index in range(0, MAX_RETRY_COUNT):
         try:
-            response = urllib.request.urlopen(url)
+            response = urllib.request.urlopen(req)
             return response.read()
         except urllib.error.URLError:
             logger.exception(
