@@ -24,8 +24,7 @@ RUN git clone https://github.com/thomasmckay/config-tool.git --branch npm /go/sr
 RUN rm -rf /go/src/config-tool/pkg/lib/editor/static/build
 COPY --from=config-editor /config-editor/static/build  /go/src/config-tool/pkg/lib/editor/static/build
 
-RUN go get -d -v ./...
-RUN go install -v ./...
+RUN go install ./cmd/config-tool
 
 
 ###################
@@ -48,7 +47,7 @@ ENV QUAYPATH "."
 COPY --from=config-tool /go/bin/config-tool /bin
 RUN mkdir /config-editor
 COPY --from=config-editor /config-editor /config-editor
-COPY --from=config-editor /config-editor/static /static
+COPY --from=config-editor /config-editor/static/build /config-editor/pkg/lib/editor/static/build
 
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
