@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jojomi/go-spew/spew"
 	"github.com/quay/config-tool/pkg/lib/shared"
 	"gopkg.in/yaml.v2"
 )
@@ -30,7 +29,7 @@ func TestValidateDistributedStorage(t *testing.T) {
 		want   string
 	}{
 
-		{name: "MissingStorageConfig", config: map[string]interface{}{}, want: "valid"},
+		{name: "MissingStorageConfig", config: map[string]interface{}{}, want: "invalid"},
 	}
 
 	// Iterate through tests
@@ -45,15 +44,11 @@ func TestValidateDistributedStorage(t *testing.T) {
 				fmt.Println(err.Error())
 			}
 
-			spew.Dump(conf)
-
 			// Get validation result
 			fg, err := NewDistributedStorageFieldGroup(conf)
 			if err != nil && tt.want != "typeError" {
 				t.Errorf("Expected %s. Received %s", tt.want, err.Error())
 			}
-
-			spew.Dump(fg)
 
 			opts := shared.Options{
 				Mode: "testing",
