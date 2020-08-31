@@ -50,14 +50,20 @@ case "$QUAYENTRY" in
         exec /bin/bash
         ;;
     "config")
-        echo "Entering config mode, only copying config-app entrypoints"
+        if [ -z "${QUAY_SERVICES}" ]; then
+            echo "Running all default config services"
+        else
+            echo "Running services ${QUAY_SERVICES}"
+        fi
         : "${CONFIG_APP_PASSWORD:=$2}"
         : "${CONFIG_APP_PASSWORD:?Missing password argument for configuration tool}"
+        export CONFIG_APP_PASSWORD="${CONFIG_APP_PASSWORD}"
         printf '%s' "${CONFIG_APP_PASSWORD}" | openssl passwd -apr1 -stdin >> "$QUAYDIR/config_app/conf/htpasswd"
 
-        "${QUAYPATH}/config_app/init/certs_create.sh" || exit
+        "${QUAYPATH}/conf/init/certs_create.sh" || exit
         "${QUAYPATH}/conf/init/certs_install.sh" || exit
-        exec supervisord -c "${QUAYPATH}/config_app/conf/supervisord.conf" 2>&1
+        "${QUAYPATH}/conf/init/supervisord_conf_create.sh" config || exit
+        exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
     "migrate")
         : "${MIGRATION_VERSION:=$2}"
@@ -65,10 +71,6 @@ case "$QUAYENTRY" in
         echo "Entering migration mode to version: ${MIGRATION_VERSION}"
         PYTHONPATH="${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
         ;;
-    "repomirror")
-        echo "Entering repository mirroring mode"
-        export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}repomirrorworker,pushgateway"
-        ;&
     "registry-nomigrate")
         echo "Running all default registry services without migration"
         for f in "${QUAYCONF}"/init/*.sh; do
@@ -79,6 +81,10 @@ case "$QUAYENTRY" in
         done
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
+    "repomirror")
+        echo "Entering repository mirroring mode"
+        export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}repomirrorworker,pushgateway"
+        ;&
     "registry")
         if [ -z "${QUAY_SERVICES}" ]; then
             echo "Running all default registry services"

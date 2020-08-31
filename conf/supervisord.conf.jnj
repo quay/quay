@@ -235,4 +235,13 @@ command=python -m workers.repomirrorworker.repomirrorworker
 autostart = {{ config['repomirrorworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
+
+[program:config-editor]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s,
+  CONFIG_APP_PASSWORD=%(ENV_CONFIG_APP_PASSWORD)s
+command=config-tool editor --configDir /conf/stack --password %(ENV_CONFIG_APP_PASSWORD)s --operatorEndpoint http://nope
+autostart = {{ config['config-editor']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
 # EOF NO NEWLINE
