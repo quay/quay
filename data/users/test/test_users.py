@@ -98,7 +98,11 @@ def test_ping(auth_system_builder, auth_kwargs, app):
 
 @pytest.mark.parametrize(
     "auth_system_builder,auth_kwargs",
-    [(mock_ldap, {}), (fake_keystone, {"version": 3}), (fake_keystone, {"version": 2}),],
+    [
+        (mock_ldap, {}),
+        (fake_keystone, {"version": 3}),
+        (fake_keystone, {"version": 2}),
+    ],
 )
 def test_at_least_one_user_exists(auth_system_builder, auth_kwargs, app):
     with auth_system_builder(**auth_kwargs) as auth:

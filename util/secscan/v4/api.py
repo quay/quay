@@ -48,7 +48,7 @@ class SecurityScannerAPIInterface(object):
     @abstractmethod
     def state(self):
         """
-        The state endpoint returns a json structure indicating the indexer's internal configuration state. 
+        The state endpoint returns a json structure indicating the indexer's internal configuration state.
         A client may be interested in this as a signal that manifests may need to be re-indexed.
         """
         pass
@@ -56,7 +56,7 @@ class SecurityScannerAPIInterface(object):
     @abstractmethod
     def index(self, manifest, layers):
         """
-        By submitting a Manifest object to this endpoint Clair will fetch the layers, 
+        By submitting a Manifest object to this endpoint Clair will fetch the layers,
         scan each layer's contents, and provide an index of discovered packages, repository and distribution information.
         Returns a tuple of the `IndexReport` and the indexer state.
         """
@@ -72,7 +72,7 @@ class SecurityScannerAPIInterface(object):
     @abstractmethod
     def vulnerability_report(self, manifest_hash):
         """
-        Given a Manifest's content addressable hash a `VulnerabilityReport` will be created. 
+        Given a Manifest's content addressable hash a `VulnerabilityReport` will be created.
         The Manifest must have been Indexed first via the Index endpoint.
         """
         pass
@@ -87,7 +87,12 @@ actions = {
         "GetIndexReport", ("GET", "index_report/" + manifest_hash, None)
     ),
     "GetVulnerabilityReport": lambda manifest_hash: Action(
-        "GetVulnerabilityReport", ("GET", "vulnerability_report/" + manifest_hash, None,)
+        "GetVulnerabilityReport",
+        (
+            "GET",
+            "vulnerability_report/" + manifest_hash,
+            None,
+        ),
     ),
 }
 
@@ -122,7 +127,9 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
                     "hash": str(l.layer_info.blob_digest),
                     "uri": self._blob_url_retriever.url_for_download(manifest.repository, l.blob),
                     "headers": _join(
-                        {"Accept": ["application/gzip"],},
+                        {
+                            "Accept": ["application/gzip"],
+                        },
                         (
                             self._blob_url_retriever.headers_for_download(
                                 manifest.repository, l.blob, DOWNLOAD_VALIDITY_LIFETIME_S

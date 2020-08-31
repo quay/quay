@@ -74,87 +74,87 @@ class RepoNotificationInterface(object):
     ):
         """
 
-    Args:
-      namespace_name: namespace of repository
-      repository_name: name of repository
-      event_name: name of event
-      method_name: name of method
-      method_config: method config, json string
-      event_config: event config, json string
-      title: title of the notification
+        Args:
+          namespace_name: namespace of repository
+          repository_name: name of repository
+          event_name: name of event
+          method_name: name of method
+          method_config: method config, json string
+          event_config: event config, json string
+          title: title of the notification
 
-    Returns:
-      RepositoryNotification object
+        Returns:
+          RepositoryNotification object
 
-    """
+        """
         pass
 
     @abstractmethod
     def list_repo_notifications(self, namespace_name, repository_name, event_name=None):
         """
 
-    Args:
-      namespace_name: namespace of repository
-      repository_name: name of repository
-      event_name: name of event
+        Args:
+          namespace_name: namespace of repository
+          repository_name: name of repository
+          event_name: name of event
 
-    Returns:
-      list(RepositoryNotification)
-    """
+        Returns:
+          list(RepositoryNotification)
+        """
         pass
 
     @abstractmethod
     def get_repo_notification(self, uuid):
         """
 
-    Args:
-      uuid: uuid of notification
+        Args:
+          uuid: uuid of notification
 
-    Returns:
-      RepositoryNotification or None
+        Returns:
+          RepositoryNotification or None
 
-    """
+        """
         pass
 
     @abstractmethod
     def delete_repo_notification(self, namespace_name, repository_name, uuid):
         """
 
-    Args:
-      namespace_name: namespace of repository
-      repository_name: name of repository
-      uuid: uuid of notification
+        Args:
+          namespace_name: namespace of repository
+          repository_name: name of repository
+          uuid: uuid of notification
 
-    Returns:
-      RepositoryNotification or None
+        Returns:
+          RepositoryNotification or None
 
-    """
+        """
         pass
 
     @abstractmethod
     def reset_notification_number_of_failures(self, namespace_name, repository_name, uuid):
         """
 
-    Args:
-      namespace_name: namespace of repository
-      repository_name: name of repository
-      uuid: uuid of notification
+        Args:
+          namespace_name: namespace of repository
+          repository_name: name of repository
+          uuid: uuid of notification
 
-    Returns:
-      RepositoryNotification
+        Returns:
+          RepositoryNotification
 
-    """
+        """
         pass
 
     @abstractmethod
     def queue_test_notification(self, uuid):
         """
 
-    Args:
-      uuid: uuid of notification
+        Args:
+          uuid: uuid of notification
 
-    Returns:
-      RepositoryNotification or None
+        Returns:
+          RepositoryNotification or None
 
-    """
+        """
         pass

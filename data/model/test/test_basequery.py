@@ -61,10 +61,25 @@ def _get_visible_repositories_for_user(
             continue
 
 
-@pytest.mark.parametrize("username", ["devtable", "devtable+dtrobot", "public", "reader",])
+@pytest.mark.parametrize(
+    "username",
+    [
+        "devtable",
+        "devtable+dtrobot",
+        "public",
+        "reader",
+    ],
+)
 @pytest.mark.parametrize("include_public", [True, False])
 @pytest.mark.parametrize("filter_to_namespace", [True, False])
-@pytest.mark.parametrize("repo_kind", [None, "image", "application",])
+@pytest.mark.parametrize(
+    "repo_kind",
+    [
+        None,
+        "image",
+        "application",
+    ],
+)
 def test_filter_repositories(
     username, include_public, filter_to_namespace, repo_kind, initialized_db
 ):

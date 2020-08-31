@@ -303,22 +303,32 @@ CONFIG_SCHEMA = {
             "description": "Configuration for storage engine(s) to use in Quay. Each key is a unique ID"
             + " for a storage engine, with the value being a tuple of the type and "
             + " configuration for that engine.",
-            "x-example": {"local_storage": ["LocalStorage", {"storage_path": "some/path/"}],},
-            "items": {"type": "array",},
+            "x-example": {
+                "local_storage": ["LocalStorage", {"storage_path": "some/path/"}],
+            },
+            "items": {
+                "type": "array",
+            },
         },
         "DISTRIBUTED_STORAGE_PREFERENCE": {
             "type": "array",
             "description": "The preferred storage engine(s) (by ID in DISTRIBUTED_STORAGE_CONFIG) to "
             + "use. A preferred engine means it is first checked for pullig and images are "
             + "pushed to it.",
-            "items": {"type": "string", "uniqueItems": True,},
+            "items": {
+                "type": "string",
+                "uniqueItems": True,
+            },
             "x-example": ["s3_us_east", "s3_us_west"],
         },
         "DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS": {
             "type": "array",
             "description": "The list of storage engine(s) (by ID in DISTRIBUTED_STORAGE_CONFIG) whose "
             + "images should be fully replicated, by default, to all other storage engines.",
-            "items": {"type": "string", "uniqueItems": True,},
+            "items": {
+                "type": "string",
+                "uniqueItems": True,
+            },
             "x-example": ["s3_us_east", "s3_us_west"],
         },
         "USERFILES_LOCATION": {
@@ -372,7 +382,9 @@ CONFIG_SCHEMA = {
             "type": "array",
             "description": "Quay usernames of those users to be granted superuser privileges",
             "uniqueItems": True,
-            "items": {"type": "string",},
+            "items": {
+                "type": "string",
+            },
         },
         "DIRECT_OAUTH_CLIENTID_WHITELIST": {
             "type": "array",
@@ -380,7 +392,9 @@ CONFIG_SCHEMA = {
             + "to perform direct OAuth approval without user approval.",
             "x-reference": "https://coreos.com/quay-enterprise/docs/latest/direct-oauth.html",
             "uniqueItems": True,
-            "items": {"type": "string",},
+            "items": {
+                "type": "string",
+            },
         },
         # Redis.
         "BUILDLOGS_REDIS": {
@@ -465,7 +479,9 @@ CONFIG_SCHEMA = {
                     "type": "array",
                     "description": "The names of the GitHub (Enterprise) organizations whitelisted to work with the ORG_RESTRICT option",
                     "uniqueItems": True,
-                    "items": {"type": "string",},
+                    "items": {
+                        "type": "string",
+                    },
                 },
             },
         },
@@ -617,7 +633,9 @@ CONFIG_SCHEMA = {
             + ' Typically, this is used by an enterprise customer in configuring a set of "well-known"'
             + " namespaces.",
             "uniqueItems": True,
-            "items": {"type": "string",},
+            "items": {
+                "type": "string",
+            },
         },
         "AVATAR_KIND": {
             "type": "string",
@@ -654,7 +672,10 @@ CONFIG_SCHEMA = {
         "TAG_EXPIRATION_OPTIONS": {
             "type": "array",
             "description": "The options that users can select for expiration of tags in their namespace (if enabled)",
-            "items": {"type": "string", "pattern": "^[0-9]+(w|m|d|h|s)$",},
+            "items": {
+                "type": "string",
+                "pattern": "^[0-9]+(w|m|d|h|s)$",
+            },
         },
         # Team syncing.
         "FEATURE_TEAM_SYNCING": {
@@ -1041,7 +1062,9 @@ CONFIG_SCHEMA = {
                             "type": "array",
                             "description": "List of Kafka brokers to bootstrap the client from",
                             "uniqueItems": True,
-                            "items": {"type": "string",},
+                            "items": {
+                                "type": "string",
+                            },
                         },
                         "topic": {
                             "type": "string",

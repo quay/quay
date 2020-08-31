@@ -144,10 +144,20 @@ class RepositoryManifestLabels(RepositoryParamResource):
         "AddLabel": {
             "type": "object",
             "description": "Adds a label to a manifest",
-            "required": ["key", "value", "media_type",],
+            "required": [
+                "key",
+                "value",
+                "media_type",
+            ],
             "properties": {
-                "key": {"type": "string", "description": "The key for the label",},
-                "value": {"type": "string", "description": "The value for the label",},
+                "key": {
+                    "type": "string",
+                    "description": "The key for the label",
+                },
+                "value": {
+                    "type": "string",
+                    "description": "The value for the label",
+                },
                 "media_type": {
                     "type": ["string", "null"],
                     "description": "The media type for this label",

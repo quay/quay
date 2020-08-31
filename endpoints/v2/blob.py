@@ -112,12 +112,18 @@ def download_blob(namespace_name, repo_name, digest):
     # Close the database connection before we stream the download.
     logger.debug("Closing database connection before streaming layer data")
     headers.update(
-        {"Content-Length": blob.compressed_size, "Content-Type": BLOB_CONTENT_TYPE,}
+        {
+            "Content-Length": blob.compressed_size,
+            "Content-Type": BLOB_CONTENT_TYPE,
+        }
     )
 
     with database.CloseForLongOperation(app.config):
         # Stream the response to the client.
-        return Response(storage.stream_read(blob.placements, path), headers=headers,)
+        return Response(
+            storage.stream_read(blob.placements, path),
+            headers=headers,
+        )
 
 
 def _try_to_mount_blob(repository_ref, mount_blob_digest):

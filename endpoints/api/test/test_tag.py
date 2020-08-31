@@ -12,7 +12,13 @@ from endpoints.api.tag import RepositoryTag, RestoreTag, ListRepositoryTags, Rep
 from test.fixtures import *
 
 
-@pytest.mark.parametrize("expiration_time, expected_status", [(None, 201), ("aksdjhasd", 400),])
+@pytest.mark.parametrize(
+    "expiration_time, expected_status",
+    [
+        (None, 201),
+        ("aksdjhasd", 400),
+    ],
+)
 def test_change_tag_expiration_default(expiration_time, expected_status, client, app):
     with client_with_identity("devtable", client) as cl:
         params = {

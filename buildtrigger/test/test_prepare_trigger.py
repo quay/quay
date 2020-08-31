@@ -92,8 +92,12 @@ def test_custom_github():
             "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
             "date": "2015-09-11T14:26:16-04:00",
             "message": "Update Dockerfile",
-            "committer": {"username": "jsmith",},
-            "author": {"username": "jsmith",},
+            "committer": {
+                "username": "jsmith",
+            },
+            "author": {
+                "username": "jsmith",
+            },
         },
     }
 
@@ -188,7 +192,10 @@ def test_bitbucket_commit():
             "url": "https://bitbucket.org/foo/bar/commits/abdeaf1b2b4a6b9ddf742c1e1754236380435a62",
             "date": "2012-07-24 00:26:36",
             "message": "making some changes\n",
-            "author": {"avatar_url": "http://some/avatar/url", "username": "cooluser",},
+            "author": {
+                "avatar_url": "http://some/avatar/url",
+                "username": "cooluser",
+            },
         },
     }
 
@@ -230,8 +237,12 @@ def test_github_webhook_payload_slash_branch():
             "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
             "date": "2015-09-11T14:26:16-04:00",
             "message": "Update Dockerfile",
-            "committer": {"username": "jsmith",},
-            "author": {"username": "jsmith",},
+            "committer": {
+                "username": "jsmith",
+            },
+            "author": {
+                "username": "jsmith",
+            },
         },
     }
 
@@ -248,8 +259,12 @@ def test_github_webhook_payload():
             "url": "https://github.com/jsmith/anothertest/commit/410f4cdf8ff09b87f245b13845e8497f90b90a4c",
             "date": "2015-09-11T14:26:16-04:00",
             "message": "Update Dockerfile",
-            "committer": {"username": "jsmith",},
-            "author": {"username": "jsmith",},
+            "committer": {
+                "username": "jsmith",
+            },
+            "author": {
+                "username": "jsmith",
+            },
         },
     }
 

@@ -68,7 +68,11 @@ class Storage(object):
         storages = {}
         for location, storage_params in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG").items()):
             storages[location] = get_storage_driver(
-                location, chunk_cleanup_queue, config_provider, ip_resolver, storage_params,
+                location,
+                chunk_cleanup_queue,
+                config_provider,
+                ip_resolver,
+                storage_params,
             )
 
         preference = app.config.get("DISTRIBUTED_STORAGE_PREFERENCE", None)

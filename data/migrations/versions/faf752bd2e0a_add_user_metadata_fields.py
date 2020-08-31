@@ -22,7 +22,13 @@ def upgrade(op, tables, tester):
     op.add_column("user", sa.Column("given_name", UTF8CharField(length=255), nullable=True))
     ### end Alembic commands ###
 
-    op.bulk_insert(tables.userpromptkind, [{"name": "enter_name"}, {"name": "enter_company"},])
+    op.bulk_insert(
+        tables.userpromptkind,
+        [
+            {"name": "enter_name"},
+            {"name": "enter_company"},
+        ],
+    )
 
     # ### population of test data ### #
     tester.populate_column("user", "company", tester.TestDataType.UTF8Char)

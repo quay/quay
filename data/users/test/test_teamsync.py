@@ -55,20 +55,34 @@ def blacklisted_emails(request):
     "starting_membership,group_membership,expected_membership",
     [
         # Empty team + single member in group => Single member in team.
-        ([], [UserInformation("someuser", "someuser", "someuser@devtable.com"),], ["someuser"]),
+        (
+            [],
+            [
+                UserInformation("someuser", "someuser", "someuser@devtable.com"),
+            ],
+            ["someuser"],
+        ),
         # Team with a Quay user + empty group => empty team.
         ([("someuser", None)], [], []),
         # Team with an existing external user + user is in the group => no changes.
         (
-            [("someuser", "someuser"),],
-            [UserInformation("someuser", "someuser", "someuser@devtable.com"),],
+            [
+                ("someuser", "someuser"),
+            ],
+            [
+                UserInformation("someuser", "someuser", "someuser@devtable.com"),
+            ],
             ["someuser"],
         ),
         # Team with an existing external user (with a different Quay username) + user is in the group.
         # => no changes
         (
-            [("anotherquayname", "someuser"),],
-            [UserInformation("someuser", "someuser", "someuser@devtable.com"),],
+            [
+                ("anotherquayname", "someuser"),
+            ],
+            [
+                UserInformation("someuser", "someuser", "someuser@devtable.com"),
+            ],
             ["someuser"],
         ),
         # Team missing a few members that are in the group => members added.
@@ -89,12 +103,18 @@ def blacklisted_emails(request):
                 ("thirduser", "thirduser"),
                 ("nontestuser", None),
             ],
-            [UserInformation("thirduser", "thirduser", "thirduser@devtable.com"),],
+            [
+                UserInformation("thirduser", "thirduser", "thirduser@devtable.com"),
+            ],
             ["thirduser"],
         ),
         # Team has different membership than the group => members added and removed.
         (
-            [("anotheruser", "anotheruser"), ("someuser", "someuser"), ("nontestuser", None),],
+            [
+                ("anotheruser", "anotheruser"),
+                ("someuser", "someuser"),
+                ("nontestuser", None),
+            ],
             [
                 UserInformation("anotheruser", "anotheruser", "anotheruser@devtable.com"),
                 UserInformation("missinguser", "missinguser", "missinguser@devtable.com"),
@@ -108,7 +128,9 @@ def blacklisted_emails(request):
                 ("buynlarge+anotherbot", None),
                 ("buynlarge+somerobot", None),
             ],
-            [UserInformation("someuser", "someuser", "someuser@devtable.com"),],
+            [
+                UserInformation("someuser", "someuser", "someuser@devtable.com"),
+            ],
             ["someuser", "buynlarge+somerobot", "buynlarge+anotherbot"],
         ),
         # Team has an extra member and some robots => member removed and robots remain.
@@ -130,14 +152,21 @@ def blacklisted_emails(request):
                 ("buynlarge+anotherbot", None),
                 ("buynlarge+somerobot", None),
             ],
-            [UserInformation("anotheruser", "anotheruser", "anotheruser@devtable.com"),],
+            [
+                UserInformation("anotheruser", "anotheruser", "anotheruser@devtable.com"),
+            ],
             ["anotheruser", "buynlarge+somerobot", "buynlarge+anotherbot"],
         ),
         # Team with an existing external user (with a different Quay username) + user is in the group.
         # => no changes and robots remain.
         (
-            [("anotherquayname", "someuser"), ("buynlarge+anotherbot", None),],
-            [UserInformation("someuser", "someuser", "someuser@devtable.com"),],
+            [
+                ("anotherquayname", "someuser"),
+                ("buynlarge+anotherbot", None),
+            ],
+            [
+                UserInformation("someuser", "someuser", "someuser@devtable.com"),
+            ],
             ["someuser", "buynlarge+anotherbot"],
         ),
         # Team which returns the same member twice, as pagination in some engines (like LDAP) is not
@@ -263,7 +292,10 @@ def test_sync_teams_to_groups(user_creation, invite_only_user_creation, blacklis
 
 @pytest.mark.parametrize(
     "auth_system_builder,config",
-    [(mock_ldap, {"group_dn": "cn=AwesomeFolk"}), (fake_keystone, {"group_id": "somegroupid"}),],
+    [
+        (mock_ldap, {"group_dn": "cn=AwesomeFolk"}),
+        (fake_keystone, {"group_id": "somegroupid"}),
+    ],
 )
 def test_teamsync_end_to_end(
     user_creation, invite_only_user_creation, auth_system_builder, config, blacklisted_emails, app
@@ -306,7 +338,10 @@ def test_teamsync_end_to_end(
 
 @pytest.mark.parametrize(
     "auth_system_builder,config",
-    [(mock_ldap, {"group_dn": "cn=AwesomeFolk"}), (fake_keystone, {"group_id": "somegroupid"}),],
+    [
+        (mock_ldap, {"group_dn": "cn=AwesomeFolk"}),
+        (fake_keystone, {"group_id": "somegroupid"}),
+    ],
 )
 def test_teamsync_existing_email(
     user_creation, invite_only_user_creation, auth_system_builder, blacklisted_emails, config, app

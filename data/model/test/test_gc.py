@@ -108,7 +108,15 @@ def move_tag(repository, tag, image_ids, expect_gc=True):
     # NOTE: Building root to leaf.
     parent_id = None
     for image_id in image_ids:
-        config = {"id": image_id, "config": {"Labels": {"foo": "bar", "meh": "grah",}}}
+        config = {
+            "id": image_id,
+            "config": {
+                "Labels": {
+                    "foo": "bar",
+                    "meh": "grah",
+                }
+            },
+        }
 
         if parent_id:
             config["parent"] = parent_id
@@ -239,9 +247,11 @@ def assert_gc_integrity(expect_storage_removed=True):
             # with the same ID, make sure it does not have the same Docker Image ID.
             # See: https://www.sqlite.org/autoinc.html
             found_image = Image.get(id=removed_image_and_storage.id)
-            assert found_image.docker_image_id != removed_image_and_storage.docker_image_id, (
-                "Found unexpected removed image %s under repo %s"
-                % (found_image.id, found_image.repository)
+            assert (
+                found_image.docker_image_id != removed_image_and_storage.docker_image_id
+            ), "Found unexpected removed image %s under repo %s" % (
+                found_image.id,
+                found_image.repository,
             )
         except Image.DoesNotExist:
             pass
@@ -621,7 +631,14 @@ def test_image_with_cas(default_tag_policy, initialized_db):
         builder = DockerSchema1ManifestBuilder(
             repository.namespace_user.username, repository.name, "first"
         )
-        builder.insert_layer(digest, json.dumps({"id": "i1",}))
+        builder.insert_layer(
+            digest,
+            json.dumps(
+                {
+                    "id": "i1",
+                }
+            ),
+        )
 
         # Store the manifest.
         manifest = builder.build(docker_v2_signing_key)
@@ -681,7 +698,14 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         builder = DockerSchema1ManifestBuilder(
             repository.namespace_user.username, repository.name, "first"
         )
-        builder.insert_layer(digest, json.dumps({"id": "i1",}))
+        builder.insert_layer(
+            digest,
+            json.dumps(
+                {
+                    "id": "i1",
+                }
+            ),
+        )
         manifest = builder.build(docker_v2_signing_key)
         registry_model.create_manifest_and_retarget_tag(
             repo_ref, manifest, "first", storage, raise_on_error=True
@@ -695,7 +719,14 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         builder = DockerSchema1ManifestBuilder(
             repository.namespace_user.username, repository.name, "second"
         )
-        builder.insert_layer(digest, json.dumps({"id": "i2",}))
+        builder.insert_layer(
+            digest,
+            json.dumps(
+                {
+                    "id": "i2",
+                }
+            ),
+        )
         manifest = builder.build(docker_v2_signing_key)
         created, _ = registry_model.create_manifest_and_retarget_tag(
             repo_ref, manifest, "second", storage, raise_on_error=True

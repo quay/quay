@@ -95,25 +95,44 @@ def multi_layer_images():
     """
     # Note: order is from base layer down to leaf.
     layer1_bytes = layer_bytes_for_contents(
-        b"layer 1 contents", mode="", other_files={"file1": b"from-layer-1",}
+        b"layer 1 contents",
+        mode="",
+        other_files={
+            "file1": b"from-layer-1",
+        },
     )
 
     layer2_bytes = layer_bytes_for_contents(
-        b"layer 2 contents", mode="", other_files={"file2": b"from-layer-2",}
+        b"layer 2 contents",
+        mode="",
+        other_files={
+            "file2": b"from-layer-2",
+        },
     )
 
     layer3_bytes = layer_bytes_for_contents(
         b"layer 3 contents",
         mode="",
-        other_files={"file1": b"from-layer-3", "file3": b"from-layer-3",},
+        other_files={
+            "file1": b"from-layer-3",
+            "file3": b"from-layer-3",
+        },
     )
 
     layer4_bytes = layer_bytes_for_contents(
-        b"layer 4 contents", mode="", other_files={"file3": b"from-layer-4",}
+        b"layer 4 contents",
+        mode="",
+        other_files={
+            "file3": b"from-layer-4",
+        },
     )
 
     layer5_bytes = layer_bytes_for_contents(
-        b"layer 5 contents", mode="", other_files={"file4": b"from-layer-5",}
+        b"layer 5 contents",
+        mode="",
+        other_files={
+            "file4": b"from-layer-5",
+        },
     )
 
     return [

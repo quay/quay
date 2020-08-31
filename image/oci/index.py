@@ -123,7 +123,9 @@ class OCIIndex(ManifestListInterface):
                                     "type": "array",
                                     "description": "specifies an array of strings, each listing a required OS "
                                     + "feature (for example on Windows win32k)",
-                                    "items": {"type": "string",},
+                                    "items": {
+                                        "type": "string",
+                                    },
                                 },
                                 INDEX_VARIANT_KEY: {
                                     "type": "string",
@@ -134,10 +136,15 @@ class OCIIndex(ManifestListInterface):
                                     "type": "array",
                                     "description": "specifies an array of strings, each listing a required CPU "
                                     + "feature (for example sse4 or aes).",
-                                    "items": {"type": "string",},
+                                    "items": {
+                                        "type": "string",
+                                    },
                                 },
                             },
-                            "required": [INDEX_ARCHITECTURE_KEY, INDEX_OS_KEY,],
+                            "required": [
+                                INDEX_ARCHITECTURE_KEY,
+                                INDEX_OS_KEY,
+                            ],
                         },
                     },
                     additional_required=[INDEX_PLATFORM_KEY],
@@ -149,7 +156,10 @@ class OCIIndex(ManifestListInterface):
                 "additionalProperties": True,
             },
         },
-        "required": [INDEX_VERSION_KEY, INDEX_MANIFESTS_KEY,],
+        "required": [
+            INDEX_VERSION_KEY,
+            INDEX_MANIFESTS_KEY,
+        ],
     }
 
     def __init__(self, manifest_bytes):
@@ -281,8 +291,8 @@ class OCIIndex(ManifestListInterface):
 
     @property
     def amd64_linux_manifest_digest(self):
-        """ Returns the digest of the AMD64+Linux manifest in this list, if any, or None
-            if none.
+        """Returns the digest of the AMD64+Linux manifest in this list, if any, or None
+        if none.
         """
         for manifest_ref in self._parsed[INDEX_MANIFESTS_KEY]:
             platform = manifest_ref[INDEX_PLATFORM_KEY]
@@ -381,7 +391,10 @@ class OCIIndexBuilder(object):
                 manifest_digest,
                 manifest_size,
                 media_type,
-                {INDEX_ARCHITECTURE_KEY: architecture, INDEX_OS_KEY: os,},
+                {
+                    INDEX_ARCHITECTURE_KEY: architecture,
+                    INDEX_OS_KEY: os,
+                },
             )
         )
 

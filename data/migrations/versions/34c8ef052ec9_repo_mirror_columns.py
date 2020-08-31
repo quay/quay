@@ -153,10 +153,10 @@ def upgrade(op, tables, tester):
 def downgrade(op, tables, tester):
 
     """
-  This will downgrade existing data but may not exactly match previous data structure. If the
-  external_reference does not have three parts (registry, namespace, repository) then a failed
-  value is inserted.
-  """
+    This will downgrade existing data but may not exactly match previous data structure. If the
+    external_reference does not have three parts (registry, namespace, repository) then a failed
+    value is inserted.
+    """
 
     op.add_column(
         "repomirrorconfig", sa.Column("external_registry", sa.String(length=255), nullable=True)

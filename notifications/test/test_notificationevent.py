@@ -32,118 +32,219 @@ def test_build_notification(event_name, initialized_db):
 
 
 def test_build_emptyjson():
-    notification_data = AttrDict({"event_config_dict": None,})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": None,
+        }
+    )
 
     # No build data at all.
     assert BuildSuccessEvent().should_perform({}, notification_data)
 
 
 def test_build_nofilter():
-    notification_data = AttrDict({"event_config_dict": {},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {},
+        }
+    )
 
     # No build data at all.
     assert BuildSuccessEvent().should_perform({}, notification_data)
 
     # With trigger metadata but no ref.
-    assert BuildSuccessEvent().should_perform({"trigger_metadata": {},}, notification_data)
+    assert BuildSuccessEvent().should_perform(
+        {
+            "trigger_metadata": {},
+        },
+        notification_data,
+    )
 
     # With trigger metadata and a ref.
     assert BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/heads/somebranch",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/heads/somebranch",
+            },
+        },
+        notification_data,
     )
 
 
 def test_build_emptyfilter():
-    notification_data = AttrDict({"event_config_dict": {"ref-regex": ""},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {"ref-regex": ""},
+        }
+    )
 
     # No build data at all.
     assert BuildSuccessEvent().should_perform({}, notification_data)
 
     # With trigger metadata but no ref.
-    assert BuildSuccessEvent().should_perform({"trigger_metadata": {},}, notification_data)
+    assert BuildSuccessEvent().should_perform(
+        {
+            "trigger_metadata": {},
+        },
+        notification_data,
+    )
 
     # With trigger metadata and a ref.
     assert BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/heads/somebranch",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/heads/somebranch",
+            },
+        },
+        notification_data,
     )
 
 
 def test_build_invalidfilter():
-    notification_data = AttrDict({"event_config_dict": {"ref-regex": "]["},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {"ref-regex": "]["},
+        }
+    )
 
     # No build data at all.
     assert not BuildSuccessEvent().should_perform({}, notification_data)
 
     # With trigger metadata but no ref.
-    assert not BuildSuccessEvent().should_perform({"trigger_metadata": {},}, notification_data)
+    assert not BuildSuccessEvent().should_perform(
+        {
+            "trigger_metadata": {},
+        },
+        notification_data,
+    )
 
     # With trigger metadata and a ref.
     assert not BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/heads/somebranch",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/heads/somebranch",
+            },
+        },
+        notification_data,
     )
 
 
 def test_build_withfilter():
-    notification_data = AttrDict({"event_config_dict": {"ref-regex": "refs/heads/master"},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {"ref-regex": "refs/heads/master"},
+        }
+    )
 
     # No build data at all.
     assert not BuildSuccessEvent().should_perform({}, notification_data)
 
     # With trigger metadata but no ref.
-    assert not BuildSuccessEvent().should_perform({"trigger_metadata": {},}, notification_data)
+    assert not BuildSuccessEvent().should_perform(
+        {
+            "trigger_metadata": {},
+        },
+        notification_data,
+    )
 
     # With trigger metadata and a not-matching ref.
     assert not BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/heads/somebranch",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/heads/somebranch",
+            },
+        },
+        notification_data,
     )
 
     # With trigger metadata and a matching ref.
     assert BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/heads/master",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/heads/master",
+            },
+        },
+        notification_data,
     )
 
 
 def test_build_withwildcardfilter():
-    notification_data = AttrDict({"event_config_dict": {"ref-regex": "refs/heads/.+"},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {"ref-regex": "refs/heads/.+"},
+        }
+    )
 
     # No build data at all.
     assert not BuildSuccessEvent().should_perform({}, notification_data)
 
     # With trigger metadata but no ref.
-    assert not BuildSuccessEvent().should_perform({"trigger_metadata": {},}, notification_data)
+    assert not BuildSuccessEvent().should_perform(
+        {
+            "trigger_metadata": {},
+        },
+        notification_data,
+    )
 
     # With trigger metadata and a not-matching ref.
     assert not BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/tags/sometag",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/tags/sometag",
+            },
+        },
+        notification_data,
     )
 
     # With trigger metadata and a matching ref.
     assert BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/heads/master",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/heads/master",
+            },
+        },
+        notification_data,
     )
 
     # With trigger metadata and another matching ref.
     assert BuildSuccessEvent().should_perform(
-        {"trigger_metadata": {"ref": "refs/heads/somebranch",},}, notification_data
+        {
+            "trigger_metadata": {
+                "ref": "refs/heads/somebranch",
+            },
+        },
+        notification_data,
     )
 
 
 def test_vulnerability_notification_nolevel():
-    notification_data = AttrDict({"event_config_dict": {},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {},
+        }
+    )
 
     # No level specified.
     assert VulnerabilityFoundEvent().should_perform({}, notification_data)
 
 
 def test_vulnerability_notification_nopvulninfo():
-    notification_data = AttrDict({"event_config_dict": {"level": 3},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {"level": 3},
+        }
+    )
 
     # No vuln info.
     assert not VulnerabilityFoundEvent().should_perform({}, notification_data)
 
 
 def test_vulnerability_notification_normal():
-    notification_data = AttrDict({"event_config_dict": {"level": 3},})
+    notification_data = AttrDict(
+        {
+            "event_config_dict": {"level": 3},
+        }
+    )
 
     info = {"vulnerability": {"priority": "Critical"}}
     assert VulnerabilityFoundEvent().should_perform(info, notification_data)

@@ -27,7 +27,7 @@ jobs:
 
         # https://issues.redhat.com/browse/PROJQUAY-92
         # https://github.com/psf/black/issues/1207#issuecomment-566249522
-        pip install black --no-binary=regex
+        pip install black==20.8b1 --no-binary=regex
 
     - name: Check Formatting
       run: |

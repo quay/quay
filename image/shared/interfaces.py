@@ -58,8 +58,8 @@ class ManifestInterface(object):
 
     @abstractproperty
     def config_media_type(self):
-        """ Returns the media type of the config of this manifest or None if
-            this manifest does not support a configuration type.
+        """Returns the media type of the config of this manifest or None if
+        this manifest does not support a configuration type.
         """
 
     @abstractmethod
@@ -198,8 +198,8 @@ class ManifestListInterface(object):
 
     @abstractmethod
     def amd64_linux_manifest_digest(self):
-        """ Returns the digest of the AMD64+Linux manifest in this list, if any, or None
-            if none.
+        """Returns the digest of the AMD64+Linux manifest in this list, if any, or None
+        if none.
         """
 
 

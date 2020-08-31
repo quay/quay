@@ -50,7 +50,11 @@ class WorkQueue(object):
     """
 
     def __init__(
-        self, queue_name, transaction_factory, canonical_name_match_list=None, has_namespace=False,
+        self,
+        queue_name,
+        transaction_factory,
+        canonical_name_match_list=None,
+        has_namespace=False,
     ):
         self._queue_name = queue_name
         self._transaction_factory = transaction_factory

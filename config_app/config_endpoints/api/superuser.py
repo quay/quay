@@ -138,11 +138,17 @@ class SuperUserCustomCertificates(ApiResource):
                     )
             except CertInvalidException as cie:
                 cert_views.append(
-                    {"path": extra_cert_path, "error": str(cie),}
+                    {
+                        "path": extra_cert_path,
+                        "error": str(cie),
+                    }
                 )
             except IOError as ioe:
                 cert_views.append(
-                    {"path": extra_cert_path, "error": str(ioe),}
+                    {
+                        "path": extra_cert_path,
+                        "error": str(ioe),
+                    }
                 )
 
         return {
@@ -168,7 +174,10 @@ class SuperUserServiceKeyManagement(ApiResource):
                     "type": "string",
                     "description": "The service authenticating with this key",
                 },
-                "name": {"type": "string", "description": "The friendly name of a service key",},
+                "name": {
+                    "type": "string",
+                    "description": "The friendly name of a service key",
+                },
                 "metadata": {
                     "type": "object",
                     "description": "The key/value pairs of this key's metadata",
@@ -189,7 +198,11 @@ class SuperUserServiceKeyManagement(ApiResource):
     def get(self):
         keys = pre_oci_model.list_all_service_keys()
 
-        return jsonify({"keys": [key.to_dict() for key in keys],})
+        return jsonify(
+            {
+                "keys": [key.to_dict() for key in keys],
+            }
+        )
 
     @nickname("createServiceKey")
     @validate_json_request("CreateServiceKey")
@@ -210,7 +223,10 @@ class SuperUserServiceKeyManagement(ApiResource):
         # Create the metadata for the key.
         metadata = body.get("metadata", {})
         metadata.update(
-            {"created_by": "Quay Superuser Panel", "ip": request.remote_addr,}
+            {
+                "created_by": "Quay Superuser Panel",
+                "ip": request.remote_addr,
+            }
         )
 
         # Generate a key with a private key that we *never save*.
@@ -257,7 +273,12 @@ class SuperUserServiceKeyApproval(ApiResource):
             "id": "ApproveServiceKey",
             "type": "object",
             "description": "Information for approving service keys",
-            "properties": {"notes": {"type": "string", "description": "Optional approval notes",},},
+            "properties": {
+                "notes": {
+                    "type": "string",
+                    "description": "Optional approval notes",
+                },
+            },
         },
     }
 

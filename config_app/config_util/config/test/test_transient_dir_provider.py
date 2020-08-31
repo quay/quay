@@ -8,15 +8,21 @@ from config_app.config_util.config.TransientDirectoryProvider import TransientDi
     "files_to_write, operations, expected_new_dir",
     [
         pytest.param(
-            {"config.yaml": "a config",},
+            {
+                "config.yaml": "a config",
+            },
             ([], [], []),
-            {"config.yaml": "a config",},
+            {
+                "config.yaml": "a config",
+            },
             id="just a config",
         ),
         pytest.param(
             {"config.yaml": "a config", "oldfile": "hmmm"},
             ([], [], ["oldfile"]),
-            {"config.yaml": "a config",},
+            {
+                "config.yaml": "a config",
+            },
             id="delete a file",
         ),
         pytest.param(
@@ -28,7 +34,11 @@ from config_app.config_util.config.TransientDirectoryProvider import TransientDi
         pytest.param(
             {"config.yaml": "a config", "somefile": "before"},
             ([("newfile", "asdf")], [("somefile", "after")], []),
-            {"config.yaml": "a config", "newfile": "asdf", "somefile": "after",},
+            {
+                "config.yaml": "a config",
+                "newfile": "asdf",
+                "somefile": "after",
+            },
             id="add new files and change files",
         ),
     ],

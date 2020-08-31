@@ -231,14 +231,26 @@ def swagger_route_data(include_internal=False, compact=False):
                             "description": "Deprecated; alias for detail",
                         },
                     },
-                    "required": ["status", "type", "title",],
+                    "required": [
+                        "status",
+                        "type",
+                        "title",
+                    ],
                 }
 
                 responses = {
-                    "400": {"description": "Bad Request",},
-                    "401": {"description": "Session required",},
-                    "403": {"description": "Unauthorized access",},
-                    "404": {"description": "Not found",},
+                    "400": {
+                        "description": "Bad Request",
+                    },
+                    "401": {
+                        "description": "Session required",
+                    },
+                    "403": {
+                        "description": "Unauthorized access",
+                    },
+                    "404": {
+                        "description": "Not found",
+                    },
                 }
 
                 for _, body in list(responses.items()):

@@ -5,7 +5,12 @@ from util.config.validators import ConfigValidationException
 from util.config.validators.validate_timemachine import TimeMachineValidator
 
 
-@pytest.mark.parametrize("unvalidated_config", [({}),])
+@pytest.mark.parametrize(
+    "unvalidated_config",
+    [
+        ({}),
+    ],
+)
 def test_validate_noop(unvalidated_config):
     TimeMachineValidator.validate(ValidatorContext(unvalidated_config))
 

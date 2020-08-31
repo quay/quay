@@ -1203,7 +1203,12 @@ def mark_namespace_for_deletion(user, queues, namespace_gc_queue, force=False):
     # Add a queueitem to delete the namespace.
     marker.queue_id = namespace_gc_queue.put(
         [str(user.id)],
-        json.dumps({"marker_id": marker.id, "original_username": original_username,}),
+        json.dumps(
+            {
+                "marker_id": marker.id,
+                "original_username": original_username,
+            }
+        ),
     )
     marker.save()
     return marker.id
@@ -1227,7 +1232,7 @@ def delete_user(user, queues):
 
     Should *not* be called by any user-facing API. Instead, mark_namespace_for_deletion should be
     used, and the queue should call this method.
-    
+
     Returns True on success and False otherwise.
     """
     # Ensure the user is disabled before beginning the deletion process.

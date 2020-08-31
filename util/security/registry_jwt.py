@@ -186,7 +186,10 @@ def build_context_and_subject(auth_context=None, tuf_roots=None):
     )
 
     context.update(
-        {CLAIM_TUF_ROOTS: tuf_roots, CLAIM_TUF_ROOT: single_root,}
+        {
+            CLAIM_TUF_ROOTS: tuf_roots,
+            CLAIM_TUF_ROOT: single_root,
+        }
     )
 
     if not auth_context or auth_context.is_anonymous:

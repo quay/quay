@@ -62,7 +62,8 @@ class BlobTooLargeException(BlobUploadException):
 
 
 BlobUploadSettings = namedtuple(
-    "BlobUploadSettings", ["maximum_blob_size", "committed_blob_expiration"],
+    "BlobUploadSettings",
+    ["maximum_blob_size", "committed_blob_expiration"],
 )
 
 

@@ -218,7 +218,9 @@ class UserCard(ApiResource):
             "id": "UserCard",
             "type": "object",
             "description": "Description of a user card",
-            "required": ["token",],
+            "required": [
+                "token",
+            ],
             "properties": {
                 "token": {
                     "type": "string",
@@ -266,7 +268,9 @@ class OrganizationCard(ApiResource):
             "id": "OrgCard",
             "type": "object",
             "description": "Description of a user card",
-            "required": ["token",],
+            "required": [
+                "token",
+            ],
             "properties": {
                 "token": {
                     "type": "string",
@@ -319,7 +323,9 @@ class UserPlan(ApiResource):
             "id": "UserSubscription",
             "type": "object",
             "description": "Description of a user card",
-            "required": ["plan",],
+            "required": [
+                "plan",
+            ],
             "properties": {
                 "token": {
                     "type": "string",
@@ -388,7 +394,9 @@ class OrganizationPlan(ApiResource):
             "id": "OrgSubscription",
             "type": "object",
             "description": "Description of a user card",
-            "required": ["plan",],
+            "required": [
+                "plan",
+            ],
             "properties": {
                 "token": {
                     "type": "string",
@@ -511,8 +519,14 @@ class UserInvoiceFieldList(ApiResource):
             "description": "Description of an invoice field",
             "required": ["title", "value"],
             "properties": {
-                "title": {"type": "string", "description": "The title of the field being added",},
-                "value": {"type": "string", "description": "The value of the field being added",},
+                "title": {
+                    "type": "string",
+                    "description": "The title of the field being added",
+                },
+                "value": {
+                    "type": "string",
+                    "description": "The value of the field being added",
+                },
             },
         },
     }
@@ -587,8 +601,14 @@ class OrganizationInvoiceFieldList(ApiResource):
             "description": "Description of an invoice field",
             "required": ["title", "value"],
             "properties": {
-                "title": {"type": "string", "description": "The title of the field being added",},
-                "value": {"type": "string", "description": "The value of the field being added",},
+                "title": {
+                    "type": "string",
+                    "description": "The title of the field being added",
+                },
+                "value": {
+                    "type": "string",
+                    "description": "The value of the field being added",
+                },
             },
         },
     }

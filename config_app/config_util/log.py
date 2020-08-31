@@ -34,7 +34,7 @@ def filter_logs(values, filtered_fields):
        {'k1': {'k2': 'some-secret'}, 'k3': 'some-value'}
     the returned dict is:
       {'k1': {k2: 'filtered'}, 'k3': 'some-value'}
-  """
+    """
     for field in filtered_fields:
         cdict = values
 

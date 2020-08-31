@@ -5,7 +5,15 @@ from six import add_metaclass
 
 
 class GlobalMessage(
-    namedtuple("GlobalMessage", ["uuid", "content", "severity", "media_type_name",])
+    namedtuple(
+        "GlobalMessage",
+        [
+            "uuid",
+            "content",
+            "severity",
+            "media_type_name",
+        ],
+    )
 ):
     def to_dict(self):
         return {
@@ -25,23 +33,23 @@ class GlobalMessageDataInterface(object):
     @abstractmethod
     def get_all_messages(self):
         """
-    
-    Returns:
-    list(GlobalMessage)
-    """
+
+        Returns:
+        list(GlobalMessage)
+        """
 
     @abstractmethod
     def create_message(self, severity, media_type_name, content):
         """
-    
-    Returns:
-    GlobalMessage or None
-    """
+
+        Returns:
+        GlobalMessage or None
+        """
 
     @abstractmethod
     def delete_message(self, uuid):
         """
-    
-    Returns:
-    void
-    """
+
+        Returns:
+        void
+        """

@@ -9,7 +9,12 @@ from test.fixtures import *
 
 
 @pytest.mark.parametrize(
-    "expiration, expected_code", [(0, 200), (100, 400), (100000000000000000000, 400),]
+    "expiration, expected_code",
+    [
+        (0, 200),
+        (100, 400),
+        (100000000000000000000, 400),
+    ],
 )
 def test_change_tag_expiration(expiration, expected_code, client):
     with client_with_identity("devtable", client) as cl:

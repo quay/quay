@@ -552,22 +552,22 @@ class EnumField(ForeignKeyField):
         return _get_enum_field_values(self)
 
     def get_id(self, name):
-        """ Returns the ForeignKeyId from the name field
-    Example:
-       >>> Repository.repo_kind.get_id("application")
-       2
-    """
+        """Returns the ForeignKeyId from the name field
+        Example:
+           >>> Repository.repo_kind.get_id("application")
+           2
+        """
         try:
             return self.enum[name].value
         except KeyError:
             raise self.rel_model.DoesNotExist
 
     def get_name(self, value):
-        """ Returns the name value from the ForeignKeyId
-    Example:
-       >>> Repository.repo_kind.get_name(2)
-       "application"
-    """
+        """Returns the name value from the ForeignKeyId
+        Example:
+           >>> Repository.repo_kind.get_name(2)
+           "application"
+        """
         try:
             return self.enum(value).name
         except ValueError:
@@ -1941,7 +1941,10 @@ class RepoMirrorConfig(BaseModel):
 
     # Mirror Configuration
     mirror_type = ClientEnumField(RepoMirrorType, default=RepoMirrorType.PULL)
-    internal_robot = QuayUserField(allows_robots=True, backref="mirrorpullrobot",)
+    internal_robot = QuayUserField(
+        allows_robots=True,
+        backref="mirrorpullrobot",
+    )
     external_reference = CharField()
     external_registry_username = EncryptedCharField(max_length=2048, null=True)
     external_registry_password = EncryptedCharField(max_length=2048, null=True)
@@ -1983,9 +1986,9 @@ class IndexerVersion(IntEnum):
 
 class ManifestSecurityStatus(BaseModel):
     """
-    Represents the security scan status for a particular container image manifest. 
+    Represents the security scan status for a particular container image manifest.
 
-    Intended to replace the `security_indexed` and `security_indexed_engine` fields 
+    Intended to replace the `security_indexed` and `security_indexed_engine` fields
     on the `Image` model.
     """
 

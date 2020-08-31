@@ -235,7 +235,12 @@ def upgrade(op, tables, tester):
     # ### end Alembic commands ###
 
     for media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
-        op.bulk_insert(tables.mediatype, [{"name": media_type},])
+        op.bulk_insert(
+            tables.mediatype,
+            [
+                {"name": media_type},
+            ],
+        )
 
     # ### population of test data ### #
     tester.populate_table(

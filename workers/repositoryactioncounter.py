@@ -46,7 +46,11 @@ class RepositoryActionCountWorker(Worker):
         batch_size = int(3 ** log10(max(10, max_id - min_id)))
 
         iterator = yield_random_entries(
-            batch_query, database.Repository.id, batch_size, max_id, min_id,
+            batch_query,
+            database.Repository.id,
+            batch_size,
+            max_id,
+            min_id,
         )
 
         for candidate, abt, num_remaining in iterator:

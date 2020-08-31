@@ -56,8 +56,8 @@ class QEDeploymentRolloutStatus(ApiResource):
     @kubernetes_only
     @nickname("scGetDeploymentRolloutStatus")
     def get(self, deployment):
-        deployment_rollout_status = KubernetesAccessorSingleton.get_instance().get_deployment_rollout_status(
-            deployment
+        deployment_rollout_status = (
+            KubernetesAccessorSingleton.get_instance().get_deployment_rollout_status(deployment)
         )
         return {
             "status": deployment_rollout_status.status,
@@ -90,9 +90,9 @@ class QEDeploymentRollback(ApiResource):
     @validate_json_request("ValidateDeploymentNames")
     def post(self):
         """
-    Returns the config to its original state and rolls back deployments
-    :return:
-    """
+        Returns the config to its original state and rolls back deployments
+        :return:
+        """
         deployment_names = request.get_json()["deploymentNames"]
 
         # To roll back a deployment, we must do 2 things:

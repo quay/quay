@@ -46,7 +46,10 @@ MANIFESTLIST_BYTES = json.dumps(
                 "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
                 "size": 946,
                 "digest": "sha256:e6",
-                "platform": {"architecture": "ppc64le", "os": "linux",},
+                "platform": {
+                    "architecture": "ppc64le",
+                    "os": "linux",
+                },
             },
             {
                 "mediaType": "application/vnd.docker.distribution.manifest.v1+json",
@@ -67,13 +70,21 @@ NO_AMD_MANIFESTLIST_BYTES = json.dumps(
                 "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
                 "size": 946,
                 "digest": "sha256:e6",
-                "platform": {"architecture": "ppc64le", "os": "linux",},
+                "platform": {
+                    "architecture": "ppc64le",
+                    "os": "linux",
+                },
             },
         ],
     }
 ).encode("utf-8")
 
-retriever = ContentRetrieverForTesting({"sha256:e6": v22_bytes, "sha256:5b": v21_bytes,})
+retriever = ContentRetrieverForTesting(
+    {
+        "sha256:e6": v22_bytes,
+        "sha256:5b": v21_bytes,
+    }
+)
 
 
 def test_valid_manifestlist():

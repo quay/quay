@@ -121,7 +121,11 @@ class OCIManifest(ManifestInterface):
                 ),
             },
         },
-        "required": [OCI_MANIFEST_VERSION_KEY, OCI_MANIFEST_CONFIG_KEY, OCI_MANIFEST_LAYERS_KEY,],
+        "required": [
+            OCI_MANIFEST_VERSION_KEY,
+            OCI_MANIFEST_CONFIG_KEY,
+            OCI_MANIFEST_LAYERS_KEY,
+        ],
     }
 
     def __init__(self, manifest_bytes, validate=False):
@@ -178,7 +182,8 @@ class OCIManifest(ManifestInterface):
     def config(self):
         config = self._parsed[OCI_MANIFEST_CONFIG_KEY]
         return OCIManifestConfig(
-            size=config[OCI_MANIFEST_SIZE_KEY], digest=config[OCI_MANIFEST_DIGEST_KEY],
+            size=config[OCI_MANIFEST_SIZE_KEY],
+            digest=config[OCI_MANIFEST_DIGEST_KEY],
         )
 
     @property

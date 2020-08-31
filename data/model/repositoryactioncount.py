@@ -171,8 +171,8 @@ def missing_counts_query(date):
 
 
 def delete_expired_entries(repo, limit=50):
-    """ Deletes expired entries from the RepositoryActionCount table for a specific repository.
-        Returns the number of entries removed.
+    """Deletes expired entries from the RepositoryActionCount table for a specific repository.
+    Returns the number of entries removed.
     """
     threshold_date = datetime.today() - RAC_RETENTION_PERIOD
     found = list(

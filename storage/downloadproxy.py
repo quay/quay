@@ -24,12 +24,19 @@ ACCESS_SCHEMA = {
     "description": "List of access granted to the subject",
     "items": {
         "type": "object",
-        "required": ["type", "scheme", "host", "uri",],
+        "required": [
+            "type",
+            "scheme",
+            "host",
+            "uri",
+        ],
         "properties": {
             "type": {
                 "type": "string",
                 "description": "We only allow storage proxy permissions",
-                "enum": ["storageproxy",],
+                "enum": [
+                    "storageproxy",
+                ],
             },
             "scheme": {
                 "type": "string",

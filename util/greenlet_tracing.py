@@ -8,7 +8,8 @@ from prometheus_client import Counter, Histogram
 greenlet_switch = Counter("greenlet_switch_total", "number of greenlet context switches")
 greenlet_throw = Counter("greenlet_throw_total", "number of greenlet throws")
 greenlet_duration = Histogram(
-    "greenlet_duration_seconds", "seconds in which a particular greenlet is executing",
+    "greenlet_duration_seconds",
+    "seconds in which a particular greenlet is executing",
 )
 
 _latest_switch = None

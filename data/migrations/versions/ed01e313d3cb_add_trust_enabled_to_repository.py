@@ -22,7 +22,12 @@ def upgrade(op, tables, tester):
         ),
     )
     ### end Alembic commands ###
-    op.bulk_insert(tables.logentrykind, [{"name": "change_repo_trust"},])
+    op.bulk_insert(
+        tables.logentrykind,
+        [
+            {"name": "change_repo_trust"},
+        ],
+    )
 
     # ### population of test data ### #
     tester.populate_column("repository", "trust_enabled", tester.TestDataType.Boolean)

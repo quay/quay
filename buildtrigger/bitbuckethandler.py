@@ -34,7 +34,11 @@ BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA = {
     "properties": {
         "repository": {
             "type": "object",
-            "properties": {"full_name": {"type": "string",},},
+            "properties": {
+                "full_name": {
+                    "type": "string",
+                },
+            },
             "required": ["full_name"],
         },  # /Repository
         "push": {
@@ -60,8 +64,12 @@ BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA = {
                                                     "user": {
                                                         "type": "object",
                                                         "properties": {
-                                                            "display_name": {"type": "string",},
-                                                            "account_id": {"type": "string",},
+                                                            "display_name": {
+                                                                "type": "string",
+                                                            },
+                                                            "account_id": {
+                                                                "type": "string",
+                                                            },
                                                             "links": {
                                                                 "type": "object",
                                                                 "properties": {
@@ -97,14 +105,22 @@ BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA = {
     "actor": {
         "type": "object",
         "properties": {
-            "account_id": {"type": "string",},
-            "display_name": {"type": "string",},
+            "account_id": {
+                "type": "string",
+            },
+            "display_name": {
+                "type": "string",
+            },
             "links": {
                 "type": "object",
                 "properties": {
                     "avatar": {
                         "type": "object",
-                        "properties": {"href": {"type": "string",},},
+                        "properties": {
+                            "href": {
+                                "type": "string",
+                            },
+                        },
                         "required": ["href"],
                     },
                 },
@@ -118,10 +134,18 @@ BITBUCKET_WEBHOOK_PAYLOAD_SCHEMA = {
 BITBUCKET_COMMIT_INFO_SCHEMA = {
     "type": "object",
     "properties": {
-        "node": {"type": "string",},
-        "message": {"type": "string",},
-        "timestamp": {"type": "string",},
-        "raw_author": {"type": "string",},
+        "node": {
+            "type": "string",
+        },
+        "message": {
+            "type": "string",
+        },
+        "timestamp": {
+            "type": "string",
+        },
+        "raw_author": {
+            "type": "string",
+        },
     },
     "required": ["node", "message", "timestamp"],
 }
@@ -310,7 +334,10 @@ class BitbucketBuildTrigger(BuildTriggerHandler):
         # Add a deploy key to the repository.
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
+            {
+                "name": "SSH Public Key",
+                "value": public_key.decode("ascii"),
+            },
         ]
 
         repository = self._get_repository_client()

@@ -140,9 +140,11 @@ class TriggerAnalyzer(object):
                 user_ids_with_permission = set()
 
             def robot_view(robot):
-                assert robot.username.startswith(self.namespace_name + "+"), (
-                    "Expected robot under namespace %s, Found: %s"
-                    % (self.namespace_name, robot.username)
+                assert robot.username.startswith(
+                    self.namespace_name + "+"
+                ), "Expected robot under namespace %s, Found: %s" % (
+                    self.namespace_name,
+                    robot.username,
                 )
                 result = {
                     "name": robot.username,

@@ -49,8 +49,13 @@ class SuperUserConfig(ApiResource):
         "UpdateConfig": {
             "type": "object",
             "description": "Updates the YAML config file",
-            "required": ["config",],
-            "properties": {"config": {"type": "object"}, "password": {"type": "string"},},
+            "required": [
+                "config",
+            ],
+            "properties": {
+                "config": {"type": "object"},
+                "password": {"type": "string"},
+            },
         },
     }
 

@@ -258,7 +258,11 @@ def _create_app(requires_email=True):
                             },
                             "serviceCatalog": [
                                 {
-                                    "endpoints": [{"adminURL": server_url + "/v2.0/admin",}],
+                                    "endpoints": [
+                                        {
+                                            "adminURL": server_url + "/v2.0/admin",
+                                        }
+                                    ],
                                     "endpoints_links": [],
                                     "type": "identity",
                                     "name": "admin",
@@ -271,7 +275,10 @@ def _create_app(requires_email=True):
                                 "roles": [],
                                 "name": user["name"],
                             },
-                            "metadata": {"is_admin": 0, "roles": [],},
+                            "metadata": {
+                                "is_admin": 0,
+                                "roles": [],
+                            },
                         },
                     }
                 )

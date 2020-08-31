@@ -30,8 +30,12 @@ def _create_temp_file_structure(file_structure):
     "file_structure, expected_secret",
     [
         pytest.param(
-            {"config.yaml": "test:true",},
-            {"config.yaml": "dGVzdDp0cnVl",},
+            {
+                "config.yaml": "test:true",
+            },
+            {
+                "config.yaml": "dGVzdDp0cnVl",
+            },
             id="just a config value",
         ),
         pytest.param(
@@ -43,7 +47,12 @@ def _create_temp_file_structure(file_structure):
             id="config and another file",
         ),
         pytest.param(
-            {"config.yaml": "test:true", "extra_ca_certs": [("cert.crt", "im a cert!"),]},
+            {
+                "config.yaml": "test:true",
+                "extra_ca_certs": [
+                    ("cert.crt", "im a cert!"),
+                ],
+            },
             {
                 "config.yaml": "dGVzdDp0cnVl",
                 "extra_ca_certs_cert.crt": base64.b64encode(b"im a cert!").decode("ascii"),

@@ -32,7 +32,10 @@ def test_basic_notification_endtoend(initialized_db):
     # Fire off the queue processing.
     worker = NotificationWorker(None)
     worker.process_queue_item(
-        {"notification_uuid": notification_uuid, "event_data": event_data,}
+        {
+            "notification_uuid": notification_uuid,
+            "event_data": event_data,
+        }
     )
 
     # Ensure the notification was handled.

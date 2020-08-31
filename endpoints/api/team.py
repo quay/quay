@@ -182,12 +182,18 @@ class OrganizationTeam(ApiResource):
         "TeamDescription": {
             "type": "object",
             "description": "Description of a team",
-            "required": ["role",],
+            "required": [
+                "role",
+            ],
             "properties": {
                 "role": {
                     "type": "string",
                     "description": "Org wide permissions that should apply to the team",
-                    "enum": ["member", "creator", "admin",],
+                    "enum": [
+                        "member",
+                        "creator",
+                        "admin",
+                    ],
                 },
                 "description": {
                     "type": "string",

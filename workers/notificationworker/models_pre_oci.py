@@ -46,7 +46,12 @@ class PreOCIModel(NotificationWorkerDataInterface):
         self, target_username, method_name="quay_notification", method_config=None
     ):
         repo = model.repository.get_repository("devtable", "simple")
-        method_data = method_config or {"target": {"kind": "user", "name": target_username,}}
+        method_data = method_config or {
+            "target": {
+                "kind": "user",
+                "name": target_username,
+            }
+        }
         notification = model.notification.create_repo_notification(
             repo, "repo_push", method_name, method_data, {}
         )

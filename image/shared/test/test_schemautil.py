@@ -12,7 +12,11 @@ from image.shared.schemautil import to_canonical_json
         pytest.param("hey & hi", '"hey \\u0026 hi"', id="string with &"),
         pytest.param("<hey>", '"\\u003chey\\u003e"', id="string with brackets"),
         pytest.param(
-            {"zxcv": [{}, True, 1000000000, "tyui"], "asdf": 1, "qwer": [],},
+            {
+                "zxcv": [{}, True, 1000000000, "tyui"],
+                "asdf": 1,
+                "qwer": [],
+            },
             '{"asdf":1,"qwer":[],"zxcv":[{},true,1000000000,"tyui"]}',
             id="example canonical",
         ),

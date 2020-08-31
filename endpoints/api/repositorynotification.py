@@ -40,7 +40,12 @@ class RepositoryNotificationList(RepositoryParamResource):
         "NotificationCreateRequest": {
             "type": "object",
             "description": "Information for creating a notification on a repository",
-            "required": ["event", "method", "config", "eventConfig",],
+            "required": [
+                "event",
+                "method",
+                "config",
+                "eventConfig",
+            ],
             "properties": {
                 "event": {
                     "type": "string",

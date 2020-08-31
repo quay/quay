@@ -46,11 +46,11 @@ def get_app_release(repo, tag_name, media_type, models_ref):
 
 
 def delete_app_release(repo, tag_name, media_type, models_ref):
-    """ Terminate a Tag/media-type couple
-  It find the corresponding tag/manifest and remove from the manifestlistmanifest the manifest
-  1. it terminates the current tag (in all-cases)
-  2. if the new manifestlist is not empty, it creates a new tag for it
-  """
+    """Terminate a Tag/media-type couple
+    It find the corresponding tag/manifest and remove from the manifestlistmanifest the manifest
+    1. it terminates the current tag (in all-cases)
+    2. if the new manifestlist is not empty, it creates a new tag for it
+    """
     ManifestListManifest = models_ref.ManifestListManifest
     manifestlistmanifest_set_name = models_ref.manifestlistmanifest_set_name
 

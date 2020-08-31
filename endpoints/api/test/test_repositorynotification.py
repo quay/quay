@@ -23,7 +23,13 @@ def mock_get_notification(uuid):
     mock_notification = MagicMock(iface.RepositoryNotification)
     if uuid == "exists":
         mock_notification.return_value = iface.RepositoryNotification(
-            "exists", "title", "event_name", "method_name", "config_json", "event_config_json", 2,
+            "exists",
+            "title",
+            "event_name",
+            "method_name",
+            "config_json",
+            "event_config_json",
+            2,
         )
     else:
         mock_notification.return_value = None
@@ -101,7 +107,10 @@ def test_list_repo_notifications(namespace, repository, expected_code, authd_cli
 
 @pytest.mark.parametrize(
     "namespace,repository,uuid,expected_code",
-    [("devtable", "simple", "exists", 200), ("devtable", "simple", "not found", 404),],
+    [
+        ("devtable", "simple", "exists", 200),
+        ("devtable", "simple", "not found", 404),
+    ],
 )
 def test_get_repo_notification(
     namespace, repository, uuid, expected_code, authd_client, monkeypatch
@@ -118,7 +127,10 @@ def test_get_repo_notification(
 
 @pytest.mark.parametrize(
     "namespace,repository,uuid,expected_code",
-    [("devtable", "simple", "exists", 204), ("devtable", "simple", "not found", 400),],
+    [
+        ("devtable", "simple", "exists", 204),
+        ("devtable", "simple", "not found", 400),
+    ],
 )
 def test_delete_repo_notification(
     namespace, repository, uuid, expected_code, authd_client, monkeypatch
@@ -135,7 +147,10 @@ def test_delete_repo_notification(
 
 @pytest.mark.parametrize(
     "namespace,repository,uuid,expected_code",
-    [("devtable", "simple", "exists", 204), ("devtable", "simple", "not found", 400),],
+    [
+        ("devtable", "simple", "exists", 204),
+        ("devtable", "simple", "not found", 400),
+    ],
 )
 def test_reset_repo_noticiation(
     namespace, repository, uuid, expected_code, authd_client, monkeypatch
@@ -152,7 +167,10 @@ def test_reset_repo_noticiation(
 
 @pytest.mark.parametrize(
     "namespace,repository,uuid,expected_code",
-    [("devtable", "simple", "exists", 200), ("devtable", "simple", "not found", 400),],
+    [
+        ("devtable", "simple", "exists", 200),
+        ("devtable", "simple", "not found", 400),
+    ],
 )
 def test_test_repo_notification(
     namespace, repository, uuid, expected_code, authd_client, monkeypatch
