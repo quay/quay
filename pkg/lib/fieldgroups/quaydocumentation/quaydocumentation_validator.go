@@ -9,6 +9,8 @@ import (
 // Validate checks the configuration settings for this field group
 func (fg *QuayDocumentationFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
+	fgName := "QuayDocumentation"
+
 	// Make empty errors
 	errors := []shared.ValidationError{}
 
@@ -20,9 +22,9 @@ func (fg *QuayDocumentationFieldGroup) Validate(opts shared.Options) []shared.Va
 	// Make sure documentation root is valid url
 	if _, err := url.ParseRequestURI(fg.DocumentationRoot); err != nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"DOCUMENTATION_ROOT"},
-			Policy:  "A is URL",
-			Message: "Documentation root must be a valid url.",
+			Tags:       []string{"DOCUMENTATION_ROOT"},
+			FieldGroup: fgName,
+			Message:    "Documentation root must be a valid url.",
 		}
 		errors = append(errors, newError)
 	}

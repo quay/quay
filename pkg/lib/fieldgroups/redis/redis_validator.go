@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/go-redis/redis/v8"
@@ -41,7 +40,7 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 	if fg.BuildlogsRedis.Port != 0 {
 		addr = addr + ":" + strconv.Itoa(fg.BuildlogsRedis.Port)
 	}
-	fmt.Println(addr)
+
 	options := &redis.Options{
 		Addr:     addr,
 		Password: fg.BuildlogsRedis.Password,

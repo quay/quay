@@ -148,7 +148,7 @@ angular.module("quay-config")
           '$hasChanges': false
         };
 
-        $scope.hasfile = {};
+        $scope.certs = {};
         $scope.savingConfiguration = false;
 
         $scope.validationStatus = 'none';
@@ -244,8 +244,9 @@ angular.module("quay-config")
           }
 
           var query = $element.find("input.ng-invalid:first");
-
+          console.log("hi")
           if (query && query.length) {
+            
             query[0].scrollIntoView();
             query.focus();
           }
@@ -1429,15 +1430,16 @@ angular.module("quay-config")
       controller: function($scope, $element, ApiService) {
         $scope.resetUpload = 0;
         $scope.certsUploading = false;
+        $scope.certInfo = null
 
         var loadCertificates = function() {
-          // FIXME: Load certificates.
-          /*
-          $scope.certificatesResource = ApiService.getCustomCertificatesAsResource().get(function(resp) {
-            $scope.certInfo = resp;
+
+          $scope.certsUploading = true;
+          ApiService.getCertificates().then(function(resp) {
+            $scope.certInfo = resp || {};
             $scope.certsUploading = false;
-          });
-          */
+          })
+  
         };
 
         loadCertificates();

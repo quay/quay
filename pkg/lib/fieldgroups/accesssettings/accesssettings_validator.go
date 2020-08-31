@@ -35,9 +35,9 @@ func (fg *AccessSettingsFieldGroup) Validate(opts shared.Options) []shared.Valid
 	if !fg.FeatureUserCreation && fg.FeatureInviteOnlyUserCreation {
 
 		newError := shared.ValidationError{
-			Tags:    []string{"INVITE_USER_ONLY_CREATION", "FEATURE_USER_CREATION"},
-			Policy:  "A Requires B",
-			Message: "INVITE_USER_ONLY_CREATION requires FEATURE_USER_CREATION to be enabled",
+			Tags:       []string{"INVITE_USER_ONLY_CREATION", "FEATURE_USER_CREATION"},
+			FieldGroup: "AccessSettings",
+			Message:    "INVITE_USER_ONLY_CREATION requires FEATURE_USER_CREATION to be enabled",
 		}
 		errors = append(errors, newError)
 	}

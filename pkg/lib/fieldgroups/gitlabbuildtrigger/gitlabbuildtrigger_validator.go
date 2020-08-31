@@ -12,6 +12,8 @@ import (
 // Validate checks the configuration settings for this field group
 func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
+	fgName := "GitLabBuildTrigger"
+
 	// Make empty errors
 	errors := []shared.ValidationError{}
 
@@ -28,9 +30,9 @@ func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	// Check for config
 	if fg.GitlabTriggerConfig == nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"GITLAB_TRIGGER_CONFIG"},
-			Policy:  "A is Required",
-			Message: "GITLAB_TRIGGER_CONFIG is required for GitLabBuildTrigger",
+			Tags:       []string{"GITLAB_TRIGGER_CONFIG"},
+			FieldGroup: fgName,
+			Message:    "GITLAB_TRIGGER_CONFIG is required for GitLabBuildTrigger",
 		}
 		errors = append(errors, newError)
 		return errors
@@ -39,9 +41,9 @@ func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	// Check for endpoint
 	if fg.GitlabTriggerConfig.GitlabEndpoint == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT"},
-			Policy:  "A is Required",
-			Message: "GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT is required for GitLabBuildTrigger",
+			Tags:       []string{"GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT"},
+			FieldGroup: fgName,
+			Message:    "GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT is required for GitLabBuildTrigger",
 		}
 		errors = append(errors, newError)
 	}
@@ -49,9 +51,9 @@ func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	// Check for endpoint
 	if !strings.HasPrefix(fg.GitlabTriggerConfig.GitlabEndpoint, "http://") && !strings.HasPrefix(fg.GitlabTriggerConfig.GitlabEndpoint, "https://") {
 		newError := shared.ValidationError{
-			Tags:    []string{"GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT"},
-			Policy:  "A is URL",
-			Message: "GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT must be a url",
+			Tags:       []string{"GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT"},
+			FieldGroup: fgName,
+			Message:    "GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT must be a url",
 		}
 		errors = append(errors, newError)
 	}
@@ -59,9 +61,9 @@ func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	// Check for client id
 	if fg.GitlabTriggerConfig.ClientId == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"GITLAB_TRIGGER_CONFIG.CLIENT_ID"},
-			Policy:  "A is Required",
-			Message: "GITLAB_TRIGGER_CONFIG.CLIENT_ID is required for GitLabBuildTrigger",
+			Tags:       []string{"GITLAB_TRIGGER_CONFIG.CLIENT_ID"},
+			FieldGroup: fgName,
+			Message:    "GITLAB_TRIGGER_CONFIG.CLIENT_ID is required for GitLabBuildTrigger",
 		}
 		errors = append(errors, newError)
 	}
@@ -69,9 +71,9 @@ func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	// Check for endpoint
 	if fg.GitlabTriggerConfig.ClientSecret == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"GITLAB_TRIGGER_CONFIG.CLIENT_SECRET"},
-			Policy:  "A is Required",
-			Message: "GITLAB_TRIGGER_CONFIG.CLIENT_SECRET is required for GitLabBuildTrigger",
+			Tags:       []string{"GITLAB_TRIGGER_CONFIG.CLIENT_SECRET"},
+			FieldGroup: fgName,
+			Message:    "GITLAB_TRIGGER_CONFIG.CLIENT_SECRET is required for GitLabBuildTrigger",
 		}
 		errors = append(errors, newError)
 	}
@@ -80,9 +82,9 @@ func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	success := ValidateGitLabOAuth(fg.GitlabTriggerConfig.ClientId, fg.GitlabTriggerConfig.ClientSecret)
 	if !success {
 		newError := shared.ValidationError{
-			Tags:    []string{"GITLAB_TRIGGER_CONFIG.CLIENT_ID", "GITLAB_TRIGGER_CONFIG.CLIENT_SECRET"},
-			Policy:  "A is Required",
-			Message: "Could not verify GitLab OAuth credentials",
+			Tags:       []string{"GITLAB_TRIGGER_CONFIG.CLIENT_ID", "GITLAB_TRIGGER_CONFIG.CLIENT_SECRET"},
+			FieldGroup: fgName,
+			Message:    "Could not verify GitLab OAuth credentials",
 		}
 		errors = append(errors, newError)
 	}

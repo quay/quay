@@ -6,6 +6,7 @@ import (
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/apptokenauthentication"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/bitbucketbuildtrigger"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/database"
+	"github.com/quay/config-tool/pkg/lib/fieldgroups/distributedstorage"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/elasticsearch"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/githubbuildtrigger"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/githublogin"
@@ -120,6 +121,10 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 		return newConfig, err
 	}
 	newConfig["QuayDocumentation"] = newQuayDocumentationFieldGroup
-
+	newDistributedStorageFieldGroup, err := distributedstorage.NewDistributedStorageFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["DistributedStorage"] = newDistributedStorageFieldGroup
 	return newConfig, nil
 }

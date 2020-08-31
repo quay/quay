@@ -11,6 +11,8 @@ import (
 // Validate checks the configuration settings for this field group
 func (fg *GoogleLoginFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
+	fgName := "GoogleLogin"
+
 	var errors []shared.ValidationError
 
 	// If google login is off, return false
@@ -21,9 +23,9 @@ func (fg *GoogleLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	// Check for config
 	if fg.GoogleLoginConfig == nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"GOOGLE_LOGIN_CONFIG"},
-			Policy:  "A is Required",
-			Message: "GOOGLE_LOGIN_CONFIG is required for GoogleLogin",
+			Tags:       []string{"GOOGLE_LOGIN_CONFIG"},
+			FieldGroup: fgName,
+			Message:    "GOOGLE_LOGIN_CONFIG is required for GoogleLogin",
 		}
 		errors = append(errors, newError)
 		return errors
@@ -32,9 +34,9 @@ func (fg *GoogleLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	// Check for client id
 	if fg.GoogleLoginConfig.ClientId == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"GOOGLE_LOGIN_CONFIG.CLIENT_ID"},
-			Policy:  "A is Required",
-			Message: "GOOGLE_LOGIN_CONFIG.CLIENT_ID is required for GoogleLogin",
+			Tags:       []string{"GOOGLE_LOGIN_CONFIG.CLIENT_ID"},
+			FieldGroup: fgName,
+			Message:    "GOOGLE_LOGIN_CONFIG.CLIENT_ID is required for GoogleLogin",
 		}
 		errors = append(errors, newError)
 	}
@@ -42,9 +44,9 @@ func (fg *GoogleLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	// Check for endpoint
 	if fg.GoogleLoginConfig.ClientSecret == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"GOOGLE_LOGIN_CONFIG.CLIENT_SECRET"},
-			Policy:  "A is Required",
-			Message: "GOOGLE_LOGIN_CONFIG.CLIENT_SECRET is required for GoogleLogin",
+			Tags:       []string{"GOOGLE_LOGIN_CONFIG.CLIENT_SECRET"},
+			FieldGroup: fgName,
+			Message:    "GOOGLE_LOGIN_CONFIG.CLIENT_SECRET is required for GoogleLogin",
 		}
 		errors = append(errors, newError)
 	}
@@ -53,9 +55,9 @@ func (fg *GoogleLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	success := ValidateGoogleOAuth(fg.GoogleLoginConfig.ClientId, fg.GoogleLoginConfig.ClientSecret)
 	if !success {
 		newError := shared.ValidationError{
-			Tags:    []string{"GOOGLE_LOGIN_CONFIG.CLIENT_ID", "GOOGLE_LOGIN_CONFIG.CLIENT_SECRET"},
-			Policy:  "A is Required",
-			Message: "Could not verify Google OAuth credentials",
+			Tags:       []string{"GOOGLE_LOGIN_CONFIG.CLIENT_ID", "GOOGLE_LOGIN_CONFIG.CLIENT_SECRET"},
+			FieldGroup: fgName,
+			Message:    "Could not verify Google OAuth credentials",
 		}
 		errors = append(errors, newError)
 	}

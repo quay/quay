@@ -50,9 +50,9 @@ func ValidateRequiredObject(input interface{}, field, fgName string) (bool, Vali
 	// Check string
 	if input == nil || reflect.ValueOf(input).IsNil() {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "A is Required",
-			Message: field + " is required",
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " is required",
 		}
 		return false, newError
 	}
@@ -68,9 +68,9 @@ func ValidateRequiredString(input, field, fgName string) (bool, ValidationError)
 	// Check string
 	if input == "" {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "A is Required",
-			Message: field + " is required",
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " is required",
 		}
 		return false, newError
 	}
@@ -97,9 +97,9 @@ func ValidateAtLeastOneOfBool(inputs []bool, fields []string, fgName string) (bo
 	// If at least one isnt true, return error
 	if !atLeastOne {
 		newError := ValidationError{
-			Tags:    fields,
-			Policy:  "At Least One Of",
-			Message: "At least one of " + strings.Join(fields, ",") + " must be enabled",
+			Tags:       fields,
+			FieldGroup: fgName,
+			Message:    "At least one of " + strings.Join(fields, ",") + " must be enabled",
 		}
 		return false, newError
 	}
@@ -125,9 +125,9 @@ func ValidateAtLeastOneOfString(inputs []string, fields []string, fgName string)
 	// If at least one isnt true, return error
 	if !atLeastOne {
 		newError := ValidationError{
-			Tags:    fields,
-			Policy:  "At Least One Of",
-			Message: "At least one of " + strings.Join(fields, ",") + " must be present",
+			Tags:       fields,
+			FieldGroup: fgName,
+			Message:    "At least one of " + strings.Join(fields, ",") + " must be present",
 		}
 		return false, newError
 	}
@@ -147,9 +147,9 @@ func ValidateRedisConnection(options *redis.Options, field, fgName string) (bool
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Redis Connect",
-			Message: "Could not connect to Redis with values provided in " + field + ". Error: " + err.Error(),
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    "Could not connect to Redis with values provided in " + field + ". Error: " + err.Error(),
 		}
 		return false, newError
 	}
@@ -175,9 +175,9 @@ func ValidateIsOneOfString(input string, options []string, field string, fgName 
 	// If at least one isnt true, return error
 	if !isOneOf {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Is One Of",
-			Message: field + " must be one of " + strings.Join(options, ",") + ".",
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must be one of " + strings.Join(options, ",") + ".",
 		}
 		return false, newError
 	}
@@ -191,9 +191,9 @@ func ValidateIsURL(input string, field string, fgName string) (bool, ValidationE
 	_, err := url.ParseRequestURI(input)
 	if err != nil {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Is URL",
-			Message: field + " must be of type URL",
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must be of type URL",
 		}
 		return false, newError
 	}
@@ -201,9 +201,9 @@ func ValidateIsURL(input string, field string, fgName string) (bool, ValidationE
 	u, err := url.Parse(input)
 	if err != nil || u.Scheme == "" || u.Host == "" {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Is URL",
-			Message: field + " must be of type URL",
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must be of type URL",
 		}
 		return false, newError
 	}
@@ -221,9 +221,9 @@ func ValidateIsHostname(input string, field string, fgName string) (bool, Valida
 	re, _ := regexp.Compile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$`)
 	if !re.MatchString(input) {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Is Hostname",
-			Message: field + " must be of type Hostname",
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must be of type Hostname",
 		}
 		return false, newError
 	}
@@ -245,9 +245,9 @@ func ValidateHostIsReachable(input string, field string, fgName string) (bool, V
 	_, err := net.DialTimeout("tcp", url, timeout)
 	if err != nil {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Is URL",
-			Message: "Cannot reach " + input,
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    "Cannot reach " + input,
 		}
 		return false, newError
 	}
@@ -262,9 +262,9 @@ func ValidateFileExists(input string, field string, fgName string) (bool, Valida
 	// Check path
 	if _, err := os.Stat(input); os.IsNotExist(err) {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "File Does Not Exist",
-			Message: "Cannot access the file " + input,
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    "Cannot access the file " + input,
 		}
 		return false, newError
 	}
@@ -282,9 +282,9 @@ func ValidateTimePattern(input string, field string, fgName string) (bool, Valid
 	// If the pattern is not matched
 	if len(matches) != 1 {
 		newError := ValidationError{
-			Tags:    []string{field},
-			Policy:  "Pattern Not Met",
-			Message: field + " must have the regex pattern ^[0-9]+(w|m|d|h|s)$",
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    field + " must have the regex pattern ^[0-9]+(w|m|d|h|s)$",
 		}
 		return false, newError
 	}
@@ -298,9 +298,9 @@ func ValidateCertsPresent(opts Options, requiredCertNames []string, fgName strin
 	// If no certificates are passed
 	if opts.Certificates == nil {
 		newError := ValidationError{
-			Tags:    []string{"Certificates"},
-			Policy:  "Certificates Required",
-			Message: "Certificates are required for SSL but are not present",
+			Tags:       []string{"Certificates"},
+			FieldGroup: fgName,
+			Message:    "Certificates are required for SSL but are not present",
 		}
 		return false, newError
 	}
@@ -311,9 +311,9 @@ func ValidateCertsPresent(opts Options, requiredCertNames []string, fgName strin
 		// Check that cert has been included
 		if _, ok := opts.Certificates[certName]; !ok {
 			newError := ValidationError{
-				Tags:    []string{"Certificates"},
-				Policy:  "Certificates Required",
-				Message: "Certificate " + certName + " is required for " + fgName + " .",
+				Tags:       []string{"Certificates"},
+				FieldGroup: fgName,
+				Message:    "Certificate " + certName + " is required for " + fgName + " .",
 			}
 			return false, newError
 		}
@@ -330,9 +330,9 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 	certChain, err := tls.X509KeyPair(cert, key)
 	if err != nil {
 		newError := ValidationError{
-			Tags:    []string{"Certificates"},
-			Policy:  "Valid Key Pair",
-			Message: err.Error(),
+			Tags:       []string{"Certificates"},
+			FieldGroup: fgName,
+			Message:    err.Error(),
 		}
 		return false, newError
 	}
@@ -342,9 +342,9 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 	err = certificate.VerifyHostname(hostname)
 	if err != nil {
 		newError := ValidationError{
-			Tags:    []string{"Certificates"},
-			Policy:  "Invalid Cert Hostname",
-			Message: err.Error(),
+			Tags:       []string{"Certificates"},
+			FieldGroup: fgName,
+			Message:    err.Error(),
 		}
 		return false, newError
 	}
@@ -356,18 +356,24 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 // ValidateMinioStorage will validate a S3 storage connection.
 func ValidateMinioStorage(args *DistributedStorageArgs, fgName string) (bool, ValidationError) {
 
-	_, err := minio.New(args.Hostname, &minio.Options{
+	st, _ := minio.New(args.Hostname, &minio.Options{
 		Creds:  credentials.NewStaticV4(args.AccessKey, args.SecretKey, ""),
 		Secure: args.IsSecure,
 	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	_, err := st.ListBuckets(ctx)
 	if err != nil {
 		newError := ValidationError{
-			Tags:    []string{"DISTRIBUTED_STORAGE_CONFIG"},
-			Policy:  "Bad Storage Credentials",
-			Message: "Could not connect to storage. Error: " + err.Error(),
+			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			FieldGroup: fgName,
+			Message:    "Could not connect to storage. Error: " + err.Error(),
 		}
 		return false, newError
 	}
 
+	fmt.Printf("%#v\n", st)
 	return true, ValidationError{}
 }

@@ -18,15 +18,17 @@ import (
 // Validate checks the configuration settings for this field group
 func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
 
+	fgName := "Database"
+
 	// Make empty errors
 	errors := []shared.ValidationError{}
 
 	// Check field is not empty
 	if fg.DbUri == "" {
 		newError := shared.ValidationError{
-			Tags:    []string{"DB_URI"},
-			Policy:  "A is Required",
-			Message: "DB_URI is required.",
+			Tags:       []string{"DB_URI"},
+			FieldGroup: fgName,
+			Message:    "DB_URI is required.",
 		}
 		errors = append(errors, newError)
 		return errors
@@ -36,9 +38,9 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 	uri, err := url.Parse(fg.DbUri)
 	if err != nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"DB_URI"},
-			Policy:  "A incorrect format",
-			Message: "DB_URI has incorrect format. Must be URI.",
+			Tags:       []string{"DB_URI"},
+			FieldGroup: fgName,
+			Message:    "DB_URI has incorrect format. Must be URI.",
 		}
 		errors = append(errors, newError)
 		return errors
@@ -48,9 +50,9 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 	err = ValidateDatabaseConnection(opts, uri, fg.DbConnectionArgs.Ssl.Ca)
 	if err != nil {
 		newError := shared.ValidationError{
-			Tags:    []string{"DB_URI"},
-			Policy:  "Database Connection",
-			Message: "Could not connect to database. Error: " + err.Error(),
+			Tags:       []string{"DB_URI"},
+			FieldGroup: fgName,
+			Message:    "Could not connect to database. Error: " + err.Error(),
 		}
 		errors = append(errors, newError)
 		return errors
@@ -89,7 +91,7 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 		dsn := credentials + "@tcp(" + fullHostName + ")/" + dbname
 
 		// Check if CA cert is used
-		if caCert != " " {
+		if caCert != "" {
 			certBytes, err := ioutil.ReadFile(caCert)
 			if err != nil {
 				return err
