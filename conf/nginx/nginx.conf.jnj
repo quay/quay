@@ -64,13 +64,8 @@ http {
 
         server_name {{ v1_only_domain }};
 
-{% if use_old_certs %}
-        ssl_certificate ../stack/ssl.old.cert;
-        ssl_certificate_key ../stack/ssl.old.key;
-{% else %}
         ssl_certificate ../stack/ssl.cert;
         ssl_certificate_key ../stack/ssl.key;
-{% endif %}
 
         listen 8443 ssl;
 
@@ -85,13 +80,8 @@ http {
     server {
         server_name {{ v1_only_domain }};
 
-{% if use_old_certs %}
-        ssl_certificate ../stack/ssl.old.cert;
-        ssl_certificate_key ../stack/ssl.old.key;
-{% else %}
         ssl_certificate ../stack/ssl.cert;
         ssl_certificate_key ../stack/ssl.key;
-{% endif %}
 
         include server-base.conf;
 
