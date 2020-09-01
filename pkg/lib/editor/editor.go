@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	auth "github.com/abbot/go-http-auth"
 	bcrypt "golang.org/x/crypto/bcrypt"
@@ -24,21 +25,36 @@ const port = 8080
 const staticContentPath = "pkg/lib/editor/static"
 const editorUsername = "quayconfig"
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/" {
-		p := staticContentPath + "/index.html"
-		http.ServeFile(w, r, p)
-		return
-	}
+func handler(operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			p := staticContentPath + "/index.html"
 
-	w.WriteHeader(404)
+			if len(operatorEndpoint) > 0 {
+				http.SetCookie(w, &http.Cookie{Name: "QuayOperatorEndpoint", Value: operatorEndpoint})
+			}
+
+			http.ServeFile(w, r, p)
+			return
+		}
+
+		w.WriteHeader(404)
+	}
 }
 
-// posts to operator to commit
+// commitToOperator calls API endpoint on Quay Operator to create a new `Secret`.
 func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
+	namespace := os.Getenv("MY_POD_NAMESPACE")
+	if namespace == "" {
+		panic("missing 'MY_POD_NAMESPACE'")
+	}
+	podName := os.Getenv("MY_POD_NAME")
+	if podName == "" {
+		panic("missing 'MY_POD_NAME'")
+	}
+	quayRegistryName := strings.Split(podName, "-quay-config-editor")[0]
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		if r.Method != "POST" {
 			w.WriteHeader(404)
 			return
@@ -51,22 +67,37 @@ func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseW
 			return
 		}
 
-		certs := shared.LoadCerts(configPath)
+		for name, cert := range shared.LoadCerts(configPath) {
+			certStore[name] = cert
+		}
+
+		// TODO: Define struct type for this with correct `yaml` tags
 		preSecret := map[string]interface{}{
-			"config.yaml": conf,
-			"certs":       certs,
+			// FIXME(alecmerdler): Need to figure out which `QuayRegistry` we just re-configured in order to change `spec.configBundleSecret`...
+			"quayRegistryName": quayRegistryName,
+			"namespace":        namespace,
+			"config.yaml":      conf,
+			"certs":            certStore,
 		}
 
 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		js, err := json.Marshal(preSecret)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-		// currently hardcoding
-		req, err := http.NewRequest("POST", operatorEndpoint, bytes.NewBuffer(js))
+		// FIXME: Currently hardcoding
+		req, err := http.NewRequest("POST", operatorEndpoint+"/reconfigure", bytes.NewBuffer(js))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		req.Header.Set("Content-Type", "application/json")
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -76,7 +107,6 @@ func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseW
 		w.Header().Add("Content-Type", "application/json")
 		w.Write(js)
 	}
-
 }
 
 func downloadConfig(configPath string) func(http.ResponseWriter, *http.Request) {
@@ -126,10 +156,13 @@ func configValidator(configPath string) func(http.ResponseWriter, *http.Request)
 			return
 		}
 
-		certs := shared.LoadCerts(configPath)
+		for name, cert := range shared.LoadCerts(configPath) {
+			certStore[name] = cert
+		}
+
 		opts := shared.Options{
 			Mode:         "online",
-			Certificates: certs,
+			Certificates: certStore,
 		}
 
 		errors := loaded.Validate(opts)
@@ -195,41 +228,75 @@ func configHandler(configPath string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func getCertificates(configPath string) func(http.ResponseWriter, *http.Request) {
+func certificateHandler(configDir string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			w.WriteHeader(404)
-			return
-		}
-
-		certMeta := []map[string]interface{}{}
-		certs := shared.LoadCerts(configPath)
-
-		for name := range certs {
-			md := map[string]interface{}{
-				"path":    name,
-				"names":   name,
-				"expired": false,
+		switch r.Method {
+		case "PUT":
+			err := r.ParseMultipartForm(10 << 20)
+			if err != nil {
+				fmt.Printf("error parsing request body as form data: %s", err.Error())
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
 			}
-			certMeta = append(certMeta, md)
-		}
 
-		resp := map[string]interface{}{
-			"status": "directory",
-			"certs":  certMeta,
-		}
+			file, handler, err := r.FormFile("ca.crt")
+			if err != nil {
+				fmt.Printf("error parsing request body for certificate: %s", err.Error())
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			defer file.Close()
+			// FIXME(alecmerdler): Debugging
+			fmt.Printf("Uploaded File: %+v\n", handler.Filename)
+			fmt.Printf("File Size: %+v\n", handler.Size)
+			fmt.Printf("MIME Header: %+v\n", handler.Header)
 
-		var json = jsoniter.ConfigCompatibleWithStandardLibrary
-		js, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			fileBytes, err := ioutil.ReadAll(file)
+			if err != nil {
+				fmt.Printf("error reading certificate file: %s", err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			certStore[handler.Filename] = fileBytes
+
+			w.WriteHeader(201)
+			w.Write([]byte("Success"))
+		case "GET":
+			certMeta := []map[string]interface{}{}
+			for name, cert := range shared.LoadCerts(configDir) {
+				certStore[name] = cert
+			}
+
+			for name := range certStore {
+				md := map[string]interface{}{
+					"path":    name,
+					"names":   name,
+					"expired": false,
+				}
+				certMeta = append(certMeta, md)
+			}
+			resp := map[string]interface{}{
+				"status": "directory",
+				"certs":  certMeta,
+			}
+			var json = jsoniter.ConfigCompatibleWithStandardLibrary
+			js, err := json.Marshal(resp)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Add("Content-Type", "application/json")
+			w.Write(js)
+		default:
+			w.WriteHeader(405)
 			return
 		}
-
-		w.Header().Add("Content-Type", "application/json")
-		w.Write(js)
 	}
 }
+
+// certStore keeps all the uploaded certs in memory until they are committed.
+var certStore = map[string][]byte{}
 
 // RunConfigEditor runs the configuration editor server.
 func RunConfigEditor(password string, configPath string, operatorEndpoint string) {
@@ -247,9 +314,9 @@ func RunConfigEditor(password string, configPath string, operatorEndpoint string
 		return ""
 	})
 
-	http.HandleFunc("/", auth.JustCheck(authenticator, handler))
+	http.HandleFunc("/", auth.JustCheck(authenticator, handler(operatorEndpoint)))
 	http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, configHandler(configPath)))
-	http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, getCertificates(configPath)))
+	http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, certificateHandler(configPath)))
 	http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
 	http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator(configPath)))
 	http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(configPath, operatorEndpoint)))

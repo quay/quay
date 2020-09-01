@@ -1998,16 +1998,6 @@
         <span ng-if="mapped.$hasChanges">Validate Configuration Changes</span>
         <span ng-if="!mapped.$hasChanges">Configuration Saved</span>
       </button>
-      <button class="btn" ng-class="mapped.$hasChanges ? 'btn-primary' : 'btn-success'"
-              ng-click="commitToOperator()" ng-show="configform.$valid">
-        <i class="fa fa-lg" ng-class="mapped.$hasChanges ? 'fa-dot-circle-o' : 'fa-check-circle'"></i>
-        <span ng-if="mapped.$hasChanges">Commit to Operator</span>
-      </button>
-      <button class="btn" ng-class="mapped.$hasChanges ? 'btn-primary' : 'btn-success'"
-              ng-click="downloadConfig()" ng-show="configform.$valid">
-        <i class="fa fa-lg" ng-class="mapped.$hasChanges ? 'fa-dot-circle-o' : 'fa-check-circle'"></i>
-        <span ng-if="mapped.$hasChanges">Save and Download</span>
-      </button>
       <button class="btn btn-warning" ng-click="checkValidateAndSave()" ng-show="!configform.$valid"
               ng-click="checkValidateAndSave()">
         <i class="fa fa-lg fa-sort"></i>
@@ -2032,7 +2022,10 @@
           </div>
           <div class="modal-body">
             <span class="quay-spinner" ng-show="validationStatus == 'validating'"></span>
-            <i class="fa fa-lg fa-check-circle" ng-show="validationStatus == 'success'"></i>
+            <div class="validation-success-container" ng-if="validationStatus == 'success'">
+              <i class="fa fa-lg fa-check-circle" ng-show="validationStatus == 'success'"></i>
+              No problems occurred
+            </div>
             <div class="validation-issue-container" ng-if="validationStatus == 'error'">
               <div class="validation-issue" ng-repeat="err in validationResult">
                 <i class="fa fa-lg fa-warning"></i>
@@ -2065,8 +2058,12 @@
             <button class="btn" data-dismiss="modal">
               Continue Editing
             </button>
-            <button class="btn btn-primary" ng-click="saveConfiguration()" ng-disabled="savingConfiguration">
-              Next
+            <button class="btn btn-primary" ng-click="downloadConfig()">
+              Download
+            </button>
+            <!-- FIXME(alecmerdler): Only show if running under Operator -->
+            <button class="btn btn-primary" ng-if="operatorEndpoint" ng-click="commitToOperator()">
+              Reconfigure Quay
             </button>
           </div>
 

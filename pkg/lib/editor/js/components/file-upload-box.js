@@ -21,7 +21,7 @@ angular.module('quay-config').directive('fileUploadBox', function () {
 
       'reset': '=?reset'
     },
-    controller: function($rootScope, $scope, $element, ApiService) {
+    controller: function($rootScope, $scope, $element) {
       var MEGABYTE = 1000000;
       var MAX_FILE_SIZE = MAX_FILE_SIZE_MB * MEGABYTE;
       var MAX_FILE_SIZE_MB = 100;
@@ -33,10 +33,9 @@ angular.module('quay-config').directive('fileUploadBox', function () {
       $scope.state = 'clear';
       $scope.selectedFiles = [];
 
-      var conductUpload = function(file, apiEndpoint, fileId, mimeType, progressCb, doneCb) {
+      var conductUpload = function(file, apiEndpoint, fileId, progressCb, doneCb) {
         var request = new XMLHttpRequest();
         request.open('PUT', '/api/v1/' + apiEndpoint, true);
-        request.setRequestHeader('Content-Type', mimeType);
         request.onprogress = function(e) {
           $scope.$apply(function() {
             if (e.lengthComputable) { progressCb((e.loaded / e.total) * 100); }
@@ -65,7 +64,11 @@ angular.module('quay-config').directive('fileUploadBox', function () {
           }
         };
 
-        request.send(file);
+        const formData = new FormData();
+        formData.append('ca.crt', file);
+        // FIXME(alecmerdler): Debugging
+        console.log(formData);
+        request.send(formData);
       };
 
       var uploadFiles = function(callback) {
@@ -96,15 +99,11 @@ angular.module('quay-config').directive('fileUploadBox', function () {
 
           // For the current file, retrieve a file-drop URL from the API for the file.
           var currentFile = $scope.selectedFiles[currentIndex];
-          var mimeType = currentFile.type || 'application/octet-stream';
-          var data = {
-            'mimeType': mimeType
-          };
 
           $scope.currentlyUploadingFile = currentFile;
           $scope.uploadProgress = 0;
 
-          conductUpload(currentFile, $scope.apiEndpoint, $scope.selectedFiles[0].name, mimeType, progressCb, doneCb);
+          conductUpload(currentFile, $scope.apiEndpoint, $scope.selectedFiles[0].name, progressCb, doneCb);
         };
 
         // Start the uploading.
@@ -113,6 +112,7 @@ angular.module('quay-config').directive('fileUploadBox', function () {
       };
 
       $scope.handleFilesChanged = function(files) {
+        console.log(files);
         if ($scope.state == 'uploading') { return; }
 
         $scope.message = null;

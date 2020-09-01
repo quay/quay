@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -242,6 +243,8 @@ func ValidateHostIsReachable(input string, field string, fgName string) (bool, V
 	url = strings.TrimPrefix(url, "http://")
 
 	fmt.Println(url)
+	// FIXME(alecmerdler): Use `tls.Dial` for servers with custom CA certificates...
+	tls.Dial("tcp", url, &tls.Config{})
 	_, err := net.DialTimeout("tcp", url, timeout)
 	if err != nil {
 		newError := ValidationError{
@@ -354,17 +357,37 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 }
 
 // ValidateMinioStorage will validate a S3 storage connection.
-func ValidateMinioStorage(args *DistributedStorageArgs, fgName string) (bool, ValidationError) {
+func ValidateMinioStorage(opts Options, args *DistributedStorageArgs, fgName string) (bool, ValidationError) {
+	tr, err := minio.DefaultTransport(true)
+	if err != nil {
+		log.Fatalf("error creating the minio connection: error creating the default transport layer: %v", err)
+	}
+
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	for name, cert := range opts.Certificates {
+		log.Println("adding certificate: " + name)
+		if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
+			log.Fatalf("failed to append custom certificate: " + name)
+		}
+	}
+
+	config := &tls.Config{RootCAs: rootCAs}
+	tr.TLSClientConfig = config
 
 	st, _ := minio.New(args.Hostname, &minio.Options{
-		Creds:  credentials.NewStaticV4(args.AccessKey, args.SecretKey, ""),
-		Secure: args.IsSecure,
+		Creds:     credentials.NewStaticV4(args.AccessKey, args.SecretKey, ""),
+		Secure:    args.IsSecure,
+		Transport: tr,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	_, err := st.ListBuckets(ctx)
+	_, err = st.ListBuckets(ctx)
 	if err != nil {
 		newError := ValidationError{
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
@@ -374,6 +397,5 @@ func ValidateMinioStorage(args *DistributedStorageArgs, fgName string) (bool, Va
 		return false, newError
 	}
 
-	fmt.Printf("%#v\n", st)
 	return true, ValidationError{}
 }

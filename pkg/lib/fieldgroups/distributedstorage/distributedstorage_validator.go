@@ -39,7 +39,7 @@ func (fg *DistributedStorageFieldGroup) Validate(opts shared.Options) []shared.V
 			errors = append(errors, newError)
 		}
 
-		if ok, err := shared.ValidateMinioStorage(storageConf.Args, "DistributedStorage"); !ok {
+		if ok, err := shared.ValidateMinioStorage(opts, storageConf.Args, "DistributedStorage"); !ok {
 			errors = append(errors, err)
 		}
 	}

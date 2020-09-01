@@ -154,6 +154,8 @@ angular.module("quay-config")
         $scope.validationStatus = 'none';
         $scope.validationResult = null;
 
+        $scope.operatorEndpoint = document.cookie.includes('QuayOperatorEndpoint');
+
         $scope.removeOIDCProvider = function(provider) {
           delete $scope.config[provider];
         };
@@ -1369,32 +1371,22 @@ angular.module("quay-config")
 
         $scope.handleCertsSelected = function(files, callback) {
           $scope.certsUploading = true;
+          callback(true);
+        };
 
-          // FIXME: $upload was from Angular File Uploader.
-          $upload.upload({
-            url: '/api/v1/superuser/customcerts/' + files[0].name,
-            method: 'POST',
-            data: {'_csrf_token': window.__token},
-            file: files[0]
-          }).success(function() {
-            callback(true);
-            $scope.resetUpload++;
-            loadCertificates();
-          }).error(function(r) {
-            alert('Could not upload certificate')
-            callback(false);
+        $scope.handleCertsValidated = function(files, uploadFiles) {
+          console.log(files);
+
+          uploadFiles(function(done, fileIDs) {
+            console.log(fileIDs);
+
+            if (!done) {
+              alert('Could not upload certificate');
+            }
+
             $scope.resetUpload++;
             loadCertificates();
           });
-        };
-
-        $scope.deleteCert = function(path) {
-          var errorDisplay = ApiService.errorDisplay('Could not delete certificate');
-          var params = {
-            'certpath': path
-          };
-
-          ApiService.deleteCustomCertificate(null, params).then(loadCertificates, errorDisplay);
         };
       }
     };
