@@ -556,6 +556,28 @@ CONFIG_SCHEMA = {
                 },
             },
         },
+        "OPENSHIFT_LOGIN_CONFIG": {
+            "type": ["object", "null"],
+            "description": "Configuration for using the OpenShift integrated OAuth service",
+            "required": ["CLIENT_ID", "CLIENT_SECRET"],
+            "properties": {
+                "OPENSHIFT_API_URL": {
+                    "type": "string",
+                    "description": "The endpoint at which the OpenShift API is running",
+                    "x-example": "https://api.<clusterid>.<domain>:6443/",
+                },
+                "CLIENT_ID": {
+                    "type": "string",
+                    "description": "The registered client ID for this Quay instance",
+                    "x-example": "0e8dbe15c4c7630b6780",
+                },
+                "CLIENT_SECRET": {
+                    "type": "string",
+                    "description": "The registered client secret for this Quay instance",
+                    "x-example": "e4a58ddd3d7408b7aec109e85564a0d153d3e846",
+                },
+            },
+        },
         "BRANDING": {
             "type": ["object", "null"],
             "description": "Custom branding for logos and URLs in the Quay UI",
