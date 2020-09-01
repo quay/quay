@@ -7,6 +7,7 @@ screenshots
 tools
 test/data/registry
 venv
+.venv
 .git
 !.git/HEAD
 .gitignore
@@ -33,3 +34,5 @@ static/build/**
 docker-compose.yaml
 test/dockerclients/**
 node_modules
+.local
+
