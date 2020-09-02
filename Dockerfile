@@ -10,8 +10,9 @@ RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
     yarn install --ignore-engines && \
     yarn build
 
-FROM golang:1.15
+FROM golang:1.15-alpine
 
+RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/* && mkdir /usr/local/share/ca-certificates/extra
 WORKDIR /go/src/config-tool
 COPY . .
 RUN rm -rf /go/src/config-tool/pkg/lib/editor/static/build

@@ -122,13 +122,11 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 		var psqlInfo string
 		host, port, err := net.SplitHostPort(fullHostName)
 		if err != nil {
-
 			if caCert == "" {
-				psqlInfo = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", host, user, password, dbname)
+				psqlInfo = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", fullHostName, user, password, dbname)
 			} else {
-				psqlInfo = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=verify-ca sslrootcert=%s", host, user, password, dbname, caCert)
+				psqlInfo = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=verify-ca sslrootcert=%s", fullHostName, user, password, dbname, caCert)
 			}
-
 		} else {
 			if caCert == "" {
 				psqlInfo = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
