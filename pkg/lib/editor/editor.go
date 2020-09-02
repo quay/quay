@@ -35,7 +35,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // posts to operator to commit
-func commitToOperator(operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
+func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -51,7 +51,7 @@ func commitToOperator(operatorEndpoint string) func(w http.ResponseWriter, r *ht
 			return
 		}
 
-		certs := shared.LoadCerts("/conf")
+		certs := shared.LoadCerts(configPath)
 		preSecret := map[string]interface{}{
 			"config.yaml": conf,
 			"certs":       certs,
@@ -105,42 +105,45 @@ func downloadConfig(configPath string) func(http.ResponseWriter, *http.Request) 
 }
 
 // post request to validate config with certs
-func configValidator(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(404)
-		return
+func configValidator(configPath string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		if r.Method != "POST" {
+			w.WriteHeader(404)
+			return
+		}
+
+		var c map[string]interface{}
+		err := yaml.NewDecoder(r.Body).Decode(&c)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		loaded, err := config.NewConfig(c)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		certs := shared.LoadCerts(configPath)
+		opts := shared.Options{
+			Mode:         "online",
+			Certificates: certs,
+		}
+
+		errors := loaded.Validate(opts)
+
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
+		js, err := json.Marshal(errors)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Add("Content-Type", "application/json")
+		w.Write(js)
 	}
-
-	var c map[string]interface{}
-	err := yaml.NewDecoder(r.Body).Decode(&c)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	loaded, err := config.NewConfig(c)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	certs := shared.LoadCerts("/conf")
-	opts := shared.Options{
-		Mode:         "online",
-		Certificates: certs,
-	}
-
-	errors := loaded.Validate(opts)
-
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	js, err := json.Marshal(errors)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.Write(js)
 }
 
 func configHandler(configPath string) func(http.ResponseWriter, *http.Request) {
@@ -200,7 +203,7 @@ func getCertificates(configPath string) func(http.ResponseWriter, *http.Request)
 		}
 
 		certMeta := []map[string]interface{}{}
-		certs := shared.LoadCerts("/conf")
+		certs := shared.LoadCerts(configPath)
 
 		for name := range certs {
 			md := map[string]interface{}{
@@ -248,8 +251,8 @@ func RunConfigEditor(password string, configPath string, operatorEndpoint string
 	http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, configHandler(configPath)))
 	http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, getCertificates(configPath)))
 	http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
-	http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator))
-	http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(operatorEndpoint)))
+	http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator(configPath)))
+	http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(configPath, operatorEndpoint)))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticContentPath))))
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))

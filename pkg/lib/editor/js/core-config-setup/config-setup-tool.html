@@ -714,19 +714,19 @@
             Enable Security Scanning
           </div>
           <div class="co-alert co-alert-info" ng-if="config.FEATURE_SECURITY_SCANNER" style="margin-top: 20px;">
+            <!-- FIXME: Replace with Clair v4 documentation -->
             A scanner compliant with the Quay Security Scanning API must be running to use this feature. Documentation
-            on running <a href="https://github.com/coreos/clair" ng-safenewtab>Clair</a> can be found at <a
+            on running <a href="https://github.com/quay/clair/tree/development-4.0" ng-safenewtab>Clair</a> can be found at <a
                                                                                                            href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#quay-security-scanner" ng-safenewtab>Running Clair Security
             Scanner</a>.
           </div>
 
           <table class="config-table" ng-if="config.FEATURE_SECURITY_SCANNER">
-           
             <tr>
               <td>Security Scanner Endpoint:</td>
               <td>
-                <span class="config-string-field" binding="config.SECURITY_SCANNER_ENDPOINT"
-                      placeholder="Security Scanner API endpoint (Example: http://myhost:6060)"
+                <span class="config-string-field" binding="config.SECURITY_SCANNER_V4_ENDPOINT"
+                      placeholder="Security Scanner API endpoint (Example: http://myhost)"
                       pattern="http(s)?://.+"></span>
                 <div class="help-text">
                   The HTTP URL at which the security scanner is running.
