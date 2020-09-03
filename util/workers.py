@@ -9,10 +9,12 @@ def get_worker_connections_count(worker_kind_name, default=50):
     # Check for an override via an environment variable.
     override_value = os.environ.get("WORKER_CONNECTION_COUNT_" + worker_kind_name.upper())
     if override_value is not None:
+        override_value = int(override_value)
         return override_value
 
     override_value = os.environ.get("WORKER_CONNECTION_COUNT")
     if override_value is not None:
+        override_value = int(override_value)
         return override_value
 
     return default
@@ -26,13 +28,16 @@ def get_worker_count(worker_kind_name, multiplier, minimum=None, maximum=None):
     minimum = minimum or multiplier
     maximum = maximum or (multiplier * multiplier)
 
-    # Check for an override via an environment variable.
+    # Check for a process-specific override via an environment variable.
     override_value = os.environ.get("WORKER_COUNT_" + worker_kind_name.upper())
     if override_value is not None:
+        override_value = int(override_value)
         return max(override_value, minimum)
 
+    # Check for a generic override via an environment variables
     override_value = os.environ.get("WORKER_COUNT")
     if override_value is not None:
+        override_value = int(override_value)
         return max(override_value, minimum)
 
     # Load the number of CPU cores via affinity, and use that to calculate the
