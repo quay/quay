@@ -14,22 +14,13 @@
   "type": "object",
   "description": "Schema for Quay configuration",
   "properties": {
-    "REPO_MIRROR_TLS_VERIFY": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "Require HTTPS and verify certificates of Quay registry during mirror. Defaults to True"
-    },
     "DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS": {
       "items": { "uniqueItems": true, "type": "string" },
       "type": "array",
       "description": "The list of storage engine(s) (by ID in DISTRIBUTED_STORAGE_CONFIG) whose images should be fully replicated, by default, to all other storage engines.",
       "x-example": ["s3_us_east", "s3_us_west"]
     },
-    "FEATURE_REPO_MIRROR": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to enable support for repository mirroring. Defaults to False"
-    },
+
     "FEATURE_BLACKLISTED_EMAILS": {
       "x-example": false,
       "type": "boolean",
@@ -189,11 +180,7 @@
       "type": ["number", "null"],
       "description": "If not None, the number of successive internal errors that can occur before a build trigger is automatically disabled. Defaults to 5."
     },
-    "REPO_MIRROR_INTERVAL": {
-      "x-example": 30,
-      "type": "number",
-      "description": "The number of seconds between checking for repository mirror candidates. Defaults to 30."
-    },
+
     "MAIL_PASSWORD": {
       "x-example": "mypassword",
       "type": ["string", "null"],
@@ -327,11 +314,6 @@
       "description": "The configured health check."
     },
 
-    "REPO_MIRROR_SERVER_HOSTNAME": {
-      "x-example": "openshift-quay-service",
-      "type": "string",
-      "description": "Replaces the SERVER_HOSTNAME as the destination for mirroring. Defaults to unset"
-    },
     "DIRECT_OAUTH_CLIENTID_WHITELIST": {
       "uniqueItems": true,
       "items": { "type": "string" },

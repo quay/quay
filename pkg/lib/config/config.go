@@ -16,6 +16,7 @@ import (
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/jwtauthentication"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/quaydocumentation"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/redis"
+	"github.com/quay/config-tool/pkg/lib/fieldgroups/repomirror"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/securityscanner"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/signingengine"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/teamsyncing"
@@ -126,5 +127,10 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 		return newConfig, err
 	}
 	newConfig["DistributedStorage"] = newDistributedStorageFieldGroup
+	newRepoMirrorFieldGroup, err := repomirror.NewRepoMirrorFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["RepoMirror"] = newRepoMirrorFieldGroup
 	return newConfig, nil
 }

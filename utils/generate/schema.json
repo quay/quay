@@ -981,6 +981,38 @@
       "ct-default": "false",
       "ct-validate": "",
       "ct-fieldgroups": ["HostSettings"]
+    },
+    "FEATURE_REPO_MIRROR": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether to enable support for repository mirroring. Defaults to False",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_TLS_VERIFY": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "Require HTTPS and verify certificates of Quay registry during mirror. Defaults to True",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_INTERVAL": {
+      "x-example": 30,
+      "type": "number",
+      "description": "The number of seconds between checking for repository mirror candidates. Defaults to 30.",
+      "ct-default": "30",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
+    },
+    "REPO_MIRROR_SERVER_HOSTNAME": {
+      "x-example": "openshift-quay-service",
+      "type": "string",
+      "description": "Replaces the SERVER_HOSTNAME as the destination for mirroring. Defaults to unset",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["RepoMirror"]
     }
   }
 }
