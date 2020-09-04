@@ -8,11 +8,6 @@ SYSTEM_CERTDIR=${SYSTEM_CERTDIR:-"/etc/pki/ca-trust/source/anchors"}
 
 PYTHON_ROOT=${PYTHON_ROOT:-"/usr/local/lib/python3.6"}
 
-# If we're running under kube, the previous script (02_get_kube_certs.sh) will put the certs in a different location
-if [[ "$KUBERNETES_SERVICE_HOST" != "" ]];then
-    CERTDIR=${KUBE_EXTRA_CA_CERTDIR:-"$QUAYPATH/conf/kube_extra_certs"}
-fi
-
 cd ${QUAYDIR:-"/quay-registry"}
 
 # Add the custom LDAP certificate
