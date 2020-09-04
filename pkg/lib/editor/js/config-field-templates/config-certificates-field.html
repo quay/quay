@@ -20,9 +20,10 @@
             <td>Upload certificates:</td>
             <td>
               <div class="file-upload-box"
-                api-endpoint="superuser/customcerts"
+                api-endpoint="certificates"
                 select-message="Select custom certificate to add to configuration. Must be in PEM format and end extension '.crt'"
                 files-selected="handleCertsSelected(files, callback)"
+                files-validated="handleCertsValidated(files, uploadFiles)"
                 reset="resetUpload"
                 extensions="['.crt']"></div>
             </td>
@@ -34,7 +35,6 @@
             <td>Certificate Filename</td>
             <td>Status</td>
             <td>Names Handled</td>
-            <td class="options-col"></td>
           </thead>
           <tr ng-repeat="certificate in certInfo.certs" ng-if="!certsUploading">
             <td>{{ certificate.path }}</td>
@@ -55,13 +55,6 @@
             <td>
               <div class="empty" ng-if="!certificate.names">(None)</div>
               <a class="dns-name" ng-href="http://{{ name }}" ng-repeat="name in certificate.names" ng-safenewtab>{{ name }}</a>
-            </td>
-            <td class="options-col">
-              <span class="cor-options-menu">
-                <span class="cor-option" option-click="deleteCert(certificate.path)">
-                  <i class="fa fa-times"></i> Delete Certificate
-                </span>
-              </span>
             </td>
           </tr>
         </table>

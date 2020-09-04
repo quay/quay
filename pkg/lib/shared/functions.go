@@ -45,18 +45,15 @@ func GetFields(fg FieldGroup) []string {
 	return fieldNames
 }
 
-// LoadCerts will load certificates in a config directory
+// LoadCerts will load certificates in a config directory.
 func LoadCerts(dir string) map[string][]byte {
-
 	// Get filenames in directory
 	certs := make(map[string][]byte)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
+		if info.IsDir() || strings.Contains(path, "..") || !strings.HasSuffix(path, ".crt") {
 			return nil
 		}
-		if strings.HasSuffix(path, "/config.yaml") {
-			return nil
-		}
+
 		data, _ := ioutil.ReadFile(path)
 		certs[path] = data
 		return nil
@@ -68,7 +65,7 @@ func LoadCerts(dir string) map[string][]byte {
 	return certs
 }
 
-// CreateArchive will create a tar file from a directory
+// CreateArchive will create a tar file from a directory.
 func CreateArchive(directory string, buf io.Writer) error {
 	gw := gzip.NewWriter(buf)
 	defer gw.Close()
@@ -76,7 +73,7 @@ func CreateArchive(directory string, buf io.Writer) error {
 	defer tw.Close()
 
 	files := []string{}
-	err := filepath.Walk("/conf", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
