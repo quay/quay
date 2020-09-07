@@ -2612,9 +2612,9 @@
                     "Description":"chroot in GNU coreutils, when used with --userspec, allows local users to escape to the parent session via a crafted TIOCSTI ioctl call, which pushes characters to the terminal's input buffer.",
                     "Severity":"Unknown",
                     "Metadata":{
-                        "UpdatedBy":"",
-                        "RepoName":null,
-                        "RepoLink":null,
+                        "UpdatedBy":"test_updater",
+                        "RepoName":"test_repo",
+                        "RepoLink":"http://test-uri",
                         "DistroName":null,
                         "DistroVersion":null
                    }
@@ -2627,11 +2627,11 @@
                     "Description":"In GNU Coreutils through 8.29, chown-core.c in chown and chgrp does not prevent replacement of a plain file with a symlink during use of the POSIX \"-R -L\" options, which allows local users to modify the ownership of arbitrary files by leveraging a race condition.",
                     "Severity":"Unknown",
                     "Metadata":{
-                        "UpdatedBy":"",
+                        "UpdatedBy":"test_updater",
                         "RepoName":null,
                         "RepoLink":null,
-                        "DistroName":null,
-                        "DistroVersion":null
+                        "DistroName":"rhel",
+                        "DistroVersion":"8.0"
                    }
                  }
               ]
