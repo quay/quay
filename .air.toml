@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 # Just plain old shell command. You could use `make` as well.
 cmd = "cd /jssrc && yarn build && rm -rf /go/src/config-tool/pkg/lib/editor/static/build && mv /jssrc/static/build /go/src/config-tool/pkg/lib/editor/static/build && cd /go/src/config-tool && go build -o ./tmp/main ./cmd/..."
 # Binary file yields from `cmd`.
-bin = 'tmp/main editor --configDir=/conf --password=password --operatorEndpoint=https:////webhook.site/82875d14-4712-42d0-af6a-4ff451c924110'
+bin = 'tmp/main editor --config-dir=/conf --password=password --operator-endpoint=https:////webhook.site/82875d14-4712-42d0-af6a-4ff451c924110'
 # Watch these filename extensions.
 include_ext = ["go", "js", "html", "toml"]
 # Ignore these filename extensions or directories.

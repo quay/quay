@@ -16,7 +16,7 @@ test:
 
 # Used to bring up production container
 run-local-prod:
-	sudo podman build -t config-app:latest -f Dockerfile . && sudo podman run -p 7070:8080 -v ${CONFIG_MOUNT}:/conf -ti config-app:latest editor --configDir=/conf --password=password --operatorEndpoint=${OPERATOR_ENDPOINT}
+	sudo podman build -t config-app:latest -f Dockerfile . && sudo podman run -p 7070:8080 -v ${CONFIG_MOUNT}:/conf -ti config-app:latest editor --config-dir=/conf --password=password --operator-endpoint=${OPERATOR_ENDPOINT}
 
 # Used to bring up dev container
 build-local-dev:
