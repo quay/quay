@@ -1,7 +1,9 @@
 package distributedstorage
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/creasty/defaults"
 	"github.com/quay/config-tool/pkg/lib/shared"
@@ -169,18 +171,18 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 
 }
 
-// func (ds DistributedStorageDefinition) UnmarshalJSON(buf []byte) error {
-// 	tmp := []interface{}{&ds.Name, &ds.Args}
-// 	wantLen := len(tmp)
-// 	if err := json.Unmarshal(buf, &tmp); err != nil {
-// 		return err
-// 	}
-// 	if g, e := len(tmp), wantLen; g != e {
-// 		return fmt.Errorf("wrong number of fields in DistributedStorage: %d != %d", g, e)
-// 	}
-// 	return nil
-// }
+func (ds DistributedStorageDefinition) UnmarshalJSON(buf []byte) error {
+	tmp := []interface{}{&ds.Name, &ds.Args}
+	wantLen := len(tmp)
+	if err := json.Unmarshal(buf, &tmp); err != nil {
+		return err
+	}
+	if g, e := len(tmp), wantLen; g != e {
+		return fmt.Errorf("wrong number of fields in DistributedStorage: %d != %d", g, e)
+	}
+	return nil
+}
 
-// func (ds DistributedStorageDefinition) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal([]interface{}{&ds.Name, &ds.Args})
-// }
+func (ds DistributedStorageDefinition) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]interface{}{&ds.Name, &ds.Args})
+}
