@@ -37,15 +37,15 @@ func init() {
 	// Add editor command
 	rootCmd.AddCommand(editorCmd)
 
-	// Add --config flag
-	editorCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "The directory containing your config files")
-	editorCmd.MarkFlagRequired("configDir")
+	// Add --config-dir flag
+	editorCmd.Flags().StringVarP(&configDir, "config-dir", "c", "", "The directory containing your config files")
+	editorCmd.MarkFlagRequired("config-dir")
 
 	// Add --password flag
 	editorCmd.Flags().StringVarP(&editorPassword, "password", "p", "", "The password to enter the editor")
 	editorCmd.MarkFlagRequired("password")
 
-	// Add --operatorEndpoint flag
-	editorCmd.Flags().StringVarP(&operatorEndpoint, "operatorEndpoint", "e", "", "The endpoint to commit a validated config bundle to")
-	editorCmd.MarkFlagRequired("operatorEndpoint")
+	// Add --operator-endpoint flag
+	editorCmd.Flags().StringVarP(&operatorEndpoint, "operator-endpoint", "e", "", "The endpoint to commit a validated config bundle to")
+	editorCmd.MarkFlagRequired("operator-endpoint")
 }
