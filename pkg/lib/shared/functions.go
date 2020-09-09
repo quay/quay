@@ -55,7 +55,9 @@ func LoadCerts(dir string) map[string][]byte {
 		}
 
 		data, _ := ioutil.ReadFile(path)
-		certs[path] = data
+		relativePath, err := filepath.Rel(dir, path)
+
+		certs[relativePath] = data
 		return nil
 	})
 	if err != nil {

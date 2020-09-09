@@ -22,7 +22,7 @@ angular.module("quay-config").factory("ApiService", [
     };
 
     apiService.downloadConfig = function (config) {
-      return Restangular.one("config/downloadConfig").get();
+      return Restangular.one("config/downloadConfig").post(null, config);
     };
 
     apiService.getCertificates = function () {

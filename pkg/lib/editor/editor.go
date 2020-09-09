@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"archive/tar"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -56,7 +57,7 @@ func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseW
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			w.WriteHeader(404)
+			w.WriteHeader(405)
 			return
 		}
 
@@ -110,28 +111,67 @@ func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseW
 }
 
 func downloadConfig(configPath string) func(http.ResponseWriter, *http.Request) {
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
+		if r.Method != "POST" {
 			w.WriteHeader(405)
 			return
 		}
 
-		// Create output file
-		out, err := os.Create("/tmp/quay-config.tar.gz")
+		var conf map[string]interface{}
+		err := yaml.NewDecoder(r.Body).Decode(&conf)
 		if err != nil {
-			log.Fatalln("Error writing archive:", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
-		defer out.Close()
 
-		// Create the archive and write the output to the "out" Writer
-		err = shared.CreateArchive(configPath, out)
-		if err != nil {
-			log.Fatalln("Error creating archive:", err)
+		for name, cert := range shared.LoadCerts(configPath) {
+			certStore[name] = cert
 		}
+
+		files := make(map[string][]byte)
+		files["config.yaml"], err = yaml.Marshal(conf)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for name, contents := range certStore {
+			files[name] = contents
+		}
+
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+		hdr := &tar.Header{
+			Name:     "extra_ca_certs/",
+			Typeflag: tar.TypeDir,
+			Mode:     0777,
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for name, contents := range files {
+			hdr := &tar.Header{
+				Name: name,
+				Mode: 0777,
+				Size: int64(len(contents)),
+			}
+			if err := tw.WriteHeader(hdr); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if _, err := tw.Write(contents); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		tw.Close()
 
 		w.Header().Set("Content-type", "application/zip")
-		http.ServeFile(w, r, "/tmp/quay-config.tar.gz")
+		w.Header().Set("Content-Disposition", "attachment; filename=quay-config.tar.gz")
+		w.Write(buf.Bytes())
 	}
+
 }
 
 // post request to validate config with certs
@@ -139,7 +179,7 @@ func configValidator(configPath string) func(http.ResponseWriter, *http.Request)
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != "POST" {
-			w.WriteHeader(404)
+			w.WriteHeader(405)
 			return
 		}
 
@@ -182,7 +222,7 @@ func configValidator(configPath string) func(http.ResponseWriter, *http.Request)
 func configHandler(configPath string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
-			w.WriteHeader(404)
+			w.WriteHeader(405)
 			return
 		}
 
