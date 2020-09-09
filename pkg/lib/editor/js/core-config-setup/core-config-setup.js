@@ -35,13 +35,28 @@ angular.module("quay-config")
         $scope.HOSTNAME_REGEX = '^[a-zA-Z-0-9\.]+(:[0-9]+)?$';
         $scope.GITHOST_REGEX = '^https?://([a-zA-Z0-9]+\.?\/?)+$';
 
-        // Determines if a particular field should be marked as "read-only".
-        // The __read_only_fields is populated using environment variables.
-        // This is usually used for the case where an external system is
-        // managing part of the configuration.
-        $scope.isFieldReadonly = function(field) {
-            return window.__read_only_fields.includes(field);
+        const readOnlyFieldGroupsCookie = document.cookie.split('; ').find(row => row.startsWith('QuayReadOnlyFieldGroups'));
+        $scope.readOnlyFieldGroups = new Set();
+        if (readOnlyFieldGroupsCookie !== undefined) {
+          readOnlyFieldGroupsCookie
+            .split('=')[1]
+            .split(',')
+            .forEach(fieldGroup => $scope.readOnlyFieldGroups.add(fieldGroup.replace(/"/, '')));
         }
+
+        $scope.fieldGroupReadonly = function(fieldGroup) {
+          return $scope.readOnlyFieldGroups.has(fieldGroup);
+        };
+
+        $scope.changeFieldGroupReadonly = function(fieldGroup, readonly) {
+          if (readonly) {
+            $scope.readOnlyFieldGroups.add(fieldGroup);
+          } else {
+            $scope.readOnlyFieldGroups.delete(fieldGroup);
+          }
+          // FIXME(alecmerdler): Debugging
+          console.log($scope.readOnlyFieldGroups);
+        };
 
         $scope.STORAGE_CONFIG_FIELDS = {
           'LocalStorage': [
@@ -227,7 +242,7 @@ angular.module("quay-config")
         };
 
         $scope.commitToOperator = function() {
-          ApiService.commitToOperator($scope.config).then(function(resp) {
+          ApiService.commitToOperator($scope.config, [...$scope.readOnlyFieldGroups.keys()]).then(function(resp) {
             console.log(resp)
           })
         }
@@ -949,7 +964,8 @@ angular.module("quay-config")
         'filename': '@filename',
         'skipCheckFile': '@skipCheckFile',
         'hasFile': '=hasFile',
-        'binding': '=?binding'
+        'binding': '=?binding',
+        'isReadonly': '=isReadonly',
       },
       controller: function($scope, $element, Restangular) {
         $scope.hasFile = false;
@@ -1006,7 +1022,8 @@ angular.module("quay-config")
       transclude: true,
       restrict: 'C',
       scope: {
-        'binding': '=binding'
+        'binding': '=binding',
+        'isReadonly': '=?isReadonly',
       },
       controller: function($scope, $element) {
       }
@@ -1295,7 +1312,8 @@ angular.module("quay-config")
         'placeholder': '@placeholder',
         'defaultValue': '@defaultValue',
         'validator': '&validator',
-        'isOptional': '=isOptional'
+        'isOptional': '=isOptional',
+        'isReadonly': '=?isReadonly',
       },
       controller: function($scope, $element) {
         var firstSet = true;
@@ -1324,7 +1342,8 @@ angular.module("quay-config")
         'itemTitle': '@itemTitle',
         'itemDelimiter': '@itemDelimiter',
         'placeholder': '@placeholder',
-        'isOptional': '=isOptional'
+        'isOptional': '=isOptional',
+        'isReadonly': '=?isReadonly',
       },
       controller: function($scope, $element) {
         $scope.$watch('internalBinding', function(value) {

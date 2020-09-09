@@ -46,8 +46,12 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 		return errors
 	}
 
+	ca := ""
+	if fg.DbConnectionArgs.Ssl != nil {
+		ca = fg.DbConnectionArgs.Ssl.Ca
+	}
 	// Connect to database
-	err = ValidateDatabaseConnection(opts, uri, fg.DbConnectionArgs.Ssl.Ca)
+	err = ValidateDatabaseConnection(opts, uri, ca)
 	if err != nil {
 		newError := shared.ValidationError{
 			Tags:       []string{"DB_URI"},

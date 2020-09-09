@@ -17,8 +17,12 @@ angular.module("quay-config").factory("ApiService", [
       return Restangular.one("config/validate").post(null, config);
     };
 
-    apiService.commitToOperator = function (config) {
-      return Restangular.one("config/commitToOperator").post(null, config);
+    apiService.commitToOperator = function (config, managedFieldGroups) {
+      return Restangular.one("config/commitToOperator")
+        .post(null, {
+          "config.yaml": config, 
+          "managedFieldGroups": managedFieldGroups
+        });
     };
 
     apiService.downloadConfig = function (config) {
@@ -32,7 +36,7 @@ angular.module("quay-config").factory("ApiService", [
     apiService.getErrorMessage = function (resp, defaultMessage) {
       var message = defaultMessage;
       if (resp && resp["data"]) {
-        //TODO: remove error_message and error_description (old style error)
+        // TODO: remove error_message and error_description (old style error)
         message =
           resp["data"]["detail"] ||
           resp["data"]["error_message"] ||

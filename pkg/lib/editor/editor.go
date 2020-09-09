@@ -25,7 +25,7 @@ import (
 const port = 8080
 const editorUsername = "quayconfig"
 
-func handler(staticContentPath, operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
+func handler(staticContentPath, operatorEndpoint string, readonlyFieldGroups []string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			p := staticContentPath + "/index.html"
@@ -33,6 +33,8 @@ func handler(staticContentPath, operatorEndpoint string) func(w http.ResponseWri
 			if len(operatorEndpoint) > 0 {
 				http.SetCookie(w, &http.Cookie{Name: "QuayOperatorEndpoint", Value: operatorEndpoint})
 			}
+
+			http.SetCookie(w, &http.Cookie{Name: "QuayReadOnlyFieldGroups", Value: strings.Join(readonlyFieldGroups, ",")})
 
 			http.ServeFile(w, r, p)
 			return
@@ -42,8 +44,14 @@ func handler(staticContentPath, operatorEndpoint string) func(w http.ResponseWri
 	}
 }
 
-// commitToOperator calls API endpoint on Quay Operator to create a new `Secret`.
-func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
+type commitRequest struct {
+	Config             map[string]interface{} `json:"config.yaml" yaml:"config.yaml"`
+	ManagedFieldGroups []string               `json:"managedFieldGroups" yaml:"managedFieldGroups"`
+}
+
+// commitToOperator handles an HTTP POST request containing a new `config.yaml`,
+// adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
+func commitToOperator(configPath, operatorEndpoint string, readonlyFieldGroups []string) func(w http.ResponseWriter, r *http.Request) {
 	namespace := os.Getenv("MY_POD_NAMESPACE")
 	if namespace == "" {
 		panic("missing 'MY_POD_NAMESPACE'")
@@ -60,8 +68,8 @@ func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseW
 			return
 		}
 
-		var conf map[string]interface{}
-		err := yaml.NewDecoder(r.Body).Decode(&conf)
+		var request commitRequest
+		err := yaml.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -71,12 +79,27 @@ func commitToOperator(configPath, operatorEndpoint string) func(w http.ResponseW
 			certStore[name] = cert
 		}
 
+		// TODO(alecmerdler): For each managed component fieldgroup, remove its fields from `config.yaml` using `Fields()` function...
+		newConfig, err := config.NewConfig(request.Config)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		for _, fieldGroup := range request.ManagedFieldGroups {
+			fields := newConfig[fieldGroup].Fields()
+			// FIXME(alecmerdler): Debugging
+			fmt.Println(fields)
+			for _, field := range fields {
+				delete(request.Config, field)
+			}
+		}
+
 		// TODO: Define struct type for this with correct `yaml` tags
 		preSecret := map[string]interface{}{
-			// FIXME(alecmerdler): Need to figure out which `QuayRegistry` we just re-configured in order to change `spec.configBundleSecret`...
 			"quayRegistryName": quayRegistryName,
 			"namespace":        namespace,
-			"config.yaml":      conf,
+			"config.yaml":      request.Config,
 			"certs":            certStore,
 		}
 
@@ -338,18 +361,17 @@ func certificateHandler(configDir string) func(http.ResponseWriter, *http.Reques
 var certStore = map[string][]byte{}
 
 // RunConfigEditor runs the configuration editor server.
-func RunConfigEditor(password string, configPath string, operatorEndpoint string) {
-
-	staticContentPath, exists := os.LookupEnv("CONFIG_EDITOR_STATIC_CONTENT_PATH")
-	if !exists {
-		staticContentPath = "pkg/lib/editor/static"
-	}
-
+func RunConfigEditor(password, configPath, operatorEndpoint string, readonlyFieldGroups []string) {
 	mime.AddExtensionType(".css", "text/css; charset=utf-8")
 	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
 
 	log.Printf("Running the configuration editor on port %v with username %s", port, editorUsername)
 	log.Printf("Using Operator Endpoint: " + operatorEndpoint)
+
+	staticContentPath, exists := os.LookupEnv("CONFIG_EDITOR_STATIC_CONTENT_PATH")
+	if !exists {
+		staticContentPath = "pkg/lib/editor/static"
+	}
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(password), 5)
 	authenticator := auth.NewBasicAuthenticator(editorUsername, func(user, realm string) string {
@@ -359,12 +381,12 @@ func RunConfigEditor(password string, configPath string, operatorEndpoint string
 		return ""
 	})
 
-	http.HandleFunc("/", auth.JustCheck(authenticator, handler(staticContentPath, operatorEndpoint)))
+	http.HandleFunc("/", auth.JustCheck(authenticator, handler(staticContentPath, operatorEndpoint, readonlyFieldGroups)))
 	http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, configHandler(configPath)))
 	http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, certificateHandler(configPath)))
 	http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
 	http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator(configPath)))
-	http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(configPath, operatorEndpoint)))
+	http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(configPath, operatorEndpoint, readonlyFieldGroups)))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticContentPath))))
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))

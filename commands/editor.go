@@ -16,12 +16,16 @@ limitations under the License.
 package commands
 
 import (
-	"github.com/quay/config-tool/pkg/lib/editor"
+	"strings"
+
 	"github.com/spf13/cobra"
+
+	"github.com/quay/config-tool/pkg/lib/editor"
 )
 
 var editorPassword string
 var operatorEndpoint string
+var readonlyFieldGroups string
 
 // editorCmd represents the validate command
 var editorCmd = &cobra.Command{
@@ -29,7 +33,7 @@ var editorCmd = &cobra.Command{
 	Short: "Runs a browser-based editor for your config.yaml",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		editor.RunConfigEditor(editorPassword, configDir, operatorEndpoint)
+		editor.RunConfigEditor(editorPassword, configDir, operatorEndpoint, strings.Split(readonlyFieldGroups, ","))
 	},
 }
 
@@ -48,4 +52,8 @@ func init() {
 	// Add --operator-endpoint flag
 	editorCmd.Flags().StringVarP(&operatorEndpoint, "operator-endpoint", "e", "", "The endpoint to commit a validated config bundle to")
 	editorCmd.MarkFlagRequired("operator-endpoint")
+
+	// Add --readonly-fieldgroups flag
+	editorCmd.Flags().StringVarP(&readonlyFieldGroups, "readonly-fieldgroups", "r", "", "Comma-separated list of fieldgroups that should be treated as read-only")
+	editorCmd.MarkFlagRequired("readonly-fieldgroups")
 }
