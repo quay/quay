@@ -22,7 +22,7 @@ from data.model.log import get_stale_logs, get_stale_logs_start_id, delete_stale
 logger = logging.getLogger(__name__)
 
 MINIMUM_RANGE_SIZE = 1  # second
-MAXIMUM_RANGE_SIZE = 60 * 60 * 24 * 30  # seconds ~= 1 month
+MAXIMUM_RANGE_SIZE = 60 * 60 * 24 * 31  # seconds ~= 1 month
 EXPECTED_ITERATION_LOG_COUNT = 1000
 
 
@@ -157,7 +157,7 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
         if filter_kinds is not None:
             assert all(isinstance(kind_name, str) for kind_name in filter_kinds)
 
-        if end_datetime - start_datetime >= timedelta(weeks=4):
+        if end_datetime - start_datetime > timedelta(seconds=MAXIMUM_RANGE_SIZE):
             raise Exception("Cannot lookup aggregated logs over a period longer than a month")
 
         repository = None
