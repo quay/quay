@@ -139,7 +139,11 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         except (Non200ResponseException, IncompatibleAPIResponse) as ex:
             raise APIRequestFailure(ex)
 
-        return (resp.json(), resp.headers["etag"])
+        # Required clair indexer hash.
+        # RFC for etag specifies surrounding double quotes, which need to be stripped (below)
+        assert resp.headers["etag"]
+
+        return (resp.json(), resp.headers["etag"].strip('"'))
 
     def index_report(self, manifest_hash):
         try:
