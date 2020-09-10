@@ -1,4 +1,4 @@
-FROM centos:latest as jsbuild
+FROM centos:8 as jsbuild
 
 ENV GOROOT /usr/local/go
 ENV GOPATH /go
@@ -8,15 +8,12 @@ WORKDIR /jssrc
 COPY pkg/lib/editor/package.json .
 COPY pkg/lib/editor/tsconfig.json .
 COPY pkg/lib/editor/webpack.config.js .
-COPY pkg/lib/editor/yarn.lock .
+COPY pkg/lib/editor/package-lock.json .
 COPY pkg/lib/editor/static .
 
-RUN curl --silent --location https://rpm.nodesource.com/setup_12.x | bash - && \
-    yum install -y nodejs && \
-    curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
-    rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
-    yum install -y yarn git && \
-    yarn install --ignore-engines
+RUN yum install -y nodejs && \
+    yum install -y git && \
+    npm install --ignore-engines
 
 RUN yum install -y wget && \
     wget https://golang.org/dl/go1.15.linux-amd64.tar.gz && \
@@ -26,6 +23,6 @@ WORKDIR /go/src/config-tool
 RUN go get github.com/cosmtrek/air
 COPY . .
 RUN go get -d -v ./...
-RUN go install -v ./... 
+RUN go install -v ./...
 
 ENTRYPOINT ["air", "-c", ".air.toml"]
