@@ -23,10 +23,9 @@ import (
 )
 
 const port = 8080
-const staticContentPath = "pkg/lib/editor/static"
 const editorUsername = "quayconfig"
 
-func handler(operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
+func handler(staticContentPath, operatorEndpoint string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			p := staticContentPath + "/index.html"
@@ -340,6 +339,12 @@ var certStore = map[string][]byte{}
 
 // RunConfigEditor runs the configuration editor server.
 func RunConfigEditor(password string, configPath string, operatorEndpoint string) {
+
+	staticContentPath, exists := os.LookupEnv("CONFIG_EDITOR_STATIC_CONTENT_PATH")
+	if !exists {
+		staticContentPath = "pkg/lib/editor/static"
+	}
+
 	mime.AddExtensionType(".css", "text/css; charset=utf-8")
 	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
 
@@ -354,7 +359,7 @@ func RunConfigEditor(password string, configPath string, operatorEndpoint string
 		return ""
 	})
 
-	http.HandleFunc("/", auth.JustCheck(authenticator, handler(operatorEndpoint)))
+	http.HandleFunc("/", auth.JustCheck(authenticator, handler(staticContentPath, operatorEndpoint)))
 	http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, configHandler(configPath)))
 	http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, certificateHandler(configPath)))
 	http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
