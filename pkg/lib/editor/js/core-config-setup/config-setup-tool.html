@@ -76,10 +76,9 @@
         <div class="co-panel-body">
           <table class="config-table">
             <tr>
-                <div class="co-alert co-alert-danger" ng-if="isFieldReadonly('hostname')">
-                    The Hostname configuration is managed externally. These values
-                    cannot be changed.
-                </div>
+              <div class="co-alert co-alert-danger" ng-if="fieldGroupReadonly('HostSettings')">
+                The Hostname configuration is currently managed externally. <button class="btn btn-link" ng-click="changeFieldGroupReadonly('HostSettings', false)">Edit fields</button>
+              </div>
             </tr>
             <tr>
               <td>Server Hostname:</td>
@@ -93,17 +92,17 @@
                       binding="config.SERVER_HOSTNAME"
                       placeholder="Hostname (and optional port if non-standard)"
                       pattern="{{ HOSTNAME_REGEX }}"
-                      is-readonly="::isFieldReadonly('hostname')"></span>
+                      is-readonly="fieldGroupReadonly('HostSettings')"></span>
                 <div class="help-text">
                   The HTTP host (and optionally the port number if a non-standard HTTP/HTTPS port) of the location
-                  where the registry will be accessible on the network
+                  where the registry will be accessible on the network.
                 </div>
               </td>
             </tr>
             <tr>
               <td>TLS:</td>
               <td>
-                <select ng-disabled="::isFieldReadonly('hostname')" class="form-control" ng-model="mapped.TLS_SETTING">
+                <select ng-disabled="fieldGroupReadonly('HostSettings')" class="form-control" ng-model="mapped.TLS_SETTING">
                   <option value="internal-tls">Red Hat Quay handles TLS</option>
                   <option value="external-tls">My own load balancer handles TLS (Not Recommended)</option>
                   <option value="none">None (Not For Production)</option>
@@ -119,8 +118,7 @@
                   Terminating TLS outside of Red Hat Quay can result in unusual behavior if the external load balancer
                   is not
                   configured properly. <strong>This option is not recommended for simple setups</strong>. Please contact
-                  support
-                  if you encounter problems while using this option.
+                  support if you encounter problems while using this option.
                 </div>
 
                 <div class="co-alert co-alert-info" ng-if="mapped.TLS_SETTING == 'internal-tls'"
@@ -131,7 +129,7 @@
                   connections on this hostname.
                 </div>
 
-                <table class="config-table" ng-if="mapped.TLS_SETTING == 'internal-tls' && !isFieldReadonly('hostname')">
+                <table class="config-table" ng-if="mapped.TLS_SETTING == 'internal-tls' && !fieldGroupReadonly('HostSettings')">
                   <tr>
                     <td class="non-input">Certificate:</td>
                     <td>
@@ -166,9 +164,14 @@
           </div>
           <table class="config-table">
             <tr>
+              <div class="co-alert co-alert-danger" ng-if="fieldGroupReadonly('Database')">
+                The database configuration is currently managed externally. <button class="btn btn-link" ng-click="changeFieldGroupReadonly('Database', false)">Edit fields</button>
+              </div>
+            </tr>
+            <tr>
               <td class="non-input">Database Type:</td>
               <td>
-                 <select ng-model="mapped.database.kind">
+                 <select ng-model="mapped.database.kind" ng-disabled="fieldGroupReadonly('Database')">
                     <option value="mysql+pymysql">MySQL</option>
                     <option value="postgresql">Postgres</option>
                  </select>
@@ -180,6 +183,7 @@
                 <span class="config-string-field" binding="mapped.database.server"
                       placeholder="dbserverhost"
                       pattern="{{ HOSTNAME_REGEX }}"
+                      is-readonly="fieldGroupReadonly('Database')"
                       validator="validateHostname(value)">></span>
                 <div class="help-text">
                   The server (and optionally, custom port) where the database lives
@@ -190,6 +194,7 @@
               <td>Username:</td>
               <td>
                 <span class="config-string-field" binding="mapped.database.username"
+                      is-readonly="fieldGroupReadonly('Database')"
                       placeholder="someuser"></span>
                 <div class="help-text">This user must have <strong>full access</strong> to the database</div>
               </td>
@@ -197,13 +202,14 @@
             <tr ng-show="mapped.database.kind">
               <td>Password:</td>
               <td>
-                <input class="form-control" type="password" ng-model="mapped.database.password">
+                <input class="form-control" type="password" ng-model="mapped.database.password" ng-disabled="fieldGroupReadonly('Database')">
               </td>
             </tr>
             <tr ng-show="mapped.database.kind">
               <td>Database Name:</td>
               <td>
                 <span class="config-string-field" binding="mapped.database.database"
+                      is-readonly="fieldGroupReadonly('Database')"
                       placeholder="registry-database"></span>
               </td>
             </tr>
@@ -211,6 +217,7 @@
               <td>SSL Certificate:</td>
               <td>
                 <span class="config-file-field" filename="database.pem"
+                      is-readonly="fieldGroupReadonly('Database')"
                       skip-check-file="true" has-file="currentState.hasDatabaseSSLCert"></span>
                 <div class="help-text">Optional SSL certicate (in PEM format) to use to connect to the database</div>
               </td>
@@ -314,13 +321,11 @@
             <p>A <a href="http://redis.io" ng-safenewtab>redis</a> key-value store is required for real-time events and
               build logs.</p>
           </div>
-
           <table class="config-table">
             <tr>
-                <div class="co-alert co-alert-danger" ng-if="isFieldReadonly('redis')">
-                    The Redis configuration is managed externally. These values
-                    cannot be changed.
-                </div>
+              <div class="co-alert co-alert-danger" ng-if="fieldGroupReadonly('Redis')">
+                The Redis configuration is currently managed externally. <button class="btn btn-link" ng-click="changeFieldGroupReadonly('Redis', false)">Edit fields</button>
+              </div>
             </tr>
             <tr>
               <td>Redis Hostname:</td>
@@ -330,7 +335,7 @@
                       placeholder="The redis server hostname"
                       pattern="{{ HOSTNAME_REGEX }}"
                       validator="validateHostname(value)"
-                      is-readonly="::isFieldReadonly('redis')"></span>
+                      is-readonly="fieldGroupReadonly('Redis')"></span>
               </td>
             </tr>
             <tr>
@@ -339,7 +344,7 @@
                 <span class="config-numeric-field"
                       binding="mapped.redis.port"
                       default-value="6379"
-                      is-readonly="::isFieldReadonly('redis')"></span>
+                      is-readonly="fieldGroupReadonly('Redis')"></span>
                 <div class="help-text">
                   Access to this port and hostname must be allowed from all hosts running
                   the enterprise registry
@@ -353,7 +358,7 @@
                        type="password"
                        ng-model="mapped.redis.password"
                        placeholder="Optional password for connecting to redis"
-                       ng-readonly="::isFieldReadonly('redis')">
+                       ng-readonly="fieldGroupReadonly('Redis')">
               </td>
             </tr>
           </table>
@@ -396,9 +401,12 @@
               <div class="co-alert co-alert-danger">
                 Do not use "Locally mounted directory" Storage Engine for any production configurations. Mounted NFS volumes are not supported. Local storage is meant for test-only installations.
               </div>
+              <div class="co-alert co-alert-danger" ng-if="fieldGroupReadonly('DistributedStorage')">
+                The registry storage configuration is currently managed externally. <button class="btn btn-link" ng-click="changeFieldGroupReadonly('DistributedStorage', false)">Edit fields</button>
+              </div>
             </p>
 
-            <div class="config-bool-field" binding="config.FEATURE_PROXY_STORAGE">
+            <div class="config-bool-field" binding="config.FEATURE_PROXY_STORAGE" is-readonly="fieldGroupReadonly('DistributedStorage')">
               Proxy storage via <span class="registry-name"></span>
               <div class="help-text">
                 If enabled, all requests to storage engine(s) will be proxied through
@@ -407,7 +415,7 @@
               </div>
             </div>
 
-            <div class="config-bool-field feature-storage-replication" binding="config.FEATURE_STORAGE_REPLICATION">
+            <div class="config-bool-field feature-storage-replication" binding="config.FEATURE_STORAGE_REPLICATION" is-readonly="fieldGroupReadonly('DistributedStorage')">
               Enable Storage Replication
               <div class="help-text">
                 If enabled, replicates storage to other regions. See
@@ -423,7 +431,7 @@
                   <td>
                     <input class="form-control" ng-if="allowChangeLocationStorageConfig(sc.location)"
                            ng-class="storageConfigError[$index].location ? 'ng-invalid' : ''" ng-model="sc.location"
-                           ng-pattern="/^[a-zA-Z0-9_-]+$/" required>
+                           ng-pattern="/^[a-zA-Z0-9_-]+$/" ng-disabled="fieldGroupReadonly('DistributedStorage')" required>
                     <div ng-if="!allowChangeLocationStorageConfig(sc.location)">
                       {{ sc.location }}
                     </div>
@@ -438,7 +446,7 @@
                 <tr ng-if="config.FEATURE_STORAGE_REPLICATION">
                   <td class="non-input">Set Default:</td>
                   <td>
-                    <div class="config-bool-field" binding="sc.defaultLocation">
+                    <div class="config-bool-field" binding="sc.defaultLocation" is-readonly="fieldGroupReadonly('DistributedStorage')">
                       Replicate to storage engine by default
                     </div>
                   </td>
@@ -448,7 +456,7 @@
                   <td class="non-input">Storage Engine:</td>
                   <td>
                     <select class="form-control" ng-class="storageConfigError[$index].engine ? 'ng-invalid' : ''"
-                            ng-model="sc.data[0]">
+                            ng-model="sc.data[0]" ng-disabled="fieldGroupReadonly('DistributedStorage')">
                       <option value="RHOCSStorage">Red Hat OpenShift Container Storage (NooBaa S3)</option>
                       <option value="LocalStorage">Locally mounted directory</option>
                       <option value="S3Storage">Amazon S3</option>
@@ -470,22 +478,23 @@
                   <td>{{ field.title }}:</td>
                   <td>
                     <span class="config-map-field" binding="sc.data[1][field.name]" ng-if="field.kind == 'map'"
-                          keys="field.keys"></span>
+                          keys="field.keys" is-readonly="fieldGroupReadonly('DistributedStorage')"></span>
                     <span class="config-string-field" binding="sc.data[1][field.name]"
                           placeholder="{{ field.placeholder }}" pattern="{{ field.pattern }}" ng-if="field.kind == 'text'"
-                          is-optional="field.optional"></span>
+                          is-optional="field.optional" is-readonly="fieldGroupReadonly('DistributedStorage')"></span>
                     <span class="config-password-field" binding="sc.data[1][field.name]"
                           placeholder="{{ field.placeholder }}" pattern="{{ field.pattern }}" ng-if="field.kind == 'password'"
-                          is-optional="field.optional"></span>
-                    <span class="config-bool-field" binding="sc.data[1][field.name]" ng-if="field.kind == 'bool'">
+                          is-optional="field.optional" is-readonly="fieldGroupReadonly('DistributedStorage')"></span>
+                    <span class="config-bool-field" binding="sc.data[1][field.name]" ng-if="field.kind == 'bool'" is-readonly="fieldGroupReadonly('DistributedStorage')">
                       {{ field.placeholder }}
                     </span>
                     <span class="config-file-field" filename="{{ sc.location + '-' + field.filesuffix }}"
                           binding="sc.data[1][field.name]"
                           has-file="hasfile['contact-' + sc.location + '-' + field.filesuffix]"
-                          ng-if="field.kind == 'file'"></span>
+                          ng-if="field.kind == 'file'"
+                          is-readonly="fieldGroupReadonly('DistributedStorage')"></span>
                     <div ng-if="field.kind == 'option'">
-                      <select class="form-control" ng-model="sc.data[1][field.name]">
+                      <select class="form-control" ng-model="sc.data[1][field.name]" ng-disabled="fieldGroupReadonly('DistributedStorage')">
                         <option ng-repeat="value in field.values" value="{{ value }}"
                                 ng-selected="sc.data[1][field.name] == value">{{ value }}</option>
                       </select>
@@ -556,32 +565,28 @@
               <td>Elasticsearch access key:</td>
               <td>
                 <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.access_key"
-                      placeholder="The Elasticsearch access key"
-                </span>
+                      placeholder="The Elasticsearch access key"></span>
               </td>
             </tr>
             <tr>
               <td>Elasticsearch secret key:</td>
               <td>
                 <span class="config-password-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.secret_key"
-                      placeholder="The Elasticsearch secret key"
-                </span>
+                      placeholder="The Elasticsearch secret key"></span>
               </td>
             </tr>
             <tr>
               <td>AWS region:</td>
               <td>
                 <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.aws_region"
-                      placeholder="The AWS region (optional)" is-optional="true"
-                </span>
+                      placeholder="The AWS region (optional)" is-optional="true"></span>
               </td>
             </tr>
             <tr>
               <td>Index prefix:</td>
               <td>
                 <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.elasticsearch_config.index_prefix"
-                      default-value="logentry_" placeholder="The Elasticsearch index_prefix"
-                </span>
+                      default-value="logentry_" placeholder="The Elasticsearch index_prefix"></span>
               </td>
             </tr>
             <tr>
@@ -602,32 +607,28 @@
               <td>Stream name:</td>
               <td>
                 <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.stream_name"
-                      placeholder="The Kinesis stream name"
-                </span>
+                      placeholder="The Kinesis stream name"></span>
               </td>
             </tr>
             <tr>
               <td>AWS access key:</td>
               <td>
                 <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_access_key"
-                      placeholder="The AWS access key"
-                </span>
+                      placeholder="The AWS access key"></span>
               </td>
             </tr>
             <tr>
               <td>AWS secret key:</td>
               <td>
                 <span class="config-password-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_secret_key"
-                      placeholder="The AWS secret key"
-                </span>
+                      placeholder="The AWS secret key"></span>
               </td>
             </tr>
             <tr>
               <td>AWS region:</td>
               <td>
                 <span class="config-string-field" binding="mapped.LOGS_MODEL_CONFIG.kinesis_stream_config.aws_region"
-                      placeholder="The AWS region"
-                </span>
+                      placeholder="The AWS region"></span>
               </td>
             </tr>
           </table>
@@ -710,7 +711,11 @@
             </p>
           </div>
 
-          <div class="config-bool-field" binding="config.FEATURE_SECURITY_SCANNER">
+          <div class="co-alert co-alert-danger" ng-if="fieldGroupReadonly('SecurityScanner')">
+            The security scanner configuration is currently managed externally. <button class="btn btn-link" ng-click="changeFieldGroupReadonly('SecurityScanner', false)">Edit fields</button>
+          </div>
+
+          <div class="config-bool-field" binding="config.FEATURE_SECURITY_SCANNER" is-readonly="fieldGroupReadonly('SecurityScanner')">
             Enable Security Scanning
           </div>
           <div class="co-alert co-alert-info" ng-if="config.FEATURE_SECURITY_SCANNER" style="margin-top: 20px;">
@@ -727,7 +732,7 @@
               <td>
                 <span class="config-string-field" binding="config.SECURITY_SCANNER_V4_ENDPOINT"
                       placeholder="Security Scanner API endpoint (Example: http://myhost)"
-                      pattern="http(s)?://.+"></span>
+                      pattern="http(s)?://.+" is-readonly="fieldGroupReadonly('SecurityScanner')"></span>
                 <div class="help-text">
                   The HTTP URL at which the security scanner is running.
                 </div>
@@ -2061,7 +2066,6 @@
             <button class="btn btn-primary" ng-click="downloadConfig()">
               Download
             </button>
-            <!-- FIXME(alecmerdler): Only show if running under Operator -->
             <button class="btn btn-primary" ng-if="operatorEndpoint" ng-click="commitToOperator()">
               Reconfigure Quay
             </button>

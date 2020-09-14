@@ -2,6 +2,6 @@
   <form name="fieldform" novalidate>
     <input type="number" class="form-control" placeholder="{{ placeholder || '' }}"
            ng-model="bindinginternal" ng-trim="false" ng-minlength="1" required
-           ng-readonly="::isReadonly">
+           ng-readonly="isReadonly">
   </form>
 </div>
