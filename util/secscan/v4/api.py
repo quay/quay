@@ -11,6 +11,7 @@ from six import add_metaclass
 from urllib.parse import urljoin
 from jsonschema import validate, RefResolver
 
+from _init import CONF_DIR
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.model.storage import get_storage_locations
 
@@ -18,6 +19,10 @@ from data.model.storage import get_storage_locations
 logger = logging.getLogger(__name__)
 
 DOWNLOAD_VALIDITY_LIFETIME_S = 60  # Amount of time the security scanner has to call the layer URL
+
+MITM_CERT_PATH = os.path.join(CONF_DIR, "mitm.cert")
+
+DEFAULT_HTTP_HEADERS = {"Connection": "close"}
 
 
 class Non200ResponseException(Exception):
@@ -172,10 +177,25 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
     def _perform(self, action):
         (method, path, body) = action.payload
         url = urljoin(self.secscan_api_endpoint, path)
+        signer_proxy_url = self._config.get("JWTPROXY_SIGNER", "localhost:8081")
+        timeout = self._config.get(
+            "SECURITY_SCANNER_API_BATCH_TIMEOUT_SECONDS"
+        ) or self._config.get("SECURITY_SCANNER_API_TIMEOUT_SECONDS", 1)
 
         logger.debug("%sing security URL %s", method.upper(), url)
         try:
-            resp = self._client.request(method, url, json=body)
+            resp = self._client.request(
+                method,
+                url,
+                json=body,
+                timeout=timeout,
+                verify=MITM_CERT_PATH,
+                headers=DEFAULT_HTTP_HEADERS,
+                proxies={
+                    "https": "https://%s" % signer_proxy_url,
+                    "http": "http://%s" % signer_proxy_url
+                },
+            )
         except requests.exceptions.ConnectionError as ce:
             logger.exception("Connection error when trying to connect to security scanner endpoint")
             msg = "Connection error when trying to connect to security scanner endpoint: %s" % str(
