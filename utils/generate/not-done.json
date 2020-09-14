@@ -280,11 +280,6 @@
       "type": "array",
       "description": "The array of namespace names that support V1 push if FEATURE_RESTRICTED_V1_PUSH is set to true."
     },
-    "FEATURE_PROXY_STORAGE": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether to proxy all direct download URLs in storage via the registry nginx. Defaults to False"
-    },
     "DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT": {
       "x-example": 20,
       "type": ["number", "null"],
