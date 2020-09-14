@@ -15,6 +15,7 @@ type DistributedStorageFieldGroup struct {
 	DistributedStoragePreference       []string                                 `default:"[]" validate:"" json:"DISTRIBUTED_STORAGE_PREFERENCE" yaml:"DISTRIBUTED_STORAGE_PREFERENCE"`
 	DistributedStorageDefaultLocations []string                                 `default:"[]" validate:"" json:"DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS" yaml:"DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS"`
 	FeatureStorageReplication          bool                                     `default:"false" validate:"" json:"FEATURE_STORAGE_REPLICATION" yaml:"FEATURE_STORAGE_REPLICATION"`
+	FeatureProxyStorage                bool                                     `default:"false" validate:"" json:"FEATURE_PROXY_STORAGE,omitempty" yaml:"FEATURE_PROXY_STORAGE,omitempty"`
 }
 
 // DistributedStorageDefinition represents a single storage configuration as a tuple (Name, Arguments)
@@ -36,7 +37,6 @@ func NewDistributedStorageFieldGroup(fullConfig map[string]interface{}) (*Distri
 	}
 
 	if value, ok := fullConfig["DISTRIBUTED_STORAGE_PREFERENCE"]; ok {
-
 		for _, element := range value.([]interface{}) {
 			strElement, ok := element.(string)
 			if !ok {
@@ -51,7 +51,6 @@ func NewDistributedStorageFieldGroup(fullConfig map[string]interface{}) (*Distri
 	}
 
 	if value, ok := fullConfig["DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS"]; ok {
-
 		for _, element := range value.([]interface{}) {
 			strElement, ok := element.(string)
 			if !ok {
@@ -66,11 +65,9 @@ func NewDistributedStorageFieldGroup(fullConfig map[string]interface{}) (*Distri
 	}
 
 	if value, ok := fullConfig["DISTRIBUTED_STORAGE_CONFIG"]; ok {
-
 		var err error
 		value := shared.FixInterface(value.(map[interface{}]interface{}))
 		for k, v := range value {
-
 			if _, ok := v.([]interface{}); !ok {
 				return newDistributedStorageFieldGroup, errors.New("DISTRIBUTED_STORAGE_CONFIG object values must be of form (Name, Args)")
 			}
@@ -110,7 +107,6 @@ func NewDistributedStorageDefinition(storageDef []interface{}) (*DistributedStor
 	}
 
 	return newDistributedStorageDefinition, nil
-
 }
 
 // NewDistributedStorageArgs creates a new DistributedStorageArgs type
@@ -168,7 +164,6 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 	}
 
 	return newDistributedStorageArgs, nil
-
 }
 
 func (ds DistributedStorageDefinition) UnmarshalJSON(buf []byte) error {
