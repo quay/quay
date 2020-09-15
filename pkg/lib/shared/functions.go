@@ -50,7 +50,7 @@ func LoadCerts(dir string) map[string][]byte {
 	// Get filenames in directory
 	certs := make(map[string][]byte)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() || strings.Contains(path, "..") || !strings.HasSuffix(path, ".crt") {
+		if info.IsDir() || strings.Contains(path, "..") || (!strings.HasSuffix(path, ".crt") && !strings.HasSuffix(path, ".cert") && !strings.HasSuffix(path, ".key")) {
 			return nil
 		}
 

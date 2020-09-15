@@ -1,3 +1,11 @@
+// @title Config Tool Editor API
+// @version 0.0
+// @contact.name Jonathan King
+// @contact.email joking@redhat.com
+// @host localhost:8080
+// @BasePath /api/v1
+// @securityDefinitions.basic BasicAuth
+
 package editor
 
 import (
@@ -28,20 +36,12 @@ type ServerOptions struct {
 	podName             string // Optional
 }
 
-// ConfigState is the current state of the config bundle on the server. It may read from a path on disk and then edited through the API.
-type ConfigState struct {
-	Config       map[string]interface{}
-	Certificates []byte
+// ConfigBundle is the current state of the config bundle on the server. It may read from a path on disk and then edited through the API.
+type ConfigBundle struct {
+	Config             map[string]interface{} `json:"config.yaml" yaml:"config.yaml"`
+	Certificates       map[string][]byte      `json:"certs" yaml:"certs"`
+	ManagedFieldGroups []string               `json:"managedFieldGroups" yaml:"managedFieldGroups"`
 }
-
-// @title Config Tool Editor API
-// @version 0.0
-
-// @contact.name Jonathan King
-// @contact.email joking@redhat.com
-
-// @host localhost:8080
-// @BasePath /api/v1
 
 // RunConfigEditor runs the configuration editor server.
 func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFieldGroups []string) {
@@ -55,6 +55,9 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	if operatorEndpoint != "" && (podNamespace == "" || podName == "") {
 		panic("If you would like to use operator reconfiguration features you must specify your namespace and pod name") // FIXME (jonathan) - come up with better error message
 	}
+	if readOnlyFieldGroups == nil {
+		readOnlyFieldGroups = []string{}
+	}
 
 	opts := &ServerOptions{
 		username:            "quayconfig", // FIXME (jonathan) - add option to change username
@@ -67,7 +70,6 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 		podNamespace:        podNamespace,
 		podName:             podName,
 	}
-	configState := &ConfigState{}
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(opts.password), 5)
 	authenticator := auth.NewBasicAuthenticator(opts.username, func(user, realm string) string {
@@ -88,23 +90,21 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
+	// Function handlers
 	r.Get("/", rootHandler(opts))
-	r.Get("/api/v1/config", auth.JustCheck(authenticator, loadMountedConfigBundle(opts, configState)))
-	// http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, loadMountedConfigBundle(opts, configState)))
-	// http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, certificateHandler(configPath)))
-	// http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
-	// http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator(configPath)))
-	// http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(opts)))
+	r.Get("/api/v1/config", auth.JustCheck(authenticator, getMountedConfigBundle(opts)))
+	r.Post("/api/v1/config/validate", auth.JustCheck(authenticator, validateConfigBundle(opts)))
+	r.Post("/api/v1/config/download", auth.JustCheck(authenticator, downloadConfigBundle(opts)))
+	r.Post("/api/v1/config/operator", auth.JustCheck(authenticator, commitToOperator(opts)))
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:7070/docs/swagger.json"), // FIXME(jonathan) - This can eventually be changed to the github link to this file.
 	))
 
+	// File handlers
 	r.Get("/static/*", func(w http.ResponseWriter, r *http.Request) {
 		fs := http.StripPrefix("/static/", http.FileServer(http.Dir(opts.staticContentPath)))
 		fs.ServeHTTP(w, r)
 	})
-
-	// Once swagger.json is on github, we don't need to serve it (this is just for testing)
 	r.Get("/docs/*", func(w http.ResponseWriter, r *http.Request) {
 		fs := http.StripPrefix("/docs/", http.FileServer(http.Dir("docs")))
 		fs.ServeHTTP(w, r)

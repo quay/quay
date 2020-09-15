@@ -28,12 +28,9 @@ var doc = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/accounts/{id}": {
+        "/api/v1/config": {
             "get": {
-                "description": "This endpoint will validate a configuration state.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "This endpoint will load the config bundle mounted by the config-tool into memory. This state can then be modified, validated, downloaded, and optionally committed to a Quay operator instance.",
                 "produces": [
                     "application/json"
                 ],

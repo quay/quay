@@ -235,7 +235,7 @@ angular.module("quay-config")
           var errorDisplay = ApiService.errorDisplay(
               'Could not validate configuration. Please report this error.');
 
-          ApiService.validateConfig($scope.config).then(function(resp) {
+          ApiService.validateConfigBundle($scope.config).then(function(resp) {
             $scope.validationStatus = resp.length == 0 ? 'success' : 'error';
             $scope.validationResult = resp;
           }, errorDisplay);
@@ -247,7 +247,7 @@ angular.module("quay-config")
           })
         }
 
-        $scope.downloadConfig = function() {
+        $scope.downloadConfigBundle = function() {
           ApiService.downloadConfig($scope.config).then(function(resp) {
             console.log(resp)
           })
@@ -761,9 +761,9 @@ angular.module("quay-config")
         $scope.$watch('isActive', function(value) {
           if (!value) { return; }
 
-          ApiService.getConfig().then(function(resp) {
+          ApiService.getMountedConfigBundle().then(function(resp) {
             $scope.config = resp["config.yaml"] || {};
-            $scope.certs = resp["certs"] || {}
+            $scope.certs = resp["certs"] || {};
             $scope.originalConfig = Object.assign({}, resp["config.yaml"] || {});;
             initializeMappedLogic($scope.config);
             initializeStorageConfig($scope);
@@ -1370,6 +1370,7 @@ angular.module("quay-config")
       transclude: false,
       restrict: 'C',
       scope: {
+        'certs': '=certs',
       },
       controller: function($scope, $element, ApiService) {
         $scope.resetUpload = 0;

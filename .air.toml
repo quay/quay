@@ -7,7 +7,7 @@ cmd = "cd /jssrc && npm run build && rm -rf /go/src/config-tool/pkg/lib/editor/s
 # Binary file yields from `cmd`.
 bin = 'tmp/main editor --config-dir=/conf --password=password'
 # Watch these filename extensions.
-include_ext = ["go", "js", "html", "toml"]
+include_ext = ["go", "js", "html", "toml", "json", "yaml"]
 # Ignore these filename extensions or directories.
 exclude_dir = ["pkg/lib/editor/static/build", "pkg/lib/editor/node_modules"]
 

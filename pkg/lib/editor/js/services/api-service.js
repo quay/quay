@@ -9,28 +9,20 @@ angular.module("quay-config").factory("ApiService", [
   function (Restangular, $q, UtilService) {
     var apiService = {};
 
-    apiService.getConfig = function () {
+    apiService.getMountedConfigBundle = function () {
       return Restangular.one("config").get();
     };
 
-    apiService.validateConfig = function (config) {
-      return Restangular.one("config/validate").post(null, config);
+    apiService.downloadConfigBundle = function (configBundle) {
+      return Restangular.one("config/download").post(null, configBundle);
     };
 
-    apiService.commitToOperator = function (config, managedFieldGroups) {
-      return Restangular.one("config/commitToOperator")
-        .post(null, {
-          "config.yaml": config, 
-          "managedFieldGroups": managedFieldGroups
-        });
+    apiService.validateConfigBundle = function (configBundle) {
+      return Restangular.one("config/validate").post(null, configBundle);
     };
 
-    apiService.downloadConfig = function (config) {
-      return Restangular.one("config/downloadConfig").post(null, config);
-    };
-
-    apiService.getCertificates = function () {
-      return Restangular.one("certificates").get();
+    apiService.commitToOperator = function (confiBundle) {
+      return Restangular.one("config/operator").post(null, configBundle);
     };
 
     apiService.getErrorMessage = function (resp, defaultMessage) {

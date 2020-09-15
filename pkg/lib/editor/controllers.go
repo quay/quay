@@ -1,14 +1,17 @@
 package editor
 
 import (
+	"archive/tar"
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/quay/config-tool/pkg/lib/config"
+	"github.com/quay/config-tool/pkg/lib/shared"
 	"gopkg.in/yaml.v2"
 )
 
@@ -31,137 +34,13 @@ func rootHandler(opts *ServerOptions) func(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// // downloadConfig
-// func downloadConfigState(opts *ServerOptions, confState *ConfigState) func(http.ResponseWriter, *http.Request) {
-
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		if r.Method != "POST" {
-// 			w.WriteHeader(405)
-// 			return
-// 		}
-
-// 		var conf map[string]interface{}
-// 		err := yaml.NewDecoder(r.Body).Decode(&conf)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
-
-// 		for name, cert := range shared.LoadCerts(opts.configPath) {
-// 			certStore[name] = cert
-// 		}
-
-// 		files := make(map[string][]byte)
-// 		files["config.yaml"], err = yaml.Marshal(conf)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-// 		for name, contents := range certStore {
-// 			files[name] = contents
-// 		}
-
-// 		var buf bytes.Buffer
-// 		tw := tar.NewWriter(&buf)
-// 		hdr := &tar.Header{
-// 			Name:     "extra_ca_certs/",
-// 			Typeflag: tar.TypeDir,
-// 			Mode:     0777,
-// 		}
-// 		if err := tw.WriteHeader(hdr); err != nil {
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-// 		for name, contents := range files {
-// 			hdr := &tar.Header{
-// 				Name: name,
-// 				Mode: 0777,
-// 				Size: int64(len(contents)),
-// 			}
-// 			if err := tw.WriteHeader(hdr); err != nil {
-// 				http.Error(w, err.Error(), http.StatusInternalServerError)
-// 				return
-// 			}
-// 			if _, err := tw.Write(contents); err != nil {
-// 				http.Error(w, err.Error(), http.StatusInternalServerError)
-// 				return
-// 			}
-// 		}
-// 		tw.Close()
-
-// 		w.Header().Set("Content-type", "application/zip")
-// 		w.Header().Set("Content-Disposition", "attachment; filename=quay-config.tar.gz")
-// 		w.Write(buf.Bytes())
-// 	}
-
-// }
-
-// // @Summary Validate a configuration state
-// // @Description This endpoint will validate a configuration state.
-// // @Accept  json
-// // @Produce  json
-// // @Success 200 {object} model.Account
-// // @Header 200 {string} Token "qwerty"
-// // @Failure 400 {object} httputil.HTTPError
-// // @Failure 404 {object} httputil.HTTPError
-// // @Failure 500 {object} httputil.HTTPError
-// // @Router /accounts/{id} [get]
-// func validateConfigState(configPath string, certStore map[string][]byte) func(http.ResponseWriter, *http.Request) {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-
-// 		if r.Method != "POST" {
-// 			w.WriteHeader(405)
-// 			return
-// 		}
-
-// 		var c map[string]interface{}
-// 		err := yaml.NewDecoder(r.Body).Decode(&c)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
-
-// 		loaded, err := config.NewConfig(c)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
-
-// 		for name, cert := range shared.LoadCerts(configPath) {
-// 			certStore[name] = cert
-// 		}
-
-// 		opts := shared.Options{
-// 			Mode:         "online",
-// 			Certificates: certStore,
-// 		}
-
-// 		errors := loaded.Validate(opts)
-
-// 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
-// 		js, err := json.Marshal(errors)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-
-// 		w.Header().Add("Content-Type", "application/json")
-// 		w.Write(js)
-// 	}
-// }
-
-// @Summary Load the mounted config bundle into local state
-// @Description This endpoint will validate a configuration state.
-// @Accept  json
+// @Summary Returns the mounted config bundle.
+// @Description This endpoint will load the config bundle mounted by the config-tool into memory. This state can then be modified, validated, downloaded, and optionally committed to a Quay operator instance.
 // @Produce  json
 // @Header 200 {string} Token "qwerty"
-// @Router /accounts/{id} [get]
-func loadMountedConfigBundle(opts *ServerOptions, configState *ConfigState) func(http.ResponseWriter, *http.Request) {
+// @Router /config [get]
+func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			w.WriteHeader(405)
-			return
-		}
 
 		// Read config file
 		configFilePath := path.Join(opts.configPath, "config.yaml")
@@ -172,26 +51,19 @@ func loadMountedConfigBundle(opts *ServerOptions, configState *ConfigState) func
 		}
 
 		// Load config into struct
-		var conf map[string]interface{}
-		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
+		var config map[string]interface{}
+		if err = yaml.Unmarshal(configBytes, &config); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// Get filenames in directory
-		var certs []string
-		err = filepath.Walk(opts.configPath, func(path string, info os.FileInfo, err error) error {
-			if info.IsDir() {
-				return nil
-			}
-			certs = append(certs, path)
-			return nil
-		})
+		// Get all certs in directory
+		certs := shared.LoadCerts(opts.configPath)
 
-		// Build response
-		resp := map[string]interface{}{
-			"config.yaml": conf,
-			"certs":       certs,
+		fmt.Println(len(certs))
+		resp := ConfigBundle{
+			Config:       config,
+			Certificates: certs,
 		}
 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		js, err := json.Marshal(resp)
@@ -205,162 +77,194 @@ func loadMountedConfigBundle(opts *ServerOptions, configState *ConfigState) func
 	}
 }
 
-// // @Summary Load the mounted config bundle into local state
-// // @Description This endpoint will validate a configuration state.
-// // @Accept  json
-// // @Produce  json
-// // @Success 200 {object} model.Account
-// // @Header 200 {string} Token "qwerty"
-// // @Failure 400 {object} httputil.HTTPError
-// // @Failure 404 {object} httputil.HTTPError
-// // @Failure 500 {object} httputil.HTTPError
-// // @Router /accounts/{id} [get]
-// func uploadCertificate(configDir string) func(http.ResponseWriter, *http.Request) {
-// 	return func(w http.ResponseWriter, r *http.Request) {
+// @Summary Downloads a config bundle as a tar.gz
+// @Description This endpoint will download the config bundle in the request body as a tar.gz
+// @Accept  json
+// @Produce  json
+// @Success 200
+// @Header 200
+// @Failure 400
+// @Failure 404
+// @Failure 500
+// @Router /config/downloadConfig [post]
+func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var confBundle ConfigBundle
+		err := yaml.NewDecoder(r.Body).Decode(&confBundle)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-// 		err := r.ParseMultipartForm(10 << 20)
-// 		if err != nil {
-// 			fmt.Printf("error parsing request body as form data: %s", err.Error())
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
+		files := make(map[string][]byte)
+		files["config.yaml"], err = yaml.Marshal(confBundle.Config)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for certName, contents := range confBundle.Certificates {
+			files[certName] = contents
+		}
 
-// 		file, handler, err := r.FormFile("ca.crt")
-// 		if err != nil {
-// 			fmt.Printf("error parsing request body for certificate: %s", err.Error())
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
-// 		defer file.Close()
-// 		// FIXME(alecmerdler): Debugging
-// 		fmt.Printf("Uploaded File: %+v\n", handler.Filename)
-// 		fmt.Printf("File Size: %+v\n", handler.Size)
-// 		fmt.Printf("MIME Header: %+v\n", handler.Header)
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+		hdr := &tar.Header{
+			Name:     "extra_ca_certs/",
+			Typeflag: tar.TypeDir,
+			Mode:     0777,
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for name, contents := range files {
+			hdr := &tar.Header{
+				Name: name,
+				Mode: 0777,
+				Size: int64(len(contents)),
+			}
+			if err := tw.WriteHeader(hdr); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if _, err := tw.Write(contents); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		tw.Close()
 
-// 		fileBytes, err := ioutil.ReadAll(file)
-// 		if err != nil {
-// 			fmt.Printf("error reading certificate file: %s", err.Error())
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
+		w.Header().Set("Content-type", "application/zip")
+		w.Header().Set("Content-Disposition", "attachment; filename=quay-config.tar.gz")
+		w.Write(buf.Bytes())
+	}
+}
 
-// 		certStore[handler.Filename] = fileBytes
+// @Summary Validates a config bundle.
+// @Description N/A
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} model.Account
+// @Header 200 {string} Token "qwerty"
+// @Failure 400 {object} httputil.HTTPError
+// @Failure 404 {object} httputil.HTTPError
+// @Failure 500 {object} httputil.HTTPError
+// @Router /accounts/{id} [get]
+func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 
-// 		w.WriteHeader(201)
-// 		w.Write([]byte("Success"))
+		if r.Method != "POST" {
+			w.WriteHeader(405)
+			return
+		}
 
-// 	}
-// }
+		var configBundle ConfigBundle
+		err := yaml.NewDecoder(r.Body).Decode(&configBundle)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-// func getCertificates(configDir string) func(http.ResponseWriter, *http.Request) {
-// 	return func(w http.ResponseWriter, r *http.Request) {
+		loaded, err := config.NewConfig(configBundle.Config)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-// 		certMeta := []map[string]interface{}{}
-// 		for name, cert := range shared.LoadCerts(configDir) {
-// 			certStore[name] = cert
-// 		}
+		opts := shared.Options{
+			Mode:         "online",
+			Certificates: configBundle.Certificates,
+		}
 
-// 		for name := range certStore {
-// 			md := map[string]interface{}{
-// 				"path":    name,
-// 				"names":   name,
-// 				"expired": false,
-// 			}
-// 			certMeta = append(certMeta, md)
-// 		}
-// 		resp := map[string]interface{}{
-// 			"status": "directory",
-// 			"certs":  certMeta,
-// 		}
-// 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
-// 		js, err := json.Marshal(resp)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-// 		w.Header().Add("Content-Type", "application/json")
-// 		w.Write(js)
+		errors := loaded.Validate(opts)
 
-// 	}
-// }
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
+		js, err := json.Marshal(errors)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-// type commitRequest struct {
-// 	Config             map[string]interface{} `json:"config.yaml" yaml:"config.yaml"`
-// 	ManagedFieldGroups []string               `json:"managedFieldGroups" yaml:"managedFieldGroups"`
-// }
+		w.Header().Add("Content-Type", "application/json")
+		w.Write(js)
+	}
+}
 
-// // commitToOperator handles an HTTP POST request containing a new `config.yaml`,
-// // adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
-// func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.Request) {
+// @Summary Commits a config bundle to a Quay operator instance.
+// @Description N/A
+// @Accept  json
+// @Produce  json
+// @Success 200 {object} model.Account
+// @Header 200 {string} Token "qwerty"
+// @Failure 400 {object} httputil.HTTPError
+// @Failure 404 {object} httputil.HTTPError
+// @Failure 500 {object} httputil.HTTPError
+// @Router /accounts/{id} [get]
+// commitToOperator handles an HTTP POST request containing a new `config.yaml`,
+// adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
+func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			w.WriteHeader(405)
+			return
+		}
 
-// 	quayRegistryName := strings.Split(opts.podName, "-quay-config-editor")[0]
+		var configBundle ConfigBundle
+		err := yaml.NewDecoder(r.Body).Decode(&configBundle)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		if r.Method != "POST" {
-// 			w.WriteHeader(405)
-// 			return
-// 		}
+		// TODO(alecmerdler): For each managed component fieldgroup, remove its fields from `config.yaml` using `Fields()` function...
+		newConfig, err := config.NewConfig(configBundle.Config)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-// 		var request commitRequest
-// 		err := yaml.NewDecoder(r.Body).Decode(&request)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
+		for _, fieldGroup := range configBundle.ManagedFieldGroups {
+			fields := newConfig[fieldGroup].Fields()
+			// FIXME(alecmerdler): Debugging
+			fmt.Println(fields)
+			for _, field := range fields {
+				delete(configBundle.Config, field)
+			}
+		}
 
-// 		for name, cert := range shared.LoadCerts(opts.configPath) {
-// 			certStore[name] = cert
-// 		}
+		// TODO: Define struct type for this with correct `yaml` tags
+		preSecret := map[string]interface{}{
+			"quayRegistryName": strings.Split(opts.podName, "-quay-config-editor")[0],
+			"namespace":        opts.podNamespace,
+			"config.yaml":      configBundle.Config,
+			"certs":            configBundle.Certificates,
+		}
 
-// 		// TODO(alecmerdler): For each managed component fieldgroup, remove its fields from `config.yaml` using `Fields()` function...
-// 		newConfig, err := config.NewConfig(request.Config)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
+		var json = jsoniter.ConfigCompatibleWithStandardLibrary
+		js, err := json.Marshal(preSecret)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-// 		for _, fieldGroup := range request.ManagedFieldGroups {
-// 			fields := newConfig[fieldGroup].Fields()
-// 			// FIXME(alecmerdler): Debugging
-// 			fmt.Println(fields)
-// 			for _, field := range fields {
-// 				delete(request.Config, field)
-// 			}
-// 		}
+		// FIXME: Currently hardcoding
+		req, err := http.NewRequest("POST", opts.operatorEndpoint+"/reconfigure", bytes.NewBuffer(js))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
-// 		// TODO: Define struct type for this with correct `yaml` tags
-// 		preSecret := map[string]interface{}{
-// 			"quayRegistryName": quayRegistryName,
-// 			"namespace":        opts.podNamespace,
-// 			"config.yaml":      request.Config,
-// 			"certs":            certStore,
-// 		}
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-// 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
-// 		js, err := json.Marshal(preSecret)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
+		defer resp.Body.Close()
 
-// 		// FIXME: Currently hardcoding
-// 		req, err := http.NewRequest("POST", opts.operatorEndpoint+"/reconfigure", bytes.NewBuffer(js))
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusBadRequest)
-// 			return
-// 		}
-
-// 		req.Header.Set("Content-Type", "application/json")
-// 		client := &http.Client{}
-// 		resp, err := client.Do(req)
-// 		if err != nil {
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-
-// 		defer resp.Body.Close()
-
-// 		w.Header().Add("Content-Type", "application/json")
-// 		w.Write(js)
-// 	}
-// }
+		w.Header().Add("Content-Type", "application/json")
+		w.Write(js)
+	}
+}
