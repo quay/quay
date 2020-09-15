@@ -51,9 +51,9 @@ func init() {
 
 	// Add --operator-endpoint flag
 	editorCmd.Flags().StringVarP(&operatorEndpoint, "operator-endpoint", "e", "", "The endpoint to commit a validated config bundle to")
-	editorCmd.MarkFlagRequired("operator-endpoint")
+	// editorCmd.MarkFlagRequired("operator-endpoint")
 
 	// Add --readonly-fieldgroups flag
 	editorCmd.Flags().StringVarP(&readonlyFieldGroups, "readonly-fieldgroups", "r", "", "Comma-separated list of fieldgroups that should be treated as read-only")
-	editorCmd.MarkFlagRequired("readonly-fieldgroups")
+	// editorCmd.MarkFlagRequired("readonly-fieldgroups")
 }

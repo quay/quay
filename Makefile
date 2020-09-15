@@ -25,3 +25,5 @@ build-local-dev:
 run-local-dev:
 	sudo podman run -p 7070:8080 -v ./pkg/lib/editor/js:/jssrc/js -v ./pkg/lib/editor/editor.go:/jssrc/editor.go -v ./:/go/src/config-tool -v ${CONFIG_MOUNT}:/conf -e MY_POD_NAMESPACE=${MY_POD_NAMESPACE} -e MY_POD_NAME=${MY_POD_NAME} -ti config-app:dev
 
+swagger:
+	swag init -g pkg/lib/editor/editor.go

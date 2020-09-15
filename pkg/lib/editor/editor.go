@@ -1,393 +1,114 @@
 package editor
 
 import (
-	"archive/tar"
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
 	"os"
-	"path"
-	"path/filepath"
-	"strings"
 
 	auth "github.com/abbot/go-http-auth"
-	bcrypt "golang.org/x/crypto/bcrypt"
-	"gopkg.in/yaml.v2"
-
-	jsoniter "github.com/json-iterator/go"
-	config "github.com/quay/config-tool/pkg/lib/config"
-	shared "github.com/quay/config-tool/pkg/lib/shared"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	_ "github.com/quay/config-tool/docs"
+	httpSwagger "github.com/swaggo/http-swagger"
+	"golang.org/x/crypto/bcrypt"
 )
 
-const port = 8080
-const editorUsername = "quayconfig"
-
-func handler(staticContentPath, operatorEndpoint string, readonlyFieldGroups []string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			p := staticContentPath + "/index.html"
-
-			if len(operatorEndpoint) > 0 {
-				http.SetCookie(w, &http.Cookie{Name: "QuayOperatorEndpoint", Value: operatorEndpoint})
-			}
-
-			http.SetCookie(w, &http.Cookie{Name: "QuayReadOnlyFieldGroups", Value: strings.Join(readonlyFieldGroups, ",")})
-
-			http.ServeFile(w, r, p)
-			return
-		}
-
-		w.WriteHeader(404)
-	}
+// ServerOptions holds information regarding the set up of the config-tool server
+type ServerOptions struct {
+	username            string
+	password            string
+	port                int
+	configPath          string
+	staticContentPath   string
+	operatorEndpoint    string
+	readOnlyFieldGroups []string
+	podNamespace        string // Optional
+	podName             string // Optional
 }
 
-type commitRequest struct {
-	Config             map[string]interface{} `json:"config.yaml" yaml:"config.yaml"`
-	ManagedFieldGroups []string               `json:"managedFieldGroups" yaml:"managedFieldGroups"`
+// ConfigState is the current state of the config bundle on the server. It may read from a path on disk and then edited through the API.
+type ConfigState struct {
+	Config       map[string]interface{}
+	Certificates []byte
 }
 
-// commitToOperator handles an HTTP POST request containing a new `config.yaml`,
-// adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
-func commitToOperator(configPath, operatorEndpoint string, readonlyFieldGroups []string) func(w http.ResponseWriter, r *http.Request) {
-	namespace := os.Getenv("MY_POD_NAMESPACE")
-	if namespace == "" {
-		panic("missing 'MY_POD_NAMESPACE'")
-	}
-	podName := os.Getenv("MY_POD_NAME")
-	if podName == "" {
-		panic("missing 'MY_POD_NAME'")
-	}
-	quayRegistryName := strings.Split(podName, "-quay-config-editor")[0]
+// @title Config Tool Editor API
+// @version 0.0
 
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			w.WriteHeader(405)
-			return
-		}
+// @contact.name Jonathan King
+// @contact.email joking@redhat.com
 
-		var request commitRequest
-		err := yaml.NewDecoder(r.Body).Decode(&request)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		for name, cert := range shared.LoadCerts(configPath) {
-			certStore[name] = cert
-		}
-
-		// TODO(alecmerdler): For each managed component fieldgroup, remove its fields from `config.yaml` using `Fields()` function...
-		newConfig, err := config.NewConfig(request.Config)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		for _, fieldGroup := range request.ManagedFieldGroups {
-			fields := newConfig[fieldGroup].Fields()
-			// FIXME(alecmerdler): Debugging
-			fmt.Println(fields)
-			for _, field := range fields {
-				delete(request.Config, field)
-			}
-		}
-
-		// TODO: Define struct type for this with correct `yaml` tags
-		preSecret := map[string]interface{}{
-			"quayRegistryName": quayRegistryName,
-			"namespace":        namespace,
-			"config.yaml":      request.Config,
-			"certs":            certStore,
-		}
-
-		var json = jsoniter.ConfigCompatibleWithStandardLibrary
-		js, err := json.Marshal(preSecret)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// FIXME: Currently hardcoding
-		req, err := http.NewRequest("POST", operatorEndpoint+"/reconfigure", bytes.NewBuffer(js))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		defer resp.Body.Close()
-
-		w.Header().Add("Content-Type", "application/json")
-		w.Write(js)
-	}
-}
-
-func downloadConfig(configPath string) func(http.ResponseWriter, *http.Request) {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			w.WriteHeader(405)
-			return
-		}
-
-		var conf map[string]interface{}
-		err := yaml.NewDecoder(r.Body).Decode(&conf)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		for name, cert := range shared.LoadCerts(configPath) {
-			certStore[name] = cert
-		}
-
-		files := make(map[string][]byte)
-		files["config.yaml"], err = yaml.Marshal(conf)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		for name, contents := range certStore {
-			files[name] = contents
-		}
-
-		var buf bytes.Buffer
-		tw := tar.NewWriter(&buf)
-		hdr := &tar.Header{
-			Name:     "extra_ca_certs/",
-			Typeflag: tar.TypeDir,
-			Mode:     0777,
-		}
-		if err := tw.WriteHeader(hdr); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		for name, contents := range files {
-			hdr := &tar.Header{
-				Name: name,
-				Mode: 0777,
-				Size: int64(len(contents)),
-			}
-			if err := tw.WriteHeader(hdr); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if _, err := tw.Write(contents); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
-		tw.Close()
-
-		w.Header().Set("Content-type", "application/zip")
-		w.Header().Set("Content-Disposition", "attachment; filename=quay-config.tar.gz")
-		w.Write(buf.Bytes())
-	}
-
-}
-
-// post request to validate config with certs
-func configValidator(configPath string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		if r.Method != "POST" {
-			w.WriteHeader(405)
-			return
-		}
-
-		var c map[string]interface{}
-		err := yaml.NewDecoder(r.Body).Decode(&c)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		loaded, err := config.NewConfig(c)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		for name, cert := range shared.LoadCerts(configPath) {
-			certStore[name] = cert
-		}
-
-		opts := shared.Options{
-			Mode:         "online",
-			Certificates: certStore,
-		}
-
-		errors := loaded.Validate(opts)
-
-		var json = jsoniter.ConfigCompatibleWithStandardLibrary
-		js, err := json.Marshal(errors)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Add("Content-Type", "application/json")
-		w.Write(js)
-	}
-}
-
-func configHandler(configPath string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			w.WriteHeader(405)
-			return
-		}
-
-		// Read config file
-		configFilePath := path.Join(configPath, "config.yaml")
-		configBytes, err := ioutil.ReadFile(configFilePath)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-
-		// Load config into struct
-		var conf map[string]interface{}
-		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// Get filenames in directory
-		var certs []string
-		err = filepath.Walk(configPath, func(path string, info os.FileInfo, err error) error {
-			if info.IsDir() {
-				return nil
-			}
-			certs = append(certs, path)
-			return nil
-		})
-
-		// Build response
-		resp := map[string]interface{}{
-			"config.yaml": conf,
-			"certs":       certs,
-		}
-		var json = jsoniter.ConfigCompatibleWithStandardLibrary
-		js, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Add("Content-Type", "application/json")
-		w.Write(js)
-	}
-}
-
-func certificateHandler(configDir string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "PUT":
-			err := r.ParseMultipartForm(10 << 20)
-			if err != nil {
-				fmt.Printf("error parsing request body as form data: %s", err.Error())
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			file, handler, err := r.FormFile("ca.crt")
-			if err != nil {
-				fmt.Printf("error parsing request body for certificate: %s", err.Error())
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			defer file.Close()
-			// FIXME(alecmerdler): Debugging
-			fmt.Printf("Uploaded File: %+v\n", handler.Filename)
-			fmt.Printf("File Size: %+v\n", handler.Size)
-			fmt.Printf("MIME Header: %+v\n", handler.Header)
-
-			fileBytes, err := ioutil.ReadAll(file)
-			if err != nil {
-				fmt.Printf("error reading certificate file: %s", err.Error())
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			certStore[handler.Filename] = fileBytes
-
-			w.WriteHeader(201)
-			w.Write([]byte("Success"))
-		case "GET":
-			certMeta := []map[string]interface{}{}
-			for name, cert := range shared.LoadCerts(configDir) {
-				certStore[name] = cert
-			}
-
-			for name := range certStore {
-				md := map[string]interface{}{
-					"path":    name,
-					"names":   name,
-					"expired": false,
-				}
-				certMeta = append(certMeta, md)
-			}
-			resp := map[string]interface{}{
-				"status": "directory",
-				"certs":  certMeta,
-			}
-			var json = jsoniter.ConfigCompatibleWithStandardLibrary
-			js, err := json.Marshal(resp)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Header().Add("Content-Type", "application/json")
-			w.Write(js)
-		default:
-			w.WriteHeader(405)
-			return
-		}
-	}
-}
-
-// certStore keeps all the uploaded certs in memory until they are committed.
-var certStore = map[string][]byte{}
+// @host localhost:8080
+// @BasePath /api/v1
 
 // RunConfigEditor runs the configuration editor server.
-func RunConfigEditor(password, configPath, operatorEndpoint string, readonlyFieldGroups []string) {
-	mime.AddExtensionType(".css", "text/css; charset=utf-8")
-	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
-
-	log.Printf("Running the configuration editor on port %v with username %s", port, editorUsername)
-	log.Printf("Using Operator Endpoint: " + operatorEndpoint)
+func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFieldGroups []string) {
 
 	staticContentPath, exists := os.LookupEnv("CONFIG_EDITOR_STATIC_CONTENT_PATH")
 	if !exists {
 		staticContentPath = "pkg/lib/editor/static"
 	}
+	podNamespace := os.Getenv("MY_POD_NAMESPACE")
+	podName := os.Getenv("MY+_POD_NAME")
+	if operatorEndpoint != "" && (podNamespace == "" || podName == "") {
+		panic("If you would like to use operator reconfiguration features you must specify your namespace and pod name") // FIXME (jonathan) - come up with better error message
+	}
 
-	hashed, _ := bcrypt.GenerateFromPassword([]byte(password), 5)
-	authenticator := auth.NewBasicAuthenticator(editorUsername, func(user, realm string) string {
-		if user == editorUsername {
+	opts := &ServerOptions{
+		username:            "quayconfig", // FIXME (jonathan) - add option to change username
+		password:            password,
+		port:                8080, // FIXME (jonathan) - add option to change port
+		configPath:          configPath,
+		staticContentPath:   staticContentPath,
+		operatorEndpoint:    operatorEndpoint,
+		readOnlyFieldGroups: readOnlyFieldGroups,
+		podNamespace:        podNamespace,
+		podName:             podName,
+	}
+	configState := &ConfigState{}
+
+	hashed, _ := bcrypt.GenerateFromPassword([]byte(opts.password), 5)
+	authenticator := auth.NewBasicAuthenticator(opts.username, func(user, realm string) string {
+		if user == opts.username {
 			return string(hashed)
 		}
 		return ""
 	})
 
-	http.HandleFunc("/", auth.JustCheck(authenticator, handler(staticContentPath, operatorEndpoint, readonlyFieldGroups)))
-	http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, configHandler(configPath)))
-	http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, certificateHandler(configPath)))
-	http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
-	http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator(configPath)))
-	http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(configPath, operatorEndpoint, readonlyFieldGroups)))
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticContentPath))))
+	mime.AddExtensionType(".css", "text/css; charset=utf-8")
+	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
+	log.Printf("Running the configuration editor on port %v with username %s", opts.port, opts.username)
+	if opts.operatorEndpoint != "" {
+		log.Printf("Using Operator Endpoint: " + opts.operatorEndpoint)
+	}
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+
+	r.Get("/", rootHandler(opts))
+	r.Get("/api/v1/config", auth.JustCheck(authenticator, loadMountedConfigBundle(opts, configState)))
+	// http.HandleFunc("/api/v1/config", auth.JustCheck(authenticator, loadMountedConfigBundle(opts, configState)))
+	// http.HandleFunc("/api/v1/certificates", auth.JustCheck(authenticator, certificateHandler(configPath)))
+	// http.HandleFunc("/api/v1/config/downloadConfig", auth.JustCheck(authenticator, downloadConfig(configPath)))
+	// http.HandleFunc("/api/v1/config/validate", auth.JustCheck(authenticator, configValidator(configPath)))
+	// http.HandleFunc("/api/v1/config/commitToOperator", auth.JustCheck(authenticator, commitToOperator(opts)))
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("http://localhost:7070/docs/swagger.json"), // FIXME(jonathan) - This can eventually be changed to the github link to this file.
+	))
+
+	r.Get("/static/*", func(w http.ResponseWriter, r *http.Request) {
+		fs := http.StripPrefix("/static/", http.FileServer(http.Dir(opts.staticContentPath)))
+		fs.ServeHTTP(w, r)
+	})
+
+	// Once swagger.json is on github, we don't need to serve it (this is just for testing)
+	r.Get("/docs/*", func(w http.ResponseWriter, r *http.Request) {
+		fs := http.StripPrefix("/docs/", http.FileServer(http.Dir("docs")))
+		fs.ServeHTTP(w, r)
+	})
+
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", opts.port), r))
 }

@@ -1,0 +1,29 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Config Tool Editor API",
+        "contact": {
+            "name": "Jonathan King",
+            "email": "joking@redhat.com"
+        },
+        "license": {},
+        "version": "0.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/accounts/{id}": {
+            "get": {
+                "description": "This endpoint will validate a configuration state.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Load the mounted config bundle into local state",
+                "responses": {}
+            }
+        }
+    }
+}

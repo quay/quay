@@ -1,0 +1,20 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    email: joking@redhat.com
+    name: Jonathan King
+  license: {}
+  title: Config Tool Editor API
+  version: "0.0"
+paths:
+  /accounts/{id}:
+    get:
+      consumes:
+      - application/json
+      description: This endpoint will validate a configuration state.
+      produces:
+      - application/json
+      responses: {}
+      summary: Load the mounted config bundle into local state
+swagger: "2.0"
