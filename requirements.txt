@@ -1,11 +1,11 @@
--e git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b#egg=cnr_server
--e git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
--e git+https://github.com/quay/boto.git@0041500f529547f592194c73c0a7d23275ed81c6#egg=boto
--e git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
--e git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
--e git+https://github.com/quay/py-bitbucket.git@85301693ce3682f8e1244e90bd8a903181844bde#egg=py_bitbucket
--e git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
--e git+https://github.com/quay/supervisor-stdout.git@9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380#egg=supervisor_stdout
+git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b#egg=cnr_server
+git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
+git+https://github.com/quay/boto.git@0041500f529547f592194c73c0a7d23275ed81c6#egg=boto
+git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
+git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
+git+https://github.com/quay/py-bitbucket.git@85301693ce3682f8e1244e90bd8a903181844bde#egg=py_bitbucket
+git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
+git+https://github.com/quay/supervisor-stdout.git@9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380#egg=supervisor_stdout
 aiowsgi==0.7
 alembic==1.3.3
 APScheduler==3.6.3
@@ -45,7 +45,14 @@ decorator==4.4.1
 Deprecated==1.2.7
 docker==4.1.0
 docutils==0.15.2
-dumb-init==1.2.2
+
+# This can be installed using a binary or manual source compilation.
+# Installing it via setup.py is currently breaking and I'm not sure why.
+# It looks like there has not been a release since 2018. It might be
+# worth looking at an alternative such as tini. The usage should be the same.
+# Link: https://github.com/krallin/tini (MIT)
+# dumb-init==1.2.2
+
 ecdsa==0.15
 elasticsearch==7.0.4
 elasticsearch-dsl==7.0.0
