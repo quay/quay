@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // RedisFieldGroup represents the RedisFieldGroup config fields
@@ -34,7 +33,7 @@ func NewRedisFieldGroup(fullConfig map[string]interface{}) (*RedisFieldGroup, er
 
 	if value, ok := fullConfig["BUILDLOGS_REDIS"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newRedisFieldGroup.BuildlogsRedis, err = NewBuildlogsRedisStruct(value)
 		if err != nil {
 			return newRedisFieldGroup, err
@@ -42,7 +41,7 @@ func NewRedisFieldGroup(fullConfig map[string]interface{}) (*RedisFieldGroup, er
 	}
 	if value, ok := fullConfig["USER_EVENTS_REDIS"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newRedisFieldGroup.UserEventsRedis, err = NewUserEventsRedisStruct(value)
 		if err != nil {
 			return newRedisFieldGroup, err

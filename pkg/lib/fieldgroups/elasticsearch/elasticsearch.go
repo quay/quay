@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // ElasticSearchFieldGroup represents the ElasticSearchFieldGroup config fields
@@ -68,7 +67,7 @@ func NewElasticSearchFieldGroup(fullConfig map[string]interface{}) (*ElasticSear
 	}
 	if value, ok := fullConfig["LOGS_MODEL_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newElasticSearchFieldGroup.LogsModelConfig, err = NewLogsModelConfigStruct(value)
 		if err != nil {
 			return newElasticSearchFieldGroup, err
@@ -85,7 +84,7 @@ func NewLogsModelConfigStruct(fullConfig map[string]interface{}) (*LogsModelConf
 
 	if value, ok := fullConfig["kafka_config"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newLogsModelConfigStruct.KafkaConfig, err = NewKafkaConfigStruct(value)
 		if err != nil {
 			return newLogsModelConfigStruct, err
@@ -93,7 +92,7 @@ func NewLogsModelConfigStruct(fullConfig map[string]interface{}) (*LogsModelConf
 	}
 	if value, ok := fullConfig["elasticsearch_config"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newLogsModelConfigStruct.ElasticsearchConfig, err = NewElasticsearchConfigStruct(value)
 		if err != nil {
 			return newLogsModelConfigStruct, err
@@ -101,7 +100,7 @@ func NewLogsModelConfigStruct(fullConfig map[string]interface{}) (*LogsModelConf
 	}
 	if value, ok := fullConfig["kinesis_stream_config"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newLogsModelConfigStruct.KinesisStreamConfig, err = NewKinesisStreamConfigStruct(value)
 		if err != nil {
 			return newLogsModelConfigStruct, err
@@ -211,7 +210,7 @@ func NewElasticsearchConfigStruct(fullConfig map[string]interface{}) (*Elasticse
 	}
 	if value, ok := fullConfig["index_settings"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newElasticsearchConfigStruct.IndexSettings, err = NewIndexSettingsStruct(value)
 		if err != nil {
 			return newElasticsearchConfigStruct, err

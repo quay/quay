@@ -2,18 +2,18 @@
 // @version 0.0
 // @contact.name Jonathan King
 // @contact.email joking@redhat.com
-// @host localhost:8080
 // @BasePath /api/v1
 // @securityDefinitions.basic BasicAuth
+// @schemes http
 
 package editor
 
 import (
-	"fmt"
 	"log"
 	"mime"
 	"net/http"
 	"os"
+	"strconv"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/go-chi/chi"
@@ -39,8 +39,8 @@ type ServerOptions struct {
 // ConfigBundle is the current state of the config bundle on the server. It may read from a path on disk and then edited through the API.
 type ConfigBundle struct {
 	Config             map[string]interface{} `json:"config.yaml" yaml:"config.yaml"`
-	Certificates       map[string][]byte      `json:"certs" yaml:"certs"`
-	ManagedFieldGroups []string               `json:"managedFieldGroups" yaml:"managedFieldGroups"`
+	Certificates       map[string][]byte      `json:"certs,omitempty" yaml:"certs,omitempty"`
+	ManagedFieldGroups []string               `json:"managedFieldGroups,omitempty" yaml:"managedFieldGroups,omitempty"`
 }
 
 // RunConfigEditor runs the configuration editor server.
@@ -96,6 +96,7 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	r.Post("/api/v1/config/validate", auth.JustCheck(authenticator, validateConfigBundle(opts)))
 	r.Post("/api/v1/config/download", auth.JustCheck(authenticator, downloadConfigBundle(opts)))
 	r.Post("/api/v1/config/operator", auth.JustCheck(authenticator, commitToOperator(opts)))
+
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:7070/docs/swagger.json"), // FIXME(jonathan) - This can eventually be changed to the github link to this file.
 	))
@@ -110,5 +111,11 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 		fs.ServeHTTP(w, r)
 	})
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", opts.port), r))
+	s := &http.Server{
+		Addr:    ":" + strconv.Itoa(opts.port),
+		Handler: r,
+	}
+
+	log.Fatal(s.ListenAndServe())
+
 }

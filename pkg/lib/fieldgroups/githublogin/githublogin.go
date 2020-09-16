@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // GitHubLoginFieldGroup represents the GitHubLoginFieldGroup config fields
@@ -36,7 +35,7 @@ func NewGitHubLoginFieldGroup(fullConfig map[string]interface{}) (*GitHubLoginFi
 	}
 	if value, ok := fullConfig["GITHUB_LOGIN_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newGitHubLoginFieldGroup.GithubLoginConfig, err = NewGithubLoginConfigStruct(value)
 		if err != nil {
 			return newGitHubLoginFieldGroup, err

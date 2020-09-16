@@ -23,7 +23,7 @@ import (
 	"github.com/jojomi/go-spew/spew"
 	"github.com/quay/config-tool/pkg/lib/config"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // validateCmd represents the validate command
@@ -38,13 +38,17 @@ var printCmd = &cobra.Command{
 		configBytes, err := ioutil.ReadFile(configFilePath)
 		if err != nil {
 			fmt.Println(err.Error())
+			return
 		}
 
 		// Load config into struct
 		var conf map[string]interface{}
 		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
 			fmt.Println(err.Error())
+			return
 		}
+
+		spew.Dump(conf)
 
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {

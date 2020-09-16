@@ -3,16 +3,18 @@ package editor
 import (
 	"archive/tar"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 
+	"github.com/jojomi/go-spew/spew"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/quay/config-tool/pkg/lib/config"
 	"github.com/quay/config-tool/pkg/lib/shared"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func rootHandler(opts *ServerOptions) func(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +39,7 @@ func rootHandler(opts *ServerOptions) func(w http.ResponseWriter, r *http.Reques
 // @Summary Returns the mounted config bundle.
 // @Description This endpoint will load the config bundle mounted by the config-tool into memory. This state can then be modified, validated, downloaded, and optionally committed to a Quay operator instance.
 // @Produce  json
-// @Header 200 {string} Token "qwerty"
+// @Success 200 {object} ConfigBundle
 // @Router /config [get]
 func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -80,24 +82,21 @@ func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http
 // @Summary Downloads a config bundle as a tar.gz
 // @Description This endpoint will download the config bundle in the request body as a tar.gz
 // @Accept  json
-// @Produce  json
+// @Param configBundle body ConfigBundle true "JSON Representing Config Bundle"
+// @Produce  multipart/form-data
 // @Success 200
-// @Header 200
-// @Failure 400
-// @Failure 404
-// @Failure 500
-// @Router /config/downloadConfig [post]
+// @Router /config/download [post]
 func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var confBundle ConfigBundle
-		err := yaml.NewDecoder(r.Body).Decode(&confBundle)
+		err := json.NewDecoder(r.Body).Decode(&confBundle)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		files := make(map[string][]byte)
-		files["config.yaml"], err = yaml.Marshal(confBundle.Config)
+		files["config.yaml"], err = json.Marshal(confBundle.Config)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -141,30 +140,21 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 }
 
 // @Summary Validates a config bundle.
-// @Description N/A
+// @Description This endpoint will validate the config bundle contained in the request body.
 // @Accept  json
+// @Param configBundle body ConfigBundle true "JSON Representing Config Bundle"
 // @Produce  json
-// @Success 200 {object} model.Account
-// @Header 200 {string} Token "qwerty"
-// @Failure 400 {object} httputil.HTTPError
-// @Failure 404 {object} httputil.HTTPError
-// @Failure 500 {object} httputil.HTTPError
-// @Router /accounts/{id} [get]
+// @Router /config/validate [post]
 func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		if r.Method != "POST" {
-			w.WriteHeader(405)
-			return
-		}
-
 		var configBundle ConfigBundle
-		err := yaml.NewDecoder(r.Body).Decode(&configBundle)
+		err := json.NewDecoder(r.Body).Decode(&configBundle)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
+		spew.Dump(configBundle.Config)
 		loaded, err := config.NewConfig(configBundle.Config)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -191,26 +181,15 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 }
 
 // @Summary Commits a config bundle to a Quay operator instance.
-// @Description N/A
+// @Description Handles an HTTP POST request containing a new `config.yaml`, adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
 // @Accept  json
+// @Param configBundle body ConfigBundle true "JSON Representing Config Bundle"
 // @Produce  json
-// @Success 200 {object} model.Account
-// @Header 200 {string} Token "qwerty"
-// @Failure 400 {object} httputil.HTTPError
-// @Failure 404 {object} httputil.HTTPError
-// @Failure 500 {object} httputil.HTTPError
-// @Router /accounts/{id} [get]
-// commitToOperator handles an HTTP POST request containing a new `config.yaml`,
-// adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
+// @Router /accounts/operator [post]
 func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			w.WriteHeader(405)
-			return
-		}
-
 		var configBundle ConfigBundle
-		err := yaml.NewDecoder(r.Body).Decode(&configBundle)
+		err := json.NewDecoder(r.Body).Decode(&configBundle)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

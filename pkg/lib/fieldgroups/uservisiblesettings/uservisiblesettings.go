@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // UserVisibleSettingsFieldGroup represents the UserVisibleSettingsFieldGroup config fields
@@ -38,7 +37,7 @@ func NewUserVisibleSettingsFieldGroup(fullConfig map[string]interface{}) (*UserV
 	}
 	if value, ok := fullConfig["BRANDING"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newUserVisibleSettingsFieldGroup.Branding, err = NewBrandingStruct(value)
 		if err != nil {
 			return newUserVisibleSettingsFieldGroup, err
