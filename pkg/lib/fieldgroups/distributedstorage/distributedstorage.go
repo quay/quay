@@ -144,7 +144,14 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 	if value, ok := storageArgs["port"]; ok {
 		newDistributedStorageArgs.Port, ok = value.(int)
 		if !ok {
-			return newDistributedStorageArgs, errors.New("port must be of type integer")
+
+			// We must have an extra check for float64
+			if v, ok := value.(float64); ok {
+				newDistributedStorageArgs.Port = int(v)
+			} else {
+				return newDistributedStorageArgs, errors.New("port must be of type integer")
+			}
+
 		}
 	}
 

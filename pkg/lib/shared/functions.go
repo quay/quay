@@ -134,3 +134,17 @@ func addToArchive(tw *tar.Writer, filename string) error {
 
 	return nil
 }
+
+// FixNumbers will convert all json.Number values to integer values
+func FixNumbers(m map[string]interface{}) map[string]interface{} {
+	for k, v := range m {
+		_ = k
+		if v, ok := v.(map[string]interface{}); ok {
+			FixNumbers(v)
+		}
+		if v, ok := v.(float64); ok {
+			m[k] = int(v)
+		}
+	}
+	return m
+}

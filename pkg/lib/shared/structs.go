@@ -8,8 +8,8 @@ type Options struct {
 
 // ValidationError is a struct that holds information about a failed field group policy
 type ValidationError struct {
-	Tags       []string
 	FieldGroup string
+	Tags       []string
 	Message    string
 }
 

@@ -10,7 +10,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/jojomi/go-spew/spew"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/quay/config-tool/pkg/lib/config"
 	"github.com/quay/config-tool/pkg/lib/shared"
@@ -144,6 +143,7 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 // @Accept  json
 // @Param configBundle body ConfigBundle true "JSON Representing Config Bundle"
 // @Produce  json
+// @Success 200
 // @Router /config/validate [post]
 func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -153,8 +153,8 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		configBundle.Config = shared.FixNumbers(configBundle.Config)
 
-		spew.Dump(configBundle.Config)
 		loaded, err := config.NewConfig(configBundle.Config)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -185,6 +185,7 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 // @Accept  json
 // @Param configBundle body ConfigBundle true "JSON Representing Config Bundle"
 // @Produce  json
+// @Success 200
 // @Router /accounts/operator [post]
 func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {

@@ -48,7 +48,10 @@ var doc = `{
                             "$ref": "#/definitions/editor.ConfigBundle"
                         }
                     }
-                ]
+                ],
+                "responses": {
+                    "200": {}
+                }
             }
         },
         "/config": {
@@ -114,7 +117,10 @@ var doc = `{
                             "$ref": "#/definitions/editor.ConfigBundle"
                         }
                     }
-                ]
+                ],
+                "responses": {
+                    "200": {}
+                }
             }
         }
     },

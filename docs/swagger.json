@@ -34,7 +34,10 @@
                             "$ref": "#/definitions/editor.ConfigBundle"
                         }
                     }
-                ]
+                ],
+                "responses": {
+                    "200": {}
+                }
             }
         },
         "/config": {
@@ -100,7 +103,10 @@
                             "$ref": "#/definitions/editor.ConfigBundle"
                         }
                     }
-                ]
+                ],
+                "responses": {
+                    "200": {}
+                }
             }
         }
     },
