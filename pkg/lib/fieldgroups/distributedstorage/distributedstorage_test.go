@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/quay/config-tool/pkg/lib/shared"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // TestValidateSchema tests the ValidateSchema function
