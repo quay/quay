@@ -15,7 +15,7 @@
           <i class="fa fa-certificate"></i> Custom SSL Certificates
         </div>
         <div class="co-panel-body">
-          <div class="config-certificates-field"></div>
+          <div class="config-certificates-field" certs="certs"></div>
         </div>
       </div>
 
@@ -2063,7 +2063,7 @@
             <button class="btn" data-dismiss="modal">
               Continue Editing
             </button>
-            <button class="btn btn-primary" ng-click="downloadConfig()">
+            <button class="btn btn-primary" ng-click="downloadConfigBundle()">
               Download
             </button>
             <button class="btn btn-primary" ng-if="operatorEndpoint" ng-click="commitToOperator()">

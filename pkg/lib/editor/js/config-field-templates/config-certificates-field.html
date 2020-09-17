@@ -20,12 +20,12 @@
             <td>Upload certificates:</td>
             <td>
               <div class="file-upload-box"
-                api-endpoint="certificates"
                 select-message="Select custom certificate to add to configuration. Must be in PEM format and end extension '.crt'"
-                files-selected="handleCertsSelected(files, callback)"
-                files-validated="handleCertsValidated(files, uploadFiles)"
+                files-selected="handleCertsSelected()"
+                files-validated="handleCertsValidated()"
                 reset="resetUpload"
-                extensions="['.crt']"></div>
+                extensions="['.crt']"
+                certs="certs"></div>
             </td>
           </tr>
         </table>
@@ -36,7 +36,7 @@
             <td>Status</td>
             <td>Names Handled</td>
           </thead>
-          <tr ng-repeat="certificate in certInfo.certs" ng-if="!certsUploading">
+          <tr ng-repeat="certificate in certMeta" ng-if="!certsUploading">
             <td>{{ certificate.path }}</td>
             <td class="cert-status">
               <div ng-if="certificate.error" class="red">
@@ -62,7 +62,7 @@
           <div class="cor-loader-inline"></div>
           Uploading, validating and updating certificate(s)
         </div>
-        <div class="empty" ng-if="!certInfo.certs.length && !certsUploading" style="margin-top: 20px;">
+        <div class="empty" ng-if="!certMeta.length && !certsUploading" style="margin-top: 20px;">
           <div class="empty-primary-msg">No custom certificates found.</div>
         </div>
       </div>

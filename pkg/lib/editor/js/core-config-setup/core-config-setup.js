@@ -1,5 +1,6 @@
 import * as URI from 'urijs';
 import * as angular from 'angular';
+const forge = require('node-forge')
 const templateUrl = require('./config-setup-tool.html');
 const urlParsedField =  require('../config-field-templates/config-parsed-field.html');
 const urlVarField = require('../config-field-templates/config-variable-field.html');
@@ -235,20 +236,20 @@ angular.module("quay-config")
           var errorDisplay = ApiService.errorDisplay(
               'Could not validate configuration. Please report this error.');
 
-          ApiService.validateConfigBundle($scope.config).then(function(resp) {
+          ApiService.validateConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
             $scope.validationStatus = resp.length == 0 ? 'success' : 'error';
             $scope.validationResult = resp;
           }, errorDisplay);
         };
 
         $scope.commitToOperator = function() {
-          ApiService.commitToOperator($scope.config, [...$scope.readOnlyFieldGroups.keys()]).then(function(resp) {
+          ApiService.commitToOperator({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
             console.log(resp)
           })
         }
 
         $scope.downloadConfigBundle = function() {
-          ApiService.downloadConfig($scope.config).then(function(resp) {
+          ApiService.downloadConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
             console.log(resp)
           })
         }
@@ -764,6 +765,7 @@ angular.module("quay-config")
           ApiService.getMountedConfigBundle().then(function(resp) {
             $scope.config = resp["config.yaml"] || {};
             $scope.certs = resp["certs"] || {};
+            // console.log("Certs Global", $scope.certs)
             $scope.originalConfig = Object.assign({}, resp["config.yaml"] || {});;
             initializeMappedLogic($scope.config);
             initializeStorageConfig($scope);
@@ -1373,40 +1375,43 @@ angular.module("quay-config")
         'certs': '=certs',
       },
       controller: function($scope, $element, ApiService) {
-        $scope.resetUpload = 0;
         $scope.certsUploading = false;
-        $scope.certInfo = null
+        $scope.certMeta = []
 
-        var loadCertificates = function() {
-
-          $scope.certsUploading = true;
-          ApiService.getCertificates().then(function(resp) {
-            $scope.certInfo = resp || {};
-            $scope.certsUploading = false;
-          })
-  
-        };
-
-        loadCertificates();
-
-        $scope.handleCertsSelected = function(files, callback) {
-          $scope.certsUploading = true;
-          callback(true);
-        };
-
-        $scope.handleCertsValidated = function(files, uploadFiles) {
-          console.log(files);
-
-          uploadFiles(function(done, fileIDs) {
-            console.log(fileIDs);
-
-            if (!done) {
-              alert('Could not upload certificate');
+        // Reads the certs stored in scope and creates a new object with metadata to render table
+        var loadCertificateMeta = function() {
+          let newCertMeta = []
+          for(let [key, value] of Object.entries($scope.certs)){
+            if(!key.startsWith("extra_ca_certs/")){
+              continue
             }
+            let cert = forge.pki.certificateFromPem(atob(value))
+            let current = new Date()
+            let expired = current > cert.validity.notAfter
+            newCertMeta.push({
+              path: key.replace(),
+              names: getCertNames(cert),
+              expired: expired,
+            })
+          }
+          $scope.certMeta = newCertMeta
+          $scope.certsUploading = false;
+        }
 
-            $scope.resetUpload++;
-            loadCertificates();
-          });
+        // Gets the common names for a given cert
+        var getCertNames = function(cert) {
+          let cn = []
+          cert.issuer.attributes.forEach(function(attr){
+            if(attr.shortName == "CN"){
+              cn.push(attr.value)
+            }
+          })
+          return cn        
+        }
+
+        $scope.$watch('certs', loadCertificateMeta, true)
+        $scope.handleCertsSelected = function() {
+          $scope.certsUploading = true;
         };
       }
     };

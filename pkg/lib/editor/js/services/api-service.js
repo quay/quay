@@ -21,7 +21,7 @@ angular.module("quay-config").factory("ApiService", [
       return Restangular.one("config/validate").post(null, configBundle);
     };
 
-    apiService.commitToOperator = function (confiBundle) {
+    apiService.commitToOperator = function (configBundle) {
       return Restangular.one("config/operator").post(null, configBundle);
     };
 
