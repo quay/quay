@@ -24,23 +24,6 @@ info:
   title: Config Tool Editor API
   version: "0.0"
 paths:
-  /accounts/operator:
-    post:
-      consumes:
-      - application/json
-      description: Handles an HTTP POST request containing a new `config.yaml`, adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
-      parameters:
-      - description: JSON Representing Config Bundle
-        in: body
-        name: configBundle
-        required: true
-        schema:
-          $ref: '#/definitions/editor.ConfigBundle'
-      produces:
-      - application/json
-      responses:
-        "200": {}
-      summary: Commits a config bundle to a Quay operator instance.
   /config:
     get:
       description: This endpoint will load the config bundle mounted by the config-tool into memory. This state can then be modified, validated, downloaded, and optionally committed to a Quay operator instance.
@@ -69,6 +52,23 @@ paths:
       responses:
         "200": {}
       summary: Downloads a config bundle as a tar.gz
+  /config/operator:
+    post:
+      consumes:
+      - application/json
+      description: Handles an HTTP POST request containing a new `config.yaml`, adds any uploaded certs, and calls an API endpoint on the Quay Operator to create a new `Secret`.
+      parameters:
+      - description: JSON Representing Config Bundle
+        in: body
+        name: configBundle
+        required: true
+        schema:
+          $ref: '#/definitions/editor.ConfigBundle'
+      produces:
+      - application/json
+      responses:
+        "200": {}
+      summary: Commits a config bundle to a Quay operator instance.
   /config/validate:
     post:
       consumes:
