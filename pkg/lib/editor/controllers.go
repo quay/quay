@@ -186,7 +186,7 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 // @Param configBundle body ConfigBundle true "JSON Representing Config Bundle"
 // @Produce  json
 // @Success 200
-// @Router /accounts/operator [post]
+// @Router /config/operator [post]
 func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var configBundle ConfigBundle

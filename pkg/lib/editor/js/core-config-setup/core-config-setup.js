@@ -1,6 +1,9 @@
 import * as URI from 'urijs';
 import * as angular from 'angular';
 const forge = require('node-forge')
+const JSZip = require('jszip')
+const yaml = require('js-yaml')
+const FileSaver = require('file-saver')
 const templateUrl = require('./config-setup-tool.html');
 const urlParsedField =  require('../config-field-templates/config-parsed-field.html');
 const urlVarField = require('../config-field-templates/config-variable-field.html');
@@ -249,8 +252,20 @@ angular.module("quay-config")
         }
 
         $scope.downloadConfigBundle = function() {
-          ApiService.downloadConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
-            console.log(resp)
+          var zip = new JSZip()
+          let configStr = yaml.safeDump($scope.config)
+          zip.file("config.yaml", configStr)
+          let extra_ca_certs = zip.folder("extra_ca_certs")
+          for(let [key, value] of Object.entries($scope.certs)){
+            if(key.startsWith("extra_ca_certs/")){
+              extra_ca_certs.file(key.replace("extra_ca_certs/", ""), atob(value))
+            } else {
+              zip.file(key, atob(value))
+            }
+          }
+
+          zip.generateAsync({type:"blob"}).then(function(content){
+            FileSaver.saveAs(content, "quay-config.zip")
           })
         }
 
@@ -968,9 +983,14 @@ angular.module("quay-config")
         'hasFile': '=hasFile',
         'binding': '=?binding',
         'isReadonly': '=isReadonly',
+        'certs': '=certs'
       },
       controller: function($scope, $element, Restangular) {
         $scope.hasFile = false;
+
+        if($scope.filename in $scope.certs){
+          $scope.hasFile = true
+        }
 
         var setHasFile = function(hasFile) {
           $scope.hasFile = hasFile;
@@ -982,35 +1002,38 @@ angular.module("quay-config")
             setHasFile(false);
             return;
           }
-
-          // FIXME: $upload was from Angular File Uploader.
-          $scope.uploadProgress = 0;
-          $scope.upload = $upload.upload({
-            url: '/api/v1/superuser/config/file/' + $scope.filename,
-            method: 'POST',
-            data: {'_csrf_token': window.__token},
-            file: files[0],
-          }).progress(function(evt) {
-            $scope.uploadProgress = parseInt(100.0 * evt.loaded / evt.total);
-            if ($scope.uploadProgress == 100) {
-              $scope.uploadProgress = null;
-              setHasFile(true);
-            }
-          }).success(function(data, status, headers, config) {
-            $scope.uploadProgress = null;
-            setHasFile(true);
-          });
+          conductUpload(files[0])
+          setHasFile(true)
+          
         };
 
-        var loadStatus = function(filename) {
-          Restangular.one('superuser/config/file/' + filename).get().then(function(resp) {
-            setHasFile(false);
-          });
+        var conductUpload = function(file) {
+ 
+          var reader = new FileReader();
+          reader.readAsText(file)
+          
+          reader.onprogress = function(e) {
+            $scope.$apply(function() {
+              if (e.lengthComputable) { 
+                $scope.uploadProgress = (e.loaded / e.total) * 100
+              }
+            });
+          }
+  
+          reader.onload = function(e){
+            $scope.$apply(function(){
+              $scope.certs[$scope.filename] = btoa(e.target.result)
+              $scope.uploadProgress = null
+              console.log("after_upload", $scope.certs)
+            })
+          }
+  
+          reader.onerror = function(e){
+            $scope.$apply(function() { doneCb(false, 'Error when uploading'); });
+          }
+  
         };
 
-        if ($scope.filename && $scope.skipCheckFile != "true") {
-          loadStatus($scope.filename);
-        }
       }
     };
     return directiveDefinitionObject;

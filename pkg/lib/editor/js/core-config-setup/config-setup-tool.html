@@ -133,7 +133,7 @@
                   <tr>
                     <td class="non-input">Certificate:</td>
                     <td>
-                      <span class="config-file-field" filename="ssl.cert" has-file="hasfile.SSLCert"></span>
+                      <span class="config-file-field" filename="ssl.cert" has-file="hasfile.SSLCert" certs="certs"></span>
                       <div class="help-text">
                         The certificate must be in PEM format.
                       </div>
@@ -142,7 +142,7 @@
                   <tr>
                     <td class="non-input">Private key:</td>
                     <td>
-                      <span class="config-file-field" filename="ssl.key" has-file="hasfile.SSLKey"></span>
+                      <span class="config-file-field" filename="ssl.key" has-file="hasfile.SSLKey" certs="certs"></span>
                     </td>
                   </tr>
                 </table>
@@ -218,7 +218,7 @@
               <td>
                 <span class="config-file-field" filename="database.pem"
                       is-readonly="fieldGroupReadonly('Database')"
-                      skip-check-file="true" has-file="currentState.hasDatabaseSSLCert"></span>
+                      skip-check-file="true" has-file="currentState.hasDatabaseSSLCert" certs="certs"></span>
                 <div class="help-text">Optional SSL certicate (in PEM format) to use to connect to the database</div>
               </td>
             </tr>
@@ -492,7 +492,8 @@
                           binding="sc.data[1][field.name]"
                           has-file="hasfile['contact-' + sc.location + '-' + field.filesuffix]"
                           ng-if="field.kind == 'file'"
-                          is-readonly="fieldGroupReadonly('DistributedStorage')"></span>
+                          is-readonly="fieldGroupReadonly('DistributedStorage')"
+                          certs="certs"></span>
                     <div ng-if="field.kind == 'option'">
                       <select class="form-control" ng-model="sc.data[1][field.name]" ng-disabled="fieldGroupReadonly('DistributedStorage')">
                         <option ng-repeat="value in field.values" value="{{ value }}"
@@ -795,7 +796,7 @@
               <td class="non-input">GPG2 Public Key File:</td>
               <td>
                 <span class="config-file-field" filename="signing-public.gpg"
-                      has-file="hasfile.gpgSigningPublic"></span>
+                      has-file="hasfile.gpgSigningPublic" certs="certs"></span>
                 <div class="help-text">
                   The certificate must be in PEM format.
                 </div>
@@ -805,7 +806,7 @@
               <td class="non-input">GPG2 Private Key File:</td>
               <td>
                 <span class="config-file-field" filename="signing-private.gpg"
-                      has-file="hasfile.gpgSigningPrivate"></span>
+                      has-file="hasfile.gpgSigningPrivate" certs="certs"></span>
               </td>
             </tr>
             <tr>
@@ -1059,7 +1060,7 @@
             <tr>
               <td>Public Key:</td>
               <td>
-                <span class="config-file-field" filename="jwt-authn.cert" has-file="hasfile.JWTCert"></span>
+                <span class="config-file-field" filename="jwt-authn.cert" has-file="hasfile.JWTCert" certs="certs"></span>
                 <div class="help-text">
                   A certificate containing the public key portion of the key pair used to sign
                   the JSON Web Tokens. This file must be in PEM format.
@@ -1244,7 +1245,7 @@
             <tr ng-if="config.LDAP_URI.indexOf('ldaps://') == 0">
               <td class="non-input">Custom TLS Certificate:</td>
               <td>
-                <span class="config-file-field" filename="ldap.crt" has-file="hasfile.LDAPTLSCert"></span>
+                <span class="config-file-field" filename="ldap.crt" has-file="hasfile.LDAPTLSCert" certs="certs"></span>
                 <div class="help-text">
                   If specified, the certificate (in PEM format) for the LDAP TLS connection.
                 </div>
