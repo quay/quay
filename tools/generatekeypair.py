@@ -23,7 +23,7 @@ def generate_key_pair(filename, kid=None):
         f.write(kid)
 
     print(("Writing private key to %s.pem" % filename))
-    with open("%s.pem" % filename, mode="w") as f:
+    with open("%s.pem" % filename, mode="wb") as f:
         f.truncate(0)
         f.write(private_key.exportKey())
 
