@@ -256,13 +256,13 @@ angular.module("quay-config")
           let configStr = yaml.safeDump($scope.config)
           zip.file("config.yaml", configStr)
           let extra_ca_certs = zip.folder("extra_ca_certs")
-          for(let [key, value] of Object.entries($scope.certs)){
-            if(key.startsWith("extra_ca_certs/")){
-              extra_ca_certs.file(key.replace("extra_ca_certs/", ""), atob(value))
+          Object.entries($scope.certs).forEach(([filename, contents]) => {
+            if(filename.startsWith("extra_ca_certs/")){
+              extra_ca_certs.file(filename.replace("extra_ca_certs/", ""), atob(contents))
             } else {
-              zip.file(key, atob(value))
+              zip.file(filename, atob(contents))
             }
-          }
+          })
 
           zip.generateAsync({type:"blob"}).then(function(content){
             FileSaver.saveAs(content, "quay-config.zip")
@@ -780,7 +780,6 @@ angular.module("quay-config")
           ApiService.getMountedConfigBundle().then(function(resp) {
             $scope.config = resp["config.yaml"] || {};
             $scope.certs = resp["certs"] || {};
-            // console.log("Certs Global", $scope.certs)
             $scope.originalConfig = Object.assign({}, resp["config.yaml"] || {});;
             initializeMappedLogic($scope.config);
             initializeStorageConfig($scope);
@@ -988,7 +987,7 @@ angular.module("quay-config")
       controller: function($scope, $element, Restangular) {
         $scope.hasFile = false;
 
-        if($scope.filename in $scope.certs){
+        if ($scope.filename in $scope.certs){
           $scope.hasFile = true
         }
 
@@ -1403,21 +1402,15 @@ angular.module("quay-config")
 
         // Reads the certs stored in scope and creates a new object with metadata to render table
         var loadCertificateMeta = function() {
-          let newCertMeta = []
-          for(let [key, value] of Object.entries($scope.certs)){
-            if(!key.startsWith("extra_ca_certs/")){
-              continue
-            }
-            let cert = forge.pki.certificateFromPem(atob(value))
-            let current = new Date()
-            let expired = current > cert.validity.notAfter
-            newCertMeta.push({
-              path: key.replace(),
-              names: getCertNames(cert),
-              expired: expired,
-            })
-          }
-          $scope.certMeta = newCertMeta
+          $scope.certMeta = Object.entries($scope.certs)
+          .filter(([filename, contents]) => filename.startsWith("extra_ca_certs/"))
+          .map(([filename, contents]) => {
+            const cert = forge.pki.certificateFromPem(atob(contents));
+            const current = new Date();
+            const expired = current > cert.validity.notAfter;
+            
+            return {path: filename, names: getCertNames(cert), expired: expired};
+          })
           $scope.certsUploading = false;
         }
 

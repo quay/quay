@@ -51,7 +51,7 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 		staticContentPath = "pkg/lib/editor/static"
 	}
 	podNamespace := os.Getenv("MY_POD_NAMESPACE")
-	podName := os.Getenv("MY+_POD_NAME")
+	podName := os.Getenv("MY_POD_NAME")
 	if operatorEndpoint != "" && (podNamespace == "" || podName == "") {
 		panic("If you would like to use operator reconfiguration features you must specify your namespace and pod name") // FIXME (jonathan) - come up with better error message
 	}
