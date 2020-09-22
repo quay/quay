@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // GitLabBuildTriggerFieldGroup represents the GitLabBuildTriggerFieldGroup config fields
@@ -40,7 +39,7 @@ func NewGitLabBuildTriggerFieldGroup(fullConfig map[string]interface{}) (*GitLab
 	}
 	if value, ok := fullConfig["GITLAB_TRIGGER_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newGitLabBuildTriggerFieldGroup.GitlabTriggerConfig, err = NewGitlabTriggerConfigStruct(value)
 		if err != nil {
 			return newGitLabBuildTriggerFieldGroup, err

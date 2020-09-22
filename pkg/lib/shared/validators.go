@@ -219,7 +219,7 @@ func ValidateIsHostname(input string, field string, fgName string) (bool, Valida
 	input = strings.Trim(input, " ")
 
 	// check against regex
-	re, _ := regexp.Compile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$`)
+	re, _ := regexp.Compile(`^[a-zA-Z-0-9\.]+(:[0-9]+)?$`)
 	if !re.MatchString(input) {
 		newError := ValidationError{
 			Tags:       []string{field},
@@ -369,9 +369,11 @@ func ValidateMinioStorage(opts Options, args *DistributedStorageArgs, fgName str
 	}
 
 	for name, cert := range opts.Certificates {
-		log.Println("adding certificate: " + name)
-		if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
-			log.Fatalf("failed to append custom certificate: " + name)
+		if strings.HasPrefix(name, "extra_ca_certs/") {
+			log.Println("adding certificate: " + name)
+			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
+				log.Fatalf("failed to append custom certificate: " + name)
+			}
 		}
 	}
 

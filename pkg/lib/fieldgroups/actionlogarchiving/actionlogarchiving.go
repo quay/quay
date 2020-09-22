@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // ActionLogArchivingFieldGroup represents the ActionLogArchivingFieldGroup config fields
@@ -37,7 +36,7 @@ func NewActionLogArchivingFieldGroup(fullConfig map[string]interface{}) (*Action
 	}
 	if value, ok := fullConfig["DISTRIBUTED_STORAGE_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newActionLogArchivingFieldGroup.DistributedStorageConfig, err = NewDistributedStorageConfigStruct(value)
 		if err != nil {
 			return newActionLogArchivingFieldGroup, err

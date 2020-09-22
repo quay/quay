@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // BitbucketBuildTriggerFieldGroup represents the BitbucketBuildTriggerFieldGroup config fields
@@ -27,7 +26,7 @@ func NewBitbucketBuildTriggerFieldGroup(fullConfig map[string]interface{}) (*Bit
 
 	if value, ok := fullConfig["BITBUCKET_TRIGGER_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newBitbucketBuildTriggerFieldGroup.BitbucketTriggerConfig, err = NewBitbucketTriggerConfigStruct(value)
 		if err != nil {
 			return newBitbucketBuildTriggerFieldGroup, err

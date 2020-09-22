@@ -18,29 +18,29 @@ func TestValidateGitLabBuildTrigger(t *testing.T) {
 
 		{name: "FeatureBuildOff", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": false}, want: "valid"},
 		{name: "FeatureGitlabBuildOff", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true}, want: "invalid"},
-		{name: "Valid", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[interface{}]interface{}{
+		{name: "Valid", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_ID":       "304c96b0015a469f6cdc907a22acbc5692d8ac2958b19a19a2585811e0c1019f",
 			"CLIENT_SECRET":   "45060b331c39c30bd532eb71c720739d177f1a22238da470eab6a5e19f26057a",
 			"GITLAB_ENDPOINT": "https://endpoint.com",
 		}}, want: "valid"},
-		{name: "BadCredentials", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[interface{}]interface{}{
+		{name: "BadCredentials", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_ID":       "bad_client_id",
 			"CLIENT_SECRET":   "bad_cluent_secret",
 			"GITLAB_ENDPOINT": "https://endpoint.com",
 		}}, want: "invalid"},
-		{name: "NoClientSecret", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[interface{}]interface{}{
+		{name: "NoClientSecret", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_ID":       "clientid",
 			"GITHUB_ENDPOINT": "https://endpoint.com",
 		}}, want: "invalid"},
-		{name: "NoClientID", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[interface{}]interface{}{
+		{name: "NoClientID", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_SECRET":   "clientsecret",
 			"GITHUB_ENDPOINT": "https://endpoint.com",
 		}}, want: "invalid"},
-		{name: "NoGitlabEndpoint", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[interface{}]interface{}{
+		{name: "NoGitlabEndpoint", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_ID":     "clientid",
 			"CLIENT_SECRET": "clientsecret",
 		}}, want: "invalid"},
-		{name: "InvalidGitlabEndpoint", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[interface{}]interface{}{
+		{name: "InvalidGitlabEndpoint", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_ID":       "clientid",
 			"CLIENT_SECRET":   "clientsecret",
 			"GITLAB_ENDPOINT": "not_a_valid_endpoint",

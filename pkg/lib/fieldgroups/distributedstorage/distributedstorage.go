@@ -66,7 +66,7 @@ func NewDistributedStorageFieldGroup(fullConfig map[string]interface{}) (*Distri
 
 	if value, ok := fullConfig["DISTRIBUTED_STORAGE_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		for k, v := range value {
 			if _, ok := v.([]interface{}); !ok {
 				return newDistributedStorageFieldGroup, errors.New("DISTRIBUTED_STORAGE_CONFIG object values must be of form (Name, Args)")
@@ -95,13 +95,12 @@ func NewDistributedStorageDefinition(storageDef []interface{}) (*DistributedStor
 		return newDistributedStorageDefinition, errors.New("First index of value in DISTRIBUTED_STORAGE_CONFIG must be a string")
 	}
 
-	storageArgs, ok := storageDef[1].(map[interface{}]interface{})
+	storageArgs, ok := storageDef[1].(map[string]interface{})
 	if !ok {
 		return newDistributedStorageDefinition, errors.New("Second index of value in DISTRIBUTED_STORAGE_CONFIG must be an object")
 	}
-	argMap := shared.FixInterface(storageArgs)
 
-	newDistributedStorageDefinition.Args, err = NewDistributedStorageArgs(argMap)
+	newDistributedStorageDefinition.Args, err = NewDistributedStorageArgs(storageArgs)
 	if err != nil {
 		return newDistributedStorageDefinition, err
 	}
@@ -145,7 +144,14 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 	if value, ok := storageArgs["port"]; ok {
 		newDistributedStorageArgs.Port, ok = value.(int)
 		if !ok {
-			return newDistributedStorageArgs, errors.New("port must be of type integer")
+
+			// We must have an extra check for float64
+			if v, ok := value.(float64); ok {
+				newDistributedStorageArgs.Port = int(v)
+			} else {
+				return newDistributedStorageArgs, errors.New("port must be of type integer")
+			}
+
 		}
 	}
 

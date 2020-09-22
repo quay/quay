@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // GitHubBuildTriggerFieldGroup represents the GitHubBuildTriggerFieldGroup config fields
@@ -43,7 +42,7 @@ func NewGitHubBuildTriggerFieldGroup(fullConfig map[string]interface{}) (*GitHub
 	}
 	if value, ok := fullConfig["GITHUB_TRIGGER_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newGitHubBuildTriggerFieldGroup.GithubTriggerConfig, err = NewGithubTriggerConfigStruct(value)
 		if err != nil {
 			return newGitHubBuildTriggerFieldGroup, err

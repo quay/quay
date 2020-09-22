@@ -19,12 +19,12 @@ func TestValidateBitbucketBuildTrigger(t *testing.T) {
 		{name: "BuildSupportOff", config: map[string]interface{}{}, want: "valid"},
 		{name: "BuildSupportOnBitbucketOff", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true}, want: "valid"},
 		{name: "BuildSupportOnBitbucketOnMissingFields", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true}, want: "invalid"},
-		{name: "BuildSupportOnBitbucketOnMissingConsumerKey", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[interface{}]interface{}{}}, want: "invalid"},
-		{name: "BuildSupportOnBitbucketOnEmptyConsumerKey", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[interface{}]interface{}{"CONSUMER_KEY": ""}}, want: "invalid"},
-		{name: "BuildSupportOnBitbucketOnMissingConsumerSecret", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[interface{}]interface{}{"CONSUMER_KEY": ""}}, want: "invalid"},
-		{name: "BuildSupportOnBitbucketOnEmptyConsumerSecret", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[interface{}]interface{}{"CONSUMER_KEY": "", "CONSUMER_SECRET": ""}}, want: "invalid"},
-		{name: "BuildSupportOnBitbucketOnInvalidConfig", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[interface{}]interface{}{"CONSUMER_KEY": "foo", "CONSUMER_SECRET": "bar"}}, want: "invalid"},
-		{name: "BuildSupportOnBitbucketOnValidConfig", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[interface{}]interface{}{"CONSUMER_KEY": "A39bvHgf3ZJxdvAXyS", "CONSUMER_SECRET": "VtqYfxbjDNFUsYbsU3vcTTqbyGxbGvYf"}}, want: "valid"},
+		{name: "BuildSupportOnBitbucketOnMissingConsumerKey", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[string]interface{}{}}, want: "invalid"},
+		{name: "BuildSupportOnBitbucketOnEmptyConsumerKey", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[string]interface{}{"CONSUMER_KEY": ""}}, want: "invalid"},
+		{name: "BuildSupportOnBitbucketOnMissingConsumerSecret", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[string]interface{}{"CONSUMER_KEY": ""}}, want: "invalid"},
+		{name: "BuildSupportOnBitbucketOnEmptyConsumerSecret", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[string]interface{}{"CONSUMER_KEY": "", "CONSUMER_SECRET": ""}}, want: "invalid"},
+		{name: "BuildSupportOnBitbucketOnInvalidConfig", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[string]interface{}{"CONSUMER_KEY": "foo", "CONSUMER_SECRET": "bar"}}, want: "invalid"},
+		{name: "BuildSupportOnBitbucketOnValidConfig", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_BITBUCKET_BUILD": true, "BITBUCKET_TRIGGER_CONFIG": map[string]interface{}{"CONSUMER_KEY": "A39bvHgf3ZJxdvAXyS", "CONSUMER_SECRET": "VtqYfxbjDNFUsYbsU3vcTTqbyGxbGvYf"}}, want: "valid"},
 	}
 
 	// Iterate through tests

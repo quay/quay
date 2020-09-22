@@ -22,7 +22,7 @@ playground.go
 config.yaml
 
 config.tar.gz
-/testdata
+/testdata*
 
 node_modules
 
