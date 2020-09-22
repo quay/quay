@@ -34,9 +34,10 @@ $ sudo podman build -t config-tool .
 Start the container and execute command:
 
 ```
-$ sudo podman run -it config-tool bash
-$ config-tool [...]
+$ sudo podman run -it -v ${CONFIG_MOUNT}:/conf config-tool ...
 ```
+
+Note that you must mount in your config directory in order for the config-tool to see it.
 
 #### Note: By default, this tool will generate an executable from a pre-built Config definition. For usage on writing a custom Config definition see [here](https://github.com/quay/config-tool/tree/master/utils/generate)
 
@@ -100,3 +101,5 @@ $ config-tool validate -c <path-to-config-dir>
 ```
 $ config-tool editor -c <path-to-config-dir> -p <editor-password> -e <operator-endpoint>
 ```
+
+This command will bring up an interactive UI in which a user can modify, validate, and download a config. In addition, Swagger documentation can be reached by going to `{{host}}/swagger/index.html`

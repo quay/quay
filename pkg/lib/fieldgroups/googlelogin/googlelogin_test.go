@@ -18,9 +18,9 @@ func TestValidateGoogleLogin(t *testing.T) {
 
 		{name: "GoogleLoginNotSpecified", config: map[string]interface{}{}, want: "valid"},
 		{name: "GoogleLoginOnMissingConfig", config: map[string]interface{}{"FEATURE_GOOGLE_LOGIN": true}, want: "invalid"},
-		{name: "GoogleLoginMissingFields", config: map[string]interface{}{"FEATURE_GOOGLE_LOGIN": true, "GOOGLE_LOGIN_CONFIG": map[interface{}]interface{}{}}, want: "invalid"},
-		{name: "GoogleLoginBadCredentials", config: map[string]interface{}{"FEATURE_GOOGLE_LOGIN": true, "GOOGLE_LOGIN_CONFIG": map[interface{}]interface{}{"CLIENT_ID": "bad_id", "CLIENT_SECRET": "bad_secret"}}, want: "invalid"},
-		{name: "GoogleLoginGoodCredentials", config: map[string]interface{}{"FEATURE_GOOGLE_LOGIN": true, "GOOGLE_LOGIN_CONFIG": map[interface{}]interface{}{"CLIENT_ID": "511815388398-ng379ngbt3ivpno3all76540eh11ebu7.apps.googleusercontent.com", "CLIENT_SECRET": "0mQogdczWFnNemnVp5esDuas"}}, want: "valid"},
+		{name: "GoogleLoginMissingFields", config: map[string]interface{}{"FEATURE_GOOGLE_LOGIN": true, "GOOGLE_LOGIN_CONFIG": map[string]interface{}{}}, want: "invalid"},
+		{name: "GoogleLoginBadCredentials", config: map[string]interface{}{"FEATURE_GOOGLE_LOGIN": true, "GOOGLE_LOGIN_CONFIG": map[string]interface{}{"CLIENT_ID": "bad_id", "CLIENT_SECRET": "bad_secret"}}, want: "invalid"},
+		{name: "GoogleLoginGoodCredentials", config: map[string]interface{}{"FEATURE_GOOGLE_LOGIN": true, "GOOGLE_LOGIN_CONFIG": map[string]interface{}{"CLIENT_ID": "511815388398-ng379ngbt3ivpno3all76540eh11ebu7.apps.googleusercontent.com", "CLIENT_SECRET": "0mQogdczWFnNemnVp5esDuas"}}, want: "valid"},
 	}
 
 	// Iterate through tests

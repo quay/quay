@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // GoogleLoginFieldGroup represents the GoogleLoginFieldGroup config fields
@@ -32,7 +31,7 @@ func NewGoogleLoginFieldGroup(fullConfig map[string]interface{}) (*GoogleLoginFi
 	}
 	if value, ok := fullConfig["GOOGLE_LOGIN_CONFIG"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newGoogleLoginFieldGroup.GoogleLoginConfig, err = NewGoogleLoginConfigStruct(value)
 		if err != nil {
 			return newGoogleLoginFieldGroup, err

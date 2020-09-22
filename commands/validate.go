@@ -28,7 +28,7 @@ import (
 	"github.com/quay/config-tool/pkg/lib/config"
 	"github.com/quay/config-tool/pkg/lib/shared"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // validateCmd represents the validate command

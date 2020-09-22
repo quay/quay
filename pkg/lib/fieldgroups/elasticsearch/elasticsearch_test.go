@@ -10,8 +10,8 @@ import (
 func TestValidateElasticSearch(t *testing.T) {
 
 	// Valid config
-	logsModelConfig := map[interface{}]interface{}{
-		"elasticsearch_config": map[interface{}]interface{}{
+	logsModelConfig := map[string]interface{}{
+		"elasticsearch_config": map[string]interface{}{
 			"access_key": "test_client_key",
 			"secret_key": "test_secret_key",
 			"host":       "bfd70499058e4485854f8bacf06af627.us-central1.gcp.cloud.es.io",

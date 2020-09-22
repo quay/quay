@@ -9,10 +9,10 @@ import (
 // TestValidateSchema tests the ValidateSchema function
 func TestValidateActionLogArchiving(t *testing.T) {
 
-	distributedStorageConfig := map[interface{}]interface{}{
+	distributedStorageConfig := map[string]interface{}{
 		"validlocation": []interface{}{
 			"LocalStorage",
-			map[interface{}]interface{}{
+			map[string]interface{}{
 				"storage_path": "/some/path",
 			},
 		},

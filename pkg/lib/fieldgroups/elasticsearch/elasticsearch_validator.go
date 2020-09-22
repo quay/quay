@@ -3,7 +3,6 @@ package elasticsearch
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/quay/config-tool/pkg/lib/shared"
 )
@@ -87,7 +86,7 @@ func (fg *ElasticSearchFieldGroup) Validate(opts shared.Options) []shared.Valida
 	if opts.Mode != "testing" {
 		// Get parameters to build url
 		host := fg.LogsModelConfig.ElasticsearchConfig.Host
-		port := strconv.Itoa(fg.LogsModelConfig.ElasticsearchConfig.Port)
+		port := fmt.Sprintf("%d", fg.LogsModelConfig.ElasticsearchConfig.Port)
 		//indexPrefix := fg.LogsModelConfig.ElasticsearchConfig.IndexPrefix
 
 		// Build url

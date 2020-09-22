@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
-	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // DatabaseFieldGroup represents the DatabaseFieldGroup config fields
@@ -32,7 +31,7 @@ func NewDatabaseFieldGroup(fullConfig map[string]interface{}) (*DatabaseFieldGro
 
 	if value, ok := fullConfig["DB_CONNECTION_ARGS"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newDatabaseFieldGroup.DbConnectionArgs, err = NewDbConnectionArgsStruct(value)
 		if err != nil {
 			return newDatabaseFieldGroup, err
@@ -55,7 +54,7 @@ func NewDbConnectionArgsStruct(fullConfig map[string]interface{}) (*DbConnection
 
 	if value, ok := fullConfig["ssl"]; ok {
 		var err error
-		value := shared.FixInterface(value.(map[interface{}]interface{}))
+		value := value.(map[string]interface{})
 		newDbConnectionArgsStruct.Ssl, err = NewSslStruct(value)
 		if err != nil {
 			return newDbConnectionArgsStruct, err

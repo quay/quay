@@ -369,9 +369,11 @@ func ValidateMinioStorage(opts Options, args *DistributedStorageArgs, fgName str
 	}
 
 	for name, cert := range opts.Certificates {
-		log.Println("adding certificate: " + name)
-		if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
-			log.Fatalf("failed to append custom certificate: " + name)
+		if strings.HasPrefix(name, "extra_ca_certs/") {
+			log.Println("adding certificate: " + name)
+			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
+				log.Fatalf("failed to append custom certificate: " + name)
+			}
 		}
 	}
 

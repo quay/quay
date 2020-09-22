@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/quay/config-tool/pkg/lib/shared"
@@ -38,7 +38,7 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 	// Build options for build logs and connect
 	addr := fg.BuildlogsRedis.Host
 	if fg.BuildlogsRedis.Port != 0 {
-		addr = addr + ":" + strconv.Itoa(fg.BuildlogsRedis.Port)
+		addr = addr + ":" + fmt.Sprintf("%d", fg.BuildlogsRedis.Port)
 	}
 
 	options := &redis.Options{
@@ -53,7 +53,7 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 	// Build options for user events and connect
 	addr = fg.UserEventsRedis.Host
 	if fg.UserEventsRedis.Port != 0 {
-		addr = addr + ":" + strconv.Itoa(fg.UserEventsRedis.Port)
+		addr = addr + ":" + fmt.Sprintf("%d", fg.BuildlogsRedis.Port)
 	}
 	options = &redis.Options{
 		Addr:     addr,

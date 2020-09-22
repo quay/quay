@@ -1,5 +1,9 @@
 import * as URI from 'urijs';
 import * as angular from 'angular';
+const forge = require('node-forge')
+const JSZip = require('jszip')
+const yaml = require('js-yaml')
+const FileSaver = require('file-saver')
 const templateUrl = require('./config-setup-tool.html');
 const urlParsedField =  require('../config-field-templates/config-parsed-field.html');
 const urlVarField = require('../config-field-templates/config-variable-field.html');
@@ -235,21 +239,33 @@ angular.module("quay-config")
           var errorDisplay = ApiService.errorDisplay(
               'Could not validate configuration. Please report this error.');
 
-          ApiService.validateConfig($scope.config).then(function(resp) {
+          ApiService.validateConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
             $scope.validationStatus = resp.length == 0 ? 'success' : 'error';
             $scope.validationResult = resp;
           }, errorDisplay);
         };
 
         $scope.commitToOperator = function() {
-          ApiService.commitToOperator($scope.config, [...$scope.readOnlyFieldGroups.keys()]).then(function(resp) {
+          ApiService.commitToOperator({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
             console.log(resp)
           })
         }
 
-        $scope.downloadConfig = function() {
-          ApiService.downloadConfig($scope.config).then(function(resp) {
-            console.log(resp)
+        $scope.downloadConfigBundle = function() {
+          var zip = new JSZip()
+          let configStr = yaml.safeDump($scope.config)
+          zip.file("config.yaml", configStr)
+          let extra_ca_certs = zip.folder("extra_ca_certs")
+          Object.entries($scope.certs).forEach(([filename, contents]) => {
+            if(filename.startsWith("extra_ca_certs/")){
+              extra_ca_certs.file(filename.replace("extra_ca_certs/", ""), atob(contents))
+            } else {
+              zip.file(filename, atob(contents))
+            }
+          })
+
+          zip.generateAsync({type:"blob"}).then(function(content){
+            FileSaver.saveAs(content, "quay-config.zip")
           })
         }
 
@@ -761,9 +777,9 @@ angular.module("quay-config")
         $scope.$watch('isActive', function(value) {
           if (!value) { return; }
 
-          ApiService.getConfig().then(function(resp) {
+          ApiService.getMountedConfigBundle().then(function(resp) {
             $scope.config = resp["config.yaml"] || {};
-            $scope.certs = resp["certs"] || {}
+            $scope.certs = resp["certs"] || {};
             $scope.originalConfig = Object.assign({}, resp["config.yaml"] || {});;
             initializeMappedLogic($scope.config);
             initializeStorageConfig($scope);
@@ -966,9 +982,14 @@ angular.module("quay-config")
         'hasFile': '=hasFile',
         'binding': '=?binding',
         'isReadonly': '=isReadonly',
+        'certs': '=certs'
       },
       controller: function($scope, $element, Restangular) {
         $scope.hasFile = false;
+
+        if ($scope.filename in $scope.certs){
+          $scope.hasFile = true
+        }
 
         var setHasFile = function(hasFile) {
           $scope.hasFile = hasFile;
@@ -980,35 +1001,38 @@ angular.module("quay-config")
             setHasFile(false);
             return;
           }
-
-          // FIXME: $upload was from Angular File Uploader.
-          $scope.uploadProgress = 0;
-          $scope.upload = $upload.upload({
-            url: '/api/v1/superuser/config/file/' + $scope.filename,
-            method: 'POST',
-            data: {'_csrf_token': window.__token},
-            file: files[0],
-          }).progress(function(evt) {
-            $scope.uploadProgress = parseInt(100.0 * evt.loaded / evt.total);
-            if ($scope.uploadProgress == 100) {
-              $scope.uploadProgress = null;
-              setHasFile(true);
-            }
-          }).success(function(data, status, headers, config) {
-            $scope.uploadProgress = null;
-            setHasFile(true);
-          });
+          conductUpload(files[0])
+          setHasFile(true)
+          
         };
 
-        var loadStatus = function(filename) {
-          Restangular.one('superuser/config/file/' + filename).get().then(function(resp) {
-            setHasFile(false);
-          });
+        var conductUpload = function(file) {
+ 
+          var reader = new FileReader();
+          reader.readAsText(file)
+          
+          reader.onprogress = function(e) {
+            $scope.$apply(function() {
+              if (e.lengthComputable) { 
+                $scope.uploadProgress = (e.loaded / e.total) * 100
+              }
+            });
+          }
+  
+          reader.onload = function(e){
+            $scope.$apply(function(){
+              $scope.certs[$scope.filename] = btoa(e.target.result)
+              $scope.uploadProgress = null
+              console.log("after_upload", $scope.certs)
+            })
+          }
+  
+          reader.onerror = function(e){
+            $scope.$apply(function() { doneCb(false, 'Error when uploading'); });
+          }
+  
         };
 
-        if ($scope.filename && $scope.skipCheckFile != "true") {
-          loadStatus($scope.filename);
-        }
       }
     };
     return directiveDefinitionObject;
@@ -1370,42 +1394,40 @@ angular.module("quay-config")
       transclude: false,
       restrict: 'C',
       scope: {
+        'certs': '=certs',
       },
       controller: function($scope, $element, ApiService) {
-        $scope.resetUpload = 0;
         $scope.certsUploading = false;
-        $scope.certInfo = null
+        $scope.certMeta = []
 
-        var loadCertificates = function() {
-
-          $scope.certsUploading = true;
-          ApiService.getCertificates().then(function(resp) {
-            $scope.certInfo = resp || {};
-            $scope.certsUploading = false;
+        // Reads the certs stored in scope and creates a new object with metadata to render table
+        var loadCertificateMeta = function() {
+          $scope.certMeta = Object.entries($scope.certs)
+          .filter(([filename, contents]) => filename.startsWith("extra_ca_certs/"))
+          .map(([filename, contents]) => {
+            const cert = forge.pki.certificateFromPem(atob(contents));
+            const current = new Date();
+            const expired = current > cert.validity.notAfter;
+            
+            return {path: filename, names: getCertNames(cert), expired: expired};
           })
-  
-        };
+          $scope.certsUploading = false;
+        }
 
-        loadCertificates();
-
-        $scope.handleCertsSelected = function(files, callback) {
-          $scope.certsUploading = true;
-          callback(true);
-        };
-
-        $scope.handleCertsValidated = function(files, uploadFiles) {
-          console.log(files);
-
-          uploadFiles(function(done, fileIDs) {
-            console.log(fileIDs);
-
-            if (!done) {
-              alert('Could not upload certificate');
+        // Gets the common names for a given cert
+        var getCertNames = function(cert) {
+          let cn = []
+          cert.issuer.attributes.forEach(function(attr){
+            if(attr.shortName == "CN"){
+              cn.push(attr.value)
             }
+          })
+          return cn        
+        }
 
-            $scope.resetUpload++;
-            loadCertificates();
-          });
+        $scope.$watch('certs', loadCertificateMeta, true)
+        $scope.handleCertsSelected = function() {
+          $scope.certsUploading = true;
         };
       }
     };
