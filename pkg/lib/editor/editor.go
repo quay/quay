@@ -98,7 +98,7 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	r.Post("/api/v1/config/operator", auth.JustCheck(authenticator, commitToOperator(opts)))
 
 	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:7070/docs/swagger.json"), // FIXME(jonathan) - This can eventually be changed to the github link to this file.
+		httpSwagger.URL("/docs/swagger.json"), // FIXME(jonathan) - This can eventually be changed to the github link to this file.
 	))
 
 	// File handlers

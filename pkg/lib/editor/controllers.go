@@ -195,6 +195,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		configBundle.Config = shared.FixNumbers(configBundle.Config)
 
 		// TODO(alecmerdler): For each managed component fieldgroup, remove its fields from `config.yaml` using `Fields()` function...
 		newConfig, err := config.NewConfig(configBundle.Config)
