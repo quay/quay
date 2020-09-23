@@ -56,6 +56,7 @@ def _check_jwt_proxy(app):
     Returns the status of JWT proxy in the container.
     """
     client = app.config["HTTPCLIENT"]
+    # FIXME(alecmerdler): This is no longer behind jwtproxy...
     registry_url = _compute_internal_endpoint(app, "secscan")
     try:
         status_code = client.get(registry_url, verify=False, timeout=2).status_code

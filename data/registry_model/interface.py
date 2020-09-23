@@ -403,12 +403,35 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def find_repository_with_garbage(self, limit_to_gc_policy_s):
-        """ Returns a repository reference to a repository that contains garbage for collection
-            or None if none.
+        """
+        Returns a repository reference to a repository that contains garbage for collection
+        or None if none.
         """
 
     @abstractmethod
     def populate_legacy_images_for_testing(self, manifest, storage):
-        """ Populates legacy images for the given manifest, for testing only. This call
-            will fail if called under non-testing code.
+        """ 
+        Populates legacy images for the given manifest, for testing only. This call
+        will fail if called under non-testing code.
+        """
+
+    @abstractmethod
+    def find_manifests_for_sec_notification(self, manifest_digest):
+        """ 
+        Finds all manifests with the given digest that live in repositories that have
+        registered security notifications.
+        """
+
+    @abstractmethod
+    def lookup_secscan_notification_severities(self, repository):
+        """ 
+        Returns the security notification severities for security events within
+        a repository or None if none.
+        """
+
+    @abstractmethod
+    def tag_names_for_manifest(self, manifest, limit):
+        """ 
+        Returns the names of the tags that point to the given manifest, up to the given
+        limit.
         """

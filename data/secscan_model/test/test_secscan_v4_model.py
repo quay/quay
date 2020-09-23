@@ -7,7 +7,12 @@ import json
 from datetime import datetime, timedelta
 
 from data.secscan_model.secscan_v4_model import V4SecurityScanner, IndexReportState, features_for
-from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformation, Layer
+from data.secscan_model.datatypes import (
+    ScanLookupStatus,
+    SecurityInformation,
+    Layer,
+    PaginatedNotificationStatus,
+)
 from data.database import (
     Manifest,
     Repository,
@@ -358,3 +363,79 @@ def test_perform_indexing_invalid_manifest(initialized_db, set_secscan_config):
     assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.MANIFEST_UNSUPPORTED
+
+
+def test_lookup_notification_page_invalid(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.retrieve_notification_page.return_value = None
+
+    result = secscan.lookup_notification_page("someinvalidid")
+
+    assert result.status == PaginatedNotificationStatus.FATAL_ERROR
+
+
+def test_lookup_notification_page_valid(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.retrieve_notification_page.return_value = {
+        "notifications": [
+            {
+                "id": "5e4b387e-88d3-4364-86fd-063447a6fad2",
+                "manifest": "sha256:35c102085707f703de2d9eaad8752d6fe1b8f02b5d2149f1d8357c9cc7fb7d0a",
+                "reason": "added",
+                "vulnerability": {},
+            }
+        ],
+        "page": {},
+    }
+
+    result = secscan.lookup_notification_page("5e4b387e-88d3-4364-86fd-063447a6fad2")
+
+    assert result.status == PaginatedNotificationStatus.SUCCESS
+    assert result.next_page_index is None
+    assert (
+        result.data[0]["manifest"]
+        == "sha256:35c102085707f703de2d9eaad8752d6fe1b8f02b5d2149f1d8357c9cc7fb7d0a"
+    )
+
+
+def test_mark_notification_handled(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.delete_notification.return_value = True
+
+    assert secscan.mark_notification_handled("somevalidid") == True
+
+
+def test_process_notification_page(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+
+    results = list(
+        secscan.process_notification_page(
+            [
+                {"reason": "removed",},
+                {
+                    "reason": "added",
+                    "manifest": "sha256:abcd",
+                    "vulnerability": {
+                        "normalized_severity": "s",
+                        "description": "d",
+                        "package": {"id": "42", "name": "p", "version": "v0.0.1",},
+                        "name": "n",
+                        "fixed_in_version": "f",
+                        "links": "l",
+                    },
+                },
+            ]
+        )
+    )
+
+    assert len(results) == 1
+    assert results[0].manifest_digest == "sha256:abcd"
+    assert results[0].vulnerability.Severity == "s"
+    assert results[0].vulnerability.Description == "d"
+    assert results[0].vulnerability.NamespaceName == "p"
+    assert results[0].vulnerability.Name == "n"
+    assert results[0].vulnerability.FixedBy == "f"
+    assert results[0].vulnerability.Link == "l"

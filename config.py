@@ -263,6 +263,7 @@ class DefaultConfig(ImmutableConfig):
     NAMESPACE_GC_QUEUE_NAME = "namespacegc"
     REPOSITORY_GC_QUEUE_NAME = "repositorygc"
     EXPORT_ACTION_LOGS_QUEUE_NAME = "exportactionlogs"
+    SECSCAN_V4_NOTIFICATION_QUEUE_NAME = "secscanv4"
 
     # Super user config. Note: This MUST BE an empty list for the default config.
     SUPER_USERS = []

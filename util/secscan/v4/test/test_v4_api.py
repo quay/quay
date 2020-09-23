@@ -63,10 +63,28 @@ bad_vuln_report = {
             True,
             None,
         ),
+        (
+            actions["GetNotification"]("5e4b387e-88d3-4364-86fd-063447a6fad2", None),
+            None,
+            False,
+            None,
+        ),
+        (
+            actions["GetNotification"]("5e4b387e-88d3-4364-86fd-063447a6fad2", None),
+            {"page": {}, "notifications": []},
+            True,
+            None,
+        ),
+        (actions["DeleteNotification"]("5e4b387e-88d3-4364-86fd-063447a6fad2"), None, True, None,),
     ],
 )
 def test_is_valid_response(action, resp, expected, exception):
+    class TestResponse(object):
+        def json(self):
+            return resp
+
     try:
-        assert is_valid_response(action, resp) == expected
+        result = is_valid_response(action, TestResponse())
+        assert result == expected
     except Exception as e:
         assert exception is not None and isinstance(e, exception)
