@@ -9,11 +9,13 @@
 package editor
 
 import (
+	"crypto/tls"
+	"errors"
+	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
 	"os"
-	"strconv"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/go-chi/chi"
@@ -27,13 +29,15 @@ import (
 type ServerOptions struct {
 	username            string
 	password            string
-	port                int
+	port                string
 	configPath          string
 	staticContentPath   string
 	operatorEndpoint    string
 	readOnlyFieldGroups []string
 	podNamespace        string // Optional
 	podName             string // Optional
+	publicKeyPath       string
+	privateKeyPath      string
 }
 
 // ConfigBundle is the current state of the config bundle on the server. It may read from a path on disk and then edited through the API.
@@ -45,6 +49,10 @@ type ConfigBundle struct {
 
 // RunConfigEditor runs the configuration editor server.
 func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFieldGroups []string) {
+
+	// FIX THIS
+	publicKeyPath := os.Getenv("CONFIG_TOOL_PUBLIC_KEY")
+	privateKeyPath := os.Getenv("CONFIG_TOOL_PRIVATE_KEY")
 
 	staticContentPath, exists := os.LookupEnv("CONFIG_EDITOR_STATIC_CONTENT_PATH")
 	if !exists {
@@ -62,13 +70,15 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	opts := &ServerOptions{
 		username:            "quayconfig", // FIXME (jonathan) - add option to change username
 		password:            password,
-		port:                8080, // FIXME (jonathan) - add option to change port
+		port:                "8080", // FIXME (jonathan) - add option to change port
 		configPath:          configPath,
 		staticContentPath:   staticContentPath,
 		operatorEndpoint:    operatorEndpoint,
 		readOnlyFieldGroups: readOnlyFieldGroups,
 		podNamespace:        podNamespace,
 		podName:             podName,
+		publicKeyPath:       publicKeyPath,
+		privateKeyPath:      privateKeyPath,
 	}
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(opts.password), 5)
@@ -82,7 +92,6 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	mime.AddExtensionType(".css", "text/css; charset=utf-8")
 	mime.AddExtensionType(".js", "application/javascript; charset=utf-8")
 
-	log.Printf("Running the configuration editor on port %v with username %s", opts.port, opts.username)
 	if opts.operatorEndpoint != "" {
 		log.Printf("Using Operator Endpoint: " + opts.operatorEndpoint)
 	}
@@ -111,11 +120,47 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 		fs.ServeHTTP(w, r)
 	})
 
+	// Create server base
 	s := &http.Server{
-		Addr:    ":" + strconv.Itoa(opts.port),
+		Addr:    ":" + opts.port,
 		Handler: r,
 	}
 
-	log.Fatal(s.ListenAndServe())
+	// Try to load TLS
+	tlsConfig, err := loadTLS(opts.publicKeyPath, opts.privateKeyPath)
+	if err != nil {
+		log.Printf("An error occurred loading TLS: " + err.Error() + ". Server falling back to HTTP.")
+		log.Printf("Running the configuration editor with HTTP on port %v with username %s", opts.port, opts.username)
+		log.Fatal(s.ListenAndServe())
+	} else {
+		s.TLSConfig = tlsConfig
+		log.Printf("Running the configuration editor with HTTPS on port %v with username %s", opts.port, opts.username)
+		log.Fatal(s.ListenAndServeTLS("", ""))
+	}
+}
 
+// tlsConfig will attempt to create a tls config given a public and private key. It returns an error if it fails to create a Config.
+func loadTLS(publicKeyPath, privateKeyPath string) (*tls.Config, error) {
+
+	if publicKeyPath == "" {
+		return nil, errors.New("No public key provided for HTTPS")
+	}
+	if privateKeyPath == "" {
+		return nil, errors.New("No private key provided for HTTPS")
+	}
+	crt, err := ioutil.ReadFile(publicKeyPath)
+	if err != nil {
+		return nil, errors.New("Could not open public key: " + publicKeyPath)
+	}
+	key, err := ioutil.ReadFile(privateKeyPath)
+	if err != nil {
+		return nil, errors.New("Could not open private key: " + privateKeyPath)
+	}
+	cert, err := tls.X509KeyPair(crt, key)
+	if err != nil {
+		return nil, errors.New("Could not load X509 key pair: " + err.Error())
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert}}, nil
 }
