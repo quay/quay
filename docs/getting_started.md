@@ -186,7 +186,8 @@ Quay and Clair can also be run as services on a Kubernetes cluster.  This is bec
 
 ## Troubleshooting
 
-### I need to change my Quay configuration!  This can be done by uploading your config tarball back into the ConfigTool:
+### I need to change my Quay configuration!
+This can be done by uploading your config tarball back into the ConfigTool:
 ```
 $ cd $QUAY/config
 $ tar cvzf myconfig.tar.gz config.yaml
@@ -202,3 +203,49 @@ bash-4.4$ psql -d quay -U user
 psql (10.6)
 Type "help" for help.
 ```
+
+### I'd like to use MySQL instead of Postgres!
+
+Not a problem.  Just replace the Postgres setup steps above with
+```
+$ mkdir -p $QUAY/mysql
+$ setfacl -m u:26:-wx $QUAY/mysql
+$ sudo podman run --name mysql -v $QUAY/mysql:/var/lib/mysql:Z -e MYSQL_ROOT_PASSWORD=password -d mysql:5.7.31
+```
+
+Once MySQL is running, you'll want to get the IP address for the database:
+```
+$ sudo podman inspect -f "{{.NetworkSettings.IPAddress}}" mysql
+10.88.0.108
+```
+
+
+Then you'll need to create a database for Quay by connecting to the IP address you just found (this step isn't needed for Postgres)
+```
+$ sudo podman run -it --rm mysql:5.7.31 mysql -h10.88.0.108 -uroot -p
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 2
+Server version: 5.7.31 MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> create database quay;
+Query OK, 1 row affected (0.01 sec)
+
+```
+
+NOTE: if you are using MySQL 8.0 or higher, you'll need to ensure the database is created with the Latin1 charset:
+```
+mysql> create database quay character set latin1;
+Query OK, 1 row affected (0.02 sec)
+```
+
+Lastly, when you run the Quay Config Tool, remember to pick `MySQL` as your database type and use the credentials `root/password` and database name `quay`.
+
