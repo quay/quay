@@ -42,11 +42,15 @@ class FakeSecurityScanner(object):
         The HTTMock endpoint definitions for the fake security scanner.
         """
 
-        @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/index_state", method="GET")
+        @urlmatch(
+            netloc=r"(.*\.)?" + self.hostname, path=r"/indexer/api/v1/index_state", method="GET"
+        )
         def state(url, request):
             return {"status_code": 200, "content": json.dumps({"state": self.indexer_state})}
 
-        @urlmatch(netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/index_report", method="POST")
+        @urlmatch(
+            netloc=r"(.*\.)?" + self.hostname, path=r"/indexer/api/v1/index_report", method="POST"
+        )
         def index(url, request):
             body = json.loads(request.body)
             if not "hash" in body or not "layers" in body:
@@ -85,10 +89,12 @@ class FakeSecurityScanner(object):
             }
 
         @urlmatch(
-            netloc=r"(.*\.)?" + self.hostname, path=r"/api/v1/index_report/(.+)", method="GET"
+            netloc=r"(.*\.)?" + self.hostname,
+            path=r"/indexer/api/v1/index_report/(.+)",
+            method="GET",
         )
         def index_report(url, request):
-            manifest_hash = url.path[len("/api/v1/index_report/") :]
+            manifest_hash = url.path[len("/indexer/api/v1/index_report/") :]
             if manifest_hash not in self.index_reports:
                 return {
                     "status_code": 404,
@@ -110,11 +116,11 @@ class FakeSecurityScanner(object):
 
         @urlmatch(
             netloc=r"(.*\.)?" + self.hostname,
-            path=r"/api/v1/vulnerability_report/(.+)",
+            path=r"/matcher/api/v1/vulnerability_report/(.+)",
             method="GET",
         )
         def vulnerability_report(url, request):
-            manifest_hash = url.path[len("/api/v1/vulnerability_report/") :]
+            manifest_hash = url.path[len("/matcher/api/v1/vulnerability_report/") :]
             if manifest_hash not in self.index_reports:
                 return {
                     "status_code": 404,

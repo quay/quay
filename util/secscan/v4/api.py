@@ -81,13 +81,14 @@ class SecurityScannerAPIInterface(object):
 Action = namedtuple("Action", ["name", "payload"])
 
 actions = {
-    "IndexState": lambda: Action("IndexState", ("GET", "index_state", None)),
-    "Index": lambda manifest: Action("Index", ("POST", "index_report", manifest)),
+    "IndexState": lambda: Action("IndexState", ("GET", "/indexer/api/v1/index_state", None)),
+    "Index": lambda manifest: Action("Index", ("POST", "/indexer/api/v1/index_report", manifest)),
     "GetIndexReport": lambda manifest_hash: Action(
-        "GetIndexReport", ("GET", "index_report/" + manifest_hash, None)
+        "GetIndexReport", ("GET", "/indexer/api/v1/index_report/" + manifest_hash, None)
     ),
     "GetVulnerabilityReport": lambda manifest_hash: Action(
-        "GetVulnerabilityReport", ("GET", "vulnerability_report/" + manifest_hash, None,)
+        "GetVulnerabilityReport",
+        ("GET", "/matcher/api/v1/vulnerability_report/" + manifest_hash, None,),
     ),
 }
 
@@ -97,7 +98,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         self._client = client
         self._blob_url_retriever = blob_url_retriever
 
-        self.secscan_api_endpoint = urljoin(endpoint, "/api/v1/")
+        self.secscan_api_endpoint = endpoint
 
     def state(self):
         try:
@@ -211,6 +212,7 @@ def is_valid_response(action, resp={}):
     with open(filename) as openapi_file:
         openapi = json.load(openapi_file)
         resolver = RefResolver(base_uri="", referrer=openapi)
+
         schema = openapi["components"]["schemas"][schema_for[action.name]]
 
         try:
