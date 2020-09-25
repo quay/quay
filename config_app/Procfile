@@ -1,3 +1,0 @@
-app: PYTHONPATH="../" gunicorn -c conf/gunicorn_local.py config_application:application
-webpack: npm run watch-config-app
-

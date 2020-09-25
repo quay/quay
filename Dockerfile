@@ -1,3 +1,33 @@
+
+###################
+FROM centos:8 as config-editor
+
+WORKDIR /config-editor
+
+RUN INSTALL_PKGS="\
+    git \
+    " && \
+    yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS
+
+RUN git clone https://github.com/quay/config-tool.git /config-editor && \
+    cp -R pkg/lib/editor/* .
+RUN yum install -y nodejs && \
+    npm install --ignore-engines && \
+    npm run build
+
+
+###################
+FROM golang:1.15 as config-tool
+
+WORKDIR /go/src/config-tool
+RUN git clone https://github.com/quay/config-tool.git /go/src/config-tool
+RUN rm -rf /go/src/config-tool/pkg/lib/editor/static/build
+COPY --from=config-editor /config-editor/static/build  /go/src/config-tool/pkg/lib/editor/static/build
+
+RUN go install ./cmd/config-tool
+
+
+###################
 FROM centos:8
 LABEL maintainer "thomasmckay@redhat.com"
 
@@ -14,23 +44,29 @@ ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
 ENV QUAYPATH "."
 
+
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
+COPY --from=config-tool /go/bin/config-tool /bin
+RUN mkdir ${QUAYDIR}/config_app
+COPY --from=config-editor /config-editor ${QUAYDIR}/config_app
+
+
 RUN INSTALL_PKGS="\
-        python3 \
-        nginx \
-        openldap \
-        gcc-c++ git \
-        openldap-devel \
-        python3-devel \
-        python3-gpg \
-        dnsmasq \
-        memcached \
-        nodejs \
-        openssl \
-        skopeo \
-        " && \
+    python3 \
+    nginx \
+    openldap \
+    gcc-c++ git \
+    openldap-devel \
+    python3-devel \
+    python3-gpg \
+    dnsmasq \
+    memcached \
+    nodejs \
+    openssl \
+    skopeo \
+    " && \
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
@@ -40,18 +76,15 @@ COPY . .
 RUN alternatives --set python /usr/bin/python3 && \
     python -m pip install --no-cache-dir --upgrade setuptools pip && \
     python -m pip install --no-cache-dir -r requirements.txt --no-cache && \
-    python -m pip freeze && \
-    mkdir -p $QUAYDIR/static/webfonts && \
+    python -m pip freeze
+
+
+RUN mkdir -p $QUAYDIR/static/webfonts && \
     mkdir -p $QUAYDIR/static/fonts && \
     mkdir -p $QUAYDIR/static/ldn && \
     PYTHONPATH=$QUAYPATH python -m external_libraries && \
-    cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
-    cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
-    cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
-
-RUN npm install --ignore-engines && \
-    npm run build && \
-    npm run build-config-app
+    npm install --ignore-engines && \
+    npm run build
 
 
 ENV JWTPROXY_VERSION=0.0.3
@@ -75,13 +108,13 @@ RUN ln -s $QUAYCONF /conf && \
 
 # Cleanup
 RUN UNINSTALL_PKGS="\
-        gcc-c++ git \
-        openldap-devel \
-        gpgme-devel \
-        python3-devel \
-        optipng \
-        kernel-headers \
-        " && \
+    gcc-c++ git \
+    openldap-devel \
+    gpgme-devel \
+    python3-devel \
+    optipng \
+    kernel-headers \
+    " && \
     yum remove -y $UNINSTALL_PKGS && \
     yum clean all && \
     rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache

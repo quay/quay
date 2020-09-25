@@ -12,10 +12,7 @@
     "watch": "npm run clean && webpack --watch --mode=development",
     "lint": "tslint --type-check -p tsconfig.json -e **/*.spec.ts",
     "analyze": "npm run clean && NODE_ENV=production webpack --profile --mode=production --json > static/build/stats.json && webpack-bundle-analyzer --mode static -r static/build/report.html static/build/stats.json",
-    "clean": "rm -f static/build/*",
-    "clean-config-app": "rm -f config_app/static/build/*",
-    "watch-config-app": "npm run clean-config-app && cd config_app && webpack --watch --mode=development",
-    "build-config-app": "npm run clean-config-app && cd config_app && NODE_ENV=production webpack --mode=production --progress"
+    "clean": "rm -f static/build/*"
   },
   "repository": {
     "type": "git",
@@ -36,8 +33,8 @@
     "core-js": "^2.4.1",
     "d3": "^3.3.3",
     "eonasdan-bootstrap-datetimepicker": "^4.17.43",
-	"moment": "^2.10",
-	"moment-timezone": "^0.4.0",
+    "moment": "^2.10",
+    "moment-timezone": "^0.4.0",
     "file-saver": "^1.3.3",
     "highlight.js": "^9.12.0",
     "jquery": "1.12.4",
@@ -87,4 +84,3 @@
     "webpack-cli": "3.3.9"
   }
 }
-

@@ -10,7 +10,7 @@ import jinja2
 import pytest
 
 from ..supervisord_conf_create import (
-    default_services,
+    registry_services,
     limit_services,
     override_services,
     QUAY_SERVICES,
@@ -40,8 +40,8 @@ def render_supervisord_conf(config):
     return template.render(config=config)
 
 
-def test_supervisord_conf_create_defaults():
-    config = default_services()
+def test_supervisord_conf_create_registry():
+    config = registry_services()
     limit_services(config, [])
     rendered_config_file = render_supervisord_conf(config)
 
