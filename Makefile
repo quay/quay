@@ -23,7 +23,18 @@ build-local-dev:
 	sudo podman build -t config-app:dev -f Dockerfile.dev
 
 run-local-dev:
-	sudo podman run -p 7070:8080 -v ./pkg/lib/editor/js:/jssrc/js -v ./pkg/lib/editor/editor.go:/jssrc/editor.go -v ./:/go/src/config-tool -v ${CONFIG_MOUNT}:/conf -e MY_POD_NAMESPACE=${MY_POD_NAMESPACE} -e MY_POD_NAME=${MY_POD_NAME} -ti config-app:dev
+	sudo podman run -p 7070:8080 \
+	-v ./pkg/lib/editor/js:/jssrc/js \
+	-v ./pkg/lib/editor/editor.go:/jssrc/editor.go \
+	-v ./:/go/src/config-tool \
+	-v ${CONFIG_MOUNT}:/conf \
+	-v ./testdata-tls/localhost.key:${CONFIG_TOOL_PRIVATE_KEY} \
+	-v ./testdata-tls/localhost.crt:${CONFIG_TOOL_PUBLIC_KEY} \
+	-e MY_POD_NAMESPACE=${MY_POD_NAMESPACE} \
+	-e MY_POD_NAME=${MY_POD_NAME} \
+	-e CONFIG_TOOL_PUBLIC_KEY=${CONFIG_TOOL_PUBLIC_KEY} \
+	-e CONFIG_TOOL_PRIVATE_KEY=${CONFIG_TOOL_PRIVATE_KEY} \
+	-ti config-app:dev
 
 swagger:
 	swag init -g pkg/lib/editor/editor.go
