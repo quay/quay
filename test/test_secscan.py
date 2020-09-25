@@ -92,7 +92,7 @@ class TestSecurityScanner(unittest.TestCase):
             # Retrieve the results.
             result = self.api.get_layer_data(manifest, include_vulnerabilities=True)
             self.assertIsNotNone(result)
-            self.assertEquals(result["Layer"]["Name"], security_scanner.layer_id(manifest))
+            self.assertEqual(result["Layer"]["Name"], security_scanner.layer_id(manifest))
 
 
 if __name__ == "__main__":
