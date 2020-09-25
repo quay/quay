@@ -61,7 +61,6 @@ func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http
 		// Get all certs in directory
 		certs := shared.LoadCerts(opts.configPath)
 
-		fmt.Println(len(certs))
 		resp := ConfigBundle{
 			Config:       config,
 			Certificates: certs,

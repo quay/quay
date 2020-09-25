@@ -148,3 +148,17 @@ func FixNumbers(m map[string]interface{}) map[string]interface{} {
 	}
 	return m
 }
+
+// RemoveNullValues will remove empty values from a config.yaml. This will prevent a panic when it is unmarshalled.
+func RemoveNullValues(m map[string]interface{}) map[string]interface{} {
+	for k, v := range m {
+		_ = k
+		if v, ok := v.(map[string]interface{}); ok {
+			FixNumbers(v)
+		}
+		if v == nil {
+			delete(m, k)
+		}
+	}
+	return m
+}

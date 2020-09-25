@@ -219,7 +219,7 @@ func ValidateIsHostname(input string, field string, fgName string) (bool, Valida
 	input = strings.Trim(input, " ")
 
 	// check against regex
-	re, _ := regexp.Compile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$`)
+	re, _ := regexp.Compile(`^[a-zA-Z-0-9\.]+(:[0-9]+)?$`)
 	if !re.MatchString(input) {
 		newError := ValidationError{
 			Tags:       []string{field},

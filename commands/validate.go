@@ -47,12 +47,17 @@ var validateCmd = &cobra.Command{
 			fmt.Println(err.Error())
 		}
 
-		// Load config into struct
+		// Unmarshal from json
 		var conf map[string]interface{}
 		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
 			fmt.Println(err.Error())
 		}
 
+		// Clean config
+		conf = shared.FixNumbers(conf)
+		conf = shared.RemoveNullValues(conf)
+
+		// Load into struct
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
 			fmt.Println(err.Error())

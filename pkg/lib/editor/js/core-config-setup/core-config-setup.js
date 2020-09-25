@@ -270,17 +270,19 @@ angular.module("quay-config")
         }
 
         $scope.checkValidateAndSave = function() {
+          
           if ($scope.configform.$valid) {
             saveStorageConfig();
             $scope.validateAndSave();
             return;
           }
 
-          var query = $element.find("ng-invalid:first");
-          if (query && query.length) {
-            
-            query[0].scrollIntoView();
-            query.focus();
+          var query = $.find(".ng-invalid");
+
+          console.log(query)
+          if (query && query.length) {   
+            query[1].scrollIntoView();
+            query[1].focus();
           }
         };
 
