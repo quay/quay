@@ -157,6 +157,25 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 		return err
 	}
 
+	// If database is postgres, make sure that extension pg_trgm is installed
+	if scheme == "postgresql" {
+		rows, err := db.Query("SELECT extname FROM pg_extension")
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var ext string
+			if err := rows.Scan(&ext); err != nil {
+				return err
+			}
+			if ext == "pg_trgm" {
+				return nil
+			}
+		}
+		return errors.New("If you are using a Postgres database, you must install the pg_trgm extension")
+	}
+
 	// Return no error
 	return nil
 
