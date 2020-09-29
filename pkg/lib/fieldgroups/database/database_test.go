@@ -19,7 +19,7 @@ func TestValidateDatabase(t *testing.T) {
 		{name: "dbURIMissing", config: map[string]interface{}{}, want: "invalid"},
 		{name: "dbURIMissing", config: map[string]interface{}{"DB_URI": ""}, want: "invalid"},
 		{name: "dbURIInvalid", config: map[string]interface{}{"DB_URI": "not a url"}, want: "invalid"},
-		{name: "dbURIPostgres", config: map[string]interface{}{"DB_URI": "postgresql://user:password@postgres:5432/quay"}, want: "valid"},
+		{name: "dbURIPostgres", config: map[string]interface{}{"DB_URI": "postgresql://user:password@postgres:5432/quay"}, want: "invalid"},
 	}
 
 	// Iterate through tests
