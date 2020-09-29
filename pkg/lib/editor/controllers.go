@@ -153,6 +153,7 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 			return
 		}
 		configBundle.Config = shared.FixNumbers(configBundle.Config)
+		configBundle.Config = shared.RemoveNullValues(configBundle.Config)
 
 		loaded, err := config.NewConfig(configBundle.Config)
 		if err != nil {
@@ -195,6 +196,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 			return
 		}
 		configBundle.Config = shared.FixNumbers(configBundle.Config)
+		configBundle.Config = shared.RemoveNullValues(configBundle.Config)
 
 		// TODO(alecmerdler): For each managed component fieldgroup, remove its fields from `config.yaml` using `Fields()` function...
 		newConfig, err := config.NewConfig(configBundle.Config)
