@@ -64,6 +64,13 @@ var validateCmd = &cobra.Command{
 			return
 		}
 
+		// Load certs
+		certs := shared.LoadCerts(configDir)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
 		// Sort keys
 		fgNames := []string{}
 		for fgName := range configFieldGroups {
@@ -93,7 +100,8 @@ var validateCmd = &cobra.Command{
 
 				// Set options
 				opts := shared.Options{
-					Mode: validationMode,
+					Mode:         validationMode,
+					Certificates: certs,
 				}
 
 				// Validate
