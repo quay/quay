@@ -24,7 +24,7 @@ from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
-from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure
+from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure, InvalidContentSent
 from util.secscan import PRIORITY_LEVELS
 from util.secscan.blob import BlobURLRetriever
 from util.config import URLSchemeAndHostname
@@ -160,22 +160,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             SecurityInformation(Layer(report["manifest_hash"], "", "", 4, features_for(report)))
         )
 
-    def perform_indexing(self, start_token=None):
-        try:
-            indexer_state = self._secscan_api.state()
-        except APIRequestFailure:
-            return None
-
-        min_id = (
-            start_token.min_id
-            if start_token is not None
-            else Manifest.select(fn.Min(Manifest.id)).scalar()
-        )
-        max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
-
-        if max_id is None or min_id is None or min_id > max_id:
-            return None
-
+    def _get_manifest_iterator(self, indexer_state, min_id, max_id):
         reindex_threshold = lambda: datetime.utcnow() - timedelta(
             seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD")
         )
@@ -203,6 +188,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 Manifest.select()
                 .join(ManifestSecurityStatus)
                 .where(
+                    ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
                     ManifestSecurityStatus.indexer_hash != indexer_hash,
                     ManifestSecurityStatus.last_indexed < reindex_threshold(),
                 )
@@ -224,10 +210,45 @@ class V4SecurityScanner(SecurityScannerInterface):
             ),
         )
 
+        return iterator
+
+    def perform_indexing(self, start_token=None):
+        try:
+            indexer_state = self._secscan_api.state()
+        except APIRequestFailure:
+            return None
+
+        min_id = (
+            start_token.min_id
+            if start_token is not None
+            else Manifest.select(fn.Min(Manifest.id)).scalar()
+        )
+        max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
+
+        if max_id is None or min_id is None or min_id > max_id:
+            return None
+
+        iterator = self._get_manifest_iterator(indexer_state, min_id, max_id)
+
+        def mark_manifest_unsupported(manifest):
+            with db_transaction():
+                ManifestSecurityStatus.delete().where(
+                    ManifestSecurityStatus.manifest == manifest._db_id,
+                    ManifestSecurityStatus.repository == manifest.repository._db_id,
+                ).execute()
+                ManifestSecurityStatus.create(
+                    manifest=manifest._db_id,
+                    repository=manifest.repository._db_id,
+                    index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+                    indexer_hash="none",
+                    indexer_version=IndexerVersion.V4,
+                    metadata_json={},
+                )
+
         for candidate, abt, num_remaining in iterator:
             manifest = ManifestDataType.for_manifest(candidate, None)
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
-            if layers is None:
+            if layers is None or len(layers) == 0:
                 logger.warning(
                     "Cannot index %s/%s@%s due to manifest being invalid"
                     % (
@@ -236,18 +257,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                         manifest.digest,
                     )
                 )
-                with db_transaction():
-                    ManifestSecurityStatus.delete().where(
-                        ManifestSecurityStatus.manifest == candidate
-                    ).execute()
-                    ManifestSecurityStatus.create(
-                        manifest=candidate,
-                        repository=candidate.repository,
-                        index_status=IndexStatus.MANIFEST_UNSUPPORTED,
-                        indexer_hash="none",
-                        indexer_version=IndexerVersion.V4,
-                        metadata_json={},
-                    )
+                mark_manifest_unsupported(manifest)
                 continue
 
             logger.debug(
@@ -257,7 +267,11 @@ class V4SecurityScanner(SecurityScannerInterface):
 
             try:
                 (report, state) = self._secscan_api.index(manifest, layers)
-            except APIRequestFailure:
+            except InvalidContentSent as ex:
+                mark_manifest_unsupported(manifest)
+                logger.exception("Failed to perform indexing, invalid content sent")
+                return None
+            except APIRequestFailure as ex:
                 logger.exception("Failed to perform indexing, security scanner API error")
                 return None
 

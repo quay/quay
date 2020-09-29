@@ -21,6 +21,7 @@ from data.database import (
     IndexerVersion,
     User,
     ManifestBlob,
+    db_transaction,
 )
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
@@ -249,6 +250,118 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
     assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.indexer_hash == "xyz"
+
+
+def test_perform_indexing_needs_reindexing_skip_unsupported(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "new hash"}
+    secscan._secscan_api.index.return_value = (
+        {"err": None, "state": IndexReportState.Index_Finished},
+        "new hash",
+    )
+
+    for manifest in Manifest.select():
+        ManifestSecurityStatus.create(
+            manifest=manifest,
+            repository=manifest.repository,
+            error_json={},
+            index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+            indexer_hash="old hash",
+            indexer_version=IndexerVersion.V4,
+            last_indexed=datetime.utcnow()
+            - timedelta(seconds=app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60),
+            metadata_json={},
+        )
+
+    secscan.perform_indexing()
+
+    # Since this manifest should not be scanned, the old hash should remain
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.indexer_hash == "old hash"
+
+
+@pytest.mark.parametrize(
+    "index_status, indexer_state, seconds, expect_zero",
+    [
+        # Unsupported manifest, never rescan
+        (
+            IndexStatus.MANIFEST_UNSUPPORTED,
+            {"status": "old hash"},
+            app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60,
+            True,
+        ),
+        # Old hash and recent scan, don't rescan
+        (IndexStatus.COMPLETED, {"status": "old hash"}, 0, True),
+        # Old hash and old scan, rescan
+        (
+            IndexStatus.COMPLETED,
+            {"status": "old hash"},
+            app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60,
+            False,
+        ),
+        # New hash and old scan, don't rescan
+        (
+            IndexStatus.COMPLETED,
+            {"status": "new hash"},
+            app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60,
+            False,
+        ),
+        # New hash and recent scan, don't rescan
+        (IndexStatus.FAILED, {"status": "old hash"}, 0, True),
+        # Old hash and old scan, rescan
+        (
+            IndexStatus.FAILED,
+            {"status": "old hash"},
+            app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60,
+            False,
+        ),
+        # New hash and old scan, rescan
+        (
+            IndexStatus.FAILED,
+            {"status": "new hash"},
+            app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"] + 60,
+            False,
+        ),
+    ],
+)
+def test_manifest_iterator(
+    initialized_db, set_secscan_config, index_status, indexer_state, seconds, expect_zero
+):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+
+    for manifest in Manifest.select():
+        with db_transaction():
+            ManifestSecurityStatus.delete().where(
+                ManifestSecurityStatus.manifest == manifest,
+                ManifestSecurityStatus.repository == manifest.repository,
+            ).execute()
+            ManifestSecurityStatus.create(
+                manifest=manifest,
+                repository=manifest.repository,
+                error_json={},
+                index_status=index_status,
+                indexer_hash="old hash",
+                indexer_version=IndexerVersion.V4,
+                last_indexed=datetime.utcnow() - timedelta(seconds=seconds),
+                metadata_json={},
+            )
+
+    iterator = secscan._get_manifest_iterator(
+        indexer_state,
+        Manifest.select(fn.Min(Manifest.id)).scalar(),
+        Manifest.select(fn.Max(Manifest.id)).scalar(),
+    )
+
+    count = 0
+    for candidate, abt, num_remaining in iterator:
+        count = count + 1
+
+    if expect_zero:
+        assert count == 0
+    else:
+        assert count != 0
 
 
 def test_perform_indexing_needs_reindexing_within_reindex_threshold(
