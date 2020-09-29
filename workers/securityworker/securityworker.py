@@ -1,4 +1,5 @@
 import logging.config
+import os
 import time
 
 import features
@@ -30,6 +31,14 @@ class SecurityWorker(Worker):
 
 
 if __name__ == "__main__":
+    if os.getenv("PYDEV_DEBUG", None):
+        import pydevd_pycharm
+
+        host, port = os.getenv("PYDEV_DEBUG").split(":")
+        pydevd_pycharm.settrace(
+            host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False
+        )
+
     app.register_blueprint(v2_bp, url_prefix="/v2")
 
     if not features.SECURITY_SCANNER:

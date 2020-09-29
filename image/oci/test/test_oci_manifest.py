@@ -4,6 +4,7 @@ import pytest
 
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.oci.manifest import OCIManifest, MalformedOCIManifest
+from image.oci import register_artifact_type
 from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 
@@ -272,3 +273,26 @@ def test_validate_manifest_invalid_config_type():
 
     with pytest.raises(MalformedOCIManifest):
         OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
+
+
+def test_validate_helm_oci_manifest():
+    manifest_bytes = """{
+      "schemaVersion":2,
+      "config":{
+        "mediaType":"application/vnd.cncf.helm.config.v1+json",
+        "digest":"sha256:65a07b841ece031e6d0ec5eb948eacb17aa6d7294cdeb01d5348e86242951487",
+        "size":141
+      },
+    "layers": [
+      {
+        "mediaType":"application/tar+gzip",
+        "digest":"sha256:d84c9c29e0899862a0fa0f73da4d9f8c8c38e2da5d3258764aa7ba74bb914718",
+        "size":3562
+       }
+      ]
+    }"""
+
+    HELM_CHART_CONFIG_TYPE = "application/vnd.cncf.helm.config.v1+json"
+    HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]
+    register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
+    manifest = OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))

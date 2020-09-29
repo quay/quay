@@ -101,6 +101,8 @@ def _get_aggregate_logs(
     start_time, end_time, performer_name=None, repository=None, namespace=None, filter_kinds=None
 ):
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    if end_time < start_time:
+        abort(400)
     aggregated_logs = logs_model.get_aggregated_log_counts(
         start_time,
         end_time,
@@ -328,6 +330,8 @@ def _queue_logs_export(start_time, end_time, options, namespace_name, repository
             raise InvalidRequest("Invalid callback e-mail")
 
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
+    if end_time < start_time:
+        abort(400)
     export_id = logs_model.queue_logs_export(
         start_time,
         end_time,

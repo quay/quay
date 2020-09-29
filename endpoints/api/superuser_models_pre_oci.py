@@ -75,8 +75,8 @@ class PreOCIModel(SuperuserDataInterface):
         except model.InvalidRepositoryBuildException as e:
             raise InvalidRepositoryBuildException(str(e))
 
-        repo_namespace = build.repository_namespace_user_username
-        repo_name = build.repository_name
+        repo_namespace = build.repository.namespace_user.username
+        repo_name = build.repository.name
 
         can_read = ReadRepositoryPermission(repo_namespace, repo_name).can()
         can_write = ModifyRepositoryPermission(repo_namespace, repo_name).can()
