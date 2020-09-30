@@ -217,7 +217,9 @@ class LDAPUsers(FederatedUsers):
             if err_msg is not None:
                 return (None, err_msg)
 
-            logger.debug("Found matching pairs: %s", pairs)
+            dn_lst = [pair[0] for pair in pairs]
+            logger.debug("Found matching DNs: %s" % dn_lst)
+
             results = [LDAPUsers._LDAPResult(*pair) for pair in take(limit, pairs)]
 
             # Filter out pairs without DNs. Some LDAP impls will return such pairs.
