@@ -26,6 +26,7 @@ from data.database import (
     Tag,
     TagToRepositoryTag,
     ImageStorageLocation,
+    Repository,
 )
 from data.cache.impl import InMemoryDataModelCache
 from data.registry_model.registry_oci_model import OCIModel
@@ -33,6 +34,7 @@ from data.registry_model.datatypes import RepositoryReference
 from data.registry_model.blobuploader import upload_blob, BlobUploadSettings
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.blob import store_blob_record_and_temp_link
+from data import model
 from image.shared.types import ManifestImageLayer
 from image.docker.schema1 import (
     DockerSchema1ManifestBuilder,
@@ -838,3 +840,73 @@ def test_create_manifest_with_temp_tag(initialized_db, registry_model):
         repository_ref, manifest.digest, allow_dead=True
     )
     assert found is not None
+
+
+def test_find_manifests_for_sec_notification(initialized_db, registry_model):
+    # First try for manifests inside a repository without any events, which should not
+    # return any results.
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    found_manifest = False
+    for tag in registry_model.list_all_active_repository_tags(repository_ref):
+        manifest = registry_model.get_manifest_for_tag(tag)
+        found_manifest = True
+        assert len(list(registry_model.find_manifests_for_sec_notification(manifest.digest))) == 0
+
+    assert found_manifest
+
+    # Add a security notification to the repository.
+    model.notification.create_repo_notification(
+        repository_ref.id,
+        "vulnerability_found",
+        "webhook",
+        {},
+        {"vulnerability": {"priority": "Critical",},},
+    )
+
+    # Now ensure the manifests are found.
+    for tag in registry_model.list_all_active_repository_tags(repository_ref):
+        manifest = registry_model.get_manifest_for_tag(tag)
+        assert len(list(registry_model.find_manifests_for_sec_notification(manifest.digest))) > 0
+
+
+def test_lookup_secscan_notification_severities(initialized_db, registry_model):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    assert len(list(registry_model.lookup_secscan_notification_severities(repository_ref))) == 0
+
+    # Add some vuln events.
+    model.notification.create_repo_notification(
+        repository_ref.id,
+        "vulnerability_found",
+        "webhook",
+        {},
+        {"vulnerability": {"priority": "Critical",},},
+    )
+
+    model.notification.create_repo_notification(
+        repository_ref.id,
+        "vulnerability_found",
+        "webhook",
+        {},
+        {"vulnerability": {"priority": "Low",},},
+    )
+
+    assert set(registry_model.lookup_secscan_notification_severities(repository_ref)) == {
+        "Low",
+        "Critical",
+    }
+
+
+def test_tag_names_for_manifest(initialized_db, registry_model):
+    verified_tag = False
+    for repository in Repository.select():
+        repo_ref = RepositoryReference.for_repo_obj(repository)
+        for tag in registry_model.list_all_active_repository_tags(repo_ref):
+            manifest = registry_model.get_manifest_for_tag(tag)
+            tag_names = set(registry_model.tag_names_for_manifest(manifest, 1000))
+            assert tag.name in tag_names
+            verified_tag = True
+
+            for found_name in tag_names:
+                found_tag = registry_model.get_repo_tag(repo_ref, found_name)
+                assert registry_model.get_manifest_for_tag(found_tag) == manifest
+    assert verified_tag

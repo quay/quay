@@ -43,7 +43,8 @@ def default_services():
         "pushgateway": {"autostart": "true"},
         "servicekey": {"autostart": "true"},
         "repomirrorworker": {"autostart": "false"},
-        "backfillmanifestworker": {"autostart": "false"},
+        "manifestbackfillworker": {"autostart": "true"},
+        "securityscanningnotificationworker": {"autostart": "true"},
     }
 
 

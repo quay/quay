@@ -64,5 +64,14 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
     def legacy_api_handler(self):
         return self._legacy_model.legacy_api_handler
 
+    def lookup_notification_page(self, notification_id, page_index=None):
+        return self._model.lookup_notification_page(notification_id, page_index)
+
+    def process_notification_page(self, page_result):
+        return self._model.process_notification_page(page_result)
+
+    def mark_notification_handled(self, notification_id):
+        return self._model.mark_notification_handled(notification_id)
+
 
 secscan_model = SecurityScannerModelProxy()
