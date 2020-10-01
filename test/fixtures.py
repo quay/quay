@@ -71,7 +71,7 @@ def _init_db_path_real_db(db_uri):
         {
             "DB_URI": db_uri,
             "SECRET_KEY": "superdupersecret!!!1",
-            "DB_CONNECTION_ARGS": {"threadlocals": True, "autorollback": True,},
+            "DB_CONNECTION_ARGS": {"autorollback": True,},
             "DB_TRANSACTION_FACTORY": _create_transaction,
             "DATABASE_SECRET_KEY": "anothercrazykey!",
         }
@@ -161,7 +161,7 @@ def appconfig(database_uri):
         "DB_URI": database_uri,
         "SECRET_KEY": "superdupersecret!!!1",
         "DATABASE_SECRET_KEY": "anothercrazykey!",
-        "DB_CONNECTION_ARGS": {"threadlocals": True, "autorollback": True,},
+        "DB_CONNECTION_ARGS": {"autorollback": True,},
         "DB_TRANSACTION_FACTORY": _create_transaction,
         "DATA_MODEL_CACHE_CONFIG": {"engine": "inmemory",},
         "USERFILES_PATH": "userfiles/",

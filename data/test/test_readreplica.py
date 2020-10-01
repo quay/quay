@@ -23,7 +23,7 @@ def test_readreplica(init_db_path, tmpdir_factory):
     db_config = {
         "DB_URI": "sqlite:///{0}".format(primary_file),
         "DB_READ_REPLICAS": [{"DB_URI": "sqlite:///{0}".format(replica_file)},],
-        "DB_CONNECTION_ARGS": {"threadlocals": True, "autorollback": True,},
+        "DB_CONNECTION_ARGS": {"autorollback": True,},
         "DB_TRANSACTION_FACTORY": lambda x: FakeTransaction(),
         "FOR_TESTING": True,
         "DATABASE_SECRET_KEY": "anothercrazykey!",

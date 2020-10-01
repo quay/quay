@@ -251,10 +251,6 @@ CONFIG_SCHEMA = {
             "type": "object",
             "description": "If specified, connection arguments for the database such as timeouts and SSL.",
             "properties": {
-                "threadlocals": {
-                    "type": "boolean",
-                    "description": "Whether to use thread-local connections. Should *ALWAYS* be `true`",
-                },
                 "autorollback": {
                     "type": "boolean",
                     "description": "Whether to use auto-rollback connections. Should *ALWAYS* be `true`",
@@ -272,7 +268,7 @@ CONFIG_SCHEMA = {
                     "required": ["ca"],
                 },
             },
-            "required": ["threadlocals", "autorollback"],
+            "required": ["autorollback"],
         },
         "ALLOW_PULLS_WITHOUT_STRICT_LOGGING": {
             "type": "boolean",

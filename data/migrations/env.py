@@ -8,9 +8,10 @@ from urllib.parse import unquote
 from alembic import context, op as alembic_op
 from alembic.script.revision import ResolutionError
 from alembic.util import CommandError
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, engine_from_config, pool
 from peewee import SqliteDatabase
 
+from app import app
 from data.database import all_models, db, LEGACY_INDEX_MAP
 from data.migrations.tester import NoopTester, PopulateTestDataTester
 from data.model.sqlalchemybridge import gen_sqlalchemy_metadata
@@ -21,18 +22,14 @@ from data.migrations.progress import PrometheusReporter, NullReporter, ProgressW
 from data.migrations.dba_operator import Migration, OpLogger
 
 
+TEST_DB_URI = "sqlite:///test/data/test.db"
+DB_URI = app.config.get("DB_URI", TEST_DB_URI) 
+DB_CONNECTION_ARGS = app.config.get("DB_CONNECTION_ARGS")
+
+
 config = context.config
-DB_URI = config.get_main_option("db_uri", "sqlite:///test/data/test.db")
 PROM_LABEL_PREFIX = "DBA_OP_LABEL_"
 
-# This option exists because alembic needs the db proxy to be configured in order
-# to perform migrations. The app import does the init of the proxy, but we don't
-# want that in the case of the config app, as we are explicitly connecting to a
-# db that the user has passed in, and we can't have import dependency on app
-if config.get_main_option("alembic_setup_app", "True") == "True":
-    from app import app
-
-    DB_URI = app.config["DB_URI"]
 
 config.set_main_option("sqlalchemy.url", unquote(DB_URI))
 # Interpret the config file for Python logging.
@@ -42,17 +39,13 @@ if config.config_file_name:
 
 logger = logging.getLogger(__name__)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+
+# Model Metadata used for auto-generating new migrations.
+# Traditionally, this would be the Metadata class for SQLAlchemy models. As Quay
+# uses Peewee instead of SQLAlchemy, extra manipulation is required.
 target_metadata = gen_sqlalchemy_metadata(all_models, LEGACY_INDEX_MAP)
 tables = AttrDict(target_metadata.tables)
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def get_tester():
@@ -145,9 +138,20 @@ def run_migrations_online():
         op = OpLogger(alembic_op, migration)
         version_apply_callback = partial(finish_migration, migration)
 
-    engine = engine_from_config(
-        config.get_section(config.config_ini_section), prefix="sqlalchemy.", poolclass=pool.NullPool
-    )
+    uri = unquote(DB_URI)
+
+    # Threadlocals are no longer supported and were only used by Peewee.
+    # Exclude from being used when creating the connection.
+    if DB_CONNECTION_ARGS and "threadlocals" in DB_CONNECTION_ARGS:
+        del DB_CONNECTION_ARGS["threadlocals"]
+
+    # Autorollback is a Peewee feature. It is not an argument used by
+    # the database drivers. Exclude it from being used when creating
+    # a connection.
+    if DB_CONNECTION_ARGS and "autorollback" in DB_CONNECTION_ARGS:
+        del DB_CONNECTION_ARGS["autorollback"]
+
+    engine = create_engine(uri, connect_args=DB_CONNECTION_ARGS)
 
     revision_to_migration = {}
 

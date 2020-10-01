@@ -195,7 +195,6 @@ class DefaultConfig(ImmutableConfig):
     # DB config
     DB_URI = "sqlite:///test/data/test.db"
     DB_CONNECTION_ARGS = {
-        "threadlocals": True,
         "autorollback": True,
     }
 
