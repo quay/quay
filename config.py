@@ -488,6 +488,10 @@ class DefaultConfig(ImmutableConfig):
     # The issuer name for the security scanner.
     SECURITY_SCANNER_ISSUER_NAME = "security_scanner"
 
+    # A base64 encoded string used to sign JWT(s) on Clair V4
+    # requests. If none jwt signing will not occur
+    SECURITY_SCANNER_V4_PSK = None
+
     # Repository mirror
     FEATURE_REPO_MIRROR = False
 

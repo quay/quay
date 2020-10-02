@@ -703,6 +703,11 @@ CONFIG_SCHEMA = {
             "description": "The number of seconds between indexing intervals in the security scanner. Defaults to 30.",
             "x-example": 30,
         },
+        "SECURITY_SCANNER_V4_PSK": {
+            "type": "string",
+            "description": "A base64 encoded string used to sign JWT(s) on Clair V4 requests. If 'None' jwt signing will not occur.",
+            "x-example": "PSK",
+        },
         # Repository mirroring
         "REPO_MIRROR_INTERVAL": {
             "type": "number",

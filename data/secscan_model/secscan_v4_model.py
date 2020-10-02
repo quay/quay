@@ -113,6 +113,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             endpoint=app.config.get("SECURITY_SCANNER_V4_ENDPOINT"),
             client=app.config.get("HTTPCLIENT"),
             blob_url_retriever=BlobURLRetriever(storage, instance_keys, app),
+            jwt_psk=app.config.get("SECURITY_SCANNER_V4_PSK", None),
         )
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):

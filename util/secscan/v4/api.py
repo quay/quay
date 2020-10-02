@@ -2,8 +2,11 @@ import logging
 import requests
 import json
 import os
+import jwt
+import base64
 
 from collections import namedtuple
+from datetime import datetime, timedelta
 from enum import Enum
 
 from abc import ABCMeta, abstractmethod
@@ -48,7 +51,7 @@ class SecurityScannerAPIInterface(object):
     @abstractmethod
     def state(self):
         """
-        The state endpoint returns a json structure indicating the indexer's internal configuration state. 
+        The state endpoint returns a json structure indicating the indexer's internal configuration state.
         A client may be interested in this as a signal that manifests may need to be re-indexed.
         """
         pass
@@ -56,7 +59,7 @@ class SecurityScannerAPIInterface(object):
     @abstractmethod
     def index(self, manifest, layers):
         """
-        By submitting a Manifest object to this endpoint Clair will fetch the layers, 
+        By submitting a Manifest object to this endpoint Clair will fetch the layers,
         scan each layer's contents, and provide an index of discovered packages, repository and distribution information.
         Returns a tuple of the `IndexReport` and the indexer state.
         """
@@ -72,7 +75,7 @@ class SecurityScannerAPIInterface(object):
     @abstractmethod
     def vulnerability_report(self, manifest_hash):
         """
-        Given a Manifest's content addressable hash a `VulnerabilityReport` will be created. 
+        Given a Manifest's content addressable hash a `VulnerabilityReport` will be created.
         The Manifest must have been Indexed first via the Index endpoint.
         """
         pass
@@ -114,9 +117,21 @@ actions = {
 
 
 class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
-    def __init__(self, endpoint, client, blob_url_retriever):
+    """
+    Class implements the SecurityScannerAPIInterface for Clair V4.
+
+    If the jwt_psk value is not None, it must be a base64 encoded string.
+    The base64 encoded string will be decoded and used to sign JWT(s) for all
+    Clair V4 requests.
+    """
+
+    def __init__(self, endpoint, client, blob_url_retriever, jwt_psk=None):
         self._client = client
         self._blob_url_retriever = blob_url_retriever
+        self.jwt_psk = None
+
+        if jwt_psk is not None:
+            self.jwt_psk = base64.b64decode(jwt_psk)
 
         self.secscan_api_endpoint = endpoint
 
@@ -217,9 +232,15 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         (method, path, body) = action.payload
         url = urljoin(self.secscan_api_endpoint, path)
 
+        headers = {}
+        if self.jwt_psk:
+            token = self._sign_jwt()
+            headers["authorization"] = "{} {}".format("Bearer", token)
+            logger.debug("generated jwt for security scanner request")
+
         logger.debug("%sing security URL %s", method.upper(), url)
         try:
-            resp = self._client.request(method, url, json=body)
+            resp = self._client.request(method, url, json=body, headers=headers)
         except requests.exceptions.ConnectionError as ce:
             logger.exception("Connection error when trying to connect to security scanner endpoint")
             msg = "Connection error when trying to connect to security scanner endpoint: %s" % str(
@@ -239,6 +260,20 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             raise IncompatibleAPIResponse("Received incompatible response from security scanner")
 
         return resp
+
+    def _sign_jwt(self):
+        """
+        Sign and return a jwt.
+
+        If self.jwt_psk is provided a pre-shared key will be used as the signing key.
+        """
+        payload = {
+            "iss": "quay",
+            "exp": datetime.utcnow() + timedelta(minutes=5),
+        }
+        token = jwt.encode(payload, self.jwt_psk, algorithm="HS256").decode("utf-8")
+
+        return token
 
 
 def is_valid_response(action, resp):
