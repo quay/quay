@@ -11,10 +11,10 @@ import (
 
 // DistributedStorageFieldGroup represents the DistributedStorageFieldGroup config fields
 type DistributedStorageFieldGroup struct {
-	DistributedStorageConfig           map[string]*DistributedStorageDefinition `default:"{}" validate:"" json:"DISTRIBUTED_STORAGE_CONFIG" yaml:"DISTRIBUTED_STORAGE_CONFIG"`
-	DistributedStoragePreference       []string                                 `default:"[]" validate:"" json:"DISTRIBUTED_STORAGE_PREFERENCE" yaml:"DISTRIBUTED_STORAGE_PREFERENCE"`
-	DistributedStorageDefaultLocations []string                                 `default:"[]" validate:"" json:"DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS" yaml:"DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS"`
-	FeatureStorageReplication          bool                                     `default:"false" validate:"" json:"FEATURE_STORAGE_REPLICATION" yaml:"FEATURE_STORAGE_REPLICATION"`
+	DistributedStorageConfig           map[string]*DistributedStorageDefinition `default:"{}" validate:"" json:"DISTRIBUTED_STORAGE_CONFIG,omitempty" yaml:"DISTRIBUTED_STORAGE_CONFIG,omitempty"`
+	DistributedStoragePreference       []string                                 `default:"[]" validate:"" json:"DISTRIBUTED_STORAGE_PREFERENCE,omitempty" yaml:"DISTRIBUTED_STORAGE_PREFERENCE,omitempty"`
+	DistributedStorageDefaultLocations []string                                 `default:"[]" validate:"" json:"DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS,omitempty" yaml:"DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS,omitempty"`
+	FeatureStorageReplication          bool                                     `default:"false" validate:"" json:"FEATURE_STORAGE_REPLICATION,omitempty" yaml:"FEATURE_STORAGE_REPLICATION,omitempty"`
 	FeatureProxyStorage                bool                                     `default:"false" validate:"" json:"FEATURE_PROXY_STORAGE,omitempty" yaml:"FEATURE_PROXY_STORAGE,omitempty"`
 }
 

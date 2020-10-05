@@ -8,16 +8,16 @@ import (
 
 // GitLabBuildTriggerFieldGroup represents the GitLabBuildTriggerFieldGroup config fields
 type GitLabBuildTriggerFieldGroup struct {
-	FeatureBuildSupport bool                       `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT" yaml:"FEATURE_BUILD_SUPPORT"`
-	FeatureGitlabBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITLAB_BUILD" yaml:"FEATURE_GITLAB_BUILD"`
-	GitlabTriggerConfig *GitlabTriggerConfigStruct `default:"" validate:"" json:"GITLAB_TRIGGER_CONFIG" yaml:"GITLAB_TRIGGER_CONFIG"`
+	FeatureBuildSupport bool                       `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT,omitempty" yaml:"FEATURE_BUILD_SUPPORT,omitempty"`
+	FeatureGitlabBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITLAB_BUILD,omitempty" yaml:"FEATURE_GITLAB_BUILD,omitempty"`
+	GitlabTriggerConfig *GitlabTriggerConfigStruct `default:"" validate:"" json:"GITLAB_TRIGGER_CONFIG,omitempty" yaml:"GITLAB_TRIGGER_CONFIG,omitempty"`
 }
 
 // GitlabTriggerConfigStruct represents the GitlabTriggerConfigStruct config fields
 type GitlabTriggerConfigStruct struct {
-	GitlabEndpoint string `default:"" validate:"" json:"GITLAB_ENDPOINT" yaml:"GITLAB_ENDPOINT"`
-	ClientId       string `default:"" validate:"" json:"CLIENT_ID" yaml:"CLIENT_ID"`
-	ClientSecret   string `default:"" validate:"" json:"CLIENT_SECRET" yaml:"CLIENT_SECRET"`
+	GitlabEndpoint string `default:"" validate:"" json:"GITLAB_ENDPOINT,omitempty" yaml:"GITLAB_ENDPOINT,omitempty"`
+	ClientId       string `default:"" validate:"" json:"CLIENT_ID,omitempty" yaml:"CLIENT_ID,omitempty"`
+	ClientSecret   string `default:"" validate:"" json:"CLIENT_SECRET,omitempty" yaml:"CLIENT_SECRET,omitempty"`
 }
 
 // NewGitLabBuildTriggerFieldGroup creates a new GitLabBuildTriggerFieldGroup

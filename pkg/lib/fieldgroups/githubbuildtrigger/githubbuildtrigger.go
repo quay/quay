@@ -8,19 +8,19 @@ import (
 
 // GitHubBuildTriggerFieldGroup represents the GitHubBuildTriggerFieldGroup config fields
 type GitHubBuildTriggerFieldGroup struct {
-	FeatureBuildSupport bool                       `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT" yaml:"FEATURE_BUILD_SUPPORT"`
-	FeatureGithubBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITHUB_BUILD" yaml:"FEATURE_GITHUB_BUILD"`
-	GithubTriggerConfig *GithubTriggerConfigStruct `default:"" validate:"" json:"GITHUB_TRIGGER_CONFIG" yaml:"GITHUB_TRIGGER_CONFIG"`
+	FeatureBuildSupport bool                       `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT,omitempty" yaml:"FEATURE_BUILD_SUPPORT,omitempty"`
+	FeatureGithubBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITHUB_BUILD,omitempty" yaml:"FEATURE_GITHUB_BUILD,omitempty"`
+	GithubTriggerConfig *GithubTriggerConfigStruct `default:"" validate:"" json:"GITHUB_TRIGGER_CONFIG,omitempty" yaml:"GITHUB_TRIGGER_CONFIG,omitempty"`
 }
 
 // GithubTriggerConfigStruct represents the GithubTriggerConfigStruct config fields
 type GithubTriggerConfigStruct struct {
-	AllowedOrganizations []interface{} `default:"[]" validate:"" json:"ALLOWED_ORGANIZATIONS" yaml:"ALLOWED_ORGANIZATIONS"`
-	OrgRestrict          bool          `default:"false" validate:"" json:"ORG_RESTRICT" yaml:"ORG_RESTRICT"`
-	ApiEndpoint          string        `default:"" validate:"" json:"API_ENDPOINT" yaml:"API_ENDPOINT"`
-	ClientSecret         string        `default:"" validate:"" json:"CLIENT_SECRET" yaml:"CLIENT_SECRET"`
-	GithubEndpoint       string        `default:"" validate:"" json:"GITHUB_ENDPOINT" yaml:"GITHUB_ENDPOINT"`
-	ClientId             string        `default:"" validate:"" json:"CLIENT_ID" yaml:"CLIENT_ID"`
+	AllowedOrganizations []interface{} `default:"[]" validate:"" json:"ALLOWED_ORGANIZATIONS,omitempty" yaml:"ALLOWED_ORGANIZATIONS,omitempty"`
+	OrgRestrict          bool          `default:"false" validate:"" json:"ORG_RESTRICT,omitempty" yaml:"ORG_RESTRICT,omitempty"`
+	ApiEndpoint          string        `default:"" validate:"" json:"API_ENDPOINT,omitempty" yaml:"API_ENDPOINT,omitempty"`
+	ClientSecret         string        `default:"" validate:"" json:"CLIENT_SECRET,omitempty" yaml:"CLIENT_SECRET,omitempty"`
+	GithubEndpoint       string        `default:"" validate:"" json:"GITHUB_ENDPOINT,omitempty" yaml:"GITHUB_ENDPOINT,omitempty"`
+	ClientId             string        `default:"" validate:"" json:"CLIENT_ID,omitempty" yaml:"CLIENT_ID,omitempty"`
 }
 
 // NewGitHubBuildTriggerFieldGroup creates a new GitHubBuildTriggerFieldGroup

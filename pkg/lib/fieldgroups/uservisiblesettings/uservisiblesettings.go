@@ -8,20 +8,21 @@ import (
 
 // UserVisibleSettingsFieldGroup represents the UserVisibleSettingsFieldGroup config fields
 type UserVisibleSettingsFieldGroup struct {
-	AvatarKind               string          `default:"local" validate:"" json:"AVATAR_KIND" yaml:"AVATAR_KIND"`
-	Branding                 *BrandingStruct `default:"" validate:"" json:"BRANDING" yaml:"BRANDING"`
-	ContactInfo              []interface{}   `default:"[]" validate:"" json:"CONTACT_INFO" yaml:"CONTACT_INFO"`
-	RegistryTitle            string          `default:"Project Quay" validate:"" json:"REGISTRY_TITLE" yaml:"REGISTRY_TITLE"`
-	RegistryTitleShort       string          `default:"Project Quay" validate:"" json:"REGISTRY_TITLE_SHORT" yaml:"REGISTRY_TITLE_SHORT"`
-	SearchMaxResultPageCount int             `default:"10" validate:"" json:"SEARCH_MAX_RESULT_PAGE_COUNT" yaml:"SEARCH_MAX_RESULT_PAGE_COUNT"`
-	SearchResultsPerPage     int             `default:"10" validate:"" json:"SEARCH_RESULTS_PER_PAGE" yaml:"SEARCH_RESULTS_PER_PAGE"`
+	AvatarKind               string          `default:"local" validate:"" json:"AVATAR_KIND,omitempty" yaml:"AVATAR_KIND,omitempty"`
+	Branding                 *BrandingStruct `default:"" validate:"" json:"BRANDING,omitempty" yaml:"BRANDING,omitempty"`
+	ContactInfo              []interface{}   `default:"[]" validate:"" json:"CONTACT_INFO,omitempty" yaml:"CONTACT_INFO,omitempty"`
+	RegistryTitle            string          `default:"Project Quay" validate:"" json:"REGISTRY_TITLE,omitempty" yaml:"REGISTRY_TITLE,omitempty"`
+	RegistryTitleShort       string          `default:"Project Quay" validate:"" json:"REGISTRY_TITLE_SHORT,omitempty" yaml:"REGISTRY_TITLE_SHORT,omitempty"`
+	SearchMaxResultPageCount int             `default:"10" validate:"" json:"SEARCH_MAX_RESULT_PAGE_COUNT,omitempty" yaml:"SEARCH_MAX_RESULT_PAGE_COUNT,omitempty"`
+	SearchResultsPerPage     int             `default:"10" validate:"" json:"SEARCH_RESULTS_PER_PAGE,omitempty" yaml:"SEARCH_RESULTS_PER_PAGE,omitempty"`
+	EnterpriseLogoUrl        string          `default:"" validate:"" json:"ENTERPRISE_LOGO_URL,omitempty" yaml:"ENTERPRISE_LOGO_URL,omitempty"`
 }
 
 // BrandingStruct represents the BrandingStruct config fields
 type BrandingStruct struct {
-	Logo      string `default:"/static/img/quay-horizontal-color.svg" validate:"url" json:"logo" yaml:"logo"`
-	FooterImg string `default:"" validate:"url" json:"footer_img" yaml:"footer_img"`
-	FooterUrl string `default:"" validate:"url" json:"footer_url" yaml:"footer_url"`
+	Logo      string `default:"/static/img/quay-horizontal-color.svg" validate:"url" json:"logo,omitempty" yaml:"logo,omitempty"`
+	FooterImg string `default:"" validate:"url" json:"footer_img,omitempty" yaml:"footer_img,omitempty"`
+	FooterUrl string `default:"" validate:"url" json:"footer_url,omitempty" yaml:"footer_url,omitempty"`
 }
 
 // NewUserVisibleSettingsFieldGroup creates a new UserVisibleSettingsFieldGroup
