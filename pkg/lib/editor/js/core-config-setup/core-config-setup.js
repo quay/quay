@@ -240,15 +240,15 @@ angular.module("quay-config")
               'Could not validate configuration. Please report this error.');
 
           ApiService.validateConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
-            $scope.validationStatus = resp.length == 0 ? 'success' : 'error';
-            $scope.validationResult = resp;
+            $scope.validationStatus = resp.data.length == 0 ? 'success' : 'error';
+            $scope.validationResult = resp.data;
           }, errorDisplay);
         };
 
         $scope.commitToOperator = function() {
           ApiService.commitToOperator({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
-            console.log(resp)
-          })
+            alert("Successfully sent config bundle to Quay Operator")
+          }, errorDisplay)
         }
 
         $scope.downloadConfigBundle = function() {
@@ -780,12 +780,16 @@ angular.module("quay-config")
           if (!value) { return; }
 
           ApiService.getMountedConfigBundle().then(function(resp) {
-            $scope.config = resp["config.yaml"] || {};
-            $scope.certs = resp["certs"] || {};
-            $scope.originalConfig = Object.assign({}, resp["config.yaml"] || {});;
+            console.log("resp",resp)
+            $scope.config = resp.data["config.yaml"] || {};
+            $scope.certs = resp.data["certs"] || {};
+            $scope.originalConfig = Object.assign({}, resp.data["config.yaml"] || {});;
             initializeMappedLogic($scope.config);
             initializeStorageConfig($scope);
             $scope.mapped['$hasChanges'] = false;
+            if(resp.status == 202){
+              alert("Warning: No config bundle was found. Default values will be used. \n If you are trying to modify an existing config bundle, please make sure that you are mounting it correctly.")
+            }
           }, ApiService.errorDisplay('Could not load config'));
         });
       }
