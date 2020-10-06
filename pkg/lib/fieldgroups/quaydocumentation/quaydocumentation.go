@@ -8,7 +8,7 @@ import (
 
 // QuayDocumentationFieldGroup represents the QuayDocumentationFieldGroup config fields
 type QuayDocumentationFieldGroup struct {
-	DocumentationRoot string `default:"" validate:"" json:"DOCUMENTATION_ROOT" yaml:"DOCUMENTATION_ROOT"`
+	DocumentationRoot string `default:"" validate:"" json:"DOCUMENTATION_ROOT,omitempty" yaml:"DOCUMENTATION_ROOT,omitempty"`
 }
 
 // NewQuayDocumentationFieldGroup creates a new QuayDocumentationFieldGroup

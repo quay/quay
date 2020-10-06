@@ -8,10 +8,10 @@ import (
 
 // RepoMirrorFieldGroup represents the RepoMirrorFieldGroup config fields
 type RepoMirrorFieldGroup struct {
-	FeatureRepoMirror        bool   `default:"false" validate:"" json:"FEATURE_REPO_MIRROR" yaml:"FEATURE_REPO_MIRROR"`
-	RepoMirrorInterval       int    `default:"30" validate:"" json:"REPO_MIRROR_INTERVAL" yaml:"REPO_MIRROR_INTERVAL"`
-	RepoMirrorServerHostname string `default:"" validate:"" json:"REPO_MIRROR_SERVER_HOSTNAME" yaml:"REPO_MIRROR_SERVER_HOSTNAME"`
-	RepoMirrorTlsVerify      bool   `default:"true" validate:"" json:"REPO_MIRROR_TLS_VERIFY" yaml:"REPO_MIRROR_TLS_VERIFY"`
+	FeatureRepoMirror        bool   `default:"false" validate:"" json:"FEATURE_REPO_MIRROR,omitempty" yaml:"FEATURE_REPO_MIRROR,omitempty"`
+	RepoMirrorInterval       int    `default:"30" validate:"" json:"REPO_MIRROR_INTERVAL,omitempty" yaml:"REPO_MIRROR_INTERVAL,omitempty"`
+	RepoMirrorServerHostname string `default:"" validate:"" json:"REPO_MIRROR_SERVER_HOSTNAME,omitempty" yaml:"REPO_MIRROR_SERVER_HOSTNAME,omitempty"`
+	RepoMirrorTlsVerify      bool   `default:"true" validate:"" json:"REPO_MIRROR_TLS_VERIFY,omitempty" yaml:"REPO_MIRROR_TLS_VERIFY,omitempty"`
 }
 
 // NewRepoMirrorFieldGroup creates a new RepoMirrorFieldGroup
