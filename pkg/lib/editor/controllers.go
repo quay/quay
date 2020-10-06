@@ -12,6 +12,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/quay/config-tool/pkg/lib/config"
+	conf "github.com/quay/config-tool/pkg/lib/config"
 	"github.com/quay/config-tool/pkg/lib/shared"
 	"gopkg.in/yaml.v3"
 )
@@ -43,19 +44,38 @@ func rootHandler(opts *ServerOptions) func(w http.ResponseWriter, r *http.Reques
 func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// Fill defaults
+		var config map[string]interface{}
+		defaultFieldGroups, err := conf.NewConfig(map[string]interface{}{})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Fill defaults
+		for _, fg := range defaultFieldGroups {
+			fgBytes, err := yaml.Marshal(fg)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			err = yaml.Unmarshal(fgBytes, &config)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+
 		// Read config file
 		configFilePath := path.Join(opts.configPath, "config.yaml")
 		configBytes, err := ioutil.ReadFile(configFilePath)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-
-		// Load config into struct
-		var config map[string]interface{}
-		if err = yaml.Unmarshal(configBytes, &config); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			// Mount not found, but will continue with defaults
+			w.WriteHeader(http.StatusAccepted)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			if err = yaml.Unmarshal(configBytes, &config); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		// Get all certs in directory
