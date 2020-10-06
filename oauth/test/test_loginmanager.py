@@ -1,6 +1,7 @@
 from oauth.loginmanager import OAuthLoginManager
 from oauth.services.github import GithubOAuthService
 from oauth.services.google import GoogleOAuthService
+from oauth.services.openshift import OpenshiftOAuthService
 from oauth.oidc import OIDCLoginService
 
 
@@ -66,3 +67,14 @@ def test_multiple_oidc():
     assert len(loginmanager.services) == 2
     assert isinstance(loginmanager.services[0], OIDCLoginService)
     assert isinstance(loginmanager.services[1], OIDCLoginService)
+
+
+def test_login_manager_openshift():
+    config = {
+        "FEATURE_OPENSHIFT_LOGIN": True,
+        "OPENSHIFT_LOGIN_CONFIG": {},
+    }
+
+    loginmanager = OAuthLoginManager(config)
+    assert len(loginmanager.services) == 1
+    assert isinstance(loginmanager.services[0], OpenshiftOAuthService)

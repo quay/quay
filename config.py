@@ -250,6 +250,9 @@ class DefaultConfig(ImmutableConfig):
     # Google Config.
     GOOGLE_LOGIN_CONFIG = None
 
+    # OpenShift Integrated Config.
+    OPENSHIFT_LOGIN_CONFIG = None
+
     # Bitbucket Config.
     BITBUCKET_TRIGGER_CONFIG = None
 
@@ -288,6 +291,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether Google login is supported.
     FEATURE_GOOGLE_LOGIN = False
+
+    # Feature Flag: Whether OpenShift integrated login is supported.
+    FEATURE_OPENSHIFT_LOGIN = False
 
     # Feature Flag: Whether to support GitHub build triggers.
     FEATURE_GITHUB_BUILD = False

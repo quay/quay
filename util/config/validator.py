@@ -18,6 +18,7 @@ from util.config.validators.validate_bitbucket_trigger import BitbucketTriggerVa
 from util.config.validators.validate_gitlab_trigger import GitLabTriggerValidator
 from util.config.validators.validate_github import GitHubLoginValidator, GitHubTriggerValidator
 from util.config.validators.validate_oidc import OIDCLoginValidator
+from util.config.validators.validate_openshift_login import OpenshiftLoginValidator
 from util.config.validators.validate_timemachine import TimeMachineValidator
 from util.config.validators.validate_access import AccessSettingsValidator
 from util.config.validators.validate_actionlog_archiving import ActionLogArchivingValidator
@@ -59,6 +60,7 @@ VALIDATORS = {
     GoogleLoginValidator.name: GoogleLoginValidator.validate,
     SSLValidator.name: SSLValidator.validate,
     LDAPValidator.name: LDAPValidator.validate,
+    OpenshiftLoginValidator.name: OpenshiftLoginValidator.validate,
     JWTAuthValidator.name: JWTAuthValidator.validate,
     KeystoneValidator.name: KeystoneValidator.validate,
     SecurityScannerValidator.name: SecurityScannerValidator.validate,
