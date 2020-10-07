@@ -26,7 +26,7 @@ TOKEN_REGEX = re.compile(r"\ABearer (([a-zA-Z0-9+\-_/]+\.)+[a-zA-Z0-9+\-_/]+)\Z"
 
 # ALGORITHM_WHITELIST defines a whitelist of allowed algorithms to be used in JWTs. DO NOT ADD
 # `none` here!
-ALGORITHM_WHITELIST = ["rs256"]
+ALGORITHM_WHITELIST = ["rs256", "hs256"]
 
 
 class _StrictJWT(PyJWT):
