@@ -41,14 +41,14 @@ def import_yaml(config_obj, config_file):
             if key.isupper():
                 config_obj[key] = c[key]
 
-    if config_obj.get("SETUP_COMPLETE", True):
-        try:
-            validate(config_obj, CONFIG_SCHEMA)
-        except ValidationError:
-            # TODO: Change this into a real error
-            logger.exception("Could not validate config schema")
-    else:
-        logger.debug("Skipping config schema validation because setup is not complete")
+    # if config_obj.get("SETUP_COMPLETE", True):
+    #     try:
+    #         validate(config_obj, CONFIG_SCHEMA)
+    #     except ValidationError:
+    #         # Todo: Change this into a real error
+    #         logger.exception("Could not validate config schema")
+    # else:
+    #     logger.debug("Skipping config schema validation because setup is not complete")
 
     return config_obj
 

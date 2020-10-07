@@ -18,27 +18,27 @@ RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
 RUN INSTALL_PKGS="\
-        python36 \
-        python36-python-pip \
-        rh-nginx112 rh-nginx112-nginx \
-        openldap \
-        scl-utils \
-        gcc-c++ git \
-        openldap-devel \
-        gpgme-devel \
-        dnsmasq \
-        memcached \
-        openssl \
-        skopeo \
-        " && \
+    python36 \
+    python36-python-pip \
+    rh-nginx112 rh-nginx112-nginx \
+    openldap \
+    scl-utils \
+    gcc-c++ git \
+    openldap-devel \
+    gpgme-devel \
+    dnsmasq \
+    memcached \
+    openssl \
+    skopeo \
+    " && \
     yum install -y yum-utils && \
     yum-config-manager --quiet --disable "*" >/dev/null && \
     yum-config-manager --quiet --enable \
-        rhel-7-server-rpms \
-        rhel-server-rhscl-7-rpms \
-        rhel-7-server-optional-rpms \
-        rhel-7-server-extras-rpms \
-        --save >/dev/null && \
+    rhel-7-server-rpms \
+    rhel-server-rhscl-7-rpms \
+    rhel-7-server-optional-rpms \
+    rhel-7-server-extras-rpms \
+    --save >/dev/null && \
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
@@ -55,9 +55,6 @@ RUN scl enable python36 "\
     PYTHONPATH=$QUAYPATH python -m external_libraries \
     "
 
-RUN cp -r $QUAYDIR/static/ldn $QUAYDIR/config_app/static/ldn && \
-    cp -r $QUAYDIR/static/fonts $QUAYDIR/config_app/static/fonts && \
-    cp -r $QUAYDIR/static/webfonts $QUAYDIR/config_app/static/webfonts
 
 # Check python dependencies for GPL
 # Due to the following bug, pip results must be piped to a file before grepping:
@@ -77,8 +74,8 @@ RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
     rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
     yum install -y yarn && \
     yarn install --ignore-engines && \
-    yarn build && \
-    yarn build-config-app
+    yarn build
+
 
 # TODO: Build jwtproxy in dist-git
 #       https://jira.coreos.com/browse/QUAY-1315
@@ -106,12 +103,12 @@ RUN ln -s $QUAYCONF /conf && \
 
 # Cleanup
 RUN UNINSTALL_PKGS="\
-        gcc-c++ git \
-        openldap-devel \
-        gpgme-devel \
-        optipng \
-        kernel-headers \
-        " && \
+    gcc-c++ git \
+    openldap-devel \
+    gpgme-devel \
+    optipng \
+    kernel-headers \
+    " && \
     yum remove -y $UNINSTALL_PKGS && \
     yum clean all && \
     rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache
@@ -146,4 +143,3 @@ USER 1001
 
 ENTRYPOINT ["dumb-init", "--", "/quay-registry/quay-entrypoint.sh"]
 CMD ["registry"]
-
