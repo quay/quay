@@ -37,6 +37,13 @@ requirements.txt: requirements-nover.txt
 	# Delete the virtualenv
 	pyenv uninstall quay-deps
 
+requirements-osbs.txt:
+	pyenv virtualenv 2.7.12 quay-osbs
+	pyenv activate quay-deps
+	pip install -r requirements.txt
+	pipdeptree --freeze | sed 's/^ *//g' | sort -u > requirements-osbs.txt
+	pyenv uninstall quay-deps
+
 QUAY_CONFIG ?= ../quay-config
 conf/stack/license: $(QUAY_CONFIG)/local/license
 	mkdir -p conf/stack
