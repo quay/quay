@@ -33,6 +33,16 @@ class Non200ResponseException(Exception):
         self.response = response
 
 
+class BadRequestResponseException(Exception):
+    """
+    Exception raised when the upstream API returns a non-200 HTTP status code.
+    """
+
+    def __init__(self, response):
+        super(BadRequestResponseException, self).__init__()
+        self.response = response
+
+
 class IncompatibleAPIResponse(Exception):
     """
     Exception raised when upstream API returns a response which does not match
@@ -43,6 +53,12 @@ class IncompatibleAPIResponse(Exception):
 class APIRequestFailure(Exception):
     """
     Exception raised when there is a failure to conduct an API request.
+    """
+
+
+class InvalidContentSent(Exception):
+    """
+    Exception raised when malformed content is sent to API.
     """
 
 
@@ -172,6 +188,8 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         try:
             resp = self._perform(actions["Index"](body))
+        except BadRequestResponseException as ex:
+            raise InvalidContentSent(ex)
         except (Non200ResponseException, IncompatibleAPIResponse) as ex:
             raise APIRequestFailure(ex)
 
@@ -248,7 +266,14 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             )
             raise APIRequestFailure(msg)
 
-        if resp.status_code // 100 != 2:
+        if resp.status_code == 400:
+            msg = (
+                "Security scanner endpoint responded with 400 HTTP status code: %s"
+                % resp.content.decode("ascii")
+            )
+            logger.exception(msg)
+            raise BadRequestResponseException(resp)
+        elif resp.status_code // 100 != 2:
             msg = (
                 "Security scanner endpoint responded with non-200 HTTP status code: %s"
                 % resp.status_code
