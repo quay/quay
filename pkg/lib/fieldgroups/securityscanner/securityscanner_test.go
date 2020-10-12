@@ -35,7 +35,7 @@ func TestValidateSecurityScanner(t *testing.T) {
 			}
 
 			opts := shared.Options{
-				Mode: "testing",
+				Mode: "online",
 			}
 
 			validationErrors := fg.Validate(opts)

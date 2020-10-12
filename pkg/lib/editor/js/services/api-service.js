@@ -18,8 +18,8 @@ angular.module("quay-config").factory("ApiService", [
       return Restangular.one("config/download").post(null, configBundle);
     };
 
-    apiService.validateConfigBundle = function (configBundle) {
-      return Restangular.one("config/validate").post(null, configBundle);
+    apiService.validateConfigBundle = function (configBundle, validationMode) {
+      return Restangular.one("config/validate?mode="+validationMode).post(null, configBundle);
     };
 
     apiService.commitToOperator = function (configBundle) {
