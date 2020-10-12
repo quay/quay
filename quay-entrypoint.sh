@@ -54,12 +54,11 @@ case "$QUAYENTRY" in
         else
             echo "Running services ${QUAY_SERVICES}"
         fi
-        if [ $CONFIG_APP_PASSWORD = "\"\"" ]; then    
+        if [ $CONFIG_APP_PASSWORD = "\"\"" ]; then
             CONFIG_APP_PASSWORD=$2
         fi
         : "${CONFIG_APP_PASSWORD:?Missing password argument for configuration tool}"
         export CONFIG_APP_PASSWORD="${CONFIG_APP_PASSWORD}"
-        printf '%s' "${CONFIG_APP_PASSWORD}" | openssl passwd -apr1 -stdin >> "$QUAYDIR/config_app/conf/htpasswd"
 
         if [ $OPERATOR_ENDPOINT = "\"\"" ]; then
             if [ -n "$3" ]; then
