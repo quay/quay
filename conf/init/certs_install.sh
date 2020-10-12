@@ -21,7 +21,6 @@ if [ -d $CERTDIR ]; then
   if test "$(ls -A "$CERTDIR")"; then
       echo "Installing extra certificates found in $CERTDIR directory"
       cp $CERTDIR/* ${SYSTEM_CERTDIR}
-      cat $CERTDIR/* >> $PYTHON_ROOT/site-packages/requests/cacert.pem
       cat $CERTDIR/* >> $PYTHON_ROOT/site-packages/certifi/cacert.pem
   fi
 fi
