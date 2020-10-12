@@ -8,10 +8,10 @@ import (
 
 // SigningEngineFieldGroup represents the SigningEngineFieldGroup config fields
 type SigningEngineFieldGroup struct {
-	Gpg2PrivateKeyFilename string `default:"" validate:"" json:"GPG2_PRIVATE_KEY_FILENAME" yaml:"GPG2_PRIVATE_KEY_FILENAME"`
-	Gpg2PrivateKeyName     string `default:"" validate:"" json:"GPG2_PRIVATE_KEY_NAME" yaml:"GPG2_PRIVATE_KEY_NAME"`
-	Gpg2PublicKeyFilename  string `default:"" validate:"" json:"GPG2_PUBLIC_KEY_FILENAME" yaml:"GPG2_PUBLIC_KEY_FILENAME"`
-	SigningEngine          string `default:"" validate:"" json:"SIGNING_ENGINE" yaml:"SIGNING_ENGINE"`
+	Gpg2PrivateKeyFilename string `default:"" validate:"" json:"GPG2_PRIVATE_KEY_FILENAME,omitempty" yaml:"GPG2_PRIVATE_KEY_FILENAME,omitempty"`
+	Gpg2PrivateKeyName     string `default:"" validate:"" json:"GPG2_PRIVATE_KEY_NAME,omitempty" yaml:"GPG2_PRIVATE_KEY_NAME,omitempty"`
+	Gpg2PublicKeyFilename  string `default:"" validate:"" json:"GPG2_PUBLIC_KEY_FILENAME,omitempty" yaml:"GPG2_PUBLIC_KEY_FILENAME,omitempty"`
+	SigningEngine          string `default:"" validate:"" json:"SIGNING_ENGINE,omitempty" yaml:"SIGNING_ENGINE,omitempty"`
 }
 
 // NewSigningEngineFieldGroup creates a new SigningEngineFieldGroup

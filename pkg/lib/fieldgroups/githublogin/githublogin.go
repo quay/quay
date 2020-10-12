@@ -8,18 +8,18 @@ import (
 
 // GitHubLoginFieldGroup represents the GitHubLoginFieldGroup config fields
 type GitHubLoginFieldGroup struct {
-	FeatureGithubLogin bool                     `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN" yaml:"FEATURE_GITHUB_LOGIN"`
-	GithubLoginConfig  *GithubLoginConfigStruct `default:"" validate:"" json:"GITHUB_LOGIN_CONFIG" yaml:"GITHUB_LOGIN_CONFIG"`
+	FeatureGithubLogin bool                     `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN,omitempty" yaml:"FEATURE_GITHUB_LOGIN,omitempty"`
+	GithubLoginConfig  *GithubLoginConfigStruct `default:"" validate:"" json:"GITHUB_LOGIN_CONFIG,omitempty" yaml:"GITHUB_LOGIN_CONFIG,omitempty"`
 }
 
 // GithubLoginConfigStruct represents the GithubLoginConfigStruct config fields
 type GithubLoginConfigStruct struct {
-	AllowedOrganizations []interface{} `default:"[]" validate:"" json:"ALLOWED_ORGANIZATIONS" yaml:"ALLOWED_ORGANIZATIONS"`
-	OrgRestrict          bool          `default:"false" validate:"" json:"ORG_RESTRICT" yaml:"ORG_RESTRICT"`
-	ApiEndpoint          string        `default:"" validate:"" json:"API_ENDPOINT" yaml:"API_ENDPOINT"`
-	GithubEndpoint       string        `default:"" validate:"" json:"GITHUB_ENDPOINT" yaml:"GITHUB_ENDPOINT"`
-	ClientId             string        `default:"" validate:"" json:"CLIENT_ID" yaml:"CLIENT_ID"`
-	ClientSecret         string        `default:"" validate:"" json:"CLIENT_SECRET" yaml:"CLIENT_SECRET"`
+	AllowedOrganizations []interface{} `default:"[]" validate:"" json:"ALLOWED_ORGANIZATIONS,omitempty" yaml:"ALLOWED_ORGANIZATIONS,omitempty"`
+	OrgRestrict          bool          `default:"false" validate:"" json:"ORG_RESTRICT,omitempty" yaml:"ORG_RESTRICT,omitempty"`
+	ApiEndpoint          string        `default:"" validate:"" json:"API_ENDPOINT,omitempty" yaml:"API_ENDPOINT,omitempty"`
+	GithubEndpoint       string        `default:"" validate:"" json:"GITHUB_ENDPOINT,omitempty" yaml:"GITHUB_ENDPOINT,omitempty"`
+	ClientId             string        `default:"" validate:"" json:"CLIENT_ID,omitempty" yaml:"CLIENT_ID,omitempty"`
+	ClientSecret         string        `default:"" validate:"" json:"CLIENT_SECRET,omitempty" yaml:"CLIENT_SECRET,omitempty"`
 }
 
 // NewGitHubLoginFieldGroup creates a new GitHubLoginFieldGroup

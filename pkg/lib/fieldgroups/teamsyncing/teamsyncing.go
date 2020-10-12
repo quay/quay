@@ -8,9 +8,9 @@ import (
 
 // TeamSyncingFieldGroup represents the TeamSyncingFieldGroup config fields
 type TeamSyncingFieldGroup struct {
-	FeatureNonsuperuserTeamSyncingSetup bool   `default:"false" validate:"" json:"FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP" yaml:"FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP"`
-	FeatureTeamSyncing                  bool   `default:"false" validate:"" json:"FEATURE_TEAM_SYNCING" yaml:"FEATURE_TEAM_SYNCING"`
-	TeamResyncStaleTime                 string `default:"30m" validate:"customValidateTimePattern" json:"TEAM_RESYNC_STALE_TIME" yaml:"TEAM_RESYNC_STALE_TIME"`
+	FeatureNonsuperuserTeamSyncingSetup bool   `default:"false" validate:"" json:"FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP,omitempty" yaml:"FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP,omitempty"`
+	FeatureTeamSyncing                  bool   `default:"false" validate:"" json:"FEATURE_TEAM_SYNCING,omitempty" yaml:"FEATURE_TEAM_SYNCING,omitempty"`
+	TeamResyncStaleTime                 string `default:"30m" validate:"customValidateTimePattern" json:"TEAM_RESYNC_STALE_TIME,omitempty" yaml:"TEAM_RESYNC_STALE_TIME,omitempty"`
 }
 
 // NewTeamSyncingFieldGroup creates a new TeamSyncingFieldGroup

@@ -8,7 +8,8 @@ angular.module("quay-config").factory("ApiService", [
   "UtilService",
   function (Restangular, $q, UtilService) {
     var apiService = {};
-
+    Restangular.setFullResponse(true)
+    
     apiService.getMountedConfigBundle = function () {
       return Restangular.one("config").get();
     };
