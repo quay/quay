@@ -79,8 +79,8 @@ def config_services():
         "pushgateway": {"autostart": "false"},
         "servicekey": {"autostart": "false"},
         "repomirrorworker": {"autostart": "false"},
-        "manifestbackfillworker": {"autostart": "true"},
-        "securityscanningnotificationworker": {"autostart": "true"},
+        "manifestbackfillworker": {"autostart": "false"},
+        "securityscanningnotificationworker": {"autostart": "false"},
         "config-editor": {"autostart": "true"},
     }
 
