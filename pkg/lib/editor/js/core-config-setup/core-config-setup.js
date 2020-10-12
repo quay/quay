@@ -709,6 +709,12 @@ angular.module("quay-config")
           }
         };
 
+        var generateRandomString = () => Math.random().toString(20).substr(2, 2048)
+
+        $scope.generateClairPSK = function() {
+            $scope.config['SECURITY_SCANNER_V4_PSK'] = btoa(generateRandomString())
+        }
+
         // Validate and update storage config on update.
         var refreshStorageConfig = function() {
           if (!$scope.config || !$scope.storageConfig) return;

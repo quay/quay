@@ -371,6 +371,14 @@
       "ct-validate": "",
       "ct-fieldgroups": ["SecurityScanner"]
     },
+    "SECURITY_SCANNER_V4_PSK": {
+      "type": "string",
+      "description": "If 'SECURITY_SCANNER_V4_SIGN_JWT', Quay will sign JWTs with either the key provided by `SECURITY_SCANNER_V4_PSK' (if specified here) or the Quay instance's private key otherwise.",
+      "x-example": "secret",
+      "ct-default": false,
+      "ct-validate": "",
+      "ct-fieldgroups": ["SecurityScanner"]
+    },
     "FEATURE_BUILD_SUPPORT": {
       "x-example": true,
       "type": "boolean",
