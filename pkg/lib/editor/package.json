@@ -45,6 +45,7 @@
     "underscore": "^1.5.2",
     "urijs": "^1.18.10",
     "url-parse": "^1.4.0",
+    "uuid": "^8.3.1",
     "zeroclipboard": "^2.3.0"
   },
   "devDependencies": {

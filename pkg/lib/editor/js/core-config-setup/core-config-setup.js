@@ -3,6 +3,7 @@ import * as angular from 'angular';
 const forge = require('node-forge')
 const JSZip = require('jszip')
 const yaml = require('js-yaml')
+const uuid = require('uuid')
 const FileSaver = require('file-saver')
 const templateUrl = require('./config-setup-tool.html');
 const urlParsedField =  require('../config-field-templates/config-parsed-field.html');
@@ -235,6 +236,8 @@ angular.module("quay-config")
           $scope.savingConfiguration = false;
         };
 
+        var generateDatabaseSecretKey = () => uuid.v4()
+
         $scope.validateConfig = function() {
           $scope.validationStatus = 'validating';
 
@@ -244,6 +247,10 @@ angular.module("quay-config")
           ApiService.validateConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}, $scope.validationMode).then(function(resp) {
             $scope.validationStatus = resp.data.length == 0 ? 'success' : 'error';
             $scope.validationResult = resp.data;
+            if($scope.validationStatus == 'success' && $scope.validationMode == 'setup'){
+              $scope.config["SETUP_COMPLETE"] = true
+              $scope.config["DATABASE_SECRET_KEY"] = generateDatabaseSecretKey()
+            }
           }, errorDisplay);
         };
 
