@@ -13,6 +13,9 @@ from test.fixtures import *
 from app import app, instance_keys, storage, secscan_notification_queue, notification_queue
 
 
+@pytest.mark.skipif(
+    os.environ.get("TEST_DATABASE_URI", "").find("mysql") >= 0, reason="Flaky on MySQL"
+)
 @pytest.mark.parametrize(
     "issue", [None, "wrong_id", "no_event_registered", "severity_too_low", "no_matching_manifest"]
 )
