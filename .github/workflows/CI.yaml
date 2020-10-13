@@ -156,8 +156,8 @@ jobs:
     - name: Set GOPATH
       run: |
         # temporary fix for https://github.com/actions/setup-go/issues/14
-        echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
-        echo "##[add-path]$(dirname $GITHUB_WORKSPACE)/bin"
+        echo "GOPATH=$(dirname $GITHUB_WORKSPACE)" >> $GITHUB_ENV
+        echo "$(dirname $GITHUB_WORKSPACE)/bin" >> $GITHUB_PATH
 
     - name: Install dependencies
       run: |
