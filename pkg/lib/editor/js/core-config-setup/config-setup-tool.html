@@ -1784,6 +1784,16 @@
                 </div>
               </td>
             </tr>
+            <tr ng-if="true">
+              <td>Super Users:</td>
+              <td>
+                <span class="config-list-field" item-title="Super User"
+                      binding="config.SUPER_USERS" item-pattern="[a-z0-9_]{4,30}"></span>
+                <div class="help-text">
+                  Users included in this list will be given elevated access to Quay. 
+                </div>
+              </td>
+            </tr>
           </table>
         </div>
       </div> <!-- /Access settings -->
