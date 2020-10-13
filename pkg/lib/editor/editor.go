@@ -97,7 +97,12 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	}
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	if debug := os.Getenv("DEBUGLOG"); debug != "" {
+		r.Use(middleware.RequestID)
+		r.Use(middleware.RealIP)
+		r.Use(middleware.Logger)
+		r.Use(middleware.Recoverer)
+	}
 
 	// Function handlers
 	r.Get("/", rootHandler(opts))
