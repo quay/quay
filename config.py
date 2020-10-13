@@ -167,6 +167,7 @@ class ImmutableConfig(object):
 class DefaultConfig(ImmutableConfig):
     # Flask config
     JSONIFY_PRETTYPRINT_REGULAR = False
+    SESSION_COOKIE_NAME = "_csrf_token"
     SESSION_COOKIE_SECURE = False
 
     SESSION_COOKIE_HTTPONLY = True

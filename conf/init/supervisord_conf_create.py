@@ -80,8 +80,8 @@ def config_services():
         "servicekey": {"autostart": "false"},
         "repomirrorworker": {"autostart": "false"},
         "manifestbackfillworker": {"autostart": "true"},
-        "securityscanningnotificationworker": {"autostart": "true"},
-        "config-editor": {"autostart": "true"},
+        "securityscanningnotificationworker": {"autostart": "false"},
+        "config-editor": {"autostart": "false"},
     }
 
 
