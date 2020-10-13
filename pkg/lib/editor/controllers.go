@@ -181,8 +181,13 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 			return
 		}
 
+		mode := r.URL.Query().Get("mode")
+		if mode == "" {
+			mode = "online"
+		}
+
 		opts := shared.Options{
-			Mode:         "online",
+			Mode:         mode,
 			Certificates: configBundle.Certificates,
 		}
 
