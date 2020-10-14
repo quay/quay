@@ -114,7 +114,7 @@ def _download_url(url):
     req = urllib2.Request(url, headers={"User-Agent": "Quay (External Library Downloader)",})
     for index in range(0, MAX_RETRY_COUNT):
         try:
-            response = urllib2.urlopen(url)
+            response = urllib2.urlopen(req)
             return response.read()
         except urllib2.URLError:
             logger.exception(
