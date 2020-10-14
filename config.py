@@ -730,7 +730,7 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
-    FEATURE_EXPERIMENTAL_HELM_OCI_SUPPORT = False
+    FEATURE_HELM_OCI_SUPPORT = False
 
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).

@@ -130,7 +130,7 @@ features.import_features(app.config)
 
 # Register additional experimental artifact types.
 # TODO: extract this into a real, dynamic registration system.
-if features.EXPERIMENTAL_HELM_OCI_SUPPORT:
+if features.HELM_OCI_SUPPORT:
     HELM_CHART_CONFIG_TYPE = "application/vnd.cncf.helm.config.v1+json"
     HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]
     register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
