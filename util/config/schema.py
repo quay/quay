@@ -5,6 +5,7 @@ INTERNAL_ONLY_PROPERTIES = {
     "__module__",
     "__doc__",
     "create_transaction",
+    "SESSION_COOKIE_NAME",
     "SESSION_COOKIE_HTTPONLY",
     "SESSION_COOKIE_SAMESITE",
     "DATABASE_SECRET_KEY",
