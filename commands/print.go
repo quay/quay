@@ -22,6 +22,7 @@ import (
 
 	"github.com/jojomi/go-spew/spew"
 	"github.com/quay/config-tool/pkg/lib/config"
+	"github.com/quay/config-tool/pkg/lib/shared"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -48,7 +49,9 @@ var printCmd = &cobra.Command{
 			return
 		}
 
-		spew.Dump(conf)
+		// Clean config
+		conf = shared.FixNumbers(conf)
+		conf = shared.RemoveNullValues(conf)
 
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
