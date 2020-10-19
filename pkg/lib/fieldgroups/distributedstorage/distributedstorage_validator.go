@@ -39,14 +39,10 @@ func (fg *DistributedStorageFieldGroup) Validate(opts shared.Options) []shared.V
 			errors = append(errors, newError)
 		}
 
-		// Do not validate local storage (fix me?)
-		if storageConf.Name == "LocalStorage" {
-			continue
-		}
-
-		if ok, err := shared.ValidateMinioStorage(opts, storageConf.Args, "DistributedStorage"); !ok {
+		if ok, err := shared.ValidateStorage(opts, storageConf.Args, storageConf.Name, "DistributedStorage"); !ok {
 			errors = append(errors, err)
 		}
+
 	}
 
 	// Return errors

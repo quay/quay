@@ -162,10 +162,59 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
-	if value, ok := storageArgs["storage_path"]; ok {
-		newDistributedStorageArgs.StoragePath, ok = value.(string)
+	if value, ok := storageArgs["s3_secret_key"]; ok {
+		newDistributedStorageArgs.S3SecretKey, ok = value.(string)
 		if !ok {
-			return newDistributedStorageArgs, errors.New("storage_path must be of type string")
+			return newDistributedStorageArgs, errors.New("s3_secret_key must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["s3_access_key"]; ok {
+		newDistributedStorageArgs.S3AccessKey, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("s3_access_key must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["host"]; ok {
+		newDistributedStorageArgs.Host, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("host must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["s3_bucket"]; ok {
+		newDistributedStorageArgs.S3Bucket, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("s3_bucket must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["azure_container"]; ok {
+		newDistributedStorageArgs.AzureContainer, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("azure_container must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["azure_account_name"]; ok {
+		newDistributedStorageArgs.AzureAccountName, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("azure_container must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["azure_account_key"]; ok {
+		newDistributedStorageArgs.AzureAccountKey, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("azure_account_key must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["sas_token"]; ok {
+		newDistributedStorageArgs.SASToken, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("sas_token must be of type string")
 		}
 	}
 

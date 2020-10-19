@@ -12,6 +12,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -356,8 +357,51 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 
 }
 
-// ValidateMinioStorage will validate a S3 storage connection.
-func ValidateMinioStorage(opts Options, args *DistributedStorageArgs, fgName string) (bool, ValidationError) {
+// ValidateStorage will validate a S3 storage connection.
+func ValidateStorage(opts Options, args *DistributedStorageArgs, storageType string, fgName string) (bool, ValidationError) {
+
+	// Get credentials
+	var endpoint string
+	var accessKey string
+	var secretKey string
+	var token string = ""
+
+	switch storageType {
+	case "LocalStorage":
+		return true, ValidationError{}
+	case "RHOCSStorage", "RadosGWStorage":
+		accessKey = args.AccessKey
+		secretKey = args.SecretKey
+		endpoint = args.Hostname
+		if args.Port != 0 {
+			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
+		}
+	case "S3Storage":
+		accessKey = args.S3AccessKey
+		secretKey = args.S3SecretKey
+		endpoint = args.Host
+		if args.Port != 0 {
+			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
+		}
+	case "GoogleCloudStorage":
+		accessKey = args.AccessKey
+		secretKey = args.SecretKey
+		endpoint = "storage.googleapis.com"
+	case "AzureStorage":
+		accessKey = args.AzureAccountName
+		secretKey = args.AzureAccountKey
+		endpoint = args.AzureAccountName + ".blob.core.windows.net"
+		token = args.SASToken
+	default:
+		newError := ValidationError{
+			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			FieldGroup: fgName,
+			Message:    storageType + " is not a valid storage type.",
+		}
+		return false, newError
+	}
+
+	// Set transport
 	tr, err := minio.DefaultTransport(true)
 	if err != nil {
 		log.Fatalf("error creating the minio connection: error creating the default transport layer: %v", err)
@@ -380,11 +424,20 @@ func ValidateMinioStorage(opts Options, args *DistributedStorageArgs, fgName str
 	config := &tls.Config{RootCAs: rootCAs}
 	tr.TLSClientConfig = config
 
-	st, _ := minio.New(args.Hostname, &minio.Options{
-		Creds:     credentials.NewStaticV4(args.AccessKey, args.SecretKey, ""),
+	// Create client
+	st, err := minio.New(endpoint, &minio.Options{
+		Creds:     credentials.NewStaticV4(accessKey, secretKey, token),
 		Secure:    args.IsSecure,
 		Transport: tr,
 	})
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			FieldGroup: fgName,
+			Message:    "An error occurred while attempting to connect to " + storageType + " storage. Error: " + err.Error(),
+		}
+		return false, newError
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -394,7 +447,7 @@ func ValidateMinioStorage(opts Options, args *DistributedStorageArgs, fgName str
 		newError := ValidationError{
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
 			FieldGroup: fgName,
-			Message:    "Could not connect to storage. Error: " + err.Error(),
+			Message:    "Could not connect to storage " + storageType + ". Error: " + err.Error(),
 		}
 		return false, newError
 	}
