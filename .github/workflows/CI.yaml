@@ -16,10 +16,11 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.6
+
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.6
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
@@ -29,10 +30,18 @@ jobs:
         # https://github.com/psf/black/issues/1207#issuecomment-566249522
         pip install black==19.10b0 --no-binary=regex
 
-    - name: Check Formatting
+        pip install flake8
+
+    - name: Check Formatting (Black)
       run: |
         # TODO(kleesc): Re-enable after buildman rewrite
-        black --line-length=100 --target-version=py36 --check --diff --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|buildman)/" .
+        black --line-length=100 --target-version=py38 --check --diff . --exclude "buildman"
+      
+    - name: Check Formatting (Flake8)
+      run: |
+        # The code-base needs to be cleaned up. There are too many Flake8
+        # related warnings now. We can at least use it for visibility purposes.
+        flake8 --exit-zero
 
   unit:
     name: Unit Test
@@ -40,10 +49,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.6
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.6
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
@@ -53,7 +62,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py36-unit
+      run: tox -e py38-unit
 
   registry:
     name: E2E Registry Tests
@@ -61,10 +70,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.6
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.6
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
@@ -74,7 +83,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py36-registry
+      run: tox -e py38-registry
 
   docker:
     name: Docker Build
@@ -90,10 +99,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.6
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.6
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
@@ -106,7 +115,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py36-mysql
+      run: tox -e py38-mysql
 
   psql:
     name: E2E Postgres Test
@@ -117,7 +126,7 @@ jobs:
     - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 3.6
+        python-version: 3.8
 
     - name: Install dependencies
       run: |
@@ -130,7 +139,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py36-psql
+      run: tox -e py38-psql
 
   oci:
     name: OCI Conformance
@@ -143,10 +152,10 @@ jobs:
         repository: opencontainers/distribution-spec
         path: dist-spec
 
-    - name: Set up Python 3.6
+    - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
-        python-version: 3.6
+        python-version: 3.8
 
     - name: Set up Go 1.14
       uses: actions/setup-go@v1
@@ -173,4 +182,4 @@ jobs:
         CGO_ENABLED=0 go test -c -o conformance.test
 
     - name: conformance
-      run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv --ignore=buildman # TODO(kleesc): Remove --ignore=buildman after rewrite
+      run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv
