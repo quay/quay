@@ -19,11 +19,6 @@
 
 playground.go
 
-config.yaml
-
-config.tar.gz
-/testdata*
-
 node_modules
 
 build
