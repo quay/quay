@@ -15,7 +15,7 @@ angular.module("quay-config").factory("ApiService", [
     };
 
     apiService.downloadConfigBundle = function (configBundle) {
-      return Restangular.one("config/download").post(null, configBundle);
+      return Restangular.one("config/download").withHttpConfig({responseType: 'blob'}).post(null, configBundle);
     };
 
     apiService.validateConfigBundle = function (configBundle, validationMode) {

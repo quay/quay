@@ -261,21 +261,9 @@ angular.module("quay-config")
         }
 
         $scope.downloadConfigBundle = function() {
-          var zip = new JSZip()
-          let configStr = yaml.safeDump($scope.config)
-          zip.file("config.yaml", configStr)
-          let extra_ca_certs = zip.folder("extra_ca_certs")
-          Object.entries($scope.certs).forEach(([filename, contents]) => {
-            if(filename.startsWith("extra_ca_certs/")){
-              extra_ca_certs.file(filename.replace("extra_ca_certs/", ""), atob(contents))
-            } else {
-              zip.file(filename, atob(contents))
-            }
-          })
-
-          zip.generateAsync({type:"blob"}).then(function(content){
-            FileSaver.saveAs(content, "quay-config.zip")
-          })
+          ApiService.downloadConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
+            FileSaver.saveAs(resp.data, "quay-config.tar.gz")
+          }, console.log("failed error"))
         }
 
         $scope.checkValidateAndSave = function() {
@@ -1424,16 +1412,24 @@ angular.module("quay-config")
 
         // Reads the certs stored in scope and creates a new object with metadata to render table
         var loadCertificateMeta = function() {
-          $scope.certMeta = Object.entries($scope.certs)
-          .filter(([filename, contents]) => filename.startsWith("extra_ca_certs/"))
-          .map(([filename, contents]) => {
-            const cert = forge.pki.certificateFromPem(atob(contents));
-            const current = new Date();
-            const expired = current > cert.validity.notAfter;
-            
-            return {path: filename, names: getCertNames(cert), expired: expired};
-          })
+          var oldCertMeta = $scope.certMeta
+          try {
+            $scope.certMeta = Object.entries($scope.certs)
+            .filter(([filename, contents]) => filename.startsWith("extra_ca_certs/"))
+            .map(([filename, contents]) => {
+              const cert = forge.pki.certificateFromPem(atob(contents));
+              const current = new Date();
+              const expired = current > cert.validity.notAfter;
+              
+              return {path: filename, names: getCertNames(cert), expired: expired};
+            })
+          }
+          catch(err){
+            alert(err)
+            $scope.certMeta = oldCertMeta
+          }
           $scope.certsUploading = false;
+
         }
 
         // Gets the common names for a given cert
