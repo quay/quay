@@ -209,7 +209,7 @@ class EC2Executor(BuilderExecutor):
     @property
     def running_builders_count(self):
         ec2_conn = self._get_conn()
-        resp = ec2.conn.describe_instances(Filters=[
+        resp = ec2_conn.describe_instances(Filters=[
             {"Name": "tag:Name", "Values": ["Quay Ephemeral Builder"]}
         ])
 
