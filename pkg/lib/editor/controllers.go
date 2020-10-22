@@ -114,7 +114,7 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 		}
 
 		files := make(map[string][]byte)
-		files["config.yaml"], err = json.Marshal(confBundle.Config)
+		files["config.yaml"], err = yaml.Marshal(confBundle.Config)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
