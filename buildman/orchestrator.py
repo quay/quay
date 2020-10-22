@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+from contextlib import ContextDecorator
 
-import asyncio
 import datetime
 import json
 import logging
@@ -9,13 +9,9 @@ import re
 import time
 
 from enum import IntEnum, unique
-from six import add_metaclass, iteritems
-from urllib3.exceptions import ReadTimeoutError, ProtocolError
 
-import etcd
 import redis
 
-from buildman.asyncutil import wrap_with_threadpool
 from util import slash_join
 from util.expiresdict import ExpiresDict
 
@@ -26,10 +22,8 @@ ONE_DAY = 60 * 60 * 24
 ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION = 5
 DEFAULT_LOCK_EXPIRATION = 10000
 
-ETCD_READ_TIMEOUT = 5
-ETCD_MAX_WATCH_TIMEOUT = 30
-
 REDIS_EXPIRING_SUFFIX = "/expiring"
+REDIS_EXPIRED_SUFFIX = "/expired"
 REDIS_DEFAULT_PUBSUB_KEY = "orchestrator_events"
 REDIS_EVENT_KIND_MESSAGE = "message"
 REDIS_EVENT_KIND_PMESSAGE = "pmessage"
@@ -37,7 +31,7 @@ REDIS_NONEXPIRING_KEY = -1
 
 # This constant defines the Redis configuration flags used to watch [K]eyspace and e[x]pired
 # events on keys. For more info, see https://redis.io/topics/notifications#configuration
-REDIS_KEYSPACE_EVENT_CONFIG_VALUE = "Kx"
+REDIS_KEYSPACE_EXPIRED_EVENT_CONFIG_VALUE = "Kx"
 REDIS_KEYSPACE_EVENT_CONFIG_KEY = "notify-keyspace-events"
 REDIS_KEYSPACE_KEY_PATTERN = "__keyspace@%s__:%s"
 REDIS_EXPIRED_KEYSPACE_PATTERN = slash_join(REDIS_KEYSPACE_KEY_PATTERN, REDIS_EXPIRING_SUFFIX)
@@ -46,21 +40,10 @@ REDIS_EXPIRED_KEYSPACE_REGEX = re.compile(REDIS_EXPIRED_KEYSPACE_PATTERN % (r"(\
 
 def orchestrator_from_config(manager_config, canceller_only=False):
     """
-    Allocates a new Orchestrator from the 'ORCHESTRATOR' block from provided manager config. Checks
-    for legacy configuration prefixed with 'ETCD_' when the 'ORCHESTRATOR' is not present.
-
     :param manager_config: the configuration for the orchestrator
     :type manager_config: dict
     :rtype: :class: Orchestrator
     """
-    # Legacy codepath only knows how to configure etcd.
-    if manager_config.get("ORCHESTRATOR") is None:
-        manager_config["ORCHESTRATOR"] = {
-            key: value
-            for (key, value) in iteritems(manager_config)
-            if key.startswith("ETCD_") and not key.endswith("_PREFIX")
-        }
-
     # Sanity check that legacy prefixes are no longer being used.
     for key in list(manager_config["ORCHESTRATOR"].keys()):
         words = key.split("_")
@@ -81,7 +64,7 @@ def orchestrator_from_config(manager_config, canceller_only=False):
         return key.lower().split("_", 1)[1]
 
     orchestrator_kwargs = {
-        format_key(key): value for (key, value) in iteritems(manager_config["ORCHESTRATOR"])
+        format_key(key): value for (key, value) in manager_config["ORCHESTRATOR"].items()
     }
 
     if manager_config.get("ORCHESTRATOR_PREFIX") is not None:
@@ -99,7 +82,6 @@ def orchestrator_from_config(manager_config, canceller_only=False):
 
 def orchestrator_by_name(name, **kwargs):
     _ORCHESTRATORS = {
-        "etcd": Etcd2Orchestrator,
         "mem": MemoryOrchestrator,
         "redis": RedisOrchestrator,
     }
@@ -127,8 +109,7 @@ class KeyChange(namedtuple("KeyChange", ["event", "key", "value"])):
     pass
 
 
-@add_metaclass(ABCMeta)
-class Orchestrator(object):
+class Orchestrator(metaclass=ABCMeta):
     """
     Orchestrator is the interface that is used to synchronize the build states across build
     managers.
@@ -181,13 +162,6 @@ class Orchestrator(object):
         pass
 
     @abstractmethod
-    def set_key_sync(self, key, value, overwrite=False, expiration=None):
-        """
-        set_key, but without asyncio coroutines.
-        """
-        pass
-
-    @abstractmethod
     def delete_key(self, key):
         """
         Deletes a key that has been set in the orchestrator.
@@ -211,261 +185,28 @@ class Orchestrator(object):
         """
         pass
 
-        @abstractmethod
-        def shutdown():
-            """
-            This function should shutdown any final resources allocated by the Orchestrator.
-            """
-            pass
+    @abstractmethod
+    def shutdown():
+        """
+        This function should shutdown any final resources allocated by the Orchestrator.
+        """
+        pass
 
 
 def _sleep_orchestrator():
     """
-    This function blocks the asyncio event loop by sleeping in order to backoff if a failure
+    This function blocks by sleeping in order to backoff if a failure
     such as a ConnectionError has occurred.
     """
     logger.exception(
-        "Connecting to etcd failed; sleeping for %s and then trying again",
+        "Connecting to orchestrator failed; sleeping for %s and then trying again",
         ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION,
     )
     time.sleep(ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION)
     logger.exception(
-        "Connecting to etcd failed; slept for %s and now trying again",
+        "Connecting to orchestrator failed; slept for %s and now trying again",
         ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION,
     )
-
-
-class EtcdAction(object):
-    """
-    Enumeration of the various kinds of etcd actions we can observe via a watch.
-    """
-
-    GET = "get"
-    SET = "set"
-    EXPIRE = "expire"
-    UPDATE = "update"
-    DELETE = "delete"
-    CREATE = "create"
-    COMPARE_AND_SWAP = "compareAndSwap"
-    COMPARE_AND_DELETE = "compareAndDelete"
-
-
-class Etcd2Orchestrator(Orchestrator):
-    def __init__(
-        self,
-        host="127.0.0.1",
-        port=2379,
-        cert_and_key=None,
-        ca_cert=None,
-        client_threads=5,
-        canceller_only=False,
-        **kwargs,
-    ):
-        self.is_canceller_only = canceller_only
-
-        logger.debug("initializing async etcd client")
-        self._sync_etcd_client = etcd.Client(
-            host=host,
-            port=port,
-            cert=tuple(cert_and_key) if cert_and_key is not None else None,
-            ca_cert=ca_cert,
-            protocol="http" if cert_and_key is None else "https",
-            read_timeout=ETCD_READ_TIMEOUT,
-        )
-
-        if not self.is_canceller_only:
-            (self._etcd_client, self._async_executor) = wrap_with_threadpool(
-                self._sync_etcd_client, client_threads
-            )
-
-        logger.debug("creating initial orchestrator state")
-        self._shutting_down = False
-        self._watch_tasks = {}
-
-    @staticmethod
-    def _sanity_check_ttl(ttl):
-        """
-        A TTL of < 0 in etcd results in the key *never being expired*.
-
-        We use a max here to ensure that if the TTL is < 0, the key will expire immediately.
-        """
-        return max(ttl, 0)
-
-    def _watch_etcd(self, key, callback, restarter=None, start_index=None):
-        def callback_wrapper(changed_key_future):
-            new_index = start_index
-            etcd_result = None
-
-            if not changed_key_future.cancelled():
-                try:
-                    etcd_result = changed_key_future.result()
-                    existing_index = getattr(etcd_result, "etcd_index", None)
-                    new_index = etcd_result.modifiedIndex + 1
-
-                    logger.debug(
-                        "Got watch of key: %s at #%s with result: %s",
-                        key,
-                        existing_index,
-                        etcd_result,
-                    )
-
-                except ReadTimeoutError:
-                    logger.debug("Read-timeout on etcd watch %s, rescheduling", key)
-
-                except etcd.EtcdEventIndexCleared:
-                    # This happens if etcd2 has moved forward too fast for us to start watching at the index
-                    # we retrieved. We therefore start a new watch at HEAD and (if specified) call the
-                    # restarter method which should conduct a read and reset the state of the manager.
-                    logger.debug("Etcd moved forward too quickly. Restarting watch cycle.")
-                    new_index = None
-                    if restarter is not None:
-                        asyncio.create_task(restarter())
-
-                except (KeyError, etcd.EtcdKeyError):
-                    logger.debug("Etcd key already cleared: %s", key)
-                    return
-
-                except etcd.EtcdConnectionFailed:
-                    _sleep_orchestrator()
-
-                except etcd.EtcdException as eex:
-                    # TODO: This is a quick and dirty hack and should be replaced with a proper
-                    # exception check.
-                    if str(eex).find("Read timed out") >= 0:
-                        logger.debug("Read-timeout on etcd watch %s, rescheduling", key)
-                    else:
-                        logger.exception("Exception on etcd watch: %s", key)
-
-                except ProtocolError:
-                    logger.exception("Exception on etcd watch: %s", key)
-
-            if key not in self._watch_tasks or self._watch_tasks[key].done():
-                self._watch_etcd(key, callback, start_index=new_index, restarter=restarter)
-
-            if etcd_result and etcd_result.value is not None:
-                asyncio.create_task(callback(self._etcd_result_to_keychange(etcd_result)))
-
-        if not self._shutting_down:
-            logger.debug("Scheduling watch of key: %s at start index %s", key, start_index)
-            watch_future = self._etcd_client.watch(
-                key, recursive=True, index=start_index, timeout=ETCD_MAX_WATCH_TIMEOUT
-            )
-            watch_future.add_done_callback(callback_wrapper)
-
-            self._watch_tasks[key] = asyncio.create_task(watch_future)
-
-    @staticmethod
-    def _etcd_result_to_keychange(etcd_result):
-        event = Etcd2Orchestrator._etcd_result_to_keyevent(etcd_result)
-        return KeyChange(event, etcd_result.key, etcd_result.value)
-
-    @staticmethod
-    def _etcd_result_to_keyevent(etcd_result):
-        if etcd_result.action == EtcdAction.CREATE:
-            return KeyEvent.CREATE
-        if etcd_result.action == EtcdAction.SET:
-            return (
-                KeyEvent.CREATE
-                if etcd_result.createdIndex == etcd_result.modifiedIndex
-                else KeyEvent.SET
-            )
-        if etcd_result.action == EtcdAction.DELETE:
-            return KeyEvent.DELETE
-        if etcd_result.action == EtcdAction.EXPIRE:
-            return KeyEvent.EXPIRE
-        raise AssertionError("etcd action must have equivalant keyevent")
-
-    def on_key_change(self, key, callback, restarter=None):
-        assert not self.is_canceller_only
-
-        logger.debug("creating watch on %s", key)
-        self._watch_etcd(key, callback, restarter=restarter)
-
-    async def get_prefixed_keys(self, prefix):
-        assert not self.is_canceller_only
-
-        try:
-            etcd_result = await self._etcd_client.read(prefix, recursive=True)
-            return {leaf.key: leaf.value for leaf in etcd_result.leaves}
-        except etcd.EtcdKeyError:
-            raise KeyError
-        except etcd.EtcdConnectionFailed as ex:
-            raise OrchestratorConnectionError(ex)
-        except etcd.EtcdException as ex:
-            raise OrchestratorError(ex)
-
-    async def get_key(self, key):
-        assert not self.is_canceller_only
-
-        try:
-            # Ignore pylint: the value property on EtcdResult is added dynamically using setattr.
-            etcd_result = await self._etcd_client.read(key)
-            return etcd_result.value
-        except etcd.EtcdKeyError:
-            raise KeyError
-        except etcd.EtcdConnectionFailed as ex:
-            raise OrchestratorConnectionError(ex)
-        except etcd.EtcdException as ex:
-            raise OrchestratorError(ex)
-
-    async def set_key(self, key, value, overwrite=False, expiration=None):
-        assert not self.is_canceller_only
-
-        await (
-            self._etcd_client.write(
-                key, value, prevExists=overwrite, ttl=self._sanity_check_ttl(expiration)
-            )
-        )
-
-    def set_key_sync(self, key, value, overwrite=False, expiration=None):
-        self._sync_etcd_client.write(
-            key, value, prevExists=overwrite, ttl=self._sanity_check_ttl(expiration)
-        )
-
-    async def delete_key(self, key):
-        assert not self.is_canceller_only
-
-        try:
-            await self._etcd_client.delete(key)
-        except etcd.EtcdKeyError:
-            raise KeyError
-        except etcd.EtcdConnectionFailed as ex:
-            raise OrchestratorConnectionError(ex)
-        except etcd.EtcdException as ex:
-            raise OrchestratorError(ex)
-
-    async def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
-        assert not self.is_canceller_only
-
-        try:
-            await (
-                self._etcd_client.write(
-                    key, {}, prevExist=False, ttl=self._sanity_check_ttl(expiration)
-                )
-            )
-            return True
-        except (KeyError, etcd.EtcdKeyError):
-            return False
-        except etcd.EtcdConnectionFailed:
-            logger.exception("Could not get etcd atomic lock as etcd is down")
-            return False
-        except etcd.EtcdException as ex:
-            raise OrchestratorError(ex)
-
-    def shutdown(self):
-        logger.debug("Shutting down etcd client.")
-        self._shutting_down = True
-
-        if self.is_canceller_only:
-            return
-
-        for (key, _), task in list(self._watch_tasks.items()):
-            if not task.done():
-                logger.debug("Canceling watch task for %s", key)
-                task.cancel()
-
-        if self._async_executor is not None:
-            self._async_executor.shutdown()
 
 
 class MemoryOrchestrator(Orchestrator):
@@ -473,63 +214,54 @@ class MemoryOrchestrator(Orchestrator):
         self.state = ExpiresDict()
         self.callbacks = {}
 
-    def _callbacks_prefixed(self, prefix):
-        return (callback for (key, callback) in iteritems(self.callbacks) if key.startswith(prefix))
+    def _callbacks_prefixed(self, key):
+        return (callback for (prefix, callback) in self.callbacks.items() if key.startswith(prefix))
 
     def on_key_change(self, key, callback, restarter=None):
         self.callbacks[key] = callback
 
-    async def get_prefixed_keys(self, prefix):
-        return {k: value for (k, value) in list(self.state.items()) if k.startswith(prefix)}
+    def get_prefixed_keys(self, prefix):
+        return {
+            k: value for (k, value) in list(self.state.items())
+            if k.startswith(prefix) and not k.endswith(REDIS_EXPIRED_SUFFIX) and not k.endswith(REDIS_EXPIRING_SUFFIX)
+        }
 
-    async def get_key(self, key):
+    def get_key(self, key):
         return self.state[key]
 
-    async def set_key(self, key, value, overwrite=False, expiration=None):
-        preexisting_key = "key" in self.state
+    def set_key(self, key, value, overwrite=False, expiration=None):
+        preexisting_key = key in self.state
         if preexisting_key and not overwrite:
             raise KeyError
+
+        # Simulate redis' behavior when using xx and the key does not exist.
+        if not preexisting_key and overwrite:
+            return
 
         absolute_expiration = None
         if expiration is not None:
             absolute_expiration = datetime.datetime.now() + datetime.timedelta(seconds=expiration)
 
         self.state.set(key, value, expires=absolute_expiration)
-
-        event = KeyEvent.CREATE if not preexisting_key else KeyEvent.SET
-        for callback in self._callbacks_prefixed(key):
-            await callback(KeyChange(event, key, value))
-
-    def set_key_sync(self, key, value, overwrite=False, expiration=None):
-        """
-        set_key, but without asyncio coroutines.
-        """
-        preexisting_key = "key" in self.state
-        if preexisting_key and not overwrite:
-            raise KeyError
-
-        absolute_expiration = None
-        if expiration is not None:
-            absolute_expiration = datetime.datetime.now() + datetime.timedelta(seconds=expiration)
-
-        self.state.set(key, value, expires=absolute_expiration)
+        self.state.set(slash_join(key, REDIS_EXPIRING_SUFFIX), value, expires=absolute_expiration)
 
         event = KeyEvent.CREATE if not preexisting_key else KeyEvent.SET
         for callback in self._callbacks_prefixed(key):
             callback(KeyChange(event, key, value))
 
-    async def delete_key(self, key):
+    def delete_key(self, key):
         value = self.state[key]
         del self.state[key]
 
         for callback in self._callbacks_prefixed(key):
-            await callback(KeyChange(KeyEvent.DELETE, key, value))
+            callback(KeyChange(KeyEvent.DELETE, key, value))
 
-    async def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
-        if key in self.state:
+    def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
+        try:
+            self.set_key(key, "", overwrite=False, expiration=expiration)
+        except KeyError:
             return False
-        self.state.set(key, None, expires=expiration)
-        return True
+        return True            
 
     def shutdown(self):
         self.state = None
@@ -545,7 +277,6 @@ class RedisOrchestrator(Orchestrator):
         db=0,
         cert_and_key=None,
         ca_cert=None,
-        client_threads=5,
         ssl=False,
         skip_keyspace_event_setup=False,
         canceller_only=False,
@@ -553,7 +284,7 @@ class RedisOrchestrator(Orchestrator):
     ):
         self.is_canceller_only = canceller_only
         (cert, key) = tuple(cert_and_key) if cert_and_key is not None else (None, None)
-        self._sync_client = redis.StrictRedis(
+        self._client = redis.StrictRedis(
             host=host,
             port=port,
             password=password,
@@ -562,108 +293,92 @@ class RedisOrchestrator(Orchestrator):
             ssl_keyfile=key,
             ssl_ca_certs=ca_cert,
             ssl=ssl,
+            socket_connect_timeout=1,
+            socket_timeout=2,
+            health_check_interval=2,
         )
 
         self._shutting_down = False
-        self._tasks = {}
         self._watched_keys = {}
         self._pubsub_key = slash_join(
             kwargs.get("orchestrator_prefix", ""), REDIS_DEFAULT_PUBSUB_KEY
         ).lstrip("/")
 
         if not self.is_canceller_only:
-            (self._client, self._async_executor) = wrap_with_threadpool(
-                self._sync_client, client_threads
-            )
+            # sleep_time is not really calling time.sleep(). It is the socket's timeout value.
+            # run_in_thread uses an event loop that uses a non-blocking `parse_response` of the PubSub object.
+            # This means the event loop will return immedietely even if there are no new messages.
+            # Setting a value other than the default 0 prevents that thread from exhausting CPU time.
+            # https://github.com/andymccurdy/redis-py/issues/821
 
             # Configure a subscription to watch events that the orchestrator manually publishes.
             logger.debug("creating pubsub with key %s", self._pubsub_key)
-            published_pubsub = self._sync_client.pubsub()
-            published_pubsub.subscribe(self._pubsub_key)
-            (self._pubsub, self._async_executor_pub) = wrap_with_threadpool(published_pubsub)
-            self._watch_published_key()
+            self._pubsub = self._client.pubsub()
+            self._pubsub.subscribe(**{self._pubsub_key: self._published_key_handler})
+            self._pubsub_thread = self._pubsub.run_in_thread(daemon=True, sleep_time=5)
 
             # Configure a subscription to watch expired keyspace events.
             if not skip_keyspace_event_setup:
-                self._sync_client.config_set(
-                    REDIS_KEYSPACE_EVENT_CONFIG_KEY, REDIS_KEYSPACE_EVENT_CONFIG_VALUE
+                self._client.config_set(
+                    REDIS_KEYSPACE_EVENT_CONFIG_KEY, REDIS_KEYSPACE_EXPIRED_EVENT_CONFIG_VALUE
                 )
 
-            expiring_pubsub = self._sync_client.pubsub()
-            expiring_pubsub.psubscribe(REDIS_EXPIRED_KEYSPACE_PATTERN % (db, "*"))
-            (self._pubsub_expiring, self._async_executor_ex) = wrap_with_threadpool(expiring_pubsub)
-            self._watch_expiring_key()
+            self._pubsub_expiring = self._client.pubsub()
+            self._pubsub_expiring.psubscribe(
+                **{REDIS_EXPIRED_KEYSPACE_PATTERN % (db, "*"): self._expiring_key_handler}
+            )
+            self._pubsub_expiring_thread = self._pubsub_expiring.run_in_thread(daemon=True, sleep_time=5)
 
-    def _watch_published_key(self):
-        def published_callback_wrapper(event_future):
-            logger.debug("published callback called")
-            event_result = None
+    def _expiring_key_handler(self, message):
+        try:
+            message_tup = (
+                message.get("type"),
+                message.get("pattern").decode("utf-8"),
+                message.get("channel").decode("utf-8"),
+                message.get("data").decode("utf-8"),
+            )
+            if self._is_expired_keyspace_event(message_tup):
+                # Get the value of the original key before the expiration happened.
+                key = self._key_from_expiration(message_tup)
+                expired_value = self._client.get(key)
 
-            if not event_future.cancelled():
-                try:
-                    event_result = event_future.result()
-                    (redis_event, event_key, event_value) = event_result
-                    logger.debug(
-                        "Got watch of key: (%s, %s, %s)", redis_event, event_key, event_value
-                    )
-                except redis.ConnectionError:
-                    _sleep_orchestrator()
-                except redis.RedisError:
-                    logger.exception("Exception watching redis publish: %s", event_key)
+                # Mark key as expired. This key is used to track post job cleanup in the callback,
+                # to allow another manager to pickup the cleanup if this fails.
+                self._client.set(
+                    slash_join(key, REDIS_EXPIRED_SUFFIX), expired_value
+                )
+                self._client.delete(key)
+        except redis.ConnectionError:
+            _sleep_orchestrator()
+        except redis.RedisError as re:
+            logger.exception("Redis exception watching redis expirations: %s - %s", key, re)
+        except Exception as e:
+            logger.exception("Unknown exception watching redis expirations: %s - %s", key, e)
 
-            # Schedule creating a new future if this one has been consumed.
-            if "pub" not in self._tasks or self._tasks["pub"].done():
-                self._watch_published_key()
+        if self._is_expired_keyspace_event(message_tup) and expired_value is not None:
+            for watched_key, callback in self._watched_keys.items():
+                if key.startswith(watched_key):
+                    callback(KeyChange(KeyEvent.EXPIRE, key, expired_value))
 
-            if event_result is not None and redis_event == REDIS_EVENT_KIND_MESSAGE:
-                keychange = self._publish_to_keychange(event_value)
-                for watched_key, callback in iteritems(self._watched_keys):
-                    if keychange.key.startswith(watched_key):
-                        asyncio.create_task(callback(keychange))
+    def _published_key_handler(self, message):
+        try:
+            redis_event, event_key, event_value = (
+                message.get("type"),
+                message.get("channel").decode("utf-8"),
+                message.get("data").decode("utf-8"),
+            )
+        except redis.ConnectionError:
+            _sleep_orchestrator()
+        except redis.RedisError as re:
+            logger.exception("Redis exception watching redis expirations: %s - %s", key, re)
+        except Exception as e:
+            logger.exception("Unknown exception watching redis expirations: %s - %s", key, e)
 
-        if not self._shutting_down:
-            logger.debug("Scheduling watch of publish stream")
-            watch_future = self._pubsub.parse_response()
-            watch_future.add_done_callback(published_callback_wrapper)
-            self._tasks["pub"] = asyncio.create_task(watch_future)
-
-    def _watch_expiring_key(self):
-        async def expiring_callback_wrapper(event_future):
-            logger.debug("expiring callback called")
-            event_result = None
-
-            if not event_future.cancelled():
-                try:
-                    event_result = event_future.result()
-                    if self._is_expired_keyspace_event(event_result):
-                        # Get the value of the original key before the expiration happened.
-                        key = self._key_from_expiration(event_future)
-                        expired_value = await self._client.get(key)
-
-                        # $KEY/expiring is gone, but the original key still remains, set an expiration for it
-                        # so that other managers have time to get the event and still read the expired value.
-                        await self._client.expire(key, ONE_DAY)
-                except redis.ConnectionError:
-                    _sleep_orchestrator()
-                except redis.RedisError:
-                    logger.exception("Exception watching redis expirations: %s", key)
-
-            # Schedule creating a new future if this one has been consumed.
-            if "expire" not in self._tasks or self._tasks["expire"].done():
-                self._watch_expiring_key()
-
-            if self._is_expired_keyspace_event(event_result) and expired_value is not None:
-                for watched_key, callback in iteritems(self._watched_keys):
-                    if key.startswith(watched_key):
-                        asyncio.create_task(
-                            callback(KeyChange(KeyEvent.EXPIRE, key, expired_value))
-                        )
-
-        if not self._shutting_down:
-            logger.debug("Scheduling watch of expiration")
-            watch_future = self._pubsub_expiring.parse_response()
-            watch_future.add_done_callback(expiring_callback_wrapper)
-            self._tasks["expire"] = asyncio.create_task(watch_future)
+        if redis_event == REDIS_EVENT_KIND_MESSAGE:
+            keychange = self._publish_to_keychange(event_value)
+            for watched_key, callback in self._watched_keys.items():
+                if keychange.key.startswith(watched_key):
+                    callback(keychange)
 
     def on_key_change(self, key, callback, restarter=None):
         assert not self.is_canceller_only
@@ -698,103 +413,120 @@ class RedisOrchestrator(Orchestrator):
         e = json.loads(event_value)
         return KeyChange(KeyEvent(e["event"]), e["key"], e["value"])
 
-    async def get_prefixed_keys(self, prefix):
+    def get_prefixed_keys(self, prefix):
         assert not self.is_canceller_only
 
         # TODO: This can probably be done with redis pipelines to make it transactional.
-        keys = await self._client.keys(prefix + "*")
+        keys = self._client.keys(prefix + "*")
 
         # Yielding to the event loop is required, thus this cannot be written as a dict comprehension.
         results = {}
         for key in keys:
-            if key.endswith(REDIS_EXPIRING_SUFFIX):
+            if key.decode("utf-8").endswith(REDIS_EXPIRING_SUFFIX) or key.decode("utf-8").endswith(REDIS_EXPIRED_SUFFIX):
                 continue
-            ttl = await self._client.ttl(key)
-            if ttl != REDIS_NONEXPIRING_KEY:
+            ttl = self._client.ttl(key)
+            if ttl == REDIS_NONEXPIRING_KEY:
                 # Only redis keys without expirations are live build manager keys.
-                value = await self._client.get(key)
-                results.update({key: value})
+                try:
+                    value = self._client.get(key)
+                    if value is None:
+                        raise KeyError
+                except redis.ConnectionError as rce:
+                    raise OrchestratorConnectionError(rce)
+                except redis.RedisError as re:
+                    raise OrchestratorError(re)
+
+                results.update({key.decode("utf-8"): value.decode("utf-8")})
 
         return results
 
-    async def get_key(self, key):
+    def _key_is_expired(self, key):
+        expired_key = slash_join(key, REDIS_EXPIRED_SUFFIX)
+        expired_val = self._client.get(key)
+        if expired_val is None:
+            return False
+        return True
+
+    def get_key(self, key):
         assert not self.is_canceller_only
 
-        value = await self._client.get(key)
-        return value
+        try:
+            value = self._client.get(key)
+            if value is None:
+                # If expired, the expired key should have been removed but still exists.
+                # Delete the key if that's the case.
+                if self._key_is_expired(key):
+                    self._client.delete(slash_join(key, REDIS_EXPIRED_SUFFIX))
+                raise KeyError
+        except redis.ConnectionError as rce:
+            raise OrchestratorConnectionError(rce)
+        except redis.RedisError as re:
+            raise OrchestratorError(re)
 
-    async def set_key(self, key, value, overwrite=False, expiration=None):
+        return value.decode("utf-8")
+
+    def set_key(self, key, value, overwrite=False, expiration=None):
         assert not self.is_canceller_only
 
-        already_exists = await self._client.exists(key)
+        try:
+            already_exists = self._client.exists(key)
+            if already_exists and not overwrite:
+                raise KeyError
 
-        await self._client.set(key, value, xx=overwrite)
-        if expiration is not None:
-            await (
-                self._client.set(
-                    slash_join(key, REDIS_EXPIRING_SUFFIX), value, xx=overwrite, ex=expiration
+            self._client.set(key, value, xx=overwrite)
+            if expiration is not None:
+                overwrite_expiring_key = self._client.exists(
+                    slash_join(key, REDIS_EXPIRING_SUFFIX)
                 )
-            )
+                self._client.set(
+                    slash_join(key, REDIS_EXPIRING_SUFFIX), value, xx=overwrite_expiring_key, ex=expiration
+                )
+                # Remove any expired key that might have previously been created but not removed
+                # if a new expiration is set.
+                self._client.delete(slash_join(key, REDIS_EXPIRED_SUFFIX))
+            key_event = KeyEvent.SET if already_exists else KeyEvent.CREATE
+            self._publish(event=key_event, key=key, value=value)
+        except redis.ConnectionError as rce:
+            raise OrchestratorConnectionError(rce)
+        except redis.RedisError as re:
+            raise OrchestratorError(re)
 
-        key_event = KeyEvent.SET if already_exists else KeyEvent.CREATE
-        await self._publish(event=key_event, key=key, value=value)
-
-    def set_key_sync(self, key, value, overwrite=False, expiration=None):
-        already_exists = self._sync_client.exists(key)
-
-        self._sync_client.set(key, value, xx=overwrite)
-        if expiration is not None:
-            self._sync_client.set(
-                slash_join(key, REDIS_EXPIRING_SUFFIX), value, xx=overwrite, ex=expiration
-            )
-
-        self._sync_client.publish(
-            self._pubsub_key,
-            json.dumps(
-                {
-                    "event": int(KeyEvent.SET if already_exists else KeyEvent.CREATE),
-                    "key": key,
-                    "value": value,
-                }
-            ),
-        )
-
-    async def _publish(self, **kwargs):
+    def _publish(self, **kwargs):
         kwargs["event"] = int(kwargs["event"])
         event_json = json.dumps(kwargs)
         logger.debug("publishing event: %s", event_json)
-        await self._client.publish(self._pubsub_key, event_json)
+        self._client.publish(self._pubsub_key, event_json)
 
-    async def delete_key(self, key):
+    def delete_key(self, key):
         assert not self.is_canceller_only
 
-        value = await self._client.get(key)
-        await self._client.delete(key)
-        await self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX))
-        await self._publish(event=KeyEvent.DELETE, key=key, value=value)
+        try:
+            value = self._client.get(key)
+            if value is None:
+                raise KeyError
+            self._client.delete(key)
+            self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX))
+            self._client.delete(slash_join(key, REDIS_EXPIRED_SUFFIX))
+            self._publish(event=KeyEvent.DELETE, key=key, value=value.decode("utf-8"))
+        except redis.ConnectionError as rce:
+            raise OrchestratorConnectionError(rce)
+        except redis.RedisError as re:
+            raise OrchestratorError(re)
 
-    async def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
+    def lock(self, key, expiration=DEFAULT_LOCK_EXPIRATION):
         assert not self.is_canceller_only
-
-        await self.set_key(key, "", ex=expiration)
+        try:
+            self.set_key(key, "", overwrite=False, expiration=expiration)
+        except KeyError:
+            return False
         return True
 
-    async def shutdown(self):
+    def shutdown(self):
         logger.debug("Shutting down redis client.")
-
         self._shutting_down = True
 
         if self.is_canceller_only:
             return
 
-        for key, task in iteritems(self._tasks):
-            if not task.done():
-                logger.debug("Canceling watch task for %s", key)
-                task.cancel()
-
-        if self._async_executor is not None:
-            self._async_executor.shutdown()
-        if self._async_executor_ex is not None:
-            self._async_executor_ex.shutdown()
-        if self._async_executor_pub is not None:
-            self._async_executor_pub.shutdown()
+        self._pubsub_thread.stop()
+        self._pubsub_expiring_thread.stop()
