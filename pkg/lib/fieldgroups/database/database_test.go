@@ -20,6 +20,10 @@ func TestValidateDatabase(t *testing.T) {
 		{name: "dbURIMissing", config: map[string]interface{}{"DB_URI": ""}, want: "invalid"},
 		{name: "dbURIInvalid", config: map[string]interface{}{"DB_URI": "not a url"}, want: "invalid"},
 		{name: "dbURIPostgres", config: map[string]interface{}{"DB_URI": "postgresql://user:password@postgres:5432/quay"}, want: "invalid"},
+
+		// Quay currently requires the pymysql library to be specified in the DB_URI
+		{name: "ValidMysqlURI", config: map[string]interface{}{"DB_URI": "mysql+pymysql://root:password@mysql:3306/quay"}, want: "valid"},
+		{name: "MissingPyMysql", config: map[string]interface{}{"DB_URI": "mysql://root:password@mysql:3306/quay"}, want: "invalid"},
 	}
 
 	// Iterate through tests
