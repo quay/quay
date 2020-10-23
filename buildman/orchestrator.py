@@ -232,7 +232,7 @@ class MemoryOrchestrator(Orchestrator):
     def set_key(self, key, value, overwrite=False, expiration=None):
         preexisting_key = key in self.state
         if preexisting_key and not overwrite:
-            raise KeyError
+            raise KeyError(key)
 
         # Simulate redis' behavior when using xx and the key does not exist.
         if not preexisting_key and overwrite:
@@ -430,7 +430,7 @@ class RedisOrchestrator(Orchestrator):
                 try:
                     value = self._client.get(key)
                     if value is None:
-                        raise KeyError
+                        raise KeyError(key)
                 except redis.ConnectionError as rce:
                     raise OrchestratorConnectionError(rce)
                 except redis.RedisError as re:
@@ -457,7 +457,7 @@ class RedisOrchestrator(Orchestrator):
                 # Delete the key if that's the case.
                 if self._key_is_expired(key):
                     self._client.delete(slash_join(key, REDIS_EXPIRED_SUFFIX))
-                raise KeyError
+                raise KeyError(key)
         except redis.ConnectionError as rce:
             raise OrchestratorConnectionError(rce)
         except redis.RedisError as re:
@@ -471,7 +471,7 @@ class RedisOrchestrator(Orchestrator):
         try:
             already_exists = self._client.exists(key)
             if already_exists and not overwrite:
-                raise KeyError
+                raise KeyError(key)
 
             # Set an expiration in case that the handler was not able to delete the the original key.
             # The extra leeway is so the expire event handler has time to get the original value and publish the event.
@@ -508,7 +508,7 @@ class RedisOrchestrator(Orchestrator):
         try:
             value = self._client.get(key)
             if value is None:
-                raise KeyError
+                raise KeyError(key)
             self._client.delete(key)
             self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX))
             self._client.delete(slash_join(key, REDIS_EXPIRED_SUFFIX))
