@@ -473,13 +473,18 @@ class RedisOrchestrator(Orchestrator):
             if already_exists and not overwrite:
                 raise KeyError
 
+            # Set an expiration in case that the handler was not able to delete the the original key.
+            # The extra leeway is so the expire event handler has time to get the original value and publish the event.
             self._client.set(key, value, xx=overwrite)
             if expiration is not None:
+                self._client.expire(key, expiration+ONE_DAY)
                 overwrite_expiring_key = self._client.exists(
                     slash_join(key, REDIS_EXPIRING_SUFFIX)
                 )
+                # The "expiring/*" are only used to publish the EXPIRE event. A separate key is needed
+                # because the the EXPIRE event does not include the original key value.
                 self._client.set(
-                    slash_join(key, REDIS_EXPIRING_SUFFIX), value, xx=overwrite_expiring_key, ex=expiration
+                    slash_join(key, REDIS_EXPIRING_SUFFIX), "", xx=overwrite_expiring_key, ex=expiration
                 )
                 # Remove any expired key that might have previously been created but not removed
                 # if a new expiration is set.
@@ -507,7 +512,8 @@ class RedisOrchestrator(Orchestrator):
             self._client.delete(key)
             self._client.delete(slash_join(key, REDIS_EXPIRING_SUFFIX))
             self._client.delete(slash_join(key, REDIS_EXPIRED_SUFFIX))
-            self._publish(event=KeyEvent.DELETE, key=key, value=value.decode("utf-8"))
+            if value is not None:
+                self._publish(event=KeyEvent.DELETE, key=key, value=value.decode("utf-8"))
         except redis.ConnectionError as rce:
             raise OrchestratorConnectionError(rce)
         except redis.RedisError as re:

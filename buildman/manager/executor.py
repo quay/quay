@@ -274,7 +274,7 @@ class EC2Executor(BuilderExecutor):
                 "ResourceType": "instance",
                 "Tags": [
                     {"Key": "Name", "Value": "Quay Ephemeral Builder"},
-                    {"Key": "Token", "Value": token},
+                    {"Key": "RegistrationToken", "Value": token[:36]},
                     {"Key": "BuildUUID", "Value": build_uuid},
                 ]
             }

@@ -106,10 +106,11 @@ def test_set_key(orchestrator):
     with pytest.raises(KeyError):
         orchestrator.set_key(some_key, "test_val_3")
     
-    # Try overwriting some existing key without setting overwrite
+    # Try overwriting some existing key with overwrite set.
+    # Also expects a new expiration key to be created.
     orchestrator.set_key(some_key, "test_val_4", overwrite=True, expiration=360)
     assert orchestrator.get_key(some_key) == "test_val_4"
-    assert orchestrator.get_key(slash_join(some_key, REDIS_EXPIRING_SUFFIX)) == "test_val_4"
+    assert orchestrator.get_key(slash_join(some_key, REDIS_EXPIRING_SUFFIX)) is not None
     
 
 def test_on_key_change(orchestrator):
