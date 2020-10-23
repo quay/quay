@@ -89,7 +89,7 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 	dbname := uri.Path[1:]
 
 	// Database is MySQL
-	if scheme == "mysql" {
+	if scheme == "mysql+pymysql" {
 
 		// Create db connection string
 		dsn := credentials + "@tcp(" + fullHostName + ")/" + dbname
