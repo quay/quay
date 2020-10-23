@@ -20,12 +20,6 @@
       "description": "The list of storage engine(s) (by ID in DISTRIBUTED_STORAGE_CONFIG) whose images should be fully replicated, by default, to all other storage engines.",
       "x-example": ["s3_us_east", "s3_us_west"]
     },
-
-    "FEATURE_BLACKLISTED_EMAILS": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "If set to true, no new User accounts may be created if their email domain is blacklisted."
-    },
     "REGISTRY_STATE": {
       "x-example": "readonly",
       "enum": ["normal", "readonly"],
@@ -104,12 +98,6 @@
       "type": ["string", "null"],
       "description": "Duration of time expired external app tokens will remain before being garbage collected. Defaults to 1d."
     },
-
-    "BLACKLISTED_EMAIL_DOMAINS": {
-      "x-example": ["example.com", "example.org"],
-      "type": "array",
-      "description": "The array of email-address domains that is used if FEATURE_BLACKLISTED_EMAILS is set to true."
-    },
     "FEATURE_APP_REGISTRY": {
       "x-example": false,
       "type": "boolean",
@@ -181,16 +169,6 @@
       "description": "If not None, the number of successive internal errors that can occur before a build trigger is automatically disabled. Defaults to 5."
     },
 
-    "MAIL_PASSWORD": {
-      "x-example": "mypassword",
-      "type": ["string", "null"],
-      "description": "The SMTP password to use when sending e-mails."
-    },
-    "MAIL_PORT": {
-      "x-example": 588,
-      "type": "number",
-      "description": "The SMTP port to use. If not specified, defaults to 587."
-    },
     "FEATURE_LOG_EXPORT": {
       "x-example": true,
       "type": "boolean",
@@ -207,11 +185,7 @@
       "type": "boolean",
       "description": "Whether sessions are permanent. Defaults to True"
     },
-    "MAIL_DEFAULT_SENDER": {
-      "x-example": "support@myco.com",
-      "type": ["string", "null"],
-      "description": "If specified, the e-mail address used as the `from` when Quay sends e-mails. If none, defaults to `support@quay.io`."
-    },
+
     "TAG_EXPIRATION_OPTIONS": {
       "items": { "pattern": "^[0-9]+(w|m|d|h|s)$", "type": "string" },
       "type": "array",
@@ -228,11 +202,6 @@
       "items": { "type": "string" },
       "type": "array",
       "description": "Quay usernames of those users to be granted superuser privileges"
-    },
-    "MAIL_USERNAME": {
-      "x-example": "myuser",
-      "type": ["string", "null"],
-      "description": "The SMTP username to use when sending e-mails."
     },
     "FEATURE_ADVERTISE_V2": {
       "x-example": true,
@@ -265,11 +234,6 @@
       "type": "boolean",
       "description": "If true, pulls in which the pull audit log entry cannot be written will still succeed. Useful if the database can fallback into a read-only state and it is desired for pulls to continue during that time. Defaults to False."
     },
-    "MAIL_USE_TLS": {
-      "x-example": true,
-      "type": "boolean",
-      "description": "If specified, whether to use TLS for sending e-mails."
-    },
     "LOG_ARCHIVE_PATH": {
       "x-example": "archives/buildlogs",
       "type": "string",
@@ -290,11 +254,6 @@
       "x-example": false,
       "type": "boolean",
       "description": "Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True."
-    },
-    "MAIL_SERVER": {
-      "x-example": "smtp.somedomain.com",
-      "type": "string",
-      "description": "The SMTP server to use for sending e-mails. Only required if FEATURE_MAILING is set to true."
     },
     "LOG_ARCHIVE_LOCATION": {
       "x-example": "s3_us_east",

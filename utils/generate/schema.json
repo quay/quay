@@ -873,10 +873,10 @@
     "FEATURE_MAILING": {
       "x-example": true,
       "type": "boolean",
-      "description": "Whether emails are enabled. Defaults to True",
-      "ct-default": "true",
+      "description": "Whether emails are enabled. Defaults to False",
+      "ct-default": "false",
       "ct-validate": "",
-      "ct-fieldgroups": ["JWTAuthentication"]
+      "ct-fieldgroups": ["JWTAuthentication", "Email"]
     },
     "BUILDLOGS_REDIS": {
       "required": ["host"],
@@ -1029,6 +1029,78 @@
       "ct-default": "",
       "ct-validate": "",
       "ct-fieldgroups": ["RepoMirror"]
+    },
+    "MAIL_SERVER": {
+      "x-example": "smtp.somedomain.com",
+      "type": "string",
+      "description": "The SMTP server to use for sending e-mails. Only required if FEATURE_MAILING is set to true.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_PORT": {
+      "x-example": 588,
+      "type": "number",
+      "description": "The SMTP port to use. If not specified, defaults to 587.",
+      "ct-default": "587",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "FEATURE_BLACKLISTED_EMAILS": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "If set to true, no new User accounts may be created if their email domain is blacklisted.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "BLACKLISTED_EMAIL_DOMAINS": {
+      "x-example": ["example.com", "example.org"],
+      "type": "array",
+      "description": "The array of email-address domains that is used if FEATURE_BLACKLISTED_EMAILS is set to true.",
+      "ct-default": "[]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_USE_AUTH": {
+      "x-example": "myuser",
+      "type": "boolean",
+      "description": "Whether or not to use authentication for mail server.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_USERNAME": {
+      "x-example": "myuser",
+      "type": "string",
+      "description": "The SMTP username to use when sending e-mails.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_PASSWORD": {
+      "x-example": "mypassword",
+      "type": "string",
+      "description": "The SMTP password to use when sending e-mails.",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_DEFAULT_SENDER": {
+      "x-example": "support@myco.com",
+      "type": "string",
+      "description": "If specified, the e-mail address used as the `from` when Quay sends e-mails. If none, defaults to `support@quay.io`.",
+      "ct-default": "support@quay.io",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
+    },
+    "MAIL_USE_TLS": {
+      "x-example": true,
+      "type": "boolean",
+      "description": "If specified, whether to use TLS for sending e-mails.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["Email"]
     }
   }
 }

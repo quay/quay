@@ -9,7 +9,7 @@ import (
 // JWTAuthenticationFieldGroup represents the JWTAuthenticationFieldGroup config fields
 type JWTAuthenticationFieldGroup struct {
 	AuthenticationType string `default:"Database" validate:"" json:"AUTHENTICATION_TYPE,omitempty" yaml:"AUTHENTICATION_TYPE,omitempty"`
-	FeatureMailing     bool   `default:"true" validate:"" json:"FEATURE_MAILING,omitempty" yaml:"FEATURE_MAILING,omitempty"`
+	FeatureMailing     bool   `default:"false" validate:"" json:"FEATURE_MAILING,omitempty" yaml:"FEATURE_MAILING,omitempty"`
 	JwtAuthIssuer      string `default:"" validate:"" json:"JWT_AUTH_ISSUER,omitempty" yaml:"JWT_AUTH_ISSUER,omitempty"`
 	JwtGetuserEndpoint string `default:"" validate:"" json:"JWT_GETUSER_ENDPOINT,omitempty" yaml:"JWT_GETUSER_ENDPOINT,omitempty"`
 	JwtQueryEndpoint   string `default:"" validate:"" json:"JWT_QUERY_ENDPOINT,omitempty" yaml:"JWT_QUERY_ENDPOINT,omitempty"`
