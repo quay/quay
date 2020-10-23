@@ -47,6 +47,12 @@ func GetFields(fg FieldGroup) []string {
 
 // LoadCerts will load certificates in a config directory.
 func LoadCerts(dir string) map[string][]byte {
+
+	// Check if dir exists
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return map[string][]byte{}
+	}
+
 	// Get filenames in directory
 	certs := make(map[string][]byte)
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -54,14 +60,21 @@ func LoadCerts(dir string) map[string][]byte {
 			return nil
 		}
 
-		data, _ := ioutil.ReadFile(path)
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
 		relativePath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
 
 		certs[relativePath] = data
 		return nil
 	})
 	if err != nil {
-		fmt.Println("fail")
+		return map[string][]byte{}
 	}
 
 	return certs
