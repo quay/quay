@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package buildman_pb;
+
+option go_package = "github.com/quay/quay/buildman/buildman_pb";
+
+
+service BuildManager {
+  rpc Ping(PingRequest) returns (PingReply) {}
+  rpc RegisterBuildJob(BuildJobArgs) returns (BuildPack) {}
+  rpc Heartbeat(stream HeartbeatRequest) returns (stream HeartbeatResponse) {}
+
+  rpc SetPhase(SetPhaseRequest) returns (SetPhaseResponse) {}
+  rpc LogMessage(stream LogMessageRequest) returns (stream LogMessageResponse) {}
+  rpc DetermineCachedTag(CachedTagRequest) returns (CachedTag) {}
+}
+
+message PingRequest {}
+message PingReply {
+  string reply = 1;
+}
+
+message BuildJobArgs {
+  string register_jwt = 1;
+}
+message BuildPack {
+  string job_jwt = 1;
+
+  oneof build_pack {
+    string package_url = 2;
+    GitPackage git_package = 3;
+  }
+
+  string context = 4;
+  string dockerfile_path = 5;
+  string repository = 6;
+  string registry = 7;
+  string pull_token = 8;
+  string push_token = 9;
+  repeated string tag_names = 10;
+  BaseImage base_image = 11;
+
+  message BaseImage {
+    string username = 1;
+    string password = 2;
+  }
+
+  message GitPackage {
+    string url = 1;
+    string sha = 2;
+    string private_key = 3;
+  }
+}
+
+message HeartbeatRequest {
+  string job_jwt = 1;
+}
+message HeartbeatResponse {
+  bool reply = 1;
+}
+
+enum Phase {
+  WAITING = 0;
+  UNPACKING = 1;
+  PULLING = 2;
+  BUILDING = 3;
+  PUSHING = 4;
+  COMPLETE = 5;
+  ERROR = 6;
+}
+
+message SetPhaseRequest {
+  string job_jwt = 1;
+  int32 sequence_number = 2;
+  Phase phase = 3;
+}
+
+message SetPhaseResponse {
+  bool success = 1;
+  int32 sequence_number = 2;
+}
+
+message LogMessageRequest {
+  string job_jwt = 1;
+  int32 sequence_number = 2;
+  string log_message = 3;
+  string phase = 4;
+}
+message LogMessageResponse {
+  bool success = 1;
+  int32 sequence_number = 2;
+}
+
+message CachedTagRequest {
+  string job_jwt = 1;
+  string base_image_name = 2;
+  string base_image_tag = 3;
+  string base_image_id = 4;
+}
+message CachedTag {
+  string CachedTag = 1;
+}
