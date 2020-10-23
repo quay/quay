@@ -15,7 +15,7 @@ type GitLabBuildTriggerFieldGroup struct {
 
 // GitlabTriggerConfigStruct represents the GitlabTriggerConfigStruct config fields
 type GitlabTriggerConfigStruct struct {
-	GitlabEndpoint string `default:"" validate:"" json:"GITLAB_ENDPOINT,omitempty" yaml:"GITLAB_ENDPOINT,omitempty"`
+	GitlabEndpoint string `default:"https://gitlab.com/" validate:"" json:"GITLAB_ENDPOINT,omitempty" yaml:"GITLAB_ENDPOINT,omitempty"`
 	ClientId       string `default:"" validate:"" json:"CLIENT_ID,omitempty" yaml:"CLIENT_ID,omitempty"`
 	ClientSecret   string `default:"" validate:"" json:"CLIENT_SECRET,omitempty" yaml:"CLIENT_SECRET,omitempty"`
 }
