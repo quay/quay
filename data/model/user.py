@@ -689,7 +689,7 @@ def create_confirm_email_code(user, new_email=None):
     code = EmailConfirmation.create(
         user=user, email_confirm=True, new_email=new_email, verification_code=verification_code
     )
-    return encode_public_private_token(code.code, unhashed).decode("ascii")
+    return encode_public_private_token(code.code, unhashed)
 
 
 def confirm_user_email(token):

@@ -17,7 +17,7 @@ def encode_public_private_token(public_code, private_token, allow_public_only=Fa
     assert isinstance(private_token, str) and isinstance(public_code, str)
     b = ("%s%s%s" % (public_code, DELIMITER, private_token)).encode("utf-8")
 
-    return base64.b64encode(b)
+    return base64.b64encode(b).decode("utf-8")
 
 
 def decode_public_private_token(encoded, allow_public_only=False):
