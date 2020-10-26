@@ -364,6 +364,7 @@ func ValidateStorage(opts Options, args *DistributedStorageArgs, storageType str
 	var endpoint string
 	var accessKey string
 	var secretKey string
+	var isSecure bool
 	var token string = ""
 
 	switch storageType {
@@ -379,10 +380,15 @@ func ValidateStorage(opts Options, args *DistributedStorageArgs, storageType str
 	case "S3Storage":
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
-		endpoint = args.Host
+		if len(args.Host) == 0 {
+			endpoint = "s3.amazonaws.com"
+		} else {
+			endpoint = args.Host
+		}
 		if args.Port != 0 {
 			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
 		}
+		isSecure = true
 	case "GoogleCloudStorage":
 		accessKey = args.AccessKey
 		secretKey = args.SecretKey
@@ -427,7 +433,7 @@ func ValidateStorage(opts Options, args *DistributedStorageArgs, storageType str
 	// Create client
 	st, err := minio.New(endpoint, &minio.Options{
 		Creds:     credentials.NewStaticV4(accessKey, secretKey, token),
-		Secure:    args.IsSecure,
+		Secure:    isSecure,
 		Transport: tr,
 	})
 	if err != nil {

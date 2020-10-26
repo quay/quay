@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/creasty/defaults"
 	"github.com/quay/config-tool/pkg/lib/shared"
@@ -142,17 +143,26 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 	}
 
 	if value, ok := storageArgs["port"]; ok {
-		newDistributedStorageArgs.Port, ok = value.(int)
-		if !ok {
 
-			// We must have an extra check for float64
-			if v, ok := value.(float64); ok {
-				newDistributedStorageArgs.Port = int(v)
+		switch t := value.(type) {
+		case int:
+			newDistributedStorageArgs.Port = t
+		case string:
+			if len(t) == 0 {
+				newDistributedStorageArgs.Port = 0
 			} else {
-				return newDistributedStorageArgs, errors.New("port must be of type integer")
+				v, err := strconv.Atoi(t)
+				if err != nil {
+					return newDistributedStorageArgs, errors.New("port must be of type integer")
+				}
+				newDistributedStorageArgs.Port = v
 			}
-
+		case float64:
+			newDistributedStorageArgs.Port = int(t)
+		default:
+			return newDistributedStorageArgs, errors.New("port must be of type integer")
 		}
+
 	}
 
 	if value, ok := storageArgs["secret_key"]; ok {
