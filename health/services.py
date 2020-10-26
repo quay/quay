@@ -181,7 +181,8 @@ _INSTANCE_SERVICES = {
     "web_gunicorn": _check_gunicorn("_internal_ping"),
     "service_key": _check_service_key,
     "disk_space": _check_disk_space(for_warning=False),
-    "jwtproxy": _check_jwt_proxy,
+    # https://issues.redhat.com/browse/PROJQUAY-1193
+    # "jwtproxy": _check_jwt_proxy, TODO: remove with removal of jwtproxy in container
 }
 
 _GLOBAL_SERVICES = {
