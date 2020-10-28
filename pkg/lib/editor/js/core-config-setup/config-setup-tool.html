@@ -781,58 +781,6 @@
         </div>
       </div>
 
-      <!-- ACI Conversion (DEPRECATED) -->
-      <div class="co-panel" ng-show="originalConfig.FEATURE_ACI_CONVERSION">
-        <div class="co-panel-heading">
-          <i class="fa rocket-icon"
-             style="width: 20px; height: 20px; background-size: cover; vertical-align: middle;"></i> <a
-                                                                                                       href="http://github.com/coreos/rkt" ng-safenewtab>rkt</a> Conversion (DEPRECATED)
-        </div>
-        <div class="co-panel-body">
-          <div class="co-alert co-alert-warning" style="margin-bottom: 20px">
-            ACI conversion support has been <strong>officially deprecated</strong> by Quay and support will be
-            removed in the next version. It is <strong>strongly</strong> suggested to disable this feature now.
-          </div>
-
-          <div class="description">
-            <p>If enabled, all images in the registry can be fetched via <code>rkt fetch</code> or any other <a
-                                                                                                               href="https://github.com/appc/spec/blob/master/spec/discovery.md" ng-safenewtab>AppC
-              discovery</a>-compliant implementation.</p>
-          </div>
-
-          <div class="config-bool-field" binding="config.FEATURE_ACI_CONVERSION">
-            Enable ACI Conversion
-          </div>
-
-          <table class="config-table" ng-if="config.FEATURE_ACI_CONVERSION">
-            <tr>
-              <td class="non-input">GPG2 Public Key File:</td>
-              <td>
-                <span class="config-file-field" filename="signing-public.gpg"
-                      has-file="hasfile.gpgSigningPublic" certs="certs"></span>
-                <div class="help-text">
-                  The certificate must be in PEM format.
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td class="non-input">GPG2 Private Key File:</td>
-              <td>
-                <span class="config-file-field" filename="signing-private.gpg"
-                      has-file="hasfile.gpgSigningPrivate" certs="certs"></span>
-              </td>
-            </tr>
-            <tr>
-              <td class="non-input">GPG2 Private Key Name:</td>
-              <td>
-                <span class="config-string-field" binding="config.GPG2_PRIVATE_KEY_NAME"
-                      placeholder="Name of the private key in the private key file (Example: EAB32227)"></span>
-              </td>
-            </tr>
-          </table>
-        </div>
-      </div>
-
       <!-- E-mail -->
       <div class="co-panel">
         <div class="co-panel-heading">
@@ -1797,36 +1745,6 @@
           </table>
         </div>
       </div> <!-- /Access settings -->
-
-      <!-- Registry settings -->
-      <div class="co-panel">
-        <div class="co-panel-heading">
-          <i class="fas fa-cog"></i> Registry Protocol Settings
-        </div>
-        <div class="co-panel-body">
-          <div class="co-alert co-alert-warning" style="margin-bottom: 20px">
-            Docker V1 protocol support has been <strong>officially deprecated</strong> by Quay and support will be
-            removed in an upcoming version. It is <strong>strongly</strong> suggested to have this
-            flag enabled and to restrict access to V1 push.
-          </div>
-          <div class="config-bool-field" binding="config.FEATURE_RESTRICTED_V1_PUSH">
-            Restrict V1 Push Support
-          </div>
-          <div class="help-text">
-            If enabled, Docker V1 push protocol will only be supported by those namespaces whitelisted
-            below. This feature should be left on unless <strong>general usage</strong> of the older
-            Docker V1 protocol is necessary.
-          </div>
-          <div ng-if="config.FEATURE_RESTRICTED_V1_PUSH" style="margin-top: 20px;">
-            <strong>Namespace whitelist:</strong>
-            <span class="config-list-field" item-title="Namespace" binding="config.V1_PUSH_WHITELIST"
-                  item-pattern="[a-z0-9-]"></span>
-            <div class="help-text">
-              The list of namespaces in which V1 push is still enabled.
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Build Support -->
       <div class="co-panel">
