@@ -175,3 +175,12 @@ func RemoveNullValues(m map[string]interface{}) map[string]interface{} {
 	}
 	return m
 }
+
+// InterfaceArrayToStringArray converts a []interface{} to []string
+func InterfaceArrayToStringArray(input []interface{}) []string {
+	output := make([]string, len(input))
+	for i, v := range input {
+		output[i] = v.(string)
+	}
+	return output
+}

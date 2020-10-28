@@ -1101,6 +1101,30 @@
       "ct-default": "false",
       "ct-validate": "",
       "ct-fieldgroups": ["Email"]
+    },
+    "FEATURE_CHANGE_TAG_EXPIRATION": {
+      "x-example": false,
+      "type": "boolean",
+      "description": "Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True.",
+      "ct-default": "true",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TimeMachine"]
+    },
+    "TAG_EXPIRATION_OPTIONS": {
+      "items": { "pattern": "^[0-9]+(w|m|d|h|s)$", "type": "string" },
+      "type": "array",
+      "description": "The options that users can select for expiration of tags in their namespace (if enabled)",
+      "ct-default": "[2w]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TimeMachine"]
+    },
+    "DEFAULT_TAG_EXPIRATION": {
+      "pattern": "^[0-9]+(w|m|d|h|s)$",
+      "type": "string",
+      "description": "The default, configurable tag expiration time for time machine. Defaults to `2w`.",
+      "ct-default": "2w",
+      "ct-validate": "",
+      "ct-fieldgroups": ["TimeMachine"]
     }
   }
 }
