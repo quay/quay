@@ -186,11 +186,6 @@
       "description": "Whether sessions are permanent. Defaults to True"
     },
 
-    "TAG_EXPIRATION_OPTIONS": {
-      "items": { "pattern": "^[0-9]+(w|m|d|h|s)$", "type": "string" },
-      "type": "array",
-      "description": "The options that users can select for expiration of tags in their namespace (if enabled)"
-    },
     "MAXIMUM_LAYER_SIZE": {
       "x-example": "100G",
       "type": "string",
@@ -250,11 +245,6 @@
       "description": "If not None, the default maximum number of builds that can be queued in a namespace."
     },
 
-    "FEATURE_CHANGE_TAG_EXPIRATION": {
-      "x-example": false,
-      "type": "boolean",
-      "description": "Whether users and organizations are allowed to change the tag expiration for tags in their namespace. Defaults to True."
-    },
     "LOG_ARCHIVE_LOCATION": {
       "x-example": "s3_us_east",
       "type": "string",
@@ -281,11 +271,7 @@
       "description": "If specified, the nginx-defined list of SSL ciphers to enabled and disabled",
       "x-reference": "http://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_ciphers"
     },
-    "DEFAULT_TAG_EXPIRATION": {
-      "pattern": "^[0-9]+(w|m|d|h|s)$",
-      "type": "string",
-      "description": "The default, configurable tag expiration time for time machine. Defaults to `2w`."
-    },
+
     "FEATURE_RATE_LIMITS": {
       "x-example": true,
       "type": "boolean",

@@ -32,6 +32,7 @@ run-local-dev:
 	-v ${CT_PUBLIC_KEY}:/tls/localhost.crt \
 	-e CONFIG_TOOL_PRIVATE_KEY=/tls/localhost.key \
 	-e CONFIG_TOOL_PUBLIC_KEY=/tls/localhost.crt \
+	-e DEBUGLOG=true \
 	-ti config-app:dev
 
 run-local-dev-setup:
@@ -43,6 +44,7 @@ run-local-dev-setup:
 	-v ${CT_PUBLIC_KEY}:/tls/localhost.crt \
 	-e CONFIG_TOOL_PRIVATE_KEY=/tls/localhost.key \
 	-e CONFIG_TOOL_PUBLIC_KEY=/tls/localhost.crt \
+	-e DEBUGLOG=true \
 	-ti config-app:dev
 
 
