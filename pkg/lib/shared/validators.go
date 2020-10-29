@@ -5,20 +5,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // ValidateGitHubOAuth checks that the Bitbucker OAuth credentials are correct
@@ -355,108 +351,4 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 
 	return true, ValidationError{}
 
-}
-
-// ValidateStorage will validate a S3 storage connection.
-func ValidateStorage(opts Options, args *DistributedStorageArgs, storageType string, fgName string) (bool, ValidationError) {
-
-	// Get credentials
-	var endpoint string
-	var accessKey string
-	var secretKey string
-	var isSecure bool
-	var token string = ""
-
-	switch storageType {
-	case "LocalStorage":
-		return true, ValidationError{}
-	case "RHOCSStorage", "RadosGWStorage":
-		accessKey = args.AccessKey
-		secretKey = args.SecretKey
-		endpoint = args.Hostname
-		if args.Port != 0 {
-			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
-		}
-	case "S3Storage":
-		accessKey = args.S3AccessKey
-		secretKey = args.S3SecretKey
-		if len(args.Host) == 0 {
-			endpoint = "s3.amazonaws.com"
-		} else {
-			endpoint = args.Host
-		}
-		if args.Port != 0 {
-			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
-		}
-		isSecure = true
-	case "GoogleCloudStorage":
-		accessKey = args.AccessKey
-		secretKey = args.SecretKey
-		endpoint = "storage.googleapis.com"
-	case "AzureStorage":
-		accessKey = args.AzureAccountName
-		secretKey = args.AzureAccountKey
-		endpoint = args.AzureAccountName + ".blob.core.windows.net"
-		token = args.SASToken
-	default:
-		newError := ValidationError{
-			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-			FieldGroup: fgName,
-			Message:    storageType + " is not a valid storage type.",
-		}
-		return false, newError
-	}
-
-	// Set transport
-	tr, err := minio.DefaultTransport(true)
-	if err != nil {
-		log.Fatalf("error creating the minio connection: error creating the default transport layer: %v", err)
-	}
-
-	rootCAs, _ := x509.SystemCertPool()
-	if rootCAs == nil {
-		rootCAs = x509.NewCertPool()
-	}
-
-	for name, cert := range opts.Certificates {
-		if strings.HasPrefix(name, "extra_ca_certs/") {
-			log.Println("adding certificate: " + name)
-			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
-				log.Fatalf("failed to append custom certificate: " + name)
-			}
-		}
-	}
-
-	config := &tls.Config{RootCAs: rootCAs}
-	tr.TLSClientConfig = config
-
-	// Create client
-	st, err := minio.New(endpoint, &minio.Options{
-		Creds:     credentials.NewStaticV4(accessKey, secretKey, token),
-		Secure:    isSecure,
-		Transport: tr,
-	})
-	if err != nil {
-		newError := ValidationError{
-			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-			FieldGroup: fgName,
-			Message:    "An error occurred while attempting to connect to " + storageType + " storage. Error: " + err.Error(),
-		}
-		return false, newError
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	_, err = st.ListBuckets(ctx)
-	if err != nil {
-		newError := ValidationError{
-			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-			FieldGroup: fgName,
-			Message:    "Could not connect to storage " + storageType + ". Error: " + err.Error(),
-		}
-		return false, newError
-	}
-
-	return true, ValidationError{}
 }
