@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	cuelang.org/go v0.2.1
+	github.com/Azure/azure-storage-blob-go v0.11.0
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/creasty/defaults v1.4.0

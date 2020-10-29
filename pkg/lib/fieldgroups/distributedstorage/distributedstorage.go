@@ -228,6 +228,13 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
+	if value, ok := storageArgs["storage_path"]; ok {
+		newDistributedStorageArgs.StoragePath, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("storage_path must be of type string")
+		}
+	}
+
 	return newDistributedStorageArgs, nil
 }
 
