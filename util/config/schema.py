@@ -4,6 +4,7 @@
 INTERNAL_ONLY_PROPERTIES = {
     "__module__",
     "__doc__",
+    "__annotations__",
     "create_transaction",
     "SESSION_COOKIE_NAME",
     "SESSION_COOKIE_HTTPONLY",
