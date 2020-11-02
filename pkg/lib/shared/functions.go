@@ -3,9 +3,13 @@ package shared
 import (
 	"archive/tar"
 	"compress/gzip"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -183,4 +187,27 @@ func InterfaceArrayToStringArray(input []interface{}) []string {
 		output[i] = v.(string)
 	}
 	return output
+}
+
+// GetTlsConfig will build a tls config struct given a set of CA certs
+func GetTlsConfig(opts Options) (*tls.Config, error) {
+
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, err
+	}
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	for name, cert := range opts.Certificates {
+		if strings.HasPrefix(name, "extra_ca_certs/") {
+			log.Println("Adding certificate: " + name)
+			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
+				return nil, errors.New("Failed to append custom certificate: " + name)
+			}
+		}
+	}
+
+	return &tls.Config{RootCAs: rootCAs}, nil
 }
