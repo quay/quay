@@ -2,14 +2,11 @@ package shared
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"log"
 	"net/url"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -198,21 +195,15 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 		log.Fatalf("error creating the minio connection: error creating the default transport layer: %v", err)
 	}
 
-	rootCAs, _ := x509.SystemCertPool()
-	if rootCAs == nil {
-		rootCAs = x509.NewCertPool()
-	}
-
-	for name, cert := range opts.Certificates {
-		if strings.HasPrefix(name, "extra_ca_certs/") {
-			log.Println("adding certificate: " + name)
-			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
-				log.Fatalf("failed to append custom certificate: " + name)
-			}
+	config, err := GetTlsConfig(opts)
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			FieldGroup: fgName,
+			Message:    err.Error(),
 		}
+		return false, newError
 	}
-
-	config := &tls.Config{RootCAs: rootCAs}
 	tr.TLSClientConfig = config
 
 	// Create client

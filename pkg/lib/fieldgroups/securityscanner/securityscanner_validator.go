@@ -35,7 +35,7 @@ func (fg *SecurityScannerFieldGroup) Validate(opts shared.Options) []shared.Vali
 
 		// Check that endpoint is reachable
 		if opts.Mode == "online" {
-			if ok, err := shared.ValidateHostIsReachable(fg.SecurityScannerEndpoint, "SECURITY_SCANNER_ENDPOINT", "SecurityScanner"); !ok {
+			if ok, err := shared.ValidateHostIsReachable(opts, fg.SecurityScannerEndpoint, "SECURITY_SCANNER_ENDPOINT", "SecurityScanner"); !ok {
 				errors = append(errors, err)
 			}
 		}
@@ -55,7 +55,7 @@ func (fg *SecurityScannerFieldGroup) Validate(opts shared.Options) []shared.Vali
 
 		// Check that endpoint is reachable
 		if opts.Mode == "online" {
-			if ok, err := shared.ValidateHostIsReachable(fg.SecurityScannerV4Endpoint, "SECURITY_SCANNER_V4_ENDPOINT", "SecurityScanner"); !ok {
+			if ok, err := shared.ValidateHostIsReachable(opts, fg.SecurityScannerV4Endpoint, "SECURITY_SCANNER_V4_ENDPOINT", "SecurityScanner"); !ok {
 				errors = append(errors, err)
 			}
 		}

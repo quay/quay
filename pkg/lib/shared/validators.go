@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -230,19 +229,26 @@ func ValidateIsHostname(input string, field string, fgName string) (bool, Valida
 }
 
 // ValidateHostIsReachable will check if a get request returns a 200 status code
-func ValidateHostIsReachable(input string, field string, fgName string) (bool, ValidationError) {
-
-	// Set timeout
-	timeout := 1 * time.Second
+func ValidateHostIsReachable(opts Options, input string, field string, fgName string) (bool, ValidationError) {
 
 	// Get raw hostname without protocol
 	url := strings.TrimPrefix(input, "https://")
 	url = strings.TrimPrefix(url, "http://")
 
-	fmt.Println(url)
-	// FIXME(alecmerdler): Use `tls.Dial` for servers with custom CA certificates...
-	tls.Dial("tcp", url, &tls.Config{})
-	_, err := net.DialTimeout("tcp", url, timeout)
+	config, err := GetTlsConfig(opts)
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{field},
+			FieldGroup: fgName,
+			Message:    err.Error(),
+		}
+		return false, newError
+	}
+	dialer := &net.Dialer{
+		Timeout: 3 * time.Second,
+	}
+
+	_, err = tls.DialWithDialer(dialer, "tcp", url, config)
 	if err != nil {
 		newError := ValidationError{
 			Tags:       []string{field},
