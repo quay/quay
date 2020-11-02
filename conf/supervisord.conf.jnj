@@ -44,9 +44,7 @@ stderr_events_enabled = true
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
 command=python -m buildman.builder
-autostart = false
-; TODO (kleesc): Re-enable this eventually
-; autostart = {{ config['builder']['autostart'] }}
+autostart = {{ config['builder']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 

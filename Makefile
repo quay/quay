@@ -172,6 +172,10 @@ yapf-test:
 	if [ `yapf -d -p $(MODIFIED_FILES) | wc -l` -gt 0 ] ; then false ; else true ;fi
 
 
+generate-proto-py:
+	python -m grpc_tools.protoc -Ibuildman/buildman_pb --python_out=buildman/buildman_pb --grpc_python_out=buildman/buildman_pb buildman.proto
+
+
 black:
 	black --line-length 100 --target-version py36 --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist|buildman)/" . # TODO(kleesc): Re-enable after buildman rewrite
 

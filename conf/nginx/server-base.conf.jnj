@@ -310,14 +310,6 @@ location /static/ {
 
 error_page 502 {{static_dir}}/502.html;
 
-location ~ ^/b1/controller(/?)(.*) {
-    proxy_pass http://build_manager_controller_server/$2;
-}
-
-location ~ ^/b1/socket(/?)(.*) {
-    proxy_pass http://build_manager_websocket_server/$2;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_read_timeout 300;
+location ~ ^/b1/buildmanager(/?)(.*) {
+    proxy_pass http://build_manager_server/$2;
 }

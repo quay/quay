@@ -5,10 +5,9 @@ import socket
 
 import features
 
-from app import app, userfiles as user_files, build_logs, dockerfile_build_queue
+from app import app, userfiles as user_files, build_logs, dockerfile_build_queue, instance_keys
 from util.log import logfile_path
 
-from buildman.manager.enterprise import EnterpriseManager
 from buildman.manager.ephemeral import EphemeralBuilderManager
 from buildman.server import BuilderServer
 
@@ -19,16 +18,12 @@ from raven.conf import setup_logging
 logger = logging.getLogger(__name__)
 
 BUILD_MANAGERS = {
-    "enterprise": EnterpriseManager,
     "ephemeral": EphemeralBuilderManager,
 }
 
 EXTERNALLY_MANAGED = "external"
 
-DEFAULT_WEBSOCKET_PORT = 8787
 DEFAULT_CONTROLLER_PORT = 8686
-
-LOG_FORMAT = "%(asctime)s [%(process)d] [%(levelname)s] [%(name)s] %(message)s"
 
 
 def run_build_manager():
@@ -63,12 +58,6 @@ def run_build_manager():
     manager_hostname = os.environ.get(
         "BUILDMAN_HOSTNAME", app.config.get("BUILDMAN_HOSTNAME", app.config["SERVER_HOSTNAME"])
     )
-    websocket_port = int(
-        os.environ.get(
-            "BUILDMAN_WEBSOCKET_PORT",
-            app.config.get("BUILDMAN_WEBSOCKET_PORT", DEFAULT_WEBSOCKET_PORT),
-        )
-    )
     controller_port = int(
         os.environ.get(
             "BUILDMAN_CONTROLLER_PORT",
@@ -92,14 +81,15 @@ def run_build_manager():
 
     server = BuilderServer(
         app.config["SERVER_HOSTNAME"],
+        manager_hostname,
         dockerfile_build_queue,
         build_logs,
         user_files,
         manager_klass,
         build_manager_config[1],
-        manager_hostname,
+        instance_keys,
     )
-    server.run("0.0.0.0", websocket_port, controller_port, ssl=ssl_context)
+    server.run("0.0.0.0", controller_port, ssl=ssl_context)
 
 
 if __name__ == "__main__":

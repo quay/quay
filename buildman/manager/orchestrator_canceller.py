@@ -22,7 +22,7 @@ class OrchestratorCanceller(object):
         logger.debug("Cancelling build %s", build_uuid)
         cancel_key = slash_join(CANCEL_PREFIX, build_uuid)
         try:
-            self._orchestrator.set_key_sync(cancel_key, build_uuid, expiration=60)
+            self._orchestrator.set_key(cancel_key, build_uuid, expiration=60)
             return True
         except OrchestratorError:
             logger.exception("Failed to write cancel action to redis with uuid %s", build_uuid)

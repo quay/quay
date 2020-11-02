@@ -115,13 +115,13 @@ class BuildJob(object):
                 % self.job_details["build_uuid"]
             )
 
-    def determine_cached_tag(self, base_image_id=None, cache_comments=None):
+    def determine_cached_tag(self, base_image_id=None):
         """
         Returns the tag to pull to prime the cache or None if none.
         """
         cached_tag = self._determine_cached_tag_by_tag()
         logger.debug(
-            "Determined cached tag %s for %s: %s", cached_tag, base_image_id, cache_comments
+            "Determined cached tag %s for %s: %s", cached_tag, base_image_id
         )
         return cached_tag
 
@@ -144,6 +144,26 @@ class BuildJob(object):
                 return most_recent_tag.name
 
             return None
+
+    def extract_dockerfile_args(self):
+        dockerfile_path = self.build_config.get("build_subdir", "")
+        context = self.build_config.get("context", "")
+        if not (dockerfile_path == "" or context == ""):
+            # This should not happen and can be removed when we centralize validating build_config
+            dockerfile_abspath = slash_join("", dockerfile_path)
+            if ".." in os.path.relpath(dockerfile_abspath, context):
+                return os.path.split(dockerfile_path)
+            dockerfile_path = os.path.relpath(dockerfile_abspath, context)
+
+        return context, dockerfile_path
+
+    def commit_sha(self):
+        """
+        Determines whether the metadata is using an old schema or not and returns the commit.
+        """
+        commit_sha = self.build_config["trigger_metadata"].get("commit", "")
+        old_commit_sha = self.build_config["trigger_metadata"].get("commit_sha", "")
+        return commit_sha or old_commit_sha
 
 
 class BuildJobNotifier(object):

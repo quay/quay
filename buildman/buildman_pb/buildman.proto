@@ -73,6 +73,14 @@ message SetPhaseRequest {
   string job_jwt = 1;
   int32 sequence_number = 2;
   Phase phase = 3;
+  PullMetadata pull_metadata = 4;
+
+  message PullMetadata {
+    string registry_url = 1;
+    string base_image = 2;
+    string base_image_tag = 3;
+    string pull_username = 4;
+  }
 }
 
 message SetPhaseResponse {
