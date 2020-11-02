@@ -118,17 +118,10 @@ class EphemeralBuilderManager(BaseManager):
             try:
                 # Clean up the bookkeeping for the job.
                 yield From(self._orchestrator.delete_key(self._job_key(build_job)))
-                yield From(self.terminate_executor(executor_name, execution_id))
             except KeyError:
                 logger.debug(
                     "Could not delete job key %s; might have been removed already",
                     build_job.build_uuid,
-                )
-            except Exception as e:
-                logger.warning(
-                    "Error cleaning up incomplete job with key %s; %s",
-                    build_job.build_uuid,
-                    e
                 )
 
             logger.error(
