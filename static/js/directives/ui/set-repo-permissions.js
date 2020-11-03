@@ -36,6 +36,16 @@ angular.module('quay').directive('setRepoPermissions', function () {
       $scope.repositories = null;
       $scope.currentNamespace = null;
       $scope.currentEntityName = null;
+      $scope.orderedRepositories = [];
+      $scope.reposPerPage = 25;
+
+      $scope.maxPopularity = 0;
+      $scope.options = {
+        'predicate': 'popularity',
+        'reverse': false,
+        'filter': null,
+        'page': 0
+      };
 
       var checkForChanges = function() {
         var hasChanges = false;
@@ -76,9 +86,9 @@ angular.module('quay').directive('setRepoPermissions', function () {
         }
 
         $scope.orderedRepositories = TableService.buildOrderedItems(
-            $scope.repositories, $scope.options,
-            ['name', 'permission'],
-            ['last_modified_datetime']);
+          $scope.repositories, $scope.options,
+          ['namespace', 'name'],
+          ['last_modified_datetime']);
       };
 
       var loadRepositoriesAndPermissions = function() {
@@ -123,42 +133,44 @@ angular.module('quay').directive('setRepoPermissions', function () {
           'last_modified': true
         };
 
-        ApiService.listRepos(null, params).then(function(resp) {
-          $scope.currentNamespace = $scope.namespace;
+        ApiService.listReposAsResource().withPagination('repositories').withOptions(params).get(
+          function(resp) {
+            $scope.currentNamespace = $scope.namespace;
 
-          var repos = [];
-          if (!resp || !resp['repositories'] || resp['repositories'].length == 0) {
-            $scope.repositoriesLoaded({'repositories': []});
-            return;
-          }
-
-          resp['repositories'].forEach(function(repo) {
-            var existingPermission = existingPermissionsMap[repo.name] || 'none';
-
-            repos.push({
-              'namespace': repo.namespace,
-              'name': repo.name,
-              'last_modified': repo.last_modified,
-              'last_modified_datetime': TableService.getReversedTimestamp(repo.last_modified),
-              'permission': existingPermission,
-              'original_permission': existingPermission
-            });
-          });
-
-          $scope.repositories = repos;
-          $scope.checkedRepos = UIService.createCheckStateController($scope.repositories, 'name');
-
-          repos.forEach(function(repo) {
-            if (repo.permission != 'none') {
-              $scope.checkedRepos.checkItem(repo);
+            var repos = [];
+            if (!resp || !resp['repositories'] || resp['repositories'].length == 0) {
+              $scope.repositoriesLoaded({'repositories': []});
+              return;
             }
-          });
 
-          $scope.checkedRepos.listen(handleRepoCheckChange);
+            resp['repositories'].forEach(function(repo) {
+              var existingPermission = existingPermissionsMap[repo.name] || 'none';
 
-          setRepoState();
-          $scope.repositoriesLoaded({'repositories': repos});
-        }, ApiService.errorDisplay('Could not load repositories'));
+              repos.push({
+                'namespace': repo.namespace,
+                'name': repo.name,
+                'last_modified': repo.last_modified,
+                'last_modified_datetime': TableService.getReversedTimestamp(repo.last_modified),
+                'permission': existingPermission,
+                'original_permission': existingPermission
+              });
+            });
+
+            $scope.repositories = repos;
+            $scope.checkedRepos = UIService.createCheckStateController($scope.repositories, 'name');
+
+            repos.forEach(function(repo) {
+              if (repo.permission != 'none') {
+                $scope.checkedRepos.checkItem(repo);
+              }
+            });
+
+            $scope.checkedRepos.listen(handleRepoCheckChange);
+
+            setRepoState();
+            $scope.repositoriesLoaded({'repositories': repos});
+          }
+        );
       };
 
       var setPermissions = function() {

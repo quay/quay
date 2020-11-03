@@ -1,8 +1,6 @@
 <div class="set-repo-permissions-element">
   <span class="co-filter-box">
-    <span class="filter-message" ng-if="options.filter">
-      Showing {{ orderedRepositories.entries.length }} of {{ repositories.length }} repositories
-    </span>
+    <span class="page-controls" total-count="orderedRepositories.entries.length" current-page="options.page" page-size="reposPerPage" style="vertical-align: top"></span>
     <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Repositories...">
   </span>
 
@@ -34,12 +32,12 @@
       <td ng-class="TableService.tablePredicateClass('last_modified_datetime', options.predicate, options.reverse)">
         <a ng-click="TableService.orderBy('last_modified_datetime', options)">Last Updated</a>
       </td>
-     </thead>
+    </thead>
 
-     <tr class="co-checkable-row"
-         ng-repeat="repo in orderedRepositories.visibleEntries"
-         ng-class="checkedRepos.isChecked(repo, checkedRepos.checked) ? 'checked' : ''"
-         bindonce>
+    <tr class="co-checkable-row"
+        ng-repeat="repo in orderedRepositories.visibleEntries | slice:(reposPerPage * options.page):(reposPerPage * (options.page + 1))"
+        ng-class="checkedRepos.isChecked(repo, checkedRepos.checked) ? 'checked' : ''"
+        bindonce>
       <td class="offset-check-col">
         <span class="cor-checkable-item" controller="checkedRepos" item="repo"></span>
       </td>
@@ -53,10 +51,10 @@
               role-changed="setRole(role, repo)"></span>
       </td>
       <td>
-         <span ng-if="repo.last_modified">
-           {{ repo.last_modified * 1000 | amCalendar }}
-         </span>
-         <span class="empty" ng-if="!repo.last_modified">(Empty Repository)</span>
+        <span ng-if="repo.last_modified">
+          {{ repo.last_modified * 1000 | amCalendar }}
+        </span>
+        <span class="empty" ng-if="!repo.last_modified">(Empty Repository)</span>
       </td>
     </tr>
   </table>
