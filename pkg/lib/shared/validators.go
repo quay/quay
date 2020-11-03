@@ -253,7 +253,7 @@ func ValidateHostIsReachable(opts Options, input string, field string, fgName st
 		newError := ValidationError{
 			Tags:       []string{field},
 			FieldGroup: fgName,
-			Message:    "Cannot reach " + input,
+			Message:    "Cannot reach " + input + ". Error: " + err.Error(),
 		}
 		return false, newError
 	}
