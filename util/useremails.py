@@ -68,6 +68,10 @@ def send_email(recipient, subject, template_file, parameters, action=None):
 
     try:
         mail.send(msg)
+        if app.config["TESTING"]:
+            logger.debug("Quay is configured for testing. Email not sent: '%s'", msg.subject)
+        else:
+            logger.debug("Sent email: '%s'", msg.subject)
     except Exception as ex:
         logger.exception("Error while trying to send email to %s", recipient)
         raise CannotSendEmailException(str(ex))
