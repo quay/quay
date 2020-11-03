@@ -231,31 +231,56 @@ func ValidateIsHostname(input string, field string, fgName string) (bool, Valida
 // ValidateHostIsReachable will check if a get request returns a 200 status code
 func ValidateHostIsReachable(opts Options, input string, field string, fgName string) (bool, ValidationError) {
 
+	// Get protocol
+	u, _ := url.Parse(input)
+	scheme := u.Scheme
+
 	// Get raw hostname without protocol
 	url := strings.TrimPrefix(input, "https://")
 	url = strings.TrimPrefix(url, "http://")
 
-	config, err := GetTlsConfig(opts)
-	if err != nil {
-		newError := ValidationError{
-			Tags:       []string{field},
-			FieldGroup: fgName,
-			Message:    err.Error(),
-		}
-		return false, newError
-	}
-	dialer := &net.Dialer{
-		Timeout: 3 * time.Second,
-	}
+	// Set timeout
+	timeout := 3 * time.Second
 
-	_, err = tls.DialWithDialer(dialer, "tcp", url, config)
-	if err != nil {
-		newError := ValidationError{
-			Tags:       []string{field},
-			FieldGroup: fgName,
-			Message:    "Cannot reach " + input,
+	// Switch on protocol
+	switch scheme {
+	case "http":
+
+		_, err := net.DialTimeout("tcp", url, timeout)
+		if err != nil {
+			newError := ValidationError{
+				Tags:       []string{field},
+				FieldGroup: fgName,
+				Message:    err.Error(),
+			}
+			return false, newError
 		}
-		return false, newError
+
+	case "https":
+
+		config, err := GetTlsConfig(opts)
+		if err != nil {
+			newError := ValidationError{
+				Tags:       []string{field},
+				FieldGroup: fgName,
+				Message:    err.Error(),
+			}
+			return false, newError
+		}
+		dialer := &net.Dialer{
+			Timeout: timeout,
+		}
+
+		_, err = tls.DialWithDialer(dialer, "tcp", url, config)
+		if err != nil {
+			newError := ValidationError{
+				Tags:       []string{field},
+				FieldGroup: fgName,
+				Message:    "Cannot reach " + input + ". Error: " + err.Error(),
+			}
+			return false, newError
+		}
+
 	}
 
 	return true, ValidationError{}
