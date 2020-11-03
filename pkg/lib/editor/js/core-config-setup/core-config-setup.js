@@ -250,6 +250,7 @@ angular.module("quay-config")
             if($scope.validationStatus == 'success' && $scope.validationMode == 'setup'){
               $scope.config["SETUP_COMPLETE"] = true
               $scope.config["DATABASE_SECRET_KEY"] = generateDatabaseSecretKey()
+              $scope.config["TESTING"] = false
             }
           }, errorDisplay);
         };
