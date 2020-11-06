@@ -100,6 +100,6 @@ def add_enterprise_config_defaults(config_obj, current_secret_key):
     # Misc configuration.
     config_obj["PREFERRED_URL_SCHEME"] = config_obj.get("PREFERRED_URL_SCHEME", "http")
     config_obj["ENTERPRISE_LOGO_URL"] = config_obj.get(
-        "ENTERPRISE_LOGO_URL", "/static/img/quay-horizontal-color.svg"
+        "ENTERPRISE_LOGO_URL", "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg"
     )
     config_obj["TEAM_RESYNC_STALE_TIME"] = config_obj.get("TEAM_RESYNC_STALE_TIME", "60m")

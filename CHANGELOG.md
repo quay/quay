@@ -1,28 +1,56 @@
-### master
 
-### solo
+### v3.4.0
 
-- Note: built on python3
-- Added: numerous internal performance improvements
-- Fixed: build triggers may disclose robot account names (CVE-2020-14313)
-- Known issue: build manager disabled pending updating to python3 (PROJQUAY-703)
-- Known issue: config app fails to generate clair security.pem (PROJQUAY-850)
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
 
-### qui-gon
+### v3.3.1
 
-- Fixed: Local storage now works with clair-v4
-- Fixed: Container will correctly initialize database and create first superuser at startup
-- Fixed: Running in config mode now installs mounted TLS certificates
-- Added: Audit logs now contain "user-agent" of request
-- Added: Env vars WORKER_MULTIPLER to adjust number of gunicorn workers
-- Added: Env vars WORKER_CONNECTION_COUNT to adjust database connections per gunicorn worker
-- Added: Added config FEATURE_NAMESPACE_GARBAGE_COLLECTION and FEATURE_REPOSITORY_GARBAGE_COLLECTION
+**Fixed**
+- Config app installs supplied TLS certs at startup
+- Tech preview clair-v4 correctly reindexes manifests
+- Build triggers may disclose robot account names (CVE-2020-14313)
 
-### padme
+### v3.3.0
 
-- Added: quay container runs as default user instead of root
-- Fixed: Spaces are ignored in repository mirror list of comma-separated tags
-- Fixed: Repository mirror correctly honors TLS verify off
+**Added**
+- New clair available as tech preview (see docs) 
+- Quay now runs as the default user inside the container instead of as root.
+- New configurable tagging options for builds, including tagging templates and ability to disable default “latest” and tag/branch behavior
+- Configuration UI editing after validating through the “Save Configuration” button.
+- Configuration app now supports configuring Elasticsearch for usage logs (and optionally via Kinesis - Docs should mention logstash or something similar is needed in this case). 
+- Ability to configure how long between “fresh login” checks
+- Ability to add an additional filter for LDAP users on lookup
+- Labels with links in them are now clickable to go to the URL
+- The environment variable CONFIG_READ_ONLY_FIELDS can be specified to mark redis or the hostname configuration as read-only in the Quay Configuration Application’s UI. #310
+- (Tech Preview) Support for OCI indexes and manifests
+- (Tech Preview) Support for pushing and pulling charts via Helm V3’s experimental system
+
+**Fixed**
+- Repository mirror tag patterns handle whitespace between comma separated values.
+- Fresh login checks were being used when unnecessary
+- Georeplication from one Azure region to the other now uses the correct bucket and credentials
+- Auth token handling to match recent GitHub API change
+- Repository and namespace deletion now occurs in the background, ensuring they don’t fail
+- No longer return “down converted” manifests on pull-by-digest
+- Tags expiring in the future are now marked correctly as such in the tag history panel
+- A number of performance improvements around various database queries
+- Status codes of various Docker V2 APIs to conform with the spec
+- Repository names now conform to the standard. Only lowercase letters, numbers, underscores, and hyphens are valid.
+- Certificates can now be uploaded in the Quay Configuration Application correctly and used to validate connections to external services (such as LDAP, Persistent Storage) during the configuration process.
+
+**Deprecated**
+- "rkt" conversion: This feature is now marked as deprecated in the Red Hat Quay UI. Expect the feature to be removed completely in the near future.
+- Bittorrent: This feature is deprecated and will not appear in the Red Hat Quay UI unless it is already configured in an existing Red Hat Quay config.yaml. This feature will be removed in the next version of Quay.
+- V1 Push Support: Docker V1 protocol support has been officially deprecated. Expect this feature to be removed in the next near future.
+- Squashed image support: This feature is deprecated. This feature will be removed in the next version of Quay.
+- images API: This API is deprecated and replaced by the manifest APIs. Expect this API to be removed completely in the near future.
+
+**Reminder**
+- Do not use "Locally mounted directory" Storage Engine for any production configurations. Mounted NFS volumes are not supported. Local storage is meant for test-only installations.
+
+**Known Issues**
+- Containers running as repository mirrors may lock under certain conditions; restart the containers as needed.
 
 ### v3.2.0
 
