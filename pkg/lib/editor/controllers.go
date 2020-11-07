@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -232,8 +231,6 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 
 		for _, fieldGroup := range configBundle.ManagedFieldGroups {
 			fields := newConfig[fieldGroup].Fields()
-			// FIXME(alecmerdler): Debugging
-			fmt.Println(fields)
 			for _, field := range fields {
 				delete(configBundle.Config, field)
 			}

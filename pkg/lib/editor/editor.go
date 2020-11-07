@@ -49,7 +49,6 @@ type ConfigBundle struct {
 
 // RunConfigEditor runs the configuration editor server.
 func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFieldGroups []string) {
-
 	// FIX THIS
 	publicKeyPath := os.Getenv("CONFIG_TOOL_PUBLIC_KEY")
 	privateKeyPath := os.Getenv("CONFIG_TOOL_PRIVATE_KEY")
@@ -146,7 +145,6 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 
 // tlsConfig will attempt to create a tls config given a public and private key. It returns an error if it fails to create a Config.
 func loadTLS(publicKeyPath, privateKeyPath string) (*tls.Config, error) {
-
 	if publicKeyPath == "" {
 		return nil, errors.New("No public key provided for HTTPS")
 	}
