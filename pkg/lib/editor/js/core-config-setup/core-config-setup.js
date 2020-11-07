@@ -256,7 +256,7 @@ angular.module("quay-config")
         };
 
         $scope.commitToOperator = function() {
-          ApiService.commitToOperator({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}).then(function(resp) {
+          ApiService.commitToOperator({"config.yaml": $scope.config, "certs": $scope.certs, "managedFieldGroups": $scope.readOnlyFieldGroups}).then(function(resp) {
             alert("Successfully sent config bundle to Quay Operator")
           }, errorDisplay)
         }
