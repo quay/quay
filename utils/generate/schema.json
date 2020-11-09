@@ -1125,6 +1125,60 @@
       "ct-default": "2w",
       "ct-validate": "",
       "ct-fieldgroups": ["TimeMachine"]
+    },
+    "LDAP_ADMIN_DN": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_ADMIN_PASSWD": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_URI": {
+      "type": "string",
+      "ct-default": "ldap://localhost",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_ALLOW_INSECURE_FALLBACK": {
+      "type": "boolean",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_BASE_DN": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_USER_RDN": {
+      "type": "array",
+      "ct-default": "[]",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_UID_ATTR": {
+      "type": "string",
+      "ct-default": "uid",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_EMAIL_ATTR": {
+      "type": "string",
+      "ct-default": "mail",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
+    },
+    "LDAP_USER_FILTER": {
+      "type": "string",
+      "ct-default": "",
+      "ct-validate": "",
+      "ct-fieldgroups": ["LDAP"]
     }
   }
 }
