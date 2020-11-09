@@ -24,6 +24,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 	var accessKey string
 	var secretKey string
 	var isSecure bool
+	var bucketName string
 	var token string = ""
 
 	switch storageType {
@@ -57,6 +58,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		secretKey = args.SecretKey
 		endpoint = args.Hostname
 		isSecure = args.IsSecure
+		bucketName = args.BucketName
 
 		// Append port if present
 		if args.Port != 0 {
@@ -67,7 +69,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -92,6 +94,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 		accessKey = args.S3AccessKey
 		secretKey = args.S3SecretKey
+		bucketName = args.S3Bucket
 		isSecure = true
 
 		if len(args.Host) == 0 {
@@ -107,7 +110,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -133,12 +136,13 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.AccessKey
 		secretKey = args.SecretKey
 		endpoint = "storage.googleapis.com"
+		bucketName = args.BucketName
 
 		if len(errors) > 0 {
 			return false, errors
 		}
 
-		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, token, isSecure, fgName); !ok {
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -187,7 +191,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 }
 
-func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secretKey, token string, isSecure bool, fgName string) (bool, ValidationError) {
+func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secretKey, bucketName, token string, isSecure bool, fgName string) (bool, ValidationError) {
 
 	// Set transport
 	tr, err := minio.DefaultTransport(true)
@@ -224,12 +228,21 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	_, err = st.ListBuckets(ctx)
+	found, err := st.BucketExists(ctx, bucketName)
 	if err != nil {
 		newError := ValidationError{
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
 			FieldGroup: fgName,
 			Message:    "Could not connect to storage " + storageName + ". Error: " + err.Error(),
+		}
+		return false, newError
+	}
+
+	if !found {
+		newError := ValidationError{
+			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			FieldGroup: fgName,
+			Message:    fmt.Sprintf("Could not find bucket (%s) in storage (%s)", bucketName, storageName),
 		}
 		return false, newError
 	}
