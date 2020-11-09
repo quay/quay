@@ -10,6 +10,7 @@ require (
 	github.com/creasty/defaults v1.4.0
 	github.com/dave/jennifer v1.4.0
 	github.com/go-chi/chi v4.1.2+incompatible
+	github.com/go-ldap/ldap/v3 v3.2.4
 	github.com/go-redis/redis/v8 v8.0.0-beta.6
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
