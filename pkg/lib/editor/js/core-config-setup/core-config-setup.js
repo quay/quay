@@ -256,6 +256,10 @@ angular.module("quay-config")
         };
 
         $scope.commitToOperator = function() {
+
+          var errorDisplay = ApiService.errorDisplay(
+            'Could not reconfigure Quay. Please report this error.');
+
           ApiService.commitToOperator({"config.yaml": $scope.config, "certs": $scope.certs, "managedFieldGroups": $scope.readOnlyFieldGroups}).then(function(resp) {
             alert("Successfully sent config bundle to Quay Operator")
           }, errorDisplay)
