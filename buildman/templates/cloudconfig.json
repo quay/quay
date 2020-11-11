@@ -1,7 +1,7 @@
 {% macro overridelist() -%}
 
 TOKEN={{ token }}
-SERVER={{ http_scheme }}://{{ manager_hostname }}
+SERVER={{ manager_hostname }}
 
 {%- endmacro %}
 
