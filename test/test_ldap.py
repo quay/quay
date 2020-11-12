@@ -69,6 +69,14 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "filterField": ["somevalue"],
         },
+        "uid=bytesuser,ou=employees,dc=quay,dc=io": {
+            "dc": ["quay", "io"],
+            "ou": "employees",
+            "uid": ["bytesuser"],
+            "userPassword": ["somepass"],
+            "mail": [b"bytes@bar.com"],
+            "filterField": ["somevalue"],
+        },
         "uid=cool.user,ou=employees,dc=quay,dc=io": {
             "dc": ["quay", "io"],
             "ou": "employees",
@@ -385,6 +393,11 @@ class TestLDAP(unittest.TestCase):
         with mock_ldap(requires_email=False) as ldap:
             (response, _) = ldap.get_user("nomail")
             self.assertEqual(response.username, "nomail")
+
+    def test_bytes_in_results(self):
+        with mock_ldap() as ldap:
+            (response, _) = ldap.get_user("bytesuser")
+            self.assertEqual(response.username, "bytesuser")
 
     def test_confirm_different_username(self):
         with mock_ldap() as ldap:
