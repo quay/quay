@@ -251,8 +251,15 @@ class LDAPUsers(FederatedUsers):
         if self._requires_email and not response.get(self._email_attr):
             return (None, 'Missing mail field "%s" in user record' % self._email_attr)
 
-        username = response[self._uid_attr][0]
-        email = response.get(self._email_attr, [None])[0]
+        try:
+            username = response[self._uid_attr][0].decode("utf-8")
+        except (UnicodeDecodeError, AttributeError):
+            username = response[self._uid_attr][0]
+        try:
+            email = response.get(self._email_attr, [None])[0].decode("utf-8")
+        except (UnicodeDecodeError, AttributeError):
+            email = response.get(self._email_attr, [None])[0]
+
         return (UserInformation(username=username, email=email, id=username), None)
 
     def ping(self):
