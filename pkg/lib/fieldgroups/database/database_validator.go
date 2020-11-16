@@ -6,10 +6,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/url"
+	"strings"
 
+	"github.com/go-pg/pg/v10"
 	mysql "github.com/go-sql-driver/mysql" //mysql driver
 	_ "github.com/lib/pq"                  // postgres driver
 	"github.com/quay/config-tool/pkg/lib/shared"
@@ -96,9 +97,9 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 
 		// Check if CA cert is used
 		if caCert != "" {
-			certBytes, err := ioutil.ReadFile(caCert)
-			if err != nil {
-				return err
+			certBytes, ok := opts.Certificates["database.pem"]
+			if !ok {
+				return errors.New("Could not find database.pem in config bundle")
 			}
 			caCertPool := x509.NewCertPool()
 			if ok := caCertPool.AppendCertsFromPEM(certBytes); !ok {
@@ -111,7 +112,6 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 
 			mysql.RegisterTLSConfig("custom-tls", tlsConfig)
 			dsn = fmt.Sprintf("%s?tls=custom-tls", dsn)
-
 		}
 
 		// Open connection
@@ -120,60 +120,64 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 			return err
 		}
 
+		defer db.Close()
+
+		// Try to ping database
+		err = db.Ping()
+		if err != nil {
+			return err
+		}
+
 		// Database is Postgres
 	} else if scheme == "postgresql" {
 
-		var psqlInfo string
-		host, port, err := net.SplitHostPort(fullHostName)
+		// If there is no port, add 5432 as default
+		_, _, err := net.SplitHostPort(fullHostName)
 		if err != nil {
-			if caCert == "" {
-				psqlInfo = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", fullHostName, user, password, dbname)
-			} else {
-				psqlInfo = fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=verify-ca sslrootcert=%s", fullHostName, user, password, dbname, caCert)
-			}
-		} else {
-			if caCert == "" {
-				psqlInfo = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-			} else {
-				psqlInfo = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=verify-ca sslrootcert=%s", host, port, user, password, dbname, caCert)
-			}
-
+			fullHostName = fullHostName + ":5432"
 		}
 
-		// Open connection
-		db, err = sql.Open("postgres", psqlInfo)
+		// Create connection options
+		dbOpts := &pg.Options{
+			User:     user,
+			Password: password,
+			Addr:     fullHostName,
+			Database: dbname,
+		}
+
+		// If CA cert was included
+		if caCert != "" {
+			certBytes, ok := opts.Certificates["database.pem"]
+			if !ok {
+				return errors.New("Could not find database.pem in config bundle")
+			}
+			caCertPool := x509.NewCertPool()
+			if ok := caCertPool.AppendCertsFromPEM(certBytes); !ok {
+				return errors.New("Could not add CA cert to pool")
+			}
+			tlsConfig := &tls.Config{
+				InsecureSkipVerify: false,
+				RootCAs:            caCertPool,
+			}
+			dbOpts.TLSConfig = tlsConfig
+		}
+
+		// Connect and defer closing
+		db := pg.Connect(dbOpts)
+		defer db.Close()
+
+		// If database is postgres, make sure that extension pg_trgm is installed
+		var extensions string
+		_, err = db.Query(pg.Scan(&extensions), `SELECT extname FROM pg_extension`)
 		if err != nil {
 			return err
+		}
+		if !strings.Contains(extensions, "pg_trgm") {
+			return errors.New("If you are using a Postgres database, you must install the pg_trgm extension")
 		}
 
 	} else {
 		return errors.New("You must use a valid scheme")
-	}
-	defer db.Close()
-
-	// Try to ping database
-	err = db.Ping()
-	if err != nil {
-		return err
-	}
-
-	// If database is postgres, make sure that extension pg_trgm is installed
-	if scheme == "postgresql" {
-		rows, err := db.Query("SELECT extname FROM pg_extension")
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var ext string
-			if err := rows.Scan(&ext); err != nil {
-				return err
-			}
-			if ext == "pg_trgm" {
-				return nil
-			}
-		}
-		return errors.New("If you are using a Postgres database, you must install the pg_trgm extension")
 	}
 
 	// Return no error

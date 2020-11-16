@@ -22,3 +22,5 @@ playground.go
 node_modules
 
 build
+
+/tmp
