@@ -22,11 +22,13 @@ from data.database import (
     User,
     ManifestBlob,
     db_transaction,
+    MediaType,
 )
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
 from util.secscan.v4.api import APIRequestFailure
 from util.canonicaljson import canonicalize
+from image.docker.schema2 import DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
 
 from test.fixtures import *
 
@@ -552,3 +554,21 @@ def test_process_notification_page(initialized_db, set_secscan_config):
     assert results[0].vulnerability.Name == "n"
     assert results[0].vulnerability.FixedBy == "f"
     assert results[0].vulnerability.Link == "l"
+
+
+def test_perform_indexing_manifest_list(initialized_db, set_secscan_config):
+    repository_ref = registry_model.lookup_repository("devtable", "simple")
+    tag = registry_model.get_repo_tag(repository_ref, "latest")
+    manifest = registry_model.get_manifest_for_tag(tag)
+    Manifest.update(
+        media_type=MediaType.get(name=DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE)
+    ).execute()
+
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+
+    secscan.perform_indexing()
+
+    assert ManifestSecurityStatus.select().count() == Manifest.select().count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.MANIFEST_UNSUPPORTED

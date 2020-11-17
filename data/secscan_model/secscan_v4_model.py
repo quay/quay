@@ -247,6 +247,10 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         for candidate, abt, num_remaining in iterator:
             manifest = ManifestDataType.for_manifest(candidate, None)
+            if manifest.is_manifest_list:
+                mark_manifest_unsupported(manifest)
+                continue
+
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
             if layers is None or len(layers) == 0:
                 logger.warning(
