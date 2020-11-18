@@ -53,7 +53,6 @@ class LDAPConnection(object):
         allow_tls_fallback=False,
         timeout=None,
         network_timeout=None,
-        bytes_mode=None,
     ):
         self._ldap_uri = ldap_uri
         self._user_dn = user_dn
@@ -61,18 +60,12 @@ class LDAPConnection(object):
         self._allow_tls_fallback = allow_tls_fallback
         self._timeout = timeout
         self._network_timeout = network_timeout
-        # Currently python-ldap defaults this option to True for backward compatibility,
-        # which _will_ be deprecated once Python 2 reaches EOL.
-        # https://www.python-ldap.org/en/python-ldap-3.3.0/bytes_mode.html#bytes-mode
-        self._bytes_mode = bytes_mode or False
         self._conn = None
 
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
-        self._conn = ldap.initialize(
-            self._ldap_uri, trace_level=trace_level, bytes_mode=self._bytes_mode
-        )
+        self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
         self._conn.set_option(ldap.OPT_REFERRALS, 1)
         self._conn.set_option(
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
@@ -82,6 +75,9 @@ class LDAPConnection(object):
         if self._allow_tls_fallback:
             logger.debug("TLS Fallback enabled in LDAP")
             self._conn.set_option(ldap.OPT_X_TLS_TRY, 1)
+
+        # Must come _after_ all other TLS options
+        self._conn.set_option(ldap.OPT_X_TLS_NEWCTX, ldap.OPT_OFF)
 
         self._conn.simple_bind_s(self._user_dn, self._user_pw)
         return self._conn
