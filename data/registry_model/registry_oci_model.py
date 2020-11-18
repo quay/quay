@@ -511,9 +511,15 @@ class OCIModel(RegistryDataInterface):
             logger.exception("Could not parse and validate manifest `%s`", manifest._db_id)
             return None
 
-        return self._list_manifest_layers(
-            manifest_obj.repository_id, parsed, storage, include_placements
-        )
+        try:
+            layers = self._list_manifest_layers(
+                manifest_obj.repository_id, parsed, storage, include_placements
+            )
+        except Exception:
+            logger.exception("Could not list manifest layers `%s`", manifest._db_id)
+            return None
+
+        return layers
 
     def set_tags_expiration_for_manifest(self, manifest, expiration_sec):
         """
