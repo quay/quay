@@ -78,9 +78,6 @@ class BuilderExecutor(object):
         self.executor_config = executor_config
         self.manager_hostname = manager_hostname
 
-        default_scheme = app.config["PREFERRED_URL_SCHEME"]
-        self.http_scheme = executor_config.get("HTTP_SCHEME", default_scheme)
-
     @property
     def name(self):
         """
@@ -167,7 +164,6 @@ class BuilderExecutor(object):
                 quay_username=quay_username,
                 quay_password=quay_password,
                 manager_hostname=manager_hostname,
-                http_scheme=self.http_scheme,
                 coreos_channel=coreos_channel,
                 worker_image=self.executor_config.get(
                     "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
