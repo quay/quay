@@ -37,4 +37,7 @@ type DistributedStorageArgs struct {
 	AzureAccountName string `default:"" validate:"" json:"azure_account_name,omitempty" yaml:"azure_account_name,omitempty"`
 	AzureAccountKey  string `default:"" validate:"" json:"azure_account_key,omitempty" yaml:"azure_account_key,omitempty"`
 	SASToken         string `default:"" validate:"" json:"sas_token,omitempty" yaml:"sas_token,omitempty"`
+	// Args for Cloudfront
+	CloudfrontDistributionDomain string `default:"" validate:"" json:"cloudfront_distribution_domain,omitempty" yaml:"cloudfront_distribution_domain,omitempty"`
+	CloudfrontKeyID              string `default:"" validate:"" json:"cloudfront_key_id,omitempty" yaml:"cloudfront_key_id,omitempty"`
 }
