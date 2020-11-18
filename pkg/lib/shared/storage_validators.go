@@ -10,6 +10,10 @@ import (
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/aws/aws-sdk-go/aws"
+	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudfront"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -172,6 +176,93 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 		if ok, err := validateAzureGateway(opts, storageName, accountName, accountKey, containerName, token, fgName); !ok {
 			errors = append(errors, err)
+		}
+
+	case "CloudFrontedS3Storage":
+
+		// Check access key
+		if ok, err := ValidateRequiredString(args.S3AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_access_key", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check secret key
+		if ok, err := ValidateRequiredString(args.S3SecretKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_secret_key", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check bucket name
+		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check storage path
+		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check distribution domain
+		if ok, err := ValidateRequiredString(args.CloudfrontDistributionDomain, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".cloudfront_distribution_domain", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check key id
+		if ok, err := ValidateRequiredString(args.CloudfrontKeyID, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".cloudfront_key_id", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+		accessKey = args.S3AccessKey
+		secretKey = args.S3SecretKey
+		bucketName = args.S3Bucket
+		isSecure = true
+
+		if len(args.Host) == 0 {
+			endpoint = "s3.amazonaws.com"
+		} else {
+			endpoint = args.Host
+		}
+		if args.Port != 0 {
+			endpoint = endpoint + ":" + strconv.Itoa(args.Port)
+		}
+
+		if len(errors) > 0 {
+			return false, errors
+		}
+
+		// Validate bucket settings
+		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
+			errors = append(errors, err)
+		}
+
+		sess, err := session.NewSession(&aws.Config{
+			Credentials: awscredentials.NewStaticCredentials(accessKey, secretKey, ""),
+		})
+		if err != nil {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Could not create S3 session",
+			}
+			errors = append(errors, newError)
+			return false, errors
+		}
+
+		// Validate distribution
+		svc := cloudfront.New(sess)
+		res, err := svc.GetDistribution(&cloudfront.GetDistributionInput{Id: &args.CloudfrontKeyID})
+		if err != nil {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Could not get Cloudfront distribution. Error: " + err.Error(),
+			}
+			errors = append(errors, newError)
+			return false, errors
+		}
+
+		// Validate domain name
+		if *res.Distribution.DomainName != args.CloudfrontDistributionDomain {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    "Cloudfront distribution name is incorrect. Expected: " + *res.Distribution.DomainName + ". Received: " + args.CloudfrontDistributionDomain,
+			}
+			errors = append(errors, newError)
+			return false, errors
 		}
 
 	default:

@@ -235,6 +235,20 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
+	if value, ok := storageArgs["cloudfront_distribution_domain"]; ok {
+		newDistributedStorageArgs.CloudfrontDistributionDomain, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("cloudfront_distribution_domain must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["cloudfront_key_id"]; ok {
+		newDistributedStorageArgs.CloudfrontKeyID, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("cloudfront_key_id must be of type string")
+		}
+	}
+
 	return newDistributedStorageArgs, nil
 }
 
