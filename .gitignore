@@ -24,3 +24,5 @@ node_modules
 build
 
 /tmp
+
+config-bundle-private/
