@@ -146,7 +146,6 @@ class BuilderExecutor(object):
         self,
         token,
         build_uuid,
-        coreos_channel,
         manager_hostname,
         quay_username=None,
         quay_password=None,
@@ -164,7 +163,6 @@ class BuilderExecutor(object):
                 quay_username=quay_username,
                 quay_password=quay_password,
                 manager_hostname=manager_hostname,
-                coreos_channel=coreos_channel,
                 worker_image=self.executor_config.get(
                     "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
                 ),
@@ -172,6 +170,7 @@ class BuilderExecutor(object):
                 volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
                 max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
                 ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+                container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker")
             ))
         )
 
@@ -237,7 +236,7 @@ class EC2Executor(BuilderExecutor):
             coreos_ami = self.get_coreos_ami(region, channel)
 
         user_data = self.generate_cloud_config(
-            token, build_uuid, channel, self.manager_hostname
+            token, build_uuid, self.manager_hostname
         )
         logger.debug("Generated cloud config for build %s: %s", build_uuid, user_data)
 
@@ -489,7 +488,7 @@ class KubernetesExecutor(BuilderExecutor):
 
         return container
 
-    def _job_resource(self, build_uuid, user_data, coreos_channel="stable"):
+    def _job_resource(self, build_uuid, user_data):
         image_pull_secret_name = self.executor_config.get("IMAGE_PULL_SECRET_NAME", "builder")
         service_account = self.executor_config.get("SERVICE_ACCOUNT_NAME", "quay-builder-sa")
         node_selector_label_key = self.executor_config.get(
@@ -570,11 +569,10 @@ class KubernetesExecutor(BuilderExecutor):
     @observe(build_start_duration, "k8s")
     def start_builder(self, token, build_uuid):
         # generate resource
-        channel = self.executor_config.get("COREOS_CHANNEL", "stable")
         user_data = self.generate_cloud_config(
-            token, build_uuid, channel, self.manager_hostname
+            token, build_uuid, self.manager_hostname
         )
-        resource = self._job_resource(build_uuid, user_data, channel)
+        resource = self._job_resource(build_uuid, user_data)
         logger.debug("Using Kubernetes Distribution: %s", self._kubernetes_distribution())
         logger.debug("Generated kubernetes resource:\n%s", resource)
 
