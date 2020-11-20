@@ -396,6 +396,13 @@ class _CloudStorage(BaseStorageV2):
     def stream_upload_chunk(self, uuid, offset, length, in_fp, storage_metadata, content_type=None):
         self._initialize_cloud_conn()
 
+        # Do not create zero-byte objects.
+        # TODO: length=-1 appears to be a special case and used in tests. Why? Document it.
+        if length == 0:
+            logger.debug("Attempted to upload a zero-byte chunk to cloud storage. Ignoring.")
+            new_metadata = copy.deepcopy(storage_metadata)
+            return 0, new_metadata, None
+
         # We are going to upload each chunk to a separate key
         chunk_path = self._rel_upload_path(str(uuid4()))
         bytes_written, write_error = self._stream_write_internal(
@@ -407,6 +414,12 @@ class _CloudStorage(BaseStorageV2):
         # We are only going to track keys to which data was confirmed written
         if bytes_written > 0:
             new_metadata[_CHUNKS_KEY].append(_PartUploadMetadata(chunk_path, offset, bytes_written))
+
+        # Do not leave zero-byte chunks in Object Storage
+        # TODO: Determine a clean way to eliminate calling this function when it's not needed.
+        else:
+            logger.debug("Wrote zero bytes to Object Storage. Removing orphaned object.")
+            self.remove(chunk_path)
 
         return bytes_written, new_metadata, write_error
 

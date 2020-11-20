@@ -1,6 +1,7 @@
 import os
 
 from io import BytesIO
+from mock import patch
 
 import pytest
 
@@ -275,3 +276,19 @@ def test_rechunked(max_size, parts):
     assert len(rechunked) == len(parts)
     for index, chunk in enumerate(rechunked):
         assert chunk == parts[index]
+
+
+def test_no_orphaned_multipart_objects(storage_engine):
+    """
+    Ensure Quay is not creating orphaned multi-part objects in Cloud Storage.
+    """
+    with patch.object(storage_engine, "remove") as mock_remove:
+
+        upload_id, metadata = storage_engine.initiate_chunked_upload()
+        data = b""
+        bytes_written, new_metadata, errors = storage_engine.stream_upload_chunk(
+            upload_id, 0, -1, BytesIO(data), metadata
+        )
+        assert len(data) == bytes_written
+        assert mock_remove.call_count == 1
+        assert errors == None
