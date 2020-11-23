@@ -9,7 +9,7 @@ func (fg *SigningEngineFieldGroup) Validate(opts shared.Options) []shared.Valida
 	errors := []shared.ValidationError{}
 
 	// Make sure feature is enabled
-	if fg.SigningEngine == "" {
+	if fg.SigningEngine == "" || fg.FeatureSigning == false {
 		return errors
 	}
 
