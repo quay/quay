@@ -140,7 +140,7 @@ def generate_hosted_http_base_config(config):
 if __name__ == "__main__":
     if os.path.exists(os.path.join(QUAYCONF_DIR, "stack/config.yaml")):
         with open(os.path.join(QUAYCONF_DIR, "stack/config.yaml"), "r") as f:
-            config = yaml.load(f)
+            config = yaml.safe_load(f)
     else:
         config = None
 
