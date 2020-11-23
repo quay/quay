@@ -16,8 +16,9 @@ func TestValidateSigningEngine(t *testing.T) {
 		want   string
 	}{
 		{name: "checkFeatureOff", config: map[string]interface{}{"SIGNING_ENGINE": ""}, want: "valid"},
-		{name: "checkFeatureValidEngineNoKeys", config: map[string]interface{}{"SIGNING_ENGINE": "gpg2"}, want: "invalid"},
-		{name: "checkFeatureInvalidEngine", config: map[string]interface{}{"SIGNING_ENGINE": "notagoodengine"}, want: "invalid"},
+		{name: "checkFeatureOffNoFeature", config: map[string]interface{}{"SIGNING_ENGINE": "gpg2", "FEATURE_SIGNING": false}, want: "valid"},
+		{name: "checkFeatureValidEngineNoKeys", config: map[string]interface{}{"SIGNING_ENGINE": "gpg2", "FEATURE_SIGNING": true}, want: "invalid"},
+		{name: "checkFeatureInvalidEngine", config: map[string]interface{}{"SIGNING_ENGINE": "notagoodengine", "FEATURE_SIGNING": true}, want: "invalid"},
 		//{name: "checkFeatureValidEngineGoodKeys", config: map[string]interface{}{"SIGNING_ENGINE": "gpg2", "GPG2_PRIVATE_KEY_NAME": "hello", "GPG2_PRIVATE_KEY_FILENAME": "/bin/ps", "GPG2_PUBLIC_KEY_FILENAME": "/bin/ps"}, want: "valid"},
 	}
 

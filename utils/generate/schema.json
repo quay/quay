@@ -949,6 +949,14 @@
       "ct-validate": "",
       "ct-fieldgroups": ["SigningEngine"]
     },
+    "FEATURE_SIGNING": {
+      "x-example": "false",
+      "type": "boolean",
+      "description": "Whether or not to use the singing engine to use for signing ACIs.",
+      "ct-default": "false",
+      "ct-validate": "",
+      "ct-fieldgroups": ["SigningEngine"]
+    },
     "GPG2_PRIVATE_KEY_NAME": {
       "x-example": "gpg2key",
       "type": "string",
