@@ -370,7 +370,13 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 
 	certificate, err := x509.ParseCertificate(certChain.Certificate[0])
 
-	err = certificate.VerifyHostname(hostname)
+	// Make sure port is removed
+	cleanHost, _, err := net.SplitHostPort(hostname)
+	if err != nil {
+		cleanHost = hostname
+	}
+
+	err = certificate.VerifyHostname(cleanHost)
 	if err != nil {
 		newError := ValidationError{
 			Tags:       []string{"Certificates"},
