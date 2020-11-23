@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudfront"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/ncw/swift"
 )
 
 // ValidateStorage will validate a S3 storage connection.
@@ -265,6 +266,45 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
+	case "SwiftStorage":
+
+		// Validate auth version
+		if args.SwiftAuthVersion != 1 && args.SwiftAuthVersion != 2 && args.SwiftAuthVersion != 3 {
+			newError := ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    strconv.Itoa(args.SwiftAuthVersion) + " must be either 1, 2, or 3.",
+			}
+			errors = append(errors, newError)
+		}
+		// Check auth url
+		if ok, err := ValidateRequiredString(args.SwiftAuthURL, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".auth_url", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check swift container
+		if ok, err := ValidateRequiredString(args.SwiftContainer, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".swift_container", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check storage path
+		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check swift user
+		if ok, err := ValidateRequiredString(args.SwiftUser, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".swift_user", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check swift password
+		if ok, err := ValidateRequiredString(args.SwiftPassword, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".swift_password", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+		if len(errors) > 0 {
+			return false, errors
+		}
+
+		if ok, err := validateSwift(opts, storageName, args.SwiftAuthVersion, args.SwiftUser, args.SwiftPassword, args.SwiftAuthURL, args.SwiftOsOptions, fgName); !ok {
+			errors = append(errors, err)
+		}
 	default:
 		newError := ValidationError{
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
@@ -370,6 +410,57 @@ func validateAzureGateway(opts Options, storageName, accountName, accountKey, co
 			FieldGroup: fgName,
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
 			Message:    "Could not connect to Azure storage. Error: " + message[1],
+		}
+	}
+
+	return true, ValidationError{}
+
+}
+
+func validateSwift(opts Options, storageName string, authVersion int, swiftUser, swiftPassword, authUrl string, osOptions map[string]interface{}, fgName string) (bool, ValidationError) {
+
+	var c swift.Connection
+	switch authVersion {
+	case 1:
+		c = swift.Connection{
+			UserName:    swiftUser,
+			ApiKey:      swiftPassword,
+			AuthUrl:     authUrl,
+			AuthVersion: 1,
+		}
+	case 2:
+		c = swift.Connection{
+			UserName:    swiftUser,
+			ApiKey:      swiftPassword,
+			AuthUrl:     authUrl,
+			AuthVersion: 2,
+		}
+	case 3:
+
+		// Need domain
+		domain, ok := osOptions["user_domain_name"]
+		if !ok {
+			return false, ValidationError{
+				FieldGroup: fgName,
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				Message:    "Swift auth v3 requires a domain in osOptions",
+			}
+		}
+		c = swift.Connection{
+			UserName:    swiftUser,
+			ApiKey:      swiftPassword,
+			AuthUrl:     authUrl,
+			AuthVersion: 3,
+			Domain:      domain.(string),
+		}
+	}
+
+	err := c.Authenticate()
+	if err != nil {
+		return false, ValidationError{
+			FieldGroup: fgName,
+			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			Message:    "Could not connect to Swift storage. Error: " + err.Error(),
 		}
 	}
 

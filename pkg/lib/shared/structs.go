@@ -40,4 +40,13 @@ type DistributedStorageArgs struct {
 	// Args for Cloudfront
 	CloudfrontDistributionDomain string `default:"" validate:"" json:"cloudfront_distribution_domain,omitempty" yaml:"cloudfront_distribution_domain,omitempty"`
 	CloudfrontKeyID              string `default:"" validate:"" json:"cloudfront_key_id,omitempty" yaml:"cloudfront_key_id,omitempty"`
+	// Args for SwiftStorage
+	SwiftAuthVersion int                    `default:"" validate:"" json:"auth_version,omitempty" yaml:"auth_version,omitempty"`
+	SwiftAuthURL     string                 `default:"" validate:"" json:"auth_url,omitempty" yaml:"auth_url,omitempty"`
+	SwiftContainer   string                 `default:"" validate:"" json:"swift_container,omitempty" yaml:"swift_container,omitempty"`
+	SwiftUser        string                 `default:"" validate:"" json:"swift_user,omitempty" yaml:"swift_user,omitempty"`
+	SwiftPassword    string                 `default:"" validate:"" json:"swift_password,omitempty" yaml:"swift_password,omitempty"`
+	SwiftCaCertPath  string                 `default:"" validate:"" json:"ca_cert_path,omitempty" yaml:"ca_cert_path,omitempty"`
+	SwiftTempURLKey  string                 `default:"" validate:"" json:"temp_url_key,omitempty" yaml:"temp_url_key,omitempty"`
+	SwiftOsOptions   map[string]interface{} `default:"" validate:"" json:"os_options,omitempty" yaml:"os_options,omitempty"`
 }
