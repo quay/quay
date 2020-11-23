@@ -1,8 +1,13 @@
 {% macro dockerimageservice() -%}
 
 [Unit]
+{% if container_runtime == 'podman' %}
+After=podman.service
+Requires=podman.service
+{% else %}
 After=docker.service
 Requires=docker.service
+{% endif %}
 {% if onfailure_units -%}
 OnFailure={% for failure in onfailure_units -%}{{ failure }} {% endfor %}
 {%- endif %}
@@ -27,6 +32,19 @@ Restart={{ restart_policy }}
 {%- endif %}
 TimeoutStartSec={{ timeout_start_sec if timeout_start_sec else 600 }}
 TimeoutStopSec={{ timeout_stop_sec if timeout_stop_sec else 2000 }}
+
+{% if container_runtime == 'podman' %}
+{% if username and password %}
+ExecStartPre=/usr/bin/podman login -u {{ username }} -p {{ password }} {{ container|registry }}
+{% endif %}
+ExecStart=/usr/bin/podman run --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
+{% for start_post in exec_start_post -%}
+ExecStartPost={{ start_post }}
+{% endfor %}
+{% if not oneshot -%}
+ExecStop=/usr/bin/podman stop {{ name }}
+{%- endif %}
+{% else %}
 {% if username and password %}
 ExecStartPre=/usr/bin/docker login -u {{ username }} -p {{ password }} {{ container|registry }}
 {% endif %}
@@ -37,6 +55,7 @@ ExecStartPost={{ start_post }}
 {% if not oneshot -%}
 ExecStop=/usr/bin/docker stop {{ name }}
 {%- endif %}
+{% endif %}
 {% for stop_post in exec_stop_post -%}
 ExecStopPost={{ stop_post }}
 {% endfor %}

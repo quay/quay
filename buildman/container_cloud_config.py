@@ -34,6 +34,9 @@ from jinja2 import FileSystemLoader, Environment, StrictUndefined
 logger = logging.getLogger(__name__)
 
 
+_SUPPORTED_CONTAINER_RUNTIMES = ("docker", "podman")
+
+
 class CloudConfigContext(object):
     """ Context object for easy generating of cloud config. """
 
@@ -48,6 +51,7 @@ class CloudConfigContext(object):
         self,
         name,
         container,
+        container_runtime="docker",
         username="",
         password="",
         tag="latest",
@@ -66,6 +70,8 @@ class CloudConfigContext(object):
         timeout_stop_sec=2000,
         autostart=True,
     ):
+        assert container_runtime in _SUPPORTED_CONTAINER_RUNTIMES
+
         try:
             timeout_start_sec = int(timeout_start_sec)
             timeout_stop_sec = int(timeout_stop_sec)
@@ -82,6 +88,7 @@ class CloudConfigContext(object):
         return template.render(
             name=name,
             container=container,
+            container_runtime=container_runtime,
             username=username,
             password=password,
             tag=tag,
