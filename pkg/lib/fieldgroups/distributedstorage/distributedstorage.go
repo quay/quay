@@ -249,6 +249,78 @@ func NewDistributedStorageArgs(storageArgs map[string]interface{}) (*shared.Dist
 		}
 	}
 
+	if value, ok := storageArgs["auth_version"]; ok {
+
+		switch t := value.(type) {
+		case int:
+			newDistributedStorageArgs.SwiftAuthVersion = t
+		case string:
+			if len(t) == 0 {
+				newDistributedStorageArgs.SwiftAuthVersion = 0
+			} else {
+				v, err := strconv.Atoi(t)
+				if err != nil {
+					return newDistributedStorageArgs, errors.New("auth_version must be of type integer")
+				}
+				newDistributedStorageArgs.SwiftAuthVersion = v
+			}
+		case float64:
+			newDistributedStorageArgs.SwiftAuthVersion = int(t)
+		default:
+			return newDistributedStorageArgs, errors.New("auth_version must be of type integer")
+		}
+
+	}
+
+	if value, ok := storageArgs["auth_url"]; ok {
+		newDistributedStorageArgs.SwiftAuthURL, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("auth_url must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["swift_container"]; ok {
+		newDistributedStorageArgs.SwiftContainer, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("swift_container must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["swift_user"]; ok {
+		newDistributedStorageArgs.SwiftUser, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("swift_user must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["swift_password"]; ok {
+		newDistributedStorageArgs.SwiftPassword, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("swift_password must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["ca_cert_path"]; ok {
+		newDistributedStorageArgs.SwiftCaCertPath, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("ca_cert_path must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["temp_url_key"]; ok {
+		newDistributedStorageArgs.SwiftTempURLKey, ok = value.(string)
+		if !ok {
+			return newDistributedStorageArgs, errors.New("temp_url_key must be of type string")
+		}
+	}
+
+	if value, ok := storageArgs["os_options"]; ok {
+		newDistributedStorageArgs.SwiftOsOptions, ok = value.(map[string]interface{})
+		if !ok {
+			return newDistributedStorageArgs, errors.New("os_options must be an object")
+		}
+	}
+
 	return newDistributedStorageArgs, nil
 }
 
