@@ -58,6 +58,27 @@ http {
         access_log /var/log/nginx/access.log lb_logs;
     }
 
+    server {
+        server_name _;
+
+        ssl_certificate ../stack/ssl.cert;
+        ssl_certificate_key ../stack/ssl.key;
+
+        listen 55443 ssl http2 default;
+        ssl on;
+
+        location / {
+                 grpc_pass grpc://build_manager_server;
+        }
+
+        # This header must be set only for HTTPS
+        add_header Strict-Transport-Security "max-age=63072000; preload";
+
+        real_ip_header proxy_protocol;
+
+        access_log /var/log/nginx/access.log lb_logs;
+    }
+
 {% if v1_only_domain %}
     server {
         include server-base.conf;
