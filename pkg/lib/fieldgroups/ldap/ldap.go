@@ -53,7 +53,7 @@ func NewLDAPFieldGroup(fullConfig map[string]interface{}) (*LDAPFieldGroup, erro
 	if value, ok := fullConfig["LDAP_BASE_DN"]; ok {
 		newLDAPFieldGroup.LdapBaseDn, ok = value.([]interface{})
 		if !ok {
-			return newLDAPFieldGroup, errors.New("LDAP_BASE_DN must be of type string")
+			return newLDAPFieldGroup, errors.New("LDAP_BASE_DN must be of type array")
 		}
 	}
 	if value, ok := fullConfig["LDAP_EMAIL_ATTR"]; ok {

@@ -1,7 +1,9 @@
 package ldap
 
 import (
+	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/quay/config-tool/pkg/lib/shared"
@@ -92,6 +94,34 @@ func (fg *LDAPFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 			Tags:       []string{"LDAP_URI"},
 			FieldGroup: fgName,
 			Message:    "Could not authenticate LDAP server. Error: " + err.Error(),
+		}
+		errors = append(errors, newError)
+		return errors
+	}
+
+	var userFilter string
+	if fg.LdapUserFilter == "" {
+		userFilter = "(objectClass=*)"
+	} else {
+		userFilter = fmt.Sprintf("(&(objectClass=*)" + fg.LdapUserFilter + ")")
+	}
+	searchReq := ldap.NewSearchRequest(strings.Join(shared.InterfaceArrayToStringArray(fg.LdapBaseDn), ","), ldap.ScopeWholeSubtree, 0, 0, 0, false, userFilter, []string{fg.LdapEmailAttr, fg.LdapUidAttr}, []ldap.Control{})
+	result, err := l.Search(searchReq)
+	if err != nil {
+		newError := shared.ValidationError{
+			Tags:       []string{"LDAP_URI"},
+			FieldGroup: fgName,
+			Message:    "Could not query LDAP server. Error: " + err.Error(),
+		}
+		errors = append(errors, newError)
+		return errors
+	}
+
+	if len(result.Entries) < 1 {
+		newError := shared.ValidationError{
+			Tags:       []string{"LDAP_URI"},
+			FieldGroup: fgName,
+			Message:    "Could not find any users matching filter in LDAP server",
 		}
 		errors = append(errors, newError)
 		return errors
