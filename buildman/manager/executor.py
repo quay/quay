@@ -10,7 +10,7 @@ import threading
 import time
 import uuid
 
-from functools import partial, wraps
+from functools import partial, wraps, lru_cache
 
 import boto3
 import botocore
@@ -22,7 +22,7 @@ from prometheus_client import Histogram
 
 import release
 
-from _init import ROOT_DIR
+from _init import ROOT_DIR, OVERRIDE_CONFIG_DIRECTORY
 from app import app
 from buildman.container_cloud_config import CloudConfigContext
 
@@ -142,6 +142,14 @@ class BuilderExecutor(object):
         """
         return self.executor_config.get("MINIMUM_RETRY_THRESHOLD", 0)
 
+    @lru_cache(max_size=1)
+    def _ca_cert(self):
+        try:
+            with open(os.path.join(OVERRIDE_CONFIG_DIRECTORY, "ssl.cert")) as f:
+                return f.read()
+        except:
+            return None
+
     def generate_cloud_config(
         self,
         token,
@@ -170,7 +178,8 @@ class BuilderExecutor(object):
                 volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
                 max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
                 ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
-                container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker")
+                container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker"),
+                ca_cert=self.executor_config.get("CA_CERT", self._ca_cert()),
             ))
         )
 

@@ -38,7 +38,7 @@ class BuilderServer(object):
         user_files,
         lifecycle_manager_klass,
         lifecycle_manager_config,
-        instance_keys
+        instance_keys,
     ):
         self._registry_hostname = registry_hostname
         self._manager_hostname = manager_hostname
@@ -58,7 +58,7 @@ class BuilderServer(object):
 
         self._shutdown_event = Event()
 
-    def run(self, host, controller_port, ssl=None):
+    def run(self, host, controller_port):
         logger.debug("Initializing the lifecycle manager")
         self._lifecycle_manager.initialize(self._lifecycle_manager_config)
 

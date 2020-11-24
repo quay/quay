@@ -69,6 +69,13 @@ WantedBy=multi-user.target
   "storage": {
     "files": [
       {
+	"/etc/pki/ca-trust/source/anchors/ssl.cert",
+	"contents": {
+	  "source": {{ ca_cert | dataurl | jsonify }}
+	},
+	"mode": 420
+      },
+      {
         "path": "/etc/hostname",
         "contents": {
           "source": {{ build_uuid | default('quay-builder', True) | dataurl | jsonify }}

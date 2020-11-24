@@ -5,13 +5,19 @@ import socket
 
 import features
 
-from app import app, userfiles as user_files, build_logs, dockerfile_build_queue, instance_keys
+from app import (
+    app,
+    userfiles as user_files,
+    build_logs,
+    dockerfile_build_queue,
+    instance_keys,
+    OVERRIDE_CONFIG_DIRECTORY
+)
 from util.log import logfile_path
 
 from buildman.manager.ephemeral import EphemeralBuilderManager
 from buildman.server import BuilderServer
 
-from ssl import SSLContext
 from raven.handlers.logging import SentryHandler
 from raven.conf import setup_logging
 
@@ -70,14 +76,6 @@ def run_build_manager():
     )
 
     logger.debug('Starting build manager with lifecycle "%s"', build_manager_config[0])
-    ssl_context = None
-    if os.environ.get("SSL_CONFIG"):
-        logger.debug("Loading SSL cert and key")
-        ssl_context = SSLContext()
-        ssl_context.load_cert_chain(
-            os.path.join(os.environ.get("SSL_CONFIG"), "ssl.cert"),
-            os.path.join(os.environ.get("SSL_CONFIG"), "ssl.key"),
-        )
 
     server = BuilderServer(
         app.config["SERVER_HOSTNAME"],
@@ -89,7 +87,7 @@ def run_build_manager():
         build_manager_config[1],
         instance_keys,
     )
-    server.run("0.0.0.0", controller_port, ssl=ssl_context)
+    server.run("0.0.0.0", controller_port)
 
 
 if __name__ == "__main__":

@@ -69,8 +69,8 @@ from util.security.instancekeys import InstanceKeys
 from util.greenlet_tracing import enable_tracing
 
 
-OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(CONF_DIR, "stack/config.yaml")
-OVERRIDE_CONFIG_PY_FILENAME = os.path.join(CONF_DIR, "stack/config.py")
+OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
+OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py")
 
 OVERRIDE_CONFIG_KEY = "QUAY_OVERRIDE_CONFIG"
 
