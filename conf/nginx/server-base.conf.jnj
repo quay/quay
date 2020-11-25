@@ -309,7 +309,3 @@ location /static/ {
 }
 
 error_page 502 {{static_dir}}/502.html;
-
-location ~ ^/b1/buildmanager(/?)(.*) {
-    proxy_pass http://build_manager_server/$2;
-}

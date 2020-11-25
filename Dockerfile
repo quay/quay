@@ -119,7 +119,7 @@ RUN UNINSTALL_PKGS="\
     yum clean all && \
     rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache
 
-EXPOSE 8080 8443 7443 9091 50051
+EXPOSE 8080 8443 7443 9091 55443
 
 RUN chgrp -R 0 $QUAYDIR && \
     chmod -R g=u $QUAYDIR
