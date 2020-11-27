@@ -25,6 +25,7 @@ import release
 from _init import ROOT_DIR, OVERRIDE_CONFIG_DIRECTORY
 from app import app
 from buildman.container_cloud_config import CloudConfigContext
+from buildman.server import DEFAULT_GRPC_SERVER_PORT
 
 
 logger = logging.getLogger(__name__)
@@ -142,10 +143,10 @@ class BuilderExecutor(object):
         """
         return self.executor_config.get("MINIMUM_RETRY_THRESHOLD", 0)
 
-    @lru_cache(max_size=1)
+    @lru_cache(maxsize=1)
     def _ca_cert(self):
         try:
-            with open(os.path.join(OVERRIDE_CONFIG_DIRECTORY, "ssl.cert")) as f:
+            with open(os.path.join(OVERRIDE_CONFIG_DIRECTORY, "ssl.cert"), "r") as f:
                 return f.read()
         except:
             return None
@@ -164,13 +165,14 @@ class BuilderExecutor(object):
         if quay_password is None:
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
+        server_addr = manager_hostname.split(":", 1)[0] + ":" + str(DEFAULT_GRPC_SERVER_PORT)
         rendered_json = json.load(
             io.StringIO(TEMPLATE.render(
                 token=token,
                 build_uuid=build_uuid,
                 quay_username=quay_username,
                 quay_password=quay_password,
-                manager_hostname=manager_hostname,
+                manager_hostname=server_addr,
                 worker_image=self.executor_config.get(
                     "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
                 ),
