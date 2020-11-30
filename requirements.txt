@@ -29,7 +29,7 @@ certifi==2019.11.28
 cffi==1.13.2
 cfn-lint==0.27.2
 chardet==3.0.4
-Click==7.0
+Click==7.1.2
 cookies==2.2.1
 cryptography==2.8
 DateTime==4.3
