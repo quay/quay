@@ -5,9 +5,18 @@
       <span class="cor-title-content">Red Hat Quay Setup</span>
     </div>
     <div class="co-main-content-panel" style="padding: 20px;">
-<div class="config-setup-tool-element">
-  <div class="cor-loader" ng-if="!config"></div>
-  <div ng-show="true">
+      <div class="co-alert co-alert-warning" ng-if="validationMode=='setup'">
+        <div></div>
+        <div>
+          <strong>You are in a setup session!</strong>
+        </div>
+        <div>
+          No configuration bundle was mounted: default values will be used.
+        </div>
+      </div>
+    <div class="config-setup-tool-element">
+    <div class="cor-loader" ng-if="!config"></div>
+    <div ng-show="true">
     <form id="configform" name="configform">
       <!-- Custom SSL certificates -->
       <div class="co-panel" id="custom-ssl">
@@ -1967,15 +1976,49 @@
             </h4>
           </div>
           <div class="modal-body">
-            <span class="quay-spinner" ng-show="validationStatus == 'validating'"></span>
-            <div class="validation-success-container" ng-if="validationStatus == 'success'">
-              <i class="fa fa-lg fa-check-circle" ng-show="validationStatus == 'success'"></i>
-              No problems occurred
-            </div>
-            <div class="validation-issue-container" ng-if="validationStatus == 'error'">
-              <div class="validation-issue" ng-repeat="err in validationResult">
-                <i class="fa fa-lg fa-warning"></i>
-                {{ err['FieldGroup'] }}:{{ err['Message'] }}
+            <div class="service-verification">
+
+              <!-- Validating Config -->
+              <div class="service-verification-row" ng-if="validationStatus == 'validating'">
+                <span class="cor-loader-inline" ng-show="validationStatus == 'validating'"></span>
+                  <span class="service-title">Validating Configuration</span>
+              </div>
+
+
+              <!-- Successful Validation -->
+              <div class="service-verification-row" ng-if="validationStatus == 'success'">
+                <i class="fa fa-lg fa-check-circle" ng-show="validationStatus == 'success'"></i>
+                <span class="service-title">Configuration Validated</span>
+              </div>
+
+              <!-- Error in Validations-->
+              <div ng-if="validationStatus == 'error'">
+                <div class="service-verification-row" ng-repeat="err in validationResult">
+                  <i class="fa fa-lg fa-warning"></i>
+                  <span class="service-title">{{ err['FieldGroup'] }}</span>
+                  <div class="service-verification-error" ng-repeat="msg in err.Message track by $index"">
+                    {{ msg }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Committing to Operator -->
+              <div class="service-verification-row" ng-if="operatorCommitStatus == 'inProgress'">
+                <span class="cor-loader-inline" ng-show="operatorCommitStatus == 'inProgress'"></span>
+                <span class="service-title">Committing to Operator</span>
+              </div>
+              
+              
+              <!-- Successful commit to operator -->
+              <div class="service-verification-row" ng-if="operatorCommitStatus == 'success'">
+                <i class="fa fa-lg fa-check-circle" ng-show="operatorCommitStatus == 'success'"></i>
+                <span class="service-title">Config Sent to Operator</span>
+              </div>
+              
+              <!-- Error in Commit-->
+              <div class="service-verification-row" ng-if="operatorCommitStatus == 'error'">
+                <i class="fa fa-lg fa-warning" ng-show="operatorCommitStatus == 'error'"></i>
+                <span class="service-title">Could not reconfigure Quay</span>
               </div>
             </div>
           </div>
@@ -2028,7 +2071,7 @@
       </div><!-- /.modal-dialog -->
     </div><!-- /.modal -->
 
-  </div>
+    </div>
   </div>
 </div>
 </div>

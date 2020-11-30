@@ -41,7 +41,7 @@
             <td class="cert-status">
               <div ng-if="certificate.error" class="red">
                 <i class="fa fa-exclamation-circle"></i>
-                Error: {{ certificate.error }}
+                {{ certificate.error }}
               </div>
               <div ng-if="certificate.expired" class="orange">
                 <i class="fa fa-exclamation-triangle"></i>
@@ -55,6 +55,13 @@
             <td>
               <div class="empty" ng-if="!certificate.names">(None)</div>
               <a class="dns-name" ng-href="http://{{ name }}" ng-repeat="name in certificate.names" ng-safenewtab>{{ name }}</a>
+            </td>
+            <td class="options-col">
+              <span class="cor-options-menu">
+                <span class="cor-option" option-click="deleteCert(certificate.path)">
+                  <i class="fa fa-times"></i> Delete Certificate
+                </span>
+              </span>
             </td>
           </tr>
         </table>

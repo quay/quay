@@ -46,8 +46,13 @@ angular.module("quay-config")
           readOnlyFieldGroupsCookie
             .split('=')[1]
             .split(',')
-            .forEach(fieldGroup => $scope.readOnlyFieldGroups.add(fieldGroup.replace(/"/, '')));
+            .forEach(fieldGroup => {
+              if (fieldGroup) {
+                $scope.readOnlyFieldGroups.add(fieldGroup.replace(/"/, ""));
+              }
+            });
         }
+
 
         $scope.validationMode = "online"
 
@@ -238,6 +243,25 @@ angular.module("quay-config")
 
         var generateDatabaseSecretKey = () => uuid.v4()
 
+        const mergeValidationErrors = (errors) => {
+          let output = []
+          errors.forEach(function (err) {
+            let existing = output.filter(function (v, i) {
+              return v.FieldGroup == err.FieldGroup
+            })
+            if (existing.length) {
+              var existingIndex = output.indexOf(existing[0]);
+              output[existingIndex].Message = output[existingIndex].Message.concat(
+                err.Message
+              );
+            } else {
+              if (typeof err.Message == "string") err.Message = [err.Message];
+              output.push(err);
+            }
+          })
+          return output
+        }
+
         $scope.validateConfig = function() {
           $scope.validationStatus = 'validating';
 
@@ -246,7 +270,7 @@ angular.module("quay-config")
 
           ApiService.validateConfigBundle({"config.yaml": $scope.config, "certs": $scope.certs, readOnlyFieldGroups: $scope.readOnlyFieldGroups}, $scope.validationMode).then(function(resp) {
             $scope.validationStatus = resp.data.length == 0 ? 'success' : 'error';
-            $scope.validationResult = resp.data;
+            $scope.validationResult = mergeValidationErrors(resp.data);
             if($scope.validationStatus == 'success' && $scope.validationMode == 'setup'){
               $scope.config["SETUP_COMPLETE"] = true
               $scope.config["DATABASE_SECRET_KEY"] = generateDatabaseSecretKey()
@@ -255,14 +279,21 @@ angular.module("quay-config")
           }, errorDisplay);
         };
 
+        $scope.operatorCommitStatus = 'none'
         $scope.commitToOperator = function() {
 
-          var errorDisplay = ApiService.errorDisplay(
-            'Could not reconfigure Quay. Please report this error.');
+          $scope.operatorCommitStatus = "inProgress"
 
-          ApiService.commitToOperator({"config.yaml": $scope.config, "certs": $scope.certs, "managedFieldGroups": $scope.readOnlyFieldGroups}).then(function(resp) {
-            alert("Successfully sent config bundle to Quay Operator")
-          }, errorDisplay)
+          ApiService.commitToOperator({
+            "config.yaml": $scope.config,
+            certs: $scope.certs,
+            managedFieldGroups: $scope.readOnlyFieldGroups,
+          }).then(function (resp) {
+            $scope.operatorCommitStatus = "success";
+          }, (resp) => {
+            console.log(resp)
+            $scope.operatorCommitStatus = "error"
+          });
         }
 
         $scope.downloadConfigBundle = function() {
@@ -796,7 +827,6 @@ angular.module("quay-config")
             initializeStorageConfig($scope);
             $scope.mapped['$hasChanges'] = false;
             if(resp.status == 202){
-              alert("Warning: No config bundle was found. Running in Setup Mode. Default values will be used. \nIf you are trying to modify an existing config bundle, please make sure that you are mounting it correctly.")
               $scope.validationMode = "setup"
             }
           }, ApiService.errorDisplay('Could not load config'));
@@ -1416,23 +1446,32 @@ angular.module("quay-config")
         $scope.certMeta = []
 
         // Reads the certs stored in scope and creates a new object with metadata to render table
-        var loadCertificateMeta = function() {
-          var oldCertMeta = $scope.certMeta
-          try {
-            $scope.certMeta = Object.entries($scope.certs)
-            .filter(([filename, contents]) => filename.startsWith("extra_ca_certs/"))
+        var loadCertificateMeta = function () {
+          $scope.certsUploading = true;
+          $scope.certMeta = Object.entries($scope.certs)
+            .filter(([filename, contents]) =>
+              filename.startsWith("extra_ca_certs/")
+            )
             .map(([filename, contents]) => {
-              const cert = forge.pki.certificateFromPem(atob(contents));
-              const current = new Date();
-              const expired = current > cert.validity.notAfter;
-              
-              return {path: filename, names: getCertNames(cert), expired: expired};
-            })
-          }
-          catch(err){
-            alert(err)
-            $scope.certMeta = oldCertMeta
-          }
+              try {
+                const cert = forge.pki.certificateFromPem(atob(contents));
+                const current = new Date();
+                const expired = current > cert.validity.notAfter;
+                return {
+                  path: filename,
+                  names: getCertNames(cert),
+                  expired: expired,
+                  error: null,
+                };
+              } catch (err) {
+                return {
+                  path: filename,
+                  names: [],
+                  expired: null,
+                  error: err,
+                };
+              }
+            });
           $scope.certsUploading = false;
 
         }
@@ -1448,10 +1487,12 @@ angular.module("quay-config")
           return cn        
         }
 
+        $scope.deleteCert = function (certPath) {
+          delete $scope.certs[certPath]
+        }
+
         $scope.$watch('certs', loadCertificateMeta, true)
-        $scope.handleCertsSelected = function() {
-          $scope.certsUploading = true;
-        };
+
       }
     };
     return directiveDefinitionObject;

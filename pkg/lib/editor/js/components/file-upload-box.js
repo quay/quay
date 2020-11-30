@@ -56,6 +56,9 @@ angular.module('quay-config').directive('fileUploadBox', function () {
             conductUpload(selectedFiles[i])
           }
         }
+
+        $scope.state = "clear"
+        $scope.selectedFiles = []
       };
 
 
@@ -76,12 +79,15 @@ angular.module('quay-config').directive('fileUploadBox', function () {
           $scope.$apply(function(){
             $scope.certs["extra_ca_certs/"+file.name] = btoa(e.target.result)
             $scope.uploadProgress = 100
-            $scope.state = 'okay'
+            $scope.state = 'clear'
           })
         }
 
         reader.onerror = function(e){
-          $scope.$apply(function() { doneCb(false, 'Error when uploading'); });
+          $scope.$apply(function () {
+            doneCb(false, 'Error when uploading');
+            $scope.state = "clear";
+          });
         }
 
       };

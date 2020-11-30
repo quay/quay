@@ -265,10 +265,16 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		defer resp.Body.Close()
 
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(resp.StatusCode)
 		w.Header().Add("Content-Type", "application/json")
-		w.Write(js)
+		w.Write(body)
 	}
 }
