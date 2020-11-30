@@ -567,15 +567,18 @@ a:focus {
   color: rgb(53, 186, 53);
 }
 
-.config-setup-tool .validation-issue-container {
-  margin-bottom: 10px;
-  max-height: 250px;
-  overflow: auto;
-  border: 1px solid #797979;
-  background: black;
-  padding: 6px;
-  font-family: Consolas, "Lucida Console", Monaco, monospace;
-  font-size: 12px;
+
+.config-setup-tool .service-verification-error {
+    margin-top: 10px;
+    margin-left: 36px;
+    margin-bottom: 20px;
+    max-height: 250px;
+    overflow: auto;
+    border: 1px solid #797979;
+    background: #000;
+    padding: 6px;
+    font-family: Consolas,Lucida Console,Monaco,monospace;
+    font-size: 12px;
 }
 
 .config-setup-tool .validation-issue {

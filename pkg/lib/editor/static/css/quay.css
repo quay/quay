@@ -3953,6 +3953,63 @@ i.mesos-icon {
     background-color: #CC0000;
 }
 
+.file-upload-box-element .file-drop + label .choose-button {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    display: inline-block;
+    overflow: hidden;
+    padding: 8px;
+    color: #fff;
+    font-weight: 400;
+    font-size: 16px;
+    height: 34px;
+    vertical-align: top;
+    padding-left: 16px;
+    padding-right: 16px;
+    line-height: 18px;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.file-upload-box-element .file-drop {
+    width: .1px;
+    height: .1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+}
+
+.file-upload-box-element .select-message {
+    color: #888;
+}
+
+.file-upload-box-element .file-drop + label {
+    cursor: pointer;
+}
+
+.file-upload-box-element .file-drop + label .chosen-file {
+    background: #fff;
+    display: inline-block;
+    height: 34px;
+    line-height: 34px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-weight: 400;
+    width: 250px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+        border-top-right-radius: 4px;
+        border-bottom-right-radius: 4px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.file-upload-box-element .file-drop + label * {
+    pointer-events: none;
+}
+
 .onprem .co-nav-title .co-nav-title-action a {
   color: black;
 }
