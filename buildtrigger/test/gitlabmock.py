@@ -24,13 +24,17 @@ def users_handler(url, request):
     if url.query.find("knownuser") < 0:
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+            },
             "content": json.dumps([]),
         }
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             [
                 {
@@ -53,7 +57,9 @@ def user_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "id": 1,
@@ -73,7 +79,9 @@ def project_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "id": 4,
@@ -95,7 +103,9 @@ def project_tree_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             [
                 {
@@ -117,13 +127,22 @@ def project_tags_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             [
-                {"name": "sometag", "commit": {"id": "60a8ff033665e1207714d6670fcd7b65304ec02f",},},
+                {
+                    "name": "sometag",
+                    "commit": {
+                        "id": "60a8ff033665e1207714d6670fcd7b65304ec02f",
+                    },
+                },
                 {
                     "name": "someothertag",
-                    "commit": {"id": "60a8ff033665e1207714d6670fcd7b65304ec02f",},
+                    "commit": {
+                        "id": "60a8ff033665e1207714d6670fcd7b65304ec02f",
+                    },
                 },
             ]
         ),
@@ -137,13 +156,22 @@ def project_branches_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             [
-                {"name": "master", "commit": {"id": "60a8ff033665e1207714d6670fcd7b65304ec02f",},},
+                {
+                    "name": "master",
+                    "commit": {
+                        "id": "60a8ff033665e1207714d6670fcd7b65304ec02f",
+                    },
+                },
                 {
                     "name": "otherbranch",
-                    "commit": {"id": "60a8ff033665e1207714d6670fcd7b65304ec02f",},
+                    "commit": {
+                        "id": "60a8ff033665e1207714d6670fcd7b65304ec02f",
+                    },
                 },
             ]
         ),
@@ -157,7 +185,9 @@ def project_branch_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "name": "master",
@@ -176,7 +206,9 @@ def project_branch_handler(_, request):
                     "short_id": "7b5c3cc",
                     "title": "add projects API",
                     "message": "add projects API",
-                    "parent_ids": ["4ad91d3c1144c406e50c7b33bae684bd6837faf8",],
+                    "parent_ids": [
+                        "4ad91d3c1144c406e50c7b33bae684bd6837faf8",
+                    ],
                 },
             }
         ),
@@ -190,7 +222,9 @@ def namespace_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "id": 2,
@@ -212,7 +246,9 @@ def user_namespace_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "id": 1,
@@ -234,7 +270,9 @@ def namespaces_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             [
                 {
@@ -265,7 +303,9 @@ def get_projects_handler(add_permissions_block):
 
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+            },
             "content": json.dumps(
                 [
                     {
@@ -306,7 +346,9 @@ def get_group_handler(null_avatar):
 
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+            },
             "content": json.dumps(
                 {
                     "id": 1,
@@ -335,7 +377,9 @@ def dockerfile_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "file_name": "Dockerfile",
@@ -361,7 +405,9 @@ def sub_dockerfile_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "file_name": "Dockerfile",
@@ -385,7 +431,9 @@ def tag_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "name": "sometag",
@@ -421,7 +469,9 @@ def commit_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "id": "60a8ff033665e1207714d6670fcd7b65304ec02f",
@@ -456,7 +506,9 @@ def create_deploykey_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "id": 1,
@@ -476,7 +528,9 @@ def create_hook_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             {
                 "id": 1,
@@ -505,7 +559,9 @@ def delete_hook_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps({}),
     }
 
@@ -517,7 +573,9 @@ def delete_deploykey_handker(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps({}),
     }
 
@@ -529,7 +587,9 @@ def user_projects_list_handler(_, request):
 
     return {
         "status_code": 200,
-        "headers": {"Content-Type": "application/json",},
+        "headers": {
+            "Content-Type": "application/json",
+        },
         "content": json.dumps(
             [
                 {

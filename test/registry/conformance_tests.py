@@ -38,6 +38,8 @@ def test_run_conformance(liveserver_session, app_reloader, registry_server_execu
         "SERVER_HOSTNAME", server_hostname, registry_server_executor.on(liveserver), liveserver
     ):
         with FeatureFlagValue(
-            "GENERAL_OCI_SUPPORT", True, registry_server_executor.on(liveserver),
+            "GENERAL_OCI_SUPPORT",
+            True,
+            registry_server_executor.on(liveserver),
         ):
             assert subprocess.call(CONFORMANCE_TEST_PATH, env=env) == 0

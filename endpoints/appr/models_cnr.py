@@ -188,9 +188,9 @@ class CNRAppModel(AppRegistryDataInterface):
 
     def application_is_public(self, package_name):
         """
-      Returns:
-        * True if the repository is public
-    """
+        Returns:
+          * True if the repository is public
+        """
         namespace, name = _split_package_name(package_name)
         return data.model.repository.repository_is_public(namespace, name)
 
@@ -212,13 +212,13 @@ class CNRAppModel(AppRegistryDataInterface):
         return data.model.repository.get_repository(ns, name, kind_filter="application") is not None
 
     def basic_search(self, query, username=None):
-        """ Returns an array of matching AppRepositories in the format: 'namespace/name'
+        """Returns an array of matching AppRepositories in the format: 'namespace/name'
         Note:
           * Only 'public' repositories are returned
 
         Todo:
           * Filter results with readeable reposistory for the user (including visibilitys)
-    """
+        """
         limit = app.config.get("APP_REGISTRY_RESULTS_LIMIT", 50)
         return [
             _join_package_name(r.namespace_user.username, r.name)
@@ -228,14 +228,14 @@ class CNRAppModel(AppRegistryDataInterface):
         ]
 
     def list_releases(self, package_name, media_type=None):
-        """ Return the list of all releases of an Application
+        """Return the list of all releases of an Application
         Example:
             >>> get_app_releases('ant31/rocketchat')
             ['1.7.1', '1.7.0', '1.7.2']
 
         Todo:
           * Paginate
-    """
+        """
         return appr_model.release.get_releases(
             _application(package_name), self.models_ref, media_type
         )
@@ -361,10 +361,10 @@ class CNRAppModel(AppRegistryDataInterface):
         return appr_model.tag.tag_exists(repo, channel_name, self.models_ref, "channel")
 
     def delete_channel(self, package_name, channel_name):
-        """ Delete an AppChannel
-    Note:
-      It doesn't delete the AppReleases
-    """
+        """Delete an AppChannel
+        Note:
+          It doesn't delete the AppReleases
+        """
         if self.is_readonly:
             raise ReadOnlyException("Currently in read-only mode")
 
@@ -416,10 +416,10 @@ class CNRAppModel(AppRegistryDataInterface):
             raise_package_not_found(package_name, release)
 
     def update_channel(self, package_name, channel_name, release):
-        """ Append a new release to the AppChannel
-    Returns:
-      A new AppChannel with the release
-    """
+        """Append a new release to the AppChannel
+        Returns:
+          A new AppChannel with the release
+        """
         if self.is_readonly:
             raise ReadOnlyException("Currently in read-only mode")
 

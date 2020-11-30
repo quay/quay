@@ -59,7 +59,11 @@ def test_get_tuf_root(identity, expected):
 
 
 @pytest.mark.parametrize(
-    "trust_enabled,tuf_root", [(True, QUAY_TUF_ROOT), (False, DISABLED_TUF_ROOT),]
+    "trust_enabled,tuf_root",
+    [
+        (True, QUAY_TUF_ROOT),
+        (False, DISABLED_TUF_ROOT),
+    ],
 )
 def test_trust_disabled(trust_enabled, tuf_root):
     app, principal = app_with_principal()

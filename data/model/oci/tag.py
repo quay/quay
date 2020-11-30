@@ -40,8 +40,8 @@ GC_CANDIDATE_COUNT = 500  # repositories
 
 
 class RetargetTagException(Exception):
-    """ Exception raised when re-targetting a tag fails and explicit exception
-      raising is requested. """
+    """Exception raised when re-targetting a tag fails and explicit exception
+    raising is requested."""
 
 
 def get_tag_by_id(tag_id):
@@ -79,8 +79,8 @@ def get_tag(repository_id, tag_name):
 
 
 def tag_names_for_manifest(manifest_id, limit=None):
-    """ 
-    Returns the names of the tags pointing to the given manifest. 
+    """
+    Returns the names of the tags pointing to the given manifest.
     """
 
     query = Tag.select(Tag.id, Tag.name).where(Tag.manifest == manifest_id)
@@ -295,7 +295,11 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
 
 
 def retarget_tag(
-    tag_name, manifest_id, is_reversion=False, now_ms=None, raise_on_error=False,
+    tag_name,
+    manifest_id,
+    is_reversion=False,
+    now_ms=None,
+    raise_on_error=False,
 ):
     """
     Creates or updates a tag with the specified name to point to the given manifest under its
@@ -580,8 +584,8 @@ def tags_containing_legacy_image(image):
 
 
 def find_repository_with_garbage(limit_to_gc_policy_s):
-    """ Returns a repository that has garbage (defined as an expired Tag that is past
-        the repo's namespace's expiration window) or None if none.
+    """Returns a repository that has garbage (defined as an expired Tag that is past
+    the repo's namespace's expiration window) or None if none.
     """
     expiration_timestamp = get_epoch_timestamp_ms() - (limit_to_gc_policy_s * 1000)
 

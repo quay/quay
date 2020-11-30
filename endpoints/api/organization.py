@@ -101,10 +101,18 @@ class OrganizationList(ApiResource):
         "NewOrg": {
             "type": "object",
             "description": "Description of a new organization.",
-            "required": ["name",],
+            "required": [
+                "name",
+            ],
             "properties": {
-                "name": {"type": "string", "description": "Organization username",},
-                "email": {"type": "string", "description": "Organization contact email",},
+                "name": {
+                    "type": "string",
+                    "description": "Organization username",
+                },
+                "email": {
+                    "type": "string",
+                    "description": "Organization contact email",
+                },
                 "recaptcha_response": {
                     "type": "string",
                     "description": "The (may be disabled) recaptcha response code for verification",
@@ -176,7 +184,10 @@ class Organization(ApiResource):
             "type": "object",
             "description": "Description of updates for an existing organization",
             "properties": {
-                "email": {"type": "string", "description": "Organization contact email",},
+                "email": {
+                    "type": "string",
+                    "description": "Organization contact email",
+                },
                 "invoice_email": {
                     "type": "boolean",
                     "description": "Whether the organization desires to receive emails for invoices",
@@ -408,7 +419,10 @@ class OrganizationMemberList(ApiResource):
                     members_dict[member.user.username] = member_data
 
                 members_dict[member.user.username]["teams"].append(
-                    {"name": member.team.name, "avatar": avatar.get_data_for_team(member.team),}
+                    {
+                        "name": member.team.name,
+                        "avatar": avatar.get_data_for_team(member.team),
+                    }
                 )
 
             # Loop to add direct repository permissions.
@@ -565,9 +579,14 @@ class OrganizationApplications(ApiResource):
         "NewApp": {
             "type": "object",
             "description": "Description of a new organization application.",
-            "required": ["name",],
+            "required": [
+                "name",
+            ],
             "properties": {
-                "name": {"type": "string", "description": "The name of the application",},
+                "name": {
+                    "type": "string",
+                    "description": "The name of the application",
+                },
                 "redirect_uri": {
                     "type": "string",
                     "description": "The URI for the application's OAuth redirect",
@@ -654,7 +673,10 @@ class OrganizationApplicationResource(ApiResource):
             "description": "Description of an updated application.",
             "required": ["name", "redirect_uri", "application_uri"],
             "properties": {
-                "name": {"type": "string", "description": "The name of the application",},
+                "name": {
+                    "type": "string",
+                    "description": "The name of the application",
+                },
                 "redirect_uri": {
                     "type": "string",
                     "description": "The URI for the application's OAuth redirect",

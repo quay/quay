@@ -87,7 +87,13 @@ def test_export_logs_failure(initialized_db):
     assert called[0]["status"] == "failed"
 
 
-@pytest.mark.parametrize("has_logs", [True, False,])
+@pytest.mark.parametrize(
+    "has_logs",
+    [
+        True,
+        False,
+    ],
+)
 def test_export_logs(initialized_db, storage_engine, has_logs):
     # Delete all existing logs.
     database.LogEntry3.delete().execute()

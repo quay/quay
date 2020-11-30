@@ -274,7 +274,13 @@ AGGS_COUNT = [
 ]
 
 COUNT_REQUEST = {"query": {"bool": {"filter": [{"term": {"repository_id": 1}}]}}}
-COUNT_RESPONSE = _status(_shards({"count": 1,}))
+COUNT_RESPONSE = _status(
+    _shards(
+        {
+            "count": 1,
+        }
+    )
+)
 
 # assume there are 2 pages
 _scroll_id = "DnF1ZXJ5VGhlbkZldGNoBQAAAAAAACEmFkk1aGlTRzdSUWllejZmYTlEYTN3SVEAAAAAAAAhJRZJNWhpU0c3UlFpZXo2ZmE5RGEzd0lRAAAAAAAAHtAWLWZpaFZXVzVSTy1OTXA5V3MwcHZrZwAAAAAAAB7RFi1maWhWV1c1Uk8tTk1wOVdzMHB2a2cAAAAAAAAhJxZJNWhpU0c3UlFpZXo2ZmE5RGEzd0lR"

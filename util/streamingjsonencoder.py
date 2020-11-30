@@ -120,10 +120,10 @@ def _make_iterencode(
     tuple=tuple,
 ):
     """
-  This is a patched version of
-  :func:`django.utils.simplejson.encoder.iterencode`.  Whenever it encounters
-  a generator in the data structure, it encodes it as a JSON list.
-  """
+    This is a patched version of
+    :func:`django.utils.simplejson.encoder.iterencode`.  Whenever it encounters
+    a generator in the data structure, it encodes it as a JSON list.
+    """
 
     def _iterencode_list(lst, _current_indent_level):
         if not lst:

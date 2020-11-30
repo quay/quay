@@ -43,7 +43,9 @@ def _create_tag(repo, name):
         app_config = {"TESTING": True}
         config_json = json.dumps(
             {
-                "config": {"author": "Repo Mirror",},
+                "config": {
+                    "author": "Repo Mirror",
+                },
                 "rootfs": {"type": "layers", "diff_ids": []},
                 "history": [
                     {

@@ -71,9 +71,9 @@ class OCIModel(RegistryDataInterface):
             return (None, None)
 
     def _resolve_legacy_image_id(self, legacy_image_id):
-        """ Decodes the given legacy image ID and returns the manifest to which it points,
-            as well as the layer index for the image. If invalid, or the manifest was not found,
-            returns (None, None).
+        """Decodes the given legacy image ID and returns the manifest to which it points,
+        as well as the layer index for the image. If invalid, or the manifest was not found,
+        returns (None, None).
         """
         manifest, layer_index = self._resolve_legacy_image_id_to_manifest_row(legacy_image_id)
         if manifest is None:
@@ -142,7 +142,11 @@ class OCIModel(RegistryDataInterface):
         return tag.manifest
 
     def lookup_manifest_by_digest(
-        self, repository_ref, manifest_digest, allow_dead=False, require_available=False,
+        self,
+        repository_ref,
+        manifest_digest,
+        allow_dead=False,
+        require_available=False,
     ):
         """
         Looks up the manifest with the given digest under the given repository and returns it or
@@ -169,7 +173,11 @@ class OCIModel(RegistryDataInterface):
 
         # Create the label itself.
         label = oci.label.create_manifest_label(
-            manifest._db_id, key, value, source_type_name, media_type_name,
+            manifest._db_id,
+            key,
+            value,
+            source_type_name,
+            media_type_name,
         )
         if label is None:
             return None
@@ -355,7 +363,9 @@ class OCIModel(RegistryDataInterface):
 
             # Re-target the tag to it.
             tag = oci.tag.retarget_tag(
-                tag_name, created_manifest.manifest, raise_on_error=raise_on_error,
+                tag_name,
+                created_manifest.manifest,
+                raise_on_error=raise_on_error,
             )
             if tag is None:
                 return (None, None)
@@ -407,13 +417,16 @@ class OCIModel(RegistryDataInterface):
                     parsed = manifest.get_parsed_manifest()
                 except ManifestException:
                     logger.exception(
-                        "Could not parse manifest `%s` in retarget_tag", manifest._db_id,
+                        "Could not parse manifest `%s` in retarget_tag",
+                        manifest._db_id,
                     )
                     return None
 
                 if parsed.tag != tag_name:
                     logger.debug(
-                        "Rewriting manifest `%s` for tag named `%s`", manifest._db_id, tag_name,
+                        "Rewriting manifest `%s` for tag named `%s`",
+                        manifest._db_id,
+                        tag_name,
                     )
 
                     repository_id = repository_ref._db_id
@@ -621,7 +634,10 @@ class OCIModel(RegistryDataInterface):
         specified).
         """
         return self._list_manifest_layers(
-            repository_ref._db_id, parsed_manifest, storage, include_placements=include_placements,
+            repository_ref._db_id,
+            parsed_manifest,
+            storage,
+            include_placements=include_placements,
         )
 
     def get_manifest_local_blobs(self, manifest, storage, include_placements=False):
@@ -898,7 +914,7 @@ class OCIModel(RegistryDataInterface):
             yield Manifest.for_manifest(manifest, self._legacy_image_id_handler)
 
     def lookup_secscan_notification_severities(self, repository):
-        """ 
+        """
         Returns the security notification severities for security events within
         a repository or None if none.
         """
@@ -916,8 +932,8 @@ class OCIModel(RegistryDataInterface):
         return model.oci.tag.tag_names_for_manifest(manifest._db_id, limit)
 
     def populate_legacy_images_for_testing(self, manifest, storage):
-        """ Populates legacy images for the given manifest, for testing only. This call
-            will fail if called under non-testing code.
+        """Populates legacy images for the given manifest, for testing only. This call
+        will fail if called under non-testing code.
         """
         manifest_row = database.Manifest.get(id=manifest._db_id)
         oci.manifest.populate_legacy_images_for_testing(

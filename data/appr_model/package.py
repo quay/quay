@@ -8,7 +8,12 @@ from data.appr_model import tag as tag_model
 
 
 def list_packages_query(
-    models_ref, namespace=None, media_type=None, search_query=None, username=None, limit=50,
+    models_ref,
+    namespace=None,
+    media_type=None,
+    search_query=None,
+    username=None,
+    limit=50,
 ):
     """
     List and filter repository by search query.

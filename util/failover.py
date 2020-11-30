@@ -19,28 +19,28 @@ class FailoverException(Exception):
 
 
 def failover(func):
-    """ Wraps a function such that it can be retried on specified failures.
-      Raises FailoverException when all failovers are exhausted.
-      Example:
+    """Wraps a function such that it can be retried on specified failures.
+    Raises FailoverException when all failovers are exhausted.
+    Example:
 
-      @failover
-      def get_google(scheme, use_www=False):
-        www = 'www.' if use_www else ''
-        try:
-          r = requests.get(scheme + '://' + www + 'google.com')
-        except requests.RequestException as ex:
-          raise FailoverException(ex)
-        return r
+    @failover
+    def get_google(scheme, use_www=False):
+      www = 'www.' if use_www else ''
+      try:
+        r = requests.get(scheme + '://' + www + 'google.com')
+      except requests.RequestException as ex:
+        raise FailoverException(ex)
+      return r
 
-      def GooglePingTest():
-        r = get_google(
-          (('http'), {'use_www': False}),
-          (('http'), {'use_www': True}),
-          (('https'), {'use_www': False}),
-          (('https'), {'use_www': True}),
-        )
-        print('Successfully contacted ' + r.url)
-  """
+    def GooglePingTest():
+      r = get_google(
+        (('http'), {'use_www': False}),
+        (('http'), {'use_www': True}),
+        (('https'), {'use_www': False}),
+        (('https'), {'use_www': True}),
+      )
+      print('Successfully contacted ' + r.url)
+    """
 
     @wraps(func)
     def wrapper(*args_sets):

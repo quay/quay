@@ -10,7 +10,13 @@ from endpoints.api.secscan import RepositoryImageSecurity, RepositoryManifestSec
 from test.fixtures import *
 
 
-@pytest.mark.parametrize("endpoint", [RepositoryImageSecurity, RepositoryManifestSecurity,])
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        RepositoryImageSecurity,
+        RepositoryManifestSecurity,
+    ],
+)
 def test_get_security_info_with_pull_secret(endpoint, client):
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     tag = registry_model.get_repo_tag(repository_ref, "latest")

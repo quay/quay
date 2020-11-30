@@ -9,7 +9,7 @@ from buildman.buildman_pb import buildman_pb2_grpc
 from buildman.build_token import (
     BUILD_JOB_REGISTRATION_TYPE,
     BUILD_JOB_TOKEN_TYPE,
-    InvalidBuildTokenException
+    InvalidBuildTokenException,
 )
 from data.database import BUILD_PHASE
 
@@ -36,7 +36,7 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
         context.set_code(code)
 
     def _decode_build_token(self, token, token_type):
-        """ Return the build token context, 
+        """Return the build token context,
         or an error message if there was an exception decoding the token."""
         msg = None
         try:
@@ -87,7 +87,7 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
             tag_names=build_args.get("tag_names", ""),
             base_image=buildman_pb2.BuildPack.BaseImage(
                 **build_args.get("base_image", {}),
-            )
+            ),
         )
 
         git_package = build_args.get("git")
@@ -116,7 +116,9 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
                 return buildman_pb2.HeartbeatResponse()
 
             job_id = decoded_token["job_id"]
-            yield buildman_pb2.HeartbeatResponse(reply=self._lifecycle_manager.job_heartbeat(job_id))
+            yield buildman_pb2.HeartbeatResponse(
+                reply=self._lifecycle_manager.job_heartbeat(job_id)
+            )
 
     def SetPhase(self, request, context):
         """Update the job phase."""
@@ -131,7 +133,9 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
         job_id = decoded_token["job_id"]
         phase_metadata = {}
         if request.HasField("pull_metadata"):
-            phase_metadata.update(MessageToDict(request.pull_metadata, preserving_proto_field_name=True))
+            phase_metadata.update(
+                MessageToDict(request.pull_metadata, preserving_proto_field_name=True)
+            )
 
         updated = self._lifecycle_manager.update_job_phase(
             job_id,
@@ -139,8 +143,7 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
             phase_metadata,
         )
         return buildman_pb2.SetPhaseResponse(
-            success=updated,
-            sequence_number=request.sequence_number
+            success=updated, sequence_number=request.sequence_number
         )
 
     def LogMessage(self, request_iterator, context):
@@ -169,8 +172,7 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
                 log_message = req.log_message
                 logged = self._lifecycle_manager.append_build_log(build_id, log_message)
                 yield buildman_pb2.LogMessageResponse(
-                    success=logged,
-                    sequence_number=sequence_number
+                    success=logged, sequence_number=sequence_number
                 )
                 last_sequence_number = sequence_number
 

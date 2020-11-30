@@ -11,7 +11,7 @@ from app import (
     build_logs,
     dockerfile_build_queue,
     instance_keys,
-    OVERRIDE_CONFIG_DIRECTORY
+    OVERRIDE_CONFIG_DIRECTORY,
 )
 from util.log import logfile_path
 

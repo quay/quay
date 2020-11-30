@@ -188,7 +188,8 @@ class OCIManifest(ManifestInterface):
     def config(self):
         config = self._parsed[OCI_MANIFEST_CONFIG_KEY]
         return OCIManifestConfig(
-            size=config[OCI_MANIFEST_SIZE_KEY], digest=config[OCI_MANIFEST_DIGEST_KEY],
+            size=config[OCI_MANIFEST_SIZE_KEY],
+            digest=config[OCI_MANIFEST_DIGEST_KEY],
         )
 
     @property

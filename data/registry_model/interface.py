@@ -55,7 +55,11 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def lookup_manifest_by_digest(
-        self, repository_ref, manifest_digest, allow_dead=False, require_available=False,
+        self,
+        repository_ref,
+        manifest_digest,
+        allow_dead=False,
+        require_available=False,
     ):
         """
         Looks up the manifest with the given digest under the given repository and returns it or
@@ -410,28 +414,28 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def populate_legacy_images_for_testing(self, manifest, storage):
-        """ 
+        """
         Populates legacy images for the given manifest, for testing only. This call
         will fail if called under non-testing code.
         """
 
     @abstractmethod
     def find_manifests_for_sec_notification(self, manifest_digest):
-        """ 
+        """
         Finds all manifests with the given digest that live in repositories that have
         registered security notifications.
         """
 
     @abstractmethod
     def lookup_secscan_notification_severities(self, repository):
-        """ 
+        """
         Returns the security notification severities for security events within
         a repository or None if none.
         """
 
     @abstractmethod
     def tag_names_for_manifest(self, manifest, limit):
-        """ 
+        """
         Returns the names of the tags that point to the given manifest, up to the given
         limit.
         """

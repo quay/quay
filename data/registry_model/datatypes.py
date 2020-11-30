@@ -275,8 +275,8 @@ class Tag(
 
     @property
     def manifest_layers_size(self):
-        """ Returns the compressed size of the layers of the manifest for the Tag or
-            None if none applicable or loaded.
+        """Returns the compressed size of the layers of the manifest for the Tag or
+        None if none applicable or loaded.
         """
         return self.manifest.layers_compressed_size
 
@@ -388,9 +388,9 @@ class Manifest(
         return legacy_id_handler
 
     def lookup_legacy_image(self, layer_index, retriever):
-        """ Looks up and returns the legacy image for index-th layer in this manifest
-            or None if none. The indexes here are from leaf to root, with index 0 being
-            the leaf.
+        """Looks up and returns the legacy image for index-th layer in this manifest
+        or None if none. The indexes here are from leaf to root, with index 0 being
+        the leaf.
         """
         # Retrieve the schema1 manifest. If none exists, legacy images are not supported.
         parsed = self.get_parsed_manifest()

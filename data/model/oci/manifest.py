@@ -59,7 +59,7 @@ class _ManifestAlreadyExists(Exception):
 
 
 def find_manifests_for_sec_notification(manifest_digest):
-    """ 
+    """
     Finds all manifests matching the given digest that live in a repository with a registered
     notification event for security scan results.
     """
@@ -375,14 +375,14 @@ def _build_blob_map(
     raise_on_error=False,
     require_empty_layer=True,
 ):
-    """ Builds a map containing the digest of each blob referenced by the given manifest,
-        to its associated Blob row in the database. This method also verifies that the blob
-        is accessible under the given repository. Returns None on error (unless raise_on_error
-        is specified). If require_empty_layer is set to True, the method will check if the manifest
-        references the special shared empty layer blob and, if so, add it to the map. Otherwise,
-        the empty layer blob is only returned if it was *explicitly* referenced in the manifest.
-        This is necessary because Docker V2_2/OCI manifests can implicitly reference an empty blob
-        layer for image layers that only change metadata.
+    """Builds a map containing the digest of each blob referenced by the given manifest,
+    to its associated Blob row in the database. This method also verifies that the blob
+    is accessible under the given repository. Returns None on error (unless raise_on_error
+    is specified). If require_empty_layer is set to True, the method will check if the manifest
+    references the special shared empty layer blob and, if so, add it to the map. Otherwise,
+    the empty layer blob is only returned if it was *explicitly* referenced in the manifest.
+    This is necessary because Docker V2_2/OCI manifests can implicitly reference an empty blob
+    layer for image layers that only change metadata.
     """
 
     # Ensure all the blobs in the manifest exist.

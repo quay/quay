@@ -48,12 +48,20 @@ SCOPE_MAX_REPO_ROLES.update(
 
 SCOPE_MAX_TEAM_ROLES = defaultdict(lambda: None)
 SCOPE_MAX_TEAM_ROLES.update(
-    {scopes.CREATE_REPO: "creator", scopes.DIRECT_LOGIN: "admin", scopes.ORG_ADMIN: "admin",}
+    {
+        scopes.CREATE_REPO: "creator",
+        scopes.DIRECT_LOGIN: "admin",
+        scopes.ORG_ADMIN: "admin",
+    }
 )
 
 SCOPE_MAX_USER_ROLES = defaultdict(lambda: None)
 SCOPE_MAX_USER_ROLES.update(
-    {scopes.READ_USER: "read", scopes.DIRECT_LOGIN: "admin", scopes.ADMIN_USER: "admin",}
+    {
+        scopes.READ_USER: "read",
+        scopes.DIRECT_LOGIN: "admin",
+        scopes.ADMIN_USER: "admin",
+    }
 )
 
 

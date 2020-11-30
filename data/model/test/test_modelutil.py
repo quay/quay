@@ -5,8 +5,25 @@ from data.model.modelutil import paginate
 from test.fixtures import *
 
 
-@pytest.mark.parametrize("page_size", [10, 20, 50, 100, 200, 500, 1000,])
-@pytest.mark.parametrize("descending", [False, True,])
+@pytest.mark.parametrize(
+    "page_size",
+    [
+        10,
+        20,
+        50,
+        100,
+        200,
+        500,
+        1000,
+    ],
+)
+@pytest.mark.parametrize(
+    "descending",
+    [
+        False,
+        True,
+    ],
+)
 def test_paginate(page_size, descending, initialized_db):
     # Add a bunch of rows into a test table (`Role`).
     for i in range(0, 522):

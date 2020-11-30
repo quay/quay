@@ -27,13 +27,19 @@ class Migration(object):
         migration_object = {
             "apiVersion": "dbaoperator.app-sre.redhat.com/v1alpha1",
             "kind": "DatabaseMigration",
-            "metadata": {"name": revision,},
+            "metadata": {
+                "name": revision,
+            },
             "spec": {
                 "previous": down_revision,
                 "migrationContainerSpec": {
                     "name": revision,
                     "image": "quay.io/quay/quay",
-                    "command": ["/quay-registry/quay-entrypoint.sh", "migrate", revision,],
+                    "command": [
+                        "/quay-registry/quay-entrypoint.sh",
+                        "migrate",
+                        revision,
+                    ],
                 },
                 "schemaHints": self._schema_hints,
             },
@@ -49,7 +55,10 @@ class Migration(object):
                         self.hint_add_column(subop.table_name, subop.column)
                     elif isinstance(subop, ops.CreateIndexOp):
                         self.hint_create_index(
-                            subop.index_name, subop.table_name, subop.columns, subop.unique,
+                            subop.index_name,
+                            subop.table_name,
+                            subop.columns,
+                            subop.unique,
                         )
                     elif isinstance(subop, ops.DropIndexOp):
                         self.hint_drop_index(subop.index_name, subop.table_name)
@@ -84,7 +93,10 @@ class Migration(object):
 
     def hint_drop_table(self, table_name, **kwargs):
         self._schema_hints.append(
-            {"operation": "dropTable", "table": table_name,}
+            {
+                "operation": "dropTable",
+                "table": table_name,
+            }
         )
 
     def hint_add_column(self, table_name, column, *args, **kwargs):
@@ -109,7 +121,11 @@ class Migration(object):
 
     def hint_drop_index(self, index_name, table_name, **kwargs):
         self._schema_hints.append(
-            {"operation": "dropIndex", "table": table_name, "indexName": index_name,}
+            {
+                "operation": "dropIndex",
+                "table": table_name,
+                "indexName": index_name,
+            }
         )
 
 

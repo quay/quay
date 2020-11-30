@@ -100,7 +100,9 @@ class FakeSecurityScanner(object):
             return {
                 "status_code": 201,
                 "content": json.dumps(report),
-                "headers": {"etag": self.indexer_state,},
+                "headers": {
+                    "etag": self.indexer_state,
+                },
             }
 
         @urlmatch(
@@ -126,7 +128,9 @@ class FakeSecurityScanner(object):
             return {
                 "status_code": 200,
                 "content": json.dumps(self.index_reports[manifest_hash]),
-                "headers": {"etag": self.indexer_state,},
+                "headers": {
+                    "etag": self.indexer_state,
+                },
             }
 
         @urlmatch(
@@ -152,7 +156,9 @@ class FakeSecurityScanner(object):
             return {
                 "status_code": 200,
                 "content": json.dumps(self.vulnerability_reports[manifest_hash]),
-                "headers": {"etag": self.indexer_state,},
+                "headers": {
+                    "etag": self.indexer_state,
+                },
             }
 
         @urlmatch(
@@ -175,10 +181,14 @@ class FakeSecurityScanner(object):
                 "content": json.dumps(
                     {
                         "notifications": self.notifications[notification_id],
-                        "page": {"size": len(self.notifications[notification_id]),},
+                        "page": {
+                            "size": len(self.notifications[notification_id]),
+                        },
                     }
                 ),
-                "headers": {"etag": self.indexer_state,},
+                "headers": {
+                    "etag": self.indexer_state,
+                },
             }
 
         @urlmatch(
@@ -201,7 +211,9 @@ class FakeSecurityScanner(object):
             return {
                 "status_code": 204,
                 "content": json.dumps({}),
-                "headers": {"etag": self.indexer_state,},
+                "headers": {
+                    "etag": self.indexer_state,
+                },
             }
 
         @all_requests

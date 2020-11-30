@@ -46,7 +46,9 @@ def token_view(token, include_code=False):
 
     if include_code:
         data.update(
-            {"token_code": model.appspecifictoken.get_full_token_string(token),}
+            {
+                "token_code": model.appspecifictoken.get_full_token_string(token),
+            }
         )
 
     return data
@@ -66,9 +68,14 @@ class AppTokens(ApiResource):
     schemas = {
         "NewToken": {
             "type": "object",
-            "required": ["title",],
+            "required": [
+                "title",
+            ],
             "properties": {
-                "title": {"type": "string", "description": "The user-defined title for the token",},
+                "title": {
+                    "type": "string",
+                    "description": "The user-defined title for the token",
+                },
             },
         },
     }

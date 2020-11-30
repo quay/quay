@@ -120,9 +120,7 @@ class BuildJob(object):
         Returns the tag to pull to prime the cache or None if none.
         """
         cached_tag = self._determine_cached_tag_by_tag()
-        logger.debug(
-            "Determined cached tag %s for %s: %s", cached_tag, base_image_id
-        )
+        logger.debug("Determined cached tag %s for %s: %s", cached_tag, base_image_id)
         return cached_tag
 
     def _determine_cached_tag_by_tag(self):

@@ -9,7 +9,15 @@ from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 
 
-@pytest.mark.parametrize("query", [(""), ("simple"), ("public"), ("repository"),])
+@pytest.mark.parametrize(
+    "query",
+    [
+        (""),
+        ("simple"),
+        ("public"),
+        ("repository"),
+    ],
+)
 def test_repository_search(query, client):
     # Prime the caches.
     database.Repository.kind.get_id("image")
@@ -24,7 +32,14 @@ def test_repository_search(query, client):
             assert len(result["results"])
 
 
-@pytest.mark.parametrize("query", [("simple"), ("public"), ("repository"),])
+@pytest.mark.parametrize(
+    "query",
+    [
+        ("simple"),
+        ("public"),
+        ("repository"),
+    ],
+)
 def test_search_query_count(query, client):
     with client_with_identity("devtable", client) as cl:
         params = {"query": query}
@@ -37,7 +52,15 @@ def test_search_query_count(query, client):
     os.environ.get("TEST_DATABASE_URI", "").find("mysql") >= 0,
     reason="MySQL FULLTEXT indexes don't update synchronously",
 )
-@pytest.mark.parametrize("page_count", [1, 2, 4, 6,])
+@pytest.mark.parametrize(
+    "page_count",
+    [
+        1,
+        2,
+        4,
+        6,
+    ],
+)
 def test_repository_search_pagination(page_count, client):
     # Create at least a few pages of results.
     all_repositories = set()

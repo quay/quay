@@ -24,6 +24,8 @@ def test_robot_permission(repository, username, expected_code, client):
             RepositoryUserPermission,
             "PUT",
             {"repository": repository, "username": username},
-            body={"role": "read",},
+            body={
+                "role": "read",
+            },
             expected_code=expected_code,
         )

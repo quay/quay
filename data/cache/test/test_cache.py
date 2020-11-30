@@ -23,7 +23,13 @@ class MockClient(object):
         pass
 
 
-@pytest.mark.parametrize("cache_type", [(NoopDataModelCache), (InMemoryDataModelCache),])
+@pytest.mark.parametrize(
+    "cache_type",
+    [
+        (NoopDataModelCache),
+        (InMemoryDataModelCache),
+    ],
+)
 def test_caching(cache_type):
     key = CacheKey("foo", "60m")
     cache = cache_type()

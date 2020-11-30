@@ -118,7 +118,14 @@ def test_basic_config(tmpdir_factory):
         assert provider.get_config()["FOO"] == "bar"
 
 
-@pytest.mark.parametrize("filepath", ["foo", "foo/meh", "foo/bar/baz",])
+@pytest.mark.parametrize(
+    "filepath",
+    [
+        "foo",
+        "foo/meh",
+        "foo/bar/baz",
+    ],
+)
 def test_remove_file(filepath, tmpdir_factory):
     basic_files = {
         filepath: "foo",

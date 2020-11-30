@@ -21,20 +21,61 @@ def test_render_email():
 @pytest.mark.parametrize(
     "template_name, params",
     [
-        ("passwordchanged", {"username": "someusername",}),
-        ("emailchanged", {"username": "someusername", "new_email": "new@example.com",}),
-        ("changeemail", {"username": "someusername", "token": "sometoken",}),
-        ("confirmemail", {"username": "someusername", "token": "sometoken",}),
+        (
+            "passwordchanged",
+            {
+                "username": "someusername",
+            },
+        ),
+        (
+            "emailchanged",
+            {
+                "username": "someusername",
+                "new_email": "new@example.com",
+            },
+        ),
+        (
+            "changeemail",
+            {
+                "username": "someusername",
+                "token": "sometoken",
+            },
+        ),
+        (
+            "confirmemail",
+            {
+                "username": "someusername",
+                "token": "sometoken",
+            },
+        ),
         (
             "repoauthorizeemail",
-            {"namespace": "someusername", "repository": "somerepo", "token": "sometoken",},
+            {
+                "namespace": "someusername",
+                "repository": "somerepo",
+                "token": "sometoken",
+            },
         ),
         (
             "orgrecovery",
-            {"organization": "someusername", "admin_usernames": ["foo", "bar", "baz"],},
+            {
+                "organization": "someusername",
+                "admin_usernames": ["foo", "bar", "baz"],
+            },
         ),
-        ("recovery", {"email": "foo@example.com", "token": "sometoken",}),
-        ("paymentfailure", {"username": "someusername",}),
+        (
+            "recovery",
+            {
+                "email": "foo@example.com",
+                "token": "sometoken",
+            },
+        ),
+        (
+            "paymentfailure",
+            {
+                "username": "someusername",
+            },
+        ),
         (
             "teaminvite",
             {

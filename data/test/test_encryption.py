@@ -32,7 +32,13 @@ from data.encryption import FieldEncrypter, _VERSIONS, DecryptionFailureExceptio
         "107383705745765174750346070528443780244192102846031525796571939503548634055845",
     ],
 )
-@pytest.mark.parametrize("use_valid_key", [True, False,])
+@pytest.mark.parametrize(
+    "use_valid_key",
+    [
+        True,
+        False,
+    ],
+)
 def test_encryption(test_data, version, secret_key, use_valid_key):
     encrypter = FieldEncrypter(secret_key, version)
     encrypted = encrypter.encrypt_value(test_data, field_max_length=255)

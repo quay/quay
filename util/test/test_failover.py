@@ -32,7 +32,13 @@ def my_failover_func(i, should_raise=None):
     raise FailoverException(FinishedException())
 
 
-@pytest.mark.parametrize("stop_on,exception", [(10, None), (5, IndexError),])
+@pytest.mark.parametrize(
+    "stop_on,exception",
+    [
+        (10, None),
+        (5, IndexError),
+    ],
+)
 def test_readonly_failover(stop_on, exception):
     """
     Generates failover arguments and checks against a counter to ensure that the failover function

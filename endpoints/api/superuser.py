@@ -346,8 +346,14 @@ class SuperUserManagement(ApiResource):
             "type": "object",
             "description": "Description of updates for a user",
             "properties": {
-                "password": {"type": "string", "description": "The new password for the user",},
-                "email": {"type": "string", "description": "The new e-mail address for the user",},
+                "password": {
+                    "type": "string",
+                    "description": "The new password for the user",
+                },
+                "email": {
+                    "type": "string",
+                    "description": "The new e-mail address for the user",
+                },
                 "enabled": {"type": "boolean", "description": "Whether the user is enabled"},
             },
         },
@@ -509,7 +515,10 @@ class SuperUserOrganizationManagement(ApiResource):
             "type": "object",
             "description": "Description of updates for an organization",
             "properties": {
-                "name": {"type": "string", "description": "The new name for the organization",}
+                "name": {
+                    "type": "string",
+                    "description": "The new name for the organization",
+                }
             },
         },
     }
@@ -587,7 +596,10 @@ class SuperUserServiceKeyManagement(ApiResource):
                     "type": "string",
                     "description": "The service authenticating with this key",
                 },
-                "name": {"type": "string", "description": "The friendly name of a service key",},
+                "name": {
+                    "type": "string",
+                    "description": "The friendly name of a service key",
+                },
                 "metadata": {
                     "type": "object",
                     "description": "The key/value pairs of this key's metadata",
@@ -611,7 +623,11 @@ class SuperUserServiceKeyManagement(ApiResource):
         if SuperUserPermission().can():
             keys = pre_oci_model.list_all_service_keys()
 
-            return jsonify({"keys": [key.to_dict() for key in keys],})
+            return jsonify(
+                {
+                    "keys": [key.to_dict() for key in keys],
+                }
+            )
 
         raise Unauthorized()
 
@@ -698,7 +714,10 @@ class SuperUserServiceKey(ApiResource):
             "type": "object",
             "description": "Description of updates for a service key",
             "properties": {
-                "name": {"type": "string", "description": "The friendly name of a service key",},
+                "name": {
+                    "type": "string",
+                    "description": "The friendly name of a service key",
+                },
                 "metadata": {
                     "type": "object",
                     "description": "The key/value pairs of this key's metadata",
@@ -816,7 +835,12 @@ class SuperUserServiceKeyApproval(ApiResource):
             "id": "ApproveServiceKey",
             "type": "object",
             "description": "Information for approving service keys",
-            "properties": {"notes": {"type": "string", "description": "Optional approval notes",},},
+            "properties": {
+                "notes": {
+                    "type": "string",
+                    "description": "Optional approval notes",
+                },
+            },
         },
     }
 

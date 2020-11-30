@@ -27,7 +27,9 @@ class RepositoryTokenList(RepositoryParamResource):
         "NewToken": {
             "type": "object",
             "description": "Description of a new token.",
-            "required": ["friendlyName",],
+            "required": [
+                "friendlyName",
+            ],
             "properties": {
                 "friendlyName": {
                     "type": "string",
@@ -43,7 +45,9 @@ class RepositoryTokenList(RepositoryParamResource):
         """
         List the tokens for the specified repository.
         """
-        return {"message": "Handling of access tokens is no longer supported",}, 410
+        return {
+            "message": "Handling of access tokens is no longer supported",
+        }, 410
 
     @require_repo_admin
     @nickname("createToken")
@@ -52,7 +56,9 @@ class RepositoryTokenList(RepositoryParamResource):
         """
         Create a new repository token.
         """
-        return {"message": "Creation of access tokens is no longer supported",}, 410
+        return {
+            "message": "Creation of access tokens is no longer supported",
+        }, 410
 
 
 @resource("/v1/repository/<apirepopath:repository>/tokens/<code>")
@@ -67,12 +73,18 @@ class RepositoryToken(RepositoryParamResource):
         "TokenPermission": {
             "type": "object",
             "description": "Description of a token permission",
-            "required": ["role",],
+            "required": [
+                "role",
+            ],
             "properties": {
                 "role": {
                     "type": "string",
                     "description": "Role to use for the token",
-                    "enum": ["read", "write", "admin",],
+                    "enum": [
+                        "read",
+                        "write",
+                        "admin",
+                    ],
                 },
             },
         },
@@ -84,7 +96,9 @@ class RepositoryToken(RepositoryParamResource):
         """
         Fetch the specified repository token information.
         """
-        return {"message": "Handling of access tokens is no longer supported",}, 410
+        return {
+            "message": "Handling of access tokens is no longer supported",
+        }, 410
 
     @require_repo_admin
     @nickname("changeToken")
@@ -93,7 +107,9 @@ class RepositoryToken(RepositoryParamResource):
         """
         Update the permissions for the specified repository token.
         """
-        return {"message": "Handling of access tokens is no longer supported",}, 410
+        return {
+            "message": "Handling of access tokens is no longer supported",
+        }, 410
 
     @require_repo_admin
     @nickname("deleteToken")
@@ -101,4 +117,6 @@ class RepositoryToken(RepositoryParamResource):
         """
         Delete the repository token.
         """
-        return {"message": "Handling of access tokens is no longer supported",}, 410
+        return {
+            "message": "Handling of access tokens is no longer supported",
+        }, 410

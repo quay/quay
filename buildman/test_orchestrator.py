@@ -6,7 +6,14 @@ from unittest.mock import patch, Mock
 import fakeredis
 from freezegun import freeze_time
 
-from buildman.orchestrator import MemoryOrchestrator, RedisOrchestrator, REDIS_EXPIRED_SUFFIX, REDIS_EXPIRING_SUFFIX, KeyEvent, KeyChange
+from buildman.orchestrator import (
+    MemoryOrchestrator,
+    RedisOrchestrator,
+    REDIS_EXPIRED_SUFFIX,
+    REDIS_EXPIRING_SUFFIX,
+    KeyEvent,
+    KeyChange,
+)
 from util import slash_join
 
 from test.fixtures import *
@@ -15,17 +22,17 @@ from test.fixtures import *
 @pytest.fixture()
 def fake_redis():
     def init_fake_strict_redis(
-            host="127.0.0.1",
-            port=6379,
-            password=None,
-            db=0,
-            ssl_certfile=None,
-            ssl_keyfile=None,
-            ssl_ca_certs=None,
-            ssl=False,
-            socket_connect_timeout=1,
-            socket_timeout=2,
-            health_check_interval=2,
+        host="127.0.0.1",
+        port=6379,
+        password=None,
+        db=0,
+        ssl_certfile=None,
+        ssl_keyfile=None,
+        ssl_ca_certs=None,
+        ssl=False,
+        socket_connect_timeout=1,
+        socket_timeout=2,
+        health_check_interval=2,
     ):
         fake_client = fakeredis.FakeStrictRedis(
             host=host,
@@ -75,18 +82,18 @@ def test_get_prefixed_keys(orchestrator):
     for x in range(keys_to_generate):
         orchestrator.set_key(slash_join(key_prefix, str(x)), "test_val")
         generated_keys.add(slash_join(key_prefix, str(x)))
-        
+
     assert len(orchestrator.get_prefixed_keys(key_prefix)) == keys_to_generate
-        
+
     keys_to_remove = randrange(1, keys_to_generate)
     for x in range(keys_to_remove):
         orchestrator.delete_key(slash_join(key_prefix, str(x)))
         generated_keys.remove(slash_join(key_prefix, str(x)))
-    
+
     assert len(orchestrator.get_prefixed_keys(key_prefix)) == keys_to_generate - keys_to_remove
 
     for k in generated_keys:
-       orchestrator.delete_key(k)
+        orchestrator.delete_key(k)
     assert len(orchestrator.get_prefixed_keys(key_prefix)) == 0
 
 
@@ -105,13 +112,13 @@ def test_set_key(orchestrator):
     # Try overwriting some existing key without setting overwrite
     with pytest.raises(KeyError):
         orchestrator.set_key(some_key, "test_val_3")
-    
+
     # Try overwriting some existing key with overwrite set.
     # Also expects a new expiration key to be created.
     orchestrator.set_key(some_key, "test_val_4", overwrite=True, expiration=360)
     assert orchestrator.get_key(some_key) == "test_val_4"
     assert orchestrator.get_key(slash_join(some_key, REDIS_EXPIRING_SUFFIX)) is not None
-    
+
 
 def test_on_key_change(orchestrator):
     key_prefix = "building/"
@@ -129,7 +136,7 @@ def test_on_key_change(orchestrator):
             "test_val",
         )
     )
-    
+
     # SET
     orchestrator.set_key(slash_join(key_prefix, "key1"), "test_val", overwrite=True)
     time.sleep(0.1)
@@ -179,4 +186,3 @@ def test_delete_key(orchestrator):
     orchestrator.delete_key(slash_join(key_prefix, "key1"))
     with pytest.raises(KeyError):
         orchestrator.get_key(slash_join(key_prefix, "key1"))
-        

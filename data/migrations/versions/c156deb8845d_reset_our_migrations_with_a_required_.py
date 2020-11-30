@@ -1259,11 +1259,22 @@ def upgrade(op, tables, tester):
         "tagmanifestlabel_repository_id", "tagmanifestlabel", ["repository_id"], unique=False
     )
 
-    op.bulk_insert(tables.accesstokenkind, [{"name": "build-worker"}, {"name": "pushpull-token"},])
+    op.bulk_insert(
+        tables.accesstokenkind,
+        [
+            {"name": "build-worker"},
+            {"name": "pushpull-token"},
+        ],
+    )
 
     op.bulk_insert(
         tables.buildtriggerservice,
-        [{"name": "github"}, {"name": "gitlab"}, {"name": "bitbucket"}, {"name": "custom-git"},],
+        [
+            {"name": "github"},
+            {"name": "gitlab"},
+            {"name": "bitbucket"},
+            {"name": "custom-git"},
+        ],
     )
 
     op.bulk_insert(
@@ -1304,9 +1315,20 @@ def upgrade(op, tables, tester):
         ],
     )
 
-    op.bulk_insert(tables.imagestoragesignaturekind, [{"name": "gpg2"},])
+    op.bulk_insert(
+        tables.imagestoragesignaturekind,
+        [
+            {"name": "gpg2"},
+        ],
+    )
 
-    op.bulk_insert(tables.imagestoragetransformation, [{"name": "squash"}, {"name": "aci"},])
+    op.bulk_insert(
+        tables.imagestoragetransformation,
+        [
+            {"name": "squash"},
+            {"name": "aci"},
+        ],
+    )
 
     op.bulk_insert(
         tables.labelsourcetype,
@@ -1392,7 +1414,13 @@ def upgrade(op, tables, tester):
         ],
     )
 
-    op.bulk_insert(tables.mediatype, [{"name": "text/plain"}, {"name": "application/json"},])
+    op.bulk_insert(
+        tables.mediatype,
+        [
+            {"name": "text/plain"},
+            {"name": "application/json"},
+        ],
+    )
 
     op.bulk_insert(
         tables.notificationkind,
@@ -1412,11 +1440,31 @@ def upgrade(op, tables, tester):
         ],
     )
 
-    op.bulk_insert(tables.role, [{"name": "admin"}, {"name": "write"}, {"name": "read"},])
+    op.bulk_insert(
+        tables.role,
+        [
+            {"name": "admin"},
+            {"name": "write"},
+            {"name": "read"},
+        ],
+    )
 
-    op.bulk_insert(tables.teamrole, [{"name": "admin"}, {"name": "creator"}, {"name": "member"},])
+    op.bulk_insert(
+        tables.teamrole,
+        [
+            {"name": "admin"},
+            {"name": "creator"},
+            {"name": "member"},
+        ],
+    )
 
-    op.bulk_insert(tables.visibility, [{"name": "public"}, {"name": "private"},])
+    op.bulk_insert(
+        tables.visibility,
+        [
+            {"name": "public"},
+            {"name": "private"},
+        ],
+    )
 
     # ### population of test data ### #
     tester.populate_table(
@@ -1504,7 +1552,11 @@ def upgrade(op, tables, tester):
     )
 
     tester.populate_table(
-        "messages", [("content", tester.TestDataType.String), ("uuid", tester.TestDataType.UUID),]
+        "messages",
+        [
+            ("content", tester.TestDataType.String),
+            ("uuid", tester.TestDataType.UUID),
+        ],
     )
 
     tester.populate_table(

@@ -94,13 +94,13 @@ class BaseAvatar(object):
         return self.get_data(external_user.username, external_user.email, "user")
 
     def get_data(self, name, email_or_id, kind="user"):
-        """ Computes and returns the full data block for the avatar:
+        """Computes and returns the full data block for the avatar:
         {
           'name': name,
           'hash': The gravatar hash, if any.
           'color': The color for the avatar
         }
-    """
+        """
         colors = self.colors
 
         # Note: email_or_id may be None if gotten from external auth when email is disabled,

@@ -22,9 +22,9 @@ _FORCE_MASTER_COUNTER_ATTRIBUTE = "_force_master_nesting"
 
 @contextmanager
 def disallow_replica_use(db):
-    """ When used, any queries run under this context manager will hit the master
-        node and be disallowed from using the read replica(s). NOTE: This means if
-        the master node is unavailable, the underlying queries will *fail*.
+    """When used, any queries run under this context manager will hit the master
+    node and be disallowed from using the read replica(s). NOTE: This means if
+    the master node is unavailable, the underlying queries will *fail*.
     """
     database = db.obj
     counter = getattr(database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, 0)

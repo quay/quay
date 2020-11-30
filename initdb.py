@@ -624,11 +624,21 @@ def populate_database(minimal=False):
     )
 
     __generate_repository(
-        new_user_4, "randomrepo", "Random repo repository.", False, [], (4, [], ["latest", "prod"]),
+        new_user_4,
+        "randomrepo",
+        "Random repo repository.",
+        False,
+        [],
+        (4, [], ["latest", "prod"]),
     )
 
     simple_repo = __generate_repository(
-        new_user_1, "simple", "Simple repository.", False, [], (4, [], ["latest", "prod"]),
+        new_user_1,
+        "simple",
+        "Simple repository.",
+        False,
+        [],
+        (4, [], ["latest", "prod"]),
     )
 
     # Add some labels to the latest tag's manifest.
@@ -727,7 +737,12 @@ def populate_database(minimal=False):
     )
 
     trusted_repo = __generate_repository(
-        new_user_1, "trusted", "Trusted repository.", False, [], (4, [], ["latest", "prod"]),
+        new_user_1,
+        "trusted",
+        "Trusted repository.",
+        False,
+        [],
+        (4, [], ["latest", "prod"]),
     )
     trusted_repo.trust_enabled = True
     trusted_repo.save()
@@ -986,7 +1001,12 @@ def populate_database(minimal=False):
     mirror = model.repo_mirror.enable_mirroring_for_repository(*mirror_args, **mirror_kwargs)
 
     read_only_repo = __generate_repository(
-        new_user_1, "readonly", "Read-Only Repo.", False, [], (4, [], ["latest", "prod"]),
+        new_user_1,
+        "readonly",
+        "Read-Only Repo.",
+        False,
+        [],
+        (4, [], ["latest", "prod"]),
     )
     read_only_repo.state = RepositoryState.READ_ONLY
     read_only_repo.save()

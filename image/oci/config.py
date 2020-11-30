@@ -150,7 +150,9 @@ class OCIConfig(object):
                     CONFIG_DIFF_IDS_KEY: {
                         "type": "array",
                         "description": "An array of layer content hashes (DiffIDs), in order from first to last.",
-                        "items": {"type": "string",},
+                        "items": {
+                            "type": "string",
+                        },
                     },
                 },
                 "required": [CONFIG_TYPE_KEY, CONFIG_DIFF_IDS_KEY],

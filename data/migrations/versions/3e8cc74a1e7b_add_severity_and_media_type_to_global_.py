@@ -42,7 +42,12 @@ def upgrade(op, tables, tester):
     )
     # ### end Alembic commands ###
 
-    op.bulk_insert(tables.mediatype, [{"name": "text/markdown"},])
+    op.bulk_insert(
+        tables.mediatype,
+        [
+            {"name": "text/markdown"},
+        ],
+    )
 
     # ### population of test data ### #
     tester.populate_column("messages", "media_type_id", tester.TestDataType.Foreign("mediatype"))

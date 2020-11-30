@@ -238,16 +238,30 @@ def downgrade(op, tables, tester):
     # ### end Alembic commands ###
 
     blobplacementlocation_table = table(
-        "blobplacementlocation", column("id", sa.Integer()), column("name", sa.String()),
+        "blobplacementlocation",
+        column("id", sa.Integer()),
+        column("name", sa.String()),
     )
 
     op.bulk_insert(
-        blobplacementlocation_table, [{"name": "local_eu"}, {"name": "local_us"},],
+        blobplacementlocation_table,
+        [
+            {"name": "local_eu"},
+            {"name": "local_us"},
+        ],
     )
 
-    tagkind_table = table("tagkind", column("id", sa.Integer()), column("name", sa.String()),)
+    tagkind_table = table(
+        "tagkind",
+        column("id", sa.Integer()),
+        column("name", sa.String()),
+    )
 
     op.bulk_insert(
         tagkind_table,
-        [{"id": 1, "name": "tag"}, {"id": 2, "name": "release"}, {"id": 3, "name": "channel"},],
+        [
+            {"id": 1, "name": "tag"},
+            {"id": 2, "name": "release"},
+            {"id": 3, "name": "channel"},
+        ],
     )

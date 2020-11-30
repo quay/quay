@@ -199,8 +199,20 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         # TODO(alecmerdler): We want to index newer manifests first, while backfilling older manifests...
         iterator = itertools.chain(
-            yield_random_entries(not_indexed_query, Manifest.id, batch_size, max_id, min_id,),
-            yield_random_entries(index_error_query, Manifest.id, batch_size, max_id, min_id,),
+            yield_random_entries(
+                not_indexed_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
+            yield_random_entries(
+                index_error_query,
+                Manifest.id,
+                batch_size,
+                max_id,
+                min_id,
+            ),
             yield_random_entries(
                 lambda: needs_reindexing_query(indexer_state.get("state", "")),
                 Manifest.id,
@@ -358,7 +370,7 @@ class V4SecurityScanner(SecurityScannerInterface):
 
 def features_for(report):
     """
-    Transforms a Clair v4 `VulnerabilityReport` dict into the standard shape of a 
+    Transforms a Clair v4 `VulnerabilityReport` dict into the standard shape of a
     Quay Security scanner response.
     """
 

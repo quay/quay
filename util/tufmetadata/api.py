@@ -266,7 +266,13 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
         """
         Generate a registry auth token for apostille.
         """
-        access = [{"type": "repository", "name": gun, "actions": actions,}]
+        access = [
+            {
+                "type": "repository",
+                "name": gun,
+                "actions": actions,
+            }
+        ]
         context, subject = build_context_and_subject(
             auth_context=None, tuf_roots={gun: SIGNER_TUF_ROOT}
         )

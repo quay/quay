@@ -38,7 +38,12 @@ def upgrade(op, tables, tester):
     op.create_index("userprompt_user_id_kind_id", "userprompt", ["user_id", "kind_id"], unique=True)
     ### end Alembic commands ###
 
-    op.bulk_insert(tables.userpromptkind, [{"name": "confirm_username"},])
+    op.bulk_insert(
+        tables.userpromptkind,
+        [
+            {"name": "confirm_username"},
+        ],
+    )
 
     # ### population of test data ### #
     tester.populate_table(

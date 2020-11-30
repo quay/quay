@@ -67,8 +67,14 @@ def fake_elasticsearch(allow_wildcard=True):
         docs[index_name].append(item)
         return {
             "status_code": 204,
-            "headers": {"Content-Type": "application/json",},
-            "content": json.dumps({"result": "created",}),
+            "headers": {
+                "Content-Type": "application/json",
+            },
+            "content": json.dumps(
+                {
+                    "result": "created",
+                }
+            ),
         }
 
     @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)$", method="DELETE")
@@ -86,7 +92,9 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+            },
             "content": {"acknowledged": True},
         }
 
@@ -107,7 +115,9 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+            },
             "content": json.dumps(found),
         }
 
@@ -189,7 +199,9 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+            },
             "content": json.dumps({"count": len(found)}),
         }
 
@@ -200,7 +212,9 @@ def fake_elasticsearch(allow_wildcard=True):
         if scroll_id in scrolls:
             return {
                 "status_code": 200,
-                "headers": {"Content-Type": "application/json",},
+                "headers": {
+                    "Content-Type": "application/json",
+                },
                 "content": json.dumps(scrolls[scroll_id]),
             }
 
@@ -346,8 +360,14 @@ def fake_elasticsearch(allow_wildcard=True):
             return by_field_name
 
         final_result = {
-            "hits": {"hits": found, "total": len(found),},
-            "_shards": {"successful": 1, "total": 1,},
+            "hits": {
+                "hits": found,
+                "total": len(found),
+            },
+            "_shards": {
+                "successful": 1,
+                "total": 1,
+            },
             "aggregations": _aggregate(request, found),
         }
 
@@ -358,13 +378,21 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return {
             "status_code": 200,
-            "headers": {"Content-Type": "application/json",},
+            "headers": {
+                "Content-Type": "application/json",
+            },
             "content": json.dumps(final_result),
         }
 
     @urlmatch(netloc=FAKE_ES_HOST)
     def catchall_handler(url, request):
-        print("Unsupported URL: %s %s" % (request.method, url,))
+        print(
+            "Unsupported URL: %s %s"
+            % (
+                request.method,
+                url,
+            )
+        )
         return {"status_code": 501}
 
     handlers = [

@@ -50,7 +50,9 @@ _TEST_RESPONSE = {
         (
             {
                 "LOGS_MODEL": "not-elasticsearch",
-                "LOGS_MODEL_CONFIG": {"elasticsearch_config": {},},
+                "LOGS_MODEL_CONFIG": {
+                    "elasticsearch_config": {},
+                },
             },
             ConfigValidationException,
         ),

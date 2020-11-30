@@ -34,6 +34,12 @@ def test_token(header, expected_result):
 def test_valid_grant():
     header = "token " + generate_signed_token({"a": "b"}, {"c": "d"})
     expected = ValidateResult(
-        AuthKind.signed_grant, signed_data={"grants": {"a": "b",}, "user_context": {"c": "d"},}
+        AuthKind.signed_grant,
+        signed_data={
+            "grants": {
+                "a": "b",
+            },
+            "user_context": {"c": "d"},
+        },
     )
     assert validate_signed_grant(header) == expected

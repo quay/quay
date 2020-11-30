@@ -4,11 +4,12 @@ import logging
 
 from app import instance_keys
 from util.security import jwtutil
-from util.security.registry_jwt import \
-    generate_bearer_token, \
-    InvalidBearerTokenException, \
-    ALGORITHM, \
-    JWT_CLOCK_SKEW_SECONDS
+from util.security.registry_jwt import (
+    generate_bearer_token,
+    InvalidBearerTokenException,
+    ALGORITHM,
+    JWT_CLOCK_SKEW_SECONDS,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ BUILD_TOKEN_CONTEXT_SCHEMA = {
             "type": "number",
             "description": "The number of seconds until the job expires",
         },
-    }
+    },
 }
 
 
@@ -54,7 +55,7 @@ def build_token(aud, token_type, build_id, job_id, expiration, instance_keys):
         "token_type": token_type,
         "build_id": build_id,
         "job_id": job_id,
-        "expiration": expiration
+        "expiration": expiration,
     }
 
     token = generate_bearer_token(aud, ANONYMOUS_SUB, token_data, {}, expiration, instance_keys)
@@ -87,7 +88,7 @@ def verify_build_token(token, aud, token_type, instance_keys):
             algorithms=[ALGORITHM],
             audience=aud,
             issuer=instance_keys.service_name,
-            leeway=JWT_CLOCK_SKEW_SECONDS
+            leeway=JWT_CLOCK_SKEW_SECONDS,
         )
     except jwtutil.InvalidTokenError as ite:
         logger.error("Invalid token reason: %s", ite)
@@ -99,19 +100,25 @@ def verify_build_token(token, aud, token_type, instance_keys):
     if payload["sub"] != ANONYMOUS_SUB:
         raise InvalidBuildTokenException("Wrong sub field in JWT")
 
-    if ("context" not in payload 
+    if (
+        "context" not in payload
         or not payload["context"]["token_type"]
         or not payload["context"]["build_id"]
         or not payload["context"]["job_id"]
-        or not payload["context"]["expiration"]):
+        or not payload["context"]["expiration"]
+    ):
         raise InvalidBuildTokenException("Missing context field in JWT")
 
     try:
         jsonschema.validate(payload["context"], BUILD_TOKEN_CONTEXT_SCHEMA)
     except jsonschema.ValidationError:
-        raise InvalidBuildTokenException("Unable to validate build token context schema: malformed context")
+        raise InvalidBuildTokenException(
+            "Unable to validate build token context schema: malformed context"
+        )
 
     if payload["context"]["token_type"] != token_type:
-        raise InvalidBuildTokenException("Build token type in JWT does not match expected type: %s" % token_type)
+        raise InvalidBuildTokenException(
+            "Build token type in JWT does not match expected type: %s" % token_type
+        )
 
     return payload

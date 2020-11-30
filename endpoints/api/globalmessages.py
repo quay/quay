@@ -39,8 +39,14 @@ class GlobalUserMessages(ApiResource):
                     "itemType": {
                         "type": "object",
                         "properties": {
-                            "uuid": {"type": "string", "description": "The message id",},
-                            "content": {"type": "string", "description": "The actual message",},
+                            "uuid": {
+                                "type": "string",
+                                "description": "The message id",
+                            },
+                            "content": {
+                                "type": "string",
+                                "description": "The actual message",
+                            },
                             "media_type": {
                                 "type": "string",
                                 "description": "The media type of the message",
@@ -64,9 +70,16 @@ class GlobalUserMessages(ApiResource):
                 "message": {
                     "type": "object",
                     "description": "A single message",
-                    "required": ["content", "media_type", "severity",],
+                    "required": [
+                        "content",
+                        "media_type",
+                        "severity",
+                    ],
                     "properties": {
-                        "content": {"type": "string", "description": "The actual message",},
+                        "content": {
+                            "type": "string",
+                            "description": "The actual message",
+                        },
                         "media_type": {
                             "type": "string",
                             "description": "The media type of the message",

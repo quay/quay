@@ -16,7 +16,11 @@ from test.fixtures import *
 
 
 @pytest.mark.parametrize(
-    "method, endpoint", [("GET", "download_blob"), ("HEAD", "check_blob_exists"),]
+    "method, endpoint",
+    [
+        ("GET", "download_blob"),
+        ("HEAD", "check_blob_exists"),
+    ],
 )
 def test_blob_caching(method, endpoint, client, app):
     digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
@@ -29,7 +33,13 @@ def test_blob_caching(method, endpoint, client, app):
     }
 
     user = model.user.get_user("devtable")
-    access = [{"type": "repository", "name": "devtable/simple", "actions": ["pull"],}]
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull"],
+        }
+    ]
 
     context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
     token = generate_bearer_token(
@@ -102,11 +112,21 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
     }
 
     user = model.user.get_user(username)
-    access = [{"type": "repository", "name": "devtable/building", "actions": ["pull", "push"],}]
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/building",
+            "actions": ["pull", "push"],
+        }
+    ]
 
     if source_repo.find(username) == 0:
         access.append(
-            {"type": "repository", "name": source_repo, "actions": ["pull"],}
+            {
+                "type": "repository",
+                "name": source_repo,
+                "actions": ["pull"],
+            }
         )
 
     context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
@@ -140,7 +160,13 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
 
 def test_blob_upload_offset(client, app):
     user = model.user.get_user("devtable")
-    access = [{"type": "repository", "name": "devtable/simple", "actions": ["pull", "push"],}]
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull", "push"],
+        }
+    ]
 
     context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
     token = generate_bearer_token(

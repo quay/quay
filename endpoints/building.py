@@ -136,7 +136,10 @@ def start_build(repository, prepared_build, pull_robot_name=None):
 
     # TODO: remove when more endpoints have been converted to using interfaces
     repo = AttrDict(
-        {"namespace_name": repository.namespace_user.username, "name": repository.name,}
+        {
+            "namespace_name": repository.namespace_user.username,
+            "name": repository.name,
+        }
     )
 
     spawn_notification(

@@ -529,14 +529,20 @@ def test_process_notification_page(initialized_db, set_secscan_config):
     results = list(
         secscan.process_notification_page(
             [
-                {"reason": "removed",},
+                {
+                    "reason": "removed",
+                },
                 {
                     "reason": "added",
                     "manifest": "sha256:abcd",
                     "vulnerability": {
                         "normalized_severity": "s",
                         "description": "d",
-                        "package": {"id": "42", "name": "p", "version": "v0.0.1",},
+                        "package": {
+                            "id": "42",
+                            "name": "p",
+                            "version": "v0.0.1",
+                        },
                         "name": "n",
                         "fixed_in_version": "f",
                         "links": "l",

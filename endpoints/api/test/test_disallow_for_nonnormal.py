@@ -28,7 +28,13 @@ TRIGGER_ARGS = {"trigger_uuid": "1234"}
 FIELD_ARGS = {"trigger_uuid": "1234", "field_name": "foobar"}
 
 
-@pytest.mark.parametrize("state", [RepositoryState.MIRROR, RepositoryState.READ_ONLY,])
+@pytest.mark.parametrize(
+    "state",
+    [
+        RepositoryState.MIRROR,
+        RepositoryState.READ_ONLY,
+    ],
+)
 @pytest.mark.parametrize(
     "resource, method, params",
     [

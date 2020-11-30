@@ -110,7 +110,14 @@ def test_stream_write_error():
         assert not engine.exists(_TEST_PATH)
 
 
-@pytest.mark.parametrize("chunk_count", [0, 1, 50,])
+@pytest.mark.parametrize(
+    "chunk_count",
+    [
+        0,
+        1,
+        50,
+    ],
+)
 @pytest.mark.parametrize("force_client_side", [False, True])
 def test_chunk_upload(storage_engine, chunk_count, force_client_side):
     if chunk_count == 0 and force_client_side:
@@ -140,7 +147,14 @@ def test_chunk_upload(storage_engine, chunk_count, force_client_side):
     assert storage_engine.get_content("some/chunked/path") == final_data
 
 
-@pytest.mark.parametrize("chunk_count", [0, 1, 50,])
+@pytest.mark.parametrize(
+    "chunk_count",
+    [
+        0,
+        1,
+        50,
+    ],
+)
 def test_cancel_chunked_upload(storage_engine, chunk_count):
     upload_id, metadata = storage_engine.initiate_chunked_upload()
 
@@ -208,7 +222,13 @@ def test_large_chunks_with_ragged_edge(storage_engine):
 @pytest.mark.parametrize(
     "max_size, parts",
     [
-        (50, [_PartUploadMetadata("foo", 0, 50), _PartUploadMetadata("foo", 50, 50),]),
+        (
+            50,
+            [
+                _PartUploadMetadata("foo", 0, 50),
+                _PartUploadMetadata("foo", 50, 50),
+            ],
+        ),
         (
             40,
             [
@@ -218,7 +238,13 @@ def test_large_chunks_with_ragged_edge(storage_engine):
                 _PartUploadMetadata("foo", 75, 25),
             ],
         ),
-        (51, [_PartUploadMetadata("foo", 0, 50), _PartUploadMetadata("foo", 50, 50),]),
+        (
+            51,
+            [
+                _PartUploadMetadata("foo", 0, 50),
+                _PartUploadMetadata("foo", 50, 50),
+            ],
+        ),
         (
             49,
             [
@@ -228,8 +254,19 @@ def test_large_chunks_with_ragged_edge(storage_engine):
                 _PartUploadMetadata("foo", 75, 25),
             ],
         ),
-        (99, [_PartUploadMetadata("foo", 0, 50), _PartUploadMetadata("foo", 50, 50),]),
-        (100, [_PartUploadMetadata("foo", 0, 100),]),
+        (
+            99,
+            [
+                _PartUploadMetadata("foo", 0, 50),
+                _PartUploadMetadata("foo", 50, 50),
+            ],
+        ),
+        (
+            100,
+            [
+                _PartUploadMetadata("foo", 0, 100),
+            ],
+        ),
     ],
 )
 def test_rechunked(max_size, parts):
