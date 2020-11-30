@@ -104,7 +104,9 @@ class UserEntityHandler(ContextEntityHandler):
         return "user %s" % entity_reference.username
 
     def analytics_id_and_public_metadata(self, entity_reference):
-        return entity_reference.username, {"username": entity_reference.username,}
+        return entity_reference.username, {
+            "username": entity_reference.username,
+        }
 
 
 class RobotEntityHandler(ContextEntityHandler):
@@ -121,7 +123,10 @@ class RobotEntityHandler(ContextEntityHandler):
         return "robot %s" % entity_reference.username
 
     def analytics_id_and_public_metadata(self, entity_reference):
-        return entity_reference.username, {"username": entity_reference.username, "is_robot": True,}
+        return entity_reference.username, {
+            "username": entity_reference.username,
+            "is_robot": True,
+        }
 
 
 class TokenEntityHandler(ContextEntityHandler):
@@ -138,7 +143,9 @@ class TokenEntityHandler(ContextEntityHandler):
         return "token %s" % entity_reference.friendly_name
 
     def analytics_id_and_public_metadata(self, entity_reference):
-        return "token:%s" % entity_reference.id, {"token": entity_reference.friendly_name,}
+        return "token:%s" % entity_reference.id, {
+            "token": entity_reference.friendly_name,
+        }
 
 
 class OAuthTokenEntityHandler(ContextEntityHandler):

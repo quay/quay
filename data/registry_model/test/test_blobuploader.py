@@ -27,8 +27,22 @@ def registry_model(initialized_db):
     return OCIModel()
 
 
-@pytest.mark.parametrize("chunk_count", [0, 1, 2, 10,])
-@pytest.mark.parametrize("subchunk", [True, False,])
+@pytest.mark.parametrize(
+    "chunk_count",
+    [
+        0,
+        1,
+        2,
+        10,
+    ],
+)
+@pytest.mark.parametrize(
+    "subchunk",
+    [
+        True,
+        False,
+    ],
+)
 def test_basic_upload_blob(chunk_count, subchunk, registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "complex")
     storage = DistributedStorage({"local_us": FakeStorage(None)}, ["local_us"])

@@ -477,7 +477,11 @@ def get_logs_or_log_url(build):
 
     response_obj = {}
     response_obj.update(
-        {"start": start, "total": count, "logs": [log for log in logs],}
+        {
+            "start": start,
+            "total": count,
+            "logs": [log for log in logs],
+        }
     )
 
     return response_obj
@@ -524,7 +528,9 @@ class FileDropResource(ApiResource):
         "FileDropRequest": {
             "type": "object",
             "description": "Description of the file that the user wishes to upload.",
-            "required": ["mimeType",],
+            "required": [
+                "mimeType",
+            ],
             "properties": {
                 "mimeType": {
                     "type": "string",

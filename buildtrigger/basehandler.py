@@ -22,14 +22,26 @@ NAMESPACES_SCHEMA = {
                 "type": "boolean",
                 "description": "True if the namespace is the user's personal namespace",
             },
-            "score": {"type": "number", "description": "Score of the relevance of the namespace",},
+            "score": {
+                "type": "number",
+                "description": "Score of the relevance of the namespace",
+            },
             "avatar_url": {
                 "type": ["string", "null"],
                 "description": "URL of the avatar for this namespace",
             },
-            "url": {"type": "string", "description": "URL of the website to view the namespace",},
-            "id": {"type": "string", "description": "Trigger-internal ID of the namespace",},
-            "title": {"type": "string", "description": "Human-readable title of the namespace",},
+            "url": {
+                "type": "string",
+                "description": "URL of the website to view the namespace",
+            },
+            "id": {
+                "type": "string",
+                "description": "Trigger-internal ID of the namespace",
+            },
+            "title": {
+                "type": "string",
+                "description": "Human-readable title of the namespace",
+            },
         },
         "required": ["personal", "score", "avatar_url", "id", "title"],
     },
@@ -64,7 +76,10 @@ BUILD_SOURCES_SCHEMA = {
                 "type": "boolean",
                 "description": "True if the current user has admin permissions on the repository",
             },
-            "private": {"type": "boolean", "description": "True if the repository is private",},
+            "private": {
+                "type": "boolean",
+                "description": "True if the repository is private",
+            },
         },
         "required": [
             "name",
@@ -90,12 +105,24 @@ METADATA_SCHEMA = {
             "type": "object",
             "description": "The parsed information about the ref, if any",
             "properties": {
-                "branch": {"type": "string", "description": "The branch name",},
-                "tag": {"type": "string", "description": "The tag name",},
-                "remote": {"type": "string", "description": "The remote name",},
+                "branch": {
+                    "type": "string",
+                    "description": "The branch name",
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "The tag name",
+                },
+                "remote": {
+                    "type": "string",
+                    "description": "The remote name",
+                },
             },
         },
-        "git_url": {"type": "string", "description": "The GIT url to use for the checkout",},
+        "git_url": {
+            "type": "string",
+            "description": "The GIT url to use for the checkout",
+        },
         "ref": {
             "type": "string",
             "description": "git reference for a git commit",
@@ -113,14 +140,23 @@ METADATA_SCHEMA = {
                     "type": "string",
                     "description": "The short SHA for this git commit",
                 },
-                "url": {"type": "string", "description": "URL to view a git commit",},
-                "message": {"type": "string", "description": "git commit message",},
+                "url": {
+                    "type": "string",
+                    "description": "URL to view a git commit",
+                },
+                "message": {
+                    "type": "string",
+                    "description": "git commit message",
+                },
                 "date": {"type": "string", "description": "timestamp for a git commit"},
                 "author": {
                     "type": "object",
                     "description": "metadata about the author of a git commit",
                     "properties": {
-                        "username": {"type": "string", "description": "username of the author",},
+                        "username": {
+                            "type": "string",
+                            "description": "username of the author",
+                        },
                         "url": {
                             "type": "string",
                             "description": "URL to view the profile of the author",
@@ -136,7 +172,10 @@ METADATA_SCHEMA = {
                     "type": "object",
                     "description": "metadata about the committer of a git commit",
                     "properties": {
-                        "username": {"type": "string", "description": "username of the committer",},
+                        "username": {
+                            "type": "string",
+                            "description": "username of the committer",
+                        },
                         "url": {
                             "type": "string",
                             "description": "URL to view the profile of the committer",

@@ -80,7 +80,10 @@ def test_validate_webhook(method_config, error_message, initialized_db):
 
 @pytest.mark.parametrize(
     "method_config,error_message",
-    [({}, "Missing Flowdock API Token"), ({"flow_api_token": "sometoken"}, None),],
+    [
+        ({}, "Missing Flowdock API Token"),
+        ({"flow_api_token": "sometoken"}, None),
+    ],
 )
 def test_validate_flowdock(method_config, error_message, initialized_db):
     method = FlowdockMethod()
@@ -102,7 +105,10 @@ def test_validate_hipchat(method_config, error_message, initialized_db):
 
 @pytest.mark.parametrize(
     "method_config,error_message",
-    [({}, "Missing Slack Callback URL"), ({"url": "http://example.com"}, None),],
+    [
+        ({}, "Missing Slack Callback URL"),
+        ({"url": "http://example.com"}, None),
+    ],
 )
 def test_validate_slack(method_config, error_message, initialized_db):
     method = SlackMethod()

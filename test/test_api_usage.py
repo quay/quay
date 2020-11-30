@@ -461,7 +461,10 @@ class TestUserStarredRepositoryList(ApiTestCase):
     def test_star_repo_guest(self):
         self.postJsonResponse(
             StarredRepositoryList,
-            data={"namespace": "public", "repository": "publicrepo",},
+            data={
+                "namespace": "public",
+                "repository": "publicrepo",
+            },
             expected_code=401,
         )
 
@@ -475,7 +478,10 @@ class TestUserStarredRepositoryList(ApiTestCase):
 
         json = self.postJsonResponse(
             StarredRepositoryList,
-            data={"namespace": "public", "repository": "publicrepo",},
+            data={
+                "namespace": "public",
+                "repository": "publicrepo",
+            },
             expected_code=201,
         )
         assert json["namespace"] == "public"
@@ -4115,9 +4121,17 @@ class FakeBuildTrigger(BuildTriggerHandler):
 
     def list_build_sources_for_namespace(self, namespace):
         if namespace == "first":
-            return [{"name": "source",}]
+            return [
+                {
+                    "name": "source",
+                }
+            ]
         elif namespace == "second":
-            return [{"name": self.auth_token,}]
+            return [
+                {
+                    "name": self.auth_token,
+                }
+            ]
         else:
             return []
 

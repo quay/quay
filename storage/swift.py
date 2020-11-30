@@ -459,7 +459,11 @@ class SwiftStorage(BaseStorage):
                 self._context.chunk_cleanup_queue.put(
                     ["segment/%s/%s" % (self._context.location, uuid)],
                     json.dumps(
-                        {"location": self._context.location, "uuid": uuid, "path": segment.path,}
+                        {
+                            "location": self._context.location,
+                            "uuid": uuid,
+                            "path": segment.path,
+                        }
                     ),
                     available_after=_CHUNK_CLEANUP_DELAY,
                 )
@@ -495,7 +499,11 @@ class SwiftStorage(BaseStorage):
             self._context.chunk_cleanup_queue.put(
                 ["segment/%s/%s" % (self._context.location, uuid)],
                 json.dumps(
-                    {"location": self._context.location, "uuid": uuid, "path": segment.path,}
+                    {
+                        "location": self._context.location,
+                        "uuid": uuid,
+                        "path": segment.path,
+                    }
                 ),
                 available_after=_CHUNK_CLEANUP_DELAY,
             )

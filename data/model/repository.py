@@ -114,8 +114,8 @@ def get_public_repo_visibility():
 
 
 class _RepositoryExistsException(Exception):
-    """ Exception raised if a repository exists in create_repository. Used to breakout of
-        the transaction.
+    """Exception raised if a repository exists in create_repository. Used to breakout of
+    the transaction.
     """
 
     def __init__(self, internal_exception):
@@ -658,7 +658,12 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
         # Add a queueitem to delete the repository.
         marker.queue_id = repository_gc_queue.put(
             [namespace_name, str(repo.id)],
-            json.dumps({"marker_id": marker.id, "original_name": repository_name,}),
+            json.dumps(
+                {
+                    "marker_id": marker.id,
+                    "original_name": repository_name,
+                }
+            ),
         )
         marker.save()
 

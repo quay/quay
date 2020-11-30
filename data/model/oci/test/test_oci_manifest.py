@@ -66,7 +66,11 @@ def test_lookup_manifest_dead_tag(initialized_db):
 def create_manifest_for_testing(repository, differentiation_field="1"):
     # Populate a manifest.
     layer_json = json.dumps(
-        {"config": {}, "rootfs": {"type": "layers", "diff_ids": []}, "history": [],}
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
     )
 
     # Add a blob containing the config.
@@ -125,7 +129,13 @@ def _populate_blob(content):
     return blob, digest
 
 
-@pytest.mark.parametrize("schema_version", [1, 2,])
+@pytest.mark.parametrize(
+    "schema_version",
+    [
+        1,
+        2,
+    ],
+)
 def test_get_or_create_manifest(schema_version, initialized_db):
     repository = create_repository("devtable", "newrepo", None)
 
@@ -137,10 +147,15 @@ def test_get_or_create_manifest(schema_version, initialized_db):
     layer_json = json.dumps(
         {
             "id": "somelegacyid",
-            "config": {"Labels": expected_labels,},
+            "config": {
+                "Labels": expected_labels,
+            },
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
             ],
         }
     )
@@ -249,10 +264,15 @@ def test_get_or_create_manifest_list(initialized_db):
     layer_json = json.dumps(
         {
             "id": "somelegacyid",
-            "config": {"Labels": expected_labels,},
+            "config": {
+                "Labels": expected_labels,
+            },
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
             ],
         }
     )
@@ -327,10 +347,15 @@ def test_get_or_create_manifest_list_duplicate_child_manifest(initialized_db):
     layer_json = json.dumps(
         {
             "id": "somelegacyid",
-            "config": {"Labels": expected_labels,},
+            "config": {
+                "Labels": expected_labels,
+            },
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
             ],
         }
     )
@@ -394,8 +419,14 @@ def test_get_or_create_manifest_with_remote_layers(initialized_db):
             "config": {},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
             ],
         }
     )
@@ -451,7 +482,11 @@ def test_get_or_create_manifest_with_remote_layers(initialized_db):
 def create_manifest_for_testing(repository, differentiation_field="1", include_shared_blob=False):
     # Populate a manifest.
     layer_json = json.dumps(
-        {"config": {}, "rootfs": {"type": "layers", "diff_ids": []}, "history": [],}
+        {
+            "config": {},
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [],
+        }
     )
 
     # Add a blob containing the config.
@@ -481,8 +516,14 @@ def test_retriever(initialized_db):
             "config": {},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
             ],
         }
     )
@@ -571,7 +612,10 @@ def test_create_manifest_cannot_load_config_blob(initialized_db):
             "config": {},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
             ],
         }
     )

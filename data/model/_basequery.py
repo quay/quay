@@ -229,7 +229,7 @@ def update_last_accessed(token_or_user):
 
 
 def estimated_row_count(model_cls):
-    """ Returns the estimated number of rows in the given model. If available, uses engine-specific
-        estimation (which is very fast) and otherwise falls back to .count()
+    """Returns the estimated number of rows in the given model. If available, uses engine-specific
+    estimation (which is very fast) and otherwise falls back to .count()
     """
     return db_count_estimator(model_cls, db)

@@ -8,7 +8,11 @@ from util.security.secret import convert_secret_key
     "config_secret_key, expected_secret_key",
     [
         pytest.param("somesecretkey", b"somesecretkeysomesecretkeysomese", id="Some string"),
-        pytest.param("255", b"\xff" * 32, id="Some int that can be represented as a byte",),
+        pytest.param(
+            "255",
+            b"\xff" * 32,
+            id="Some int that can be represented as a byte",
+        ),
         pytest.param(
             "256",
             b"25625625625625625625625625625625",

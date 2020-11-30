@@ -16,8 +16,16 @@ def aws_ip_range_data():
     fake_range_doc = {
         "syncToken": 123456789,
         "prefixes": [
-            {"ip_prefix": "10.0.0.0/8", "region": "GLOBAL", "service": "EC2",},
-            {"ip_prefix": "6.0.0.0/8", "region": "GLOBAL", "service": "EC2",},
+            {
+                "ip_prefix": "10.0.0.0/8",
+                "region": "GLOBAL",
+                "service": "EC2",
+            },
+            {
+                "ip_prefix": "6.0.0.0/8",
+                "region": "GLOBAL",
+                "service": "EC2",
+            },
         ],
     }
     return fake_range_doc

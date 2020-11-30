@@ -49,7 +49,7 @@ class BuildStateInterface(ABC):
         """
 
     @abstractmethod
-    def job_scheduled(self, job_id,  execution_id, max_startup_time):
+    def job_scheduled(self, job_id, execution_id, max_startup_time):
         """Mark the job as scheduled with execution_id. If the job is not started after
         max_startup_time, the job should get expired.
         """

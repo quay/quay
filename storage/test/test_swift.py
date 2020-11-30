@@ -68,7 +68,10 @@ class FakeSwift(object):
         for path, data in list(container_entries.items()):
             if not prefix or path.startswith(prefix):
                 objs.append(
-                    {"name": path, "bytes": len(data["content"]),}
+                    {
+                        "name": path,
+                        "bytes": len(data["content"]),
+                    }
                 )
         return {}, objs
 
@@ -128,7 +131,11 @@ class FakeQueue(object):
 
     def put(self, names, item, available_after=0):
         self.items.append(
-            {"names": names, "item": item, "available_after": available_after,}
+            {
+                "names": names,
+                "item": item,
+                "available_after": available_after,
+            }
         )
 
 
@@ -233,8 +240,23 @@ def test_checksum():
     assert swift.get_checksum("somepath") is not None
 
 
-@pytest.mark.parametrize("read_until_end", [(True,), (False,),])
-@pytest.mark.parametrize("max_chunk_size", [(10000000), (10), (5), (2), (1),])
+@pytest.mark.parametrize(
+    "read_until_end",
+    [
+        (True,),
+        (False,),
+    ],
+)
+@pytest.mark.parametrize(
+    "max_chunk_size",
+    [
+        (10000000),
+        (10),
+        (5),
+        (2),
+        (1),
+    ],
+)
 @pytest.mark.parametrize(
     "chunks",
     [
@@ -333,7 +355,12 @@ def test_empty_chunks_queued_for_deletion():
 
 
 @pytest.mark.parametrize(
-    "temp_url_key, expects_url", [(None, False), ("foobarbaz", True), ("exception", False),]
+    "temp_url_key, expects_url",
+    [
+        (None, False),
+        ("foobarbaz", True),
+        ("exception", False),
+    ],
 )
 def test_get_direct_download_url(temp_url_key, expects_url):
     swift = FakeSwiftStorage(temp_url_key=temp_url_key, **base_args)

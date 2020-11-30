@@ -222,8 +222,11 @@ class MemoryOrchestrator(Orchestrator):
 
     def get_prefixed_keys(self, prefix):
         return {
-            k: value for (k, value) in list(self.state.items())
-            if k.startswith(prefix) and not k.endswith(REDIS_EXPIRED_SUFFIX) and not k.endswith(REDIS_EXPIRING_SUFFIX)
+            k: value
+            for (k, value) in list(self.state.items())
+            if k.startswith(prefix)
+            and not k.endswith(REDIS_EXPIRED_SUFFIX)
+            and not k.endswith(REDIS_EXPIRING_SUFFIX)
         }
 
     def get_key(self, key):
@@ -261,7 +264,7 @@ class MemoryOrchestrator(Orchestrator):
             self.set_key(key, "", overwrite=False, expiration=expiration)
         except KeyError:
             return False
-        return True            
+        return True
 
     def shutdown(self):
         self.state = None
@@ -327,7 +330,9 @@ class RedisOrchestrator(Orchestrator):
             self._pubsub_expiring.psubscribe(
                 **{REDIS_EXPIRED_KEYSPACE_PATTERN % (db, "*"): self._expiring_key_handler}
             )
-            self._pubsub_expiring_thread = self._pubsub_expiring.run_in_thread(daemon=True, sleep_time=5)
+            self._pubsub_expiring_thread = self._pubsub_expiring.run_in_thread(
+                daemon=True, sleep_time=5
+            )
 
     def _expiring_key_handler(self, message):
         try:
@@ -344,9 +349,7 @@ class RedisOrchestrator(Orchestrator):
 
                 # Mark key as expired. This key is used to track post job cleanup in the callback,
                 # to allow another manager to pickup the cleanup if this fails.
-                self._client.set(
-                    slash_join(key, REDIS_EXPIRED_SUFFIX), expired_value
-                )
+                self._client.set(slash_join(key, REDIS_EXPIRED_SUFFIX), expired_value)
                 self._client.delete(key)
         except redis.ConnectionError:
             _sleep_orchestrator()
@@ -422,7 +425,9 @@ class RedisOrchestrator(Orchestrator):
         # Yielding to the event loop is required, thus this cannot be written as a dict comprehension.
         results = {}
         for key in keys:
-            if key.decode("utf-8").endswith(REDIS_EXPIRING_SUFFIX) or key.decode("utf-8").endswith(REDIS_EXPIRED_SUFFIX):
+            if key.decode("utf-8").endswith(REDIS_EXPIRING_SUFFIX) or key.decode("utf-8").endswith(
+                REDIS_EXPIRED_SUFFIX
+            ):
                 continue
             ttl = self._client.ttl(key)
             if ttl == REDIS_NONEXPIRING_KEY:
@@ -477,14 +482,15 @@ class RedisOrchestrator(Orchestrator):
             # The extra leeway is so the expire event handler has time to get the original value and publish the event.
             self._client.set(key, value, xx=overwrite)
             if expiration is not None:
-                self._client.expire(key, expiration+ONE_DAY)
-                overwrite_expiring_key = self._client.exists(
-                    slash_join(key, REDIS_EXPIRING_SUFFIX)
-                )
+                self._client.expire(key, expiration + ONE_DAY)
+                overwrite_expiring_key = self._client.exists(slash_join(key, REDIS_EXPIRING_SUFFIX))
                 # The "expiring/*" are only used to publish the EXPIRE event. A separate key is needed
                 # because the the EXPIRE event does not include the original key value.
                 self._client.set(
-                    slash_join(key, REDIS_EXPIRING_SUFFIX), "", xx=overwrite_expiring_key, ex=expiration
+                    slash_join(key, REDIS_EXPIRING_SUFFIX),
+                    "",
+                    xx=overwrite_expiring_key,
+                    ex=expiration,
                 )
                 # Remove any expired key that might have previously been created but not removed
                 # if a new expiration is set.

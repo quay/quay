@@ -63,11 +63,13 @@ class BuilderServer(object):
         self._lifecycle_manager.initialize(self._lifecycle_manager_config)
 
         logger.debug("Initializing the gRPC server")
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=DEFAULT_GRPC_SERVER_WORKER_COUNT))
+        server = grpc.server(
+            futures.ThreadPoolExecutor(max_workers=DEFAULT_GRPC_SERVER_WORKER_COUNT)
+        )
         buildman_pb2_grpc.add_BuildManagerServicer_to_server(
             BuildManagerServicer(self._lifecycle_manager), server
         )
-        server.add_insecure_port("[::]:"+str(DEFAULT_GRPC_SERVER_PORT))
+        server.add_insecure_port("[::]:" + str(DEFAULT_GRPC_SERVER_PORT))
 
         logger.debug("Starting the gRPC server...")
         server.start()

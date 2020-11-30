@@ -42,7 +42,12 @@ def _setup_mirror():
 
 @pytest.mark.parametrize(
     "existing_robot_permission, expected_permission",
-    [(None, "write"), ("read", "write"), ("write", "write"), ("admin", "admin"),],
+    [
+        (None, "write"),
+        ("read", "write"),
+        ("write", "write"),
+        ("admin", "admin"),
+    ],
 )
 def test_create_mirror_sets_permissions(existing_robot_permission, expected_permission, client):
     mirror_bot, _ = model.user.create_robot(

@@ -155,7 +155,11 @@ def _request_start():
 
         host, port = os.getenv("PYDEV_DEBUG").split(":")
         pydevd_pycharm.settrace(
-            host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False,
+            host,
+            port=int(port),
+            stdoutToServer=True,
+            stderrToServer=True,
+            suspend=False,
         )
 
     logger.debug(

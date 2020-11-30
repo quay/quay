@@ -195,7 +195,9 @@ class MemcachedModelCache(DataModelCache):
                     convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
                 )
                 client.set(
-                    cache_key.key, result, expire=int(expires.total_seconds()) if expires else None,
+                    cache_key.key,
+                    result,
+                    expire=int(expires.total_seconds()) if expires else None,
                 )
                 logger.debug(
                     "Cached loaded result for key %s with expiration %s: %s",

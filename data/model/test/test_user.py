@@ -30,7 +30,14 @@ def test_create_user_with_expiration(initialized_db):
         assert user.removed_tag_expiration_s == 60 * 60
 
 
-@pytest.mark.parametrize("token_lifetime, time_since", [("1m", "2m"), ("2m", "1m"), ("1h", "1m"),])
+@pytest.mark.parametrize(
+    "token_lifetime, time_since",
+    [
+        ("1m", "2m"),
+        ("2m", "1m"),
+        ("1h", "1m"),
+    ],
+)
 def test_validation_code(token_lifetime, time_since, initialized_db):
     user = create_user_noverify("foobar", "foo@example.com", email_required=False)
     created = datetime.now() - convert_to_timedelta(time_since)
@@ -46,8 +53,20 @@ def test_validation_code(token_lifetime, time_since, initialized_db):
         assert expect_success == (result is not None)
 
 
-@pytest.mark.parametrize("disabled", [(True), (False),])
-@pytest.mark.parametrize("deleted", [(True), (False),])
+@pytest.mark.parametrize(
+    "disabled",
+    [
+        (True),
+        (False),
+    ],
+)
+@pytest.mark.parametrize(
+    "deleted",
+    [
+        (True),
+        (False),
+    ],
+)
 def test_get_active_users(disabled, deleted, initialized_db):
     # Delete a user.
     deleted_user = model.user.get_user("public")

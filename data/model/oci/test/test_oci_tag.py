@@ -135,7 +135,11 @@ def test_get_tag(initialized_db):
 
 
 @pytest.mark.parametrize(
-    "namespace_name, repo_name", [("devtable", "simple"), ("devtable", "complex"),]
+    "namespace_name, repo_name",
+    [
+        ("devtable", "simple"),
+        ("devtable", "complex"),
+    ],
 )
 def test_list_repository_tag_history(namespace_name, repo_name, initialized_db):
     repo = get_repository(namespace_name, repo_name)

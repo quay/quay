@@ -130,7 +130,10 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         )
 
         self.manager.initialize(
-            {"EXECUTOR": "test", "ORCHESTRATOR": {"MEM_CONFIG": None},}
+            {
+                "EXECUTOR": "test",
+                "ORCHESTRATOR": {"MEM_CONFIG": None},
+            }
         )
 
         # Ensure that that the realm and building callbacks have been registered
@@ -212,9 +215,7 @@ class TestEphemeralLifecycle(EphemeralBuilderTestCase):
         self.assertIsNotNone(self.manager._build_uuid_to_info.get(BUILD_UUID))
 
         # Finish the job
-        await (
-            self.manager.job_completed(self.mock_job, BuildJobResult.COMPLETE, test_component)
-        )
+        await (self.manager.job_completed(self.mock_job, BuildJobResult.COMPLETE, test_component))
 
         # Ensure that the executor kills the job.
         self.assertEqual(self.test_executor.stop_builder.call_count, 1)
@@ -517,7 +518,9 @@ class TestEphemeral(EphemeralBuilderTestCase):
     def test_skip_invalid_executor(self):
         self.manager.initialize(
             {
-                "EXECUTORS": [{"EXECUTOR": "unknown", "MINIMUM_RETRY_THRESHOLD": 42},],
+                "EXECUTORS": [
+                    {"EXECUTOR": "unknown", "MINIMUM_RETRY_THRESHOLD": 42},
+                ],
                 "ORCHESTRATOR": {"MEM_CONFIG": None},
             }
         )
@@ -529,7 +532,12 @@ class TestEphemeral(EphemeralBuilderTestCase):
         EphemeralBuilderManager.EXECUTORS["test"] = TestExecutor
         self.manager.initialize(
             {
-                "EXECUTORS": [{"EXECUTOR": "test", "NAMESPACE_WHITELIST": ["something"],}],
+                "EXECUTORS": [
+                    {
+                        "EXECUTOR": "test",
+                        "NAMESPACE_WHITELIST": ["something"],
+                    }
+                ],
                 "ORCHESTRATOR": {"MEM_CONFIG": None},
             }
         )
@@ -549,7 +557,12 @@ class TestEphemeral(EphemeralBuilderTestCase):
         EphemeralBuilderManager.EXECUTORS["test"] = TestExecutor
         self.manager.initialize(
             {
-                "EXECUTORS": [{"EXECUTOR": "test", "MINIMUM_RETRY_THRESHOLD": 2,}],
+                "EXECUTORS": [
+                    {
+                        "EXECUTOR": "test",
+                        "MINIMUM_RETRY_THRESHOLD": 2,
+                    }
+                ],
                 "ORCHESTRATOR": {"MEM_CONFIG": None},
             }
         )
@@ -578,7 +591,11 @@ class TestEphemeral(EphemeralBuilderTestCase):
                         "NAMESPACE_WHITELIST": ["something"],
                         "MINIMUM_RETRY_THRESHOLD": 3,
                     },
-                    {"NAME": "secondary", "EXECUTOR": "secondary", "MINIMUM_RETRY_THRESHOLD": 2,},
+                    {
+                        "NAME": "secondary",
+                        "EXECUTOR": "secondary",
+                        "MINIMUM_RETRY_THRESHOLD": 2,
+                    },
                 ],
                 "ALLOWED_WORKER_COUNT": 5,
                 "ORCHESTRATOR": {"MEM_CONFIG": None},
@@ -661,7 +678,11 @@ class TestEphemeral(EphemeralBuilderTestCase):
         EphemeralBuilderManager.EXECUTORS["bad"] = BadExecutor
 
         self.manager.initialize(
-            {"EXECUTOR": "bad", "EXECUTOR_CONFIG": {}, "ORCHESTRATOR": {"MEM_CONFIG": None},}
+            {
+                "EXECUTOR": "bad",
+                "EXECUTOR_CONFIG": {},
+                "ORCHESTRATOR": {"MEM_CONFIG": None},
+            }
         )
 
         build_job = self._create_build_job(namespace="something", retries=3)
@@ -673,7 +694,11 @@ class TestEphemeral(EphemeralBuilderTestCase):
         EphemeralBuilderManager.EXECUTORS["test"] = TestExecutor
 
         self.manager.initialize(
-            {"EXECUTOR": "test", "EXECUTOR_CONFIG": {}, "ORCHESTRATOR": {"MEM_CONFIG": None},}
+            {
+                "EXECUTOR": "test",
+                "EXECUTOR_CONFIG": {},
+                "ORCHESTRATOR": {"MEM_CONFIG": None},
+            }
         )
 
         # Start the build job.

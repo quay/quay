@@ -51,7 +51,9 @@ from test.fixtures import *
 
 
 @pytest.fixture(
-    params=[OCIModel(),]
+    params=[
+        OCIModel(),
+    ]
 )
 def registry_model(request, initialized_db):
     return request.param
@@ -85,7 +87,10 @@ def test_find_matching_tag(names, expected, registry_model):
 
 @pytest.mark.parametrize(
     "repo_namespace, repo_name, expected",
-    [("devtable", "simple", {"latest", "prod"}), ("buynlarge", "orgrepo", {"latest", "prod"}),],
+    [
+        ("devtable", "simple", {"latest", "prod"}),
+        ("buynlarge", "orgrepo", {"latest", "prod"}),
+    ],
 )
 def test_get_most_recent_tag(repo_namespace, repo_name, expected, registry_model):
     repo = model.repository.get_repository(repo_namespace, repo_name)
@@ -114,7 +119,11 @@ def test_lookup_repository(repo_namespace, repo_name, expected, registry_model):
 
 
 @pytest.mark.parametrize(
-    "repo_namespace, repo_name", [("devtable", "simple"), ("buynlarge", "orgrepo"),]
+    "repo_namespace, repo_name",
+    [
+        ("devtable", "simple"),
+        ("buynlarge", "orgrepo"),
+    ],
 )
 def test_lookup_manifests(repo_namespace, repo_name, registry_model):
     repo = model.repository.get_repository(repo_namespace, repo_name)
@@ -237,7 +246,13 @@ def test_repository_tags(repo_namespace, repo_name, registry_model):
         ("public", "publicrepo", 1, False),
     ],
 )
-@pytest.mark.parametrize("with_size_fallback", [False, True,])
+@pytest.mark.parametrize(
+    "with_size_fallback",
+    [
+        False,
+        True,
+    ],
+)
 def test_repository_tag_history(
     namespace, name, expected_tag_count, has_expired, registry_model, with_size_fallback
 ):
@@ -285,7 +300,10 @@ def test_repository_tag_history_future_expires(registry_model):
 
 @pytest.mark.parametrize(
     "repositories, expected_tag_count",
-    [([], 0), ([("devtable", "simple"), ("devtable", "building")], 1),],
+    [
+        ([], 0),
+        ([("devtable", "simple"), ("devtable", "building")], 1),
+    ],
 )
 def test_get_most_recent_tag_lifetime_start(repositories, expected_tag_count, registry_model):
     last_modified_map = registry_model.get_most_recent_tag_lifetime_start(
@@ -307,7 +325,13 @@ def test_get_most_recent_tag_lifetime_start(repositories, expected_tag_count, re
         ("buynlarge", "orgrepo"),
     ],
 )
-@pytest.mark.parametrize("via_manifest", [False, True,])
+@pytest.mark.parametrize(
+    "via_manifest",
+    [
+        False,
+        True,
+    ],
+)
 def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
     repository_ref = registry_model.lookup_repository(repo_namespace, repo_name)
     tags = registry_model.list_all_active_repository_tags(repository_ref)
@@ -340,7 +364,13 @@ def test_delete_tags(repo_namespace, repo_name, via_manifest, registry_model):
     assert len(history) == len(previous_history)
 
 
-@pytest.mark.parametrize("use_manifest", [True, False,])
+@pytest.mark.parametrize(
+    "use_manifest",
+    [
+        True,
+        False,
+    ],
+)
 def test_retarget_tag_history(use_manifest, registry_model):
     repository_ref = registry_model.lookup_repository("devtable", "history")
     history, _ = registry_model.list_repository_tag_history(repository_ref)
@@ -422,7 +452,12 @@ def clear_rows(initialized_db):
 
 
 @pytest.mark.parametrize(
-    "namespace, expect_enabled", [("devtable", True), ("buynlarge", True), ("disabled", False),]
+    "namespace, expect_enabled",
+    [
+        ("devtable", True),
+        ("buynlarge", True),
+        ("disabled", False),
+    ],
 )
 def test_is_namespace_enabled(namespace, expect_enabled, registry_model):
     assert registry_model.is_namespace_enabled(namespace) == expect_enabled
@@ -480,7 +515,10 @@ def test_manifest_remote_layers(oci_model):
             "config": {},
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [
-                {"created": "2018-04-03T18:37:09.284840891Z", "created_by": "do something",},
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
             ],
         }
     )
@@ -526,7 +564,12 @@ def test_blob_uploads(registry_model):
 
     # Update and ensure the changes are saved.
     assert registry_model.update_blob_upload(
-        blob_upload, 1, {"new": "metadata"}, 2, 3, blob_upload.sha_state,
+        blob_upload,
+        1,
+        {"new": "metadata"},
+        2,
+        3,
+        blob_upload.sha_state,
     )
 
     updated = registry_model.lookup_blob_upload(repository_ref, blob_upload.upload_id)
@@ -610,7 +653,8 @@ def test_get_cached_repo_blob(registry_model):
         raise SomeException("Not connected!")
 
     with patch(
-        "data.registry_model.registry_oci_model.model.oci.blob.get_repository_blob_by_digest", fail,
+        "data.registry_model.registry_oci_model.model.oci.blob.get_repository_blob_by_digest",
+        fail,
     ):
         # Make sure we can load again, which should hit the cache.
         cached = registry_model.get_cached_repo_blob(model_cache, "devtable", "simple", blob.digest)
@@ -675,7 +719,11 @@ def test_create_manifest_and_retarget_tag_with_labels(registry_model):
 
     json_metadata = {
         "id": "someid",
-        "config": {"Labels": {"quay.expires-after": "2w",},},
+        "config": {
+            "Labels": {
+                "quay.expires-after": "2w",
+            },
+        },
     }
 
     builder = DockerSchema1ManifestBuilder("devtable", "simple", "anothertag")
@@ -739,7 +787,14 @@ def test_known_issue_schema1(registry_model):
 def test_unicode_emoji(registry_model):
     builder = DockerSchema1ManifestBuilder("devtable", "simple", "latest")
     builder.add_layer(
-        "sha256:abcde", json.dumps({"id": "someid", "author": "😱",}, ensure_ascii=False)
+        "sha256:abcde",
+        json.dumps(
+            {
+                "id": "someid",
+                "author": "😱",
+            },
+            ensure_ascii=False,
+        ),
     )
 
     manifest = builder.build(ensure_ascii=False)
@@ -769,7 +824,13 @@ def test_unicode_emoji(registry_model):
     assert found.get_parsed_manifest().digest == manifest.digest
 
 
-@pytest.mark.parametrize("test_cached", [False, True,])
+@pytest.mark.parametrize(
+    "test_cached",
+    [
+        False,
+        True,
+    ],
+)
 def test_lookup_active_repository_tags(test_cached, oci_model):
     repository_ref = oci_model.lookup_repository("devtable", "simple")
     latest_tag = oci_model.get_repo_tag(repository_ref, "latest")
@@ -819,7 +880,14 @@ def test_lookup_active_repository_tags(test_cached, oci_model):
 def test_create_manifest_with_temp_tag(initialized_db, registry_model):
     builder = DockerSchema1ManifestBuilder("devtable", "simple", "latest")
     builder.add_layer(
-        "sha256:abcde", json.dumps({"id": "someid", "author": "some user",}, ensure_ascii=False)
+        "sha256:abcde",
+        json.dumps(
+            {
+                "id": "someid",
+                "author": "some user",
+            },
+            ensure_ascii=False,
+        ),
     )
 
     manifest = builder.build(ensure_ascii=False)
@@ -860,7 +928,11 @@ def test_find_manifests_for_sec_notification(initialized_db, registry_model):
         "vulnerability_found",
         "webhook",
         {},
-        {"vulnerability": {"priority": "Critical",},},
+        {
+            "vulnerability": {
+                "priority": "Critical",
+            },
+        },
     )
 
     # Now ensure the manifests are found.
@@ -879,7 +951,11 @@ def test_lookup_secscan_notification_severities(initialized_db, registry_model):
         "vulnerability_found",
         "webhook",
         {},
-        {"vulnerability": {"priority": "Critical",},},
+        {
+            "vulnerability": {
+                "priority": "Critical",
+            },
+        },
     )
 
     model.notification.create_repo_notification(
@@ -887,7 +963,11 @@ def test_lookup_secscan_notification_severities(initialized_db, registry_model):
         "vulnerability_found",
         "webhook",
         {},
-        {"vulnerability": {"priority": "Low",},},
+        {
+            "vulnerability": {
+                "priority": "Low",
+            },
+        },
     )
 
     assert set(registry_model.lookup_secscan_notification_severities(repository_ref)) == {

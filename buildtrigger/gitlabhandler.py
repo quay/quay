@@ -33,11 +33,19 @@ logger = logging.getLogger(__name__)
 GITLAB_WEBHOOK_PAYLOAD_SCHEMA = {
     "type": "object",
     "properties": {
-        "ref": {"type": "string",},
-        "checkout_sha": {"type": ["string", "null"],},
+        "ref": {
+            "type": "string",
+        },
+        "checkout_sha": {
+            "type": ["string", "null"],
+        },
         "repository": {
             "type": "object",
-            "properties": {"git_ssh_url": {"type": "string",},},
+            "properties": {
+                "git_ssh_url": {
+                    "type": "string",
+                },
+            },
             "required": ["git_ssh_url"],
         },
         "commits": {
@@ -45,13 +53,25 @@ GITLAB_WEBHOOK_PAYLOAD_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {"type": "string",},
-                    "url": {"type": ["string", "null"],},
-                    "message": {"type": "string",},
-                    "timestamp": {"type": "string",},
+                    "id": {
+                        "type": "string",
+                    },
+                    "url": {
+                        "type": ["string", "null"],
+                    },
+                    "message": {
+                        "type": "string",
+                    },
+                    "timestamp": {
+                        "type": "string",
+                    },
                     "author": {
                         "type": "object",
-                        "properties": {"email": {"type": "string",},},
+                        "properties": {
+                            "email": {
+                                "type": "string",
+                            },
+                        },
                         "required": ["email"],
                     },
                 },
@@ -227,7 +247,10 @@ class GitLabBuildTrigger(BuildTriggerHandler):
         # Add a deploy key to the repository.
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
+            {
+                "name": "SSH Public Key",
+                "value": public_key.decode("ascii"),
+            },
         ]
 
         key = gl_project.keys.create(

@@ -37,7 +37,14 @@ def test_login(login_data, expected_code, app, client):
     assert rv.status_code == expected_code
 
 
-@pytest.mark.parametrize("release_name", ["1.0", "1", 1,])
+@pytest.mark.parametrize(
+    "release_name",
+    [
+        "1.0",
+        "1",
+        1,
+    ],
+)
 def test_invalid_release_name(release_name, app, client):
     params = {
         "namespace": "devtable",
@@ -57,7 +64,13 @@ def test_invalid_release_name(release_name, app, client):
     assert rv.status_code == 422
 
 
-@pytest.mark.parametrize("readonly, expected_status", [(True, 405), (False, 422),])
+@pytest.mark.parametrize(
+    "readonly, expected_status",
+    [
+        (True, 405),
+        (False, 422),
+    ],
+)
 def test_readonly(readonly, expected_status, app, client):
     params = {
         "namespace": "devtable",

@@ -99,7 +99,9 @@ def render_email(app_title, app_url, recipient, subject, template_file, paramete
     rendered_html = template_env.get_template(template_file + ".html").render(parameters)
 
     parameters.update(
-        {"with_base_template": False,}
+        {
+            "with_base_template": False,
+        }
     )
 
     rendered_for_plain = template_env.get_template(template_file + ".html").render(parameters)
@@ -163,7 +165,10 @@ def send_org_recovery_email(org, admin_users):
         org.email,
         subject,
         "orgrecovery",
-        {"organization": org.username, "admin_usernames": [user.username for user in admin_users],},
+        {
+            "organization": org.username,
+            "admin_usernames": [user.username for user in admin_users],
+        },
     )
 
 

@@ -38,7 +38,12 @@ def test_validate_google_login(app):
 
     with HTTMock(handler):
         unvalidated_config = ValidatorContext(
-            {"GOOGLE_LOGIN_CONFIG": {"CLIENT_ID": "foo", "CLIENT_SECRET": "bar",},}
+            {
+                "GOOGLE_LOGIN_CONFIG": {
+                    "CLIENT_ID": "foo",
+                    "CLIENT_SECRET": "bar",
+                },
+            }
         )
 
         unvalidated_config.http_client = build_requests_session()

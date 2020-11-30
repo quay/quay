@@ -276,7 +276,9 @@ class ApiCaller(object):
             kwargs["params"] = {}
 
         kwargs["params"].update(
-            {"_csrf_token": csrf_token,}
+            {
+                "_csrf_token": csrf_token,
+            }
         )
         return kwargs
 

@@ -12,7 +12,10 @@ from util.tufmetadata import api
 valid_response = {
     "signed": {
         "type": "Targets",
-        "delegations": {"keys": {}, "roles": {},},
+        "delegations": {
+            "keys": {},
+            "roles": {},
+        },
         "expires": "2020-03-30T18:55:26.594764859-04:00",
         "targets": {
             "latest": {
@@ -220,7 +223,14 @@ def test_get_metadata_exception(connection_error, response_code, exception):
     assert expiration == None
 
 
-@pytest.mark.parametrize("response_code,expected", [(200, True), (400, False), (401, False),])
+@pytest.mark.parametrize(
+    "response_code,expected",
+    [
+        (200, True),
+        (400, False),
+        (401, False),
+    ],
+)
 def test_delete_metadata(response_code, expected):
     app = Flask(__name__)
     app.config.from_object(testconfig.TestConfig())

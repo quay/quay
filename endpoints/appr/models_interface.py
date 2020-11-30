@@ -104,32 +104,32 @@ class AppRegistryDataInterface(object):
 
     @abstractmethod
     def basic_search(self, query, username=None):
-        """ Returns an array of matching application in the format: 'namespace/name'
-    Note:
-      * Only 'public' repositories are returned
-    """
+        """Returns an array of matching application in the format: 'namespace/name'
+        Note:
+          * Only 'public' repositories are returned
+        """
         pass
 
     # @TODO: Paginate
     @abstractmethod
     def list_releases(self, package_name, media_type=None):
-        """ Returns the list of all releases(names) of an AppRepository
-    Example:
-        >>> get_app_releases('ant31/rocketchat')
-        ['1.7.1', '1.7.0', '1.7.2']
-    """
+        """Returns the list of all releases(names) of an AppRepository
+        Example:
+            >>> get_app_releases('ant31/rocketchat')
+            ['1.7.1', '1.7.0', '1.7.2']
+        """
         pass
 
     # @TODO: Paginate
     @abstractmethod
     def list_manifests(self, package_name, release=None):
         """
-        Returns the list of all available manifests type of an Application across all releases or
-        for a specific one.
+            Returns the list of all available manifests type of an Application across all releases or
+            for a specific one.
 
-    Example:
-        >>> get_app_releases('ant31/rocketchat')
-        ['1.7.1', '1.7.0', '1.7.2']
+        Example:
+            >>> get_app_releases('ant31/rocketchat')
+            ['1.7.1', '1.7.0', '1.7.2']
         """
         pass
 
@@ -216,9 +216,9 @@ class AppRegistryDataInterface(object):
 
     @abstractmethod
     def fetch_channel(self, package_name, channel_name, with_releases=True):
-        """ Returns an Channel
-    Raises: ChannelNotFound, PackageNotFound
-    """
+        """Returns an Channel
+        Raises: ChannelNotFound, PackageNotFound
+        """
         pass
 
     @abstractmethod

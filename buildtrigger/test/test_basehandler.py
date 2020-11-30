@@ -77,7 +77,10 @@ def test_subdir_path_map(new_path, original_dictionary, output):
     "config, metadata, expected_tags",
     [
         pytest.param(
-            {}, {"commit": "hellothereiamacommit"}, ["helloth"], id="no ref and default options",
+            {},
+            {"commit": "hellothereiamacommit"},
+            ["helloth"],
+            id="no ref and default options",
         ),
         pytest.param(
             {},
@@ -102,7 +105,9 @@ def test_subdir_path_map(new_path, original_dictionary, output):
             {
                 "commit": "hellothereiamacommit",
                 "ref": "refs/heads/somebranch",
-                "commit_info": {"author": {"username": "someguy"},},
+                "commit_info": {
+                    "author": {"username": "someguy"},
+                },
             },
             ["author-someguy", "helloth"],
             id="template test",
@@ -119,7 +124,9 @@ def test_subdir_path_map(new_path, original_dictionary, output):
                 "commit": "hellothereiamacommit",
                 "ref": "refs/heads/somebranch",
                 "default_branch": "somebranch",
-                "commit_info": {"author": {"username": "someguy"},},
+                "commit_info": {
+                    "author": {"username": "someguy"},
+                },
             },
             ["author-someguy", "helloth", "latest"],
             id="template test with default branch",
@@ -171,7 +178,9 @@ def test_subdir_path_map(new_path, original_dictionary, output):
                 "commit": "hellothereiamacommit",
                 "ref": "refs/heads/somebranch",
                 "default_branch": "somebranch",
-                "commit_info": {"author": {"username": "someguy"},},
+                "commit_info": {
+                    "author": {"username": "someguy"},
+                },
             },
             ["author-someguy", "helloth", "latest", "somebranch"],
             id="everything test",

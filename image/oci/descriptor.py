@@ -33,7 +33,9 @@ def get_descriptor_schema(
         DESCRIPTOR_URLS_KEY: {
             "type": "array",
             "description": "This OPTIONAL property specifies a list of URIs from which this object MAY be downloaded. Each entry MUST conform to RFC 3986. Entries SHOULD use the http and https schemes, as defined in RFC 7230.",
-            "items": {"type": "string",},
+            "items": {
+                "type": "string",
+            },
         },
     }
 
@@ -43,6 +45,10 @@ def get_descriptor_schema(
     return {
         "type": "object",
         "properties": properties,
-        "required": [DESCRIPTOR_MEDIATYPE_KEY, DESCRIPTOR_SIZE_KEY, DESCRIPTOR_DIGEST_KEY,]
+        "required": [
+            DESCRIPTOR_MEDIATYPE_KEY,
+            DESCRIPTOR_SIZE_KEY,
+            DESCRIPTOR_DIGEST_KEY,
+        ]
         + (additional_required or []),
     }

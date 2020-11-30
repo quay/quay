@@ -42,7 +42,12 @@ def test_validate_bitbucket_trigger(app):
 
         url_scheme_and_hostname = URLSchemeAndHostname("http", "localhost:5000")
         unvalidated_config = ValidatorContext(
-            {"BITBUCKET_TRIGGER_CONFIG": {"CONSUMER_KEY": "foo", "CONSUMER_SECRET": "bar",},},
+            {
+                "BITBUCKET_TRIGGER_CONFIG": {
+                    "CONSUMER_KEY": "foo",
+                    "CONSUMER_SECRET": "bar",
+                },
+            },
             url_scheme_and_hostname=url_scheme_and_hostname,
         )
 

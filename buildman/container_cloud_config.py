@@ -76,9 +76,11 @@ class CloudConfigContext(object):
             timeout_start_sec = int(timeout_start_sec)
             timeout_stop_sec = int(timeout_stop_sec)
         except (ValueError, TypeError):
-            logger.error("Invalid timeouts (%s, %s): values should be integers",
-                         timeout_start_sec,
-                         timeout_stop_sec)
+            logger.error(
+                "Invalid timeouts (%s, %s): values should be integers",
+                timeout_start_sec,
+                timeout_stop_sec,
+            )
             raise
 
         path = os.path.join(os.path.dirname(__file__), "templates")
@@ -113,9 +115,8 @@ class CloudConfigContext(object):
         data = "," + urlquote(content)
         return "data:" + data
 
-
     def registry(self, container_name):
-        """ Parse the registry from repositories of the following formats:
+        """Parse the registry from repositories of the following formats:
         quay.io/quay/quay:tagname -> quay.io
         localhost:5000/quay/quay:tagname -> localhost:5000
         localhost:5000/quay/quay -> localhost:5000
@@ -123,7 +124,7 @@ class CloudConfigContext(object):
         quay/quay -> ''
         mysql:latest -> ''
         mysql -> ''
-    """
+        """
         num_slashes = container_name.count("/")
         if num_slashes == 2:
             return container_name[: container_name.find("/")]

@@ -67,10 +67,10 @@ class log_queries(object):
 
 
 class check_transitive_modifications(log_queries):
-    """ Checks for Peewee-generated transition deletion queries and fails if any are found.
-    
-        These kinds of queries (which use subqueries) can lock massively on MySQL, so we detect
-        them and fail.
+    """Checks for Peewee-generated transition deletion queries and fails if any are found.
+
+    These kinds of queries (which use subqueries) can lock massively on MySQL, so we detect
+    them and fail.
     """
 
     def __init__(self):

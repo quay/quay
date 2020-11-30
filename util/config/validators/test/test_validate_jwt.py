@@ -12,7 +12,13 @@ from test.fixtures import *
 from app import config_provider
 
 
-@pytest.mark.parametrize("unvalidated_config", [({}), ({"AUTHENTICATION_TYPE": "Database"}),])
+@pytest.mark.parametrize(
+    "unvalidated_config",
+    [
+        ({}),
+        ({"AUTHENTICATION_TYPE": "Database"}),
+    ],
+)
 def test_validate_noop(unvalidated_config, app):
     config = ValidatorContext(unvalidated_config)
     config.config_provider = config_provider

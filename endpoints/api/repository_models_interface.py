@@ -140,7 +140,15 @@ class ImageRepositoryRepository(
         return img_repo
 
 
-class Repository(namedtuple("Repository", ["namespace_name", "repository_name",])):
+class Repository(
+    namedtuple(
+        "Repository",
+        [
+            "namespace_name",
+            "repository_name",
+        ],
+    )
+):
     """
     Repository a single quay repository.
 
@@ -199,14 +207,14 @@ class Tag(
     )
 ):
     """
-  :type name: string
-  :type image_docker_image_id: string
-  :type image_aggregate_size: int
-  :type lifetime_start_ts: int
-  :type lifetime_end_ts: int|None
-  :type tag_manifest_digest: string
+    :type name: string
+    :type image_docker_image_id: string
+    :type image_aggregate_size: int
+    :type lifetime_start_ts: int
+    :type lifetime_end_ts: int|None
+    :type tag_manifest_digest: string
 
-  """
+    """
 
     def to_dict(self):
         tag_info = {
@@ -233,7 +241,7 @@ class Count(namedtuple("Count", ["date", "count"])):
     """
     date: DateTime
     count: int
-  """
+    """
 
     def to_dict(self):
         return {

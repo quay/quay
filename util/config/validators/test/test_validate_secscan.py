@@ -9,7 +9,12 @@ from util.secscan.fake import fake_security_scanner
 from test.fixtures import *
 
 
-@pytest.mark.parametrize("unvalidated_config", [({"DISTRIBUTED_STORAGE_PREFERENCE": []}),])
+@pytest.mark.parametrize(
+    "unvalidated_config",
+    [
+        ({"DISTRIBUTED_STORAGE_PREFERENCE": []}),
+    ],
+)
 def test_validate_noop(unvalidated_config, app):
 
     unvalidated_config = ValidatorContext(

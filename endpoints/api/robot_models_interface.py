@@ -86,7 +86,14 @@ class RobotWithPermissions(
 class Robot(
     namedtuple(
         "Robot",
-        ["name", "password", "created", "last_accessed", "description", "unstructured_metadata",],
+        [
+            "name",
+            "password",
+            "created",
+            "last_accessed",
+            "description",
+            "unstructured_metadata",
+        ],
     )
 ):
     """
@@ -129,64 +136,64 @@ class RobotInterface(object):
     def get_org_robot(self, robot_shortname, orgname):
         """
 
-    Returns:
-      Robot object
+        Returns:
+          Robot object
 
-    """
+        """
 
     @abstractmethod
     def get_user_robot(self, robot_shortname, owning_user):
         """
 
-    Returns:
-      Robot object
+        Returns:
+          Robot object
 
-    """
+        """
 
     @abstractmethod
     def create_user_robot(self, robot_shortname, owning_user):
         """
 
-    Returns:
-      Robot object
+        Returns:
+          Robot object
 
-    """
+        """
 
     @abstractmethod
     def create_org_robot(self, robot_shortname, orgname):
         """
 
-    Returns:
-      Robot object
+        Returns:
+          Robot object
 
-    """
+        """
 
     @abstractmethod
     def delete_robot(self, robot_username):
         """
 
-    Returns:
-      Robot object
+        Returns:
+          Robot object
 
-    """
+        """
 
     @abstractmethod
     def regenerate_user_robot_token(self, robot_shortname, owning_user):
         """
 
-    Returns:
-      Robot object
+        Returns:
+          Robot object
 
-    """
+        """
 
     @abstractmethod
     def regenerate_org_robot_token(self, robot_shortname, orgname):
         """
 
-    Returns:
-      Robot object
+        Returns:
+          Robot object
 
-    """
+        """
 
     @abstractmethod
     def list_entity_robot_permission_teams(
@@ -194,19 +201,19 @@ class RobotInterface(object):
     ):
         """
 
-    Returns:
-      list of RobotWithPermissions objects
+        Returns:
+          list of RobotWithPermissions objects
 
-    """
+        """
 
     @abstractmethod
     def list_robot_permissions(self, username):
         """
 
-    Returns:
-      list of Robot objects
+        Returns:
+          list of Robot objects
 
-    """
+        """
 
     @abstractmethod
     def robot_has_mirror(self, robot_username):

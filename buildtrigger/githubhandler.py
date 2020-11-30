@@ -40,14 +40,24 @@ logger = logging.getLogger(__name__)
 GITHUB_WEBHOOK_PAYLOAD_SCHEMA = {
     "type": "object",
     "properties": {
-        "ref": {"type": "string",},
+        "ref": {
+            "type": "string",
+        },
         "head_commit": {
             "type": ["object", "null"],
             "properties": {
-                "id": {"type": "string",},
-                "url": {"type": "string",},
-                "message": {"type": "string",},
-                "timestamp": {"type": "string",},
+                "id": {
+                    "type": "string",
+                },
+                "url": {
+                    "type": "string",
+                },
+                "message": {
+                    "type": "string",
+                },
+                "timestamp": {
+                    "type": "string",
+                },
                 "author": {
                     "type": "object",
                     "properties": {
@@ -69,7 +79,11 @@ GITHUB_WEBHOOK_PAYLOAD_SCHEMA = {
         },
         "repository": {
             "type": "object",
-            "properties": {"ssh_url": {"type": "string",},},
+            "properties": {
+                "ssh_url": {
+                    "type": "string",
+                },
+            },
             "required": ["ssh_url"],
         },
     },
@@ -199,7 +213,10 @@ class GithubBuildTrigger(BuildTriggerHandler):
         # Add a deploy key to the GitHub repository.
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
+            {
+                "name": "SSH Public Key",
+                "value": public_key.decode("ascii"),
+            },
         ]
 
         try:

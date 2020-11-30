@@ -135,7 +135,13 @@ class OAuthLoginTestCase(EndpointTestCase):
 
         @urlmatch(netloc=r"github.com", path="/api/v3/user/emails")
         def email_handler(_, __):
-            content = [{"email": "someemail@example.com", "verified": True, "primary": True,}]
+            content = [
+                {
+                    "email": "someemail@example.com",
+                    "verified": True,
+                    "primary": True,
+                }
+            ]
             return py_json.dumps(content)
 
         with HTTMock(account_handler, email_handler, user_handler):

@@ -16,7 +16,7 @@ from buildman.build_token import (
     verify_build_token,
     InvalidBearerTokenException,
     BUILD_JOB_REGISTRATION_TYPE,
-    BUILD_JOB_TOKEN_TYPE
+    BUILD_JOB_TOKEN_TYPE,
 )
 from buildman.interface import (
     BuildStateInterface,
@@ -24,7 +24,7 @@ from buildman.interface import (
     BuildJobDoesNotExistsError,
     BuildJobError,
     BuildJobResult,
-    RESULT_PHASES
+    RESULT_PHASES,
 )
 from buildman.jobutil.buildjob import BuildJob, BuildJobLoadException
 from buildman.manager.executor import PopenExecutor, EC2Executor, KubernetesExecutor
@@ -33,7 +33,7 @@ from buildman.orchestrator import (
     KeyEvent,
     OrchestratorError,
     OrchestratorConnectionError,
-    ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
+    ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION,
 )
 
 from app import instance_keys
@@ -58,7 +58,7 @@ build_ack_duration = Histogram(
 build_duration = Histogram(
     "quay_build_duration_seconds",
     "seconds taken for a build's execution",
-    labelnames=["executor", "job_status"], # status in (COMPLETE, INCOMPLETE, ERROR)
+    labelnames=["executor", "job_status"],  # status in (COMPLETE, INCOMPLETE, ERROR)
 )
 
 JOB_PREFIX = "building/"
@@ -104,7 +104,9 @@ class EphemeralBuilderManager(BuildStateInterface):
         "kubernetes": KubernetesExecutor,
     }
 
-    def __init__(self, registry_hostname, manager_hostname, queue, build_logs, user_files, instance_keys):
+    def __init__(
+        self, registry_hostname, manager_hostname, queue, build_logs, user_files, instance_keys
+    ):
         self._registry_hostname = registry_hostname
         self._manager_hostname = manager_hostname
         self._queue = queue
@@ -150,21 +152,11 @@ class EphemeralBuilderManager(BuildStateInterface):
 
     def generate_build_token(self, token_type, build_id, job_id, expiration):
         return build_token(
-            self._manager_hostname,
-            token_type,
-            build_id,
-            job_id,
-            expiration,
-            self._instance_keys
+            self._manager_hostname, token_type, build_id, job_id, expiration, self._instance_keys
         )
 
     def verify_build_token(self, token, token_type):
-        return verify_build_token(
-            token,
-            self._manager_hostname,
-            token_type,
-            self._instance_keys
-        )
+        return verify_build_token(token, self._manager_hostname, token_type, self._instance_keys)
 
     def _config_prefix(self, key):
         if self._manager_config.get("ORCHESTRATOR") is None:
@@ -219,7 +211,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         return build_job
 
     def create_job(self, build_id, build_metadata):
-        """Create the job in the orchestrator. 
+        """Create the job in the orchestrator.
         The job will expire if it is not scheduled within CREATED_JOB_TIMEOUT.
         """
         # Sets max threshold for build heartbeats. i.e max total running time of the build (default: 2h)
@@ -231,7 +223,10 @@ class EphemeralBuilderManager(BuildStateInterface):
         job_key = self._job_key(build_id)
         try:
             self._orchestrator.set_key(
-                job_key, json.dumps(build_metadata), overwrite=False, expiration=CREATED_JOB_TIMEOUT,
+                job_key,
+                json.dumps(build_metadata),
+                overwrite=False,
+                expiration=CREATED_JOB_TIMEOUT,
             )
         except KeyError:
             raise BuildJobAlreadyExistsError(job_key)
@@ -249,7 +244,10 @@ class EphemeralBuilderManager(BuildStateInterface):
             job_data = self._orchestrator.get_key(job_id)
             job_data_json = json.loads(job_data)
         except KeyError:
-            logger.warning("Failed to mark job %s as scheduled. Job no longer exists in the orchestrator", job_id)
+            logger.warning(
+                "Failed to mark job %s as scheduled. Job no longer exists in the orchestrator",
+                job_id,
+            )
             return False
         except Exception as e:
             logger.warning("Exception loading job %s from orchestrator: %s", job_id, e)
@@ -260,10 +258,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         job_data_json["execution_id"] = execution_id
         try:
             self._orchestrator.set_key(
-                job_id,
-                json.dumps(job_data_json),
-                overwrite=True,
-                expiration=max_startup_time
+                job_id, json.dumps(job_data_json), overwrite=True, expiration=max_startup_time
             )
         except Exception as e:
             logger.warning("Exception updating job %s in orchestrator: %s", job_id, e)
@@ -274,7 +269,8 @@ class EphemeralBuilderManager(BuildStateInterface):
         if updated:
             self._queue.extend_processing(
                 build_job.job_item,
-                seconds_from_now=max_startup_time + 60, # Add some leeway to allow the expiry event to complete
+                seconds_from_now=max_startup_time
+                + 60,  # Add some leeway to allow the expiry event to complete
                 minimum_extension=MINIMUM_JOB_EXTENSION,
             )
 
@@ -291,7 +287,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         return updated
 
     def job_unschedulable(self, job_id):
-        """ Stop tracking the given unschedulable job.
+        """Stop tracking the given unschedulable job.
         Deletes any states that might have previously been stored in the orchestrator.
         """
         try:
@@ -301,14 +297,14 @@ class EphemeralBuilderManager(BuildStateInterface):
             logger.warning(
                 "Exception trying to mark job %s as unschedulable. Some state may not have been cleaned/updated: %s",
                 job_id,
-                e
+                e,
             )
 
     def on_job_complete(self, build_job, job_result, executor_name, execution_id):
         """Handle a completed job by updating the queue, job metrics, and cleaning up
         any remaining state.
 
-        If the job result is INCOMPLETE, the job is requeued with its retry restored. 
+        If the job result is INCOMPLETE, the job is requeued with its retry restored.
         If a job result is in EXPIRED or ERROR, the job is requeued, but it retry is not restored.
 
         If the job is cancelled, it is not requeued.
@@ -325,15 +321,29 @@ class EphemeralBuilderManager(BuildStateInterface):
         # Build timeout. No retry restored
         if job_result == BuildJobResult.EXPIRED:
             self._queue.incomplete(build_job.job_item, restore_retry=False, retry_after=30)
-            logger.warning("Job %s completed with result %s. Requeuing build without restoring retry.", job_id, job_result)
+            logger.warning(
+                "Job %s completed with result %s. Requeuing build without restoring retry.",
+                job_id,
+                job_result,
+            )
 
         # Unfinished build due to internal error. Restore retry.
         elif job_result == BuildJobResult.INCOMPLETE:
-            logger.warning("Job %s completed with result %s. Requeuing build with retry restored.", job_id, job_result)
+            logger.warning(
+                "Job %s completed with result %s. Requeuing build with retry restored.",
+                job_id,
+                job_result,
+            )
             self._queue.incomplete(build_job.job_item, restore_retry=True, retry_after=30)
 
-        elif job_result in (BuildJobResult.ERROR, BuildJobResult.COMPLETE, BuildJobResult.CANCELLED):
-            logger.warning("Job %s completed with result %s. Marking build done in queue.", job_id, job_result)
+        elif job_result in (
+            BuildJobResult.ERROR,
+            BuildJobResult.COMPLETE,
+            BuildJobResult.CANCELLED,
+        ):
+            logger.warning(
+                "Job %s completed with result %s. Marking build done in queue.", job_id, job_result
+            )
             self._queue.complete(build_job.job_item)
 
         # Disable trigger if needed
@@ -352,7 +362,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         logger.debug("Job completed for job %s with result %s", job_id, job_result)
 
     def start_job(self, job_id, max_build_time):
-        """ Starts the build job. This is invoked by the worker once the job has been created and
+        """Starts the build job. This is invoked by the worker once the job has been created and
         scheduled, returing the buildpack needed to start the actual build.
         """
         try:
@@ -412,7 +422,9 @@ class EphemeralBuilderManager(BuildStateInterface):
             return (None, None)
 
         # Generate the build token
-        token = self.generate_build_token(BUILD_JOB_TOKEN_TYPE, build_job.build_uuid, job_id, max_build_time)
+        token = self.generate_build_token(
+            BUILD_JOB_TOKEN_TYPE, build_job.build_uuid, job_id, max_build_time
+        )
 
         # Publish the time it took for a worker to ack the build
         self._write_duration_metric(build_ack_duration, build_job.build_uuid)
@@ -442,7 +454,7 @@ class EphemeralBuilderManager(BuildStateInterface):
                 "Job %s is already in a final completed phase (%s), cannot update to %s",
                 job_id,
                 build_job.repo_build.phase,
-                phase
+                phase,
             )
             return False
 
@@ -450,7 +462,9 @@ class EphemeralBuilderManager(BuildStateInterface):
         phase_metadata = phase_metadata or {}
         updated = model.build.update_phase_then_close(build_job.build_uuid, phase)
         if updated:
-            self.append_log_message(build_job.build_uuid, phase, self._build_logs.PHASE, phase_metadata)
+            self.append_log_message(
+                build_job.build_uuid, phase, self._build_logs.PHASE, phase_metadata
+            )
 
         # Check if on_job_complete needs to be called
         if updated and phase in EphemeralBuilderManager.COMPLETED_PHASES:
@@ -460,16 +474,22 @@ class EphemeralBuilderManager(BuildStateInterface):
             if phase == BUILD_PHASE.ERROR:
                 self.on_job_complete(build_job, BuildJobResult.ERROR, executor_name, execution_id)
             elif phase == BUILD_PHASE.COMPLETE:
-                self.on_job_complete(build_job, BuildJobResult.COMPLETE, executor_name, execution_id)
+                self.on_job_complete(
+                    build_job, BuildJobResult.COMPLETE, executor_name, execution_id
+                )
             elif phase == BUILD_PHASE.INTERNAL_ERROR:
-                self.on_job_complete(build_job, BuildJobResult.INCOMPLETE, executor_name, execution_id)
+                self.on_job_complete(
+                    build_job, BuildJobResult.INCOMPLETE, executor_name, execution_id
+                )
             elif phase == BUILD_PHASE.CANCELLED:
-                self.on_job_complete(build_job, BuildJobResult.CANCELLED, executor_name, execution_id)
+                self.on_job_complete(
+                    build_job, BuildJobResult.CANCELLED, executor_name, execution_id
+                )
 
         return updated
 
     def job_heartbeat(self, job_id):
-        """Extend the processing time in the queue and updates the ttl of the job in the 
+        """Extend the processing time in the queue and updates the ttl of the job in the
         orchestrator.
         """
         try:
@@ -489,11 +509,14 @@ class EphemeralBuilderManager(BuildStateInterface):
         ttl = min(HEARTBEAT_PERIOD_SECONDS * 2, max_expiration_sec)
 
         # Update job expirations
-        if (job_data_json["last_heartbeat"] and
-            dateutil.parser.isoparse(job_data_json["last_heartbeat"]) < datetime.utcnow() - HEARTBEAT_DELTA):
+        if (
+            job_data_json["last_heartbeat"]
+            and dateutil.parser.isoparse(job_data_json["last_heartbeat"])
+            < datetime.utcnow() - HEARTBEAT_DELTA
+        ):
             logger.warning(
                 "Heartbeat expired for job %s. Marking job as expired. Last heartbeat received at %s",
-                job_data_json["last_heartbeat"]
+                job_data_json["last_heartbeat"],
             )
             self.update_job_phase(job_id, BUILD_PHASE.INTERNAL_ERROR)
             return False
@@ -507,9 +530,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         )
 
         try:
-            self._orchestrator.set_key(
-                job_id, json.dumps(job_data_json), expiration=ttl
-            )
+            self._orchestrator.set_key(job_id, json.dumps(job_data_json), expiration=ttl)
         except OrchestratorConnectionError:
             logger.error(
                 "Could not update heartbeat for job %s. Orchestrator is not available", job_id
@@ -536,7 +557,9 @@ class EphemeralBuilderManager(BuildStateInterface):
                     job_data_json.get("execution_id"),
                 )
             except KeyError:
-                logger.warning("Could not cleanup cancelled job %s. Job does not exist in orchestrator", job_id)
+                logger.warning(
+                    "Could not cleanup cancelled job %s. Job does not exist in orchestrator", job_id
+                )
 
         return cancelled
 
@@ -561,24 +584,31 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         allowed_worker_count = self._manager_config.get("ALLOWED_WORKER_COUNT", 1)
         if self._running_workers() >= allowed_worker_count:
-            logger.warning("Could not schedule build %s. Number of workers at capacity: %s.", build_id, self._running_workers())
+            logger.warning(
+                "Could not schedule build %s. Number of workers at capacity: %s.",
+                build_id,
+                self._running_workers(),
+            )
             return False, TOO_MANY_WORKERS_SLEEP_DURATION
 
         job_id = self._job_key(build_id)
         try:
             build_job = self._build_job_from_job_id(job_id)
         except BuildJobDoesNotExistsError as bjne:
-            logger.warning("Failed to schedule job %s - Job no longer exists in the orchestrator, likely expired: %s", job_id, bjne)
+            logger.warning(
+                "Failed to schedule job %s - Job no longer exists in the orchestrator, likely expired: %s",
+                job_id,
+                bjne,
+            )
             return False, CREATED_JOB_TIMEOUT_SLEEP_DURATION
         except BuildJobError as bje:
-            logger.warning("Failed to schedule job %s - Could not get job from orchestrator: %s", job_id, bje)
+            logger.warning(
+                "Failed to schedule job %s - Could not get job from orchestrator: %s", job_id, bje
+            )
             return False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
 
         registration_token = self.generate_build_token(
-            BUILD_JOB_REGISTRATION_TYPE,
-            build_job.build_uuid,
-            job_id,
-            EPHEMERAL_SETUP_TIMEOUT
+            BUILD_JOB_REGISTRATION_TYPE, build_job.build_uuid, job_id, EPHEMERAL_SETUP_TIMEOUT
         )
 
         started_with_executor = None
@@ -606,12 +636,17 @@ class EphemeralBuilderManager(BuildStateInterface):
                 )
                 continue
 
-            logger.debug("Starting builder for job %s with selected executor: %s", job_id, executor.name)
+            logger.debug(
+                "Starting builder for job %s with selected executor: %s", job_id, executor.name
+            )
 
             try:
                 execution_id = executor.start_builder(registration_token, build_job.build_uuid)
             except:
-                logger.exception("Exception when starting builder for job: %s - Falling back to next configured executor", job_id)
+                logger.exception(
+                    "Exception when starting builder for job: %s - Falling back to next configured executor",
+                    job_id,
+                )
                 continue
 
             started_with_executor = executor
@@ -629,7 +664,10 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         # Store metric data tracking job
         metric_spec = json.dumps(
-            {"executor_name": started_with_executor.name, "start_time": time.time(),}
+            {
+                "executor_name": started_with_executor.name,
+                "start_time": time.time(),
+            }
         )
 
         # Mark the job as scheduled
@@ -642,7 +680,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         return True, None
 
     def _job_expired_callback(self, key_change):
-        """ Callback invoked when job key is changed, except for CREATE, SET events.
+        """Callback invoked when job key is changed, except for CREATE, SET events.
         DELETE and EXPIRE exvents make sure the build is marked as completed and remove any
         state tracking, executors left.
         """
@@ -670,7 +708,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         self.on_job_complete(build_job, job_result, executor_name, execution_id)
 
     def _cleanup_job_from_orchestrator(self, build_job):
-        """ Cleanup the given job from the orchestrator.
+        """Cleanup the given job from the orchestrator.
         This includes any keys related to that job: job keys, expiry keys, metric keys, ...
         """
         lock_key = self._lock_key(build_job.build_uuid)
@@ -682,14 +720,14 @@ class EphemeralBuilderManager(BuildStateInterface):
             except KeyError:
                 pass
             finally:
-                self._orchestrator.delete_key(lock_key) # Release lock
+                self._orchestrator.delete_key(lock_key)  # Release lock
 
     def append_build_log(self, build_id, log_message):
         """
         Append the logs from Docker's build output.
-        This checks if the given message is a "STEP" line from Docker's output, 
+        This checks if the given message is a "STEP" line from Docker's output,
         and set the log type to "COMMAND" if so.
-        
+
         See https://github.com/quay/quay-builder/blob/master/docker/log_writer.go
         to get the serialized message structure
         """
@@ -704,11 +742,13 @@ class EphemeralBuilderManager(BuildStateInterface):
             if key in log_data:
                 fully_unwrapped = log_data[key]
                 break
-        
+
         current_log_string = str(fully_unwrapped)
         current_step = _extract_current_step(current_log_string)
         if current_step:
-            self.append_log_message(self, build_id, current_log_string, log_type=self._build_logs.COMMAND)
+            self.append_log_message(
+                self, build_id, current_log_string, log_type=self._build_logs.COMMAND
+            )
         else:
             self.append_log_message(self, build_id, current_log_string)
 
@@ -747,7 +787,9 @@ class EphemeralBuilderManager(BuildStateInterface):
         """Cleanup existing running executor running on `executor_name` with `execution_id`."""
         executor = self._executor_name_to_executor.get(executor_name)
         if executor is None:
-            logger.error("Could not find registered executor %s to terminate %s", executor_name, execution_id)
+            logger.error(
+                "Could not find registered executor %s to terminate %s", executor_name, execution_id
+            )
             return
 
         # Terminate the executor's execution
@@ -791,7 +833,7 @@ class EphemeralBuilderManager(BuildStateInterface):
             self._queue.update_metrics()
 
             with database.CloseForLongOperation(app.config):
-                 time.sleep(WORK_CHECK_TIMEOUT)
+                time.sleep(WORK_CHECK_TIMEOUT)
 
             logger.debug("Checking for more work from the build queue")
             processing_time = EPHEMERAL_SETUP_TIMEOUT + SETUP_LEEWAY_SECONDS
@@ -821,7 +863,10 @@ class EphemeralBuilderManager(BuildStateInterface):
                 logger.debug("Creating build job for build %s", build_id)
                 self.create_job(build_id, {"job_queue_item": build_job.job_item})
             except BuildJobAlreadyExistsError:
-                logger.warning("Attempted to create job %s that already exists. Cleaning up existing job and returning it to the queue.", job_id)
+                logger.warning(
+                    "Attempted to create job %s that already exists. Cleaning up existing job and returning it to the queue.",
+                    job_id,
+                )
                 self.job_unschedulable(job_id)
                 self._queue.incomplete(job_item, restore_retry=True)
                 continue
@@ -864,4 +909,3 @@ def _extract_current_step(current_status_string):
     step_increment = re.search(r"Step ([0-9]+) :", current_status_string)
     if step_increment:
         return int(step_increment.group(1))
-                

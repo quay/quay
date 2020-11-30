@@ -91,7 +91,11 @@ def app_config(http_client, mailing_feature):
             "SERVICE_ICON": "http://some/icon",
             "OIDC_SERVER": "http://fakeoidc",
             "DEBUGGING": True,
-            "OIDC_ENDPOINT_CUSTOM_PARAMS": {"authorization_endpoint": {"some": "param",},},
+            "OIDC_ENDPOINT_CUSTOM_PARAMS": {
+                "authorization_endpoint": {
+                    "some": "param",
+                },
+            },
         },
         "HTTPCLIENT": http_client,
     }

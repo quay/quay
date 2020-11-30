@@ -208,7 +208,11 @@ def test_generate_registry_jwt(
         actions = actions_str.split(",") if actions_str else []
 
         expected_access.append(
-            {"type": "repository", "name": name, "actions": actions,}
+            {
+                "type": "repository",
+                "name": name,
+                "actions": actions,
+            }
         )
 
     assert decoded["access"] == expected_access

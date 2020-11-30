@@ -150,7 +150,12 @@ def get_user():
     if not context or context.is_anonymous:
         abort(404)
 
-    return jsonify({"username": context.credential_username, "email": None,})
+    return jsonify(
+        {
+            "username": context.credential_username,
+            "email": None,
+        }
+    )
 
 
 @v1_bp.route("/users/<username>/", methods=["PUT"])

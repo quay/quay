@@ -75,7 +75,12 @@ bad_vuln_report = {
             True,
             None,
         ),
-        (actions["DeleteNotification"]("5e4b387e-88d3-4364-86fd-063447a6fad2"), None, True, None,),
+        (
+            actions["DeleteNotification"]("5e4b387e-88d3-4364-86fd-063447a6fad2"),
+            None,
+            True,
+            None,
+        ),
     ],
 )
 def test_is_valid_response(action, resp, expected, exception):

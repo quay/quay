@@ -27,7 +27,14 @@ class Role(namedtuple("Role", ["role_name"])):
 class UserPermission(
     namedtuple(
         "UserPermission",
-        ["role_name", "username", "is_robot", "avatar", "is_org_member", "has_org",],
+        [
+            "role_name",
+            "username",
+            "is_robot",
+            "avatar",
+            "is_org_member",
+            "has_org",
+        ],
     )
 ):
     def to_dict(self):
@@ -43,7 +50,15 @@ class UserPermission(
 
 
 class RobotPermission(
-    namedtuple("RobotPermission", ["role_name", "username", "is_robot", "is_org_member",])
+    namedtuple(
+        "RobotPermission",
+        [
+            "role_name",
+            "username",
+            "is_robot",
+            "is_org_member",
+        ],
+    )
 ):
     def to_dict(self, user=None, team=None, org_members=None):
         return {
@@ -54,7 +69,16 @@ class RobotPermission(
         }
 
 
-class TeamPermission(namedtuple("TeamPermission", ["role_name", "team_name", "avatar",])):
+class TeamPermission(
+    namedtuple(
+        "TeamPermission",
+        [
+            "role_name",
+            "team_name",
+            "avatar",
+        ],
+    )
+):
     def to_dict(self):
         return {
             "role": self.role_name,
@@ -72,128 +96,128 @@ class PermissionDataInterface(object):
     @abstractmethod
     def get_repo_permissions_by_user(self, namespace_name, repository_name):
         """
-    
-    Args:
-      namespace_name: string
-      repository_name: string
 
-    Returns:
-      list(UserPermission)
-    """
+        Args:
+          namespace_name: string
+          repository_name: string
+
+        Returns:
+          list(UserPermission)
+        """
 
     @abstractmethod
     def get_repo_roles(self, username, namespace_name, repository_name):
         """
-    
-    Args:
-      username: string
-      namespace_name: string
-      repository_name: string
 
-    Returns:
-      list(Role) or None
-    """
+        Args:
+          username: string
+          namespace_name: string
+          repository_name: string
+
+        Returns:
+          list(Role) or None
+        """
 
     @abstractmethod
     def get_repo_permission_for_user(self, username, namespace_name, repository_name):
         """
-    
-    Args:
-      username: string
-      namespace_name: string
-      repository_name: string
 
-    Returns:
-      UserPermission
-    """
+        Args:
+          username: string
+          namespace_name: string
+          repository_name: string
+
+        Returns:
+          UserPermission
+        """
 
     @abstractmethod
     def set_repo_permission_for_user(self, username, namespace_name, repository_name, role_name):
         """
-    
-    Args:
-      username: string
-      namespace_name: string
-      repository_name: string
-      role_name: string
 
-    Returns:
-      UserPermission
-      
-    Raises:
-      SaveException
-    """
+        Args:
+          username: string
+          namespace_name: string
+          repository_name: string
+          role_name: string
+
+        Returns:
+          UserPermission
+
+        Raises:
+          SaveException
+        """
 
     @abstractmethod
     def delete_repo_permission_for_user(self, username, namespace_name, repository_name):
         """
-    
-    Args:
-      username: string
-      namespace_name: string
-      repository_name: string
 
-    Returns:
-      void
-      
-    Raises:
-      DeleteException
-    """
+        Args:
+          username: string
+          namespace_name: string
+          repository_name: string
+
+        Returns:
+          void
+
+        Raises:
+          DeleteException
+        """
 
     @abstractmethod
     def get_repo_permissions_by_team(self, namespace_name, repository_name):
         """
-    
-    Args:
-      namespace_name: string
-      repository_name: string
 
-    Returns:
-      list(TeamPermission)
-    """
+        Args:
+          namespace_name: string
+          repository_name: string
+
+        Returns:
+          list(TeamPermission)
+        """
 
     @abstractmethod
     def get_repo_role_for_team(self, team_name, namespace_name, repository_name):
         """
-    
-    Args:
-      team_name: string
-      namespace_name: string
-      repository_name: string
 
-    Returns:
-      Role
-    """
+        Args:
+          team_name: string
+          namespace_name: string
+          repository_name: string
+
+        Returns:
+          Role
+        """
 
     @abstractmethod
     def set_repo_permission_for_team(self, team_name, namespace_name, repository_name, permission):
         """
-    
-    Args:
-      team_name: string
-      namespace_name: string
-      repository_name: string
-      permission: string
 
-    Returns:
-      TeamPermission
-      
-    Raises:
-      SaveException
-    """
+        Args:
+          team_name: string
+          namespace_name: string
+          repository_name: string
+          permission: string
+
+        Returns:
+          TeamPermission
+
+        Raises:
+          SaveException
+        """
 
     @abstractmethod
     def delete_repo_permission_for_team(self, team_name, namespace_name, repository_name):
         """
-    
-    Args:
-      team_name: string
-      namespace_name: string
-      repository_name: string
 
-    Returns:
-      TeamPermission
-      
-    Raises:
-      DeleteException
-    """
+        Args:
+          team_name: string
+          namespace_name: string
+          repository_name: string
+
+        Returns:
+          TeamPermission
+
+        Raises:
+          DeleteException
+        """

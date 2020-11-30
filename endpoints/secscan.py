@@ -60,7 +60,8 @@ def secscan_notification():
     name = ["with_id", notification_id]
     if not secscan_notification_queue.alive(name):
         secscan_notification_queue.put(
-            name, json.dumps({"notification_id": notification_id}),
+            name,
+            json.dumps({"notification_id": notification_id}),
         )
 
     return make_response("Okay")

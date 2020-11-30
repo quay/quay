@@ -94,8 +94,14 @@ class CustomBuildTrigger(BuildTriggerHandler):
                 "type": "object",
                 "description": "metadata about a git commit",
                 "properties": {
-                    "url": {"type": "string", "description": "URL to view a git commit",},
-                    "message": {"type": "string", "description": "git commit message",},
+                    "url": {
+                        "type": "string",
+                        "description": "URL to view a git commit",
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "git commit message",
+                    },
                     "date": {"type": "string", "description": "timestamp for a git commit"},
                     "author": {
                         "type": "object",
@@ -194,8 +200,14 @@ class CustomBuildTrigger(BuildTriggerHandler):
         config = self.config
         public_key, private_key = generate_ssh_keypair()
         config["credentials"] = [
-            {"name": "SSH Public Key", "value": public_key.decode("ascii"),},
-            {"name": "Webhook Endpoint URL", "value": standard_webhook_url,},
+            {
+                "name": "SSH Public Key",
+                "value": public_key.decode("ascii"),
+            },
+            {
+                "name": "Webhook Endpoint URL",
+                "value": standard_webhook_url,
+            },
         ]
         self.config = config
         return config, {"private_key": private_key.decode("ascii")}

@@ -124,5 +124,7 @@ if __name__ == "__main__":
     limit_services(config, QUAY_SERVICES)
     override_services(config, QUAY_OVERRIDE_SERVICES)
     generate_supervisord_config(
-        os.path.join(QUAYCONF_DIR, "supervisord.conf"), config, QUAY_LOGGING,
+        os.path.join(QUAYCONF_DIR, "supervisord.conf"),
+        config,
+        QUAY_LOGGING,
     )

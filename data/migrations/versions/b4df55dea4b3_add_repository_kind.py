@@ -24,7 +24,11 @@ def upgrade(op, tables, tester):
     op.create_index("repositorykind_name", "repositorykind", ["name"], unique=True)
 
     op.bulk_insert(
-        tables.repositorykind, [{"id": 1, "name": "image"}, {"id": 2, "name": "application"},],
+        tables.repositorykind,
+        [
+            {"id": 1, "name": "image"},
+            {"id": 2, "name": "application"},
+        ],
     )
 
     op.add_column(

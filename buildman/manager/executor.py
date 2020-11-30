@@ -167,22 +167,24 @@ class BuilderExecutor(object):
 
         server_addr = manager_hostname.split(":", 1)[0] + ":" + str(DEFAULT_GRPC_SERVER_PORT)
         rendered_json = json.load(
-            io.StringIO(TEMPLATE.render(
-                token=token,
-                build_uuid=build_uuid,
-                quay_username=quay_username,
-                quay_password=quay_password,
-                manager_hostname=server_addr,
-                worker_image=self.executor_config.get(
-                    "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
-                ),
-                worker_tag=self.executor_config["WORKER_TAG"],
-                volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
-                max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
-                ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
-                container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker"),
-                ca_cert=self.executor_config.get("CA_CERT", self._ca_cert()),
-            ))
+            io.StringIO(
+                TEMPLATE.render(
+                    token=token,
+                    build_uuid=build_uuid,
+                    quay_username=quay_username,
+                    quay_password=quay_password,
+                    manager_hostname=server_addr,
+                    worker_image=self.executor_config.get(
+                        "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
+                    ),
+                    worker_tag=self.executor_config["WORKER_TAG"],
+                    volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
+                    max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
+                    ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
+                    container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker"),
+                    ca_cert=self.executor_config.get("CA_CERT", self._ca_cert()),
+                )
+            )
         )
 
         return json.dumps(rendered_json)
@@ -193,10 +195,9 @@ class EC2Executor(BuilderExecutor):
     Implementation of BuilderExecutor which uses libcloud to start machines on a variety of cloud
     providers.
     """
+
     COREOS_STACK_ARCHITECTURE = "x86_64"
-    COREOS_STACK_URL = (
-        "https://builds.coreos.fedoraproject.org/streams/%s.json"
-    )
+    COREOS_STACK_URL = "https://builds.coreos.fedoraproject.org/streams/%s.json"
 
     def __init__(self, *args, **kwargs):
         super(EC2Executor, self).__init__(*args, **kwargs)
@@ -215,9 +216,9 @@ class EC2Executor(BuilderExecutor):
     @property
     def running_builders_count(self):
         ec2_conn = self._get_conn()
-        resp = ec2_conn.describe_instances(Filters=[
-            {"Name": "tag:Name", "Values": ["Quay Ephemeral Builder"]}
-        ])
+        resp = ec2_conn.describe_instances(
+            Filters=[{"Name": "tag:Name", "Values": ["Quay Ephemeral Builder"]}]
+        )
 
         count = 0
         for reservation in resp["Reservations"]:
@@ -234,8 +235,10 @@ class EC2Executor(BuilderExecutor):
         Retrieve the CoreOS AMI id from the canonical listing.
         """
         stack_list_json = requests.get(EC2Executor.COREOS_STACK_URL % coreos_channel).json()
-        stack_amis = stack_list_json['architectures'][EC2Executor.COREOS_STACK_ARCHITECTURE]['images']['aws']['regions']
-        return stack_amis[ec2_region]['image']
+        stack_amis = stack_list_json["architectures"][EC2Executor.COREOS_STACK_ARCHITECTURE][
+            "images"
+        ]["aws"]["regions"]
+        return stack_amis[ec2_region]["image"]
 
     @observe(build_start_duration, "ec2")
     def start_builder(self, token, build_uuid):
@@ -246,9 +249,7 @@ class EC2Executor(BuilderExecutor):
         if coreos_ami is None:
             coreos_ami = self.get_coreos_ami(region, channel)
 
-        user_data = self.generate_cloud_config(
-            token, build_uuid, self.manager_hostname
-        )
+        user_data = self.generate_cloud_config(token, build_uuid, self.manager_hostname)
         logger.debug("Generated cloud config for build %s: %s", build_uuid, user_data)
 
         ec2_conn = self._get_conn()
@@ -259,8 +260,8 @@ class EC2Executor(BuilderExecutor):
                 "Ebs": {
                     "VolumeSize": int(self.executor_config.get("BLOCK_DEVICE_SIZE", 48)),
                     "VolumeType": "gp2",
-                    "DeleteOnTermination":True,
-                }
+                    "DeleteOnTermination": True,
+                },
             }
         ]
 
@@ -282,7 +283,7 @@ class EC2Executor(BuilderExecutor):
                     {"Key": "Name", "Value": "Quay Ephemeral Builder"},
                     {"Key": "RegistrationToken", "Value": token[:36]},
                     {"Key": "BuildUUID", "Value": build_uuid},
-                ]
+                ],
             }
         ]
 
@@ -297,7 +298,7 @@ class EC2Executor(BuilderExecutor):
                 NetworkInterfaces=interfaces,
                 MinCount=1,
                 MaxCount=1,
-                TagSpecifications=tag_specs
+                TagSpecifications=tag_specs,
             )
         except (ec2_conn.exceptions.ClientError, botocore.exceptions.ClientError) as ec2e:
             raise ExecutorException(ec2e)
@@ -325,7 +326,9 @@ class EC2Executor(BuilderExecutor):
             logger.exception("Exception when trying to terminate instance %s", builder_id)
             raise
 
-        if builder_id not in [si["InstanceId"] for si in terminated_instances["TerminatingInstances"]]:
+        if builder_id not in [
+            si["InstanceId"] for si in terminated_instances["TerminatingInstances"]
+        ]:
             raise ExecutorException("Unable to terminate instance: %s" % builder_id)
 
 
@@ -528,7 +531,9 @@ class KubernetesExecutor(BuilderExecutor):
             },
             "spec": {
                 "activeDeadlineSeconds": self.executor_config.get("MAXIMUM_JOB_TIME", 7200),
-                "ttlSecondsAfterFinished": self.executor_config.get("RETENTION_AFTER_FINISHED", 120),
+                "ttlSecondsAfterFinished": self.executor_config.get(
+                    "RETENTION_AFTER_FINISHED", 120
+                ),
                 "template": {
                     "metadata": {
                         "labels": {
@@ -580,9 +585,7 @@ class KubernetesExecutor(BuilderExecutor):
     @observe(build_start_duration, "k8s")
     def start_builder(self, token, build_uuid):
         # generate resource
-        user_data = self.generate_cloud_config(
-            token, build_uuid, self.manager_hostname
-        )
+        user_data = self.generate_cloud_config(token, build_uuid, self.manager_hostname)
         resource = self._job_resource(build_uuid, user_data)
         logger.debug("Using Kubernetes Distribution: %s", self._kubernetes_distribution())
         logger.debug("Generated kubernetes resource:\n%s", resource)

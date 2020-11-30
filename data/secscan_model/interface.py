@@ -73,6 +73,6 @@ class SecurityScannerInterface(object):
 
     @abstractmethod
     def mark_notification_handled(self, notification_id):
-        """ 
+        """
         Marks that a security notification from the scanner has been handled.
         """

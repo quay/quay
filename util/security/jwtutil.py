@@ -39,7 +39,12 @@ class _StrictJWT(PyJWT):
         # Weird syntax to call super on a staticmethod
         defaults = super(_StrictJWT, _StrictJWT)._get_default_options()
         defaults.update(
-            {"require_exp": True, "require_iat": True, "require_nbf": True, "exp_max_s": None,}
+            {
+                "require_exp": True,
+                "require_iat": True,
+                "require_nbf": True,
+                "exp_max_s": None,
+            }
         )
         return defaults
 

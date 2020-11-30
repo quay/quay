@@ -170,7 +170,8 @@ class AzureStorage(BaseStorage):
     def stream_write(self, path, fp, content_type=None, content_encoding=None):
         blob_name = self._blob_name_from_path(path)
         content_settings = ContentSettings(
-            content_type=content_type, content_encoding=content_encoding,
+            content_type=content_type,
+            content_encoding=content_encoding,
         )
 
         try:

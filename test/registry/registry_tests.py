@@ -71,8 +71,8 @@ def test_empty_layer(pusher, puller, images_with_empty_layer, liveserver_session
 def test_empty_layer_push_again(
     pusher, puller, images_with_empty_layer, liveserver_session, app_reloader
 ):
-    """ Test: Push and pull of an image with an empty layer to a new repository and then push it
-      again. """
+    """Test: Push and pull of an image with an empty layer to a new repository and then push it
+    again."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -139,8 +139,8 @@ def test_multi_layer_images_push_pull(
 def test_overwrite_tag(
     pusher, puller, basic_images, different_images, liveserver_session, app_reloader
 ):
-    """ Test: Basic push and pull of an image to a new repository, followed by a push to the same
-      tag with different images. """
+    """Test: Basic push and pull of an image to a new repository, followed by a push to the same
+    tag with different images."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -267,7 +267,12 @@ def test_empty_manifest(v22_protocol, liveserver_session, app_reloader):
 
     # Push an empty manifest.
     v22_protocol.push(
-        liveserver_session, "devtable", "simple", "latest", [], credentials=credentials,
+        liveserver_session,
+        "devtable",
+        "simple",
+        "latest",
+        [],
+        credentials=credentials,
     )
 
     # Pull the empty manifest.
@@ -309,8 +314,8 @@ def test_pull_invalid_credentials(puller, basic_images, liveserver_session, app_
 def test_push_pull_formerly_bad_repo_name(
     pusher, puller, basic_images, liveserver_session, app_reloader
 ):
-    """ Test: Basic push and pull of an image to a new repository with a name that formerly
-            failed. """
+    """Test: Basic push and pull of an image to a new repository with a name that formerly
+    failed."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -361,10 +366,10 @@ def test_application_repo(
 
 
 def test_middle_layer_different_sha(v2_protocol, v1_protocol, liveserver_session, app_reloader):
-    """ Test: Pushing of a 3-layer image with the *same* V1 ID's, but the middle layer having
-            different bytes, must result in new IDs being generated for the leaf layer, as
-            they point to different "images".
-  """
+    """Test: Pushing of a 3-layer image with the *same* V1 ID's, but the middle layer having
+    different bytes, must result in new IDs being generated for the leaf layer, as
+    they point to different "images".
+    """
     credentials = ("devtable", "password")
     first_images = [
         Image(id="baseimage", parent_id=None, size=None, bytes=layer_bytes_for_contents(b"base")),
@@ -452,7 +457,13 @@ def add_token(_, executor):
         (add_token, "devtable", None, False),
     ],
 )
-@pytest.mark.parametrize("disable_pull_logs", [False, True,])
+@pytest.mark.parametrize(
+    "disable_pull_logs",
+    [
+        False,
+        True,
+    ],
+)
 def test_push_pull_logging(
     credentials,
     namespace,
@@ -735,9 +746,9 @@ def test_library_namespace_with_support_disabled(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Pushing and pulling from the explicit library namespace, even when the
-            implicit one is disabled.
-  """
+    """Test: Pushing and pulling from the explicit library namespace, even when the
+    implicit one is disabled.
+    """
     credentials = ("devtable", "password")
 
     with FeatureFlagValue("LIBRARY_SUPPORT", False, registry_server_executor.on(liveserver)):
@@ -765,9 +776,9 @@ def test_library_namespace_with_support_disabled(
 def test_push_library_with_support_disabled(
     pusher, basic_images, liveserver_session, app_reloader, liveserver, registry_server_executor
 ):
-    """ Test: Pushing to the implicit library namespace, when disabled,
-            should fail.
-  """
+    """Test: Pushing to the implicit library namespace, when disabled,
+    should fail.
+    """
     credentials = ("devtable", "password")
 
     with FeatureFlagValue("LIBRARY_SUPPORT", False, registry_server_executor.on(liveserver)):
@@ -786,9 +797,9 @@ def test_push_library_with_support_disabled(
 def test_pull_library_with_support_disabled(
     puller, basic_images, liveserver_session, app_reloader, liveserver, registry_server_executor
 ):
-    """ Test: Pushing to the implicit library namespace, when disabled,
-            should fail.
-  """
+    """Test: Pushing to the implicit library namespace, when disabled,
+    should fail.
+    """
     credentials = ("devtable", "password")
 
     with FeatureFlagValue("LIBRARY_SUPPORT", False, registry_server_executor.on(liveserver)):
@@ -892,8 +903,7 @@ def test_image_replication_empty_layers(
 def test_push_reponame(
     repo_name, expected_failure, pusher, puller, basic_images, liveserver_session, app_reloader
 ):
-    """ Test: Attempt to add a repository with various names.
-  """
+    """Test: Attempt to add a repository with various names."""
     credentials = ("devtable", "password")
 
     pusher.push(
@@ -1013,9 +1023,9 @@ def test_wrong_image_order(legacy_pusher, liveserver_session, app_reloader):
     ],
 )
 def test_labels(labels, manifest_protocol, liveserver_session, api_caller, app_reloader):
-    """ Test: Image pushed with labels has those labels found in the database after the
-      push succeeds.
-  """
+    """Test: Image pushed with labels has those labels found in the database after the
+    push succeeds.
+    """
     images = [
         Image(
             id="theimage",
@@ -1048,7 +1058,13 @@ def test_labels(labels, manifest_protocol, liveserver_session, api_caller, app_r
 
 @pytest.mark.parametrize(
     "label_value, expected_expiration",
-    [("1d", True), ("1h", True), ("2w", True), ("1g", False), ("something", False),],
+    [
+        ("1d", True),
+        ("1h", True),
+        ("2w", True),
+        ("1g", False),
+        ("something", False),
+    ],
 )
 def test_expiration_label(
     label_value,
@@ -1058,10 +1074,10 @@ def test_expiration_label(
     api_caller,
     app_reloader,
 ):
-    """ Test: Tag pushed with a valid `quay.expires-after` will have its expiration set to its
-            start time plus the duration specified. If the duration is invalid, no expiration will
-            be set.
-  """
+    """Test: Tag pushed with a valid `quay.expires-after` will have its expiration set to its
+    start time plus the duration specified. If the duration is invalid, no expiration will
+    be set.
+    """
     images = [
         Image(
             id="theimage",
@@ -1150,8 +1166,8 @@ def test_delete_tag(
 def test_delete_manifest(
     manifest_protocol, puller, basic_images, different_images, liveserver_session, app_reloader
 ):
-    """ Test: Push a tag, push the tag again, push it back to the original manifest,
-            delete the tag, verify cannot pull. """
+    """Test: Push a tag, push the tag again, push it back to the original manifest,
+    delete the tag, verify cannot pull."""
     credentials = ("devtable", "password")
     options = ProtocolOptions()
     options.skip_head_checks = True
@@ -1437,9 +1453,9 @@ def test_push_disabled_namespace(
 def test_private_catalog_no_access(
     v2_protocol, liveserver_session, app_reloader, liveserver, registry_server_executor
 ):
-    """ Test: Ensure that accessing a private catalog with anonymous access results in no database
-      connections.
-  """
+    """Test: Ensure that accessing a private catalog with anonymous access results in no database
+    connections.
+    """
     with FeatureFlagValue("PUBLIC_CATALOG", False, registry_server_executor.on(liveserver)):
         # Disconnect the server from the database.
         registry_server_executor.on(liveserver).break_database()
@@ -1468,7 +1484,16 @@ def test_private_catalog_no_access(
         ),
     ],
 )
-@pytest.mark.parametrize("page_size", [1, 2, 10, 50, 100,])
+@pytest.mark.parametrize(
+    "page_size",
+    [
+        1,
+        2,
+        10,
+        50,
+        100,
+    ],
+)
 def test_catalog(
     public_catalog,
     credentials,
@@ -1555,7 +1580,16 @@ def test_catalog_disabled_namespace(
         ("devtable", "buynlarge", "orgrepo"),
     ],
 )
-@pytest.mark.parametrize("page_size", [1, 2, 10, 50, 100,])
+@pytest.mark.parametrize(
+    "page_size",
+    [
+        1,
+        2,
+        10,
+        50,
+        100,
+    ],
+)
 def test_tags(
     username,
     namespace,
@@ -1793,7 +1827,9 @@ def test_login(
             "devtable",
             "password",
             ["repository:devtable/simple:pull"],
-            [{"type": "repository", "name": "devtable/simple", "actions": ["pull"]},],
+            [
+                {"type": "repository", "name": "devtable/simple", "actions": ["pull"]},
+            ],
             True,
         ),
         # Basic push.
@@ -1801,7 +1837,9 @@ def test_login(
             "devtable",
             "password",
             ["repository:devtable/simple:push"],
-            [{"type": "repository", "name": "devtable/simple", "actions": ["push"]},],
+            [
+                {"type": "repository", "name": "devtable/simple", "actions": ["push"]},
+            ],
             True,
         ),
         # Basic push/pull.
@@ -1809,7 +1847,9 @@ def test_login(
             "devtable",
             "password",
             ["repository:devtable/simple:push,pull"],
-            [{"type": "repository", "name": "devtable/simple", "actions": ["push", "pull"]},],
+            [
+                {"type": "repository", "name": "devtable/simple", "actions": ["push", "pull"]},
+            ],
             True,
         ),
         # Admin.
@@ -1817,7 +1857,9 @@ def test_login(
             "devtable",
             "password",
             ["repository:devtable/simple:push,pull,*"],
-            [{"type": "repository", "name": "devtable/simple", "actions": ["push", "pull", "*"]},],
+            [
+                {"type": "repository", "name": "devtable/simple", "actions": ["push", "pull", "*"]},
+            ],
             True,
         ),
         # Basic pull with endpoint.
@@ -1841,7 +1883,9 @@ def test_login(
             "public",
             "password",
             ["repository:devtable/simple:pull"],
-            [{"type": "repository", "name": "devtable/simple", "actions": []},],
+            [
+                {"type": "repository", "name": "devtable/simple", "actions": []},
+            ],
             True,
         ),
         # Anonymous push and pull on a private repository.
@@ -1849,7 +1893,9 @@ def test_login(
             "",
             "",
             ["repository:devtable/simple:pull,push"],
-            [{"type": "repository", "name": "devtable/simple", "actions": []},],
+            [
+                {"type": "repository", "name": "devtable/simple", "actions": []},
+            ],
             True,
         ),
         # Pull and push with no push access.
@@ -1857,7 +1903,9 @@ def test_login(
             "reader",
             "password",
             ["repository:buynlarge/orgrepo:pull,push"],
-            [{"type": "repository", "name": "buynlarge/orgrepo", "actions": ["pull"]},],
+            [
+                {"type": "repository", "name": "buynlarge/orgrepo", "actions": ["pull"]},
+            ],
             True,
         ),
         # OAuth.
@@ -1865,7 +1913,9 @@ def test_login(
             "$oauthtoken",
             "%s%s" % ("b" * 40, "c" * 40),
             ["repository:public/publicrepo:pull,push"],
-            [{"type": "repository", "name": "public/publicrepo", "actions": ["pull"]},],
+            [
+                {"type": "repository", "name": "public/publicrepo", "actions": ["pull"]},
+            ],
             True,
         ),
         # Anonymous public repo.
@@ -1873,7 +1923,9 @@ def test_login(
             "",
             "",
             ["repository:public/publicrepo:pull,push"],
-            [{"type": "repository", "name": "public/publicrepo", "actions": ["pull"]},],
+            [
+                {"type": "repository", "name": "public/publicrepo", "actions": ["pull"]},
+            ],
             True,
         ),
         # Multiple scopes.
@@ -1903,7 +1955,9 @@ def test_login(
             "devtable",
             "password",
             ["repository:devtable/readonly:pull,push,*"],
-            [{"type": "repository", "name": "devtable/readonly", "actions": ["pull"]},],
+            [
+                {"type": "repository", "name": "devtable/readonly", "actions": ["pull"]},
+            ],
             True,
         ),
         # Mirror only allows Pulls
@@ -1911,7 +1965,9 @@ def test_login(
             "devtable",
             "password",
             ["repository:devtable/mirrored:pull,push,*"],
-            [{"type": "repository", "name": "devtable/mirrored", "actions": ["pull"]},],
+            [
+                {"type": "repository", "name": "devtable/mirrored", "actions": ["pull"]},
+            ],
             True,
         ),
         # Mirror State as specified Robot --> Allow Pushes
@@ -1919,7 +1975,9 @@ def test_login(
             "devtable+dtrobot",
             get_robot_password,
             ["repository:devtable/mirrored:push,pull,*"],
-            [{"type": "repository", "name": "devtable/mirrored", "actions": ["push", "pull"]},],
+            [
+                {"type": "repository", "name": "devtable/mirrored", "actions": ["push", "pull"]},
+            ],
             True,
         ),
         # Mirror State as a Robot w/ write permissions but not the assigned Robot -> No pushes
@@ -1927,7 +1985,9 @@ def test_login(
             "devtable+dtrobot2",
             get_robot_password,
             ["repository:devtable/mirrored:push,pull,*"],
-            [{"type": "repository", "name": "devtable/mirrored", "actions": ["pull"]},],
+            [
+                {"type": "repository", "name": "devtable/mirrored", "actions": ["pull"]},
+            ],
             True,
         ),
         # TODO: Add: mirror state with no robot but the robot has write permissions -> no pushes
@@ -2009,7 +2069,12 @@ def test_push_tag_existing_image(v1_protocol, basic_images, liveserver_session, 
 
     # Pull the repository to verify.
     pulled = v1_protocol.pull(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials,
+        liveserver_session,
+        "devtable",
+        "newrepo",
+        "latest",
+        basic_images,
+        credentials=credentials,
     )
     assert pulled.image_ids
 
@@ -2034,7 +2099,13 @@ def test_push_tag_existing_image(v1_protocol, basic_images, liveserver_session, 
     )
 
 
-@pytest.mark.parametrize("schema_version", [1, 2,])
+@pytest.mark.parametrize(
+    "schema_version",
+    [
+        1,
+        2,
+    ],
+)
 @pytest.mark.parametrize("is_amd", [True, False])
 @pytest.mark.parametrize("oci_list", [True, False])
 def test_push_pull_manifest_list_back_compat(
@@ -2049,9 +2120,9 @@ def test_push_pull_manifest_list_back_compat(
     is_amd,
     oci_list,
 ):
-    """ Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
-      and one not, and, if there is a legacy manifest, ensure it can be pulled.
-  """
+    """Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
+    and one not, and, if there is a legacy manifest, ensure it can be pulled.
+    """
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2119,9 +2190,9 @@ def test_push_pull_manifest_list(
     schema_version,
     data_model,
 ):
-    """ Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
-      and one not, and pull it.
-  """
+    """Test: Push a new tag with a manifest list containing two manifests, one (possibly) legacy
+    and one not, and pull it.
+    """
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2175,9 +2246,9 @@ def test_push_pull_manifest_list(
 def test_push_pull_manifest_remote_layers(
     v22_protocol, legacy_puller, liveserver_session, app_reloader, remote_images, data_model
 ):
-    """ Test: Push a new tag with a manifest which contains at least one remote layer, and then
-      pull that manifest back.
-  """
+    """Test: Push a new tag with a manifest which contains at least one remote layer, and then
+    pull that manifest back.
+    """
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2205,8 +2276,7 @@ def test_push_pull_manifest_remote_layers(
 def test_push_manifest_list_missing_manifest(
     v22_protocol, basic_images, liveserver_session, app_reloader, data_model
 ):
-    """ Test: Attempt to push a new tag with a manifest list containing an invalid manifest.
-  """
+    """Test: Attempt to push a new tag with a manifest list containing an invalid manifest."""
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2236,9 +2306,9 @@ def test_push_manifest_list_missing_manifest(
 def test_push_pull_manifest_list_again(
     v22_protocol, basic_images, different_images, liveserver_session, app_reloader, data_model
 ):
-    """ Test: Push a new tag with a manifest list containing two manifests, push it again, and pull
-      it.
-  """
+    """Test: Push a new tag with a manifest list containing two manifests, push it again, and pull
+    it.
+    """
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2295,8 +2365,7 @@ def test_push_pull_manifest_list_again(
 def test_push_pull_manifest_list_duplicate_manifest(
     v22_protocol, basic_images, liveserver_session, app_reloader, data_model
 ):
-    """ Test: Push a manifest list that contains the same child manifest twice.
-  """
+    """Test: Push a manifest list that contains the same child manifest twice."""
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2396,7 +2465,13 @@ def test_geo_blocking(
     )
 
 
-@pytest.mark.parametrize("has_amd64_linux", [False, True,])
+@pytest.mark.parametrize(
+    "has_amd64_linux",
+    [
+        False,
+        True,
+    ],
+)
 def test_pull_manifest_list_schema2_only(
     v22_protocol,
     basic_images,
@@ -2406,11 +2481,11 @@ def test_pull_manifest_list_schema2_only(
     data_model,
     has_amd64_linux,
 ):
-    """ Test: Push a new tag with a manifest list containing two manifests, one schema2 (possibly)
-      amd64 and one not, and pull it when only accepting a schema2 manifest type. Since the manifest
-      list content type is not being sent, this should return just the manifest (or none if no
-      linux+amd64 is present.)
-  """
+    """Test: Push a new tag with a manifest list containing two manifests, one schema2 (possibly)
+    amd64 and one not, and pull it when only accepting a schema2 manifest type. Since the manifest
+    list content type is not being sent, this should return just the manifest (or none if no
+    linux+amd64 is present.)
+    """
     credentials = ("devtable", "password")
 
     # Build the manifests that will go in the list.
@@ -2503,9 +2578,9 @@ def test_push_pull_unicode_direct(pusher, puller, unicode_images, liveserver_ses
 def test_push_legacy_pull_not_allowed(
     v22_protocol, v1_protocol, remote_images, liveserver_session, app_reloader, data_model
 ):
-    """ Test: Push a V2 Schema 2 manifest and attempt to pull via V1 when there is no assigned legacy
-      image.
-  """
+    """Test: Push a V2 Schema 2 manifest and attempt to pull via V1 when there is no assigned legacy
+    image.
+    """
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2585,13 +2660,19 @@ def test_push_pull_emoji_unicode_direct(
     )
 
 
-@pytest.mark.parametrize("accepted_mimetypes", [[], ["application/json"],])
+@pytest.mark.parametrize(
+    "accepted_mimetypes",
+    [
+        [],
+        ["application/json"],
+    ],
+)
 def test_push_pull_older_mimetype(
     pusher, puller, basic_images, liveserver_session, app_reloader, accepted_mimetypes
 ):
-    """ Test: Push and pull an image, but override the accepted mimetypes to that sent by older
-            Docker clients.
-  """
+    """Test: Push and pull an image, but override the accepted mimetypes to that sent by older
+    Docker clients.
+    """
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2618,9 +2699,9 @@ def test_push_pull_older_mimetype(
 def test_attempt_push_mismatched_manifest(
     v22_protocol, basic_images, liveserver_session, app_reloader, data_model
 ):
-    """ Test: Attempt to push a manifest list refering to a schema 1 manifest with a different
-      architecture than that specified in the manifest list.
-  """
+    """Test: Attempt to push a manifest list refering to a schema 1 manifest with a different
+    architecture than that specified in the manifest list.
+    """
     credentials = ("devtable", "password")
     options = ProtocolOptions()
 
@@ -2651,7 +2732,13 @@ def test_attempt_push_mismatched_manifest(
     )
 
 
-@pytest.mark.parametrize("delete_method", ["registry", "api",])
+@pytest.mark.parametrize(
+    "delete_method",
+    [
+        "registry",
+        "api",
+    ],
+)
 def test_attempt_pull_by_manifest_digest_for_deleted_tag(
     delete_method, manifest_protocol, basic_images, liveserver_session, app_reloader, api_caller
 ):
@@ -2823,9 +2910,9 @@ def test_readonly_push_pull(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Basic push an image to a new repository, followed by changing the system to readonly
-            and then attempting a pull and a push.
-  """
+    """Test: Basic push an image to a new repository, followed by changing the system to readonly
+    and then attempting a pull and a push.
+    """
     credentials = ("devtable", "password")
 
     # Push a new repository.

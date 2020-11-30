@@ -124,7 +124,12 @@ def upgrade(op, tables, tester):
     op.create_index("tag_tag_kind_id", "tag", ["tag_kind_id"], unique=False)
     # ### end Alembic commands ###
 
-    op.bulk_insert(tables.tagkind, [{"name": "tag"},])
+    op.bulk_insert(
+        tables.tagkind,
+        [
+            {"name": "tag"},
+        ],
+    )
 
     # ### population of test data ### #
     tester.populate_table(

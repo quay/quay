@@ -14,7 +14,16 @@ from test.fixtures import *
 
 
 @pytest.mark.parametrize(
-    "expiration", [(None), ("-1m"), ("-1d"), ("-1w"), ("10m"), ("10d"), ("10w"),]
+    "expiration",
+    [
+        (None),
+        ("-1m"),
+        ("-1d"),
+        ("-1w"),
+        ("10m"),
+        ("10d"),
+        ("10w"),
+    ],
 )
 def test_gc(expiration, initialized_db):
     user = model.user.get_user("devtable")
@@ -83,8 +92,24 @@ def app_config():
         yield _config.app_config
 
 
-@pytest.mark.parametrize("expiration", [(None), ("10m"), ("10d"), ("10w"),])
-@pytest.mark.parametrize("default_expiration", [(None), ("10m"), ("10d"), ("10w"),])
+@pytest.mark.parametrize(
+    "expiration",
+    [
+        (None),
+        ("10m"),
+        ("10d"),
+        ("10w"),
+    ],
+)
+@pytest.mark.parametrize(
+    "default_expiration",
+    [
+        (None),
+        ("10m"),
+        ("10d"),
+        ("10w"),
+    ],
+)
 def test_create_access_token(expiration, default_expiration, initialized_db, app_config):
     user = model.user.get_user("devtable")
     expiration_date = datetime.now() + convert_to_timedelta(expiration) if expiration else None

@@ -305,27 +305,42 @@ class ValidatedAuthContext(AuthContext):
         # TODO: Remove this all once the new code is fully deployed.
         if self.token:
             dict_data.update(
-                {"kind": "token", "token": self.token.get_code(),}
+                {
+                    "kind": "token",
+                    "token": self.token.get_code(),
+                }
             )
 
         if self.oauthtoken:
             dict_data.update(
-                {"kind": "oauth", "oauth": self.oauthtoken.uuid, "user": self.authed_user.username,}
+                {
+                    "kind": "oauth",
+                    "oauth": self.oauthtoken.uuid,
+                    "user": self.authed_user.username,
+                }
             )
 
         if self.user or self.robot:
             dict_data.update(
-                {"kind": "user", "user": self.authed_user.username,}
+                {
+                    "kind": "user",
+                    "user": self.authed_user.username,
+                }
             )
 
         if self.appspecifictoken:
             dict_data.update(
-                {"kind": "user", "user": self.authed_user.username,}
+                {
+                    "kind": "user",
+                    "user": self.authed_user.username,
+                }
             )
 
         if self.is_anonymous:
             dict_data.update(
-                {"kind": "anonymous",}
+                {
+                    "kind": "anonymous",
+                }
             )
 
         # End of legacy information.

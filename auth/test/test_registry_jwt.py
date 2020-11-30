@@ -27,7 +27,13 @@ from test.fixtures import *
 
 def _access(typ="repository", name="somens/somerepo", actions=None):
     actions = [] if actions is None else actions
-    return [{"type": typ, "name": name, "actions": actions,}]
+    return [
+        {
+            "type": typ,
+            "name": name,
+            "actions": actions,
+        }
+    ]
 
 
 def _delete_field(token_data, field_name):
@@ -228,7 +234,13 @@ def test_mixing_keys_e2e(initialized_db):
         _parse_token(deleted_key_token)
 
 
-@pytest.mark.parametrize("token", ["someunicodetoken✡", "\xc9\xad\xbd",])
+@pytest.mark.parametrize(
+    "token",
+    [
+        "someunicodetoken✡",
+        "\xc9\xad\xbd",
+    ],
+)
 def test_unicode_token(token):
     with pytest.raises(InvalidJWTException):
         _parse_token(token)

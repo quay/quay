@@ -840,7 +840,8 @@ class CloudFrontedS3Storage(S3Storage):
             return None
 
         with self._context.config_provider.get_volume_file(
-            cloudfront_privatekey_filename, mode="rb",
+            cloudfront_privatekey_filename,
+            mode="rb",
         ) as key_file:
             return serialization.load_pem_private_key(
                 key_file.read(), password=None, backend=default_backend()

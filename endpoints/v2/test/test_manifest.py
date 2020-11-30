@@ -27,7 +27,13 @@ def test_e2e_query_count_manifest_norewrite(client, app):
     }
 
     user = model.user.get_user("devtable")
-    access = [{"type": "repository", "name": "devtable/simple", "actions": ["pull", "push"],}]
+    access = [
+        {
+            "type": "repository",
+            "name": "devtable/simple",
+            "actions": ["pull", "push"],
+        }
+    ]
 
     context, subject = build_context_and_subject(ValidatedAuthContext(user=user))
     token = generate_bearer_token(

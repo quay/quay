@@ -49,7 +49,10 @@ def upgrade(op, tables, tester):
 
     op.bulk_insert(
         tables.logentrykind,
-        [{"name": "create_app_specific_token"}, {"name": "revoke_app_specific_token"},],
+        [
+            {"name": "create_app_specific_token"},
+            {"name": "revoke_app_specific_token"},
+        ],
     )
 
     # ### population of test data ### #

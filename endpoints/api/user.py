@@ -123,7 +123,10 @@ def user_view(user, previous_username=None):
 
         if user_admin:
             org_response.update(
-                {"is_org_admin": admin_org.can(), "preferred_namespace": not (o.stripe_id is None),}
+                {
+                    "is_org_admin": admin_org.can(),
+                    "preferred_namespace": not (o.stripe_id is None),
+                }
             )
 
         return org_response
@@ -224,12 +227,27 @@ class User(ApiResource):
         "NewUser": {
             "type": "object",
             "description": "Fields which must be specified for a new user.",
-            "required": ["username", "password",],
+            "required": [
+                "username",
+                "password",
+            ],
             "properties": {
-                "username": {"type": "string", "description": "The user's username",},
-                "password": {"type": "string", "description": "The user's password",},
-                "email": {"type": "string", "description": "The user's email address",},
-                "invite_code": {"type": "string", "description": "The optional invite code",},
+                "username": {
+                    "type": "string",
+                    "description": "The user's username",
+                },
+                "password": {
+                    "type": "string",
+                    "description": "The user's password",
+                },
+                "email": {
+                    "type": "string",
+                    "description": "The user's email address",
+                },
+                "invite_code": {
+                    "type": "string",
+                    "description": "The optional invite code",
+                },
                 "recaptcha_response": {
                     "type": "string",
                     "description": "The (may be disabled) recaptcha response code for verification",
@@ -240,18 +258,27 @@ class User(ApiResource):
             "type": "object",
             "description": "Fields which can be updated in a user.",
             "properties": {
-                "password": {"type": "string", "description": "The user's password",},
+                "password": {
+                    "type": "string",
+                    "description": "The user's password",
+                },
                 "invoice_email": {
                     "type": "boolean",
                     "description": "Whether the user desires to receive an invoice email.",
                 },
-                "email": {"type": "string", "description": "The user's email address",},
+                "email": {
+                    "type": "string",
+                    "description": "The user's email address",
+                },
                 "tag_expiration_s": {
                     "type": "integer",
                     "minimum": 0,
                     "description": "The number of seconds for tag expiration",
                 },
-                "username": {"type": "string", "description": "The user's username",},
+                "username": {
+                    "type": "string",
+                    "description": "The user's username",
+                },
                 "invoice_email_address": {
                     "type": ["string", "null"],
                     "description": "Custom email address for receiving invoices",
@@ -287,7 +314,10 @@ class User(ApiResource):
                     "type": "boolean",
                     "description": "true if this user data represents a guest user",
                 },
-                "email": {"type": "string", "description": "The user's email address",},
+                "email": {
+                    "type": "string",
+                    "description": "The user's email address",
+                },
                 "avatar": {
                     "type": "object",
                     "description": "Avatar data representing the user's icon",
@@ -554,8 +584,15 @@ class ClientKey(ApiResource):
     schemas = {
         "GenerateClientKey": {
             "type": "object",
-            "required": ["password",],
-            "properties": {"password": {"type": "string", "description": "The user's password",},},
+            "required": [
+                "password",
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "description": "The user's password",
+                },
+            },
         }
     }
 
@@ -687,10 +724,19 @@ class Signin(ApiResource):
         "SigninUser": {
             "type": "object",
             "description": "Information required to sign in a user.",
-            "required": ["username", "password",],
+            "required": [
+                "username",
+                "password",
+            ],
             "properties": {
-                "username": {"type": "string", "description": "The user's username",},
-                "password": {"type": "string", "description": "The user's password",},
+                "username": {
+                    "type": "string",
+                    "description": "The user's username",
+                },
+                "password": {
+                    "type": "string",
+                    "description": "The user's password",
+                },
                 "invite_code": {"type": "string", "description": "The optional invite code"},
             },
         },
@@ -726,8 +772,15 @@ class VerifyUser(ApiResource):
             "id": "VerifyUser",
             "type": "object",
             "description": "Information required to verify the signed in user.",
-            "required": ["password",],
-            "properties": {"password": {"type": "string", "description": "The user's password",},},
+            "required": [
+                "password",
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "description": "The user's password",
+                },
+            },
         },
     }
 
@@ -745,11 +798,16 @@ class VerifyUser(ApiResource):
         username = get_authenticated_user().username
         (result, error_message) = authentication.confirm_existing_user(username, password)
         if not result:
-            return {"message": error_message, "invalidCredentials": True,}, 403
+            return {
+                "message": error_message,
+                "invalidCredentials": True,
+            }, 403
 
         success, headers = common_login(result.uuid)
         if not success:
-            return {"message": "Could not verify user.",}, 403
+            return {
+                "message": "Could not verify user.",
+            }, 403
 
         return {"success": True}, 200, headers
 
@@ -789,7 +847,9 @@ class ExternalLoginInformation(ApiResource):
         "GetLogin": {
             "type": "object",
             "description": "Information required to an retrieve external login URL.",
-            "required": ["kind",],
+            "required": [
+                "kind",
+            ],
             "properties": {
                 "kind": {
                     "type": "string",
@@ -857,9 +917,14 @@ class Recovery(ApiResource):
         "RequestRecovery": {
             "type": "object",
             "description": "Information required to sign in a user.",
-            "required": ["email",],
+            "required": [
+                "email",
+            ],
             "properties": {
-                "email": {"type": "string", "description": "The user's email address",},
+                "email": {
+                    "type": "string",
+                    "description": "The user's email address",
+                },
                 "recaptcha_response": {
                     "type": "string",
                     "description": "The (may be disabled) recaptcha response code for verification",
@@ -1057,7 +1122,10 @@ class StarredRepositoryList(ApiResource):
     schemas = {
         "NewStarredRepository": {
             "type": "object",
-            "required": ["namespace", "repository",],
+            "required": [
+                "namespace",
+                "repository",
+            ],
             "properties": {
                 "namespace": {
                     "type": "string",
@@ -1112,7 +1180,10 @@ class StarredRepositoryList(ApiResource):
             except IntegrityError:
                 pass
 
-            return {"namespace": namespace, "repository": repository,}, 201
+            return {
+                "namespace": namespace,
+                "repository": repository,
+            }, 201
 
 
 @resource("/v1/user/starred/<apirepopath:repository>")

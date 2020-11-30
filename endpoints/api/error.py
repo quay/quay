@@ -26,7 +26,11 @@ class Error(ApiResource):
         "ApiErrorDescription": {
             "type": "object",
             "description": "Description of an error",
-            "required": ["type", "description", "title",],
+            "required": [
+                "type",
+                "description",
+                "title",
+            ],
             "properties": {
                 "type": {"type": "string", "description": "A reference to the error type resource"},
                 "title": {

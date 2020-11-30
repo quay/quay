@@ -195,14 +195,14 @@ class PaginatedNotificationStatus(IntEnum):
 class PaginatedNotificationResult(
     namedtuple("PaginatedNotificationResult", ["status", "data", "next_page_index"])
 ):
-    """ 
-    Named tuple that contains the result of a paginated notification lookup in the security scanner. 
+    """
+    Named tuple that contains the result of a paginated notification lookup in the security scanner.
     """
 
 
 class UpdatedVulnerability(
     namedtuple("UpdatedVulnerability", ["manifest_digest", "vulnerability"])
 ):
-    """ 
+    """
     Named tuple that represents an updated vulnerability for a manifest.
     """

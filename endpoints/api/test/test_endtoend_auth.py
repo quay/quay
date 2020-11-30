@@ -14,14 +14,21 @@ from test.fixtures import *
 
 
 @pytest.fixture(
-    params=[mock_ldap, fake_jwt, fake_keystone,]
+    params=[
+        mock_ldap,
+        fake_jwt,
+        fake_keystone,
+    ]
 )
 def auth_engine(request):
     return request.param
 
 
 @pytest.fixture(
-    params=[False, True,]
+    params=[
+        False,
+        True,
+    ]
 )
 def requires_email(request):
     return request.param

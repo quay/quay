@@ -34,7 +34,11 @@ def combined_model():
 
 def es_model():
     return DocumentLogsModel(
-        producer="elasticsearch", elasticsearch_config={"host": FAKE_ES_HOST, "port": 12345,}
+        producer="elasticsearch",
+        elasticsearch_config={
+            "host": FAKE_ES_HOST,
+            "port": 12345,
+        },
     )
 
 
@@ -74,7 +78,9 @@ def _lookup_logs(logs_model, start_time, end_time, **kwargs):
             "devtable",
             "simple",
             "devtable",
-            {"performer_name": "devtable",},
+            {
+                "performer_name": "devtable",
+            },
             True,
             id="matching performer",
         ),
@@ -82,7 +88,9 @@ def _lookup_logs(logs_model, start_time, end_time, **kwargs):
             "devtable",
             "simple",
             "devtable",
-            {"namespace_name": "devtable",},
+            {
+                "namespace_name": "devtable",
+            },
             True,
             id="matching namespace",
         ),
@@ -90,7 +98,10 @@ def _lookup_logs(logs_model, start_time, end_time, **kwargs):
             "devtable",
             "simple",
             "devtable",
-            {"namespace_name": "devtable", "repository_name": "simple",},
+            {
+                "namespace_name": "devtable",
+                "repository_name": "simple",
+            },
             True,
             id="matching repository",
         ),
@@ -98,7 +109,9 @@ def _lookup_logs(logs_model, start_time, end_time, **kwargs):
             "devtable",
             "simple",
             "devtable",
-            {"performer_name": "public",},
+            {
+                "performer_name": "public",
+            },
             False,
             id="different performer",
         ),
@@ -106,7 +119,9 @@ def _lookup_logs(logs_model, start_time, end_time, **kwargs):
             "devtable",
             "simple",
             "devtable",
-            {"namespace_name": "public",},
+            {
+                "namespace_name": "public",
+            },
             False,
             id="different namespace",
         ),
@@ -114,7 +129,10 @@ def _lookup_logs(logs_model, start_time, end_time, **kwargs):
             "devtable",
             "simple",
             "devtable",
-            {"namespace_name": "devtable", "repository_name": "complex",},
+            {
+                "namespace_name": "devtable",
+                "repository_name": "complex",
+            },
             False,
             id="different repository",
         ),
@@ -564,8 +582,12 @@ def test_disabled_namespace(clear_db_logs):
             ],
         ),
         pytest.param(
-            [AggregatedLogCount(1, 3, datetime(2019, 6, 6, 0, 0)),],  # 1
-            [AggregatedLogCount(1, 7, datetime(2019, 6, 7, 0, 0)),],  # 2
+            [
+                AggregatedLogCount(1, 3, datetime(2019, 6, 6, 0, 0)),
+            ],  # 1
+            [
+                AggregatedLogCount(1, 7, datetime(2019, 6, 7, 0, 0)),
+            ],  # 2
             [
                 AggregatedLogCount(1, 3, datetime(2019, 6, 6, 0, 0)),  # 1
                 AggregatedLogCount(1, 7, datetime(2019, 6, 7, 0, 0)),  # 2
