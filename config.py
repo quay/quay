@@ -438,9 +438,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Custom branding
     BRANDING = {
-        "logo": "/static/img/quay-horizontal-color.svg",
-        "footer_img": None,
-        "footer_url": None,
+        "logo": "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg",
+        "footer_img": "/static/img/RedHat.svg",
+        "footer_url": "https://redhat.com",
     }
 
     # How often the Garbage Collection worker runs.
@@ -737,7 +737,7 @@ class DefaultConfig(ImmutableConfig):
     WEBHOOK_HOSTNAME_BLACKLIST = []
 
     # The root URL for documentation.
-    DOCUMENTATION_ROOT = "https://docs.projectquay.io/"
+    DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/"
 
     # Feature Flag: Whether the repository action count worker is enabled.
     FEATURE_REPOSITORY_ACTION_COUNTER = True
