@@ -1,0 +1,28 @@
+jwtproxy:
+  signer_proxy:
+    enabled: true
+    listen_addr: :8081
+    ca_key_file: {{ conf_dir }}/mitm.key
+    ca_crt_file: {{ conf_dir }}/mitm.cert
+
+    signer:
+      issuer: quay
+      expiration_time: 5m
+      max_skew: 1m
+      private_key:
+        type: preshared
+        options:
+          key_id: {{ key_id }}
+          private_key_path: {{ service_key_location }}
+  verifier_proxies:
+  - enabled: true
+    listen_addr: unix:/tmp/jwtproxy_secscan.sock
+    socket_permission: 0777
+    verifier:
+      upstream: unix:/tmp/gunicorn_secscan.sock
+      audience: {{ audience }}
+      key_server:
+        type: keyregistry
+        options:
+          issuer: {{ security_issuer }}
+          registry: {{ registry }}

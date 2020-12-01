@@ -1,0 +1,14 @@
+# vim: ft=nginx
+
+server {
+
+{% if feature_proxy_protocol %}
+    listen 8080 default_server proxy_protocol;
+{% else %}
+    listen 8080 default_server;
+{% endif %}
+
+    server_name _;
+    rewrite ^ https://$host$request_uri? permanent;
+}
+

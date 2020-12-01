@@ -1,0 +1,66 @@
+# vim: ft=nginx
+
+# Define two buckets: Once for http1 connections (which we force to shard across our fleet) and
+# one for http2 connections (which will all hit the same node).
+map $http2 $http1_bucket {
+  ""      $proxy_protocol_addr; # HTTP1 case: use the IP address, since shared across nodes.
+  default $request_id;          # HTTP2 case: use request ID to "disable" check.
+}
+
+map $http2 $http2_bucket {
+  ""      $request_id;          # HTTP1 case: use the request ID to "disable" check.
+  default $connection;          # HTTP2 case: use the connection serial number to limit.
+}
+
+# Define two additional buckets that fall to $request_id (thus no effective rate limiting) if
+# a specific set of namespaces is matched. This allows us to turn off rate limiting selectively
+# for special internal namespaces.
+map $namespace $namespaced_http1_bucket {
+  {% for namespace in non_rate_limited_namespaces %}
+  "{{ namespace }}"  $request_id;
+  {% endfor %}
+  {% if enable_rate_limits %}
+  default            $http1_bucket;
+  {% else %}
+  default            $request_id;
+  {% endif %}
+}
+
+map $namespace $namespaced_http2_bucket {
+  {% for namespace in non_rate_limited_namespaces %}
+  "{{ namespace }}"  $request_id;
+  {% endfor %}
+  {% if enable_rate_limits %}
+  default            $http2_bucket;
+  {% else %}
+  default            $request_id;
+  {% endif %}
+}
+
+{% if enable_rate_limits %}
+limit_req_zone $http_authorization zone=staticauth:10m rate=30r/s;
+{% else %}
+limit_req_zone $request_id zone=staticauth:10m rate=300r/s;
+{% endif %}
+
+limit_req_zone $http1_bucket zone=dynamicauth_very_light_http1:10m rate=30r/s;
+limit_req_zone $http2_bucket zone=dynamicauth_very_light_http2:10m rate=600r/s;
+limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_very_light_http1:10m rate=30r/s;
+limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_very_light_http2:10m rate=600r/s;
+
+limit_req_zone $http1_bucket zone=dynamicauth_light_http1:10m rate=20r/s;
+limit_req_zone $http2_bucket zone=dynamicauth_light_http2:10m rate=400r/s;
+limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_light_http1:10m rate=20r/s;
+limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_light_http2:10m rate=400r/s;
+
+# This zone should always be used with burst=<number> (nodelay|delay) as the
+# limit is very low on purpose but should allow for the burst of traffic
+# required for a registry operation. The burst number should also vary per
+# endpoint.
+limit_req_zone $http1_bucket zone=dynamicauth_heavy_http1:10m rate=1r/s;
+limit_req_zone $http2_bucket zone=dynamicauth_heavy_http2:10m rate=20r/s;
+limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_heavy_http1:10m rate=1r/s;
+limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_heavy_http2:10m rate=20r/s;
+
+limit_req_status 429;
+limit_req_log_level warn;

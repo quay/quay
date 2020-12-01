@@ -1,0 +1,140 @@
+# vim: ft=nginx
+
+include root-base.conf;
+
+{% if use_https %}
+
+http {
+    include http-base.conf;
+    include hosted-http-base.conf;
+    include rate-limiting.conf;
+
+    server_names_hash_bucket_size 64;
+
+    resolver 127.0.0.1:8053 valid=10s;
+
+    ssl_ciphers '{{ ssl_ciphers }}';
+    ssl_protocols {% for ssl_protocol in ssl_protocols %}{{ ssl_protocol }} {% endfor %};
+    ssl_session_cache shared:SSL:60m;
+    ssl_session_timeout 2h;
+    ssl_session_tickets on;
+    ssl_prefer_server_ciphers on;
+    ssl_dhparam dhparams.pem;
+
+    server {
+        server_name _;
+
+        ssl_certificate ../stack/ssl.cert;
+        ssl_certificate_key ../stack/ssl.key;
+
+        include server-base.conf;
+
+        listen 8443 ssl http2 default;
+
+        ssl on;
+
+        # This header must be set only for HTTPS
+        add_header Strict-Transport-Security "max-age=63072000; preload";
+
+        access_log /var/log/nginx/access.log lb_logs;
+    }
+
+    server {
+        server_name _;
+
+        ssl_certificate ../stack/ssl.cert;
+        ssl_certificate_key ../stack/ssl.key;
+
+        include server-base.conf;
+
+        listen 7443 ssl http2 default proxy_protocol;
+        ssl on;
+
+        # This header must be set only for HTTPS
+        add_header Strict-Transport-Security "max-age=63072000; preload";
+
+        real_ip_header proxy_protocol;
+
+        access_log /var/log/nginx/access.log lb_logs;
+    }
+
+    server {
+        server_name _;
+
+        ssl_certificate ../stack/ssl.cert;
+        ssl_certificate_key ../stack/ssl.key;
+
+        listen 55443 ssl http2 default;
+        ssl on;
+
+        location / {
+                 grpc_pass grpc://build_manager_server;
+        }
+
+        # This header must be set only for HTTPS
+        add_header Strict-Transport-Security "max-age=63072000; preload";
+
+        real_ip_header proxy_protocol;
+
+        access_log /var/log/nginx/access.log lb_logs;
+    }
+
+{% if v1_only_domain %}
+    server {
+        include server-base.conf;
+
+        server_name {{ v1_only_domain }};
+
+        ssl_certificate ../stack/ssl.cert;
+        ssl_certificate_key ../stack/ssl.key;
+
+        listen 8443 ssl;
+
+        ssl on;
+
+        # This header must be set only for HTTPS
+        add_header Strict-Transport-Security "max-age=63072000; preload";
+
+        access_log /var/log/nginx/access.log lb_logs;
+    }
+
+    server {
+        server_name {{ v1_only_domain }};
+
+        ssl_certificate ../stack/ssl.cert;
+        ssl_certificate_key ../stack/ssl.key;
+
+        include server-base.conf;
+
+        listen 7443 ssl proxy_protocol;
+        ssl on;
+
+        # This header must be set only for HTTPS
+        add_header Strict-Transport-Security "max-age=63072000; preload";
+
+        real_ip_header proxy_protocol;
+
+        access_log /var/log/nginx/access.log lb_logs;
+    }
+{% endif %}
+
+}
+
+{% else %}
+
+http {
+    include http-base.conf;
+    include rate-limiting.conf;
+
+    resolver 127.0.0.1:8053 valid=10s;
+
+    server {
+        include server-base.conf;
+
+        listen 8080 default;
+
+        access_log /var/log/nginx/access.log lb_logs;
+    }
+}
+
+{% endif %}
