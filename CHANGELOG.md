@@ -1,3 +1,18 @@
+### v3.3.3
+
+(Release notes)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.3/html/red_hat_quay_release_notes/index]
+
+**Fixed**
+- clair-jwt: fixed NVD streams
+- CVE-2020-27831 quay: email notifications authorization bypass
+- CVE-2020-27832 quay: persistent XSS in repository notification display
+
+
+### v3.3.2
+
+- Version unreleased due to internal tooling issues
+
+
 ### v3.3.1
 
 **Fixed**
