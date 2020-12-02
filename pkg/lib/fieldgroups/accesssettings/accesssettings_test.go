@@ -21,6 +21,7 @@ func TestValidateAccessSettings(t *testing.T) {
 		{name: "checkBadAuthType", config: map[string]interface{}{"AUTHENTICATION_TYPE": "notarealauthtype"}, want: "invalid"},
 		{name: "checkGithubLogin", config: map[string]interface{}{"FEATURE_DIRECT_LOGIN": false, "FEATURE_GITHUB_LOGIN": true}, want: "valid"},
 		{name: "checkGoogleLogin", config: map[string]interface{}{"FEATURE_DIRECT_LOGIN": false, "FEATURE_GOOGLE_LOGIN": true}, want: "valid"},
+		{name: "checkOIDC", config: map[string]interface{}{"FEATURE_DIRECT_LOGIN": false, "FEATURE_GOOGLE_LOGIN": false, "AUTH0_LOGIN_CONFIG": map[string]interface{}{}}, want: "valid"},
 		{name: "checkInviteUser0", config: map[string]interface{}{"FEATURE_USER_CREATION": true, "FEATURE_INVITE_ONLY_USER_CREATION": false}, want: "valid"},
 		{name: "checkInviteUser1", config: map[string]interface{}{"FEATURE_USER_CREATION": true, "FEATURE_INVITE_ONLY_USER_CREATION": true}, want: "valid"},
 		{name: "checkInviteUser2", config: map[string]interface{}{"FEATURE_INVITE_ONLY_USER_CREATION": true}, want: "valid"},

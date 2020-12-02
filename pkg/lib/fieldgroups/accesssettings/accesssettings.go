@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/creasty/defaults"
+	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
 // AccessSettingsFieldGroup represents the AccessSettingsFieldGroup config fields
@@ -13,6 +14,7 @@ type AccessSettingsFieldGroup struct {
 	FeatureDirectLogin             bool   `default:"true" validate:"" json:"FEATURE_DIRECT_LOGIN" yaml:"FEATURE_DIRECT_LOGIN"`
 	FeatureGithubLogin             bool   `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN" yaml:"FEATURE_GITHUB_LOGIN"`
 	FeatureGoogleLogin             bool   `default:"false" validate:"" json:"FEATURE_GOOGLE_LOGIN" yaml:"FEATURE_GOOGLE_LOGIN"`
+	HasOIDCLogin                   bool   `default:"false" validate:"" json:"-" yaml:"-"`
 	FeatureInviteOnlyUserCreation  bool   `default:"false" validate:"" json:"FEATURE_INVITE_ONLY_USER_CREATION" yaml:"FEATURE_INVITE_ONLY_USER_CREATION"`
 	FeaturePartialUserAutocomplete bool   `default:"true" validate:"" json:"FEATURE_PARTIAL_USER_AUTOCOMPLETE" yaml:"FEATURE_PARTIAL_USER_AUTOCOMPLETE"`
 	FeatureUsernameConfirmation    bool   `default:"true" validate:"" json:"FEATURE_USERNAME_CONFIRMATION" yaml:"FEATURE_USERNAME_CONFIRMATION"`
@@ -120,6 +122,8 @@ func NewAccessSettingsFieldGroup(fullConfig map[string]interface{}) (*AccessSett
 			return newAccessSettingsFieldGroup, errors.New("USER_RECOVERY_TOKEN_LIFETIME must be of type string")
 		}
 	}
+
+	newAccessSettingsFieldGroup.HasOIDCLogin = shared.HasOIDCProvider(fullConfig)
 
 	return newAccessSettingsFieldGroup, nil
 }

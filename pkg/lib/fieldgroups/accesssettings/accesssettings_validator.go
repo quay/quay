@@ -14,8 +14,10 @@ func (fg *AccessSettingsFieldGroup) Validate(opts shared.Options) []shared.Valid
 	}
 
 	// If feature direct login is off, others must be on
-	if ok, err := shared.ValidateAtLeastOneOfBool([]bool{fg.FeatureDirectLogin, fg.FeatureGithubLogin, fg.FeatureGoogleLogin}, []string{"FEATURE_DIRECT_LOGIN", "FEATURE_GITHUB_LOGIN", "FEATURE_GOOGLE_LOGIN"}, "AccessSettings"); !ok {
-		errors = append(errors, err)
+	if !fg.HasOIDCLogin {
+		if ok, err := shared.ValidateAtLeastOneOfBool([]bool{fg.FeatureDirectLogin, fg.FeatureGithubLogin, fg.FeatureGoogleLogin}, []string{"FEATURE_DIRECT_LOGIN", "FEATURE_GITHUB_LOGIN", "FEATURE_GOOGLE_LOGIN"}, "AccessSettings"); !ok {
+			errors = append(errors, err)
+		}
 	}
 
 	// Make sure patterns are enforced if fields are present

@@ -211,3 +211,16 @@ func GetTlsConfig(opts Options) (*tls.Config, error) {
 
 	return &tls.Config{RootCAs: rootCAs}, nil
 }
+
+// HasOIDCProvider will find if an OIDC provider is included in a config.yaml
+func HasOIDCProvider(fullConfig map[string]interface{}) bool {
+
+	for key, value := range fullConfig {
+		if _, ok := value.(map[string]interface{}); ok {
+			if strings.HasSuffix(key, "_LOGIN_CONFIG") && key != "GOOGLE_LOGIN_CONFIG" && key != "GITHUB_LOGIN_CONFIG" {
+				return true
+			}
+		}
+	}
+	return false
+}
