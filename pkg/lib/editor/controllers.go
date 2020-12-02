@@ -3,6 +3,7 @@ package editor
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -123,7 +124,8 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 		}
 
 		var buf bytes.Buffer
-		tw := tar.NewWriter(&buf)
+		gw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gw)
 		hdr := &tar.Header{
 			Name:     "extra_ca_certs/",
 			Typeflag: tar.TypeDir,
@@ -149,6 +151,7 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 			}
 		}
 		tw.Close()
+		gw.Close()
 
 		w.Header().Set("Content-type", "application/zip")
 		w.Header().Set("Content-Disposition", "attachment; filename=quay-config.tar.gz")

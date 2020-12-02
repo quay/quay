@@ -5,7 +5,7 @@
         <span style="margin-left: 20px; display: inline-block;">Select a replacement file:</span>
     </span>
     <span class="nofile" ng-if="!hasFile && skipCheckFile != 'true'">Please select a file to upload as <b>{{ filename }}</b>: </span>
-    <input type="file" files-changed="onFileSelect(files)" ng-disabled="isReadonly">
+    <input type="file" files-changed="onFileSelect(files)" ng-disabled="isReadonly" style="display:inline-block;">
   </span>
   <span ng-show="uploadProgress != null">
     Uploading file as <strong>{{ filename }}</strong>... {{ uploadProgress }}%
