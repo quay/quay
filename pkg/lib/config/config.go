@@ -16,6 +16,7 @@ import (
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/hostsettings"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/jwtauthentication"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/ldap"
+	"github.com/quay/config-tool/pkg/lib/fieldgroups/oidc"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/quaydocumentation"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/redis"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/repomirror"
@@ -150,6 +151,11 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 		return newConfig, err
 	}
 	newConfig["LDAP"] = newLDAPFieldGroup
+	newOIDCFieldGroup, err := oidc.NewOIDCFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["OIDC"] = newOIDCFieldGroup
 
 	return newConfig, nil
 }
