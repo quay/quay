@@ -15,8 +15,8 @@ type DatabaseFieldGroup struct {
 // DbConnectionArgsStruct represents the DbConnectionArgsStruct config fields
 type DbConnectionArgsStruct struct {
 	Ssl          *SslStruct `default:"" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
-	Threadlocals bool       `default:"true" validate:"" json:"threadlocals,omitempty" yaml:"threadlocals,omitempty"`
-	Autorollback bool       `default:"true" validate:"" json:"autorollback,omitempty" yaml:"autorollback,omitempty"`
+	Threadlocals bool       `default:"true" validate:"" json:"threadlocals" yaml:"threadlocals"`
+	Autorollback bool       `default:"true" validate:"" json:"autorollback" yaml:"autorollback"`
 }
 
 // SslStruct represents the SslStruct config fields

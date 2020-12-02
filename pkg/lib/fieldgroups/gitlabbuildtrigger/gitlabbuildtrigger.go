@@ -8,8 +8,8 @@ import (
 
 // GitLabBuildTriggerFieldGroup represents the GitLabBuildTriggerFieldGroup config fields
 type GitLabBuildTriggerFieldGroup struct {
-	FeatureBuildSupport bool                       `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT,omitempty" yaml:"FEATURE_BUILD_SUPPORT,omitempty"`
-	FeatureGitlabBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITLAB_BUILD,omitempty" yaml:"FEATURE_GITLAB_BUILD,omitempty"`
+	FeatureBuildSupport bool                       `default:"false" validate:"" json:"FEATURE_BUILD_SUPPORT" yaml:"FEATURE_BUILD_SUPPORT"`
+	FeatureGitlabBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITLAB_BUILD" yaml:"FEATURE_GITLAB_BUILD"`
 	GitlabTriggerConfig *GitlabTriggerConfigStruct `default:"" validate:"" json:"GITLAB_TRIGGER_CONFIG,omitempty" yaml:"GITLAB_TRIGGER_CONFIG,omitempty"`
 }
 

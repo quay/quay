@@ -40,7 +40,7 @@ type ElasticsearchConfigStruct struct {
 	Host          string               `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
 	IndexPrefix   string               `default:"logentry_" validate:"" json:"index_prefix,omitempty" yaml:"index_prefix,omitempty"`
 	IndexSettings *IndexSettingsStruct `default:"" validate:"" json:"index_settings,omitempty" yaml:"index_settings,omitempty"`
-	UseSsl        bool                 `default:"true" validate:"" json:"use_ssl,omitempty" yaml:"use_ssl,omitempty"`
+	UseSsl        bool                 `default:"true" validate:"" json:"use_ssl" yaml:"use_ssl"`
 	SecretKey     string               `default:"" validate:"" json:"secret_key,omitempty" yaml:"secret_key,omitempty"`
 }
 

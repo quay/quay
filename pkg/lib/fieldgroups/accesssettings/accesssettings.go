@@ -9,18 +9,18 @@ import (
 // AccessSettingsFieldGroup represents the AccessSettingsFieldGroup config fields
 type AccessSettingsFieldGroup struct {
 	AuthenticationType             string `default:"Database" validate:"" json:"AUTHENTICATION_TYPE,omitempty" yaml:"AUTHENTICATION_TYPE,omitempty"`
-	FeatureAnonymousAccess         bool   `default:"true" validate:"" json:"FEATURE_ANONYMOUS_ACCESS,omitempty" yaml:"FEATURE_ANONYMOUS_ACCESS,omitempty"`
-	FeatureDirectLogin             bool   `default:"true" validate:"" json:"FEATURE_DIRECT_LOGIN,omitempty" yaml:"FEATURE_DIRECT_LOGIN,omitempty"`
-	FeatureGithubLogin             bool   `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN,omitempty" yaml:"FEATURE_GITHUB_LOGIN,omitempty"`
-	FeatureGoogleLogin             bool   `default:"false" validate:"" json:"FEATURE_GOOGLE_LOGIN,omitempty" yaml:"FEATURE_GOOGLE_LOGIN,omitempty"`
-	FeatureInviteOnlyUserCreation  bool   `default:"false" validate:"" json:"FEATURE_INVITE_ONLY_USER_CREATION,omitempty" yaml:"FEATURE_INVITE_ONLY_USER_CREATION,omitempty"`
-	FeaturePartialUserAutocomplete bool   `default:"true" validate:"" json:"FEATURE_PARTIAL_USER_AUTOCOMPLETE,omitempty" yaml:"FEATURE_PARTIAL_USER_AUTOCOMPLETE,omitempty"`
-	FeatureUsernameConfirmation    bool   `default:"true" validate:"" json:"FEATURE_USERNAME_CONFIRMATION,omitempty" yaml:"FEATURE_USERNAME_CONFIRMATION,omitempty"`
-	FeatureUserCreation            bool   `default:"true" validate:"" json:"FEATURE_USER_CREATION,omitempty" yaml:"FEATURE_USER_CREATION,omitempty"`
-	FeatureUserLastAccessed        bool   `default:"true" validate:"" json:"FEATURE_USER_LAST_ACCESSED,omitempty" yaml:"FEATURE_USER_LAST_ACCESSED,omitempty"`
-	FeatureUserLogAccess           bool   `default:"false" validate:"" json:"FEATURE_USER_LOG_ACCESS,omitempty" yaml:"FEATURE_USER_LOG_ACCESS,omitempty"`
-	FeatureUserMetadata            bool   `default:"false" validate:"" json:"FEATURE_USER_METADATA,omitempty" yaml:"FEATURE_USER_METADATA,omitempty"`
-	FeatureUserRename              bool   `default:"false" validate:"" json:"FEATURE_USER_RENAME,omitempty" yaml:"FEATURE_USER_RENAME,omitempty"`
+	FeatureAnonymousAccess         bool   `default:"true" validate:"" json:"FEATURE_ANONYMOUS_ACCESS" yaml:"FEATURE_ANONYMOUS_ACCESS"`
+	FeatureDirectLogin             bool   `default:"true" validate:"" json:"FEATURE_DIRECT_LOGIN" yaml:"FEATURE_DIRECT_LOGIN"`
+	FeatureGithubLogin             bool   `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN" yaml:"FEATURE_GITHUB_LOGIN"`
+	FeatureGoogleLogin             bool   `default:"false" validate:"" json:"FEATURE_GOOGLE_LOGIN" yaml:"FEATURE_GOOGLE_LOGIN"`
+	FeatureInviteOnlyUserCreation  bool   `default:"false" validate:"" json:"FEATURE_INVITE_ONLY_USER_CREATION" yaml:"FEATURE_INVITE_ONLY_USER_CREATION"`
+	FeaturePartialUserAutocomplete bool   `default:"true" validate:"" json:"FEATURE_PARTIAL_USER_AUTOCOMPLETE" yaml:"FEATURE_PARTIAL_USER_AUTOCOMPLETE"`
+	FeatureUsernameConfirmation    bool   `default:"true" validate:"" json:"FEATURE_USERNAME_CONFIRMATION" yaml:"FEATURE_USERNAME_CONFIRMATION"`
+	FeatureUserCreation            bool   `default:"true" validate:"" json:"FEATURE_USER_CREATION" yaml:"FEATURE_USER_CREATION"`
+	FeatureUserLastAccessed        bool   `default:"true" validate:"" json:"FEATURE_USER_LAST_ACCESSED" yaml:"FEATURE_USER_LAST_ACCESSED"`
+	FeatureUserLogAccess           bool   `default:"false" validate:"" json:"FEATURE_USER_LOG_ACCESS" yaml:"FEATURE_USER_LOG_ACCESS"`
+	FeatureUserMetadata            bool   `default:"false" validate:"" json:"FEATURE_USER_METADATA" yaml:"FEATURE_USER_METADATA"`
+	FeatureUserRename              bool   `default:"false" validate:"" json:"FEATURE_USER_RENAME" yaml:"FEATURE_USER_RENAME"`
 	FreshLoginTimeout              string `default:"10m" validate:"" json:"FRESH_LOGIN_TIMEOUT,omitempty" yaml:"FRESH_LOGIN_TIMEOUT,omitempty"`
 	UserRecoveryTokenLifetime      string `default:"30m" validate:"" json:"USER_RECOVERY_TOKEN_LIFETIME,omitempty" yaml:"USER_RECOVERY_TOKEN_LIFETIME,omitempty"`
 }

@@ -8,7 +8,7 @@ import (
 
 // GitHubLoginFieldGroup represents the GitHubLoginFieldGroup config fields
 type GitHubLoginFieldGroup struct {
-	FeatureGithubLogin bool                     `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN,omitempty" yaml:"FEATURE_GITHUB_LOGIN,omitempty"`
+	FeatureGithubLogin bool                     `default:"false" validate:"" json:"FEATURE_GITHUB_LOGIN" yaml:"FEATURE_GITHUB_LOGIN"`
 	GithubLoginConfig  *GithubLoginConfigStruct `default:"" validate:"" json:"GITHUB_LOGIN_CONFIG,omitempty" yaml:"GITHUB_LOGIN_CONFIG,omitempty"`
 }
 
