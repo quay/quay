@@ -22,7 +22,7 @@ type DistributedStorageArgs struct {
 	// Args for RHOCSStorage, RadosGWStorage
 	Hostname    string `default:"" validate:"" json:"hostname,omitempty" yaml:"hostname,omitempty"`
 	Port        int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
-	IsSecure    bool   `default:"" validate:"" json:"is_secure,omitempty" yaml:"is_secure,omitempty"`
+	IsSecure    bool   `default:"" validate:"" json:"is_secure" yaml:"is_secure"`
 	StoragePath string `default:"" validate:"" json:"storage_path,omitempty" yaml:"storage_path,omitempty"`
 	AccessKey   string `default:"" validate:"" json:"access_key,omitempty" yaml:"access_key,omitempty"`
 	SecretKey   string `default:"" validate:"" json:"secret_key,omitempty" yaml:"secret_key,omitempty"`

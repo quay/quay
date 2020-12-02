@@ -11,7 +11,7 @@ type LDAPFieldGroup struct {
 	AuthenticationType        string        `default:"Database" validate:"" json:"AUTHENTICATION_TYPE,omitempty" yaml:"AUTHENTICATION_TYPE,omitempty"`
 	LdapAdminDn               string        `default:"" validate:"" json:"LDAP_ADMIN_DN,omitempty" yaml:"LDAP_ADMIN_DN,omitempty"`
 	LdapAdminPasswd           string        `default:"" validate:"" json:"LDAP_ADMIN_PASSWD,omitempty" yaml:"LDAP_ADMIN_PASSWD,omitempty"`
-	LdapAllowInsecureFallback bool          `default:"false" validate:"" json:"LDAP_ALLOW_INSECURE_FALLBACK,omitempty" yaml:"LDAP_ALLOW_INSECURE_FALLBACK,omitempty"`
+	LdapAllowInsecureFallback bool          `default:"false" validate:"" json:"LDAP_ALLOW_INSECURE_FALLBACK" yaml:"LDAP_ALLOW_INSECURE_FALLBACK"`
 	LdapBaseDn                []interface{} `default:"" validate:"" json:"LDAP_BASE_DN,omitempty" yaml:"LDAP_BASE_DN,omitempty"`
 	LdapEmailAttr             string        `default:"mail" validate:"" json:"LDAP_EMAIL_ATTR,omitempty" yaml:"LDAP_EMAIL_ATTR,omitempty"`
 	LdapUidAttr               string        `default:"uid" validate:"" json:"LDAP_UID_ATTR,omitempty" yaml:"LDAP_UID_ATTR,omitempty"`

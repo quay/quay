@@ -9,7 +9,7 @@ import (
 // TimeMachineFieldGroup represents the TimeMachineFieldGroup config fields
 type TimeMachineFieldGroup struct {
 	DefaultTagExpiration       string        `default:"2w" validate:"" json:"DEFAULT_TAG_EXPIRATION,omitempty" yaml:"DEFAULT_TAG_EXPIRATION,omitempty"`
-	FeatureChangeTagExpiration bool          `default:"true" validate:"" json:"FEATURE_CHANGE_TAG_EXPIRATION,omitempty" yaml:"FEATURE_CHANGE_TAG_EXPIRATION,omitempty"`
+	FeatureChangeTagExpiration bool          `default:"true" validate:"" json:"FEATURE_CHANGE_TAG_EXPIRATION" yaml:"FEATURE_CHANGE_TAG_EXPIRATION"`
 	TagExpirationOptions       []interface{} `default:"" validate:"" json:"TAG_EXPIRATION_OPTIONS,omitempty" yaml:"TAG_EXPIRATION_OPTIONS,omitempty"`
 }
 

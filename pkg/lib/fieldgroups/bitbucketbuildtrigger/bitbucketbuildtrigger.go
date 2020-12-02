@@ -9,8 +9,8 @@ import (
 // BitbucketBuildTriggerFieldGroup represents the BitbucketBuildTriggerFieldGroup config fields
 type BitbucketBuildTriggerFieldGroup struct {
 	BitbucketTriggerConfig *BitbucketTriggerConfigStruct `default:"" validate:"" json:"BITBUCKET_TRIGGER_CONFIG,omitempty" yaml:"BITBUCKET_TRIGGER_CONFIG,omitempty"`
-	FeatureBitbucketBuild  bool                          `default:"false" validate:"" json:"FEATURE_BITBUCKET_BUILD,omitempty" yaml:"FEATURE_BITBUCKET_BUILD,omitempty"`
-	FeatureBuildSupport    bool                          `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT,omitempty" yaml:"FEATURE_BUILD_SUPPORT,omitempty"`
+	FeatureBitbucketBuild  bool                          `default:"false" validate:"" json:"FEATURE_BITBUCKET_BUILD" yaml:"FEATURE_BITBUCKET_BUILD"`
+	FeatureBuildSupport    bool                          `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT" yaml:"FEATURE_BUILD_SUPPORT"`
 }
 
 // BitbucketTriggerConfigStruct represents the BitbucketTriggerConfigStruct config fields

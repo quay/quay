@@ -11,7 +11,7 @@ type ActionLogArchivingFieldGroup struct {
 	ActionLogArchiveLocation string                          `default:"" validate:"" json:"ACTION_LOG_ARCHIVE_LOCATION,omitempty" yaml:"ACTION_LOG_ARCHIVE_LOCATION,omitempty"`
 	ActionLogArchivePath     string                          `default:"" validate:"" json:"ACTION_LOG_ARCHIVE_PATH,omitempty" yaml:"ACTION_LOG_ARCHIVE_PATH,omitempty"`
 	DistributedStorageConfig *DistributedStorageConfigStruct `default:"" validate:"" json:"DISTRIBUTED_STORAGE_CONFIG,omitempty" yaml:"DISTRIBUTED_STORAGE_CONFIG,omitempty"`
-	FeatureActionLogRotation bool                            `default:"false" validate:"" json:"FEATURE_ACTION_LOG_ROTATION,omitempty" yaml:"FEATURE_ACTION_LOG_ROTATION,omitempty"`
+	FeatureActionLogRotation bool                            `default:"false" validate:"" json:"FEATURE_ACTION_LOG_ROTATION" yaml:"FEATURE_ACTION_LOG_ROTATION"`
 }
 
 // DistributedStorageConfigStruct represents the DistributedStorageConfig struct

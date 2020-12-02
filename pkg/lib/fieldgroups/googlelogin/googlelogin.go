@@ -8,7 +8,7 @@ import (
 
 // GoogleLoginFieldGroup represents the GoogleLoginFieldGroup config fields
 type GoogleLoginFieldGroup struct {
-	FeatureGoogleLogin bool                     `default:"false" validate:"" json:"FEATURE_GOOGLE_LOGIN,omitempty" yaml:"FEATURE_GOOGLE_LOGIN,omitempty"`
+	FeatureGoogleLogin bool                     `default:"false" validate:"" json:"FEATURE_GOOGLE_LOGIN" yaml:"FEATURE_GOOGLE_LOGIN"`
 	GoogleLoginConfig  *GoogleLoginConfigStruct `default:"" validate:"" json:"GOOGLE_LOGIN_CONFIG,omitempty" yaml:"GOOGLE_LOGIN_CONFIG,omitempty"`
 }
 

@@ -8,15 +8,15 @@ import (
 
 // GitHubBuildTriggerFieldGroup represents the GitHubBuildTriggerFieldGroup config fields
 type GitHubBuildTriggerFieldGroup struct {
-	FeatureBuildSupport bool                       `default:"" validate:"" json:"FEATURE_BUILD_SUPPORT,omitempty" yaml:"FEATURE_BUILD_SUPPORT,omitempty"`
-	FeatureGithubBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITHUB_BUILD,omitempty" yaml:"FEATURE_GITHUB_BUILD,omitempty"`
+	FeatureBuildSupport bool                       `default:"false" validate:"" json:"FEATURE_BUILD_SUPPORT" yaml:"FEATURE_BUILD_SUPPORT"`
+	FeatureGithubBuild  bool                       `default:"false" validate:"" json:"FEATURE_GITHUB_BUILD" yaml:"FEATURE_GITHUB_BUILD"`
 	GithubTriggerConfig *GithubTriggerConfigStruct `default:"" validate:"" json:"GITHUB_TRIGGER_CONFIG,omitempty" yaml:"GITHUB_TRIGGER_CONFIG,omitempty"`
 }
 
 // GithubTriggerConfigStruct represents the GithubTriggerConfigStruct config fields
 type GithubTriggerConfigStruct struct {
 	AllowedOrganizations []interface{} `default:"[]" validate:"" json:"ALLOWED_ORGANIZATIONS,omitempty" yaml:"ALLOWED_ORGANIZATIONS,omitempty"`
-	OrgRestrict          bool          `default:"false" validate:"" json:"ORG_RESTRICT,omitempty" yaml:"ORG_RESTRICT,omitempty"`
+	OrgRestrict          bool          `default:"false" validate:"" json:"ORG_RESTRICT" yaml:"ORG_RESTRICT"`
 	ApiEndpoint          string        `default:"" validate:"" json:"API_ENDPOINT,omitempty" yaml:"API_ENDPOINT,omitempty"`
 	ClientSecret         string        `default:"" validate:"" json:"CLIENT_SECRET,omitempty" yaml:"CLIENT_SECRET,omitempty"`
 	GithubEndpoint       string        `default:"" validate:"" json:"GITHUB_ENDPOINT,omitempty" yaml:"GITHUB_ENDPOINT,omitempty"`

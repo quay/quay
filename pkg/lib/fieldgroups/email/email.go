@@ -9,15 +9,15 @@ import (
 // EmailFieldGroup represents the EmailFieldGroup config fields
 type EmailFieldGroup struct {
 	BlacklistedEmailDomains  []interface{} `default:"[]" validate:"" yaml:"BLACKLISTED_EMAIL_DOMAINS,omitempty" json:"BLACKLISTED_EMAIL_DOMAINS,omitempty"`
-	FeatureBlacklistedEmails bool          `default:"false" validate:"" yaml:"FEATURE_BLACKLISTED_EMAILS,omitempty" json:"FEATURE_BLACKLISTED_EMAILS,omitempty"`
-	FeatureMailing           bool          `default:"false" validate:"" yaml:"FEATURE_MAILING,omitempty" json:"FEATURE_MAILING,omitempty"`
+	FeatureBlacklistedEmails bool          `default:"false" validate:"" yaml:"FEATURE_BLACKLISTED_EMAILS" json:"FEATURE_BLACKLISTED_EMAILS"`
+	FeatureMailing           bool          `default:"false" validate:"" yaml:"FEATURE_MAILING" json:"FEATURE_MAILING"`
 	MailDefaultSender        string        `default:"support@quay.io" validate:"" yaml:"MAIL_DEFAULT_SENDER,omitempty" json:"MAIL_DEFAULT_SENDER,omitempty"`
 	MailPassword             string        `default:"" validate:"" yaml:"MAIL_PASSWORD,omitempty" json:"MAIL_PASSWORD,omitempty"`
 	MailPort                 int           `default:"587" validate:"" yaml:"MAIL_PORT,omitempty" json:"MAIL_PORT,omitempty"`
 	MailServer               string        `default:"" validate:"" yaml:"MAIL_SERVER,omitempty" json:"MAIL_SERVER,omitempty"`
-	MailUseAuth              bool          `default:"false" validate:"" yaml:"MAIL_USE_AUTH,omitempty" json:"MAIL_USE_AUTH,omitempty"`
+	MailUseAuth              bool          `default:"false" validate:"" yaml:"MAIL_USE_AUTH" json:"MAIL_USE_AUTH"`
 	MailUsername             string        `default:"" validate:"" yaml:"MAIL_USERNAME,omitempty" json:"MAIL_USERNAME,omitempty"`
-	MailUseTls               bool          `default:"false" validate:"" yaml:"MAIL_USE_TLS,omitempty" json:"MAIL_USE_TLS,omitempty"`
+	MailUseTls               bool          `default:"false" validate:"" yaml:"MAIL_USE_TLS" json:"MAIL_USE_TLS"`
 }
 
 // NewEmailFieldGroup creates a new EmailFieldGroup

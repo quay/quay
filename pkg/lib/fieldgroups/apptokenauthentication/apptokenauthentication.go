@@ -9,8 +9,8 @@ import (
 // AppTokenAuthenticationFieldGroup represents the AppTokenAuthenticationFieldGroup config fields
 type AppTokenAuthenticationFieldGroup struct {
 	AuthenticationType       string `default:"Database" validate:"" json:"AUTHENTICATION_TYPE,omitempty" yaml:"AUTHENTICATION_TYPE,omitempty"`
-	FeatureAppSpecificTokens bool   `default:"true" validate:"" json:"FEATURE_APP_SPECIFIC_TOKENS,omitempty" yaml:"FEATURE_APP_SPECIFIC_TOKENS,omitempty"`
-	FeatureDirectLogin       bool   `default:"true" validate:"" json:"FEATURE_DIRECT_LOGIN,omitempty" yaml:"FEATURE_DIRECT_LOGIN,omitempty"`
+	FeatureAppSpecificTokens bool   `default:"true" validate:"" json:"FEATURE_APP_SPECIFIC_TOKENS" yaml:"FEATURE_APP_SPECIFIC_TOKENS"`
+	FeatureDirectLogin       bool   `default:"true" validate:"" json:"FEATURE_DIRECT_LOGIN" yaml:"FEATURE_DIRECT_LOGIN"`
 }
 
 // NewAppTokenAuthenticationFieldGroup creates a new AppTokenAuthenticationFieldGroup
