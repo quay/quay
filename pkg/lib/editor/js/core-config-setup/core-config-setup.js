@@ -262,6 +262,31 @@ angular.module("quay-config")
           return output
         }
 
+        const addSetupConfig = function (config) {
+          config["SETUP_COMPLETE"] = true;
+          config["DATABASE_SECRET_KEY"] = generateDatabaseSecretKey();
+          config["BITTORRENT_FILENAME_PEPPER"] = generateDatabaseSecretKey();
+          config["FEATURE_ACI_CONVERSION"] = false;
+          config["USE_CDN"] = false;
+          config["USERFILES_LOCATION"] = "default";
+          if (!("FEATURE_REQUIRE_TEAM_INVITE" in object)) {
+            config["FEATURE_REQUIRE_TEAM_INVITE"] = true;
+          }
+          if (!("FEATURE_REQUIRE_TEAM_INVITE" in object)) {
+            config["FEATURE_REQUIRE_TEAM_INVITE"] = true;
+          }
+          if (!("FEATURE_RESTRICTED_V1_PUSH" in object)) {
+            config["FEATURE_RESTRICTED_V1_PUSH"] = true;
+          }
+          if (!("FEATURE_SECURITY_NOTIFICATIONS" in object)) {
+            config["FEATURE_SECURITY_NOTIFICATIONS"] = true;
+          }
+          if (!("LOG_ARCHIVE_LOCATION" in object)) {
+            config["LOG_ARCHIVE_LOCATION"] = "default";
+          }
+          config["TESTING"] = false;
+          return config;
+        }
         $scope.validateConfig = function() {
           $scope.validationStatus = 'validating';
 
@@ -272,12 +297,12 @@ angular.module("quay-config")
             $scope.validationStatus = resp.data.length == 0 ? 'success' : 'error';
             $scope.validationResult = mergeValidationErrors(resp.data);
             if($scope.validationStatus == 'success' && $scope.validationMode == 'setup'){
-              $scope.config["SETUP_COMPLETE"] = true
-              $scope.config["DATABASE_SECRET_KEY"] = generateDatabaseSecretKey()
-              $scope.config["TESTING"] = false
+              $scope.config = addSetupConfig($scope.config)
             }
           }, errorDisplay);
         };
+
+
 
         $scope.operatorCommitStatus = 'none'
         $scope.commitToOperator = function() {
@@ -437,7 +462,7 @@ angular.module("quay-config")
           $scope.storageConfig.push({
             location: location || '',
             defaultLocation: false,
-            data: [storageType, {}],
+            data: [storageType, {storage_path: "/datastorage/registry"}],
             error: {},
           });
         };
@@ -1024,57 +1049,64 @@ angular.module("quay-config")
       scope: {
         'filename': '@filename',
         'skipCheckFile': '@skipCheckFile',
-        'hasFile': '=hasFile',
         'binding': '=?binding',
         'isReadonly': '=isReadonly',
         'certs': '=certs'
       },
       controller: function($scope, $element, Restangular) {
         $scope.hasFile = false;
+        $scope.uploadProgress = null;
 
-        if ($scope.filename in $scope.certs){
-          $scope.hasFile = true
+        const checkHasFile = () => {
+          if ($scope.filename in $scope.certs) {
+            $scope.hasFile = true;
+          }
         }
-
-        var setHasFile = function(hasFile) {
-          $scope.hasFile = hasFile;
-          $scope.binding = hasFile ? $scope.filename : null;
-        };
-
+        $scope.$watch("certs", checkHasFile, true);
+        
         $scope.onFileSelect = function(files) {
           if (files.length < 1) {
-            setHasFile(false);
+            $scope.hasFile = false;
             return;
           }
           conductUpload(files[0])
-          setHasFile(true)
-          
         };
 
         var conductUpload = function(file) {
  
           var reader = new FileReader();
-          reader.readAsText(file)
-          
-          reader.onprogress = function(e) {
-            $scope.$apply(function() {
-              if (e.lengthComputable) { 
-                $scope.uploadProgress = (e.loaded / e.total) * 100
+          reader.readAsText(file);
+
+          reader.onprogress = function (e) {
+            $scope.$apply(function () {
+              if (e.lengthComputable) {
+                $scope.uploadProgress = (e.loaded / e.total) * 100;
               }
             });
-          }
-  
-          reader.onload = function(e){
-            $scope.$apply(function(){
-              $scope.certs[$scope.filename] = btoa(e.target.result)
-              $scope.uploadProgress = null
-              console.log("after_upload", $scope.certs)
-            })
-          }
-  
-          reader.onerror = function(e){
-            $scope.$apply(function() { doneCb(false, 'Error when uploading'); });
-          }
+          };
+
+          reader.onload = function (e) {
+            $scope.$apply(function () {
+              try {
+                $scope.certs[$scope.filename] = btoa(e.target.result);
+                $scope.hasFile = true;
+                $scope.uploadProgress = null;
+              } catch (err) {
+                $scope.hasFile = false;
+                $scope.uploadProgress = null;
+              }
+            });
+          };
+
+          reader.onerror = function (e) {
+            $scope.$apply(function () {
+              doneCb(false, "Error when uploading");
+              $scope.hasFile = false;
+              $scope.uploadProgress = null;
+            });
+          };
+        
+        
   
         };
 

@@ -142,7 +142,7 @@
                   <tr>
                     <td class="non-input">Certificate:</td>
                     <td>
-                      <span class="config-file-field" filename="ssl.cert" has-file="hasfile.SSLCert" certs="certs"></span>
+                      <span class="config-file-field" filename="ssl.cert" certs="certs"></span>
                       <div class="help-text">
                         The certificate must be in PEM format.
                       </div>
@@ -151,7 +151,7 @@
                   <tr>
                     <td class="non-input">Private key:</td>
                     <td>
-                      <span class="config-file-field" filename="ssl.key" has-file="hasfile.SSLKey" certs="certs"></span>
+                      <span class="config-file-field" filename="ssl.key" certs="certs"></span>
                     </td>
                   </tr>
                 </table>
@@ -182,7 +182,7 @@
               <td>
                  <select ng-model="mapped.database.kind" ng-disabled="fieldGroupReadonly('Database')">
                     <option value="mysql+pymysql">MySQL</option>
-                    <option value="postgresql">Postgres</option>
+                    <option value="postgresql" selected>Postgres</option>
                  </select>
               </td>
             </tr>
@@ -227,7 +227,7 @@
               <td>
                 <span class="config-file-field" filename="database.pem"
                       is-readonly="fieldGroupReadonly('Database')"
-                      skip-check-file="true" has-file="currentState.hasDatabaseSSLCert" certs="certs"></span>
+                      skip-check-file="true" certs="certs"></span>
                 <div class="help-text">Optional SSL certicate (in PEM format) to use to connect to the database</div>
               </td>
             </tr>
@@ -499,7 +499,6 @@
                     </span>
                     <span class="config-file-field" filename="{{ sc.location + '-' + field.filesuffix }}"
                           binding="sc.data[1][field.name]"
-                          has-file="hasfile['contact-' + sc.location + '-' + field.filesuffix]"
                           ng-if="field.kind == 'file'"
                           is-readonly="fieldGroupReadonly('DistributedStorage')"
                           certs="certs"></span>
@@ -1030,7 +1029,7 @@
             <tr>
               <td>Public Key:</td>
               <td>
-                <span class="config-file-field" filename="jwt-authn.cert" has-file="hasfile.JWTCert" certs="certs"></span>
+                <span class="config-file-field" filename="jwt-authn.cert" certs="certs"></span>
                 <div class="help-text">
                   A certificate containing the public key portion of the key pair used to sign
                   the JSON Web Tokens. This file must be in PEM format.
@@ -1215,7 +1214,7 @@
             <tr ng-if="config.LDAP_URI.indexOf('ldaps://') == 0">
               <td class="non-input">Custom TLS Certificate:</td>
               <td>
-                <span class="config-file-field" filename="ldap.crt" has-file="hasfile.LDAPTLSCert" certs="certs"></span>
+                <span class="config-file-field" filename="ldap.crt" certs="certs"></span>
                 <div class="help-text">
                   If specified, the certificate (in PEM format) for the LDAP TLS connection.
                 </div>
