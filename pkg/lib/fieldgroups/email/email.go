@@ -73,6 +73,12 @@ func NewEmailFieldGroup(fullConfig map[string]interface{}) (*EmailFieldGroup, er
 			return newEmailFieldGroup, errors.New("MAIL_USERNAME must be of type string")
 		}
 	}
+	if value, ok := fullConfig["MAIL_USE_AUTH"]; ok {
+		newEmailFieldGroup.MailUseAuth, ok = value.(bool)
+		if !ok {
+			return newEmailFieldGroup, errors.New("MAIL_USE_AUTH must be of type bool")
+		}
+	}
 	if value, ok := fullConfig["MAIL_USE_TLS"]; ok {
 		newEmailFieldGroup.MailUseTls, ok = value.(bool)
 		if !ok {
