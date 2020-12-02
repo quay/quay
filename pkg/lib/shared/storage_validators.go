@@ -302,7 +302,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
-		if ok, err := validateSwift(opts, storageName, args.SwiftAuthVersion, args.SwiftUser, args.SwiftPassword, args.SwiftAuthURL, args.SwiftOsOptions, fgName); !ok {
+		if ok, err := validateSwift(opts, storageName, args.SwiftAuthVersion, args.SwiftUser, args.SwiftPassword, args.SwiftContainer, args.SwiftAuthURL, args.SwiftOsOptions, fgName); !ok {
 			errors = append(errors, err)
 		}
 	default:
@@ -417,7 +417,7 @@ func validateAzureGateway(opts Options, storageName, accountName, accountKey, co
 
 }
 
-func validateSwift(opts Options, storageName string, authVersion int, swiftUser, swiftPassword, authUrl string, osOptions map[string]interface{}, fgName string) (bool, ValidationError) {
+func validateSwift(opts Options, storageName string, authVersion int, swiftUser, swiftPassword, containerName, authUrl string, osOptions map[string]interface{}, fgName string) (bool, ValidationError) {
 
 	var c swift.Connection
 	switch authVersion {
@@ -438,12 +438,21 @@ func validateSwift(opts Options, storageName string, authVersion int, swiftUser,
 	case 3:
 
 		// Need domain
-		domain, ok := osOptions["user_domain_name"]
+		domain, ok := osOptions["user_domain_name"].(string)
 		if !ok {
 			return false, ValidationError{
 				FieldGroup: fgName,
 				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				Message:    "Swift auth v3 requires a domain in osOptions",
+				Message:    "Swift auth v3 requires a domain (string) in os_options",
+			}
+		}
+		// Need domain
+		tenantId, ok := osOptions["tenant_id"].(string)
+		if !ok {
+			return false, ValidationError{
+				FieldGroup: fgName,
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				Message:    "Swift auth v3 requires tenant_id (string) in os_options",
 			}
 		}
 		c = swift.Connection{
@@ -451,7 +460,8 @@ func validateSwift(opts Options, storageName string, authVersion int, swiftUser,
 			ApiKey:      swiftPassword,
 			AuthUrl:     authUrl,
 			AuthVersion: 3,
-			Domain:      domain.(string),
+			Domain:      domain,
+			TenantId:    tenantId,
 		}
 	}
 
@@ -464,6 +474,27 @@ func validateSwift(opts Options, storageName string, authVersion int, swiftUser,
 		}
 	}
 
-	return true, ValidationError{}
+	// List containers
+	containers, err := c.ContainerNames(nil)
+	if err != nil {
+		return false, ValidationError{
+			FieldGroup: fgName,
+			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+			Message:    "Could not list containers in Swift storage. Error: " + err.Error(),
+		}
+	}
+
+	// Validate container name is present
+	for _, name := range containers {
+		if containerName == name {
+			return true, ValidationError{}
+		}
+	}
+
+	return false, ValidationError{
+		FieldGroup: fgName,
+		Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+		Message:    fmt.Sprintf("Could not find container (%s) in Swift storage.", containerName),
+	}
 
 }
