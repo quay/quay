@@ -60,7 +60,7 @@ var validateCmd = &cobra.Command{
 		// Load into struct
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: " + err.Error())
 			return
 		}
 
