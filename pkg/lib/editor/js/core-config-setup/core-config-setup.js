@@ -269,22 +269,22 @@ angular.module("quay-config")
           config["FEATURE_ACI_CONVERSION"] = false;
           config["USE_CDN"] = false;
           config["USERFILES_LOCATION"] = "default";
-          if (!("FEATURE_REQUIRE_TEAM_INVITE" in object)) {
+          config["TESTING"] = false;
+          if (!("FEATURE_REQUIRE_TEAM_INVITE" in config)) {
             config["FEATURE_REQUIRE_TEAM_INVITE"] = true;
           }
-          if (!("FEATURE_REQUIRE_TEAM_INVITE" in object)) {
-            config["FEATURE_REQUIRE_TEAM_INVITE"] = true;
+          if (!("FEATURE_APP_REGISTRY" in config)) {
+            config["FEATURE_APP_REGISTRY"] = false;
           }
-          if (!("FEATURE_RESTRICTED_V1_PUSH" in object)) {
+          if (!("FEATURE_RESTRICTED_V1_PUSH" in config)) {
             config["FEATURE_RESTRICTED_V1_PUSH"] = true;
           }
-          if (!("FEATURE_SECURITY_NOTIFICATIONS" in object)) {
+          if (!("FEATURE_SECURITY_NOTIFICATIONS" in config)) {
             config["FEATURE_SECURITY_NOTIFICATIONS"] = true;
           }
-          if (!("LOG_ARCHIVE_LOCATION" in object)) {
+          if (!("LOG_ARCHIVE_LOCATION" in config)) {
             config["LOG_ARCHIVE_LOCATION"] = "default";
           }
-          config["TESTING"] = false;
           return config;
         }
         $scope.validateConfig = function() {
