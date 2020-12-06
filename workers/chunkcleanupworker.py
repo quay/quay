@@ -1,6 +1,7 @@
 import logging
 import time
 
+from workers.gunicorn_worker import GunicornWorker
 from app import app, storage, chunk_cleanup_queue
 from workers.queueworker import QueueWorker, JobException
 from util.log import logfile_path
@@ -31,6 +32,28 @@ class ChunkCleanupWorker(QueueWorker):
             storage.remove([storage_location], storage_path)
         except IOError:
             raise JobException()
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    engines = set(
+        [config[0] for config in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values())]
+    )
+    feature_flag = "SwiftStorage" in engines
+    worker = GunicornWorker(
+        __name__,
+        app,
+        ChunkCleanupWorker(chunk_cleanup_queue, poll_period_seconds=POLL_PERIOD_SECONDS),
+        feature_flag,
+    )
+    return worker
 
 
 if __name__ == "__main__":

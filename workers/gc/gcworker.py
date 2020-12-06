@@ -12,7 +12,7 @@ from data.model.repository import get_random_gc_policy
 from data.model.gc import garbage_collect_repo
 from workers.worker import Worker
 from util.locking import GlobalLock, LockNotAcquiredException
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,19 @@ class GarbageCollectionWorker(Worker):
                     )
             except LockNotAcquiredException:
                 logger.debug("Could not acquire repo lock for garbage collection")
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    worker = GunicornWorker(__name__, app, GarbageCollectionWorker(), features.GARBAGE_COLLECTION)
+    return worker
 
 
 if __name__ == "__main__":

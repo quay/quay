@@ -6,7 +6,7 @@ from app import app
 from data.database import UseThenDisconnect
 from data.queue import delete_expired
 from workers.worker import Worker
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,19 @@ class QueueCleanupWorker(Worker):
                 )
                 if deleted_count == 0:
                     return
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    worker = GunicornWorker(__name__, app, QueueCleanupWorker(), True)
+    return worker
 
 
 if __name__ == "__main__":

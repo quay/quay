@@ -9,6 +9,7 @@ from data.database import CloseForLongOperation
 from util.streamingjsonencoder import StreamingJSONEncoder
 from workers.buildlogsarchiver.models_pre_oci import pre_oci_model as model
 from workers.worker import Worker
+from workers.gunicorn_worker import GunicornWorker
 
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,19 @@ class ArchiveBuildLogsWorker(Worker):
             build_logs.delete_log_entries(to_archive.uuid)
         else:
             logger.debug("Another worker pre-empted us when archiving: %s", to_archive.uuid)
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    worker = GunicornWorker(__name__, app, ArchiveBuildLogsWorker(), True)
+    return worker
 
 
 if __name__ == "__main__":

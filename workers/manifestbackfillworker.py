@@ -11,7 +11,7 @@ from workers.worker import Worker
 from util.migrate.allocator import yield_random_entries
 from util.bytes import Bytes
 from util.log import logfile_path
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,21 @@ class ManifestBackfillWorker(Worker):
                 continue
 
         return True
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    worker = GunicornWorker(
+        __name__, app, ManifestBackfillWorker(), features.MANIFEST_SIZE_BACKFILL
+    )
+    return worker
 
 
 def main():

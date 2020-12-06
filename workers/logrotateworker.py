@@ -15,7 +15,7 @@ from util.log import logfile_path
 from util.streamingjsonencoder import StreamingJSONEncoder
 from util.timedeltastring import convert_to_timedelta
 from workers.worker import Worker
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +129,20 @@ def _write_logs(filename, logs, log_archive):
 
         tempfile.seek(0)
         log_archive.store_file(tempfile, JSON_MIMETYPE, content_encoding="gzip", file_id=filename)
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    feature_flag = (features.ACTION_LOG_ROTATION) or (not None in [SAVE_PATH, SAVE_LOCATION])
+    worker = GunicornWorker(__name__, app, LogRotateWorker(), feature_flag)
+    return worker
 
 
 def main():

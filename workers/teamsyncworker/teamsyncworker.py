@@ -8,7 +8,7 @@ from data.users.teamsync import sync_teams_to_groups
 from workers.worker import Worker
 from util.timedeltastring import convert_to_timedelta
 from util.log import logfile_path
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,20 @@ class TeamSynchronizationWorker(Worker):
 
     def _sync_teams_to_groups(self):
         sync_teams_to_groups(authentication, STALE_CUTOFF)
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    feature_flag = (features.TEAM_SYNCING) and (authentication.federated_service)
+    worker = GunicornWorker(__name__, app, TeamSynchronizationWorker(), feature_flag)
+    return worker
 
 
 def main():
