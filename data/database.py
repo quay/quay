@@ -18,7 +18,12 @@ import toposort
 from enum import IntEnum, Enum, unique
 from peewee import *
 from peewee import __exception_wrapper__, Function
-from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase, PooledSqliteDatabase
+from playhouse.pool import (
+    PooledDatabase,
+    PooledMySQLDatabase,
+    PooledPostgresqlDatabase,
+    PooledSqliteDatabase,
+)
 
 from sqlalchemy.engine.url import make_url
 
@@ -43,6 +48,12 @@ from data.encryption import FieldEncrypter
 from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig, disallow_replica_use
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from util.names import urn_generator
+from util.metrics.prometheus import (
+    db_pooled_connections_in_use,
+    db_pooled_connections_available,
+    db_connect_calls,
+    db_close_calls,
+)
 from util.validation import validate_postgres_precondition
 
 
@@ -361,6 +372,36 @@ def _wrap_for_retry(driver):
     return type("Retrying" + driver.__name__, (RetryOperationalError, driver), {})
 
 
+class ObservableDatabase(object):
+    """Wrapper around Peewee's non-pooled database class for observability."""
+
+    def connect(self, reuse_if_open=False):
+        ret = super(ObservableDatabase, self).connect(reuse_if_open)
+        db_connect_calls.inc()
+        return ret
+
+    def close(self):
+        ret = super(ObservableDatabase, self).close()
+        db_close_calls.inc()
+        return ret
+
+
+class ObservablePooledDatabase(ObservableDatabase):
+    """Wrapper around Peewee's PooledDatabase class for observability."""
+
+    def connect(self, reuse_if_open=False):
+        ret = super(ObservablePooledDatabase, self).connect(reuse_if_open)
+        db_pooled_connections_in_use.set(len(self._in_use))
+        db_pooled_connections_available.set(len(self._connections))
+        return ret
+
+    def close(self):
+        ret = super(ObservablePooledDatabase, self).close()
+        db_pooled_connections_in_use.set(len(self._in_use))
+        db_pooled_connections_available.set(len(self._connections))
+        return ret
+
+
 def _db_from_url(
     url,
     db_kwargs,
@@ -411,6 +452,11 @@ def _db_from_url(
 
     if allow_retry:
         driver = _wrap_for_retry(driver)
+
+    if issubclass(driver, PooledDatabase):
+        driver = type("Observable" + driver.__name__, (ObservablePooledDatabase, driver), {})
+    else:
+        driver = type("Observable" + driver.__name__, (ObservableDatabase, driver), {})
 
     driver_autocommit = False
     if db_kwargs.get("_driver_autocommit"):
