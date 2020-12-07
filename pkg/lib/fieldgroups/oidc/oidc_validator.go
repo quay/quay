@@ -3,7 +3,9 @@ package oidc
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
 
 	goOIDC "github.com/coreos/go-oidc"
 	"github.com/quay/config-tool/pkg/lib/shared"
@@ -50,14 +52,30 @@ func (fg *OIDCFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 			continue
 		}
 
-		// Create context and provider
+		// Create http client
+		config, err := shared.GetTlsConfig(opts)
+		if err != nil {
+			newError := shared.ValidationError{
+				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+				FieldGroup: fgName,
+				Message:    err.Error(),
+			}
+			errors = append(errors, newError)
+		}
+		tr := &http.Transport{TLSClientConfig: config}
+		client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
+
+		// Create http client context
 		ctx := context.Background()
+		ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
+
+		// Create provider
 		p, err := goOIDC.NewProvider(ctx, provider.OIDCServer)
 		if err != nil {
 			newError := shared.ValidationError{
 				Tags:       []string{"OIDC_SERVER"},
 				FieldGroup: fgName,
-				Message:    err.Error(),
+				Message:    "Could not create provider for " + provider.ServiceName + ". Error: " + err.Error(),
 			}
 			errors = append(errors, newError)
 			continue

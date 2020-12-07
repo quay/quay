@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -202,7 +201,6 @@ func GetTlsConfig(opts Options) (*tls.Config, error) {
 
 	for name, cert := range opts.Certificates {
 		if strings.HasPrefix(name, "extra_ca_certs/") {
-			log.Println("Adding certificate: " + name)
 			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
 				return nil, errors.New("Failed to append custom certificate: " + name)
 			}
