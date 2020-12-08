@@ -1073,7 +1073,6 @@ angular.module("quay-config")
         };
 
         var conductUpload = function(file) {
- 
           var reader = new FileReader();
           reader.readAsText(file);
 
@@ -1091,6 +1090,7 @@ angular.module("quay-config")
                 $scope.certs[$scope.filename] = btoa(e.target.result);
                 $scope.hasFile = true;
                 $scope.uploadProgress = null;
+                $scope.binding = $scope.filename;
               } catch (err) {
                 $scope.hasFile = false;
                 $scope.uploadProgress = null;
