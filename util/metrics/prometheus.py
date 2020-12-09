@@ -9,11 +9,26 @@ import urllib.request, urllib.error, urllib.parse
 from cachetools.func import lru_cache
 
 from flask import g, request
-from prometheus_client import push_to_gateway, REGISTRY, Histogram
+from prometheus_client import push_to_gateway, REGISTRY, Histogram, Gauge, Counter
 
 
 logger = logging.getLogger(__name__)
 
+
+db_pooled_connections_in_use = Gauge(
+    "quay_db_pooled_connections_in_use", "number of pooled db connections in use"
+)
+db_pooled_connections_available = Gauge(
+    "quay_db_pooled_connections_available", "number of pooled db connections available"
+)
+db_connect_calls = Counter(
+    "quay_db_connect_calls",
+    "number of connect() calls made to db",
+)
+db_close_calls = Counter(
+    "quay_db_close_calls",
+    "number of close() calls made to db",
+)
 
 request_duration = Histogram(
     "quay_request_duration_seconds",
