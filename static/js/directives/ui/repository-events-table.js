@@ -14,7 +14,7 @@ angular.module('quay').directive('repositoryEventsTable', function () {
       'isEnabled': '=isEnabled'
     },
     controller: function($scope, $element, $timeout, ApiService, Restangular, UtilService,
-                         ExternalNotificationData, $location, StateService, DocumentationService) {
+                         ExternalNotificationData, $location, StateService, DocumentationService, $sanitize) {
       $scope.canCreateNotification = function() {
         return StateService.inReadOnlyMode()
           ? false
@@ -122,7 +122,7 @@ angular.module('quay').directive('repositoryEventsTable', function () {
         dom.setAttribute('readonly', 'readonly');
 
         bootbox.dialog({
-          'title': (notification.title || 'Notification') + ' ' + field,
+          'title': ($sanitize(notification.title) || 'Notification') + ' ' + field,
           'message': dom.outerHTML,
           'buttons': {
             "Done": {
