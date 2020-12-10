@@ -215,10 +215,14 @@ class EC2Executor(BuilderExecutor):
 
     @property
     def running_builders_count(self):
-        ec2_conn = self._get_conn()
-        resp = ec2_conn.describe_instances(
-            Filters=[{"Name": "tag:Name", "Values": ["Quay Ephemeral Builder"]}]
-        )
+        try:
+            ec2_conn = self._get_conn()
+            resp = ec2_conn.describe_instances(
+                Filters=[{"Name": "tag:Name", "Values": ["Quay Ephemeral Builder"]}]
+            )
+        except Exception as ec2e:
+            logger.error("EC2 executor error: %s", ec2e)
+            raise ExecutorException(ec2e)
 
         count = 0
         for reservation in resp["Reservations"]:
@@ -402,6 +406,19 @@ class KubernetesExecutor(BuilderExecutor):
     def running_builders_count(self):
         q = {"labelSelector": "build,time,manager,quay-sha"}
         jobs_list = self._request("GET", self._jobs_path(), params=q)
+        if jobs_list.status_code != 200:
+            logger.error(
+                "Kubernetes executor request error: %s %s - %s",
+                "GET",
+                jobs_list.url,
+                jobs_list.status_code,
+            )
+            raise ExecutorException(
+                "Failed to get runnning builder count from executor %s: %s %s",
+                self.name,
+                jobs_list.status_code,
+                jobs_list.reason,
+            )
         return len(jobs_list.json()["items"])
 
     def _request(self, method, path, **kwargs):
