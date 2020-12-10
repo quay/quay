@@ -429,6 +429,9 @@ class KubernetesExecutor(BuilderExecutor):
         tls_ca = self.executor_config.get("K8S_API_TLS_CA")
         service_account_token = self.executor_config.get("SERVICE_ACCOUNT_TOKEN")
 
+        if tls_ca:
+            request_options["verify"] = tls_ca
+
         if "timeout" not in request_options:
             request_options["timeout"] = self.executor_config.get("K8S_API_TIMEOUT", 20)
 
@@ -440,8 +443,6 @@ class KubernetesExecutor(BuilderExecutor):
             scheme = "https"
             request_options["cert"] = (tls_cert, tls_key)
             logger.debug("Using tls certificate and key for Kubernetes authentication")
-            if tls_ca:
-                request_options["verify"] = tls_ca
         else:
             scheme = "http"
 
