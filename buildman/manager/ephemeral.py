@@ -583,13 +583,17 @@ class EphemeralBuilderManager(BuildStateInterface):
         logger.debug("Scheduling build %s", build_id)
 
         allowed_worker_count = self._manager_config.get("ALLOWED_WORKER_COUNT", 1)
-        if self._running_workers() >= allowed_worker_count:
-            logger.warning(
-                "Could not schedule build %s. Number of workers at capacity: %s.",
-                build_id,
-                self._running_workers(),
-            )
+        try:
+            if self._running_workers() >= allowed_worker_count:
+                logger.warning(
+                    "Could not schedule build %s. Number of workers at capacity: %s.",
+                    build_id,
+                    self._running_workers(),
+                )
             return False, TOO_MANY_WORKERS_SLEEP_DURATION
+        except Exception as exe:
+            logger.warning("Failed to get worker count from executors: %s", exe)
+            return False, EPHEMERAL_API_TIMEOUT
 
         job_id = self._job_key(build_id)
         try:
