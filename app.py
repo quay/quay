@@ -105,9 +105,16 @@ config_provider.update_app_config(app.config)
 environ_config = json.loads(os.environ.get(OVERRIDE_CONFIG_KEY, "{}"))
 app.config.update(environ_config)
 
+# Hack to force HTTPS for url_for() methods because PREFERRED_URL_SCHEME is broken in Flask
+def _force_https(app):
+    def wrapper(environ, start_response):
+        environ['wsgi.url_scheme'] = 'https'
+        return app(environ, start_response)
+    return wrapper
+
 # Fix remote address handling for Flask.
 if app.config.get("PROXY_COUNT", 1):
-    app.wsgi_app = _force_ssl(app.wsgi_app)
+    app.wsgi_app = _force_https(ProxyFix(app.wsgi_app, num_proxies=app.config.get("PROXY_COUNT", 1)))
 
 # Allow user to define a custom storage preference for the local instance.
 _distributed_storage_preference = os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE", "").split()
