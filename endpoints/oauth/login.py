@@ -303,7 +303,7 @@ def _register_service(login_service):
                 _scheme=app.config["PREFERRED_URL_SCHEME"],
                 _external=True,
                 path=user_obj.username,
-                tab="external"
+                tab="external",
             )
         )
 
@@ -348,7 +348,7 @@ def _register_service(login_service):
                 _external=True,
                 path=user_obj.username,
                 tab="settings",
-                idtoken=idtoken
+                idtoken=idtoken,
             )
         )
 
