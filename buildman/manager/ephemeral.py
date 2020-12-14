@@ -590,7 +590,7 @@ class EphemeralBuilderManager(BuildStateInterface):
                     build_id,
                     self._running_workers(),
                 )
-            return False, TOO_MANY_WORKERS_SLEEP_DURATION
+                return False, TOO_MANY_WORKERS_SLEEP_DURATION
         except Exception as exe:
             logger.warning("Failed to get worker count from executors: %s", exe)
             return False, EPHEMERAL_API_TIMEOUT
