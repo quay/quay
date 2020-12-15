@@ -6,7 +6,7 @@ from prometheus_client import Counter
 from app import app, instance_keys
 from workers.servicekeyworker.models_pre_oci import pre_oci_model as model
 from workers.worker import Worker
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,19 @@ class ServiceKeyWorker(Worker):
             new_expiration,
         )
         instance_key_renewal_self.labels(True).inc()
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    worker = GunicornWorker(__name__, app, ServiceKeyWorker(), True)
+    return worker
 
 
 if __name__ == "__main__":

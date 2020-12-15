@@ -1,6 +1,7 @@
 import logging
 import json
 import time
+import os
 
 from collections import namedtuple
 
@@ -27,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 def _get_aws_ip_ranges():
     try:
-        with open("util/ipresolver/aws-ip-ranges.json", "r") as f:
+        # resolve absolute path to file
+        path = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(path, "aws-ip-ranges.json")
+        with open(file_path, "r") as f:
             return json.loads(f.read())
     except IOError:
         logger.exception("Could not load AWS IP Ranges")
@@ -77,7 +81,12 @@ class NoopIPResolver(IPResolverInterface):
 class IPResolver(IPResolverInterface):
     def __init__(self, app):
         self.app = app
-        self.geoip_db = geoip2.database.Reader("util/ipresolver/GeoLite2-Country.mmdb")
+
+        # resolve absolute path to file
+        path = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(path, "GeoLite2-Country.mmdb")
+        self.geoip_db = geoip2.database.Reader(file_path)
+
         self.amazon_ranges = None
         self.sync_token = None
 

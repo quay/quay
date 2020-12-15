@@ -9,6 +9,7 @@ from notifications import notification_batch
 from workers.queueworker import QueueWorker, JobException
 from util.log import logfile_path
 from util.secscan import PRIORITY_LEVELS
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,23 @@ class SecurityScanningNotificationWorker(QueueWorker):
 
             job_details["current_page_index"] = page_index
             self.extend_processing(_PROCESSING_SECONDS_EXPIRATION, job_details)
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    feature_flag = features.SECURITY_SCANNER and features.SECURITY_NOTIFICATIONS
+    note_worker = SecurityScanningNotificationWorker(
+        secscan_notification_queue, poll_period_seconds=_POLL_PERIOD_SECONDS
+    )
+    worker = GunicornWorker(__name__, app, note_worker, feature_flag)
+    return worker
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ from data import model, database
 from data.logs_model import logs_model
 from util.migrate.allocator import yield_random_entries
 from workers.worker import Worker, with_exponential_backoff
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,21 @@ class RepositoryActionCountWorker(Worker):
             logger.debug("Repository #%s old entries removed", to_count.id)
 
         return True
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    worker = GunicornWorker(
+        __name__, app, RepositoryActionCountWorker(), features.REPOSITORY_ACTION_COUNTER
+    )
+    return worker
 
 
 if __name__ == "__main__":

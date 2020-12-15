@@ -178,3 +178,40 @@ generate-proto-py:
 
 black:
 	black --line-length=100 --target-version=py38 --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist)/" .
+
+#################################
+# Local Development Environment #
+#################################
+
+.PHONY: local-dev-clean
+local-dev-clean:
+	sudo ./local-dev/scripts/clean.sh
+
+.PHONY: local-dev-build
+local-dev-build:
+	make local-dev-clean
+	docker-compose build
+
+.PHONY: local-dev-up
+local-dev-up:
+	make local-dev-clean
+	docker-compose up -d redis
+	docker-compose up -d quay-db
+	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	docker-compose up -d quay
+
+.PHONY: local-dev-up-with-clair
+local-dev-up-with-clair:
+	make local-dev-clean
+	docker-compose up -d redis
+	docker-compose up -d quay-db
+	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	docker-compose up -d quay
+	docker-compose up -d clair-db
+	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	docker-compose up -d clair
+
+.PHONY: local-dev-up
+local-dev-down:
+	docker-compose down
+	make local-dev-clean

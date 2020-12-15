@@ -1,5 +1,9 @@
 # Getting Started With Quay
 
+The quickest way to get Quay and (optionally) Clair running on for development and testing purposes would be to use our [docker based local development environment](./docker-local-dev.md)
+
+If you'd like to understand a Quay deployment in more details continue reading...
+
 This guide is meant to show how to get Quay up and running with a minimum of external dependencies for testing or evaluation.  It aims to illustrate the components of a Quay installation to understand how the pieces fit together.  Please don't use this configuration for production or a highly available Quay installation.
 
 NOTE: This guide uses [podman](https://podman.io/) which assumes a Linux environment- on MacOS or Windows you should be able to substitute with `docker` without trouble.

@@ -8,7 +8,7 @@ from data import model
 from workers.worker import Worker
 from util.log import logfile_path
 from util.timedeltastring import convert_to_timedelta
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,22 @@ class ExpiredAppSpecificTokenWorker(Worker):
         )
         model.appspecifictoken.gc_expired_tokens(self.expiration_window)
         return True
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    feature_flag = (features.APP_SPECIFIC_TOKENS) or (
+        app.config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is not None
+    )
+    worker = GunicornWorker(__name__, app, ExpiredAppSpecificTokenWorker(), feature_flag)
+    return worker
 
 
 if __name__ == "__main__":

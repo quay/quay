@@ -8,7 +8,7 @@ from data.database import CloseForLongOperation
 from data import model
 from workers.queueworker import QueueWorker, WorkerUnhealthyException, JobException
 from util.log import logfile_path
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +168,33 @@ class StorageReplicationWorker(QueueWorker):
             locations_missing,
             existing_location,
         )
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    has_local_storage = False
+
+    if features.STORAGE_REPLICATION:
+        for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
+            if storage_type == "LocalStorage":
+                has_local_storage = True
+                break
+
+    feature_flag = (features.STORAGE_REPLICATION) and (not has_local_storage)
+    repl_worker = StorageReplicationWorker(
+        image_replication_queue,
+        poll_period_seconds=POLL_PERIOD_SECONDS,
+        reservation_seconds=RESERVATION_SECONDS,
+    )
+    worker = GunicornWorker(__name__, app, repl_worker, feature_flag)
+    return worker
 
 
 if __name__ == "__main__":

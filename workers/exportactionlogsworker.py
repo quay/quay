@@ -18,6 +18,7 @@ from data.logs_model.interface import LogsIterationTimeout
 from workers.queueworker import QueueWorker
 from util.log import logfile_path
 from util.useremails import send_logs_exported_email
+from workers.gunicorn_worker import GunicornWorker
 
 
 logger = logging.getLogger(__name__)
@@ -287,6 +288,22 @@ def _parse_time(specified_time):
         return datetime.strptime(specified_time + " UTC", "%m/%d/%Y %Z")
     except ValueError:
         return None
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    log_worker = ExportActionLogsWorker(
+        export_action_logs_queue, poll_period_seconds=POLL_PERIOD_SECONDS
+    )
+    worker = GunicornWorker(__name__, app, log_worker, features.LOG_EXPORT)
+    return worker
 
 
 if __name__ == "__main__":

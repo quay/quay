@@ -9,7 +9,7 @@ from data.database import UseThenDisconnect
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from workers.worker import Worker
-
+from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,20 @@ class GlobalPrometheusStatsWorker(Worker):
             user_rows.set(get_active_user_count())
             org_rows.set(get_active_org_count())
             robot_rows.set(get_robot_count())
+
+
+def create_gunicorn_worker():
+    """
+    follows the gunicorn application factory pattern, enabling
+    a quay worker to run as a gunicorn worker thread.
+
+    this is useful when utilizing gunicorn's hot reload in local dev.
+
+    utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
+    """
+    feature_flag = app.config.get("PROMETHEUS_PUSHGATEWAY_URL") is not None
+    worker = GunicornWorker(__name__, app, GlobalPrometheusStatsWorker(), feature_flag)
+    return worker
 
 
 def main():
