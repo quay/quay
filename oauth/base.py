@@ -1,6 +1,6 @@
 import copy
 import logging
-import urllib, urllib.parse
+import urllib
 import urlparse
 
 from abc import ABCMeta, abstractmethod
@@ -140,7 +140,7 @@ class OAuthService(object):
             "client_id": self.client_id(),
             "redirect_uri": redirect_uri,
             "scope": " ".join(scopes),
-            "state": urllib.parse.quote(csrf_token),
+            "state": urllib.quote(csrf_token),
         }
 
         return self.authorize_endpoint().with_params(params).to_url()
