@@ -4,8 +4,8 @@ import json
 import re
 import time
 import uuid
-from datetime import datetime, timedelta
 import dateutil.parser
+from datetime import datetime, timedelta
 
 import jwt
 from prometheus_client import Counter, Histogram
@@ -530,7 +530,9 @@ class EphemeralBuilderManager(BuildStateInterface):
         )
 
         try:
-            self._orchestrator.set_key(job_id, json.dumps(job_data_json), expiration=ttl)
+            self._orchestrator.set_key(
+                job_id, json.dumps(job_data_json), overwrite=True, expiration=ttl
+            )
         except OrchestratorConnectionError:
             logger.error(
                 "Could not update heartbeat for job %s. Orchestrator is not available", job_id
@@ -570,7 +572,7 @@ class EphemeralBuilderManager(BuildStateInterface):
             job_data_json = json.loads(job_data)
             build_job = BuildJob(AttrDict(job_data_json["job_queue_item"]))
         except KeyError:
-            logger.warning("Job %s does not exist in orchestrator: %s", job_id)
+            logger.warning("Job %s does not exist in orchestrator", job_id)
             return None
         except Exception as e:
             logger.warning("Exception loading job from orchestrator: %s", e)
@@ -590,7 +592,7 @@ class EphemeralBuilderManager(BuildStateInterface):
                     build_id,
                     self._running_workers(),
                 )
-            return False, TOO_MANY_WORKERS_SLEEP_DURATION
+                return False, TOO_MANY_WORKERS_SLEEP_DURATION
         except Exception as exe:
             logger.warning("Failed to get worker count from executors: %s", exe)
             return False, EPHEMERAL_API_TIMEOUT
@@ -691,6 +693,9 @@ class EphemeralBuilderManager(BuildStateInterface):
         if key_change.event == KeyEvent.EXPIRE:
             job_metadata = json.loads(key_change.value)
             build_job = BuildJob(AttrDict(job_metadata["job_queue_item"]))
+
+            logger.info("Build job key expire event: %s", build_job.build_uuid)
+
             executor_name = job_metadata.get("executor_name")
             execution_id = job_metadata.get("execution_id")
 
@@ -738,7 +743,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         try:
             log_data = json.loads(log_message)
         except ValueError:
-            raise
+            return False
 
         fully_unwrapped = ""
         keys_to_extract = ["error", "status", "stream"]
@@ -749,12 +754,13 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         current_log_string = str(fully_unwrapped)
         current_step = _extract_current_step(current_log_string)
+
         if current_step:
-            self.append_log_message(
-                self, build_id, current_log_string, log_type=self._build_logs.COMMAND
-            )
+            self.append_log_message(build_id, current_log_string, log_type=self._build_logs.COMMAND)
         else:
-            self.append_log_message(self, build_id, current_log_string)
+            self.append_log_message(build_id, current_log_string)
+
+        return True
 
     def append_log_message(self, build_id, log_message, log_type=None, log_data=None):
         """
