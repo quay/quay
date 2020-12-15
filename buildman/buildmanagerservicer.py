@@ -68,7 +68,7 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
             return buildman_pb2.BuildPack()
 
         job_id = decoded_token["job_id"]
-        max_build_time = decoded_token["max_expiration"]
+        max_build_time = decoded_token["expiration"]
 
         token, build_args = self._lifecycle_manager.start_job(job_id, max_build_time)
         if not token or not build_args:
@@ -165,7 +165,7 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
             self._lifecycle_manager.job_heartbeat(job_id)
 
             sequence_number = req.sequence_number
-            if last_sequence_number is not None or sequence_number <= last_sequence_number:
+            if last_sequence_number is not None and sequence_number <= last_sequence_number:
                 logger.warning("Got unexcpected log sequence number for job %s", job_id)
                 yield buildman_pb2.LogMessageResponse(success=False)
             else:
@@ -190,4 +190,4 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
         if not cached_tag:
             return buildman_pb2.CachedTag(CachedTag="")
 
-        return buildman_pb2.CachedTag(name=cached_tag)
+        return buildman_pb2.CachedTag(CachedTag=cached_tag)
