@@ -14,14 +14,20 @@ ARG location
 ARG channel
 ARG version
 
+RUN mkdir -p /userdata
+WORKDIR /userdata
+
 RUN yum -y update && \
   yum -y install openssh-clients qemu-kvm && \
   yum -y clean all
 
-COPY --from=executor-img /coreos_production_qemu_image.qcow2 /coreos_production_qemu_image.qcow2
-COPY start.sh /start.sh
+COPY --from=executor-img /coreos_production_qemu_image.qcow2 /userdata/coreos_production_qemu_image.qcow2
+COPY start.sh /userdata/start.sh
+
+RUN chgrp -R 0 /userdata && \
+    chmod -R g=u /userdata
 
 LABEL com.coreos.channel ${channel}
 LABEL com.coreos.version ${version}
 
-ENTRYPOINT ["/bin/bash", "/start.sh"]
+ENTRYPOINT ["/bin/bash", "/userdata/start.sh"]
