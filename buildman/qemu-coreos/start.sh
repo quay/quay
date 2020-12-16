@@ -7,17 +7,16 @@ set -e
 set -x
 set -o nounset
 
-mkdir -p /userdata/openstack/latest
-echo "${USERDATA}" > /userdata/openstack/latest/user_data
+echo "${USERDATA}" > /userdata/user_data
 
-time qemu-img resize ./coreos_production_qemu_image.qcow2 "${VM_VOLUME_SIZE}"
+time qemu-img resize /userdata/coreos_production_qemu_image.qcow2 "${VM_VOLUME_SIZE}"
 
 /usr/libexec/qemu-kvm \
         -enable-kvm \
         -cpu host \
         -nographic \
-        -drive if=virtio,file=./coreos_production_qemu_image.qcow2 \
-        -fw_cfg name=opt/com.coreos/config,file=/userdata/openstack/latest/user_data \
+        -drive if=virtio,file=/userdata/coreos_production_qemu_image.qcow2 \
+        -fw_cfg name=opt/com.coreos/config,file=/userdata/user_data \
         -m "${VM_MEMORY}" \
         -machine accel=kvm \
         -net nic,model=virtio \
