@@ -2,6 +2,8 @@
 
 TOKEN={{ token }}
 SERVER={{ manager_hostname }}
+# TODO: Remove this eventually
+GODEBUG=x509ignoreCN=0
 
 {%- endmacro %}
 

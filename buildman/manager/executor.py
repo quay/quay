@@ -25,7 +25,7 @@ import release
 from _init import ROOT_DIR, OVERRIDE_CONFIG_DIRECTORY
 from app import app
 from buildman.container_cloud_config import CloudConfigContext
-from buildman.server import DEFAULT_GRPC_SERVER_PORT
+from buildman.server import SECURE_GRPC_SERVER_PORT
 
 
 logger = logging.getLogger(__name__)
@@ -165,7 +165,7 @@ class BuilderExecutor(object):
         if quay_password is None:
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
-        server_addr = manager_hostname.split(":", 1)[0] + ":" + str(DEFAULT_GRPC_SERVER_PORT)
+        server_addr = manager_hostname.split(":", 1)[0] + ":" + str(SECURE_GRPC_SERVER_PORT)
         rendered_json = json.load(
             io.StringIO(
                 TEMPLATE.render(
