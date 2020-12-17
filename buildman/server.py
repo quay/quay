@@ -19,7 +19,11 @@ from data import database, model
 logger = logging.getLogger(__name__)
 
 
+# Internal app grpc port
 DEFAULT_GRPC_SERVER_PORT = 50051
+# Port exposed by Nginx
+SECURE_GRPC_SERVER_PORT = 55443
+
 DEFAULT_GRPC_SERVER_WORKER_COUNT = 10
 
 
