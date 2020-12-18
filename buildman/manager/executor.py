@@ -62,6 +62,21 @@ def observe(metric, *labels):
     return decorator
 
 
+def persist_for_debugging(func):
+    """
+    Wrapper for stop_builder that prevents the workers from being cleaned up (for testing purposes only)
+    """
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self.executor_config.get("DEBUG", False):
+            logger.debug("Executor %s DEBUG set, not calling 'stop_builder()'", self.name)
+            return
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
 class ExecutorException(Exception):
     """
     Exception raised when there is a problem starting or stopping a builder.
@@ -183,6 +198,7 @@ class BuilderExecutor(object):
                     ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
                     container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker"),
                     ca_cert=self.executor_config.get("CA_CERT", self._ca_cert()),
+                    debug=self.executor_config.get("DEBUG", False),
                 )
             )
         )
@@ -318,6 +334,7 @@ class EC2Executor(BuilderExecutor):
         logger.debug("Machine with ID %s started for build %s", launched["InstanceId"], build_uuid)
         return launched["InstanceId"]
 
+    @persist_for_debugging
     def stop_builder(self, builder_id):
         try:
             ec2_conn = self._get_conn()
@@ -619,6 +636,7 @@ class KubernetesExecutor(BuilderExecutor):
         job = create_job.json()
         return job["metadata"]["name"]
 
+    @persist_for_debugging
     def stop_builder(self, builder_id):
         pods_path = "/api/v1/namespaces/%s/pods" % self.namespace
 
