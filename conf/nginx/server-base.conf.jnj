@@ -142,6 +142,7 @@ location ~ /v2/([^/]+)\/[^/]+/blobs/ {
     proxy_temp_path /tmp 1 2;
 
     client_max_body_size {{ maximum_layer_size }};
+    http2_chunk_size 32k;
 
     # Setting ANY header clears all inherited proxy_set_header directives
     proxy_set_header X-Forwarded-For $proper_forwarded_for;
