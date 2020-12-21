@@ -1,6 +1,12 @@
 
 ###################
-FROM centos:8 as config-editor
+FROM registry.centos.org/centos/centos:8 as config-editor
+
+# Switch to CentOS Stream
+RUN dnf install centos-release-stream -y
+RUN dnf swap centos-{linux,stream}-repos -y
+RUN dnf distro-sync -y
+RUN dnf upgrade -y
 
 WORKDIR /config-editor
 
@@ -28,7 +34,8 @@ RUN go install ./cmd/config-tool
 
 
 ###################
-FROM centos:8
+FROM registry.centos.org/centos/centos:8
+
 LABEL maintainer "thomasmckay@redhat.com"
 
 ENV OS=linux \
@@ -44,6 +51,11 @@ ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
 ENV QUAYPATH "."
 
+# Switch to CentOS Stream
+RUN dnf install centos-release-stream -y
+RUN dnf swap centos-{linux,stream}-repos -y
+RUN dnf distro-sync -y
+RUN dnf upgrade -y
 
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
