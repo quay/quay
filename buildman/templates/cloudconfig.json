@@ -111,6 +111,17 @@ WantedBy=multi-user.target
   "systemd": {
     "units": [
       {% if container_runtime == "podman" %}
+      {% if debug %}
+      {{ dockersystemd("quay-builder",
+                       worker_image,
+                       container_runtime,
+                       quay_username,
+                       quay_password,
+                       worker_tag,
+                       extra_args='--privileged --env-file /root/overrides.list -v /var/run/podman/podman.sock:/var/run/podman/podman.sock -v /etc/pki/ca-trust-source/anchors:/certs',
+                       restart_policy='no'
+                      ) | indent(6) }},
+      {% else %}
       {{ dockersystemd("quay-builder",
                        worker_image,
                        container_runtime,
@@ -119,6 +130,18 @@ WantedBy=multi-user.target
                        worker_tag,
                        extra_args='--privileged --env-file /root/overrides.list -v /var/run/podman/podman.sock:/var/run/podman/podman.sock -v /etc/pki/ca-trust-source/anchors:/certs',
                        exec_stop_post=['/bin/sh -xc "/bin/sleep 120; /usr/bin/systemctl --no-block poweroff"'],
+                       restart_policy='no'
+                      ) | indent(6) }},
+      {% endif %}
+      {% else %}
+      {% if debug %}
+      {{ dockersystemd("quay-builder",
+                       worker_image,
+                       container_runtime,
+                       quay_username,
+                       quay_password,
+                       worker_tag,
+                       extra_args='--net=host --privileged --env-file /root/overrides.list -v /var/run/docker.sock:/var/run/docker.sock -v /etc/pki/ca-trust-source/anchors:/certs',
                        restart_policy='no'
                       ) | indent(6) }},
       {% else %}
@@ -132,6 +155,7 @@ WantedBy=multi-user.target
                        exec_stop_post=['/bin/sh -xc "/bin/sleep 120; /usr/bin/systemctl --no-block poweroff"'],
                        restart_policy='no'
                       ) | indent(6) }},
+      {% endif %}
       {% endif %}
       {
         "name": "systemd-journal-gatewayd.socket",
