@@ -26,18 +26,12 @@ cache:
     - $HOME/docker
 
 stages:
-  - lint
   - build
   - test
   - clean
 
 jobs:
   include:
-    - stage: lint
-      name: Lint python
-      python: '3.7'
-      script: scripts/ci lint
-
     - stage: build
       name: Build
       python: '2.7'
