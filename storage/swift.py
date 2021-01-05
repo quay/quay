@@ -264,7 +264,10 @@ class SwiftStorage(BaseStorage):
 
     def stream_read(self, path):
         for data in self._get_object(path, self.buffer_size):
-            yield data.to_bytes(1, sys.byteorder)
+            if isinstance(data, int):
+                yield data.to_bytes(1, sys.byteorder)
+            else:
+                yield data
 
     def stream_read_file(self, path):
         return GeneratorFile(self.stream_read(path))
