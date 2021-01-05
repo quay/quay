@@ -471,8 +471,6 @@ class RedisOrchestrator(Orchestrator):
         return value.decode("utf-8")
 
     def set_key(self, key, value, overwrite=False, expiration=None):
-        assert not self.is_canceller_only
-
         try:
             already_exists = self._client.exists(key)
             if already_exists and not overwrite:
