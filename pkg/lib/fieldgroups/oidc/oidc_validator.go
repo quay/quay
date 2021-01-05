@@ -69,16 +69,29 @@ func (fg *OIDCFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
 
-		// Create provider
-		p, err := goOIDC.NewProvider(ctx, provider.OIDCServer)
-		if err != nil {
+		if !strings.HasSuffix(provider.OIDCServer, "/") {
 			newError := shared.ValidationError{
 				Tags:       []string{"OIDC_SERVER"},
 				FieldGroup: fgName,
-				Message:    "Could not create provider for " + provider.ServiceName + ". Error: " + err.Error(),
+				Message:    "OIDC_SERVER must end with a trailing /",
 			}
 			errors = append(errors, newError)
 			continue
+		}
+
+		// Create provider
+		p, err := goOIDC.NewProvider(ctx, provider.OIDCServer)
+		if err != nil {
+			p, err = goOIDC.NewProvider(ctx, strings.TrimSuffix(provider.OIDCServer, "/"))
+			if err != nil {
+				newError := shared.ValidationError{
+					Tags:       []string{"OIDC_SERVER"},
+					FieldGroup: fgName,
+					Message:    "Could not create provider for " + provider.ServiceName + ". Error: " + err.Error(),
+				}
+				errors = append(errors, newError)
+				continue
+			}
 		}
 
 		oauth2Config := oauth2.Config{
