@@ -61,8 +61,7 @@ WantedBy=multi-user.target
         "sshAuthorizedKeys": {{ ssh_authorized_keys | jsonify }},
         {%- endif %}
         "groups": [
-          "sudo",
-          "docker"
+          "sudo"
         ],
         "name": "core"
       }
@@ -71,7 +70,7 @@ WantedBy=multi-user.target
   "storage": {
     "files": [
       {
-        "path": "/etc/pki/ca-trust/source/anchors/ssl.cert",
+        "path": "/etc/pki/ca-trust-source/anchors/ssl.cert",
         "contents": {
           "source": {{ ca_cert | dataurl | jsonify }}
         },
