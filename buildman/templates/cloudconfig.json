@@ -104,6 +104,13 @@ WantedBy=multi-user.target
           "source": {{ overridelist() | dataurl | jsonify }}
         },
         "mode": 420
+      },
+      {
+        "path": "/etc/sysctl.d/100-sysctl-ping.conf",
+        "contents": {
+          "source": {{ "net.ipv4.ping_group_range=0 2147483647" | dataurl | jsonify }}
+        },
+        "mode": 420
       }
     ]
   },
