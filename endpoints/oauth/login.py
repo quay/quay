@@ -189,9 +189,15 @@ def _perform_login(user_obj, service_name):
     success, _ = common_login(user_obj.uuid)
     if success:
         if model.user.has_user_prompts(user_obj):
-            return redirect(url_for("web.updateuser"))
+            return redirect(
+                url_for(
+                    "web.updateuser", _scheme=app.config["PREFERRED_URL_SCHEME"], _external=True
+                )
+            )
         else:
-            return redirect(url_for("web.index"))
+            return redirect(
+                url_for("web.index", _scheme=app.config["PREFERRED_URL_SCHEME"], _external=True)
+            )
     else:
         return _render_ologin_error(service_name, "Could not login. Account may be disabled")
 
@@ -291,7 +297,15 @@ def _register_service(login_service):
         if result.error_message is not None:
             return _get_response(result)
 
-        return redirect(url_for("web.user_view", path=user_obj.username, tab="external"))
+        return redirect(
+            url_for(
+                "web.user_view",
+                _scheme=app.config["PREFERRED_URL_SCHEME"],
+                _external=True,
+                path=user_obj.username,
+                tab="external",
+            )
+        )
 
     def captcha_func():
         recaptcha_response = request.values.get("recaptcha_response", "")
@@ -328,7 +342,14 @@ def _register_service(login_service):
 
         user_obj = get_authenticated_user()
         return redirect(
-            url_for("web.user_view", path=user_obj.username, tab="settings", idtoken=idtoken)
+            url_for(
+                "web.user_view",
+                _scheme=app.config["PREFERRED_URL_SCHEME"],
+                _external=True,
+                path=user_obj.username,
+                tab="settings",
+                idtoken=idtoken,
+            )
         )
 
     oauthlogin.add_url_rule(

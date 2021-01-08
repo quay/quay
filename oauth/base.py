@@ -5,6 +5,7 @@ import urllib.parse
 
 from abc import ABCMeta, abstractmethod
 from six import add_metaclass
+from six.moves.urllib.parse import quote
 
 from util.config import URLSchemeAndHostname
 
@@ -140,7 +141,7 @@ class OAuthService(object):
             "client_id": self.client_id(),
             "redirect_uri": redirect_uri,
             "scope": " ".join(scopes),
-            "state": csrf_token,
+            "state": quote(csrf_token),
         }
 
         return self.authorize_endpoint().with_params(params).to_url()

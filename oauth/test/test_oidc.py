@@ -14,6 +14,7 @@ from jwkest.jwk import RSAKey
 
 from oauth.oidc import OIDCLoginService, OAuthLoginException
 from util.config import URLSchemeAndHostname
+from six.moves.urllib.parse import quote
 
 
 @pytest.fixture(scope="module")  # Slow to generate, only do it once.
@@ -312,7 +313,7 @@ def test_auth_url(oidc_service, discovery_handler, http_client, authorize_handle
 
         # Hit the URL and ensure it works.
         result = http_client.get(auth_url).json()
-        assert result["state"] == "some csrf token"
+        assert result["state"] == quote("some csrf token")
         assert result["scope"] == "one two"
 
 
