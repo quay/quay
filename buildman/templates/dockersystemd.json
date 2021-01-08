@@ -2,10 +2,12 @@
 
 [Unit]
 {% if container_runtime == 'podman' %}
-After=podman.service
+Wants=podman.service network-online.target
+After=podman.service network-online.target
 Requires=podman.service
 {% else %}
-After=docker.service
+Wants=docker.service network-online.target
+After=docker.service network-online.target
 Requires=docker.service
 {% endif %}
 {% if onfailure_units -%}
