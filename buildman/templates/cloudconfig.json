@@ -117,7 +117,7 @@ WantedBy=multi-user.target
                        quay_username,
                        quay_password,
                        worker_tag,
-                       extra_args='--privileged --env-file /root/overrides.list -v /var/run/podman/podman.sock:/var/run/podman/podman.sock -v /etc/pki/ca-trust-source/anchors:/certs',
+                       extra_args='--privileged --env-file /root/overrides.list -v /var/run/podman/podman.sock:/var/run/podman/podman.sock -v /etc/pki/ca-trust-source/anchors:/certs -e DOCKER_HOST=unix:/var/run/podman/podman.sock',
                        restart_policy='no'
                       ) | indent(6) }},
       {% else %}
@@ -127,7 +127,7 @@ WantedBy=multi-user.target
                        quay_username,
                        quay_password,
                        worker_tag,
-                       extra_args='--privileged --env-file /root/overrides.list -v /var/run/podman/podman.sock:/var/run/podman/podman.sock -v /etc/pki/ca-trust-source/anchors:/certs',
+                       extra_args='--privileged --env-file /root/overrides.list -v /var/run/podman/podman.sock:/var/run/podman/podman.sock -v /etc/pki/ca-trust-source/anchors:/certs -e DOCKER_HOST=unix:/var/run/podman/podman.sock',
                        exec_stop_post=['/bin/sh -xc "/bin/sleep 120; /usr/bin/systemctl --no-block poweroff"'],
                        restart_policy='no'
                       ) | indent(6) }},
