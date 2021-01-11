@@ -86,12 +86,13 @@ class ExecutorException(Exception):
 
 
 class BuilderExecutor(object):
-    def __init__(self, executor_config, manager_hostname):
+    def __init__(self, executor_config, registry_hostname, manager_hostname):
         """
         Interface which can be plugged into the EphemeralNodeManager to provide a strategy for
         starting and stopping builders.
         """
         self.executor_config = executor_config
+        self.registry_hostname = registry_hostname
         self.manager_hostname = manager_hostname
 
     @property
@@ -180,7 +181,7 @@ class BuilderExecutor(object):
         if quay_password is None:
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
-        server_addr = manager_hostname.split(":", 1)[0] + ":" + str(SECURE_GRPC_SERVER_PORT)
+        server_grpc_addr = manager_hostname.split(":", 1)[0] + ":" + str(SECURE_GRPC_SERVER_PORT)
         rendered_json = json.load(
             io.StringIO(
                 TEMPLATE.render(
@@ -188,7 +189,8 @@ class BuilderExecutor(object):
                     build_uuid=build_uuid,
                     quay_username=quay_username,
                     quay_password=quay_password,
-                    manager_hostname=server_addr,
+                    manager_hostname=server_grpc_addr,
+                    registry_hostname=self.registry_hostname,
                     worker_image=self.executor_config.get(
                         "WORKER_IMAGE", "quay.io/coreos/registry-build-worker"
                     ),
