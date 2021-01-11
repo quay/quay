@@ -143,7 +143,7 @@ class EphemeralBuilderManager(BuildStateInterface):
             logger.error("Unknown executor %s; skipping install", executor_kind_name)
             return
 
-        executor = executor_klass(executor_config, self._manager_hostname)
+        executor = executor_klass(executor_config, self._registry_hostname, self._manager_hostname)
         if executor.name in self._executor_name_to_executor:
             raise Exception("Executor with name %s already registered" % executor.name)
 
