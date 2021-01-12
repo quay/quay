@@ -160,7 +160,7 @@ WantedBy=multi-user.target
                        quay_password,
                        worker_tag,
                        extra_args='--net=host --privileged --env-file /root/overrides.list -v /var/run/docker.sock:/var/run/docker.sock -v /etc/pki/ca-trust-source/anchors:/certs',
-                       restart_policy='no'
+                       restart_policy='no',
                        oneshot=True,
                       ) | indent(6) }},
       {% else %}
@@ -172,7 +172,7 @@ WantedBy=multi-user.target
                        worker_tag,
                        extra_args='--net=host --privileged --env-file /root/overrides.list -v /var/run/docker.sock:/var/run/docker.sock -v /etc/pki/ca-trust-source/anchors:/certs',
                        exec_stop_post=['/bin/sh -xc "/bin/sleep 120; /usr/bin/systemctl --no-block poweroff"'],
-                       restart_policy='no'
+                       restart_policy='no',
                        oneshot=True,
                       ) | indent(6) }},
       {% endif %}
