@@ -1,3 +1,11 @@
+### v3.3.4
+
+(Release notes)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+
+**Fixed**
+- quay-bridge-operator references correct version
+
+
 ### v3.3.3
 
 (Release notes)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.3/html/red_hat_quay_release_notes/index]
