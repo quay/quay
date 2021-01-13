@@ -15,7 +15,7 @@ from storage.cloud import _CloudStorage, _PartUploadMetadata
 from storage.cloud import _CHUNKS_KEY
 
 _TEST_CONTENT = os.urandom(1024)
-_TEST_BUCKET = "some_bucket"
+_TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"

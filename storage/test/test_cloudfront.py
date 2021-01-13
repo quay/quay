@@ -12,7 +12,7 @@ from util.ipresolver.test.test_ipresolver import test_aws_ip, aws_ip_range_data,
 from test.fixtures import *
 
 _TEST_CONTENT = os.urandom(1024)
-_TEST_BUCKET = "some_bucket"
+_TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"

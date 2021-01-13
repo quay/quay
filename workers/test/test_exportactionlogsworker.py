@@ -18,7 +18,7 @@ from test.fixtures import *
 
 
 _TEST_CONTENT = os.urandom(1024)
-_TEST_BUCKET = "some_bucket"
+_TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"
@@ -152,9 +152,7 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
         storage_id = url[len("http://localhost:5000/exportedlogs/") :]
     else:
         print("TESTURL:", url)
-        assert (
-            url.find("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
-        )
+        assert url.find("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
         storage_id, _ = url[
             len("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") :
         ].split("?")
