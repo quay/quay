@@ -181,6 +181,7 @@ class BuilderExecutor(object):
         if quay_password is None:
             quay_password = self.executor_config["QUAY_PASSWORD"]
 
+        server_grpc_addr = self.manager_hostname
         if self.registry_hostname == self.manager_hostname:
             # If SERVER_HOSTNAME and BUILDMAN_HOSTNAME are served under the same host
             # the gRPC service will be exposed at SERVER_HOSTNAME:55443
