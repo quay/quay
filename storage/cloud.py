@@ -697,8 +697,6 @@ class S3Storage(_CloudStorage):
         if port:
             connect_kwargs["endpoint_url"] += ":" + port
 
-        connect_kwargs["config"] = botocore.config.Config(s3={"addressing_style": "virtual"})
-
         super(S3Storage, self).__init__(
             context,
             boto3.session.Session,
@@ -833,7 +831,6 @@ class RadosGWStorage(_CloudStorage):
         connect_kwargs = {
             "endpoint_url": hostname,
             "use_ssl": is_secure,
-            "config": botocore.config.Config(s3={"addressing_style": "path"}),
         }
 
         if port:
