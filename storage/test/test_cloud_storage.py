@@ -56,6 +56,26 @@ def test_basicop(storage_engine):
     assert not storage_engine.exists(_TEST_PATH)
 
 
+def test_storage_setup(storage_engine):
+    storage_engine.setup()
+
+
+def test_remove_dir(storage_engine):
+    # Ensure the content exists.
+    assert storage_engine.exists(_TEST_PATH)
+
+    # Verify it can be retrieved.
+    assert storage_engine.get_content(_TEST_PATH) == _TEST_CONTENT
+
+    # Retrieve a checksum for the content.
+    storage_engine.get_checksum(_TEST_PATH)
+
+    # Remove the "directory".
+    storage_engine.remove(_TEST_PATH.split("/")[0])
+
+    assert not storage_engine.exists(_TEST_PATH)
+
+
 @pytest.mark.parametrize(
     "bucket, username, password",
     [

@@ -11,8 +11,6 @@ from uuid import uuid4
 import botocore.config
 import botocore.exceptions
 import boto3.session
-import boto.gs.connection
-import boto.gs.key
 
 from boto.exception import S3ResponseError
 from botocore.signers import CloudFrontSigner
@@ -49,6 +47,7 @@ _CHUNKS_KEY = "chunks"
 # Since the HEAD request does not have a response body, boto3 uses the status code as error code
 # Ref: https://github.com/boto/boto3/issues/2442
 _MISSING_KEY_ERROR_CODES = ("NoSuchKey", "404")
+_LIST_OBJECT_VERSIONS = {"v1": "list_objects", "v2": "list_objects_v2"}
 
 
 class StreamReadKeyAsFile(BufferedIOBase):
@@ -119,17 +118,18 @@ class _CloudStorage(BaseStorageV2):
         self._cloud_conn = None
         self._cloud_bucket = None
         self._context = context
+        self._list_object_version = _LIST_OBJECT_VERSIONS["v2"]
+
+        self._session = self._connection_class(
+            aws_access_key_id=self._access_key,
+            aws_secret_access_key=self._secret_key,
+        )
 
     def _initialize_cloud_conn(self):
         if not self._initialized:
-            session = self._connection_class(
-                aws_access_key_id=self._access_key,
-                aws_secret_access_key=self._secret_key,
-            )
-
             # Low-level client. Needed to generate presigned urls
-            self._cloud_conn = session.client("s3", **self._connect_kwargs)
-            self._cloud_bucket = session.resource("s3", **self._connect_kwargs).Bucket(
+            self._cloud_conn = self._session.client("s3", **self._connect_kwargs)
+            self._cloud_bucket = self._session.resource("s3", **self._connect_kwargs).Bucket(
                 self._bucket_name
             )
             # This will raise a ClientError if the bucket does ot exists.
@@ -413,10 +413,10 @@ class _CloudStorage(BaseStorageV2):
         if not path.endswith("/"):
             path += "/"
 
-        paginator = self.get_cloud_conn().get_paginator("list_objects_v2")
+        paginator = self.get_cloud_conn().get_paginator(self._list_object_version)
         for page in paginator.paginate(Bucket=self._bucket_name, Prefix=path):
             for content in page.get("Contents", ()):
-                obj = self.get_cloud_bucket().Object(content["key"])
+                obj = self.get_cloud_bucket().Object(content["Key"])
                 obj.delete()
 
     def get_checksum(self, path):
@@ -695,7 +695,7 @@ class S3Storage(_CloudStorage):
             connect_kwargs["endpoint_url"] = host
 
         if port:
-            connect_kwargs["endpoint_url"] += ":" + port
+            connect_kwargs["endpoint_url"] += ":" + str(port)
 
         super(S3Storage, self).__init__(
             context,
@@ -732,13 +732,16 @@ class S3Storage(_CloudStorage):
 
 
 class GoogleCloudStorage(_CloudStorage):
+    ENDPOINT_URL = "https://storage.googleapis.com"
+
     def __init__(self, context, storage_path, access_key, secret_key, bucket_name):
+        # GCS does not support ListObjectV2
+        self._list_object_version = _LIST_OBJECT_VERSIONS["v1"]
         upload_params = {}
-        connect_kwargs = {}
+        connect_kwargs = {"endpoint_url": GoogleCloudStorage.ENDPOINT_URL}
         super(GoogleCloudStorage, self).__init__(
             context,
-            boto.gs.connection.GSConnection,
-            boto.gs.key.Key,
+            boto3.session.Session,
             connect_kwargs,
             upload_params,
             storage_path,
@@ -747,24 +750,55 @@ class GoogleCloudStorage(_CloudStorage):
             secret_key,
         )
 
+        # Workaround for setting GCS cors at runtime with boto
+        cors_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <CorsConfig>
+          <Cors>
+            <Origins>
+              <Origin>*</Origin>
+            </Origins>
+            <Methods>
+              <Method>GET</Method>
+              <Method>PUT</Method>
+            </Methods>
+            <ResponseHeaders>
+              <ResponseHeader>Content-Type</ResponseHeader>
+            </ResponseHeaders>
+            <MaxAgeSec>3000</MaxAgeSec>
+          </Cors>
+        </CorsConfig>"""
+
+        def update_cors_xml(request, **kwargs):
+            request.data = cors_xml
+
+        def validate_cors_xml(request, **kwargs):
+            assert request.body == cors_xml
+
+        self._session.events.register("request-created.s3.PutBucketCors", update_cors_xml)
+        self._session.events.register("before-send.s3.PutBucketCors", validate_cors_xml)
+
     def setup(self):
-        self.get_cloud_bucket().set_cors_xml(
-            """<?xml version="1.0" encoding="UTF-8"?>
-      <CorsConfig>
-        <Cors>
-          <Origins>
-            <Origin>*</Origin>
-          </Origins>
-          <Methods>
-            <Method>GET</Method>
-            <Method>PUT</Method>
-          </Methods>
-          <ResponseHeaders>
-            <ResponseHeader>Content-Type</ResponseHeader>
-          </ResponseHeaders>
-          <MaxAgeSec>3000</MaxAgeSec>
-        </Cors>
-      </CorsConfig>"""
+        self._initialize_cloud_conn()
+        self.get_cloud_bucket().Cors().put(
+            CORSConfiguration={
+                "CORSRules": [
+                    {
+                        "AllowedOrigins": ["*"],
+                        "AllowedMethods": ["GET", "PUT"],
+                        "MaxAgeSeconds": 3000,
+                        "AllowedHeaders": ["Content-Type"],
+                    },
+                ]
+            }
+        )
+
+    def get_direct_download_url(
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+    ):
+        return (
+            super(GoogleCloudStorage, self)
+            .get_direct_download_url(path, request_ip, expires_in, requires_cors, head)
+            .replace("AWSAccessKeyId", "GoogleAccessId")
         )
 
     def _stream_write_internal(
@@ -834,7 +868,7 @@ class RadosGWStorage(_CloudStorage):
         }
 
         if port:
-            connect_kwargs["endpoint_url"] += ":" + port
+            connect_kwargs["endpoint_url"] += ":" + str(port)
 
         super(RadosGWStorage, self).__init__(
             context,
