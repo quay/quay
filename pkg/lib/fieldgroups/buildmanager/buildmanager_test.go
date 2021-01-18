@@ -75,9 +75,6 @@ BUILD_MANAGER:
 		return
 	}
 
-	spew.Dump(confMap2)
-	t.Error()
-
 	// // Define test data
 	// var tests = []struct {
 	// 	name   string
