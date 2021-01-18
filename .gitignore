@@ -25,4 +25,4 @@ build
 
 /tmp
 
-config-bundle-private/
+config-bundle-private*

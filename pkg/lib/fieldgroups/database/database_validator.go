@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -9,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/go-pg/pg/v10"
 	mysql "github.com/go-sql-driver/mysql" //mysql driver
@@ -123,7 +125,9 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 		defer db.Close()
 
 		// Try to ping database
-		err = db.Ping()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		err = db.PingContext(ctx)
 		if err != nil {
 			return err
 		}
