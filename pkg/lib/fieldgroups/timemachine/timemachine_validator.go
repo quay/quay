@@ -11,6 +11,7 @@ func (fg *TimeMachineFieldGroup) Validate(opts shared.Options) []shared.Validati
 	errors := []shared.ValidationError{}
 
 	if ok, err := shared.ValidateIsOneOfString(fg.DefaultTagExpiration, shared.InterfaceArrayToStringArray(fg.TagExpirationOptions), "DEFAULT_TAG_EXPIRATION", fgName); !ok {
+		err.Message = "The default tag expiration period must be included in the allowed expiration periods."
 		errors = append(errors, err)
 		return errors
 	}
