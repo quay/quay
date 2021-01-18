@@ -132,7 +132,7 @@
 
                 <div class="co-alert co-alert-info" ng-if="mapped.TLS_SETTING == 'internal-tls'"
                      style="margin-bottom: 20px; margin-top: 10px;">
-                  Enabling TLS also enables <a href="https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security">HTTP
+                  Enabling TLS also enables <a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/HTTP_Strict_Transport_Security">HTTP
                   Strict Transport Security</a>.<br />
                   This prevents downgrade attacks and cookie theft, but browsers will reject all future insecure
                   connections on this hostname.
@@ -327,7 +327,7 @@
         </div>
         <div class="co-panel-body">
           <div class="description">
-            <p>A <a href="http://redis.io" ng-safenewtab>redis</a> key-value store is required for real-time events and
+            <p>A <a target="_blank" rel="noopener noreferrer" href="http://redis.io" ng-safenewtab>redis</a> key-value store is required for real-time events and
               build logs.</p>
           </div>
           <table class="config-table">
@@ -389,7 +389,7 @@
           </div>
           <div class="co-alert co-alert-info" ng-if="config.FEATURE_REPO_MIRROR" style="margin-top: 20px;">
             A repository mirror service must be running to use this feature. Documentation
-            on setting up and running this service can be found at <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#repository-mirroring" ng-safenewtab>Running Repository Mirroring Service</a>.
+            on setting up and running this service can be found at <a target="_blank" rel="noopener noreferrer" href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#repository-mirroring" ng-safenewtab>Running Repository Mirroring Service</a>.
           </div>
 
           <div class="config-bool-field" binding="config.REPO_MIRROR_TLS_VERIFY" ng-if="config.FEATURE_REPO_MIRROR">
@@ -428,7 +428,7 @@
               Enable Storage Replication
               <div class="help-text">
                 If enabled, replicates storage to other regions. See
-                <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#georeplication-of-storage-in-quay"
+                <a target="_blank" rel="noopener noreferrer" href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#georeplication-of-storage-in-quay"
                    ng-safenewtab>documentation</a> for more information.
               </div>
             </div>
@@ -730,8 +730,8 @@
           <div class="co-alert co-alert-info" ng-if="config.FEATURE_SECURITY_SCANNER" style="margin-top: 20px;">
             <!-- FIXME: Replace with Clair v4 documentation -->
             A scanner compliant with the Quay Security Scanning API must be running to use this feature. Documentation
-            on running <a href="https://github.com/quay/clair/tree/development-4.0" ng-safenewtab>Clair</a> can be found at <a
-                                                                                                           href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#quay-security-scanner" ng-safenewtab>Running Clair Security
+            on running <a target="_blank" rel="noopener noreferrer" href="https://github.com/quay/clair/tree/development-4.0" ng-safenewtab>Clair</a> can be found at <a
+                                                                                                           target="_blank" rel="noopener noreferrer" href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#quay-security-scanner" ng-safenewtab>Running Clair Security
             Scanner</a>.
           </div>
 
@@ -748,7 +748,7 @@
                 <div class="co-alert co-alert-info" ng-if="config.SECURITY_SCANNER_ENDPOINT.indexOf('https:') == 0"
                      style="margin-top: 20px;">
                   Is the security scanner behind a domain signed with a <strong>self-signed TLS certificate</strong>?
-                  If so, please make sure to register your SSL CA in the <a href="#custom-ssl">custom certificates
+                  If so, please make sure to register your SSL CA in the <a target="_blank" rel="noopener noreferrer" href="#custom-ssl">custom certificates
                   panel</a> above.
                 </div>
               </td>
@@ -778,9 +778,9 @@
         <div class="co-panel-body">
           <div class="description">
             <p>If enabled, an additional registry API will be available for managing applications (Kubernetes
-              manifests, Helm charts) via the <a href="https://github.com/app-registry">App Registry
+              manifests, Helm charts) via the <a target="_blank" rel="noopener noreferrer" href="https://github.com/app-registry">App Registry
               specification</a>. A great place to get started is to install the
-              <a href="https://github.com/app-registry/appr-helm-plugin">Helm Registry Plugin</a>.
+              <a target="_blank" rel="noopener noreferrer" href="https://github.com/app-registry/appr-helm-plugin">Helm Registry Plugin</a>.
           </div>
 
           <div class="config-bool-field" binding="config.FEATURE_APP_REGISTRY">
@@ -1012,7 +1012,7 @@
             verifies user credentials on behalf of <span class="registry-name"></span>.
             <br>
             Documentation
-            on the API required can be found here: <a href="https://github.com/coreos/jwt-auth-example"
+            on the API required can be found here: <a target="_blank" rel="noopener noreferrer" href="https://github.com/coreos/jwt-auth-example"
                                                       ng-safenewtab>https://github.com/coreos/jwt-auth-example</a>.
           </div>
 
@@ -1182,7 +1182,7 @@
                 <div class="co-alert co-alert-warning" style="margin-bottom: 10px;">
                   Note: This will be stored in
                   <strong>plaintext</strong> inside the config.yaml, so setting up a dedicated account or using
-                  <a href="http://tools.ietf.org/id/draft-stroeder-hashed-userpassword-values-01.html" ng-safenewtab>a
+                  <a target="_blank" rel="noopener noreferrer" href="http://tools.ietf.org/id/draft-stroeder-hashed-userpassword-values-01.html" ng-safenewtab>a
                     password hash</a> is <strong>highly</strong> recommended.
                 </div>
                 <input class="form-control" type="password" ng-model="config.LDAP_ADMIN_PASSWD">
@@ -1255,7 +1255,7 @@
                 <p>
                   <strong>Note:</strong> A registered GitHub (Enterprise) OAuth application is required.
                   View instructions on how to
-                  <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#github-app" ng-safenewtab>
+                  <a target="_blank" rel="noopener noreferrer" href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#github-app" ng-safenewtab>
                     Create an OAuth Application in GitHub
                   </a>
                 </p>
@@ -1370,7 +1370,7 @@
                 <p>
                   <strong>Note:</strong> A registered Google OAuth application is required.
                   Visit the
-                  <a href="https://console.developers.google.com" ng-safenewtab>
+                  <a target="_blank" rel="noopener noreferrer" href="https://console.developers.google.com" ng-safenewtab>
                     Google Developer Console
                   </a>
                   to register an application.
@@ -1501,7 +1501,7 @@
                     </span>
                     <div class="help-text">
                       If specified, the icon to display for this login service on the login page. Can be either a URL
-                      to an icon or a CSS class name from <a href="http://fontawesome.io" ng-safenewtab>Font
+                      to an icon or a CSS class name from <a target="_blank" rel="noopener noreferrer" href="http://fontawesome.io" ng-safenewtab>Font
                       Awesome</a>
                     </div>
                   </td>
@@ -1590,7 +1590,7 @@
 
           <!-- Add Provider -->
           <a class="btn btn-default" ng-click="addOIDCProvider()" style="margin-right: 6px;">Add OIDC Provider</a>
-          <a href="http://openid.net/connect/" ng-safenewtab>What is OIDC?</a>
+          <a target="_blank" rel="noopener noreferrer" href="http://openid.net/connect/" ng-safenewtab>What is OIDC?</a>
         </div>
       </div> <!-- /External Authentication -->
 
@@ -1770,7 +1770,7 @@
 
           <div ng-if="config.FEATURE_BUILD_SUPPORT" style="margin-top: 10px">
             <strong>Note: Build workers are required for this feature.</strong>
-            See <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#set-up-the-build-workers" ng-safenewtab>Adding Build
+            See <a target="_blank" rel="noopener noreferrer" href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#set-up-the-build-workers" ng-safenewtab>Adding Build
               Workers</a> for instructions on how to setup build workers.
           </div>
         </div>
@@ -1790,7 +1790,7 @@
               <strong>Note:</strong> A registered GitHub (Enterprise) OAuth application (<strong>separate from GitHub
                 Authentication</strong>) is required.
               View instructions on how to
-              <a href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#github-app" ng-safenewtab>
+              <a target="_blank" rel="noopener noreferrer" href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/use_red_hat_quay/index#github-app" ng-safenewtab>
                 Create an OAuth Application in GitHub
               </a>
             </p>
@@ -1890,7 +1890,7 @@
             <p>
               <strong>Note:</strong> A registered GitLab OAuth application is required.
               Visit the
-              <a href="{{ config.GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT || 'https://gitlab.com' }}/profile/applications"
+              <a target="_blank" rel="noopener noreferrer" href="{{ config.GITLAB_TRIGGER_CONFIG.GITLAB_ENDPOINT || 'https://gitlab.com' }}/profile/applications"
                  ng-safenewtab>
                 GitLab applications admin panel
               </a>
