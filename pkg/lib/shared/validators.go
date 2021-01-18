@@ -175,7 +175,7 @@ func ValidateIsOneOfString(input string, options []string, field string, fgName 
 		newError := ValidationError{
 			Tags:       []string{field},
 			FieldGroup: fgName,
-			Message:    field + " must be one of " + strings.Join(options, ",") + ".",
+			Message:    field + " must be one of " + strings.Join(options, ", ") + ".",
 		}
 		return false, newError
 	}
