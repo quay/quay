@@ -5,6 +5,7 @@ import (
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/actionlogarchiving"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/apptokenauthentication"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/bitbucketbuildtrigger"
+	"github.com/quay/config-tool/pkg/lib/fieldgroups/buildmanager"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/database"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/distributedstorage"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/elasticsearch"
@@ -156,6 +157,11 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 		return newConfig, err
 	}
 	newConfig["OIDC"] = newOIDCFieldGroup
+	newBuildManagerFieldGroup, err := buildmanager.NewBuildManagerFieldGroup(fullConfig)
+	if err != nil {
+		return newConfig, err
+	}
+	newConfig["BuildManager"] = newBuildManagerFieldGroup
 
 	return newConfig, nil
 }
