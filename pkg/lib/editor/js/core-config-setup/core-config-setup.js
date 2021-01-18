@@ -290,6 +290,11 @@ angular.module("quay-config")
         $scope.validateConfig = function() {
           $scope.validationStatus = 'validating';
 
+          if($scope.certs["database.pem"]){
+            $scope.config["DB_CONNECTION_ARGS"]["ssl"] = {}
+            $scope.config["DB_CONNECTION_ARGS"]["ssl"]["ca"] = "database.pem";
+          }
+
           var errorDisplay = ApiService.errorDisplay(
               'Could not validate configuration. Please report this error.');
 
