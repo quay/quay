@@ -140,41 +140,54 @@ jobs:
     name: OCI Conformance
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
 
-    - uses: actions/checkout@v2
-    - uses: actions/checkout@v2
-      with:
-        repository: opencontainers/distribution-spec
-        path: dist-spec
+      - uses: actions/checkout@v2
+        with:
+          repository: opencontainers/distribution-spec
+          path: dist-spec
 
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.8
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
 
-    - name: Set up Go 1.14
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
 
-    - name: Set GOPATH
-      run: |
-        # temporary fix for https://github.com/actions/setup-go/issues/14
-        echo "GOPATH=$(dirname $GITHUB_WORKSPACE)" >> $GITHUB_ENV
-        echo "$(dirname $GITHUB_WORKSPACE)/bin" >> $GITHUB_PATH
+      - name: Set GOPATH
+        run: |
+          # temporary fix for https://github.com/actions/setup-go/issues/14
+          echo "GOPATH=$(dirname $GITHUB_WORKSPACE)" >> $GITHUB_ENV
+          echo "$(dirname $GITHUB_WORKSPACE)/bin" >> $GITHUB_PATH
 
-    - name: Install dependencies
-      run: |
-        # Quay
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
-        pip install -r <(cat requirements.txt requirements-dev.txt)
+      - name: Install dependencies
+        run: |
+          # Quay
+          sudo apt-get update
+          sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+          python -m pip install --upgrade pip
+          pip install -r <(cat requirements.txt requirements-dev.txt)
+          # Conformance
+          cd dist-spec/conformance
+          go mod vendor
+          CGO_ENABLED=0 go test -c -o conformance.test
 
-        # Conformance
-        cd dist-spec/conformance
-        go mod vendor
-        CGO_ENABLED=0 go test -c -o conformance.test
+      - name: Conformance
+        env:
+          TEST: 'true'
+          PYTHONPATH: '.'
+        run: pytest test/registry/conformance_tests.py -s -vv
 
-    - name: conformance
-      run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv
+      - name: Copy report
+        run: mkdir -p .report/ && mv {report.html,junit.xml} .report/
+        if: always()
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v1
+        with:
+          name: oci-test-results-${{ github.sha }}
+          path: .report/
+        if: always()
