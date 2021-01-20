@@ -86,6 +86,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Docker Build
+      env:
+       DOCKER_BUILDKIT: 1
       run: docker build .
 
   mysql:
