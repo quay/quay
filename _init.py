@@ -2,7 +2,13 @@ import os
 import re
 import subprocess
 
-from util.config.provider import get_config_provider
+try:
+    from util.config.provider import get_config_provider
+except ModuleNotFoundError:
+    # Stub out this call so that we can run the external_libraries script
+    # without needing the entire codebase.
+    def get_config_provider(*args, **kwargs):
+        return None
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
