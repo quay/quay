@@ -177,7 +177,21 @@ jobs:
         CGO_ENABLED=0 go test -c -o conformance.test
 
     - name: conformance
+      env:
+        TEST: 'true'
+        PYTHONPATH: '.'
       run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv
+
+    - name: Copy report
+      run: mkdir -p .report/ && mv {report.html,junit.xml} .report/
+      if: always()
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v1
+      with:
+        name: oci-test-results-${{ github.sha }}
+        path: .report/
+      if: always()
 
   commit-check:
     name: Commit Check
