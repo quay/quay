@@ -407,7 +407,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         if private_key is not None:
             build_args["git"] = {
                 "url": build_job.build_config["trigger_metadata"].get("git_url", ""),
-                "sha": build_job.commit_sha(build_job.build_config),
+                "sha": build_job.commit_sha(),
                 "private_key": private_key or "",
             }
 
