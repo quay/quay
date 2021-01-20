@@ -1,119 +1,130 @@
-FROM registry.access.redhat.com/rhel7:7.7
-LABEL maintainer "thomasmckay@redhat.com"
+FROM registry.redhat.io/ubi8:8.2 AS build-npm
 
-ENV OS=linux \
-    ARCH=amd64 \
-    PYTHON_VERSION=2.7 \
+COPY $REMOTE_SOURCE $REMOTE_SOURCE_DIR
+WORKDIR $REMOTE_SOURCE_DIR/app
+
+RUN INSTALL_PKGS="\
+        nodejs \
+    " && \
+    yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS
+
+RUN cd source/config-tool/pkg/lib/editor && \
+    npm config list && \
+    npm install --ignore-engines --loglevel verbose && \
+    npm run build
+
+RUN cd source/quay && \
+    npm config list && \
+    npm install --ignore-engines --loglevel verbose && \
+    npm run build
+
+
+FROM openshift/golang-builder:1.15 AS build-gomod
+
+COPY --from=build-npm $REMOTE_SOURCE_DIR/app $REMOTE_SOURCE_DIR/app
+WORKDIR $REMOTE_SOURCE_DIR/app
+
+COPY --from=build-npm $REMOTE_SOURCE_DIR/app/source/config-tool/pkg/lib/editor/static/build $REMOTE_SOURCE_DIR/app/source/config-tool/pkg/lib/editor/static/build
+
+# https://projects.engineering.redhat.com/browse/CLOUDBLD-1611
+# Until above is fixed, "go mod vendor" can't be run since the go.mod must be
+# in the root dir (ie. no multiples). Once fixed, add "go mod vendor" as a step
+# here and remove vendor dirs from quay-osbs repo
+#
+RUN cd source/config-tool && \
+    go build ./cmd/config-tool
+
+RUN cd source/jwtproxy && \
+    go build ./cmd/jwtproxy
+
+RUN cd source/pushgateway && \
+    go build
+
+
+FROM registry.redhat.io/ubi8:8.2
+
+LABEL com.redhat.component="quay-registry-container"
+LABEL name="quay/quay"
+LABEL version="v3.4.0"
+LABEL io.k8s.display-name="Red Hat Quay"
+LABEL io.k8s.description="Red Hat Quay"
+LABEL summary="Red Hat Quay"
+LABEL maintainer "support@redhat.com"
+
+ENV PYTHON_VERSION=3.8 \
+    PYTHON_ROOT=/usr/local/lib/python3.8 \
     PATH=$HOME/.local/bin/:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8 \
-    LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8
+    LANG=en_US.utf8
 
-ENV QUAYDIR /quay-registry
-ENV QUAYCONF /quay-registry/conf
-ENV QUAYPATH "."
+ENV QUAYDIR=/quay-registry \
+    QUAYCONF=/quay-registry/conf \
+    QUAYPATH="."
 
 RUN mkdir $QUAYDIR
 WORKDIR $QUAYDIR
 
+ARG PIP_CERT
+COPY --from=build-npm $REMOTE_SOURCE_DIR $REMOTE_SOURCE_DIR
+COPY --from=build-npm $PIP_CERT $PIP_CERT
+RUN cp -Rp $REMOTE_SOURCE_DIR/app/source/quay/* $QUAYDIR
+
+COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/config-tool/config-tool /usr/local/bin/config-tool
+COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/jwtproxy/jwtproxy /usr/local/bin/jwtproxy
+COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/config-tool/pkg/lib/editor $QUAYDIR/config_app
+COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/pushgateway/pushgateway /usr/local/bin/pushgateway
+
 RUN INSTALL_PKGS="\
-    python36 \
-    python36-python-pip \
-    rh-nginx112 rh-nginx112-nginx \
-    openldap \
-    scl-utils \
-    gcc-c++ git \
-    openldap-devel \
-    gpgme-devel \
-    dnsmasq \
-    memcached \
-    openssl \
-    skopeo \
-    " && \
-    yum install -y yum-utils && \
-    yum-config-manager --quiet --disable "*" >/dev/null && \
-    yum-config-manager --quiet --enable \
-    rhel-7-server-rpms \
-    rhel-server-rhscl-7-rpms \
-    rhel-7-server-optional-rpms \
-    rhel-7-server-extras-rpms \
-    --save >/dev/null && \
+        python38 \
+        nginx \
+        openldap \
+        postgresql \
+        gcc-c++ git \
+        openldap-devel \
+        dnsmasq \
+        memcached \
+        openssl \
+        skopeo \
+        nodejs \
+        python38-devel \
+        libffi-devel \
+        openssl-devel \
+        postgresql-devel \
+        libjpeg-devel \
+        " && \
     yum -y --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install $INSTALL_PKGS && \
     yum -y update && \
     yum -y clean all
 
-COPY . .
-
-RUN scl enable python36 "\
-    pip install --no-cache-dir --upgrade setuptools pip && \
-    pip install --no-cache-dir -r requirements.txt --no-cache && \
-    pip freeze && \
-    mkdir -p $QUAYDIR/static/webfonts && \
-    mkdir -p $QUAYDIR/static/fonts && \
-    mkdir -p $QUAYDIR/static/ldn && \
-    PYTHONPATH=$QUAYPATH python -m external_libraries \
-    "
-
-
-# Check python dependencies for GPL
-# Due to the following bug, pip results must be piped to a file before grepping:
-# https://github.com/pypa/pip/pull/3304
-# 'docutils' is a setup dependency of botocore required by s3transfer. It's under
-# GPLv3, and so is manually removed.
-RUN rm -Rf /opt/rh/python27/root/usr/lib/python2.7/site-packages/docutils && \
-    scl enable python36 "pip freeze" | grep -v '^-e' | awk -F == '{print $1}' | grep -v docutils > piplist.txt && \
-    scl enable python36 "xargs -a piplist.txt pip --disable-pip-version-check show" > pipinfo.txt && \
-    test -z "$(cat pipinfo.txt | grep GPL | grep -v LGPL)" && \
-    rm -f piplist.txt pipinfo.txt
-
-# Front-end
-RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash - && \
-    yum install -y nodejs && \
-    curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo && \
-    rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg && \
-    yum install -y yarn && \
-    yarn install --ignore-engines && \
-    yarn build
-
-
-# TODO: Build jwtproxy in dist-git
-#       https://jira.coreos.com/browse/QUAY-1315
-ENV JWTPROXY_VERSION=0.0.3
-RUN curl -fsSL -o /usr/local/bin/jwtproxy "https://github.com/coreos/jwtproxy/releases/download/v${JWTPROXY_VERSION}/jwtproxy-${OS}-${ARCH}" && \
-    chmod +x /usr/local/bin/jwtproxy
-
-# TODO: Build pushgateway in dist-git
-#       https://jira.coreos.com/browse/QUAY-1324
-ENV PUSHGATEWAY_VERSION=1.0.0
-RUN curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz" | \
-    tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" && \
-    mv "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway && \
-    rm -rf "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}" && \
-    chmod +x /usr/local/bin/pushgateway
-
-# Update local copy of AWS IP Ranges.
-RUN curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json
+RUN alternatives --set python /usr/bin/python3 && \
+    python -m pip install --no-cache-dir --upgrade setuptools pip && \
+    python -m pip install --no-cache-dir wheel && \
+    python -m pip install --no-cache-dir -r requirements-osbs.txt --no-cache && \
+    python -m pip freeze
 
 RUN ln -s $QUAYCONF /conf && \
-    mkdir /var/log/nginx && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stdout /var/log/nginx/error.log && \
     chmod -R a+rwx /var/log/nginx
 
 # Cleanup
 RUN UNINSTALL_PKGS="\
-    gcc-c++ git \
-    openldap-devel \
-    gpgme-devel \
-    optipng \
-    kernel-headers \
+        gcc-c++ git \
+        openldap-devel \
+        python38-devel \
+        libffi-devel \
+        openssl-devel \
+        postgresql-devel \
+        libjpeg-devel \
+        kernel-headers \
     " && \
     yum remove -y $UNINSTALL_PKGS && \
     yum clean all && \
-    rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache
+    rm -rf /var/cache/yum /tmp/* /var/tmp/* /root/.cache && \
+    rm -rf $REMOTE_SOURCE_DIR
 
-EXPOSE 8080 8443 7443 9091 55443
+EXPOSE 8080 8443 7443
 
 RUN chgrp -R 0 $QUAYDIR && \
     chmod -R g=u $QUAYDIR
@@ -122,20 +133,16 @@ RUN mkdir /datastorage && chgrp 0 /datastorage && chmod g=u /datastorage && \
     mkdir -p /var/log/nginx && chgrp 0 /var/log/nginx && chmod g=u /var/log/nginx && \
     mkdir -p /conf/stack && chgrp 0 /conf/stack && chmod g=u /conf/stack && \
     mkdir -p /tmp && chgrp 0 /tmp && chmod g=u /tmp && \
-    mkdir /certificates && chgrp 0 /certificates && chmod g=u /certificates && \
     chmod g=u /etc/passwd
 
-RUN chgrp 0 /var/opt/rh/rh-nginx112/log/nginx && chmod g=u /var/opt/rh/rh-nginx112/log/nginx
-
-# Allow TLS certs to be created and installed as non-root user
-RUN chgrp -R 0 /etc/pki/ca-trust/extracted && \
+RUN chgrp 0 /var/log/nginx && \
+    chmod g=u /var/log/nginx && \
+    chgrp -R 0 /etc/pki/ca-trust/extracted && \
     chmod -R g=u /etc/pki/ca-trust/extracted && \
     chgrp -R 0 /etc/pki/ca-trust/source/anchors && \
     chmod -R g=u /etc/pki/ca-trust/source/anchors && \
-    chgrp -R 0 /opt/rh/python27/root/usr/lib/python2.7/site-packages/requests && \
-    chmod -R g=u /opt/rh/python27/root/usr/lib/python2.7/site-packages/requests && \
-    chgrp -R 0 /opt/rh/python27/root/usr/lib/python2.7/site-packages/certifi && \
-    chmod -R g=u /opt/rh/python27/root/usr/lib/python2.7/site-packages/certifi
+    chgrp -R 0 /usr/local/lib/python3.8/site-packages/certifi && \
+    chmod -R g=u /usr/local/lib/python3.8/site-packages/certifi
 
 VOLUME ["/var/log", "/datastorage", "/tmp", "/conf/stack"]
 
