@@ -517,8 +517,7 @@
               "Low",
               "Medium",
               "High",
-              "Critical",
-              "Defcon1"
+              "Critical"
             ]
           },
           "package": {
@@ -787,8 +786,7 @@
               "Low",
               "Medium",
               "High",
-              "Critical",
-              "Defcon1"
+              "Critical"
             ]
           },
           "package": {

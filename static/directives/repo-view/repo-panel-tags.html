@@ -13,12 +13,6 @@
   </div>
 
  <h3 class="tab-header"><span class="hidden-xs">Repository </span>Tags</h3>
- <div class="co-alert co-alert-danger" ng-if="hasDefcon1">
-   One or more of your tags has an <strong>extremely critical</strong> vulnerability which should be addressed immediately:
-   <a href="{{ vuln.Link }}" ng-repeat="(key, vuln) in defcon1" style="margin-left: 10px;" ng-safenewtab>
-     {{ vuln.Name }}
-   </a>
- </div>
 
  <div class="co-check-bar">
    <span class="cor-checkable-menu" controller="checkedTags" filter="tags">

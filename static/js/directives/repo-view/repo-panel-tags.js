@@ -48,9 +48,6 @@ angular.module('quay').directive('repoPanelTags', function () {
       $scope.manifestVulnerabilities = {};
       $scope.repoDelegationsInfo = null;
 
-      $scope.defcon1 = {};
-      $scope.hasDefcon1 = false;
-
       var loadRepoSignatures = function() {
         if (!$scope.repository || !$scope.repository.trust_enabled) {
           return;

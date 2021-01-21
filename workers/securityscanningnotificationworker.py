@@ -83,13 +83,13 @@ class SecurityScanningNotificationWorker(QueueWorker):
                             vulnerability.Severity, PRIORITY_LEVELS["Unknown"]
                         )
 
-                        lowest_severity = PRIORITY_LEVELS["Defcon1"]
+                        lowest_severity = PRIORITY_LEVELS["Critical"]
                         for severity_name in registry_model.lookup_secscan_notification_severities(
                             manifest.repository
                         ):
                             severity = PRIORITY_LEVELS.get(
                                 severity_name,
-                                PRIORITY_LEVELS["Defcon1"],
+                                PRIORITY_LEVELS["Critical"],
                             )
 
                             if lowest_severity["score"] > severity["score"]:
