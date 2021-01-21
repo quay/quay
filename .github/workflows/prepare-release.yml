@@ -1,0 +1,44 @@
+---
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'the branch to prepare the release against'
+        required: true
+        default: 'master'
+      tag:
+        description: 'the tag to be released'
+        required: true
+
+jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.branch }}
+      - name: Changelog
+        env:
+          exe: /tmp/git-chlog
+        run: |
+          curl -o "${exe}" -fsSL\
+            https://github.com/git-chglog/git-chglog/releases/download/0.9.1/git-chglog_linux_amd64
+          chmod u+x "${exe}"
+          echo "creating change log for tag: ${{ github.event.inputs.tag }}"
+          "${exe}"\
+            --next-tag "${{ github.event.inputs.tag }}"\
+            -o CHANGELOG.md
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3.5.1
+        with:
+          title: "${{ github.event.inputs.tag }} Changelog Bump"
+          body: "This is an automated changelog commit."
+          commit-message: "chore: ${{ github.event.inputs.tag }} changelog bump"
+          branch: "ready-${{ github.event.inputs.tag }}"
+          signoff: true
+          delete-branch: true
