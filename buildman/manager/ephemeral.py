@@ -834,7 +834,7 @@ class EphemeralBuilderManager(BuildStateInterface):
             else:
                 metric.labels(executor).observe(time.time() - start_time)
         except Exception:
-            logger.exception("Could not write metric for build %s", build_id)
+            logger.warning("Could not write metric for build %s", build_id)
 
     def _work_checker(self):
         logger.debug("Initializing work checker")
