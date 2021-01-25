@@ -503,7 +503,7 @@ class DefaultConfig(ImmutableConfig):
     REPO_MIRROR_TLS_VERIFY = True
 
     # Replaces the SERVER_HOSTNAME as the destination for mirroring.
-    REPO_MIRROR_SERVER_HOSTNAME = None
+    REPO_MIRROR_SERVER_HOSTNAME = "localhost:5000"
 
     # JWTProxy Settings
     # The address (sans schema) to proxy outgoing requests through the jwtproxy
