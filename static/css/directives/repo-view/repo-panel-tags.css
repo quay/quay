@@ -127,8 +127,7 @@
   text-decoration: none !important
 }
 
-.repo-panel-tags-element .security-scan-col .has-vulns.Critical .highest-vuln,
-.repo-panel-tags-element .security-scan-col .has-vulns.Defcon1 .highest-vuln {
+.repo-panel-tags-element .security-scan-col .has-vulns.Critical .highest-vuln {
 }
 
 .repo-panel-tags-element .security-scan-col .has-vulns {

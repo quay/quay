@@ -4,7 +4,7 @@ PRIORITY_LEVELS = {
     "Unknown": {
         "title": "Unknown",
         "value": "Unknown",
-        "index": 6,
+        "index": 5,
         "level": "info",
         "color": "#9B9B9B",
         "score": 0,
@@ -15,7 +15,7 @@ PRIORITY_LEVELS = {
     "Negligible": {
         "title": "Negligible",
         "value": "Negligible",
-        "index": 5,
+        "index": 4,
         "level": "info",
         "color": "#9B9B9B",
         "score": 1,
@@ -27,7 +27,7 @@ PRIORITY_LEVELS = {
     "Low": {
         "title": "Low",
         "value": "Low",
-        "index": 4,
+        "index": 3,
         "level": "warning",
         "color": "#F8CA1C",
         "score": 3,
@@ -39,7 +39,7 @@ PRIORITY_LEVELS = {
     "Medium": {
         "title": "Medium",
         "value": "Medium",
-        "index": 3,
+        "index": 2,
         "level": "warning",
         "color": "#FCA657",
         "score": 6,
@@ -51,7 +51,7 @@ PRIORITY_LEVELS = {
     "High": {
         "title": "High",
         "value": "High",
-        "index": 2,
+        "index": 1,
         "level": "warning",
         "color": "#F77454",
         "score": 9,
@@ -63,7 +63,7 @@ PRIORITY_LEVELS = {
     "Critical": {
         "title": "Critical",
         "value": "Critical",
-        "index": 1,
+        "index": 0,
         "level": "error",
         "color": "#D64456",
         "score": 10,
@@ -71,17 +71,6 @@ PRIORITY_LEVELS = {
         + "a installation of the package. Includes remote root privilege escalations, "
         + "or massive data loss.",
         "banner_required": False,
-    },
-    "Defcon1": {
-        "title": "Defcon 1",
-        "value": "Defcon1",
-        "index": 0,
-        "level": "error",
-        "color": "black",
-        "score": 11,
-        "description": "Defcon1 is a Critical problem which has been manually highlighted by the Quay"
-        + " team. It requires immediate attention.",
-        "banner_required": True,
     },
 }
 

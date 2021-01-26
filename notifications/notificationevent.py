@@ -181,7 +181,7 @@ class VulnerabilityFoundEvent(NotificationEvent):
     def get_level(self, event_data, notification_data):
         vuln_data = event_data[VulnerabilityFoundEvent.VULNERABILITY_KEY]
         priority = vuln_data[VulnerabilityFoundEvent.PRIORITY_KEY]
-        if priority == "Defcon1" or priority == "Critical":
+        if priority == "Critical":
             return "error"
 
         if priority == "Medium" or priority == "High":

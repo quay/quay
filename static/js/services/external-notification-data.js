@@ -139,9 +139,7 @@ function(Config, Features, VulnerabilityService, DocumentationService) {
           'title': 'minimum severity level',
           'values': VulnerabilityService.LEVELS,
           'help_text': 'A vulnerability must have a severity of the chosen level (or higher) ' +
-                      'for this notification to fire. Defcon 1 is a special severity level ' +
-                      'manually tagged by the ' + Config.REGISTRY_TITLE_SHORT + ' team for ' +
-                      'above-critical issues',
+                      'for this notification to fire.',
         }
       ]
     });
