@@ -169,9 +169,7 @@ def perform_mirror(skopeo, mirror):
             )
             raise
 
-        dest_server = (
-            app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
-        )
+        dest_server = app.config.get("REPO_MIRROR_SERVER_HOSTNAME", app.config["SERVER_HOSTNAME"])
 
         for tag in tags:
             reclaimed_mirror = claim_mirror(mirror)
