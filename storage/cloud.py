@@ -50,6 +50,20 @@ _MISSING_KEY_ERROR_CODES = ("NoSuchKey", "404")
 _LIST_OBJECT_VERSIONS = {"v1": "list_objects", "v2": "list_objects_v2"}
 
 
+def _build_endpoint_url(hostname, port=None, is_secure=True):
+    """Normalize the formats from boto2 and boto3. """
+
+    # If the scheme is not in the hostname, check if is_secure is set to set http or https as the scheme
+    if not hostname.startswith("http://") and not hostname.startswith("https://"):
+        hostname = "https://" + hostname if is_secure else "http://" + hostname
+
+    # If port is set but not already part of the hostname
+    if port and not hostname.split(":")[-1].strip(" /").isdigit():
+        hostname = hostname + ":" + str(port)
+
+    return hostname
+
+
 class StreamReadKeyAsFile(BufferedIOBase):
     """
     Wrapper for botocore.StreamingBody
@@ -683,19 +697,18 @@ class S3Storage(_CloudStorage):
         s3_bucket,
         s3_access_key=None,
         s3_secret_key=None,
+        # Boto2 backward compatible options (host excluding scheme or port)
         host=None,
         port=None,
+        # Boto3 options (Full url including scheme anbd optionally port)
+        endpoint_url=None,
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
         connect_kwargs = {}
-        if host:
-            if host.startswith("http:") or host.startswith("https:"):
-                raise ValueError("host name must not start with http:// or https://")
-
-            connect_kwargs["endpoint_url"] = host
-
-        if port:
-            connect_kwargs["endpoint_url"] += ":" + str(port)
+        if host or endpoint_url:
+            connect_kwargs["endpoint_url"] = (
+                endpoint_url or _build_endpoint_url(host, port=port, is_secure=True),
+            )
 
         super(S3Storage, self).__init__(
             context,
@@ -863,12 +876,8 @@ class RadosGWStorage(_CloudStorage):
     ):
         upload_params = {}
         connect_kwargs = {
-            "endpoint_url": hostname,
-            "use_ssl": is_secure,
+            "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
         }
-
-        if port:
-            connect_kwargs["endpoint_url"] += ":" + str(port)
 
         super(RadosGWStorage, self).__init__(
             context,

@@ -13,6 +13,7 @@ from moto import mock_s3
 from storage import S3Storage, StorageContext
 from storage.cloud import _CloudStorage, _PartUploadMetadata
 from storage.cloud import _CHUNKS_KEY
+from storage.cloud import _build_endpoint_url
 
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
@@ -31,6 +32,21 @@ def storage_engine():
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
 
         yield engine
+
+
+@pytest.mark.parametrize(
+    "hostname, port, is_secure, expected",
+    [
+        pytest.param("somehost", None, False, "http://somehost"),
+        pytest.param("somehost", 8080, False, "http://somehost:8080"),
+        pytest.param("somehost", 8080, True, "https://somehost:8080"),
+        pytest.param("https://somehost.withscheme", None, False, "https://somehost.withscheme"),
+        pytest.param("http://somehost.withscheme", None, True, "http://somehost.withscheme"),
+        pytest.param("somehost.withport:8080", 9090, True, "https://somehost.withport:8080"),
+    ],
+)
+def test_build_endpoint_url(hostname, port, is_secure, expected):
+    assert _build_endpoint_url(hostname, port, is_secure) == expected
 
 
 def test_basicop(storage_engine):
