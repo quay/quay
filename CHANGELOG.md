@@ -1,3 +1,15 @@
+### v3.4.1
+
+**Fixed**
+- Quay Bridge Operator and Quay Container Security Operator upgrade to 3.4.0
+- Quay Operator generates correct cert for build manager
+- Quay config editor validates OIDC provider
+- Quay config editor correctly validates MySQL database with SSL
+- Quay Operator documentation link corrected to 3.4
+- Quay config editor no longer requires Time Machine expiration when feature not enabled
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
 
 ### v3.4.0
 
