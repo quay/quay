@@ -51,11 +51,13 @@ High-level features include:
 * Watch [talks] given about Project Quay
 * Review the [documentation] for Red Hat Quay
 * Get up and running with a containerized [development environment]
+* Deploy on Kubernetes using the [Quay Operator]
 
 [Quay.io]: https://quay.io
 [talks]: /docs/talks.md
 [documentation]: https://access.redhat.com/documentation/en-us/red_hat_quay
 [development environment]: /docs/development-container.md
+[Quay Operator]: https://github.com/quay/quay-operator
 
 ## Community
 
