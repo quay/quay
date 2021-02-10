@@ -988,7 +988,7 @@ CONFIG_SCHEMA = {
             "x-example": True,
         },
         "REPO_MIRROR_SERVER_HOSTNAME": {
-            "type": "string",
+            "type": ["string", "null"],
             "description": "Replaces the SERVER_HOSTNAME as the destination for mirroring. Defaults to unset",
             "x-example": "openshift-quay-service",
         },
