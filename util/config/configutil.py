@@ -46,9 +46,7 @@ def add_enterprise_config_defaults(config_obj, current_secret_key):
 
     # Default repo mirror config.
     config_obj["REPO_MIRROR_TLS_VERIFY"] = config_obj.get("REPO_MIRROR_TLS_VERIFY", True)
-    config_obj["REPO_MIRROR_SERVER_HOSTNAME"] = config_obj.get(
-        "REPO_MIRROR_SERVER_HOSTNAME", config_obj["SERVER_HOSTNAME"]
-    )
+    config_obj["REPO_MIRROR_SERVER_HOSTNAME"] = config_obj.get("REPO_MIRROR_SERVER_HOSTNAME", None)
 
     # Default security scanner config.
     config_obj["FEATURE_SECURITY_NOTIFICATIONS"] = config_obj.get(
