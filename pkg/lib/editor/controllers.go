@@ -233,6 +233,11 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 		}
 
 		for _, fieldGroup := range configBundle.ManagedFieldGroups {
+			// NOTE: Skip `HostSettings` because it is a special case where we allow setting the fields.
+			if fieldGroup == "HostSettings" {
+				continue
+			}
+
 			fields := newConfig[fieldGroup].Fields()
 			for _, field := range fields {
 				delete(configBundle.Config, field)
