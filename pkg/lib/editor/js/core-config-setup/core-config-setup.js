@@ -292,7 +292,7 @@ angular.module("quay-config")
 
           if($scope.certs["database.pem"]){
             $scope.config["DB_CONNECTION_ARGS"]["ssl"] = {}
-            $scope.config["DB_CONNECTION_ARGS"]["ssl"]["ca"] = "database.pem";
+            $scope.config["DB_CONNECTION_ARGS"]["ssl"]["ca"] = "/conf/stack/database.pem";
           }
 
           var errorDisplay = ApiService.errorDisplay(
