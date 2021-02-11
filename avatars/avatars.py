@@ -1,6 +1,7 @@
 import hashlib
 import math
 import logging
+import features
 
 from requests.exceptions import RequestException
 
@@ -107,7 +108,16 @@ class BaseAvatar(object):
         # so use the username in that case.
         username_email_or_id = email_or_id or name
         username_email_or_id = Bytes.for_string_or_unicode(username_email_or_id).as_unicode()
-        hash_value = hashlib.md5(username_email_or_id.strip().lower().encode("utf-8")).hexdigest()
+
+        # If fips mode is enabled, we must use 256. In future Quay versions, this should be the default. Flag is set for backwards compatibility.
+        if features.FIPS:
+            hash_value = hashlib.sha256(
+                username_email_or_id.strip().lower().encode("utf-8")
+            ).hexdigest()
+        else:
+            hash_value = hashlib.md5(
+                username_email_or_id.strip().lower().encode("utf-8")
+            ).hexdigest()
 
         byte_count = int(math.ceil(math.log(len(colors), 16)))
         byte_data = hash_value[0:byte_count]
