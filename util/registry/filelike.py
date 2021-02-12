@@ -23,7 +23,12 @@ class BaseStreamFilelike(object):
     def tell(self):
         return self._cursor_position
 
-    def seek(self, index, whence=WHENCE_ABSOLUTE):
+    def seek(self, index, whence=WHENCE_ABSOLUTE, allow_backward=False):
+        if allow_backward and index < self._current_position:
+            if not self._fileobj.seekable():
+                raise IOError("Cannot seek backward on stream: fileobj is not seekable")
+            self._cursor_position = self._fileobj.seek(index, whence)
+
         num_bytes_to_ff = 0
         if whence == WHENCE_ABSOLUTE:
             if index < self._cursor_position:
@@ -135,7 +140,7 @@ class StreamSlice(BaseStreamFilelike):
     All methods will act as if the slice is its own file.
     """
 
-    def __init__(self, fileobj, start_offset=0, end_offset_exclusive=READ_UNTIL_END):
+    def __init__(self, fileobj, start_offset=0, end_offset_exclusive=READ_UNTIL_END, **kwargs):
         super(StreamSlice, self).__init__(fileobj)
         self._end_offset_exclusive = end_offset_exclusive
         self._start_offset = start_offset
@@ -172,6 +177,7 @@ class StreamSlice(BaseStreamFilelike):
         super(StreamSlice, self).seek(index, whence)
 
 
+# TODO(kleesc): Could https://werkzeug.palletsprojects.com/en/1.0.x/wsgi/#werkzeug.wsgi.LimitedStream replace this?
 class LimitingStream(StreamSlice):
     """
     A file-like object which mimics the specified file stream being limited to the given number of
@@ -180,7 +186,7 @@ class LimitingStream(StreamSlice):
     All calls after that limit (if specified) will act as if the file has no additional data.
     """
 
-    def __init__(self, fileobj, read_limit=READ_UNTIL_END, seekable=True):
+    def __init__(self, fileobj, read_limit=READ_UNTIL_END, seekable=True, **kwargs):
         super(LimitingStream, self).__init__(fileobj, 0, read_limit)
         self._seekable = seekable
 
