@@ -10,10 +10,10 @@ import (
 func TestGenerateBaseConfig(t *testing.T) {
 
 	options := AioiInputOptions{
-		serverHostname: "myHostname",
-		databaseURI:    "postgres://user:pass@192.168.250.159/quay",
-		redisHostname:  "192.168.250.159",
-		redisPassword:  "strongpassword",
+		ServerHostname: "myHostname",
+		DatabaseURI:    "postgres://user:pass@192.168.250.159/quay",
+		RedisHostname:  "192.168.250.159",
+		RedisPassword:  "strongpassword",
 	}
 
 	baseConfig, err := GenerateBaseConfig(options)
