@@ -37,7 +37,6 @@ EXTERNAL_CSS = [
     "netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.css",
     "netdna.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css",
     "fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700",
-    "s3.amazonaws.com/cdn.core-os.net/icons/core-icons.css",
     "cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/css/bootstrap-datetimepicker.min.css",
     "cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.css",
     "cdnjs.cloudflare.com/ajax/libs/ng-tags-input/3.1.1/ng-tags-input.min.css",
@@ -66,13 +65,6 @@ EXTERNAL_WEBFONTS = [
     "use.fontawesome.com/releases/v5.0.4/webfonts/fa-brands-400.ttf",
     "use.fontawesome.com/releases/v5.0.4/webfonts/fa-brands-400.woff",
     "use.fontawesome.com/releases/v5.0.4/webfonts/fa-brands-400.woff2",
-]
-
-EXTERNAL_CSS_FONTS = [
-    "s3.amazonaws.com/cdn.core-os.net/icons/core-icons.eot",
-    "s3.amazonaws.com/cdn.core-os.net/icons/core-icons.woff",
-    "s3.amazonaws.com/cdn.core-os.net/icons/core-icons.ttf",
-    "s3.amazonaws.com/cdn.core-os.net/icons/core-icons.svg",
 ]
 
 
@@ -134,7 +126,6 @@ if __name__ == "__main__":
 
     resources = [
         (STATIC_LDN_DIR, EXTERNAL_JS + EXTERNAL_CSS, True),
-        (STATIC_LDN_DIR, EXTERNAL_CSS_FONTS, False),
         (STATIC_FONTS_DIR, EXTERNAL_FONTS, False),
         (STATIC_WEBFONTS_DIR, EXTERNAL_WEBFONTS, False),
     ]
