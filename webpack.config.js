@@ -42,6 +42,19 @@ let config = {
           'html-loader',
         ]
       },
+      {
+        test: /\.(woff(2)?|ttf|eot|svg)(\?v=\d+\.\d+\.\d+)?$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+	      // TODO: Workaround for incompatible file-loader + html-loader versions
+	      // https://github.com/webpack-contrib/html-loader/issues/203
+              esModule: false
+            }
+          }
+        ]
+      }
     ]
   },
   optimization: {},
