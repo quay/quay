@@ -11,7 +11,7 @@ import logging
 import json
 import sys
 
-from _pyio import BufferedReader, BufferedIOBase
+from io import IOBase
 
 from collections import namedtuple
 from hashlib import sha1
@@ -132,7 +132,7 @@ class SwiftStorage(BaseStorage):
         # The following assertion make sure that the content is either some bytes or
         # a file-like stream of bytes, for consistency across all storage implementations.
         assert isinstance(content, bytes) or issubclass(
-            type(content), (BufferedIOBase, GeneratorFile, ReadableToIterable)
+            type(content), (IOBase, GeneratorFile, ReadableToIterable, filelike.BaseStreamFilelike)
         )
 
         path = self._normalize_path(path)
@@ -414,12 +414,9 @@ class SwiftStorage(BaseStorage):
         else:
             length = min(_MAXIMUM_SEGMENT_SIZE, length)
 
-        limiting_fp = filelike.LimitingStream(in_fp, length)
-
-        # If retries are requested, then we need to use a buffered reader to allow for calls to
-        # seek() on retries from within the Swift client.
-        if self._retry_count > 0:
-            limiting_fp = BufferedReader(limiting_fp, buffer_size=length)
+        # If retries are requested, then we need to allow the LimitingStream to seek() backward
+        # on retries from within the Swift client.
+        limiting_fp = filelike.LimitingStream(in_fp, length, allow_backward=self._retry_count > 0)
 
         # Write the segment to Swift.
         self.stream_write(segment_path, limiting_fp, content_type)

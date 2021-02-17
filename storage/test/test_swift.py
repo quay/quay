@@ -1,4 +1,4 @@
-import _pyio as io
+import io
 import pytest
 import hashlib
 import copy
@@ -6,10 +6,13 @@ import copy
 from collections import defaultdict
 from mock import MagicMock, patch
 
+from werkzeug.wsgi import LimitedStream
 from swiftclient.client import ClientException, ReadableToIterable
 
 from storage import StorageContext
 from storage.swift import SwiftStorage, _EMPTY_SEGMENTS_KEY, _DEFAULT_RETRY_COUNT
+from util.registry.generatorfile import GeneratorFile
+from util.registry import filelike
 
 base_args = {
     "context": StorageContext("nyc", None, None, None),
@@ -33,7 +36,11 @@ class MockSwiftStorage(SwiftStorage):
 class FakeSwiftStorage(SwiftStorage):
     def __init__(self, fail_checksum=False, connection=None, *args, **kwargs):
         super(FakeSwiftStorage, self).__init__(*args, **kwargs)
-        self._retry_count = kwargs.get("retry_count") or _DEFAULT_RETRY_COUNT
+        self._retry_count = (
+            kwargs.get("retry_count")
+            if kwargs.get("retry_count") is not None
+            else _DEFAULT_RETRY_COUNT
+        )
         self._connection = connection or FakeSwift(
             fail_checksum=fail_checksum, temp_url_key=kwargs.get("temp_url_key")
         )
@@ -86,6 +93,8 @@ class FakeSwift(object):
                     content = content.content
                 else:
                     content = content.content.read()
+            elif issubclass(type(content), (io.IOBase, GeneratorFile, filelike.BaseStreamFilelike)):
+                content = content.read()
             else:
                 raise ValueError("Only bytes or file-like objects yielding bytes are valid")
 
@@ -167,6 +176,18 @@ def test_simple_put_get():
     assert swift.exists("somepath")
     assert swift.get_content("somepath") == b"hello world!"
 
+    swift.put_content("someotherpath", LimitedStream(io.BytesIO(b"hello world2"), 12))
+    assert swift.exists("someotherpath")
+    assert swift.get_content("someotherpath") == b"hello world2"
+
+    swift.put_content("yetsomeotherpath", ReadableToIterable(b"hello world3"))
+    assert swift.exists("yetsomeotherpath")
+    assert swift.get_content("yetsomeotherpath") == b"hello world3"
+
+    swift.put_content("againsomeotherpath", io.BytesIO(b"hello world4"))
+    assert swift.exists("againsomeotherpath")
+    assert swift.get_content("againsomeotherpath") == b"hello world4"
+
 
 def test_stream_read_write():
     swift = FakeSwiftStorage(**base_args)
@@ -243,8 +264,8 @@ def test_checksum():
 @pytest.mark.parametrize(
     "read_until_end",
     [
-        (True,),
-        (False,),
+        (True),
+        (False),
     ],
 )
 @pytest.mark.parametrize(
@@ -265,12 +286,18 @@ def test_checksum():
         ([b"h", b"e", b"l", b"l", b"o", b""]),
     ],
 )
-def test_chunked_upload(chunks, max_chunk_size, read_until_end):
-    swift = FakeSwiftStorage(**base_args)
+@pytest.mark.parametrize(
+    "retry_count",
+    [
+        (0),
+        (5),
+    ],
+)
+def test_chunked_upload(chunks, max_chunk_size, read_until_end, retry_count):
+    swift = FakeSwiftStorage(**base_args, retry_count=retry_count)
     uuid, metadata = swift.initiate_chunked_upload()
 
     offset = 0
-
     with patch("storage.swift._MAXIMUM_SEGMENT_SIZE", max_chunk_size):
         for chunk in chunks:
             chunk_length = len(chunk) if not read_until_end else -1
