@@ -1,14 +1,18 @@
 import base64
 import hashlib
-from Crypto import Random
-from Crypto.Cipher import AES
+import os
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
 
 
 class AESCipher(object):
     """
     Helper class for encrypting and decrypting data via AES.
 
-    Copied From: http://stackoverflow.com/a/21928790
+    References:
+        - https://cryptography.io/en/latest/hazmat/primitives/symmetric-encryption.html
+        - https://cryptography.io/en/latest/hazmat/primitives/padding.html
     """
 
     def __init__(self, key):
@@ -17,20 +21,28 @@ class AESCipher(object):
 
     def encrypt(self, raw):
         assert isinstance(raw, bytes)
-        raw = self._pad(raw)
-        iv = Random.new().read(AES.block_size)
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return base64.b64encode(iv + cipher.encrypt(raw))
+
+        padder = padding.PKCS7(algorithms.AES.block_size).padder()
+        padded_data = padder.update(raw) + padder.finalize()
+
+        iv = os.urandom(algorithms.AES.block_size // 8)
+
+        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv))
+        encryptor = cipher.encryptor()
+        ct = encryptor.update(padded_data) + encryptor.finalize()
+
+        return base64.b64encode(iv + ct)
 
     def decrypt(self, enc):
+        unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
         enc = base64.b64decode(enc)
-        iv = enc[: AES.block_size]
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return self._unpad(cipher.decrypt(enc[AES.block_size :])).decode("utf-8")
 
-    def _pad(self, s):
-        return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs).encode("ascii")
+        iv = enc[: algorithms.AES.block_size // 8]
 
-    @staticmethod
-    def _unpad(s):
-        return s[: -ord(s[len(s) - 1 :])]
+        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv))
+        decryptor = cipher.decryptor()
+        decrypted_padded_data = (
+            decryptor.update(enc[algorithms.AES.block_size // 8 :]) + decryptor.finalize()
+        )
+
+        return unpadder.update(decrypted_padded_data) + unpadder.finalize()

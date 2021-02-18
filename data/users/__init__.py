@@ -172,7 +172,7 @@ class UserAuthentication(object):
             return None
 
         try:
-            data = json.loads(message)
+            data = json.loads(message.decode("utf-8"))
         except ValueError:
             return None
 
