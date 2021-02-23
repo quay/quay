@@ -2,6 +2,7 @@ package ldap
 
 import (
 	"fmt"
+	"math"
 	"net/url"
 	"strings"
 
@@ -99,14 +100,18 @@ func (fg *LDAPFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 		return errors
 	}
 
-	var userFilter string
-	if fg.LdapUserFilter == "" {
-		userFilter = "(objectClass=*)"
-	} else {
-		userFilter = fmt.Sprintf("(&(objectClass=*)" + fg.LdapUserFilter + ")")
+	userFilter := fmt.Sprintf("(&(%s=*)%s)", fg.LdapUidAttr, fg.LdapUserFilter)
+	request := &ldap.SearchRequest{
+		BaseDN: strings.Join(shared.InterfaceArrayToStringArray(fg.LdapBaseDn), ","),
+		Scope:  ldap.ScopeWholeSubtree,
+		Filter: userFilter,
+		Attributes: []string{
+			fg.LdapEmailAttr, fg.LdapUidAttr,
+		},
+		SizeLimit: math.MaxInt32,
 	}
-	searchReq := ldap.NewSearchRequest(strings.Join(shared.InterfaceArrayToStringArray(fg.LdapBaseDn), ","), ldap.ScopeWholeSubtree, 0, 0, 0, false, userFilter, []string{fg.LdapEmailAttr, fg.LdapUidAttr}, []ldap.Control{})
-	result, err := l.Search(searchReq)
+
+	result, err := l.SearchWithPaging(request, math.MaxInt32)
 	if err != nil {
 		newError := shared.ValidationError{
 			Tags:       []string{"LDAP_URI"},
