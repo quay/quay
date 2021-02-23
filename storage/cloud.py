@@ -12,7 +12,6 @@ import botocore.config
 import botocore.exceptions
 import boto3.session
 
-from boto.exception import S3ResponseError
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
 from cryptography.hazmat.backends import default_backend
@@ -552,9 +551,13 @@ class _CloudStorage(BaseStorageV2):
             abs_final_path = self._init_path(final_path)
 
             # Let the copy raise an exception if it fails.
-            self.get_cloud_bucket().copy(
-                {"Bucket": self._bucket_name, "Key": chunk_path}, abs_final_path
-            )
+            #
+            # TODO(kleesc): copy_from() is used instead of copy, since the latter is a managed transfer which uses S3's
+            #               multipart api, which GCS and Rados does not support. Going forward, we should try moving
+            #               non-aws implementations to use library's with better support (e.g GCS supports its own version
+            #               of parallel uploads).
+            new_obj = self.get_cloud_bucket().Object(abs_final_path)
+            new_obj.copy_from(CopySource={"Bucket": self._bucket_name, "Key": chunk_path})
 
             # Attempt to clean up the old chunk.
             try:
@@ -849,13 +852,18 @@ class GoogleCloudStorage(_CloudStorage):
         if size != filelike.READ_UNTIL_END:
             fp = filelike.StreamSlice(fp, 0, size)
 
-        # TODO figure out how to handle cancel_on_error=False
-        try:
-            obj.put(Body=fp, **extra_args)
-        except Exception as ex:
-            return 0, ex
+        with BytesIO() as buf:
+            # Stage the bytes into the buffer for use with the multipart upload file API
+            bytes_staged = self.stream_write_to_fp(fp, buf, size)
+            buf.seek(0)
 
-        return size, None
+            # TODO figure out how to handle cancel_on_error=False
+            try:
+                obj.put(Body=buf, **extra_args)
+            except Exception as ex:
+                return 0, ex
+
+        return bytes_staged, None
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
         self._initialize_cloud_conn()

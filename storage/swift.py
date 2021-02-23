@@ -11,7 +11,7 @@ import logging
 import json
 import sys
 
-from io import IOBase
+from io import IOBase, BytesIO
 
 from collections import namedtuple
 from hashlib import sha1
@@ -416,7 +416,9 @@ class SwiftStorage(BaseStorage):
 
         # If retries are requested, then we need to allow the LimitingStream to seek() backward
         # on retries from within the Swift client.
-        limiting_fp = filelike.LimitingStream(in_fp, length, allow_backward=self._retry_count > 0)
+        limiting_fp = filelike.LimitingStream(in_fp, length)
+        if self._retry_count > 0:
+            limiting_fp = BytesIO(limiting_fp.read())
 
         # Write the segment to Swift.
         self.stream_write(segment_path, limiting_fp, content_type)
