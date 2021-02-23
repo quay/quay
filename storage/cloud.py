@@ -344,9 +344,6 @@ class _CloudStorage(BaseStorageV2):
         # [_PartUpload]
         upload_parts = []
 
-        # We are going to reuse this but be VERY careful to only read the number of bytes written to it
-        buf = BytesIO()
-
         num_part = 1
         total_bytes_written = 0
         while size == filelike.READ_UNTIL_END or total_bytes_written < size:
@@ -355,39 +352,46 @@ class _CloudStorage(BaseStorageV2):
                 # We never want to ask for more bytes than our caller has indicated to copy
                 bytes_to_copy = min(bytes_to_copy, size - total_bytes_written)
 
-            buf.seek(0)
-            try:
-                # Stage the bytes into the buffer for use with the multipart upload file API
-                bytes_staged = self.stream_write_to_fp(fp, buf, bytes_to_copy)
-                if bytes_staged == 0:
-                    break
+            with BytesIO() as buf:
+                try:
+                    # Stage the bytes into the buffer for use with the multipart upload file API
+                    bytes_staged = self.stream_write_to_fp(fp, buf, bytes_to_copy)
 
-                buf.seek(0)
-                part = mp.Part(num_part)
-                part_upload = part.upload(
-                    Body=buf,
-                    ContentLength=bytes_staged,
-                )
-                upload_parts.append(_PartUpload(num_part, part_upload["ETag"]))
-                total_bytes_written += bytes_staged
-                num_part += 1
-            except (botocore.exceptions.ClientError, IOError) as e:
-                logger.warn(
-                    "Error when writing to stream in stream_write_internal at path %s: %s", path, e
-                )
-                write_error = e
+                    if bytes_staged == 0:
+                        break
 
-                multipart_uploads_completed.inc()
+                    buf.seek(0)
+                    part = mp.Part(num_part)
+                    part_upload = part.upload(
+                        Body=buf,
+                        ContentLength=bytes_staged,
+                    )
+                    upload_parts.append(_PartUpload(num_part, part_upload["ETag"]))
+                    total_bytes_written += bytes_staged
+                    num_part += 1
+                except (
+                    botocore.exceptions.ClientError,
+                    botocore.exceptions.ConnectionClosedError,
+                    IOError,
+                ) as e:
+                    logger.warn(
+                        "Error when writing to stream in stream_write_internal at path %s: %s",
+                        path,
+                        e,
+                    )
+                    write_error = e
 
-                if cancel_on_error:
-                    try:
-                        mp.abort()
-                    except (botocore.exceptions.ClientError, IOError):
-                        logger.exception("Could not cancel upload")
+                    multipart_uploads_completed.inc()
 
-                    return 0, write_error
-                else:
-                    break
+                    if cancel_on_error:
+                        try:
+                            mp.abort()
+                        except (botocore.exceptions.ClientError, IOError):
+                            logger.exception("Could not cancel upload")
+
+                        return 0, write_error
+                    else:
+                        break
 
         if total_bytes_written > 0:
             multipart_uploads_completed.inc()
@@ -833,24 +837,25 @@ class GoogleCloudStorage(_CloudStorage):
         # Minimum size of upload part size on S3 is 5MB
         self._initialize_cloud_conn()
         path = self._init_path(path)
-        key = self._key_class(self._cloud_bucket, path)
+        obj = self.get_cloud_bucket().Object(path)
 
+        extra_args = {}
         if content_type is not None:
-            key.set_metadata("Content-Type", content_type)
+            extra_args["ContentType"] = content_type
 
         if content_encoding is not None:
-            key.set_metadata("Content-Encoding", content_encoding)
+            extra_args["ContentEncoding"] = content_encoding
 
         if size != filelike.READ_UNTIL_END:
             fp = filelike.StreamSlice(fp, 0, size)
 
         # TODO figure out how to handle cancel_on_error=False
         try:
-            key.set_contents_from_stream(fp)
-        except IOError as ex:
+            obj.put(Body=fp, **extra_args)
+        except Exception as ex:
             return 0, ex
 
-        return key.size, None
+        return size, None
 
     def complete_chunked_upload(self, uuid, final_path, storage_metadata):
         self._initialize_cloud_conn()
