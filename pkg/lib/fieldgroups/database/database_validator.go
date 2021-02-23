@@ -108,7 +108,7 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 				return errors.New("Could not add CA cert to pool")
 			}
 			tlsConfig := &tls.Config{
-				InsecureSkipVerify: false,
+				InsecureSkipVerify: true,
 				RootCAs:            caCertPool,
 			}
 
@@ -160,7 +160,7 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 				return errors.New("Could not add CA cert to pool")
 			}
 			tlsConfig := &tls.Config{
-				InsecureSkipVerify: false,
+				InsecureSkipVerify: true,
 				RootCAs:            caCertPool,
 			}
 			dbOpts.TLSConfig = tlsConfig
