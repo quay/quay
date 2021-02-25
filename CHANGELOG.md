@@ -1,3 +1,16 @@
+
+### v3.4.2
+
+**Fixed**
+- Fix clair crash downloading RHEL content mapping
+- Quay config-tool validates SMTP
+- Fix Quay Operator reconciler loop resulting in failed mirror configurations
+- Quay config-tool generates default SECRET_KEY in config bundle if not specified
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+
+
 ### v3.4.1
 
 **Fixed**
