@@ -4,8 +4,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from peewee import JOIN
 
-from Crypto.PublicKey import RSA
-from jwkest.jwk import RSAKey
+from authlib.jose import JsonWebKey
 
 from data.database import db_for_update, User, ServiceKey, ServiceKeyApproval
 from data.model import (
@@ -16,7 +15,6 @@ from data.model import (
     config,
 )
 from data.model.notification import create_notification, delete_all_notifications_by_path_prefix
-from util.security.fingerprint import canonical_kid
 
 
 _SERVICE_NAME_REGEX = re.compile(r"^[a-z0-9_]+$")
@@ -100,21 +98,28 @@ def create_service_key(name, kid, service, jwk, metadata, expiration_date, rotat
 def generate_service_key(
     service, expiration_date, kid=None, name="", metadata=None, rotation_duration=None
 ):
-    private_key = RSA.generate(2048)
-    jwk = RSAKey(key=private_key.publickey()).serialize()
-    if kid is None:
-        kid = canonical_kid(jwk)
+    """
+    'kid' will default to the jwk thumbprint if not set explicitly.
+
+    Reference: https://tools.ietf.org/html/rfc7638
+    """
+    options = {}
+    if kid:
+        options["kid"] = kid
+
+    jwk = JsonWebKey.generate_key("RSA", 2048, is_private=True, options=options)
+    kid = jwk.as_dict()["kid"]
 
     key = create_service_key(
         name,
         kid,
         service,
-        jwk,
+        jwk.as_dict(),
         metadata or {},
         expiration_date,
         rotation_duration=rotation_duration,
     )
-    return (private_key, key)
+    return (jwk.get_private_key(), key)
 
 
 def replace_service_key(old_kid, kid, jwk, metadata, expiration_date):

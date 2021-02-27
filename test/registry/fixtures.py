@@ -8,7 +8,6 @@ from tempfile import NamedTemporaryFile
 
 import pytest
 
-from Crypto import Random
 from flask import jsonify, g
 from flask_principal import Identity
 
@@ -118,9 +117,6 @@ def registry_server_executor(app):
         # Reload the database config.
         app.config["SERVER_HOSTNAME"] = server_hostname[len("http://") :]
         configure(app.config)
-
-        # Reload random after the process split, as it cannot be used uninitialized across forks.
-        Random.atfork()
 
         # Required for anonymous calls to not exception.
         g.identity = Identity(None, "none")

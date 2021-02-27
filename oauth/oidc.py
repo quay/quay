@@ -4,12 +4,11 @@ import logging
 import urllib.parse
 
 import jwt
+from requests import request
 
 from cachetools.func import lru_cache
 from cachetools.ttl import TTLCache
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.serialization import load_der_public_key
-from jwkest.jwk import KEYS
+from authlib.jose import KeySet, JsonWebKey
 
 from oauth.base import (
     OAuthService,
@@ -366,30 +365,61 @@ class _PublicKeyCache(TTLCache):
 
         # Load the keys.
         try:
-            keys = KEYS()
-            keys.load_from_url(
-                keys_url, verify=not self._login_service.config.get("DEBUGGING", False)
+            keys = KeySet(
+                _load_keys_from_url(
+                    keys_url, verify=not self._login_service.config.get("DEBUGGING", False)
+                )
             )
         except Exception as ex:
             logger.exception("Exception loading public key")
             raise PublicKeyLoadException(str(ex))
 
         # Find the matching key.
-        keys_found = keys.by_kid(kid)
-        if len(keys_found) == 0:
+        try:
+            key_found = keys.find_by_kid(kid)
+        except ValueError:
             raise PublicKeyLoadException("Public key %s not found" % kid)
 
-        rsa_keys = [key for key in keys_found if key.kty == "RSA"]
-        if len(rsa_keys) == 0:
+        if key_found.kty != "RSA":
             raise PublicKeyLoadException("No RSA form of public key %s not found" % kid)
 
-        matching_key = rsa_keys[0]
-        matching_key.deserialize()
+        # Eyy, no more exporting/importing keys from PyCrypto to cryptography's format...
+        rsa_key = key_found.as_key()
+        self[kid] = rsa_key
+        return rsa_key
 
-        # Reload the key so that we can give a key *instance* to PyJWT to work around its weird parsing
-        # issues.
-        final_key = load_der_public_key(
-            matching_key.key.exportKey("DER"), backend=default_backend()
-        )
-        self[kid] = final_key
-        return final_key
+
+def _load_keys_from_url(url, verify=True):
+    """
+    Expects something on this form:
+        {"keys":
+            [
+                {
+                    "kty":"EC",
+                    "crv":"P-256",
+                    "x":"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4",
+                    "y":"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM",
+                    "use":"enc",
+                    "kid":"1"
+                },
+                {
+                    "kty":"RSA",
+                    "n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFb....."
+                    "e":"AQAB",
+                    "kid":"2011-04-29"
+                }
+            ]
+        }
+    """
+
+    keys = []
+    r = request("GET", url, allow_redirects=True, verify=verify)
+    if r.status_code == 200:
+        keys_dict = json.loads(r.text)
+        for key_spec in keys_dict["keys"]:
+            key = JsonWebKey.import_key(key_spec)
+            keys.append(key)
+    else:
+        raise Exception("Error loading JWK set - HTTP GET error: %s" % r.status_code)
+
+    return keys

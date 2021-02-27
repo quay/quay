@@ -15,8 +15,10 @@ import dateutil.parser
 
 from jsonschema import validate as validate_schema, ValidationError
 
-from jwkest.jws import SIGNER_ALGS, keyrep, BadSignature
 from jwt.utils import base64url_encode, base64url_decode
+
+from authlib.jose import JsonWebKey, JsonWebSignature
+from authlib.jose.errors import BadSignatureError, UnsupportedAlgorithmError
 
 from digest import digest_tools
 from image.shared import ManifestException
@@ -215,26 +217,33 @@ class DockerSchema1Manifest(ManifestInterface):
             self._validate()
 
     def _validate(self):
+        """
+        Reference: https://docs.docker.com/registry/spec/manifest-v2-1/#signed-manifests
+        """
         if not self._signatures:
             return
 
         payload_str = self._payload
         for signature in self._signatures:
-            bytes_to_verify = b"%s.%s" % (
-                Bytes.for_string_or_unicode(signature["protected"]).as_encoded_str(),
-                base64url_encode(payload_str),
-            )
-            signer = SIGNER_ALGS[signature["header"]["alg"]]
-            key = keyrep(signature["header"]["jwk"])
-            gk = key.get_key()
-            sig = base64url_decode(signature["signature"].encode("utf-8"))
+            protected = signature[DOCKER_SCHEMA1_PROTECTED_KEY]
+            sig = signature[DOCKER_SCHEMA1_SIGNATURE_KEY]
+
+            jwk = JsonWebKey.import_key(signature[DOCKER_SCHEMA1_HEADER_KEY]["jwk"])
+            jws = JsonWebSignature(algorithms=[signature[DOCKER_SCHEMA1_HEADER_KEY]["alg"]])
+
+            obj_to_verify = {
+                DOCKER_SCHEMA1_PROTECTED_KEY: protected,
+                DOCKER_SCHEMA1_SIGNATURE_KEY: sig,
+                DOCKER_SCHEMA1_HEADER_KEY: {"alg": signature[DOCKER_SCHEMA1_HEADER_KEY]["alg"]},
+                "payload": base64url_encode(payload_str),
+            }
 
             try:
-                verified = signer.verify(bytes_to_verify, sig, gk)
-            except BadSignature:
+                data = jws.deserialize_json(obj_to_verify, jwk.get_public_key())
+            except (BadSignatureError, UnsupportedAlgorithmError):
                 raise InvalidSchema1Signature()
 
-            if not verified:
+            if not data:
                 raise InvalidSchema1Signature()
 
     def validate(self, content_retriever):
@@ -734,6 +743,13 @@ class DockerSchema1ManifestBuilder(object):
     def build(self, json_web_key=None, ensure_ascii=True):
         """
         Builds a DockerSchema1Manifest object, with optional signature.
+
+        NOTE: For backward compatibility, "JWS JSON Serialization" is used instead of "JWS Compact Serialization", since the latter **requires** that the
+        "alg" headers be carried in the **protected** headers, which was never done before migrating to authlib (One shouldn't be using schema1 anyways)
+
+        References:
+            - https://tools.ietf.org/html/rfc7515#section-10.7
+            - https://docs.docker.com/registry/spec/manifest-v2-1/#signed-manifests
         """
         payload = OrderedDict(self._base_payload)
         payload.update(
@@ -751,32 +767,38 @@ class DockerSchema1ManifestBuilder(object):
         split_point = payload_str.rfind(b"\n}")
 
         protected_payload = {
-            "formatTail": base64url_encode(payload_str[split_point:]).decode("ascii"),
-            "formatLength": split_point,
+            DOCKER_SCHEMA1_FORMAT_TAIL_KEY: base64url_encode(payload_str[split_point:]).decode(
+                "ascii"
+            ),
+            DOCKER_SCHEMA1_FORMAT_LENGTH_KEY: split_point,
             "time": datetime.utcnow().strftime(_ISO_DATETIME_FORMAT_ZULU),
         }
-        protected = base64url_encode(
-            json.dumps(protected_payload, ensure_ascii=ensure_ascii).encode("utf-8")
-        )
+
+        # Flattened JSON serialization header
+        jws = JsonWebSignature(algorithms=[_JWS_SIGNING_ALGORITHM])
+        headers = {
+            "protected": protected_payload,
+            "header": {"alg": _JWS_SIGNING_ALGORITHM},
+        }
+
+        signed = jws.serialize_json(headers, payload_str, json_web_key.get_private_key())
+        protected = signed["protected"]
+        signature = signed["signature"]
+        logger.debug("Generated signature: %s", signature)
         logger.debug("Generated protected block: %s", protected)
 
-        bytes_to_sign = b"%s.%s" % (protected, base64url_encode(payload_str))
-
-        signer = SIGNER_ALGS[_JWS_SIGNING_ALGORITHM]
-        signature = base64url_encode(signer.sign(bytes_to_sign, json_web_key.get_key()))
-        logger.debug("Generated signature: %s", signature)
-
-        public_members = set(json_web_key.public_members)
+        public_members = set(json_web_key.REQUIRED_JSON_FIELDS + json_web_key.ALLOWED_PARAMS)
         public_key = {
             comp: value
-            for comp, value in list(json_web_key.to_dict().items())
+            for comp, value in list(json_web_key.as_dict().items())
             if comp in public_members
         }
+        public_key["kty"] = json_web_key.kty
 
         signature_block = {
             DOCKER_SCHEMA1_HEADER_KEY: {"jwk": public_key, "alg": _JWS_SIGNING_ALGORITHM},
-            DOCKER_SCHEMA1_SIGNATURE_KEY: signature.decode("ascii"),
-            DOCKER_SCHEMA1_PROTECTED_KEY: protected.decode("ascii"),
+            DOCKER_SCHEMA1_SIGNATURE_KEY: signature,
+            DOCKER_SCHEMA1_PROTECTED_KEY: protected,
         }
 
         logger.debug("Encoded signature block: %s", json.dumps(signature_block))

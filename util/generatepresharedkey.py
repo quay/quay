@@ -47,4 +47,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     generated, _ = generate_key(args.service, args.name, args.expiration, args.notes)
-    print(generated.exportKey("PEM"))
+    print(
+        generated.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+    )

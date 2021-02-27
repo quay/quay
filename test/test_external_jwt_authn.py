@@ -8,7 +8,8 @@ from contextlib import contextmanager
 import jwt
 import requests
 
-from Crypto.PublicKey import RSA
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from flask import Flask, jsonify, request, make_response
 
 from app import app
@@ -56,14 +57,27 @@ def fake_jwt(requires_email=True):
 def _generate_certs():
     public_key = NamedTemporaryFile(delete=True)
 
-    key = RSA.generate(1024)
-    private_key_data = key.exportKey("PEM")
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+    )
 
-    pubkey = key.publickey()
-    public_key.write(pubkey.exportKey("OpenSSH"))
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    pubkey = private_key.public_key()
+    public_key.write(
+        pubkey.public_bytes(
+            encoding=serialization.Encoding.OpenSSH,
+            format=serialization.PublicFormat.OpenSSH,
+        )
+    )
     public_key.seek(0)
 
-    return (public_key, private_key_data)
+    return (public_key, private_pem)
 
 
 def _create_app(emails=True):

@@ -5,8 +5,7 @@ import string
 
 import pytest
 
-from Crypto.PublicKey import RSA
-from jwkest.jwk import RSAKey
+from authlib.jose import jwk as jwklib
 
 from test.registry.fixtures import data_model
 from test.registry.protocols import Image, layer_bytes_for_contents
@@ -231,7 +230,7 @@ def unicode_emoji_images():
 
 @pytest.fixture(scope="session")
 def jwk():
-    return RSAKey(key=RSA.generate(2048))
+    return jwklib.JsonWebKey.generate_key("RSA", 2048, is_private=True)
 
 
 @pytest.fixture(params=[V2Protocol])

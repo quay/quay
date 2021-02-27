@@ -9,8 +9,9 @@ import pytest
 import requests
 
 from httmock import urlmatch, HTTMock
-from Crypto.PublicKey import RSA
-from jwkest.jwk import RSAKey
+
+from cryptography.hazmat.primitives import serialization
+from authlib.jose import jwk, JsonWebKey
 
 from oauth.oidc import OIDCLoginService, OAuthLoginException
 from util.config import URLSchemeAndHostname
@@ -19,12 +20,15 @@ from six.moves.urllib.parse import quote
 
 @pytest.fixture(scope="module")  # Slow to generate, only do it once.
 def signing_key():
-    private_key = RSA.generate(2048)
-    jwk = RSAKey(key=private_key.publickey()).serialize()
+    jwk = JsonWebKey.generate_key("RSA", 2048, is_private=True)
     return {
         "id": "somekey",
-        "private_key": private_key.exportKey("PEM"),
-        "jwk": jwk,
+        "private_key": jwk.get_private_key().private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        ),
+        "jwk": jwk.as_dict(),
     }
 
 
@@ -400,3 +404,7 @@ def test_exchange_code_validcode(
                 assert lusername == preferred_username
             else:
                 assert lusername == lid
+
+
+def test_load_keys_from_url():
+    pass

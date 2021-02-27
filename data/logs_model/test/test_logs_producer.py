@@ -47,7 +47,7 @@ def kinesis_logs_producer_config(app_config):
 
     kinesis_stream_config = {
         "stream_name": "test-stream",
-        "aws_region": "fake_region",
+        "aws_region": "fake-region-1",
         "aws_access_key": "some_key",
         "aws_secret_key": "some_secret",
     }

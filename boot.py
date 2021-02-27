@@ -10,6 +10,8 @@ import logging
 import release
 import os.path
 
+from cryptography.hazmat.primitives import serialization
+
 from app import app
 from data.model import ServiceKeyDoesNotExist
 from data.model.release import set_region_release
@@ -94,9 +96,15 @@ def setup_jwt_proxy():
             f.truncate(0)
             f.write(quay_key_id)
 
-        with open(app.config["INSTANCE_SERVICE_KEY_LOCATION"], mode="w") as f:
+        with open(app.config["INSTANCE_SERVICE_KEY_LOCATION"], mode="wb") as f:
             f.truncate(0)
-            f.write(quay_key.exportKey().decode("utf-8"))
+            f.write(
+                quay_key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.TraditionalOpenSSL,
+                    encryption_algorithm=serialization.NoEncryption(),
+                )
+            )
 
     # Generate the JWT proxy configuration.
     audience = get_audience()

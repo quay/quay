@@ -3,8 +3,9 @@ import time
 import pytest
 import jwt
 
-from Crypto.PublicKey import RSA
-from jwkest.jwk import RSAKey
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from authlib.jose import jwk
 
 from util.security.jwtutil import (
     decode,
@@ -17,17 +18,27 @@ from util.security.jwtutil import (
 
 @pytest.fixture(scope="session")
 def private_key():
-    return RSA.generate(2048)
+    return rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+    )
 
 
 @pytest.fixture(scope="session")
 def private_key_pem(private_key):
-    return private_key.exportKey("PEM")
+    return private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
 
 
 @pytest.fixture(scope="session")
 def public_key(private_key):
-    return private_key.publickey().exportKey("PEM")
+    return private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
 
 
 def _token_data(audience, subject, iss, iat=None, exp=None, nbf=None):
@@ -157,7 +168,17 @@ def test_decode_jwt_invalid_key(private_key_pem):
     token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, "RS256")
 
     # Try to decode with a different public key.
-    another_public_key = RSA.generate(2048).publickey().exportKey("PEM")
+    another_public_key = (
+        rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+        )
+        .public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
     with pytest.raises(InvalidTokenError) as ite:
         max_exp = exp_max_s_option(3600)
         decode(
@@ -192,9 +213,14 @@ def test_decode_jwt_invalid_algorithm(private_key_pem, public_key):
 
 
 def test_jwk_dict_to_public_key(private_key, private_key_pem):
-    public_key = private_key.publickey()
-    jwk = RSAKey(key=private_key.publickey()).serialize()
-    converted = jwk_dict_to_public_key(jwk)
+    public_key = private_key.public_key()
+    key_dict = jwk.dumps(
+        public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    converted = jwk_dict_to_public_key(key_dict)
 
     # Encode with the test private key.
     token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, "RS256")
