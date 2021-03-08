@@ -173,7 +173,7 @@ CONFIG_SCHEMA = {
                 {
                     "type": "string",
                     "pattern": "^mailto:(.)+$",
-                    "x-example": "mailto:support@quay.io",
+                    "x-example": "mailto:admin@example.com",
                     "description": "Adds a link to send an e-mail",
                 },
                 {
@@ -239,7 +239,7 @@ CONFIG_SCHEMA = {
         },
         "MAIL_DEFAULT_SENDER": {
             "type": ["string", "null"],
-            "description": "If specified, the e-mail address used as the `from` when Quay sends e-mails. If none, defaults to `support@quay.io`.",
+            "description": "If specified, the e-mail address used as the `from` when Quay sends e-mails. If none, defaults to `admin@example.com`.",
             "x-example": "support@myco.com",
         },
         # Database.
