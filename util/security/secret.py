@@ -2,6 +2,8 @@ import itertools
 import uuid
 
 
+# TODO(kleesc): There are probably better key derivation functions, but that would require existing ones to be rotated.
+#               Reference: https://cryptography.io/en/latest/hazmat/primitives/key-derivation-functions.html
 def convert_secret_key(config_secret_key):
     """
     Converts the secret key from the app config into a secret key that is usable by AES Cipher.
