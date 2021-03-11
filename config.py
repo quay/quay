@@ -189,7 +189,7 @@ class DefaultConfig(ImmutableConfig):
     MAIL_PORT = 587
     MAIL_USERNAME = None
     MAIL_PASSWORD = None
-    MAIL_DEFAULT_SENDER = "example@projectquay.io"
+    MAIL_DEFAULT_SENDER = "admin@example.com"
     MAIL_FAIL_SILENTLY = False
     TESTING = True
 

@@ -174,7 +174,7 @@ def appconfig(database_uri):
         },
         "USERFILES_PATH": "userfiles/",
         "MAIL_SERVER": "",
-        "MAIL_DEFAULT_SENDER": "support@quay.io",
+        "MAIL_DEFAULT_SENDER": "admin@example.com",
         "DATABASE_SECRET_KEY": "anothercrazykey!",
     }
     return conf

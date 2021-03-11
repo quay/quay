@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 METHOD_TIMEOUT = app.config.get("NOTIFICATION_SEND_TIMEOUT", 10)  # Seconds
 HOSTNAME_BLACKLIST = ["localhost", "127.0.0.1"]
 HOSTNAME_BLACKLIST.extend(app.config.get("WEBHOOK_HOSTNAME_BLACKLIST", []))
+MAIL_DEFAULT_SENDER = app.config.get("MAIL_DEFAULT_SENDER", "admin@example.com")
 
 
 class InvalidNotificationMethodException(Exception):
@@ -284,7 +285,7 @@ class FlowdockMethod(NotificationMethod):
         headers = {"Content-type": "application/json"}
         payload = {
             "source": "Quay",
-            "from_address": "support@quay.io",
+            "from_address": MAIL_DEFAULT_SENDER,
             "subject": event_handler.get_summary(
                 notification_data["event_data"], notification_data
             ),
