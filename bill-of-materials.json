@@ -446,16 +446,6 @@
     }, 
     {
         "format": "Python", 
-        "license": "BSD 2-Clause License", 
-        "project": "pycryptodome"
-    }, 
-    {
-        "format": "Python", 
-        "license": "BSD 2-Clause License", 
-        "project": "pycryptodomex"
-    }, 
-    {
-        "format": "Python", 
         "license": "LGPL-3.0", 
         "project": "PyGithub"
     }, 

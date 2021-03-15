@@ -5,6 +5,8 @@ import time
 import jwt
 import pytest
 
+from cryptography.hazmat.primitives import serialization
+
 from app import app, instance_keys
 from auth.auth_context_type import ValidatedAuthContext
 from auth.registry_jwt_auth import identity_from_bearer_token, InvalidJWTException
@@ -184,7 +186,11 @@ def test_mixing_keys_e2e(initialized_db):
     p, key = model.service_keys.generate_service_key(
         instance_keys.service_name, None, kid="newkey", name="newkey", metadata={}
     )
-    private_key = p.exportKey("PEM")
+    private_key = p.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
 
     # Test first with the new valid, but unapproved key.
     unapproved_key_token = _token(token_data, key_id="newkey", private_key=private_key)

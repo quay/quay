@@ -15,10 +15,10 @@ from jwt.exceptions import (
     InvalidAlgorithmError,
 )
 
+from authlib.jose import JsonWebKey, RSAKey, ECKey
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
-from jwkest.jwk import keyrep, RSAKey, ECKey
 
 
 # TOKEN_REGEX defines a regular expression for matching JWT bearer tokens.
@@ -118,16 +118,23 @@ def exp_max_s_option(max_exp_s):
     }
 
 
-def jwk_dict_to_public_key(jwk):
+def jwk_dict_to_public_key(jwk_dict):
     """
     Converts the specified JWK into a public key.
     """
-    jwkest_key = keyrep(jwk)
-    if isinstance(jwkest_key, RSAKey):
-        pycrypto_key = jwkest_key.key
-        return RSAPublicNumbers(e=pycrypto_key.e, n=pycrypto_key.n).public_key(default_backend())
-    elif isinstance(jwkest_key, ECKey):
-        x, y = jwkest_key.get_key()
-        return EllipticCurvePublicNumbers(x, y, jwkest_key.curve).public_key(default_backend())
+    jwk = JsonWebKey.import_key(jwk_dict)
 
-    raise Exception("Unsupported kind of JWK: %s", str(type(jwkest_key)))
+    if isinstance(jwk, RSAKey):
+        rsa_pk = jwk.as_key()
+        return RSAPublicNumbers(
+            e=rsa_pk.public_numbers().e, n=rsa_pk.public_numbers().n
+        ).public_key(default_backend())
+    elif isinstance(jwk, ECKey):
+        ec_pk = jwk.as_key()
+        return EllipticCurvePublicNumbers(
+            x=ec_pk.public_numbers().x,
+            y=ec_pk.public_numbers().y,
+            curve=ec_pk.public_numbers().curve,
+        ).public_key(default_backend())
+
+    raise Exception("Unsupported kind of JWK: %s", str(type(jwk)))

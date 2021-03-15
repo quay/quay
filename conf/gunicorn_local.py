@@ -5,7 +5,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 import logging
 
-from Crypto import Random
 from util.log import logfile_path
 from util.workers import get_worker_count, get_worker_connections_count
 
@@ -18,12 +17,6 @@ worker_connections = get_worker_connections_count("local")
 daemon = False
 pythonpath = "."
 preload_app = True
-
-
-def post_fork(server, worker):
-    # Reset the Random library to ensure it won't raise the "PID check failed." error after
-    # gunicorn forks.
-    Random.atfork()
 
 
 def when_ready(server):

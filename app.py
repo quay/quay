@@ -5,12 +5,12 @@ import os
 
 from functools import partial
 
-from Crypto.PublicKey import RSA
+from authlib.jose import JsonWebKey
+from cryptography.hazmat.primitives import serialization
 from flask import Flask, request, Request
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_principal import Principal
-from jwkest.jwk import RSAKey
 from werkzeug.contrib.fixers import ProxyFix
 from werkzeug.exceptions import HTTPException
 
@@ -300,9 +300,10 @@ tuf_metadata_api = TUFMetadataAPI(app, app.config)
 # Check for a key in config. If none found, generate a new signing key for Docker V2 manifests.
 _v2_key_path = os.path.join(OVERRIDE_CONFIG_DIRECTORY, DOCKER_V2_SIGNINGKEY_FILENAME)
 if os.path.exists(_v2_key_path):
-    docker_v2_signing_key = RSAKey().load(_v2_key_path)
+    with open(_v2_key_path) as key_file:
+        docker_v2_signing_key = JsonWebKey.import_key(key_file.read())
 else:
-    docker_v2_signing_key = RSAKey(key=RSA.generate(2048))
+    docker_v2_signing_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
 
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):

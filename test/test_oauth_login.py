@@ -5,9 +5,10 @@ import urllib.parse
 
 import jwt
 
-from Crypto.PublicKey import RSA
 from httmock import urlmatch, HTTMock
-from jwkest.jwk import RSAKey
+
+from authlib.jose import JsonWebKey
+from cryptography.hazmat.primitives import serialization
 
 from app import app, authentication
 from data import model
@@ -150,10 +151,13 @@ class OAuthLoginTestCase(EndpointTestCase):
             )
 
     def _get_oidc_mocks(self):
-        private_key = RSA.generate(2048)
-        generatedjwk = RSAKey(key=private_key.publickey()).serialize()
         kid = "somekey"
-        private_pem = private_key.exportKey("PEM")
+        generatedjwk = JsonWebKey.generate_key("RSA", 2048, is_private=True, options={"kid": kid})
+        private_pem = generatedjwk.get_private_key().private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
 
         token_data = {
             "iss": app.config["TESTOIDC_LOGIN_CONFIG"]["OIDC_SERVER"],
@@ -190,7 +194,7 @@ class OAuthLoginTestCase(EndpointTestCase):
 
         @urlmatch(netloc=r"fakeoidc", path="/jwks")
         def jwks_handler(_, __):
-            jwk = generatedjwk.copy()
+            jwk = generatedjwk.as_dict().copy()
             jwk.update({"kid": kid})
 
             content = {"keys": [jwk]}

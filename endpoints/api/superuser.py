@@ -11,6 +11,8 @@ from random import SystemRandom
 
 from flask import request, make_response, jsonify
 
+from cryptography.hazmat.primitives import serialization
+
 import features
 
 from app import app, avatar, superusers, authentication, config_provider
@@ -687,13 +689,24 @@ class SuperUserServiceKeyManagement(ApiResource):
             log_action("service_key_create", None, key_log_metadata)
             log_action("service_key_approve", None, key_log_metadata)
 
+            public_pem = private_key.public_key().public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+
+            private_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+
             return jsonify(
                 {
                     "kid": key_id,
                     "name": key_name,
                     "service": body["service"],
-                    "public_key": private_key.publickey().exportKey("PEM").decode("ascii"),
-                    "private_key": private_key.exportKey("PEM").decode("ascii"),
+                    "public_key": public_pem.decode("ascii"),
+                    "private_key": private_pem.decode("ascii"),
                 }
             )
 

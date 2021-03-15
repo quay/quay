@@ -74,7 +74,7 @@ _TEST_RESPONSE = {
                     "kinesis_stream_config": {
                         "aws_access_key": "some key",
                         "aws_secret_key": "some secret",
-                        "aws_region": "some region",
+                        "aws_region": "some-region-1",
                     },
                 },
             },
