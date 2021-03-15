@@ -73,4 +73,8 @@ def manifest_security_backfill_status():
     manifest_count = Manifest.select().count()
     mss_count = ManifestSecurityStatus.select().count()
 
-    return jsonify({"backfill_percent": mss_count / float(manifest_count)})
+    if manifest_count == 0:
+        percent = 1.0
+    else:
+        percent = mss_count / float(manifest_count)
+    return jsonify({"backfill_percent": round(percent * 100, 2)})
