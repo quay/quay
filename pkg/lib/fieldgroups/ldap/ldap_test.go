@@ -31,7 +31,7 @@ func TestValidateLDAP(t *testing.T) {
 				"LDAP_ADMIN_DN":     "cn=read-only-admin,dc=example,dc=com",
 				"LDAP_ADMIN_PASSWD": "password",
 				"LDAP_USER_RDN":     []interface{}{},
-				"LDAP_USER_FILTER":  "(dc=example)",
+				"LDAP_USER_FILTER":  "(uid=newton)",
 			},
 			want: "valid",
 		},
