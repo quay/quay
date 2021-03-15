@@ -1,3 +1,13 @@
+### v3.4.3
+
+**Fixed**
+- Fix Quay security scanning backfill API (PROJQUAY-1613)[https://issues.redhat.com/browse/PROJQUAY-1613]
+- Fix Quay Operator handling of provided certificates related to BUILDMAN_HOSTNAME (PROJQUAY-1577)[https://issues.redhat.com/browse/PROJQUAY-1577]
+- Fix Clair python language matching (PROJQUAY-1692)[https://issues.redhat.com/browse/PROJQUAY-1692]
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+
 
 ### v3.4.2
 
