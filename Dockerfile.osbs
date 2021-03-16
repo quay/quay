@@ -1,4 +1,4 @@
-FROM registry.redhat.io/ubi8:8.2 AS build-npm
+FROM registry.redhat.io/ubi8:latest AS build-npm
 
 COPY $REMOTE_SOURCE $REMOTE_SOURCE_DIR
 WORKDIR $REMOTE_SOURCE_DIR/app
@@ -41,11 +41,11 @@ RUN cd source/pushgateway && \
     go build
 
 
-FROM registry.redhat.io/ubi8:8.2
+FROM registry.redhat.io/ubi8:latest
 
 LABEL com.redhat.component="quay-registry-container"
-LABEL name="quay/quay"
-LABEL version="v3.4.0"
+LABEL name="quay/quay-rhel8"
+LABEL version="v3.5.0"
 LABEL io.k8s.display-name="Red Hat Quay"
 LABEL io.k8s.description="Red Hat Quay"
 LABEL summary="Red Hat Quay"
@@ -86,7 +86,6 @@ RUN INSTALL_PKGS="\
         memcached \
         openssl \
         skopeo \
-        nodejs \
         python38-devel \
         libffi-devel \
         openssl-devel \
