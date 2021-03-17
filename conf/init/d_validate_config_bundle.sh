@@ -9,8 +9,7 @@ config-tool validate -c $QUAYCONF/stack/ --mode online
 
 status=$?
 
-if [ -z "${IGNORE_VALIDATION}"]
-then
+if [ -z "${IGNORE_VALIDATION}" ]; then
     exit $status
 else
     exit 0
