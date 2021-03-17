@@ -269,7 +269,7 @@ angular.module("quay-config")
           config["BITTORRENT_FILENAME_PEPPER"] = generateDatabaseSecretKey();
           config["FEATURE_ACI_CONVERSION"] = false;
           config["USE_CDN"] = false;
-          config["USERFILES_LOCATION"] = "default";
+          config["USERFILES_LOCATION"] = config["DISTRIBUTED_STORAGE_PREFERENCE"][0] || Object.keys(config["DISTRIBUTED_STORAGE_CONFIG"])[0] || "default";
           config["TESTING"] = false;
           if (!("FEATURE_REQUIRE_TEAM_INVITE" in config)) {
             config["FEATURE_REQUIRE_TEAM_INVITE"] = true;
