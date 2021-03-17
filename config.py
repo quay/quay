@@ -359,7 +359,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SIGNING = False
 
     # Feature Flag: Whether to enable support for App repositories.
-    FEATURE_APP_REGISTRY = True
+    FEATURE_APP_REGISTRY = False
 
     # Feature Flag: Whether app registry is in a read-only mode.
     FEATURE_READONLY_APP_REGISTRY = False
