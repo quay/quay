@@ -1,7 +1,7 @@
 import logging
 import socket
 
-import boto.rds2
+import boto3.session
 
 from auth.permissions import SuperUserPermission
 from flask import session
@@ -182,21 +182,19 @@ class RDSAwareHealthCheck(HealthCheck):
         Returns the status of the RDS instance as reported by AWS.
         """
         try:
-            region = boto.rds2.connect_to_region(
-                self.region,
+            session = boto3.session.Session(
                 aws_access_key_id=self.access_key,
                 aws_secret_access_key=self.secret_key,
+                region_name=self.region,
             )
+            client = session.client("rds")
+            instances = client.describe_db_instances()["DBInstances"]
+            matches = [i for i in instances if i["DBInstanceIdentifier"] == self.db_instance]
 
-            response = region.describe_db_instances()["DescribeDBInstancesResponse"]
-            result = response["DescribeDBInstancesResult"]
-            instances = [
-                i for i in result["DBInstances"] if i["DBInstanceIdentifier"] == self.db_instance
-            ]
-            if not instances:
+            if not matches:
                 return "error"
 
-            status = instances[0]["DBInstanceStatus"]
+            status = matches[0]["DBInstanceStatus"]
             return status
         except:
             logger.exception("Exception while checking RDS status")
