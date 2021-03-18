@@ -379,6 +379,9 @@ class DefaultConfig(ImmutableConfig):
     # logging in via OIDC or a non-database internal auth provider.
     FEATURE_USERNAME_CONFIRMATION = True
 
+    # Feature Flag: If set to true, Quay will run using FIPS compliant hash functions.
+    FEATURE_FIPS = False
+
     # If a namespace is defined in the public namespace list, then it will appear on *all*
     # user's repository list pages, regardless of whether that user is a member of the namespace.
     # Typically, this is used by an enterprise customer in configuring a set of "well-known"

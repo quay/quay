@@ -1,6 +1,7 @@
 import hashlib
 import math
 import logging
+import features
 
 from requests.exceptions import RequestException
 
@@ -93,7 +94,7 @@ class BaseAvatar(object):
     def get_data_for_external_user(self, external_user):
         return self.get_data(external_user.username, external_user.email, "user")
 
-    def get_data(self, name, email_or_id, kind="user"):
+    def get_data(self, name, email_or_id, kind="user", hash_func=None):
         """Computes and returns the full data block for the avatar:
         {
           'name': name,
@@ -101,13 +102,15 @@ class BaseAvatar(object):
           'color': The color for the avatar
         }
         """
+        if hash_func is None:
+            hash_func = hashlib.sha256
         colors = self.colors
 
         # Note: email_or_id may be None if gotten from external auth when email is disabled,
         # so use the username in that case.
         username_email_or_id = email_or_id or name
         username_email_or_id = Bytes.for_string_or_unicode(username_email_or_id).as_unicode()
-        hash_value = hashlib.md5(username_email_or_id.strip().lower().encode("utf-8")).hexdigest()
+        hash_value = hash_func(username_email_or_id.strip().lower().encode("utf-8")).hexdigest()
 
         byte_count = int(math.ceil(math.log(len(colors), 16)))
         byte_data = hash_value[0:byte_count]
@@ -127,12 +130,19 @@ class GravatarAvatar(BaseAvatar):
     Avatar system that uses gravatar for generating avatars.
     """
 
+    def __init__(self, *args, **kwargs):
+        assert not features.FIPS, "AVATAR_KIND must not be Gravatar in FIPS mode."
+        super().__init__(*args, **kwargs)
+
     def _get_url(self, hash_value, size=16):
         return "%s://www.gravatar.com/avatar/%s?d=404&size=%s" % (
             self.preferred_url_scheme,
             hash_value,
             size,
         )
+
+    def get_data(self, name, email_or_id, kind="user"):
+        return super().get_data(name, email_or_id, kind, hash_func=hashlib.md5)
 
 
 class LocalAvatar(BaseAvatar):
