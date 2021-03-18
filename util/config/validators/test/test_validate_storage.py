@@ -1,6 +1,6 @@
 import pytest
 
-from moto import mock_s3_deprecated as mock_s3
+from moto import mock_s3
 
 from util.config.validator import ValidatorContext
 from util.config.validators import ConfigValidationException
@@ -51,5 +51,5 @@ def test_validate_s3_storage(app):
 
         assert (
             str(ipe.value)
-            == "Invalid storage configuration: default: S3ResponseError: 404 Not Found"
+            == "Invalid storage configuration: default: An error occurred (404) when calling the HeadBucket operation: Not Found"
         )

@@ -6,7 +6,6 @@
 -e git+https://github.com/coreos/py-bitbucket.git#egg=py-bitbucket
 -e git+https://github.com/coreos/resumablehashlib.git#egg=resumablehashlib
 -e git+https://github.com/app-registry/appr-server.git@c2ef3b88afe926a92ef5f2e11e7d4a259e286a17#egg=cnr_server  # naming has changed
--e git+https://github.com/DevTable/boto.git@a6a5c00bd199b1492e99199251b10451970b5b08#egg=boto
 APScheduler
 Authlib
 Flask-Login

@@ -5,16 +5,18 @@ from io import BytesIO
 import pytest
 
 import moto
-import boto
+import botocore.exceptions
+import boto3
 
-from moto import mock_s3_deprecated as mock_s3
+from moto import mock_s3
 
 from storage import S3Storage, StorageContext
 from storage.cloud import _CloudStorage, _PartUploadMetadata
 from storage.cloud import _CHUNKS_KEY
+from storage.cloud import _build_endpoint_url
 
 _TEST_CONTENT = os.urandom(1024)
-_TEST_BUCKET = "some_bucket"
+_TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"
@@ -25,11 +27,26 @@ _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 def storage_engine():
     with mock_s3():
         # Create a test bucket and put some test content.
-        boto.connect_s3().create_bucket(_TEST_BUCKET)
+        boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
         engine = S3Storage(_TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD)
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
 
         yield engine
+
+
+@pytest.mark.parametrize(
+    "hostname, port, is_secure, expected",
+    [
+        pytest.param("somehost", None, False, "http://somehost"),
+        pytest.param("somehost", 8080, False, "http://somehost:8080"),
+        pytest.param("somehost", 8080, True, "https://somehost:8080"),
+        pytest.param("https://somehost.withscheme", None, False, "https://somehost.withscheme"),
+        pytest.param("http://somehost.withscheme", None, True, "http://somehost.withscheme"),
+        pytest.param("somehost.withport:8080", 9090, True, "https://somehost.withport:8080"),
+    ],
+)
+def test_build_endpoint_url(hostname, port, is_secure, expected):
+    assert _build_endpoint_url(hostname, port, is_secure) == expected
 
 
 def test_basicop(storage_engine):
@@ -55,6 +72,26 @@ def test_basicop(storage_engine):
     assert not storage_engine.exists(_TEST_PATH)
 
 
+def test_storage_setup(storage_engine):
+    storage_engine.setup()
+
+
+def test_remove_dir(storage_engine):
+    # Ensure the content exists.
+    assert storage_engine.exists(_TEST_PATH)
+
+    # Verify it can be retrieved.
+    assert storage_engine.get_content(_TEST_PATH) == _TEST_CONTENT
+
+    # Retrieve a checksum for the content.
+    storage_engine.get_checksum(_TEST_PATH)
+
+    # Remove the "directory".
+    storage_engine.remove(_TEST_PATH.split("/")[0])
+
+    assert not storage_engine.exists(_TEST_PATH)
+
+
 @pytest.mark.parametrize(
     "bucket, username, password",
     [
@@ -67,7 +104,7 @@ def test_copy(bucket, username, password, storage_engine):
     another_engine = S3Storage(
         _TEST_CONTEXT, "another/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD
     )
-    boto.connect_s3().create_bucket("another_bucket")
+    boto3.client("s3").create_bucket(Bucket="another_bucket")
     storage_engine.copy_to(another_engine, _TEST_PATH)
 
     # Verify it can be retrieved.
@@ -107,7 +144,9 @@ def test_stream_write_error():
         with pytest.raises(IOError):
             engine.stream_write(_TEST_PATH, BytesIO(b"hello world"), content_type="Cool/Type")
 
-        assert not engine.exists(_TEST_PATH)
+        with pytest.raises(botocore.exceptions.ClientError) as excinfo:
+            engine.exists(_TEST_PATH)
+            assert s3r.value.response["Error"]["Code"] == "NoSuchBucket"
 
 
 @pytest.mark.parametrize(
@@ -115,6 +154,7 @@ def test_stream_write_error():
     [
         0,
         1,
+        2,
         50,
     ],
 )

@@ -2,8 +2,8 @@ import pytest
 
 from contextlib import contextmanager
 from mock import patch
-from moto import mock_s3_deprecated as mock_s3
-import boto
+from moto import mock_s3
+import boto3
 
 from app import config_provider
 from storage import CloudFrontedS3Storage, StorageContext
@@ -12,7 +12,7 @@ from util.ipresolver.test.test_ipresolver import test_aws_ip, aws_ip_range_data,
 from test.fixtures import *
 
 _TEST_CONTENT = os.urandom(1024)
-_TEST_BUCKET = "some_bucket"
+_TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"
@@ -66,7 +66,7 @@ def test_direct_download(
         context = StorageContext("nyc", None, config_provider, ipresolver)
 
         # Create a test bucket and put some test content.
-        boto.connect_s3().create_bucket(_TEST_BUCKET)
+        boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
 
         engine = CloudFrontedS3Storage(
             context,
@@ -99,7 +99,7 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
     context = StorageContext("nyc", None, config_provider, ipresolver)
 
     # Create a test bucket and put some test content.
-    boto.connect_s3().create_bucket(_TEST_BUCKET)
+    boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
 
     engine = CloudFrontedS3Storage(
         context,

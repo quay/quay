@@ -3,10 +3,10 @@ import os
 
 from datetime import datetime, timedelta
 
-import boto
+import boto3
 
 from httmock import urlmatch, HTTMock
-from moto import mock_s3_deprecated as mock_s3
+from moto import mock_s3
 
 from app import storage as test_storage
 from data import model, database
@@ -18,7 +18,7 @@ from test.fixtures import *
 
 
 _TEST_CONTENT = os.urandom(1024)
-_TEST_BUCKET = "some_bucket"
+_TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"
@@ -32,7 +32,7 @@ def storage_engine(request):
     else:
         with mock_s3():
             # Create a test bucket and put some test content.
-            boto.connect_s3().create_bucket(_TEST_BUCKET)
+            boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
             engine = DistributedStorage(
                 {
                     "foo": S3Storage(
@@ -151,16 +151,16 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
     if url.find("http://localhost:5000/exportedlogs/") == 0:
         storage_id = url[len("http://localhost:5000/exportedlogs/") :]
     else:
-        assert (
-            url.find("https://some_bucket.s3.amazonaws.com:443/some/path/exportedactionlogs/") == 0
-        )
+        print("TESTURL:", url)
+        assert url.find("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
         storage_id, _ = url[
-            len("https://some_bucket.s3.amazonaws.com:443/some/path/exportedactionlogs/") :
+            len("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") :
         ].split("?")
 
     created = storage_engine.get_content(
         storage_engine.preferred_locations, "exportedactionlogs/" + storage_id
     )
+    print("TEST DATA:", created)
     created_json = json.loads(created)
 
     if has_logs:
