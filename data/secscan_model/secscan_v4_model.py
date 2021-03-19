@@ -14,6 +14,7 @@ from data.secscan_model.datatypes import (
     SecurityInformation,
     Feature,
     Layer,
+    Metadata,
     Vulnerability,
     PaginatedNotificationResult,
     PaginatedNotificationStatus,
@@ -399,7 +400,13 @@ def features_for(report):
                         vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",
                         vuln["description"],
                         vuln["name"],
-                        None,
+                        Metadata(
+                            vuln["updater"],
+                            vuln.get("repository", {}).get("name"),
+                            vuln.get("repository", {}).get("uri"),
+                            vuln.get("distribution", {}).get("name"),
+                            vuln.get("distribution", {}).get("version"),
+                        ),
                     )
                     for vuln in pkg_vulns
                 ],

@@ -29,6 +29,9 @@ Vulnerability = namedtuple(
     "Vulnerability",
     ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
 )
+Metadata = namedtuple(
+    "Metadata", ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion"]
+)
 Feature = namedtuple(
     "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
 )
@@ -63,7 +66,13 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                 FixedBy=vuln.get("FixedBy", None),
                                 Description=vuln.get("Description", None),
                                 Name=vuln.get("Name", None),
-                                Metadata=vuln.get("Metadata", None),
+                                Metadata=Metadata(
+                                    UpdatedBy=vuln["Metadata"].get("UpdatedBy", None),
+                                    RepoName=vuln["Metadata"].get("RepoName", None),
+                                    RepoLink=vuln["Metadata"].get("RepoLink", None),
+                                    DistroName=vuln["Metadata"].get("DistroName", None),
+                                    DistroVersion=vuln["Metadata"].get("DistroVersion", None),
+                                ),
                             )
                             for vuln in f.get("Vulnerabilities", [])
                         ],
@@ -95,7 +104,13 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                 "FixedBy": v.FixedBy,
                                 "Description": v.Description,
                                 "Name": v.Name,
-                                "Metadata": v.Metadata,
+                                "Metadata": {
+                                    "UpdatedBy": v.Metadata.UpdatedBy,
+                                    "RepoName": v.Metadata.RepoName,
+                                    "RepoLink": v.Metadata.RepoLink,
+                                    "DistroName": v.Metadata.DistroName,
+                                    "DistroVersion": v.Metadata.DistroVersion,
+                                },
                             }
                             for v in f.Vulnerabilities
                         ],
