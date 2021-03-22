@@ -1,28 +1,94 @@
-### master
+### v3.5.0
 
-### solo
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
 
-- Note: built on python3
-- Added: numerous internal performance improvements
-- Fixed: build triggers may disclose robot account names (CVE-2020-14313)
-- Known issue: build manager disabled pending updating to python3 (PROJQUAY-703)
-- Known issue: config app fails to generate clair security.pem (PROJQUAY-850)
+### v3.4.3
 
-### qui-gon
+**Fixed**
+- Fix Quay security scanning backfill API (PROJQUAY-1613)[https://issues.redhat.com/browse/PROJQUAY-1613]
+- Fix Quay Operator handling of provided certificates related to BUILDMAN_HOSTNAME (PROJQUAY-1577)[https://issues.redhat.com/browse/PROJQUAY-1577]
+- Fix Clair python language matching (PROJQUAY-1692)[https://issues.redhat.com/browse/PROJQUAY-1692]
 
-- Fixed: Local storage now works with clair-v4
-- Fixed: Container will correctly initialize database and create first superuser at startup
-- Fixed: Running in config mode now installs mounted TLS certificates
-- Added: Audit logs now contain "user-agent" of request
-- Added: Env vars WORKER_MULTIPLER to adjust number of gunicorn workers
-- Added: Env vars WORKER_CONNECTION_COUNT to adjust database connections per gunicorn worker
-- Added: Added config FEATURE_NAMESPACE_GARBAGE_COLLECTION and FEATURE_REPOSITORY_GARBAGE_COLLECTION
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
 
-### padme
+### v3.4.2
 
-- Added: quay container runs as default user instead of root
-- Fixed: Spaces are ignored in repository mirror list of comma-separated tags
-- Fixed: Repository mirror correctly honors TLS verify off
+**Fixed**
+- Fix clair crash downloading RHEL content mapping
+- Quay config-tool validates SMTP
+- Fix Quay Operator reconciler loop resulting in failed mirror configurations
+- Quay config-tool generates default SECRET_KEY in config bundle if not specified
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+
+### v3.4.1
+
+**Fixed**
+- Quay Bridge Operator and Quay Container Security Operator upgrade to 3.4.0
+- Quay Operator generates correct cert for build manager
+- Quay config editor validates OIDC provider
+- Quay config editor correctly validates MySQL database with SSL
+- Quay Operator documentation link corrected to 3.4
+- Quay config editor no longer requires Time Machine expiration when feature not enabled
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+
+### v3.4.0
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+
+### v3.3.1
+
+**Fixed**
+- Config app installs supplied TLS certs at startup
+- Tech preview clair-v4 correctly reindexes manifests
+- Build triggers may disclose robot account names (CVE-2020-14313)
+
+### v3.3.0
+
+**Added**
+- New clair available as tech preview (see docs)
+- Quay now runs as the default user inside the container instead of as root.
+- New configurable tagging options for builds, including tagging templates and ability to disable default “latest” and tag/branch behavior
+- Configuration UI editing after validating through the “Save Configuration” button.
+- Configuration app now supports configuring Elasticsearch for usage logs (and optionally via Kinesis - Docs should mention logstash or something similar is needed in this case).
+- Ability to configure how long between “fresh login” checks
+- Ability to add an additional filter for LDAP users on lookup
+- Labels with links in them are now clickable to go to the URL
+- The environment variable CONFIG_READ_ONLY_FIELDS can be specified to mark redis or the hostname configuration as read-only in the Quay Configuration Application’s UI. #310
+- (Tech Preview) Support for OCI indexes and manifests
+- (Tech Preview) Support for pushing and pulling charts via Helm V3’s experimental system
+
+**Fixed**
+- Repository mirror tag patterns handle whitespace between comma separated values.
+- Fresh login checks were being used when unnecessary
+- Georeplication from one Azure region to the other now uses the correct bucket and credentials
+- Auth token handling to match recent GitHub API change
+- Repository and namespace deletion now occurs in the background, ensuring they don’t fail
+- No longer return “down converted” manifests on pull-by-digest
+- Tags expiring in the future are now marked correctly as such in the tag history panel
+- A number of performance improvements around various database queries
+- Status codes of various Docker V2 APIs to conform with the spec
+- Repository names now conform to the standard. Only lowercase letters, numbers, underscores, and hyphens are valid.
+- Certificates can now be uploaded in the Quay Configuration Application correctly and used to validate connections to external services (such as LDAP, Persistent Storage) during the configuration process.
+
+**Deprecated**
+- "rkt" conversion: This feature is now marked as deprecated in the Red Hat Quay UI. Expect the feature to be removed completely in the near future.
+- Bittorrent: This feature is deprecated and will not appear in the Red Hat Quay UI unless it is already configured in an existing Red Hat Quay config.yaml. This feature will be removed in the next version of Quay.
+- V1 Push Support: Docker V1 protocol support has been officially deprecated. Expect this feature to be removed in the next near future.
+- Squashed image support: This feature is deprecated. This feature will be removed in the next version of Quay.
+- images API: This API is deprecated and replaced by the manifest APIs. Expect this API to be removed completely in the near future.
+
+**Reminder**
+- Do not use "Locally mounted directory" Storage Engine for any production configurations. Mounted NFS volumes are not supported. Local storage is meant for test-only installations.
+
+**Known Issues**
+- Containers running as repository mirrors may lock under certain conditions; restart the containers as needed.
 
 ### v3.2.0
 
