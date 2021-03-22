@@ -2,8 +2,8 @@
   <div class="required-plan" ng-show="isEnabled && planRequired && planRequired.title">
     <div class="co-alert co-alert-warning thin">
       In order to make this repository private under
-      <strong ng-if="isUserNamespace">your personal namespace</strong>
-      <strong ng-if="!isUserNamespace">{{ namespace }}</strong>, you will need to upgrade the namespace's plan to at least a
+      <strong ng-if="isUserNamespace">your personal namespace</strong><strong ng-if="!isUserNamespace">{{ namespace }}</strong>, 
+      you will need to upgrade the namespace's plan to at least a
       <b style="border-bottom: 1px dotted black; cursor: default" data-html="true"
          data-title="{{ '<b>' + planRequired.title + '</b><br>' + planRequired.privateRepos + ' private repositories' }}" bs-tooltip>{{ planRequired.title  }}</b> plan.
       </div>
