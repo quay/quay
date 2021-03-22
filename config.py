@@ -729,11 +729,11 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_CLEAR_EXPIRED_RAC_ENTRIES = False
 
     # Feature Flag: Whether OCI manifest support should be enabled generally.
-    FEATURE_GENERAL_OCI_SUPPORT = False
+    FEATURE_GENERAL_OCI_SUPPORT = True
 
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
-    FEATURE_HELM_OCI_SUPPORT = False
+    FEATURE_HELM_OCI_SUPPORT = True
 
     # The set of hostnames disallowed from webhooks, beyond localhost (which will
     # not work due to running inside a container).
