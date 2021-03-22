@@ -24,6 +24,7 @@ from endpoints.api import (
     disallow_for_app_repositories,
     deprecated,
 )
+from endpoints.decorators import anon_allowed
 from endpoints.exception import NotFound, DownstreamIssue
 from endpoints.api.manifest import MANIFEST_DIGEST_ROUTE
 from util.parsing import truthy_bool
@@ -86,6 +87,7 @@ class RepositoryImageSecurity(RepositoryParamResource):
     """
 
     @process_basic_auth_no_pass
+    @anon_allowed
     @require_repo_read
     @nickname("getRepoImageSecurity")
     @deprecated()
@@ -119,6 +121,7 @@ class RepositoryManifestSecurity(RepositoryParamResource):
     """
 
     @process_basic_auth_no_pass
+    @anon_allowed
     @require_repo_read
     @nickname("getRepoManifestSecurity")
     @disallow_for_app_repositories
