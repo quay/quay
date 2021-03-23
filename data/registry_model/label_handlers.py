@@ -5,6 +5,9 @@ from util.timedeltastring import convert_to_timedelta
 logger = logging.getLogger(__name__)
 
 
+LABEL_EXPIRY_KEY = "quay.expires-after"
+
+
 def _expires_after(label_dict, manifest, model):
     """
     Sets the expiration of a manifest based on the quay.expires-in label.
@@ -21,7 +24,7 @@ def _expires_after(label_dict, manifest, model):
 
 
 _LABEL_HANDLERS = {
-    "quay.expires-after": _expires_after,
+    LABEL_EXPIRY_KEY: _expires_after,
 }
 
 
