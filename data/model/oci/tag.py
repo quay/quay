@@ -24,7 +24,6 @@ from data.database import (
     ExternalNotificationEvent,
     db_random_func,
 )
-from data.model.oci.shared import get_legacy_image_for_manifest
 from data.model import config
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
@@ -300,6 +299,7 @@ def retarget_tag(
     is_reversion=False,
     now_ms=None,
     raise_on_error=False,
+    expiration_seconds=None,
 ):
     """
     Creates or updates a tag with the specified name to point to the given manifest under its
@@ -342,7 +342,6 @@ def retarget_tag(
 
             return None
 
-    legacy_image = get_legacy_image_for_manifest(manifest)
     now_ms = now_ms or get_epoch_timestamp_ms()
     now_ts = int(now_ms // 1000)
 
@@ -362,6 +361,7 @@ def retarget_tag(
             name=tag_name,
             repository=manifest.repository_id,
             lifetime_start_ms=now_ms,
+            lifetime_end_ms=(now_ms + expiration_seconds * 1000) if expiration_seconds else None,
             reversion=is_reversion,
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
