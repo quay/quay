@@ -31,7 +31,7 @@ from data.registry_model.datatypes import (
     RepositoryReference,
     ManifestLayer,
 )
-from data.registry_model.label_handlers import apply_label_to_manifest
+from data.registry_model.label_handlers import apply_label_to_manifest, LABEL_EXPIRY_KEY
 from data.registry_model.shared import SyntheticIDHandler
 from image.shared import ManifestException
 from image.docker.schema1 import (
@@ -39,6 +39,7 @@ from image.docker.schema1 import (
     DockerSchema1ManifestBuilder,
 )
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
+from util.timedeltastring import convert_to_timedelta
 
 
 logger = logging.getLogger(__name__)
@@ -361,26 +362,55 @@ class OCIModel(RegistryDataInterface):
             if created_manifest is None:
                 return (None, None)
 
+            wrapped_manifest = Manifest.for_manifest(
+                created_manifest.manifest, self._legacy_image_id_handler
+            )
+
+            # Optional expiration label
+            # NOTE: Since there is currently only one special label on a manifest that has an effect on its tags (expiration),
+            #       it is just simpler to set that value at tag creation time (plus it saves an additional query).
+            #       If we were to define more of these "special" labels in the future, we should use the handlers from
+            #       data/registry_model/label_handlers.py
+            if not created_manifest.newly_created:
+                label_dict = next(
+                    (
+                        label.asdict()
+                        for label in self.list_manifest_labels(
+                            wrapped_manifest,
+                            key_prefix="quay",
+                        )
+                        if label.key == LABEL_EXPIRY_KEY
+                    ),
+                    None,
+                )
+            else:
+                label_dict = next(
+                    (
+                        dict(key=label_key, value=label_value)
+                        for label_key, label_value in created_manifest.labels_to_apply.items()
+                        if label_key == LABEL_EXPIRY_KEY
+                    ),
+                    None,
+                )
+
+            expiration_seconds = None
+
+            if label_dict is not None:
+                try:
+                    expiration_td = convert_to_timedelta(label_dict["value"])
+                    expiration_seconds = expiration_td.total_seconds()
+                except ValueError:
+                    pass
+
             # Re-target the tag to it.
             tag = oci.tag.retarget_tag(
                 tag_name,
                 created_manifest.manifest,
                 raise_on_error=raise_on_error,
+                expiration_seconds=expiration_seconds,
             )
             if tag is None:
                 return (None, None)
-
-            wrapped_manifest = Manifest.for_manifest(
-                created_manifest.manifest, self._legacy_image_id_handler
-            )
-
-            # Apply any labels that should modify the created tag.
-            if created_manifest.labels_to_apply:
-                for key, value in created_manifest.labels_to_apply.items():
-                    apply_label_to_manifest(dict(key=key, value=value), wrapped_manifest, self)
-
-                # Reload the tag in case any updates were applied.
-                tag = database.Tag.get(id=tag.id)
 
             return (
                 wrapped_manifest,
@@ -439,7 +469,34 @@ class OCIModel(RegistryDataInterface):
 
                     manifest_id = created.manifest.id
 
-            tag = oci.tag.retarget_tag(tag_name, manifest_id, is_reversion=is_reversion)
+            label_dict = next(
+                (
+                    label.asdict()
+                    for label in self.list_manifest_labels(
+                        manifest,
+                        key_prefix="quay",
+                    )
+                    if label.key == LABEL_EXPIRY_KEY
+                ),
+                None,
+            )
+
+            expiration_seconds = None
+
+            if label_dict is not None:
+                try:
+                    expiration_td = convert_to_timedelta(label_dict["value"])
+                    expiration_seconds = expiration_td.total_seconds()
+                except ValueError:
+                    pass
+
+            tag = oci.tag.retarget_tag(
+                tag_name,
+                manifest_id,
+                is_reversion=is_reversion,
+                expiration_seconds=expiration_seconds,
+            )
+
             return Tag.for_tag(tag, self._legacy_image_id_handler)
 
     def delete_tag(self, repository_ref, tag_name):

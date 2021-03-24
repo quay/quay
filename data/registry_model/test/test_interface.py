@@ -743,6 +743,69 @@ def test_create_manifest_and_retarget_tag_with_labels(registry_model):
     # Ensure the labels were applied.
     assert tag.lifetime_end_ms is not None
 
+    # Create another tag and retarget it to an existing manifest; it should have an end date.
+    # This is from a Quay's tag api, so it will not attempt to create a manifest first.
+    yet_another_tag = registry_model.retarget_tag(
+        repository_ref, "yet_another_tag", another_manifest, storage, docker_v2_signing_key
+    )
+    assert yet_another_tag.lifetime_end_ms is not None
+
+
+def test_create_manifest_and_retarget_tag_with_labels_with_existing_manifest(oci_model):
+    # Create a config blob for testing.
+    config_json = json.dumps(
+        {
+            "config": {
+                "Labels": {
+                    "quay.expires-after": "2w",
+                },
+            },
+            "rootfs": {"type": "layers", "diff_ids": []},
+            "history": [
+                {
+                    "created": "2018-04-03T18:37:09.284840891Z",
+                    "created_by": "do something",
+                },
+            ],
+        }
+    )
+
+    app_config = {"TESTING": True}
+    repository_ref = oci_model.lookup_repository("devtable", "simple")
+    with upload_blob(repository_ref, storage, BlobUploadSettings(500, 500)) as upload:
+        upload.upload_chunk(app_config, BytesIO(config_json.encode("utf-8")))
+        blob = upload.commit_to_blob(app_config)
+
+    # Create the manifest in the repo.
+    builder = DockerSchema2ManifestBuilder()
+    builder.set_config_digest(blob.digest, blob.compressed_size)
+    builder.add_layer("sha256:abcd", 1234, urls=["http://hello/world"])
+    manifest = builder.build()
+
+    some_manifest, some_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "some_tag", storage
+    )
+    assert some_manifest is not None
+    assert some_tag is not None
+    assert some_tag.lifetime_end_ms is not None
+
+    # Create tag and retarget it to an existing manifest; it should have an end date.
+    # This is from a push, so it will attempt to create a manifest first.
+    some_other_manifest, some_other_tag = oci_model.create_manifest_and_retarget_tag(
+        repository_ref, manifest, "some_other_tag", storage
+    )
+    assert some_other_manifest is not None
+    assert some_other_manifest == some_manifest
+    assert some_other_tag is not None
+    assert some_other_tag.lifetime_end_ms is not None
+
+    # Create another tag and retarget it to an existing manifest; it should have an end date.
+    # This is from a Quay's tag api, so it will not attempt to create a manifest first.
+    yet_another_tag = oci_model.retarget_tag(
+        repository_ref, "yet_another_tag", some_other_manifest, storage, docker_v2_signing_key
+    )
+    assert yet_another_tag.lifetime_end_ms is not None
+
 
 def _populate_blob(digest):
     location = ImageStorageLocation.get(name="local_us")
