@@ -713,8 +713,8 @@ class S3Storage(_CloudStorage):
         upload_params = {"ServerSideEncryption": "AES256"}
         connect_kwargs = {}
         if host or endpoint_url:
-            connect_kwargs["endpoint_url"] = (
-                endpoint_url or _build_endpoint_url(host, port=port, is_secure=True),
+            connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
+                host, port=port, is_secure=True
             )
 
         super(S3Storage, self).__init__(
