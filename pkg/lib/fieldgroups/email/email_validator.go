@@ -84,7 +84,7 @@ func (fg *EmailFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 			newError := shared.ValidationError{
 				Tags:       []string{"MAIL_SERVER"},
 				FieldGroup: fgName,
-				Message:    "You must enable tls if you wish to use plain auth credentials. Error: " + err.Error(),
+				Message:    "Error: " + err.Error(),
 			}
 			errors = append(errors, newError)
 			return errors

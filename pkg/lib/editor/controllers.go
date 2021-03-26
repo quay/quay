@@ -238,9 +238,11 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 				continue
 			}
 
-			fields := newConfig[fieldGroup].Fields()
-			for _, field := range fields {
-				delete(configBundle.Config, field)
+			if fg, ok := newConfig[fieldGroup]; ok {
+				fields := fg.Fields()
+				for _, field := range fields {
+					delete(configBundle.Config, field)
+				}
 			}
 		}
 
