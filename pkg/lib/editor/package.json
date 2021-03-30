@@ -33,6 +33,7 @@
     "highlight.js": "^9.12.0",
     "jquery": "1.12.4",
     "js-yaml": "^3.14.0",
+    "jsrsasign": "^10.1.13",
     "jszip": "^3.5.0",
     "moment": "^2.10",
     "moment-timezone": "^0.4.0",

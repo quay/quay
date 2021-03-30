@@ -1,6 +1,7 @@
 import * as URI from 'urijs';
 import * as angular from 'angular';
 const forge = require('node-forge')
+import { X509 } from "jsrsasign"
 const JSZip = require('jszip')
 const yaml = require('js-yaml')
 const uuid = require('uuid')
@@ -1502,12 +1503,34 @@ angular.module("quay-config")
                   error: null,
                 };
               } catch (err) {
-                return {
-                  path: filename,
-                  names: [],
-                  expired: null,
-                  error: err,
-                };
+                // Retry with new library
+                try {
+                  const c = new X509();
+                  c.readCertPEM(atob(contents));
+                  const current = new Date();
+                  const expired = current > new Date(c.getNotAfter());
+                  let names = c
+                    .getSubjectString()
+                    .split("/")
+                    .filter((attr) => attr.startsWith("CN"))
+                    .map((cn) => cn.split("=")[1]);
+                  if (c.getExtSubjectAltName2() != undefined) {
+                    names.concat(c.getExtSubjectAltName2().map((v) => v[1]));
+                  }
+                  return {
+                    path: filename,
+                    names: names,
+                    expired: expired,
+                    error: null,
+                  };
+                } catch(_) {
+                    return {
+                      path: filename,
+                      names: [],
+                      expired: null,
+                      error: err,
+                    };
+                }
               }
             });
           $scope.certsUploading = false;
