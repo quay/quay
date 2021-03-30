@@ -27,6 +27,7 @@ from data.database import (
     ManifestBlob,
     UploadedBlob,
 )
+from util.metrics.prometheus import gc_table_rows_deleted, gc_storage_blobs_deleted
 
 logger = logging.getLogger(__name__)
 
@@ -191,24 +192,42 @@ def garbage_collect_storage(storage_id_whitelist):
             )
 
             # Remove the placements for orphaned storages
+            deleted_image_storage_placement = 0
             if placements_to_remove:
-                ImageStoragePlacement.delete().where(
-                    ImageStoragePlacement.storage == storage_id_to_check
-                ).execute()
+                deleted_image_storage_placement = (
+                    ImageStoragePlacement.delete()
+                    .where(ImageStoragePlacement.storage == storage_id_to_check)
+                    .execute()
+                )
 
             # Remove all orphaned storages
-            TorrentInfo.delete().where(TorrentInfo.storage == storage_id_to_check).execute()
+            deleted_torrent_info = (
+                TorrentInfo.delete().where(TorrentInfo.storage == storage_id_to_check).execute()
+            )
 
-            ImageStorageSignature.delete().where(
-                ImageStorageSignature.storage == storage_id_to_check
-            ).execute()
+            deleted_image_storage_signature = (
+                ImageStorageSignature.delete()
+                .where(ImageStorageSignature.storage == storage_id_to_check)
+                .execute()
+            )
 
-            ImageStorage.delete().where(ImageStorage.id == storage_id_to_check).execute()
+            deleted_image_storage = (
+                ImageStorage.delete().where(ImageStorage.id == storage_id_to_check).execute()
+            )
 
             # Determine the paths to remove. We cannot simply remove all paths matching storages, as CAS
             # can share the same path. We further filter these paths by checking for any storages still in
             # the database with the same content checksum.
             paths_to_remove.extend(placements_to_filtered_paths_set(placements_to_remove))
+
+        gc_table_rows_deleted.labels(table="TorrentInfo").inc(deleted_torrent_info)
+        gc_table_rows_deleted.labels(table="ImageStorageSignature").inc(
+            deleted_image_storage_signature
+        )
+        gc_table_rows_deleted.labels(table="ImageStorage").inc(deleted_image_storage)
+        gc_table_rows_deleted.labels(table="ImageStoragePlacement").inc(
+            deleted_image_storage_placement
+        )
 
     # We are going to make the conscious decision to not delete image storage blobs inside
     # transactions.
@@ -230,6 +249,7 @@ def garbage_collect_storage(storage_id_whitelist):
 
         logger.debug("Removing %s from %s", image_path, location_name)
         config.store.remove({location_name}, image_path)
+        gc_storage_blobs_deleted.inc()
 
     return orphaned_storage_ids
 
