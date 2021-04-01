@@ -14,7 +14,6 @@
     "analyze": "npm run clean && NODE_ENV=production webpack --profile --mode=production --json > static/build/stats.json && webpack-bundle-analyzer --mode static -r static/build/report.html static/build/stats.json",
     "clean": "rm -f static/build/*",
     "clean-config-app": "rm -f config_app/static/build/*",
-    "watch-config-app": "npm run clean-config-app && cd config_app && webpack --watch --mode=development",
     "build-config-app": "npm run clean-config-app && cd config_app && NODE_ENV=production webpack --mode=production --progress"
   },
   "repository": {
@@ -83,10 +82,8 @@
     "ts-node": "^3.0.6",
     "tslint": "^5.4.3",
     "typescript": "3.6.3",
-    "url-loader": "^4.1.1",
     "webpack": "4.41.0",
     "webpack-bundle-analyzer": "3.5.2",
     "webpack-cli": "3.3.9"
   }
 }
-
