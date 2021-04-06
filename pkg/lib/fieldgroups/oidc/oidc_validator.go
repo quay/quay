@@ -65,9 +65,7 @@ func (fg *OIDCFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 		tr := &http.Transport{TLSClientConfig: config}
 		client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
 
-		// Create http client context
-		ctx := context.Background()
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, client)
+		ctx := goOIDC.ClientContext(context.Background(), client)
 
 		if !strings.HasSuffix(provider.OIDCServer, "/") {
 			newError := shared.ValidationError{
