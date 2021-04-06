@@ -380,6 +380,8 @@ class _CloudStorage(BaseStorageV2):
                     )
                     write_error = e
 
+                    multipart_uploads_completed.inc()
+
                     if cancel_on_error:
                         try:
                             mp.abort()
@@ -398,8 +400,6 @@ class _CloudStorage(BaseStorageV2):
                     "Parts": [{"ETag": p.e_tag, "PartNumber": p.part_number} for p in upload_parts],
                 },
             )
-        else:
-            mp.abort()
 
         return total_bytes_written, write_error
 
@@ -711,10 +711,10 @@ class S3Storage(_CloudStorage):
         endpoint_url=None,
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
-        connect_kwargs = {}
+        connect_kwargs = {"config": Config(signature_version="s3v4")}
         if host or endpoint_url:
-            connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
-                host, port=port, is_secure=True
+            connect_kwargs["endpoint_url"] = (
+                endpoint_url or _build_endpoint_url(host, port=port, is_secure=True),
             )
 
         super(S3Storage, self).__init__(
