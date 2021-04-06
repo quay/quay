@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 POLL_PERIOD_SECONDS = 60
-REPOSITORY_GC_TIMEOUT = 60 * 15  # 15 minutes
-LOCK_TIMEOUT_PADDING = 60  # seconds
+REPOSITORY_GC_TIMEOUT = 24 * 60 * 60  # 24h
+LOCK_TIMEOUT_PADDING = 60  # 60 seconds
 
 
 class RepositoryGCWorker(QueueWorker):

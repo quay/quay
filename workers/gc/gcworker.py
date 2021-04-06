@@ -16,8 +16,8 @@ from util.locking import GlobalLock, LockNotAcquiredException
 
 logger = logging.getLogger(__name__)
 
-REPOSITORY_GC_TIMEOUT = 15 * 60  # 15 minutes
-LOCK_TIMEOUT_PADDING = 60  # seconds
+REPOSITORY_GC_TIMEOUT = 24 * 60 * 60  # 24h
+LOCK_TIMEOUT_PADDING = 60  # 60 seconds
 
 
 @contextmanager
