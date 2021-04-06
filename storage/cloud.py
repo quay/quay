@@ -11,6 +11,7 @@ from uuid import uuid4
 import botocore.config
 import botocore.exceptions
 import boto3.session
+from botocore.client import Config
 
 from botocore.signers import CloudFrontSigner
 from cachetools.func import lru_cache
@@ -711,7 +712,7 @@ class S3Storage(_CloudStorage):
         endpoint_url=None,
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
-        connect_kwargs = {}
+        connect_kwargs = {"config": Config(signature_version="s3v4")}
         if host or endpoint_url:
             connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
                 host, port=port, is_secure=True
