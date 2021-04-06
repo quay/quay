@@ -14,6 +14,10 @@ class LockNotAcquiredException(Exception):
     """
 
 
+# TODO(kleesc): GlobalLock should either renew the lock until the caller is done,
+# or signal that it is no longer valid to the caller. Currently, GlobalLock will
+# just silently expire the redis key, making the lock available again while any
+# ongoing job in a GlobalLock context will still be running
 class GlobalLock(object):
     """
     A lock object that blocks globally via Redis.
@@ -43,7 +47,7 @@ class GlobalLock(object):
         logger.debug("Acquiring global lock %s", self._lock_name)
         try:
             self._redlock = RedLock(
-                self._lock_name, connection_details=[self._redis_info], ttl=self._lock_ttl
+                self._lock_name, connection_details=[self._redis_info], ttl=self._lock_ttl * 1000
             )
             acquired = self._redlock.acquire()
             if not acquired:
