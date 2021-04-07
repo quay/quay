@@ -1,0 +1,30 @@
+style: github
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://github.com/quay/quay
+options:
+  tag_sort_by: semver
+  commits:
+    sort_by: Scope
+  commit_groups:
+    group_by: Scope
+  header:
+    pattern: '^(.*):\s*(.*)$'
+    pattern_maps:
+      - Scope
+      - Subject
+  issues:
+    prefix:
+      - "#"
+
+  refs:
+    actions:
+      - Closes
+      - Fixes
+      - PullRequest
+
+  notes:
+    keywords:
+      - BREAKING CHANGE
+      - NOTE
