@@ -31,7 +31,7 @@ jobs:
     - name: Check Formatting (Black)
       run: |
         black --line-length=100 --target-version=py38 --check --diff .
-      
+
     - name: Check Formatting (Flake8)
       run: |
         # The code-base needs to be cleaned up. There are too many Flake8
@@ -178,3 +178,19 @@ jobs:
 
     - name: conformance
       run: TEST=true PYTHONPATH=. pytest test/registry/conformance_tests.py -s -vv
+
+  commit-check:
+    name: Commit Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: commit check
+        uses: gsactions/commit-message-checker@v1
+        with:
+          pattern: |
+            ^(.*):\s*(.*)\s\(PROJQUAY-[0-9]+\)(\n.*)*$
+          error: 'Commit must begin with <scope>: <subject> (PROJQUAY-####)'
+          flags: 'gm'
+          excludeTitle: true
+          excludeDescription: true
+          checkAllCommitMessages: true
+          accessToken: ${{ secrets.GITHUB_TOKEN }}
