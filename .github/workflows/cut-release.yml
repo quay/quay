@@ -29,24 +29,18 @@ jobs:
         run: |
           git archive --prefix "${PREFIX}" -o release.tar "${GITHUB_REF}"
           gzip release.tar
-      - name: Changelog
-        env:
-          exe: /tmp/git-chlog
-          pattern: '[0-9]{4}\.[0-9]{2}\.[0-9]{2}'
+      - name: ChangeLog
+        shell: bash
         run: |
-          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
-            echo "workflow trigger, skipping"
-            touch changelog
-            exit 0
-          fi
-          curl -o "${exe}" -fsSL\
-            https://github.com/git-chglog/git-chglog/releases/download/0.9.1/git-chglog_linux_amd64
-          chmod u+x "${exe}"
+          #if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+          #  echo "workflow trigger, skipping"
+          #  touch changelog
+          #  exit 0
+          #fi
+          curl -o /tmp/git-chglog -L https://github.com/ldelossa/git-chglog/releases/download/v0.11.2-sortbysemver/linux.amd64.git-chglog
+          chmod u+x /tmp/git-chglog
           echo "creating change log for tag: $TAG"
-          "${exe}"\
-            --tag-filter-pattern "${pattern}"\
-            "${TAG}"\
-            > changelog
+          /tmp/git-chglog --tag-filter-pattern "v3.*" "${TAG}" > changelog
       - name: Upload Release Archive
         uses: actions/upload-artifact@v2
         with:
