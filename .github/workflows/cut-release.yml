@@ -40,7 +40,7 @@ jobs:
           curl -o /tmp/git-chglog -L https://github.com/ldelossa/git-chglog/releases/download/v0.11.2-sortbysemver/linux.amd64.git-chglog
           chmod u+x /tmp/git-chglog
           echo "creating change log for tag: $TAG"
-          /tmp/git-chglog "${TAG}" > changelog
+          /tmp/git-chglog --tag-filter-pattern "v3.*" "${TAG}" > changelog
       - name: Upload Release Archive
         uses: actions/upload-artifact@v2
         with:
