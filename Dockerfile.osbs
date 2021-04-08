@@ -49,7 +49,8 @@ LABEL version="v3.5.0"
 LABEL io.k8s.display-name="Red Hat Quay"
 LABEL io.k8s.description="Red Hat Quay"
 LABEL summary="Red Hat Quay"
-LABEL maintainer "support@redhat.com"
+LABEL maintainer="support@redhat.com"
+ENV RED_HAT_QUAY=true
 
 ENV PYTHON_VERSION=3.8 \
     PYTHON_ROOT=/usr/local/lib/python3.8 \
