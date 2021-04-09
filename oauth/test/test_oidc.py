@@ -94,6 +94,7 @@ def app_config(http_client, mailing_feature):
             "OIDC_ENDPOINT_CUSTOM_PARAMS": {"authorization_endpoint": {"some": "param",},},
         },
         "HTTPCLIENT": http_client,
+        "TESTING": True,
     }
 
 
@@ -179,6 +180,9 @@ def authorize_handler(discovery_content):
 def token_handler(oidc_service, id_token, valid_code):
     @urlmatch(netloc=r"fakeoidc", path=r"/token")
     def handler(_, request):
+        if int(request.headers["X-Quay-Retry-Attempts"]) < 2:
+            raise requests.ConnectionError
+
         params = urlparse.parse_qs(request.body)
         if params.get("redirect_uri")[0] != "http://localhost/oauth2/someoidc/callback":
             return {"status_code": 400, "content": "Invalid redirect URI"}
