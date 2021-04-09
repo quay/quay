@@ -5,7 +5,6 @@ on:
   push:
     tags:
       - v3.*
-  workflow_dispatch: {}  # This puts a button in the UI for testing.
 
 jobs:
   release-archive:
@@ -32,15 +31,10 @@ jobs:
       - name: ChangeLog
         shell: bash
         run: |
-          #if [ "${{ github.event_name }}" = workflow_dispatch ]; then
-          #  echo "workflow trigger, skipping"
-          #  touch changelog
-          #  exit 0
-          #fi
-          curl -o /tmp/git-chglog -L https://github.com/ldelossa/git-chglog/releases/download/v0.11.2-sortbysemver/linux.amd64.git-chglog
+          curl -o /tmp/git-chglog -L https://github.com/git-chglog/git-chglog/releases/download/v0.14.0/linux.amd64.git-chglog
           chmod u+x /tmp/git-chglog
           echo "creating change log for tag: $TAG"
-          /tmp/git-chglog --tag-filter-pattern "v3.*" "${TAG}" > changelog
+          /tmp/git-chglog --tag-filter-pattern "v3.*" -o CHANGELOG.md v3.6.0-alpha.4..
       - name: Upload Release Archive
         uses: actions/upload-artifact@v2
         with:
