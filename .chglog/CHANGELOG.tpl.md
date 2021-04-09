@@ -45,7 +45,6 @@
 {{ end -}}
 {{ end -}}
 {{ end -}}
-{{ end -}}
 
 ## Historical Changelog
 [CHANGELOG.md](https://github.com/quay/quay/blob/96b17b8338fb10ca2ed12e9bc920dcbba148289c/CHANGELOG.md)
