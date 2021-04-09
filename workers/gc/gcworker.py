@@ -13,6 +13,7 @@ from data.model.gc import garbage_collect_repo
 from workers.worker import Worker
 from util.locking import GlobalLock, LockNotAcquiredException
 from workers.gunicorn_worker import GunicornWorker
+from util.metrics.prometheus import gc_iterations
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class GarbageCollectionWorker(Worker):
                     except Repository.DoesNotExist:
                         return
 
+                    gc_iterations.inc()
                     logger.debug(
                         "Starting GC of repository #%s (%s)", repository.id, repository.name
                     )

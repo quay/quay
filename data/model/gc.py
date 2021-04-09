@@ -38,6 +38,8 @@ from data.database import (
     DerivedStorageForImage,
 )
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
+from util.metrics.prometheus import gc_table_rows_deleted
+
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +95,13 @@ def purge_repository(repo, force=False):
     # Note that new-model Tag's must be deleted in *two* passes, as they can reference parent tags,
     # and MySQL is... particular... about such relationships when deleting.
     if repo.kind.name == "application":
-        ApprTag.delete().where(ApprTag.repository == repo, ~(ApprTag.linked_tag >> None)).execute()
-        ApprTag.delete().where(ApprTag.repository == repo).execute()
+        fst_pass = (
+            ApprTag.delete()
+            .where(ApprTag.repository == repo, ~(ApprTag.linked_tag >> None))
+            .execute()
+        )
+        snd_pass = ApprTag.delete().where(ApprTag.repository == repo).execute()
+        gc_table_rows_deleted.labels(table="ApprTag").inc(fst_pass + snd_pass)
     else:
         # GC to remove the images and storage.
         _purge_repository_contents(repo)
@@ -372,10 +379,15 @@ def _purge_oci_tag(tag, context, allow_non_expired=False):
             return False
 
         # Delete mapping rows.
-        TagToRepositoryTag.delete().where(TagToRepositoryTag.tag == tag).execute()
+        deleted_tag_to_repotag = (
+            TagToRepositoryTag.delete().where(TagToRepositoryTag.tag == tag).execute()
+        )
 
         # Delete the tag.
         tag.delete_instance()
+
+    gc_table_rows_deleted.labels(table="Tag").inc()
+    gc_table_rows_deleted.labels(table="TagToRepositoryTag").inc(deleted_tag_to_repotag)
 
 
 def _purge_pre_oci_tag(tag, context, allow_non_expired=False):
@@ -410,12 +422,17 @@ def _purge_pre_oci_tag(tag, context, allow_non_expired=False):
             return False
 
         # Delete mapping rows.
-        TagToRepositoryTag.delete().where(
-            TagToRepositoryTag.repository_tag == reloaded_tag
-        ).execute()
+        deleted_tag_to_repotag = (
+            TagToRepositoryTag.delete()
+            .where(TagToRepositoryTag.repository_tag == reloaded_tag)
+            .execute()
+        )
 
         # Delete the tag.
         reloaded_tag.delete_instance()
+
+    gc_table_rows_deleted.labels(table="RepositoryTag").inc()
+    gc_table_rows_deleted.labels(table="TagToRepositoryTag").inc(deleted_tag_to_repotag)
 
 
 def _purge_uploaded_blob(uploaded_blob, context, allow_non_expired=False):
@@ -426,6 +443,7 @@ def _purge_uploaded_blob(uploaded_blob, context, allow_non_expired=False):
 
     # Delete the uploaded blob.
     uploaded_blob.delete_instance()
+    gc_table_rows_deleted.labels(table="UploadedBlob").inc()
 
 
 def _check_manifest_used(manifest_id):
@@ -488,37 +506,62 @@ def _garbage_collect_manifest(manifest_id, context):
             return False
 
         # Delete any label mappings.
-        (TagManifestLabelMap.delete().where(TagManifestLabelMap.manifest == manifest_id).execute())
+        deleted_tag_manifest_label_map = (
+            TagManifestLabelMap.delete()
+            .where(TagManifestLabelMap.manifest == manifest_id)
+            .execute()
+        )
 
         # Delete any mapping rows for the manifest.
-        TagManifestToManifest.delete().where(
-            TagManifestToManifest.manifest == manifest_id
-        ).execute()
+        deleted_tag_manifest_to_manifest = (
+            TagManifestToManifest.delete()
+            .where(TagManifestToManifest.manifest == manifest_id)
+            .execute()
+        )
 
         # Delete any label rows.
-        ManifestLabel.delete().where(
-            ManifestLabel.manifest == manifest_id, ManifestLabel.repository == context.repository
-        ).execute()
+        deleted_manifest_label = (
+            ManifestLabel.delete()
+            .where(
+                ManifestLabel.manifest == manifest_id,
+                ManifestLabel.repository == context.repository,
+            )
+            .execute()
+        )
 
         # Delete any child manifest rows.
-        ManifestChild.delete().where(
-            ManifestChild.manifest == manifest_id, ManifestChild.repository == context.repository
-        ).execute()
+        deleted_manifest_child = (
+            ManifestChild.delete()
+            .where(
+                ManifestChild.manifest == manifest_id,
+                ManifestChild.repository == context.repository,
+            )
+            .execute()
+        )
 
         # Delete the manifest blobs for the manifest.
-        ManifestBlob.delete().where(
-            ManifestBlob.manifest == manifest_id, ManifestBlob.repository == context.repository
-        ).execute()
+        deleted_manifest_blob = (
+            ManifestBlob.delete()
+            .where(
+                ManifestBlob.manifest == manifest_id, ManifestBlob.repository == context.repository
+            )
+            .execute()
+        )
 
         # Delete the security status for the manifest
-        ManifestSecurityStatus.delete().where(
-            ManifestSecurityStatus.manifest == manifest_id,
-            ManifestSecurityStatus.repository == context.repository,
-        ).execute()
+        deleted_manifest_security = (
+            ManifestSecurityStatus.delete()
+            .where(
+                ManifestSecurityStatus.manifest == manifest_id,
+                ManifestSecurityStatus.repository == context.repository,
+            )
+            .execute()
+        )
 
         # Delete the manifest legacy image row.
+        deleted_manifest_legacy_image = 0
         if legacy_image_id:
-            (
+            deleted_manifest_legacy_image = (
                 ManifestLegacyImage.delete()
                 .where(
                     ManifestLegacyImage.manifest == manifest_id,
@@ -531,6 +574,18 @@ def _garbage_collect_manifest(manifest_id, context):
         manifest.delete_instance()
 
     context.mark_manifest_removed(manifest)
+
+    gc_table_rows_deleted.labels(table="TagManifestLabelMap").inc(deleted_tag_manifest_label_map)
+    gc_table_rows_deleted.labels(table="TagManifestToManifest").inc(
+        deleted_tag_manifest_to_manifest
+    )
+    gc_table_rows_deleted.labels(table="ManifestLabel").inc(deleted_manifest_label)
+    gc_table_rows_deleted.labels(table="ManifestChild").inc(deleted_manifest_child)
+    gc_table_rows_deleted.labels(table="ManifestBlob").inc(deleted_manifest_blob)
+    gc_table_rows_deleted.labels(table="ManifestSecurityStatus").inc(deleted_manifest_security)
+    if deleted_manifest_legacy_image:
+        gc_table_rows_deleted.labels(table="ManifestLegacyImage").inc(deleted_manifest_legacy_image)
+
     return True
 
 
@@ -570,13 +625,16 @@ def _garbage_collect_legacy_manifest(legacy_manifest_id, context):
                 .get()
             )
             context.add_manifest_id(tmt.manifest_id)
-            tmt.delete_instance()
+            tmt_deleted = tmt.delete_instance()
+            if tmt_deleted:
+                gc_table_rows_deleted.labels(table="TagManifestToManifest").inc()
         except TagManifestToManifest.DoesNotExist:
             pass
 
         # Delete the tag manifest.
-        tag_manifest.delete_instance()
-
+        tag_manifest_deleted = tag_manifest.delete_instance()
+        if tag_manifest_deleted:
+            gc_table_rows_deleted.labels(table="TagManifest").inc()
     return True
 
 
@@ -650,7 +708,7 @@ def _garbage_collect_legacy_image(legacy_image_id, context):
         assert image.repository_id == context.repository.id
 
         # Delete any derived storage for the image.
-        (
+        deleted_derived_storage = (
             DerivedStorageForImage.delete()
             .where(DerivedStorageForImage.source_image == legacy_image_id)
             .execute()
@@ -660,6 +718,9 @@ def _garbage_collect_legacy_image(legacy_image_id, context):
         image.delete_instance()
 
     context.mark_legacy_image_removed(image)
+
+    gc_table_rows_deleted.labels(table="Image").inc()
+    gc_table_rows_deleted.labels(table="DerivedStorageForImage").inc(deleted_derived_storage)
 
     if config.image_cleanup_callbacks:
         for callback in config.image_cleanup_callbacks:
@@ -700,5 +761,6 @@ def _garbage_collect_label(label_id, context):
 
     if result:
         context.mark_label_id_removed(label_id)
+        gc_table_rows_deleted.labels(table="Label").inc(result)
 
     return result
