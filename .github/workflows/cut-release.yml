@@ -31,7 +31,9 @@ jobs:
       - name: ChangeLog
         shell: bash
         run: |
-          curl -o /tmp/git-chglog -L https://github.com/git-chglog/git-chglog/releases/download/v0.14.0/linux.amd64.git-chglog
+          curl -o /tmp/git-chglog.tar.gz -fsSL\
+            https://github.com/git-chglog/git-chglog/releases/download/v0.14.0/git-chglog_0.14.0_linux_amd64.tar.gz
+          tar xvf /tmp/git-chglog.tar.gz --directory /tmp
           chmod u+x /tmp/git-chglog
           echo "creating change log for tag: $TAG"
           /tmp/git-chglog --tag-filter-pattern "v3.*" -o CHANGELOG.md v3.6.0-alpha.4..
