@@ -231,10 +231,12 @@ class OAuthService(object):
 
         token_url = self.token_endpoint().to_url()
         if form_encode:
-            get_access_token = http_client.post(token_url, data=payload, headers=headers, auth=auth)
+            get_access_token = http_client.post(
+                token_url, data=payload, headers=headers, auth=auth, timeout=5
+            )
         else:
             get_access_token = http_client.post(
-                token_url, params=payload, headers=headers, auth=auth
+                token_url, params=payload, headers=headers, auth=auth timeout=5
             )
 
         if get_access_token.status_code // 100 != 2:
