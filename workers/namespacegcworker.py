@@ -8,6 +8,7 @@ from data import model
 from workers.queueworker import QueueWorker, WorkerSleepException
 from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
+from util.metrics.prometheus import gc_namespaces_purged
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,10 @@ class NamespaceGCWorker(QueueWorker):
     def _perform_gc(self, job_details):
         logger.debug("Got namespace GC queue item: %s", job_details)
         marker_id = job_details["marker_id"]
-        model.user.delete_namespace_via_marker(marker_id, all_queues)
+        if not model.user.delete_namespace_via_marker(marker_id, all_queues):
+            raise Exception("GC interrupted; will retry")
+
+        gc_namespaces_purged.inc()
 
 
 if __name__ == "__main__":
