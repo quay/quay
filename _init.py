@@ -31,7 +31,9 @@ config_provider = get_config_provider(
 def _get_version_number_changelog():
     try:
         with open(os.path.join(ROOT_DIR, "CHANGELOG.md")) as f:
-            return f.readline()[4:-1]
+            for line in f:
+                if line[0:5] == "## [v":
+                    return line.split("[")[1].split("]")[0]
     except IOError:
         return ""
 

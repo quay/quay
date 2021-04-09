@@ -178,8 +178,12 @@ class DefaultConfig(ImmutableConfig):
     PREFERRED_URL_SCHEME = "http"
     SERVER_HOSTNAME = "localhost:5000"
 
-    REGISTRY_TITLE = "Project Quay"
-    REGISTRY_TITLE_SHORT = "Project Quay"
+    if os.environ.get("RED_HAT_QUAY", False):
+        REGISTRY_TITLE = "Red Hat Quay"
+        REGISTRY_TITLE_SHORT = "Red Hat Quay"
+    else:
+        REGISTRY_TITLE = "Project Quay"
+        REGISTRY_TITLE_SHORT = "Project Quay"
 
     CONTACT_INFO = []
 
@@ -440,11 +444,18 @@ class DefaultConfig(ImmutableConfig):
     AVATAR_KIND = "local"
 
     # Custom branding
-    BRANDING = {
-        "logo": "/static/img/quay-horizontal-color.svg",
-        "footer_img": None,
-        "footer_url": None,
-    }
+    if os.environ.get("RED_HAT_QUAY", False):
+        BRANDING = {
+            "logo": "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg",
+            "footer_img": "/static/img/RedHat.svg",
+            "footer_url": "https://access.redhat.com/documentation/en-us/red_hat_quay/3/",
+        }
+    else:
+        BRANDING = {
+            "logo": "/static/img/quay-horizontal-color.svg",
+            "footer_img": None,
+            "footer_url": None,
+        }
 
     # How often the Garbage Collection worker runs.
     GARBAGE_COLLECTION_FREQUENCY = 30  # seconds
@@ -740,7 +751,10 @@ class DefaultConfig(ImmutableConfig):
     WEBHOOK_HOSTNAME_BLACKLIST = []
 
     # The root URL for documentation.
-    DOCUMENTATION_ROOT = "https://docs.projectquay.io/"
+    if os.environ.get("RED_HAT_QUAY", False):
+        DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3/"
+    else:
+        DOCUMENTATION_ROOT = "https://docs.projectquay.io/"
 
     # Feature Flag: Whether the repository action count worker is enabled.
     FEATURE_REPOSITORY_ACTION_COUNTER = True
