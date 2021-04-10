@@ -1,7 +1,9 @@
+from util.locking import GlobalLock
 from data.cache.impl import (
     NoopDataModelCache,
     InMemoryDataModelCache,
     MemcachedModelCache,
+    RedisDataModelCache,
     DisconnectWrapper,
 )
 
@@ -33,5 +35,21 @@ def get_model_cache(config):
             cache = DisconnectWrapper(cache, config)
 
         return cache
+
+    if engine == "redis":
+        host = cache_config.get("host", None)
+        if host is None:
+            raise Exception("Missing `host` for Redis model cache configuration")
+
+        GlobalLock.configure(config)
+
+        return RedisDataModelCache(
+            host=host,
+            port=cache_config.get("port", 6379),
+            password=cache_config.get("password", None),
+            db=cache_config.get("db", 0),
+            ca_cert=cache_config.get("ca_cert", None),
+            ssl=cache_config.get("ssl", False),
+        )
 
     raise Exception("Unknown model cache engine `%s`" % engine)
