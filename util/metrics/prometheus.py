@@ -15,6 +15,7 @@ from prometheus_client import push_to_gateway, REGISTRY, Histogram, Gauge, Count
 logger = logging.getLogger(__name__)
 
 
+# DB connections
 db_pooled_connections_in_use = Gauge(
     "quay_db_pooled_connections_in_use", "number of pooled db connections in use"
 )
@@ -35,6 +36,25 @@ request_duration = Histogram(
     "seconds taken to process a request",
     labelnames=["method", "route", "status"],
 )
+
+# GC: DB table rows
+gc_table_rows_deleted = Counter(
+    "quay_gc_table_rows_deleted", "number of table rows deleted by GC", labelnames=["table"]
+)
+
+# GC: Storage blob
+gc_storage_blobs_deleted = Counter(
+    "quay_gc_storage_blobs_deleted", "number of storage blobs deleted"
+)
+
+# GC iterations
+gc_repos_purged = Counter(
+    "quay_gc_repos_purged", "number of repositories purged by the RepositoryGCWorker"
+)
+gc_namespaces_purged = Counter(
+    "quay_gc_namespaces_purged", "number of namespaces purged by the NamespaceGCWorker"
+)
+gc_iterations = Counter("quay_gc_iterations", "number of iterations by the GCWorker")
 
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30

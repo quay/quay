@@ -1,5 +1,6 @@
 import logging
 import json
+import time
 
 from threading import Event, Lock
 
@@ -9,6 +10,8 @@ from workers.worker import Worker
 
 
 logger = logging.getLogger(__name__)
+
+QUEUE_WORKER_SLEEP_DURATION = 1
 
 
 class JobException(Exception):
@@ -142,7 +145,7 @@ class QueueWorker(Worker):
             except WorkerSleepException as exc:
                 logger.debug("Worker has been requested to go to sleep")
                 self.mark_current_incomplete(restore_retry=True)
-                self._stop.set()
+                time.sleep(QUEUE_WORKER_SLEEP_DURATION)
 
             except WorkerUnhealthyException as exc:
                 logger.error(

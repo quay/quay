@@ -12,12 +12,12 @@ from data.model.repository import get_random_gc_policy
 from data.model.gc import garbage_collect_repo
 from workers.worker import Worker
 from util.locking import GlobalLock, LockNotAcquiredException
-
+from util.metrics.prometheus import gc_iterations
 
 logger = logging.getLogger(__name__)
 
-REPOSITORY_GC_TIMEOUT = 15 * 60  # 15 minutes
-LOCK_TIMEOUT_PADDING = 60  # seconds
+REPOSITORY_GC_TIMEOUT = 3 * 60 * 60  # 3h
+LOCK_TIMEOUT_PADDING = 60  # 60 seconds
 
 
 @contextmanager
@@ -66,6 +66,7 @@ class GarbageCollectionWorker(Worker):
                     logger.debug(
                         "Finished GC of repository #%s (%s)", repository.id, repository.name
                     )
+                    gc_iterations.inc()
             except LockNotAcquiredException:
                 logger.debug("Could not acquire repo lock for garbage collection")
 
