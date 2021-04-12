@@ -530,6 +530,8 @@ def _garbage_collect_manifest(manifest_id, context):
     if deleted_manifest_legacy_image:
         gc_table_rows_deleted.labels(table="ManifestLegacyImage").inc(deleted_manifest_legacy_image)
 
+    gc_table_rows_deleted.labels(table="Manifest").inc()
+
     return True
 
 

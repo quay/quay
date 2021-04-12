@@ -16,7 +16,7 @@ from util.metrics.prometheus import gc_iterations
 
 logger = logging.getLogger(__name__)
 
-REPOSITORY_GC_TIMEOUT = 24 * 60 * 60  # 24h
+REPOSITORY_GC_TIMEOUT = 3 * 60 * 60  # 3h
 LOCK_TIMEOUT_PADDING = 60  # 60 seconds
 
 
@@ -59,7 +59,6 @@ class GarbageCollectionWorker(Worker):
                     except Repository.DoesNotExist:
                         return
 
-                    gc_iterations.inc()
                     logger.debug(
                         "Starting GC of repository #%s (%s)", repository.id, repository.name
                     )
@@ -67,6 +66,7 @@ class GarbageCollectionWorker(Worker):
                     logger.debug(
                         "Finished GC of repository #%s (%s)", repository.id, repository.name
                     )
+                    gc_iterations.inc()
             except LockNotAcquiredException:
                 logger.debug("Could not acquire repo lock for garbage collection")
 

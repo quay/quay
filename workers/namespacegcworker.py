@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 POLL_PERIOD_SECONDS = 60
-NAMESPACE_GC_TIMEOUT = 24 * 60 * 60  # 24h
+NAMESPACE_GC_TIMEOUT = 3 * 60 * 60  # 3h
 LOCK_TIMEOUT_PADDING = 60  # 60 seconds
 
 
