@@ -1,3 +1,13 @@
+### v3.4.4
+
+**Fixed**
+- Fix Clair not recognizing python language vulnerabilities (PROJQUAY-1775)[https://issues.redhat.com/browse/PROJQUAY-1775]
+- Fix Clair not honoring DisableUpdaters config option (PROJQUAY-1759)[https://issues.redhat.com/browse/PROJQUAY-1759]
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+
+
 ### v3.4.3
 
 **Fixed**
