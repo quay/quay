@@ -187,7 +187,7 @@ jobs:
         uses: gsactions/commit-message-checker@v1
         with:
           pattern: |
-            ^(.*):\s*(.*)\s\(PROJQUAY-[0-9]+\)(\n.*)*$
+            ^(.*):\s*(.*)\s(\(PROJQUAY-[0-9]+\))(\s\(#[0-9]+\))?\n(\n(\n|.)*)?$
           error: 'Commit must begin with <scope>: <subject> (PROJQUAY-####)'
           flags: 'gm'
           excludeTitle: true
