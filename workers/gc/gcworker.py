@@ -77,5 +77,6 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
+    GlobalLock.configure(app.config)
     worker = GarbageCollectionWorker()
     worker.start()

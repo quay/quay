@@ -72,5 +72,6 @@ class BlobUploadCleanupWorker(Worker):
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
+    GlobalLock.configure(app.config)
     worker = BlobUploadCleanupWorker()
     worker.start()
