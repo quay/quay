@@ -1,0 +1,20 @@
+---
+apiVersion: dbaoperator.app-sre.redhat.com/v1alpha1
+kind: DatabaseMigration
+metadata:
+  name: 3bd8075919b9
+spec:
+  migrationContainerSpec:
+    command:
+    - /quay-registry/quay-entrypoint.sh
+    - migrate
+    - 3bd8075919b9
+    image: quay.io/quay/quay
+    name: 3bd8075919b9
+  previous: 88e64904d000
+  schemaHints:
+  - columns: []
+    indexName: imagestorage_uploading
+    indexType: index
+    operation: createIndex
+    table: imagestorage

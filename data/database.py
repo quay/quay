@@ -1072,7 +1072,7 @@ class ImageStorage(BaseModel):
     uuid = CharField(default=uuid_generator, index=True, unique=True)
     image_size = BigIntegerField(null=True)
     uncompressed_size = BigIntegerField(null=True)
-    uploading = BooleanField(default=True, null=True)
+    uploading = BooleanField(default=True, index=True, null=True)
     cas_path = BooleanField(default=True)
     content_checksum = CharField(null=True, index=True)
 
