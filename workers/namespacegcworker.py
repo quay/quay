@@ -3,7 +3,7 @@ import time
 
 import features
 
-from app import namespace_gc_queue, all_queues
+from app import app, namespace_gc_queue, all_queues
 from data import model
 from workers.queueworker import QueueWorker, WorkerSleepException
 from util.log import logfile_path
