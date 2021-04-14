@@ -1,7 +1,7 @@
 import logging
 
 from redis import RedisError
-from redlock import RedLock, RedLockError
+from redlock import RedLockFactory, RedLockError
 
 from app import app
 
@@ -26,13 +26,24 @@ class GlobalLock(object):
     critical code paths.
     """
 
+    lock_factory = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls.lock_factory is None:
+            _redis_info = dict(app.config["USER_EVENTS_REDIS"])
+            _redis_info.update(
+                {
+                    "socket_connect_timeout": 5,
+                    "socket_timeout": 5,
+                    "single_connection_client": True,
+                }
+            )
+
+            cls.lock_factory = RedLockFactory(connection_details=[_redis_info])
+        return super(GlobalLock, cls).__new__(cls, *args, **kwargs)
+
     def __init__(self, name, lock_ttl=600):
         self._lock_name = name
-        self._redis_info = dict(app.config["USER_EVENTS_REDIS"])
-        self._redis_info.update(
-            {"socket_connect_timeout": 5, "socket_timeout": 5, "single_connection_client": True}
-        )
-
         self._lock_ttl = lock_ttl
         self._redlock = None
 
@@ -46,9 +57,10 @@ class GlobalLock(object):
     def acquire(self):
         logger.debug("Acquiring global lock %s", self._lock_name)
         try:
-            self._redlock = RedLock(
-                self._lock_name, connection_details=[self._redis_info], ttl=self._lock_ttl * 1000
+            self._redlock = GlobalLock.lock_factory.create_lock(
+                self._lock_name, ttl=self._lock_ttl * 1000
             )
+
             acquired = self._redlock.acquire()
             if not acquired:
                 logger.debug("Was unable to not acquire lock %s", self._lock_name)

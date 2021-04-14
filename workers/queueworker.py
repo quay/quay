@@ -11,7 +11,7 @@ from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 
-QUEUE_WORKER_SLEEP_DURATION = 1
+QUEUE_WORKER_SLEEP_DURATION = 5
 
 
 class JobException(Exception):

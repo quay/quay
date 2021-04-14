@@ -145,7 +145,7 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
     if url.find("http://localhost:5000/exportedlogs/") == 0:
         storage_id = url[len("http://localhost:5000/exportedlogs/") :]
     else:
-        assert url.find("https://some_bucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
+        assert url.find("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
         storage_id, _ = url[
             len("https://some_bucket.s3.amazonaws.com/some/path/exportedactionlogs/") :
         ].split("?")
