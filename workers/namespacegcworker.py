@@ -3,7 +3,7 @@ import time
 
 import features
 
-from app import namespace_gc_queue, all_queues
+from app import app, namespace_gc_queue, all_queues
 from data import model
 from workers.queueworker import QueueWorker, WorkerSleepException
 from util.log import logfile_path
@@ -50,6 +50,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
+    GlobalLock.configure(app.config)
     logger.debug("Starting namespace GC worker")
     worker = NamespaceGCWorker(
         namespace_gc_queue,
