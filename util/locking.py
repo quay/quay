@@ -3,8 +3,6 @@ import logging
 from redis import RedisError
 from redlock import RedLockFactory, RedLockError
 
-from app import app
-
 logger = logging.getLogger(__name__)
 
 
@@ -12,6 +10,19 @@ class LockNotAcquiredException(Exception):
     """
     Exception raised if a GlobalLock could not be acquired.
     """
+
+
+def _redlock_factory(config):
+    _redis_info = dict(config["USER_EVENTS_REDIS"])
+    _redis_info.update(
+        {
+            "socket_connect_timeout": 5,
+            "socket_timeout": 5,
+            "single_connection_client": True,
+        }
+    )
+    lock_factory = RedLockFactory(connection_details=[_redis_info])
+    return lock_factory
 
 
 # TODO(kleesc): GlobalLock should either renew the lock until the caller is done,
@@ -28,21 +39,15 @@ class GlobalLock(object):
 
     lock_factory = None
 
-    def __new__(cls, *args, **kwargs):
+    @classmethod
+    def configure(cls, config):
         if cls.lock_factory is None:
-            _redis_info = dict(app.config["USER_EVENTS_REDIS"])
-            _redis_info.update(
-                {
-                    "socket_connect_timeout": 5,
-                    "socket_timeout": 5,
-                    "single_connection_client": True,
-                }
-            )
-
-            cls.lock_factory = RedLockFactory(connection_details=[_redis_info])
-        return super(GlobalLock, cls).__new__(cls, *args, **kwargs)
+            cls.lock_factory = _redlock_factory(config)
 
     def __init__(self, name, lock_ttl=600):
+        if GlobalLock.lock_factory is None:
+            raise LockNotAcquiredException("GlobalLock not configured")
+
         self._lock_name = name
         self._lock_ttl = lock_ttl
         self._redlock = None
