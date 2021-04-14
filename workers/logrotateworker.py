@@ -153,6 +153,7 @@ def main():
         while True:
             time.sleep(100000)
 
+    GlobalLock.configure(app.config)
     worker = LogRotateWorker()
     worker.start()
 

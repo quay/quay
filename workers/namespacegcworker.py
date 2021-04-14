@@ -69,6 +69,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
+    GlobalLock.configure(app.config)
     logger.debug("Starting namespace GC worker")
     worker = NamespaceGCWorker(
         namespace_gc_queue,
