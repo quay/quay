@@ -151,7 +151,6 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
     if url.find("http://localhost:5000/exportedlogs/") == 0:
         storage_id = url[len("http://localhost:5000/exportedlogs/") :]
     else:
-        print("TESTURL:", url)
         assert url.find("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") == 0
         storage_id, _ = url[
             len("https://somebucket.s3.amazonaws.com/some/path/exportedactionlogs/") :
@@ -160,7 +159,6 @@ def test_export_logs(initialized_db, storage_engine, has_logs):
     created = storage_engine.get_content(
         storage_engine.preferred_locations, "exportedactionlogs/" + storage_id
     )
-    print("TEST DATA:", created)
     created_json = json.loads(created)
 
     if has_logs:
