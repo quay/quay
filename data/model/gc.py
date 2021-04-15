@@ -31,7 +31,7 @@ from data.database import (
 )
 from data.database import RepositoryTag, TagManifest, Image, DerivedStorageForImage
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
-from util.metrics.prometheus import gc_table_rows_deleted
+from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
 
 
 logger = logging.getLogger(__name__)
@@ -134,8 +134,12 @@ def purge_repository(repo, force=False):
     except Repository.DoesNotExist:
         return False
 
-    fetched.delete_instance(recursive=True, delete_nullable=False, force=force)
-    return True
+    try:
+        fetched.delete_instance(recursive=True, delete_nullable=False, force=force)
+        gc_repos_purged.inc()
+        return True
+    except IntegrityError:
+        return False
 
 
 def _chunk_delete_all(repo, model, force=False, chunk_size=500):
