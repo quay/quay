@@ -38,7 +38,7 @@ from data.database import (
     DerivedStorageForImage,
 )
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
-from util.metrics.prometheus import gc_table_rows_deleted
+from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
 
 
 logger = logging.getLogger(__name__)
@@ -144,6 +144,7 @@ def purge_repository(repo, force=False):
 
     try:
         fetched.delete_instance(recursive=True, delete_nullable=False, force=force)
+        gc_repos_purged.inc()
         return True
     except IntegrityError:
         return False

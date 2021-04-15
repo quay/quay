@@ -50,7 +50,8 @@ gc_storage_blobs_deleted = Counter(
 
 # GC iterations
 gc_repos_purged = Counter(
-    "quay_gc_repos_purged", "number of repositories purged by the RepositoryGCWorker"
+    "quay_gc_repos_purged",
+    "number of repositories purged by the RepositoryGCWorker or NamespaceGCWorker",
 )
 gc_namespaces_purged = Counter(
     "quay_gc_namespaces_purged", "number of namespaces purged by the NamespaceGCWorker"

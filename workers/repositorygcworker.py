@@ -8,7 +8,6 @@ from data import model, database
 from workers.queueworker import QueueWorker, WorkerSleepException
 from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
-from util.metrics.prometheus import gc_repos_purged
 from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
@@ -47,8 +46,6 @@ class RepositoryGCWorker(QueueWorker):
         logger.debug("Purging repository %s", marker.repository)
         if not model.gc.purge_repository(marker.repository):
             raise Exception("GC interrupted; will retry")
-
-        gc_repos_purged.inc()
 
 
 def create_gunicorn_worker():
