@@ -2,7 +2,12 @@ import pytest
 
 from mock import patch
 
-from data.cache import InMemoryDataModelCache, NoopDataModelCache, MemcachedModelCache
+from data.cache import (
+    InMemoryDataModelCache,
+    NoopDataModelCache,
+    MemcachedModelCache,
+    RedisDataModelCache,
+)
 from data.cache.cache_key import CacheKey
 
 
@@ -10,7 +15,7 @@ DATA = {}
 
 
 class MockClient(object):
-    def __init__(self, server, **kwargs):
+    def __init__(self, **kwargs):
         pass
 
     def get(self, key, default=None):
@@ -20,6 +25,17 @@ class MockClient(object):
         DATA[key] = value
 
     def close(self):
+        pass
+
+
+class MockGlobalLock(object):
+    def __init__(self, cache_key, lock_ttl):
+        pass
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type, value, traceback):
         pass
 
 
@@ -70,3 +86,16 @@ def test_memcache_should_cache():
         assert cache.retrieve(key, lambda: {"a": 2345}, should_cache=sc) == {"a": 2345}
         assert cache._get_client_pool().get(key.key) is not None
         assert cache.retrieve(key, lambda: {"a": 2345}, should_cache=sc) == {"a": 2345}
+
+
+def test_redis_cache():
+    global DATA
+    DATA = {}
+
+    key = CacheKey("foo", "60m")
+    with patch("data.cache.impl.StrictRedis", MockClient):
+        with patch("data.cache.impl.GlobalLock", MockGlobalLock):
+            cache = RedisDataModelCache("127.0.0.1")
+
+            assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
+            assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
