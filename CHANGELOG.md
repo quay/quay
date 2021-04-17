@@ -1,3 +1,11 @@
+### v3.5.1
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
+
+**Fixed**
+- Fix Clair "duplicate key value violates unique constraint" after upgrade (PROJQUAY-1889)[https://issues.redhat.com/browse/PROJQUAY-1889]
+
 ### v3.5.0
 
 **Release Notes**
