@@ -1236,7 +1236,11 @@ def delete_user(user, queues):
     _delete_user_linked_data(user)
 
     # Delete the user itself.
-    user.delete_instance(recursive=True, delete_nullable=True)
+    try:
+        user.delete_instance(recursive=True, delete_nullable=True)
+        return True
+    except IntegrityError:
+        return False
 
 
 def _delete_user_linked_data(user):
