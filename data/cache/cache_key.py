@@ -13,7 +13,7 @@ def for_repository_blob(namespace_name, repo_name, digest, version):
     """
     Returns a cache key for a blob in a repository.
     """
-    return CacheKey("repo_blob__%s_%s_%s_%s" % (namespace_name, repo_name, digest, version), "60s")
+    return CacheKey("repo_blob__%s_%s_%s_%s" % (namespace_name, repo_name, digest, version), "240s")
 
 
 def for_catalog_page(auth_context_key, start_id, limit):
@@ -36,7 +36,7 @@ def for_active_repo_tags(repository_id, start_pagination_id, limit):
     Returns a cache key for the active tags in a repository.
     """
     return CacheKey(
-        "repo_active_tags__%s_%s_%s" % (repository_id, start_pagination_id, limit), "120s"
+        "repo_active_tags__%s_%s_%s" % (repository_id, start_pagination_id, limit), "240s"
     )
 
 
