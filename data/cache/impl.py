@@ -12,7 +12,6 @@ from six import add_metaclass
 
 from data.database import CloseForLongOperation
 from util.expiresdict import ExpiresDict
-from util.locking import GlobalLock, LockNotAcquiredException
 from util.timedeltastring import convert_to_timedelta
 from util.workers import get_worker_connections_count
 
@@ -279,31 +278,28 @@ class RedisDataModelCache(DataModelCache):
         result = loader()
         logger.debug("Got loaded result for key %s: %s", cache_key.key, result)
         if self.client is not None and should_cache(result):
-            # NOTE: This assumes that the Redis defined in `DATA_MODEL_CACHE_CONFIG` is the same as `USER_EVENTS_REDIS`.
             try:
-                with GlobalLock(lock_key_for(cache_key.key), lock_ttl=5):
-                    logger.debug(
-                        "Caching loaded result for key %s with expiration %s: %s",
-                        cache_key.key,
-                        result,
-                        cache_key.expiration,
-                    )
-                    expires = (
-                        convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
-                    )
-                    self.client.set(
-                        cache_key.key,
-                        json.dumps(result),
-                        ex=int(expires.total_seconds()) if expires else None,
-                    )
-                    logger.debug(
-                        "Cached loaded result for key %s with expiration %s: %s",
-                        cache_key.key,
-                        result,
-                        cache_key.expiration,
-                    )
-            except LockNotAcquiredException:
-                logger.debug("Lock for key %s is already set", cache_key.key)
+                logger.debug(
+                    "Caching loaded result for key %s with expiration %s: %s",
+                    cache_key.key,
+                    result,
+                    cache_key.expiration,
+                )
+                expires = (
+                    convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
+                )
+                self.client.set(
+                    cache_key.key,
+                    json.dumps(result),
+                    ex=int(expires.total_seconds()) if expires else None,
+                    nx=True,
+                )
+                logger.debug(
+                    "Cached loaded result for key %s with expiration %s: %s",
+                    cache_key.key,
+                    result,
+                    cache_key.expiration,
+                )
             except:
                 logger.warning(
                     "Got exception when trying to set key %s to %s", cache_key.key, result
