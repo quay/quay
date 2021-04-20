@@ -411,6 +411,10 @@ parameters:
     value: "latest"
     displayName: quay version
     description: quay version which defaults to latest
+  - name: IMAGE_TAG_CANARY
+    value: "latest"
+    displayName: quay version
+    description: quay version which defaults to latest
   - name: QUAY_ENTRYPOINT
     value: "registry-nomigrate"
     displayName: quay container entrypoint
