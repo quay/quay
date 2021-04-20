@@ -1,4 +1,3 @@
-from util.locking import GlobalLock
 from data.cache.impl import (
     NoopDataModelCache,
     InMemoryDataModelCache,
@@ -40,8 +39,6 @@ def get_model_cache(config):
         host = cache_config.get("host", None)
         if host is None:
             raise Exception("Missing `host` for Redis model cache configuration")
-
-        GlobalLock.configure(config)
 
         return RedisDataModelCache(
             host=host,
