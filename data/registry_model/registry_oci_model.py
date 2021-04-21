@@ -762,7 +762,7 @@ class OCIModel(RegistryDataInterface):
             return [tag.asdict() for tag in tags]
 
         tags_cache_key = cache_key.for_active_repo_tags(
-            repository_ref._db_id, start_pagination_id, limit
+            repository_ref._db_id, start_pagination_id, limit, model_cache.cache_config
         )
         result = model_cache.retrieve(tags_cache_key, load_tags)
 
@@ -784,7 +784,9 @@ class OCIModel(RegistryDataInterface):
 
             return [restriction.restricted_region_iso_code for restriction in restrictions]
 
-        blacklist_cache_key = cache_key.for_namespace_geo_restrictions(namespace_name)
+        blacklist_cache_key = cache_key.for_namespace_geo_restrictions(
+            namespace_name, model_cache.cache_config
+        )
         result = model_cache.retrieve(blacklist_cache_key, load_blacklist)
         if result is None:
             return None
@@ -811,7 +813,9 @@ class OCIModel(RegistryDataInterface):
 
             return blob_found.asdict()
 
-        blob_cache_key = cache_key.for_repository_blob(namespace_name, repo_name, blob_digest, 2)
+        blob_cache_key = cache_key.for_repository_blob(
+            namespace_name, repo_name, blob_digest, 2, model_cache.cache_config
+        )
         blob_dict = model_cache.retrieve(blob_cache_key, load_blob)
 
         try:
