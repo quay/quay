@@ -615,7 +615,7 @@ def test_image_with_cas(default_tag_policy, initialized_db):
         preferred = storage.preferred_locations[0]
         storage.put_content({preferred}, storage.blob_path(digest), content)
 
-        image_storage = database.ImageStorage.create(content_checksum=digest, uploading=False)
+        image_storage = database.ImageStorage.create(content_checksum=digest)
         location = database.ImageStorageLocation.get(name=preferred)
         database.ImageStoragePlacement.create(location=location, storage=image_storage)
 
@@ -676,8 +676,8 @@ def test_images_shared_cas(default_tag_policy, initialized_db):
         preferred = storage.preferred_locations[0]
         storage.put_content({preferred}, storage.blob_path(digest), content)
 
-        is1 = database.ImageStorage.create(content_checksum=digest, uploading=False)
-        is2 = database.ImageStorage.create(content_checksum=digest, uploading=False)
+        is1 = database.ImageStorage.create(content_checksum=digest)
+        is2 = database.ImageStorage.create(content_checksum=digest)
 
         location = database.ImageStorageLocation.get(name=preferred)
 

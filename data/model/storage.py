@@ -255,7 +255,7 @@ def garbage_collect_storage(storage_id_whitelist):
 
 
 def create_v1_storage(location_name):
-    storage = ImageStorage.create(cas_path=False, uploading=True)
+    storage = ImageStorage.create(cas_path=False)
     location = get_image_location_for_name(location_name)
     ImageStoragePlacement.create(location=location.id, storage=storage)
     storage.locations = {location_name}
@@ -382,7 +382,6 @@ def _lookup_repo_storages_by_content_checksum(repo, checksums, model_class):
                 ImageStorage.uuid,
                 ImageStorage.cas_path,
                 ImageStorage.uncompressed_size,
-                ImageStorage.uploading,
             )
             .join(model_class)
             .where(model_class.repository == repo, ImageStorage.content_checksum == checksum)

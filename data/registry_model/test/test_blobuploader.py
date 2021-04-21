@@ -68,7 +68,6 @@ def test_basic_upload_blob(chunk_count, subchunk, registry_model):
 
     # Check the blob.
     assert blob.compressed_size == len(data)
-    assert not blob.uploading
     assert blob.digest == "sha256:" + hashlib.sha256(data).hexdigest()
 
     # Ensure the blob exists in storage and has the expected data.

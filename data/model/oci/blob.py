@@ -25,7 +25,6 @@ def _lookup_blob_uploaded(repository, blob_digest):
             .where(
                 UploadedBlob.repository == repository,
                 ImageStorage.content_checksum == blob_digest,
-                ImageStorage.uploading == False,
             )
             .get()
         )
@@ -41,7 +40,6 @@ def _lookup_blob_in_repository(repository, blob_digest):
             .where(
                 ManifestBlob.repository == repository,
                 ImageStorage.content_checksum == blob_digest,
-                ImageStorage.uploading == False,
             )
             .get()
         )
