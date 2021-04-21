@@ -316,7 +316,7 @@ def find_create_or_link_image(
         .join(RepositoryPermission, JOIN.LEFT_OUTER)
         .switch(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
-        .where(ImageStorage.uploading == False, Image.docker_image_id == docker_image_id)
+        .where(Image.docker_image_id == docker_image_id)
     )
 
     existing_image_query = _basequery.filter_to_repos_for_user(
@@ -524,10 +524,8 @@ def get_images_eligible_for_scan(clair_version):
     """
     Returns a query that gives all images eligible for a clair scan.
     """
-    return (
-        get_image_with_storage_and_parent_base()
-        .where(Image.security_indexed_engine < clair_version)
-        .where(ImageStorage.uploading == False)
+    return get_image_with_storage_and_parent_base().where(
+        Image.security_indexed_engine < clair_version
     )
 
 

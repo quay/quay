@@ -26,7 +26,7 @@ from data.model.blob import get_or_create_shared_blob, get_shared_blob
 from data.model.oci.tag import filter_to_alive_tags, create_temporary_tag_if_necessary
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
-from data.model.storage import lookup_repo_storages_by_content_checksum, create_v1_storage
+from data.model.storage import lookup_repo_storages_by_content_checksum
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException
@@ -443,7 +443,6 @@ def _build_blob_map(
             shared_blob = get_or_create_shared_blob(
                 EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES, storage
             )
-            assert not shared_blob.uploading
             assert shared_blob.content_checksum == EMPTY_LAYER_BLOB_DIGEST
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 
