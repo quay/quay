@@ -10,10 +10,14 @@ options:
   commit_groups:
     group_by: Scope
   header:
-    pattern: '^(.*):\s*(.*)$'
+    #pattern: '^(.*):\s*(.*)\s*(.*)$'
+    #pattern: '^(.*):\s*(.*)\s(\(PROJQUAY-[0-9]+\))(\s\(#[0-9]+\))?\n(\n(\n|.)*)?$'
+    pattern: '^(.*):\s*(.*)\s(\(PROJQUAY-[0-9]+\))(\s\(#[0-9]+\))?$'
     pattern_maps:
       - Scope
       - Subject
+      - Issue
+      - PullRequest
   issues:
     prefix:
       - "#"
