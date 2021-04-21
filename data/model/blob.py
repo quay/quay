@@ -266,6 +266,9 @@ def get_or_create_shared_blob(digest, byte_data, storage):
     try:
         return ImageStorage.get(content_checksum=digest)
     except ImageStorage.DoesNotExist:
+        record = ImageStorage.create(
+            image_size=len(byte_data), content_checksum=digest
+        )
         preferred = storage.preferred_locations[0]
         location_obj = ImageStorageLocation.get(name=preferred)
 
