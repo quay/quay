@@ -1072,7 +1072,6 @@ class ImageStorage(BaseModel):
     uuid = CharField(default=uuid_generator, index=True, unique=True)
     image_size = BigIntegerField(null=True)
     uncompressed_size = BigIntegerField(null=True)
-    uploading = BooleanField(default=True, null=True)
     cas_path = BooleanField(default=True)
     content_checksum = CharField(null=True, index=True)
 
@@ -1089,7 +1088,6 @@ class ImageStorageSignature(BaseModel):
     storage = ForeignKeyField(ImageStorage)
     kind = ForeignKeyField(ImageStorageSignatureKind)
     signature = TextField(null=True)
-    uploading = BooleanField(default=True, null=True)
 
     class Meta:
         database = db

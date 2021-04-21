@@ -542,9 +542,7 @@ class ManifestLayer(namedtuple("ManifestLayer", ["layer_info", "blob"])):
         return (self.layer_info.compressed_size or 0) * estimate_multiplier
 
 
-class Blob(
-    datatype("Blob", ["uuid", "digest", "compressed_size", "uncompressed_size", "uploading"])
-):
+class Blob(datatype("Blob", ["uuid", "digest", "compressed_size", "uncompressed_size"])):
     """
     Blob represents a content-addressable piece of storage.
     """
@@ -561,7 +559,6 @@ class Blob(
             digest=image_storage.content_checksum,
             compressed_size=image_storage.image_size,
             uncompressed_size=image_storage.uncompressed_size,
-            uploading=image_storage.uploading,
         )
 
     @property
