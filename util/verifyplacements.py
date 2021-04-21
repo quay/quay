@@ -33,7 +33,7 @@ def verify_placements():
     encountered = set()
 
     iterator = yield_random_entries(
-        lambda: ImageStorage.select().where(ImageStorage.uploading == False),
+        lambda: ImageStorage.select(),
         ImageStorage.id,
         1000,
         ImageStorage.select(fn.Max(ImageStorage.id)).scalar(),
