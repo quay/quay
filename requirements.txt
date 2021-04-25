@@ -30,7 +30,7 @@ cfn-lint==0.27.2
 chardet==3.0.4
 Click==7.1.2
 cookies==2.2.1
-cryptography==3.3.1
+cryptography==3.3.2
 DateTime==4.3
 debtcollector==1.22.0
 decorator==4.4.1
@@ -42,7 +42,7 @@ elasticsearch==7.0.4
 elasticsearch-dsl==7.0.0
 fakeredis==1.1.0
 Flask==1.1.1
-Flask-Cors==3.0.8
+Flask-Cors==3.0.9
 Flask-Login==0.4.1
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
@@ -72,7 +72,7 @@ jmespath==0.9.4
 jsondiff==1.1.2
 jsonpatch==1.24
 jsonpath-rw==1.4.0
-jsonpickle==1.2
+jsonpickle==1.4.1
 jsonpointer==2.0
 jsonschema==3.2.0
 kafka-python==1.4.7
@@ -158,8 +158,8 @@ text-unidecode==1.3
 tldextract==2.2.2
 toposort==1.5
 tzlocal==2.0.0
-urllib3==1.25.8
-waitress==1.4.2
+urllib3==1.25.9
+waitress==1.4.3
 webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
