@@ -1,5 +1,7 @@
 import copy
 import logging
+import requests
+import time
 import urllib.request, urllib.parse, urllib.error
 import urllib.parse
 
@@ -58,6 +60,7 @@ class OAuthService(object):
     def __init__(self, config, key_name):
         self.key_name = key_name
         self.config = config.get(key_name) or {}
+        self._is_testing = config.get("TESTING")
 
     @abstractmethod
     def service_id(self):
@@ -220,7 +223,6 @@ class OAuthService(object):
             "grant_type": "authorization_code",
             "redirect_uri": self.get_redirect_uri(url_scheme_and_hostname, redirect_suffix),
         }
-
         headers = {"Accept": "application/json"}
 
         auth = None
@@ -231,11 +233,35 @@ class OAuthService(object):
             payload["client_secret"] = self.client_secret()
 
         token_url = self.token_endpoint().to_url()
-        if form_encode:
-            get_access_token = http_client.post(token_url, data=payload, headers=headers, auth=auth)
-        else:
-            get_access_token = http_client.post(
-                token_url, params=payload, headers=headers, auth=auth
+
+        def perform_request():
+            attempts = 0
+            max_attempts = 3
+            timeout = 5 / 1000
+
+            while attempts < max_attempts:
+                if self._is_testing:
+                    headers["X-Quay-Retry-Attempts"] = str(attempts)
+
+                try:
+                    if form_encode:
+                        return http_client.post(
+                            token_url, data=payload, headers=headers, auth=auth, timeout=5
+                        )
+                    else:
+                        return http_client.post(
+                            token_url, params=payload, headers=headers, auth=auth, timeout=5
+                        )
+                except requests.ConnectionError:
+                    logger.debug("Got ConnectionError during OAuth token exchange, retrying.")
+                    attempts += 1
+                    time.sleep(timeout)
+
+        get_access_token = perform_request()
+        if get_access_token is None:
+            logger.debug("Received too many ConnectionErrors during code exchange")
+            raise OAuthExchangeCodeException(
+                "Received too many ConnectionErrors during code exchange"
             )
 
         if get_access_token.status_code // 100 != 2:
