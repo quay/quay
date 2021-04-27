@@ -1173,5 +1173,11 @@ CONFIG_SCHEMA = {
             "description": "Whether new push to a non-existent organization creates it. Defaults to False.",
             "x-example": False,
         },
+        # Allow first user to be initialized via API
+        "FEATURE_USER_INITIALIZE": {
+            "type": "boolean",
+            "description": "If set to true, the first User account may be created via API /api/v1/user/initialize",
+            "x-example": False,
+        },
     },
 }

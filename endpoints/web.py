@@ -32,6 +32,7 @@ from app import (
     get_app_url,
     instance_keys,
     storage,
+    authentication,
 )
 from auth import scopes
 from auth.auth_context import get_authenticated_user
@@ -50,7 +51,7 @@ from buildtrigger.bitbuckethandler import BitbucketBuildTrigger
 from buildtrigger.customhandler import CustomBuildTrigger
 from buildtrigger.triggerutil import TriggerProviderException
 from data import model
-from data.database import db, RepositoryTag, TagToRepositoryTag
+from data.database import db, RepositoryTag, TagToRepositoryTag, random_string_generator, User
 from endpoints.api.discovery import swagger_route_data
 from endpoints.common import common_login, render_page_template
 from endpoints.csrf import csrf_protect, generate_csrf_token, verify_csrf
@@ -897,3 +898,82 @@ def redirect_to_namespace(namespace):
         return redirect(url_for("web.org_view", path=namespace))
     else:
         return redirect(url_for("web.user_view", path=namespace))
+
+
+def has_users():
+    """
+    Return false if no users in database yet
+    """
+    return bool(User.select().limit(1))
+
+
+@web.route("/api/v1/user/initialize", methods=["POST"])
+@route_show_if(features.USER_INITIALIZE)
+def user_initialize():
+    """
+    Create initial user in an empty database
+    """
+
+    # Ensure that we are using database auth.
+    if not features.USER_INITIALIZE:
+        response = jsonify({"message": "Cannot initialize user, FEATURE_USER_INITIALIZE is False"})
+        response.status_code = 400
+        return response
+
+    # Ensure that we are using database auth.
+    if app.config["AUTHENTICATION_TYPE"] != "Database":
+        response = jsonify({"message": "Cannot initialize user in a non-database auth system"})
+        response.status_code = 400
+        return response
+
+    if has_users():
+        response = jsonify({"message": "Cannot initialize user in a non-empty database"})
+        response.status_code = 400
+        return response
+
+    user_data = request.get_json()
+    try:
+        prompts = model.user.get_default_user_prompts(features)
+        new_user = model.user.create_user(
+            user_data["username"],
+            user_data["password"],
+            user_data.get("email"),
+            auto_verify=True,
+            email_required=features.MAILING,
+            is_possible_abuser=False,
+            prompts=prompts,
+        )
+        success, headers = common_login(new_user.uuid)
+        if not success:
+            response = jsonify({"message": "Could not login. Failed to initialize user"})
+            response.status_code = 403
+            return response
+
+        result = {
+            "username": user_data["username"],
+            "email": user_data.get("email"),
+            "encrypted_password": authentication.encrypt_user_password(
+                user_data["password"]
+            ).decode("ascii"),
+        }
+
+        if user_data.get("access_token"):
+            model.oauth.create_application(
+                new_user,
+                "automation",
+                "",
+                "",
+                client_id=user_data["username"],
+                description="Application token generated via /api/v1/user/initialize",
+            )
+            scope = "org:admin repo:admin repo:create repo:read repo:write super:user user:admin user:read"
+            created, access_token = model.oauth.create_user_access_token(
+                new_user, user_data["username"], scope
+            )
+            result["access_token"] = access_token
+
+        return (result, 200, headers)
+    except model.user.DataModelException as ex:
+        response = jsonify({"message": "Failed to initialize user: " + str(ex)})
+        response.status_code = 400
+        return response
