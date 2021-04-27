@@ -255,7 +255,14 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                 # TODO: Push-to-create functionality should be configurable
                 if CreateRepositoryPermission(namespace).can() and user is not None:
                     logger.debug("Creating repository: %s/%s", namespace, reponame)
-                    found = model.repository.get_or_create_repository(namespace, reponame, user)
+                    visibility = (
+                        "private"
+                        if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", True)
+                        else "public"
+                    )
+                    found = model.repository.get_or_create_repository(
+                        namespace, reponame, user, visibility=visibility
+                    )
                     if found is not None:
                         repository_ref = RepositoryReference.for_repo_obj(found)
 

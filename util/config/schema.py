@@ -1162,5 +1162,10 @@ CONFIG_SCHEMA = {
             "description": "The set of hostnames to disallow from webhooks when validating, beyond localhost",
             "x-example": ["somexternaldomain.com"],
         },
+        "CREATE_PRIVATE_REPO_ON_PUSH": {
+            "type": "boolean",
+            "description": "Whether new repositories created by push are set to private visibility. Defaults to True.",
+            "x-example": True,
+        },
     },
 }
