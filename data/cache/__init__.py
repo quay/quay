@@ -15,10 +15,10 @@ def get_model_cache(config):
     engine = cache_config.get("engine", "noop")
 
     if engine == "noop":
-        return NoopDataModelCache()
+        return NoopDataModelCache(cache_config)
 
     if engine == "inmemory":
-        return InMemoryDataModelCache()
+        return InMemoryDataModelCache(cache_config)
 
     if engine == "memcached":
         endpoint = cache_config.get("endpoint", None)
@@ -29,7 +29,9 @@ def get_model_cache(config):
         connect_timeout = cache_config.get("connect_timeout")
         predisconnect = cache_config.get("predisconnect_from_db")
 
-        cache = MemcachedModelCache(endpoint, timeout=timeout, connect_timeout=connect_timeout)
+        cache = MemcachedModelCache(
+            cache_config, endpoint, timeout=timeout, connect_timeout=connect_timeout
+        )
         if predisconnect:
             cache = DisconnectWrapper(cache, config)
 
@@ -41,6 +43,7 @@ def get_model_cache(config):
             raise Exception("Missing `host` for Redis model cache configuration")
 
         return RedisDataModelCache(
+            cache_config,
             host=host,
             port=cache_config.get("port", 6379),
             password=cache_config.get("password", None),
