@@ -9,6 +9,7 @@ from app import instance_keys, app as realapp
 from auth.auth_context_type import ValidatedAuthContext
 from data import model
 from data.cache import InMemoryDataModelCache
+from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import ImageStorageLocation
 from endpoints.test.shared import conduct_call
 from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
@@ -56,7 +57,7 @@ def test_blob_caching(method, endpoint, client, app):
         client, "v2." + endpoint, url_for, method, params, expected_code=200, headers=headers
     )
 
-    with patch("endpoints.v2.blob.model_cache", InMemoryDataModelCache()):
+    with patch("endpoints.v2.blob.model_cache", InMemoryDataModelCache(TEST_CACHE_CONFIG)):
         # First request should make a DB query to retrieve the blob.
         conduct_call(
             client, "v2." + endpoint, url_for, method, params, expected_code=200, headers=headers

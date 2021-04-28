@@ -153,7 +153,7 @@ def show_package(namespace, package_name, release, media_type):
         return jsonify(_retrieve_package())
 
     show_package_cache_key = cache_key.for_appr_show_package(
-        namespace, package_name, release, media_type
+        namespace, package_name, release, media_type, model_cache.cache_config
     )
 
     result = model_cache.retrieve(show_package_cache_key, _retrieve_package)

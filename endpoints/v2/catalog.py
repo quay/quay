@@ -46,7 +46,9 @@ def catalog_search(start_id, limit, pagination_callback):
         ]
 
     context_key = get_authenticated_context().unique_key if get_authenticated_context() else None
-    catalog_cache_key = cache_key.for_catalog_page(context_key, start_id, limit)
+    catalog_cache_key = cache_key.for_catalog_page(
+        context_key, start_id, limit, model_cache.cache_config
+    )
     visible_repositories = [
         Repository(**repo_dict)
         for repo_dict in model_cache.retrieve(catalog_cache_key, _load_catalog)

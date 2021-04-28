@@ -131,7 +131,9 @@ class CNRAppModel(AppRegistryDataInterface):
                     for found in self._list_applications(namespace=namespace, limit=limit)
                 ]
 
-            apps_cache_key = cache_key.for_appr_applications_list(namespace, limit)
+            apps_cache_key = cache_key.for_appr_applications_list(
+                namespace, limit, model_cache.cache_config
+            )
             return [
                 ApplicationSummaryView(**found)
                 for found in model_cache.retrieve(apps_cache_key, _list_applications)

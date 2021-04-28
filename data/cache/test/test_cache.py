@@ -13,6 +13,15 @@ from data.cache.cache_key import CacheKey
 
 DATA = {}
 
+TEST_CACHE_CONFIG = {
+    "repository_blob_cache_ttl": "240s",
+    "catalog_page_cache_ttl": "240s",
+    "namespace_geo_restrictions_cache_ttl": "240s",
+    "active_repo_tags_cache_ttl": "240s",
+    "appr_applications_list_cache_ttl": "3600s",
+    "appr_show_package_cache_ttl": "3600s",
+}
+
 
 class MockClient(object):
     def __init__(self, **kwargs):
@@ -37,7 +46,7 @@ class MockClient(object):
 )
 def test_caching(cache_type):
     key = CacheKey("foo", "60m")
-    cache = cache_type()
+    cache = cache_type(TEST_CACHE_CONFIG)
 
     # Perform two retrievals, and make sure both return.
     assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
@@ -50,7 +59,7 @@ def test_memcache():
 
     key = CacheKey("foo", "60m")
     with patch("data.cache.impl.PooledClient", MockClient):
-        cache = MemcachedModelCache(("127.0.0.1", "-1"))
+        cache = MemcachedModelCache(TEST_CACHE_CONFIG, ("127.0.0.1", "-1"))
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
 
@@ -65,7 +74,7 @@ def test_memcache_should_cache():
         return value["a"] != 1234
 
     with patch("data.cache.impl.PooledClient", MockClient):
-        cache = MemcachedModelCache(("127.0.0.1", "-1"))
+        cache = MemcachedModelCache(TEST_CACHE_CONFIG, ("127.0.0.1", "-1"))
         assert cache.retrieve(key, lambda: {"a": 1234}, should_cache=sc) == {"a": 1234}
 
         # Ensure not cached since it was `1234`.
@@ -83,7 +92,7 @@ def test_redis_cache():
 
     key = CacheKey("foo", "60m")
     with patch("data.cache.impl.StrictRedis", MockClient):
-        cache = RedisDataModelCache("127.0.0.1")
+        cache = RedisDataModelCache(TEST_CACHE_CONFIG, "127.0.0.1")
 
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
