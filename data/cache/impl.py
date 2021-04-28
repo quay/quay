@@ -15,9 +15,7 @@ from util.expiresdict import ExpiresDict
 from util.timedeltastring import convert_to_timedelta
 from util.workers import get_worker_connections_count
 
-
 logger = logging.getLogger(__name__)
-
 
 cache_count = Counter(
     "quay_model_cache", "number of attempts to retrieve from the model cache", labelnames=["type"]
@@ -38,6 +36,11 @@ class DataModelCache(object):
     Defines an interface for cache storing and returning tuple data model objects.
     """
 
+    cache_config = None
+
+    def __init__(self, cache_config):
+        self.cache_config = cache_config
+
     @abstractmethod
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         """
@@ -54,7 +57,8 @@ class DisconnectWrapper(DataModelCache):
     invoking the cache, in case the cache call takes too long.
     """
 
-    def __init__(self, cache, app_config):
+    def __init__(self, cache_config, cache, app_config):
+        super(DisconnectWrapper, self).__init__(cache_config)
         self.cache = cache
         self.app_config = app_config
 
@@ -77,7 +81,8 @@ class InMemoryDataModelCache(DataModelCache):
     Implementation of the data model cache backed by an in-memory dictionary.
     """
 
-    def __init__(self):
+    def __init__(self, cache_config):
+        super(InMemoryDataModelCache, self).__init__(cache_config)
         self.cache = ExpiresDict()
 
     def empty_for_testing(self):
@@ -133,10 +138,12 @@ class MemcachedModelCache(DataModelCache):
 
     def __init__(
         self,
+        cache_config,
         endpoint,
         timeout=_DEFAULT_MEMCACHE_TIMEOUT,
         connect_timeout=_DEFAULT_MEMCACHE_CONNECT_TIMEOUT,
     ):
+        super(MemcachedModelCache, self).__init__(cache_config)
         max_pool_size = int(
             os.environ.get("MEMCACHE_POOL_MAX_SIZE", get_worker_connections_count("registry"))
         )
@@ -236,6 +243,7 @@ class RedisDataModelCache(DataModelCache):
 
     def __init__(
         self,
+        cache_config,
         host="127.0.0.1",
         port=6379,
         password=None,
@@ -243,6 +251,7 @@ class RedisDataModelCache(DataModelCache):
         ca_cert=None,
         ssl=False,
     ):
+        super(RedisDataModelCache, self).__init__(cache_config)
         self.client = StrictRedis(
             host=host,
             port=port,

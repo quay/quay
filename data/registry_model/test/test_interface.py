@@ -14,6 +14,7 @@ from playhouse.test_utils import assert_query_count
 
 from app import docker_v2_signing_key, storage
 from data import model
+from data.cache.test.test_cache import TEST_CACHE_CONFIG
 from data.database import (
     TagManifestLabelMap,
     TagManifestToManifest,
@@ -744,7 +745,7 @@ class SomeException(Exception):
 
 
 def test_get_cached_repo_blob(registry_model):
-    model_cache = InMemoryDataModelCache()
+    model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
 
     repository_ref = registry_model.lookup_repository("devtable", "simple")
     latest_tag = registry_model.get_repo_tag(repository_ref, "latest")
@@ -949,7 +950,14 @@ def test_lookup_active_repository_tags(oci_model):
     tags_found = set()
     tag_id = None
     while True:
-        tags = oci_model.lookup_active_repository_tags(repository_ref, tag_id, 11)
+        if test_cached:
+            model_cache = InMemoryDataModelCache(TEST_CACHE_CONFIG)
+            tags = oci_model.lookup_cached_active_repository_tags(
+                model_cache, repository_ref, tag_id, 11
+            )
+        else:
+            tags = oci_model.lookup_active_repository_tags(repository_ref, tag_id, 11)
+
         assert len(tags) <= 11
         for tag in tags[0:10]:
             assert tag.name not in tags_found
