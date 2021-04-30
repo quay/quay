@@ -125,6 +125,7 @@ def store_blob_record_and_temp_link_in_repo(
         except ImageStorage.DoesNotExist:
             storage = ImageStorage.create(
                 content_checksum=blob_digest,
+                uploading=False,
                 image_size=byte_count,
                 uncompressed_size=uncompressed_byte_count,
             )
@@ -246,7 +247,7 @@ def get_shared_blob(digest):
     """
     assert digest
     try:
-        return ImageStorage.get(content_checksum=digest)
+        return ImageStorage.get(content_checksum=digest, uploading=False)
     except ImageStorage.DoesNotExist:
         return None
 
@@ -264,21 +265,22 @@ def get_or_create_shared_blob(digest, byte_data, storage):
     assert storage
 
     try:
-        return ImageStorage.get(content_checksum=digest)
+        return ImageStorage.get(content_checksum=digest, uploading=False)
     except ImageStorage.DoesNotExist:
         record = ImageStorage.create(
-            image_size=len(byte_data), content_checksum=digest
+            image_size=len(byte_data), content_checksum=digest, cas_path=True, uploading=True
         )
         preferred = storage.preferred_locations[0]
         location_obj = ImageStorageLocation.get(name=preferred)
+        try:
+            storage.put_content([preferred], storage_model.get_layer_path(record), byte_data)
+            ImageStoragePlacement.create(storage=record, location=location_obj)
 
-        with db_transaction():
-            record = ImageStorage.create(image_size=len(byte_data), content_checksum=digest)
-            try:
-                storage.put_content([preferred], storage_model.get_layer_path(record), byte_data)
-                ImageStoragePlacement.create(storage=record, location=location_obj)
-            except:
-                logger.exception("Exception when trying to write special layer %s", digest)
-                raise
+            record.uploading = False
+            record.save()
+        except:
+            logger.exception("Exception when trying to write special layer %s", digest)
+            record.delete_instance()
+            raise
 
-            return record
+        return record
