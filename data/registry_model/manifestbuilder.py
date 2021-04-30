@@ -150,6 +150,7 @@ class _ManifestBuilder(object):
         Assigns a blob to a layer.
         """
         assert blob
+        assert not blob.uploading
 
         image_metadata = self._builder_state.image_metadata.get(layer.layer_id)
         if image_metadata is None:
