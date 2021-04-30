@@ -889,7 +889,6 @@ class OCIModel(RegistryDataInterface):
             storage = derived_storage.derivative
             signature_entry = model.storage.find_or_create_storage_signature(storage, signer_name)
             signature_entry.signature = signature
-            signature_entry.uploading = False
             signature_entry.save()
 
     def delete_derived_image(self, derived_image):
@@ -916,7 +915,6 @@ class OCIModel(RegistryDataInterface):
 
             storage_entry = derived_storage.derivative
             storage_entry.image_size = compressed_size
-            storage_entry.uploading = False
             storage_entry.save()
 
     def get_torrent_info(self, blob):
@@ -1340,15 +1338,8 @@ class OCIModel(RegistryDataInterface):
         builder.add_layer(
             legacy_image_row.storage.content_checksum, legacy_image_row.v1_json_metadata
         )
-        if legacy_image_row.storage.uploading:
-            logger.error("Cannot add an uploading storage row: %s", legacy_image_row.storage.id)
-            return None
 
         for parent_image in parents:
-            if parent_image.storage.uploading:
-                logger.error("Cannot add an uploading storage row: %s", legacy_image_row.storage.id)
-                return None
-
             builder.add_layer(parent_image.storage.content_checksum, parent_image.v1_json_metadata)
 
         try:

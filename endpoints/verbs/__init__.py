@@ -353,7 +353,7 @@ def _repo_verb_signature(namespace, repository, tag_name, verb, checker=None, **
         manifest, verb, storage, varying_metadata={"tag": tag.name}
     )
 
-    if derived_image is None or derived_image.blob.uploading:
+    if derived_image is None:
         return make_response("", 202)
 
     # Check if we have a valid signer configured.
@@ -419,7 +419,7 @@ def _repo_verb(
             logger.error("Could not create or lookup a derived image for manifest %s", manifest)
             abort(400)
 
-    if derived_image is not None and not derived_image.blob.uploading:
+    if derived_image is not None:
         logger.debug("Derived %s image %s exists in storage", verb, derived_image)
         is_head_request = request.method == "HEAD"
 

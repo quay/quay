@@ -353,7 +353,6 @@ def lookup_repo_storages_by_content_checksum(repo, checksums, by_manifest=False)
                     ImageStorage.uuid,
                     ImageStorage.cas_path,
                     ImageStorage.uncompressed_size,
-                    ImageStorage.uploading,
                 )
                 .join(ManifestBlob)
                 .where(ManifestBlob.repository == repo, ImageStorage.content_checksum == checksum)

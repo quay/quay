@@ -39,7 +39,6 @@ def get_repository_blob_by_digest(repository, blob_digest):
             .where(
                 Image.repository == repository,
                 ImageStorage.content_checksum == blob_digest,
-                ImageStorage.uploading == False,
             )
             .get()
         )
@@ -64,7 +63,6 @@ def get_repo_blob_by_digest(namespace, repo_name, blob_digest):
                 Repository.name == repo_name,
                 Namespace.username == namespace,
                 ImageStorage.content_checksum == blob_digest,
-                ImageStorage.uploading == False,
             )
             .get()
         )
