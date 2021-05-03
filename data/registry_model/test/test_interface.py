@@ -762,7 +762,6 @@ def test_get_cached_repo_blob(registry_model):
     assert found.uuid == blob.uuid
     assert found.compressed_size == blob.compressed_size
     assert found.uncompressed_size == blob.uncompressed_size
-    assert found.uploading == blob.uploading
     assert found.placements == blob.placements
 
     # Disconnect from the database by overwriting the connection.
@@ -778,7 +777,6 @@ def test_get_cached_repo_blob(registry_model):
         assert cached.uuid == blob.uuid
         assert cached.compressed_size == blob.compressed_size
         assert cached.uncompressed_size == blob.uncompressed_size
-        assert cached.uploading == blob.uploading
         assert cached.placements == blob.placements
 
         # Try another blob, which should fail since the DB is not connected and the cache
