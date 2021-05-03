@@ -249,7 +249,7 @@ def garbage_collect_storage(storage_id_whitelist):
 
 
 def create_v1_storage(location_name):
-    storage = ImageStorage.create(cas_path=False, uploading=True)
+    storage = ImageStorage.create(cas_path=False)
     location = get_image_location_for_name(location_name)
     ImageStoragePlacement.create(location=location.id, storage=storage)
     storage.locations = {location_name}
@@ -353,7 +353,6 @@ def lookup_repo_storages_by_content_checksum(repo, checksums, by_manifest=False)
                     ImageStorage.uuid,
                     ImageStorage.cas_path,
                     ImageStorage.uncompressed_size,
-                    ImageStorage.uploading,
                 )
                 .join(ManifestBlob)
                 .where(ManifestBlob.repository == repo, ImageStorage.content_checksum == checksum)
@@ -369,7 +368,6 @@ def lookup_repo_storages_by_content_checksum(repo, checksums, by_manifest=False)
                     ImageStorage.uuid,
                     ImageStorage.cas_path,
                     ImageStorage.uncompressed_size,
-                    ImageStorage.uploading,
                 )
                 .join(Image)
                 .where(Image.repository == repo, ImageStorage.content_checksum == checksum)

@@ -31,7 +31,7 @@ def image_dict(image, with_history=False, with_tags=False):
         "comment": image.comment,
         "command": parsed_command,
         "size": image.image_size,
-        "uploading": image.uploading,
+        "uploading": False,
         "sort_index": len(image.parents),
     }
 

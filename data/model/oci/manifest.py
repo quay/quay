@@ -273,7 +273,6 @@ def _create_manifest(
             shared_blob = get_or_create_shared_blob(
                 EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES, storage
             )
-            assert not shared_blob.uploading
             assert shared_blob.content_checksum == EMPTY_LAYER_BLOB_DIGEST
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 

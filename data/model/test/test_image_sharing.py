@@ -43,8 +43,6 @@ def createStorage(storage, docker_image_id, repository=REPO, username=ADMIN_ACCE
     image = model.image.find_create_or_link_image(
         docker_image_id, repository_obj, username, {}, preferred
     )
-    image.storage.uploading = False
-    image.storage.save()
     return image.storage
 
 
@@ -282,11 +280,3 @@ def test_org_not_team_member_with_no_access(storage, initialized_db):
     assertDifferentStorage(
         storage, "the-image", first_storage, username=OUTSIDE_ORG_USER, repository=OUTSIDE_ORG_REPO
     )
-
-
-def test_no_link_to_uploading(storage, initialized_db):
-    still_uploading = createStorage(storage, "an-image", repository=PUBLIC_REPO)
-    still_uploading.uploading = True
-    still_uploading.save()
-
-    assertDifferentStorage(storage, "an-image", still_uploading)
