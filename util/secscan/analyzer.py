@@ -123,6 +123,14 @@ class LayerAnalyzer(object):
             # Nothing more to do.
             return
 
+        # Make sure the image's storage is not marked as uploading. If so, nothing more to do.
+        if layer.storage.uploading:
+            if not set_secscan_status(layer, False, self._target_version):
+                raise PreemptedException
+
+            # Nothing more to do.
+            return
+
         # Analyze the image.
         previously_security_indexed_successfully = layer.security_indexed
         previous_security_indexed_engine = layer.security_indexed_engine

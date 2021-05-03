@@ -16,6 +16,7 @@ def get_repository_blob_by_digest(repository, blob_digest):
             .where(
                 ManifestBlob.repository == repository,
                 ImageStorage.content_checksum == blob_digest,
+                ImageStorage.uploading == False,
             )
             .get()
         )
