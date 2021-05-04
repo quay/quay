@@ -409,6 +409,7 @@ def _db_from_url(
     allow_pooling=True,
     allow_retry=True,
     is_read_replica=False,
+    db_connection_pooling=False,
 ):
     parsed_url = make_url(url)
 
@@ -430,7 +431,9 @@ def _db_from_url(
 
     drivers = _SCHEME_DRIVERS[parsed_url.drivername]
     driver = drivers.driver
-    if allow_pooling and os.getenv("DB_CONNECTION_POOLING", "false").lower() == "true":
+    if allow_pooling and (
+        os.getenv("DB_CONNECTION_POOLING", "false").lower() == "true" or db_connection_pooling
+    ):
         driver = drivers.pooled_driver
         db_kwargs["stale_timeout"] = db_kwargs.get("stale_timeout", None)
         db_kwargs["max_connections"] = db_kwargs.get("max_connections", None)
@@ -479,7 +482,10 @@ def configure(config_object, testing=False):
     logger.debug("Configuring database")
     db_kwargs = dict(config_object["DB_CONNECTION_ARGS"])
     write_db_uri = config_object["DB_URI"]
-    db.initialize(_db_from_url(write_db_uri, db_kwargs))
+    db_connection_pooling = config_object.get("DB_CONNECTION_POOLING", False)
+    db.initialize(
+        _db_from_url(write_db_uri, db_kwargs, db_connection_pooling=db_connection_pooling)
+    )
 
     parsed_write_uri = make_url(write_db_uri)
     db_random_func.initialize(SCHEME_RANDOM_FUNCTION[parsed_write_uri.drivername])
@@ -503,6 +509,7 @@ def configure(config_object, testing=False):
                 ro_config["DB_URI"],
                 ro_config.get("DB_CONNECTION_ARGS", db_kwargs),
                 is_read_replica=True,
+                db_connection_pooling=db_connection_pooling,
             )
             for ro_config in read_replicas
         ]

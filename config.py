@@ -204,6 +204,11 @@ class DefaultConfig(ImmutableConfig):
         "autorollback": True,
     }
 
+    # Whether to use peewee's db connection pool.
+    # This can also be specified as a env variable of the same name,
+    # and will take precedence if so.
+    DB_CONNECTION_POOLING = True
+
     @staticmethod
     def create_transaction(db):
         return db.transaction()

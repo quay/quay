@@ -276,6 +276,12 @@ CONFIG_SCHEMA = {
             },
             "required": ["threadlocals", "autorollback"],
         },
+        "DB_CONNECTION_POOLING": {
+            "type": "boolean",
+            "description": "If true, uses peewee's connection pool. This can also be set as an environment "
+            + "variable. If an environment variable is set, it takes precedence over the configuration flag.",
+            "x-example": True,
+        },
         "ALLOW_PULLS_WITHOUT_STRICT_LOGGING": {
             "type": "boolean",
             "description": "If true, pulls in which the pull audit log entry cannot be written will "
