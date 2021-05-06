@@ -252,11 +252,11 @@ objects:
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    name: quay-app-canary
+    name: quay-app-blue
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
   spec:
-    replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS_CANARY}}
+    replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS_BLUE}}
     minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
     progressDeadlineSeconds: ${{QUAY_APP_DEPLOYMENT_PROGRESS_DEADLINE_SECONDS}}
     revisionHistoryLimit: ${{QUAY_APP_DEPLOYMENT_REVISION_HISTORY_LIMITS}}
@@ -278,7 +278,7 @@ objects:
         volumes:
         - name: configvolume
           secret:
-            secretName: ${{QUAY_APP_CONFIG_SECRET_CANARY}}
+            secretName: ${{QUAY_APP_CONFIG_SECRET_BLUE}}
         serviceAccountName: ${{NAME}}
         containers:
         - name: syslog-cloudwatch-bridge
@@ -340,7 +340,7 @@ objects:
             periodSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_PERIOD_SECONDS}}
             timeoutSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_TIMEOUT_SECONDS}}
         - name: quay-app
-          image: ${IMAGE_CANARY}:${IMAGE_TAG_CANARY}
+          image: ${IMAGE_BLUE}:${IMAGE_TAG_BLUE}
           imagePullPolicy: ${{IMAGE_PULL_POLICY}}
           command:
           - /quay-registry/quay-entrypoint.sh
@@ -379,7 +379,7 @@ objects:
           - name: QE_K8S_NAMESPACE
             value: ${{QUAY_APP_DEPLOYMENT_NAMESPACE}}
           - name: QE_K8S_CONFIG_SECRET
-            value: ${{QUAY_APP_CONFIG_SECRET_CANARY}}
+            value: ${{QUAY_APP_CONFIG_SECRET_BLUE}}
           - name: DEBUGLOG
             value: ${DEBUGLOG}
           - name: SYSLOG_SERVER
@@ -403,15 +403,15 @@ parameters:
     value: ""
     displayName: quay image
     description: quay docker image. Defaults to quay.io/app-sre/quay.
-  - name: IMAGE_CANARY
+  - name: IMAGE_BLUE
     value: ""
-    displayName: quay canary image
-    description: quay canary docker image. Defaults to quay.io/app-sre/quay.
+    displayName: quay blue-deployment image
+    description: quay blue-deployment docker image. Defaults to quay.io/app-sre/quay.
   - name: IMAGE_TAG
     value: "latest"
     displayName: quay version
     description: quay version which defaults to latest
-  - name: IMAGE_TAG_CANARY
+  - name: IMAGE_TAG_BLUE
     value: "latest"
     displayName: quay version
     description: quay version which defaults to latest
@@ -455,15 +455,15 @@ parameters:
   - name: QUAY_APP_CONFIG_SECRET
     value: "quay-config-secret"
     displayName: quay app config secret
-  - name: QUAY_APP_CONFIG_SECRET_CANARY
+  - name: QUAY_APP_CONFIG_SECRET_BLUE
     value: "quay-config-secret"
-    displayName: quay app canary config secret
+    displayName: quay app blue-deployment config secret
   - name: QUAY_APP_DEPLOYMENT_REPLICAS
     value: "1"
     displayName: quay app deployment replicas
-  - name: QUAY_APP_DEPLOYMENT_REPLICAS_CANARY
+  - name: QUAY_APP_DEPLOYMENT_REPLICAS_BLUE
     value: "0"
-    displayName: quay app canary deployment replicas
+    displayName: quay app blue deployment replicas
   - name: QUAY_APP_DEPLOYMENT_NAMESPACE
     value: "quay"
     displayName: quay app deployment namespace
