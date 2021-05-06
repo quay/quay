@@ -77,6 +77,17 @@ func (fg *EmailFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		}
 	}
 
+	// If FIPS is enabled, ensure mail tls is enabled
+	if fg.FeatureFIPS && !fg.MailUseTls {
+		newError := shared.ValidationError{
+			Tags:       []string{"MAIL_USE_TLS", "FEATURE_FIPS"},
+			FieldGroup: fgName,
+			Message:    "MAIL_USE_TLS must be enabled when running in FIPS mode.",
+		}
+		errors = append(errors, newError)
+		return errors
+	}
+
 	// If auth is enabled, try to authenticate
 	if fg.MailUseAuth {
 		auth := smtp.PlainAuth("", fg.MailUsername, fg.MailPassword, fg.MailServer)
