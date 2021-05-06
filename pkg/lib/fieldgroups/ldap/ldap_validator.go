@@ -2,7 +2,6 @@ package ldap
 
 import (
 	"fmt"
-	"math"
 	"net/url"
 	"strings"
 
@@ -108,10 +107,10 @@ func (fg *LDAPFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 		Attributes: []string{
 			fg.LdapEmailAttr, fg.LdapUidAttr,
 		},
-		SizeLimit: math.MaxInt32,
+		Controls: []ldap.Control{ldap.NewControlPaging(32)},
 	}
 
-	result, err := l.SearchWithPaging(request, math.MaxInt32)
+	result, err := l.Search(request)
 	if err != nil {
 		newError := shared.ValidationError{
 			Tags:       []string{"LDAP_URI"},
