@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -54,7 +53,7 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 		ca = fg.DbConnectionArgs.Ssl.Ca
 	}
 	// Connect to database
-	err = ValidateDatabaseConnection(opts, uri, ca)
+	err = ValidateDatabaseConnection(opts, uri, fg.DbUri, ca)
 	if err != nil {
 		newError := shared.ValidationError{
 			Tags:       []string{"DB_URI"},
@@ -71,7 +70,7 @@ func (fg *DatabaseFieldGroup) Validate(opts shared.Options) []shared.ValidationE
 }
 
 // ValidateDatabaseConnection checks that the Bitbucker OAuth credentials are correct
-func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string) error {
+func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, rawURI, caCert string) error {
 
 	// Declare db and error
 	var db *sql.DB
@@ -81,8 +80,6 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 	scheme := uri.Scheme
 
 	// Get credentials
-	user := uri.User.Username()
-	password, _ := uri.User.Password()
 	credentials := uri.User.String()
 
 	// Get full host name
@@ -135,29 +132,21 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 		// Database is Postgres
 	} else if scheme == "postgresql" {
 
-		// If there is no port, add 5432 as default
-		_, _, err := net.SplitHostPort(fullHostName)
-		if err != nil {
-			fullHostName = fullHostName + ":5432"
-		}
-
 		// Create connection options
-		dbOpts := &pg.Options{
-			User:     user,
-			Password: password,
-			Addr:     fullHostName,
-			Database: dbname,
+		dbOpts, err := pg.ParseURL(rawURI)
+		if err != nil {
+			return err
 		}
 
 		// If CA cert was included
 		if caCert != "" {
 			certBytes, ok := opts.Certificates["database.pem"]
 			if !ok {
-				return errors.New("Could not find database.pem in config bundle")
+				return errors.New("could not find database.pem in config bundle")
 			}
 			caCertPool := x509.NewCertPool()
 			if ok := caCertPool.AppendCertsFromPEM(certBytes); !ok {
-				return errors.New("Could not add CA cert to pool")
+				return errors.New("could not add CA cert to pool")
 			}
 			tlsConfig := &tls.Config{
 				InsecureSkipVerify: true,
@@ -177,11 +166,11 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, caCert string
 			return err
 		}
 		if !strings.Contains(extensions, "pg_trgm") {
-			return errors.New("If you are using a Postgres database, you must install the pg_trgm extension")
+			return errors.New("if you are using a Postgres database, you must install the pg_trgm extension")
 		}
 
 	} else {
-		return errors.New("You must use a valid scheme")
+		return errors.New("you must use a valid scheme")
 	}
 
 	// Return no error
