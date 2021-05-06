@@ -155,6 +155,11 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, rawURI, caCer
 			dbOpts.TLSConfig = tlsConfig
 		}
 
+		// If no SSL cert is provided
+		if caCert == "" && uri.Query().Get("sslmode") != "required" {
+			dbOpts.TLSConfig = nil
+		}
+
 		// Connect and defer closing
 		db := pg.Connect(dbOpts)
 		defer db.Close()
