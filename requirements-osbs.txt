@@ -41,7 +41,7 @@ elasticsearch==7.0.4
 elasticsearch-dsl==7.0.0
 fakeredis==1.1.0
 Flask==1.1.1
-Flask-Cors==3.0.8
+Flask-Cors==3.0.9
 Flask-Login==0.4.1
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
