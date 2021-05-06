@@ -18,6 +18,7 @@ type EmailFieldGroup struct {
 	MailUseAuth              bool          `default:"false" validate:"" yaml:"MAIL_USE_AUTH" json:"MAIL_USE_AUTH"`
 	MailUsername             string        `default:"" validate:"" yaml:"MAIL_USERNAME,omitempty" json:"MAIL_USERNAME,omitempty"`
 	MailUseTls               bool          `default:"false" validate:"" yaml:"MAIL_USE_TLS" json:"MAIL_USE_TLS"`
+	FeatureFIPS              bool          `default:"false" validate:"" yaml:"FEATURE_FIPS" json:"FEATURE_FIPS"`
 }
 
 // NewEmailFieldGroup creates a new EmailFieldGroup
