@@ -239,13 +239,14 @@ def get_or_create_shared_blob(digest, byte_data, storage):
         preferred = storage.preferred_locations[0]
         location_obj = ImageStorageLocation.get(name=preferred)
 
-        with db_transaction():
-            record = ImageStorage.create(image_size=len(byte_data), content_checksum=digest)
-            try:
-                storage.put_content([preferred], storage_model.get_layer_path(record), byte_data)
-                ImageStoragePlacement.create(storage=record, location=location_obj)
-            except:
-                logger.exception("Exception when trying to write special layer %s", digest)
-                raise
+        record = ImageStorage.create(image_size=len(byte_data), content_checksum=digest)
 
-            return record
+        try:
+            storage.put_content([preferred], storage_model.get_layer_path(record), byte_data)
+            ImageStoragePlacement.create(storage=record, location=location_obj)
+        except:
+            logger.exception("Exception when trying to write special layer %s", digest)
+            record.delete_instance()
+            raise
+
+        return record
