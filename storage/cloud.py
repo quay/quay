@@ -381,8 +381,6 @@ class _CloudStorage(BaseStorageV2):
                     )
                     write_error = e
 
-                    multipart_uploads_completed.inc()
-
                     if cancel_on_error:
                         try:
                             mp.abort()
@@ -401,6 +399,8 @@ class _CloudStorage(BaseStorageV2):
                     "Parts": [{"ETag": p.e_tag, "PartNumber": p.part_number} for p in upload_parts],
                 },
             )
+        else:
+            mp.abort()
 
         return total_bytes_written, write_error
 
