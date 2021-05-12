@@ -174,6 +174,8 @@ RUN set -ex\
 	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
 	;
 
+RUN rm -Rf node_modules config_app/node_modules
+
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
 # correctly above.
