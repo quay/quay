@@ -111,6 +111,34 @@ def create_user(
     return created
 
 
+def create_init_user(
+    username,
+    password,
+    email,
+):
+    """
+    Creates an initial user, if none are in the database.
+    """
+
+    if config.app_config.get("AUTHENTICATION_TYPE") != "Database":
+        logger.debug("Cannot create init user in a non-database auth system")
+        return
+
+    if bool(list(User.select().limit(1))):
+        logger.debug("Cannot initialize user in a non-empty database")
+        return
+
+    created = create_user(
+        username,
+        password,
+        email,
+        email_required=False,
+        auto_verify=True,
+    )
+
+    logger.debug(f"Created credentials: ${username}:${password}")
+
+
 def create_user_noverify(
     username, email, email_required=True, prompts=tuple(), is_possible_abuser=False
 ):

@@ -195,10 +195,10 @@ local-dev-build:
 .PHONY: local-dev-up
 local-dev-up:
 	make local-dev-clean
-	docker-compose up -d redis
-	docker-compose up -d quay-db
+	docker-compose up  --build -d redis
+	docker-compose up  --build -d quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d quay
+	docker-compose up  --build quay
 
 .PHONY: local-dev-up-with-clair
 local-dev-up-with-clair:

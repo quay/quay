@@ -1,6 +1,5 @@
 version: "3.7"
 services:
-
   quay-db:
     container_name: quay-db
     image: postgres:12.1
@@ -42,19 +41,18 @@ services:
 
   quay:
     container_name: quay-quay
-    build: 
+    build:
       context: .
-      dockerfile: ./local-dev/Dockerfile
-    image: quay-local:local
+      dockerfile: Dockerfile
+    image: quay:local-dev
     volumes:
-      - ".:/quay-registry"
+      - "./local-dev/stack:/quay-registry/conf/stack:Z"
     ports:
-      - "8080:8080" 
+      - "8080:8080"
     environment:
       DEBUGLOG: "true"
-      IGNORE_VALIDATION: "true"
 
-  # clair is configured to share it's network 
+  # clair is configured to share it's network
   # namespace with quay. this allows quay to serve
   # layers to clair over localhost.
   clair:
@@ -66,8 +64,6 @@ services:
       CLAIR_CONF: "/src/clair/config.yaml"
       CLAIR_MODE: "combo"
     network_mode: "service:quay"
-    command:
-      ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
+    command: ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
     depends_on:
       - quay
-

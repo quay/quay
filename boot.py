@@ -9,11 +9,12 @@ from cachetools.func import lru_cache
 import logging
 import release
 import os.path
-
+import uuid
 from cryptography.hazmat.primitives import serialization
 
 from app import app
 from data.model import ServiceKeyDoesNotExist
+from data.model.user import create_init_user
 from data.model.release import set_region_release
 from data.model.service_keys import get_service_key
 from util.config.database import sync_database_with_config
@@ -138,6 +139,15 @@ def main():
     # Record deploy
     if release.REGION and release.GIT_HEAD:
         set_region_release(release.SERVICE, release.REGION, release.GIT_HEAD)
+
+    # Create initial user if provided
+    if app.config.get("FEATURE_INIT_USER", False):
+        logger.debug("Creating init user")
+        create_init_user(
+            username=app.config.get("INIT_USERNAME", "init"),
+            password=app.config.get("INIT_PASSWORD", uuid.uuid4()),
+            email="",
+        )
 
 
 if __name__ == "__main__":
