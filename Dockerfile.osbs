@@ -50,6 +50,7 @@ LABEL io.k8s.display-name="Red Hat Quay"
 LABEL io.k8s.description="Red Hat Quay"
 LABEL summary="Red Hat Quay"
 LABEL maintainer="support@redhat.com"
+LABEL io.openshift.tags="quay"
 ENV RED_HAT_QUAY=true
 
 ENV PYTHON_VERSION=3.8 \
@@ -75,6 +76,8 @@ COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/config-tool/config-tool /u
 COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/jwtproxy/jwtproxy /usr/local/bin/jwtproxy
 COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/config-tool/pkg/lib/editor $QUAYDIR/config_app
 COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/pushgateway/pushgateway /usr/local/bin/pushgateway
+
+RUN rm -Rf node_modules config_app/node_modules
 
 RUN INSTALL_PKGS="\
         python38 \
