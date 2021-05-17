@@ -1,4 +1,5 @@
 import logging
+import time
 
 from datetime import timedelta, datetime
 
@@ -51,5 +52,10 @@ def create_gunicorn_worker():
 
 
 if __name__ == "__main__":
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     worker = QueueCleanupWorker()
     worker.start()

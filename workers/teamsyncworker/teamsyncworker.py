@@ -47,6 +47,11 @@ def create_gunicorn_worker():
 def main():
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     if not features.TEAM_SYNCING or not authentication.federated_service:
         logger.debug("Team syncing is disabled; sleeping")
         while True:

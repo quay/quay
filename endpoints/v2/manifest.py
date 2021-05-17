@@ -13,7 +13,12 @@ from data.database import db_disallow_replica_use
 from data.registry_model import registry_model
 from data.model.oci.manifest import CreateManifestException
 from data.model.oci.tag import RetargetTagException
-from endpoints.decorators import anon_protect, parse_repository_name, check_readonly
+from endpoints.decorators import (
+    anon_protect,
+    disallow_for_account_recovery_mode,
+    parse_repository_name,
+    check_readonly,
+)
 from endpoints.metrics import image_pulls, image_pushes
 from endpoints.v2 import v2_bp, require_repo_read, require_repo_write
 from endpoints.v2.errors import (
@@ -43,6 +48,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 
 
 @v2_bp.route(MANIFEST_TAGNAME_ROUTE, methods=["GET"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read
@@ -101,6 +107,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 
 
 @v2_bp.route(MANIFEST_DIGEST_ROUTE, methods=["GET"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read
@@ -213,6 +220,7 @@ def _doesnt_accept_schema_v1():
 
 
 @v2_bp.route(MANIFEST_TAGNAME_ROUTE, methods=["PUT"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
@@ -225,6 +233,7 @@ def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 
 
 @v2_bp.route(MANIFEST_DIGEST_ROUTE, methods=["PUT"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
@@ -285,6 +294,7 @@ def _parse_manifest():
 
 
 @v2_bp.route(MANIFEST_DIGEST_ROUTE, methods=["DELETE"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @require_repo_write

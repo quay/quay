@@ -202,6 +202,11 @@ if __name__ == "__main__":
 
     has_local_storage = False
 
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     if features.STORAGE_REPLICATION:
         for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
             if storage_type == "LocalStorage":
