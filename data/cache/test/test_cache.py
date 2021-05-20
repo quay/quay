@@ -90,9 +90,30 @@ def test_redis_cache():
     global DATA
     DATA = {}
 
+    redis_config = {
+        "primary": {
+            "host": "127.0.0.1",
+            "port": 6279,
+            "db": 0,
+            "password": "",
+            "ssl": False,
+            "ssl_ca_certs": None,
+        },
+        "replica": {
+            "host": "127.0.0.1",
+            "port": 6279,
+            "db": 0,
+            "password": "",
+            "ssl": False,
+            "ssl_ca_certs": None,
+        },
+    }
+
     key = CacheKey("foo", "60m")
     with patch("data.cache.impl.StrictRedis", MockClient):
-        cache = RedisDataModelCache(TEST_CACHE_CONFIG, "127.0.0.1")
+        cache = RedisDataModelCache(
+            TEST_CACHE_CONFIG, redis_config.get("primary"), redis_config.get("replica")
+        )
 
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
         assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}

@@ -38,18 +38,16 @@ def get_model_cache(config):
         return cache
 
     if engine == "redis":
-        host = cache_config.get("host", None)
-        if host is None:
-            raise Exception("Missing `host` for Redis model cache configuration")
+        primary_config = cache_config.get("primary", None)
+        replica_config = cache_config.get("replica", None)
+
+        if not primary_config or primary_config.get("host") is None:
+            raise Exception("Missing `primary_host` for Redis model cache configuration")
 
         return RedisDataModelCache(
             cache_config,
-            host=host,
-            port=cache_config.get("port", 6379),
-            password=cache_config.get("password", None),
-            db=cache_config.get("db", 0),
-            ca_cert=cache_config.get("ca_cert", None),
-            ssl=cache_config.get("ssl", False),
+            primary_config=primary_config,
+            replica_config=replica_config,
         )
 
     raise Exception("Unknown model cache engine `%s`" % engine)
