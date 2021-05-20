@@ -244,33 +244,44 @@ class RedisDataModelCache(DataModelCache):
     def __init__(
         self,
         cache_config,
-        host="127.0.0.1",
-        port=6379,
-        password=None,
-        db=0,
-        ca_cert=None,
-        ssl=False,
+        primary_config,
+        replica_config=None,
     ):
         super(RedisDataModelCache, self).__init__(cache_config)
-        self.client = StrictRedis(
-            host=host,
-            port=port,
-            password=password,
-            db=db,
-            ssl_ca_certs=ca_cert,
-            ssl=ssl,
+        self.write_client = StrictRedis(
+            host=primary_config.get("host"),
+            port=primary_config.get("port"),
+            password=primary_config.get("password"),
+            db=primary_config.get("db"),
+            ssl_ca_certs=primary_config.get("ca_certs"),
+            ssl=primary_config.get("ssl"),
             socket_connect_timeout=1,
             socket_timeout=2,
             health_check_interval=2,
         )
 
+        if not replica_config:
+            self.read_client = self.write_client
+        else:
+            self.read_client = StrictRedis(
+                host=replica_config.get("host"),
+                port=replica_config.get("port"),
+                password=replica_config.get("password"),
+                db=replica_config.get("db"),
+                ssl_ca_certs=replica_config.get("ca_certs"),
+                ssl=replica_config.get("ssl"),
+                socket_connect_timeout=1,
+                socket_timeout=2,
+                health_check_interval=2,
+            )
+
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         # TODO: We might want to have different behavior based on `cache_key` (using "sets" for `/tags/list`, single value for others...)
         not_found = None
-        if self.client is not None:
+        if self.read_client is not None:
             logger.debug("Checking cache for key %s", cache_key.key)
             try:
-                cached_result = self.client.get(cache_key.key)
+                cached_result = self.read_client.get(cache_key.key)
                 if cached_result != not_found:
                     cache_count.labels("hit").inc()
                     logger.debug("Found result in cache for key %s", cache_key.key)
@@ -284,7 +295,7 @@ class RedisDataModelCache(DataModelCache):
         logger.debug("Found no result in cache for key %s; calling loader", cache_key.key)
         result = loader()
         logger.debug("Got loaded result for key %s: %s", cache_key.key, result)
-        if self.client is not None and should_cache(result):
+        if self.write_client is not None and should_cache(result):
             try:
                 logger.debug(
                     "Caching loaded result for key %s with expiration %s: %s",
@@ -295,7 +306,7 @@ class RedisDataModelCache(DataModelCache):
                 expires = (
                     convert_to_timedelta(cache_key.expiration) if cache_key.expiration else None
                 )
-                self.client.set(
+                self.write_client.set(
                     cache_key.key,
                     json.dumps(result),
                     ex=int(expires.total_seconds()) if expires else None,
