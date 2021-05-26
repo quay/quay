@@ -770,3 +770,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Repos created by push default to private visibility
     CREATE_PRIVATE_REPO_ON_PUSH = True
+
+    # Create organization on push if it does not exist
+    CREATE_NAMESPACE_ON_PUSH = False

@@ -1167,5 +1167,10 @@ CONFIG_SCHEMA = {
             "description": "Whether new repositories created by push are set to private visibility. Defaults to True.",
             "x-example": True,
         },
+        "CREATE_NAMESPACE_ON_PUSH": {
+            "type": "boolean",
+            "description": "Whether new push to a non-existent organization creates it. Defaults to False.",
+            "x-example": False,
+        },
     },
 }
