@@ -18,23 +18,49 @@ def get_robot_password(username):
 
 
 @pytest.mark.parametrize(
-    "scope, username, password, expected_code, expected_scopes",
+    "scope, username, password, expected_code, expected_scopes, push_private, visibility",
     [
         # Invalid repository.
-        ("repository:devtable/simple/foo/bar/baz:pull", "devtable", "password", 400, []),
+        (
+            "repository:devtable/simple/foo/bar/baz:pull",
+            "devtable",
+            "password",
+            400,
+            [],
+            True,
+            "private",
+        ),
         # Invalid scopes.
-        ("some_invalid_scope", "devtable", "password", 400, []),
+        ("some_invalid_scope", "devtable", "password", 400, [], True, "private"),
         # Invalid credentials.
-        ("repository:devtable/simple:pull", "devtable", "invalid", 401, []),
+        ("repository:devtable/simple:pull", "devtable", "invalid", 401, [], True, "private"),
         # Valid credentials.
-        ("repository:devtable/simple:pull", "devtable", "password", 200, ["devtable/simple:pull"]),
-        ("repository:devtable/simple:push", "devtable", "password", 200, ["devtable/simple:push"]),
+        (
+            "repository:devtable/simple:pull",
+            "devtable",
+            "password",
+            200,
+            ["devtable/simple:pull"],
+            True,
+            "private",
+        ),
+        (
+            "repository:devtable/simple:push",
+            "devtable",
+            "password",
+            200,
+            ["devtable/simple:push"],
+            True,
+            "private",
+        ),
         (
             "repository:devtable/simple:pull,push",
             "devtable",
             "password",
             200,
             ["devtable/simple:push,pull"],
+            True,
+            "private",
         ),
         (
             "repository:devtable/simple:pull,push,*",
@@ -42,6 +68,8 @@ def get_robot_password(username):
             "password",
             200,
             ["devtable/simple:push,pull,*"],
+            True,
+            "private",
         ),
         (
             "repository:buynlarge/orgrepo:pull,push,*",
@@ -49,12 +77,22 @@ def get_robot_password(username):
             "password",
             200,
             ["buynlarge/orgrepo:push,pull,*"],
+            True,
+            "private",
         ),
-        ("", "devtable", "password", 200, []),
+        ("", "devtable", "password", 200, [], True, "private"),
         # No credentials, non-public repo.
-        ("repository:devtable/simple:pull", None, None, 200, ["devtable/simple:"]),
+        ("repository:devtable/simple:pull", None, None, 200, ["devtable/simple:"], True, "private"),
         # No credentials, public repo.
-        ("repository:public/publicrepo:pull", None, None, 200, ["public/publicrepo:pull"]),
+        (
+            "repository:public/publicrepo:pull",
+            None,
+            None,
+            200,
+            ["public/publicrepo:pull"],
+            True,
+            "private",
+        ),
         # Reader only.
         (
             "repository:buynlarge/orgrepo:pull,push,*",
@@ -62,6 +100,8 @@ def get_robot_password(username):
             "password",
             200,
             ["buynlarge/orgrepo:pull"],
+            True,
+            "private",
         ),
         # Unknown repository.
         (
@@ -70,6 +110,8 @@ def get_robot_password(username):
             "password",
             200,
             ["devtable/unknownrepo:push,pull"],
+            True,
+            "private",
         ),
         # Unknown repository in another namespace.
         (
@@ -78,6 +120,8 @@ def get_robot_password(username):
             "password",
             200,
             ["somenamespace/unknownrepo:"],
+            True,
+            "private",
         ),
         # Disabled namespace.
         (
@@ -86,6 +130,8 @@ def get_robot_password(username):
             "password",
             405,
             [],
+            True,
+            "private",
         ),
         # Multiple scopes.
         (
@@ -94,6 +140,8 @@ def get_robot_password(username):
             "password",
             200,
             ["devtable/simple:push,pull", "devtable/complex:pull"],
+            True,
+            "private",
         ),
         # Multiple scopes with restricted behavior.
         (
@@ -102,6 +150,8 @@ def get_robot_password(username):
             "password",
             200,
             ["devtable/simple:push,pull", "public/publicrepo:pull"],
+            True,
+            "private",
         ),
         (
             ["repository:devtable/simple:pull,push,*", "repository:public/publicrepo:pull,push,*"],
@@ -109,6 +159,8 @@ def get_robot_password(username):
             "password",
             200,
             ["devtable/simple:push,pull,*", "public/publicrepo:pull"],
+            True,
+            "private",
         ),
         # Read Only State
         (
@@ -117,6 +169,8 @@ def get_robot_password(username):
             "password",
             200,
             ["devtable/readonly:pull"],
+            True,
+            "private",
         ),
         # Mirror State as a typical User
         (
@@ -125,6 +179,8 @@ def get_robot_password(username):
             "password",
             200,
             ["devtable/mirrored:pull"],
+            True,
+            "private",
         ),
         # Mirror State as the robot User should have write access
         (
@@ -133,6 +189,8 @@ def get_robot_password(username):
             get_robot_password,
             200,
             ["devtable/mirrored:push,pull"],
+            True,
+            "private",
         ),
         # Organization repository, org admin
         (
@@ -141,6 +199,8 @@ def get_robot_password(username):
             "password",
             200,
             ["buynlarge/orgrepo:push,pull,*"],
+            True,
+            "private",
         ),
         # Organization repository, org creator
         (
@@ -149,6 +209,8 @@ def get_robot_password(username):
             "password",
             200,
             ["buynlarge/orgrepo:"],
+            True,
+            "private",
         ),
         # Organization repository, org reader
         (
@@ -157,6 +219,8 @@ def get_robot_password(username):
             "password",
             200,
             ["buynlarge/orgrepo:pull"],
+            True,
+            "private",
         ),
         # Organization repository, freshuser
         (
@@ -165,11 +229,33 @@ def get_robot_password(username):
             "password",
             200,
             ["buynlarge/orgrepo:"],
+            True,
+            "private",
+        ),
+        # Pushed reposisitory created private
+        (
+            "repository:devtable/visibility:pull,push,*",
+            "devtable",
+            "password",
+            200,
+            ["devtable/visibility:push,pull,*"],
+            True,
+            "private",
+        ),
+        # Pushed reposisitory created public
+        (
+            "repository:devtable/visibility:pull,push,*",
+            "devtable",
+            "password",
+            200,
+            ["devtable/visibility:push,pull,*"],
+            False,
+            "public",
         ),
     ],
 )
 def test_generate_registry_jwt(
-    scope, username, password, expected_code, expected_scopes, app, client
+    scope, username, password, expected_code, expected_scopes, push_private, visibility, app, client
 ):
     params = {
         "service": original_app.config["SERVER_HOSTNAME"],
@@ -182,6 +268,8 @@ def test_generate_registry_jwt(
     headers = {}
     if username and password:
         headers["Authorization"] = gen_basic_auth(username, password)
+
+    original_app.config["CREATE_PRIVATE_REPO_ON_PUSH"] = push_private
 
     resp = conduct_call(
         client,
@@ -217,3 +305,9 @@ def test_generate_registry_jwt(
 
     assert decoded["access"] == expected_access
     assert len(decoded["context"][CLAIM_TUF_ROOTS]) == len(expected_scopes)
+
+    # Test visibility
+    if scope == "repository:devtable/visibility:pull,push,*":
+        assert (
+            model.repository.get_repository("devtable", "visibility").visibility.name == visibility
+        )
