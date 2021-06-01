@@ -102,6 +102,7 @@ def _manifest_dict(manifest):
         "digest": manifest.digest,
         "is_manifest_list": manifest.is_manifest_list,
         "manifest_data": manifest.internal_manifest_bytes.as_unicode(),
+        "config_media_type": manifest.config_media_type,
         "layers": (
             [_layer_dict(lyr.layer_info, idx) for idx, lyr in enumerate(layers)] if layers else None
         ),

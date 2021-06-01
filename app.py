@@ -130,6 +130,10 @@ features.import_features(app.config)
 
 # Register additional experimental artifact types.
 # TODO: extract this into a real, dynamic registration system.
+if features.GENERAL_OCI_SUPPORT:
+    for media_type, layer_types in app.config.get("ALLOWED_OCI_ARTIFACT_TYPES").items():
+        register_artifact_type(media_type, layer_types)
+
 if features.HELM_OCI_SUPPORT:
     HELM_CHART_CONFIG_TYPE = "application/vnd.cncf.helm.config.v1+json"
     HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]

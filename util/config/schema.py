@@ -1179,5 +1179,16 @@ CONFIG_SCHEMA = {
             "description": "If set to true, the first User account may be created via API /api/v1/user/initialize",
             "x-example": False,
         },
+        # OCI artifact types
+        "ALLOWED_OCI_ARTIFACT_TYPES": {
+            "type": "object",
+            "description": "The set of allowed OCI artifact mimetypes and the assiciated layer types",
+            "x-example": {
+                "application/vnd.cncf.helm.config.v1+json": ["application/tar+gzip"],
+                "application/vnd.sylabs.sif.config.v1+json": [
+                    "application/vnd.sylabs.sif.layer.v1.sif"
+                ],
+            },
+        },
     },
 }

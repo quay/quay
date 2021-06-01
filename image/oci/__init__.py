@@ -33,5 +33,9 @@ ADDITIONAL_LAYER_CONTENT_TYPES = []
 
 
 def register_artifact_type(artifact_config_type, artifact_layer_types):
-    ALLOWED_ARTIFACT_TYPES.append(artifact_config_type)
-    ADDITIONAL_LAYER_CONTENT_TYPES.extend(artifact_layer_types)
+    if artifact_config_type not in ALLOWED_ARTIFACT_TYPES:
+        ALLOWED_ARTIFACT_TYPES.append(artifact_config_type)
+
+    for layer_type in artifact_layer_types:
+        if layer_type not in ADDITIONAL_LAYER_CONTENT_TYPES:
+            ADDITIONAL_LAYER_CONTENT_TYPES.append(layer_type)
