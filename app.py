@@ -46,6 +46,8 @@ from path_converters import (
     RegexConverter,
     RepositoryPathConverter,
     APIRepositoryPathConverter,
+    RepositoryPathRedirectConverter,
+    V1CreateRepositoryPathConverter,
 )
 from oauth.services.github import GithubOAuthService
 from oauth.services.gitlab import GitLabOAuthService
@@ -224,6 +226,8 @@ app.request_class = RequestWithId
 app.url_map.converters["regex"] = RegexConverter
 app.url_map.converters["repopath"] = RepositoryPathConverter
 app.url_map.converters["apirepopath"] = APIRepositoryPathConverter
+app.url_map.converters["repopathredirect"] = RepositoryPathRedirectConverter
+app.url_map.converters["v1createrepopath"] = V1CreateRepositoryPathConverter
 
 Principal(app, use_sessions=False)
 

@@ -20,6 +20,7 @@ from cnr.exception import (
 )
 from flask import jsonify, request
 
+import features
 from app import app, model_cache
 from auth.auth_context import get_authenticated_user
 from auth.credentials import validate_credentials
@@ -32,7 +33,7 @@ from endpoints.appr.cnr_backend import Blob, Channel, Package, User
 from endpoints.appr.decorators import disallow_for_image_repository
 from endpoints.appr.models_cnr import model
 from endpoints.decorators import anon_allowed, anon_protect, check_region_blacklisted
-from util.names import REPOSITORY_NAME_REGEX, TAG_REGEX
+from util.names import REPOSITORY_NAME_REGEX, REPOSITORY_NAME_EXTENDED_REGEX, TAG_REGEX
 
 logger = logging.getLogger(__name__)
 
@@ -225,9 +226,14 @@ def pull(namespace, package_name, release, media_type):
 def push(namespace, package_name):
     reponame = repo_name(namespace, package_name)
 
-    if not REPOSITORY_NAME_REGEX.match(package_name):
-        logger.debug("Found invalid repository name CNR push: %s", reponame)
-        raise InvalidUsage("invalid repository name: %s" % reponame)
+    if features.EXTENDED_REPOSITORY_NAMES:
+        if not REPOSITORY_NAME_EXTENDED_REGEX.match(package_name):
+            logger.debug("Found invalid repository name CNR push: %s", reponame)
+            raise InvalidUsage("invalid repository name: %s" % reponame)
+    else:
+        if not REPOSITORY_NAME_REGEX.match(package_name):
+            logger.debug("Found invalid repository name CNR push: %s", reponame)
+            raise InvalidUsage("invalid repository name: %s" % reponame)
 
     values = request.get_json(force=True, silent=True) or {}
     private = values.get("visibility", "private")

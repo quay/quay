@@ -895,7 +895,6 @@ def test_image_replication_empty_layers(
     "repo_name, expected_failure",
     [
         ("something", None),
-        ("some/slash", Failures.SLASH_REPOSITORY),
         pytest.param("x" * 255, None, id="Valid long name"),
         pytest.param("x" * 256, Failures.INVALID_REPOSITORY, id="Name too long"),
     ],
@@ -925,6 +924,118 @@ def test_push_reponame(
             basic_images,
             credentials=credentials,
         )
+
+
+@pytest.mark.parametrize(
+    "repo_name, extended_repo_names, expected_failure",
+    [
+        ("something", False, None),
+        ("something", True, None),
+        ("some/slash", False, Failures.SLASH_REPOSITORY),
+        ("some/slash", True, Failures.SLASH_REPOSITORY),
+        ("some/more/slash", False, Failures.SLASH_REPOSITORY),
+        ("some/more/slash", True, Failures.SLASH_REPOSITORY),
+        pytest.param("x" * 255, False, None, id="Valid long name"),
+        pytest.param("x" * 255, True, None, id="Valid long name"),
+        pytest.param("x" * 256, False, Failures.INVALID_REPOSITORY, id="Name too long"),
+        pytest.param("x" * 256, True, Failures.INVALID_REPOSITORY, id="Name too long"),
+    ],
+)
+def test_v1_push_extended_reponame(
+    repo_name,
+    extended_repo_names,
+    expected_failure,
+    v1_pusher,
+    v1_puller,
+    basic_images,
+    liveserver_session,
+    app_reloader,
+    liveserver,
+    registry_server_executor,
+):
+    """Test: Attempt to add a repository with various names."""
+    credentials = ("devtable", "password")
+
+    with FeatureFlagValue(
+        "EXTENDED_REPOSITORY_NAMES",
+        extended_repo_names,
+        registry_server_executor.on(liveserver),
+    ):
+        v1_pusher.push(
+            liveserver_session,
+            "devtable",
+            repo_name,
+            "latest",
+            basic_images,
+            credentials=credentials,
+            expected_failure=expected_failure,
+        )
+
+        if expected_failure is None:
+            v1_puller.pull(
+                liveserver_session,
+                "devtable",
+                repo_name,
+                "latest",
+                basic_images,
+                credentials=credentials,
+            )
+
+
+@pytest.mark.parametrize(
+    "repo_name, extended_repo_names, expected_failure",
+    [
+        ("something", False, None),
+        ("something", True, None),
+        ("some/slash", False, Failures.SLASH_REPOSITORY),
+        ("some/slash", True, None),
+        ("some/more/slash", False, Failures.SLASH_REPOSITORY),
+        ("some/more/slash", True, None),
+        pytest.param("x" * 255, False, None, id="Valid long name"),
+        pytest.param("x" * 255, True, None, id="Valid long name"),
+        pytest.param("x" * 256, False, Failures.INVALID_REPOSITORY, id="Name too long"),
+        pytest.param("x" * 256, True, Failures.INVALID_REPOSITORY, id="Name too long"),
+    ],
+)
+def test_v2_push_reponame(
+    repo_name,
+    extended_repo_names,
+    expected_failure,
+    v2_pusher,
+    v2_puller,
+    basic_images,
+    liveserver_session,
+    app_reloader,
+    liveserver,
+    registry_server_executor,
+):
+    """Test: Attempt to add a repository with various names."""
+    credentials = ("devtable", "password")
+
+    with FeatureFlagValue(
+        "EXTENDED_REPOSITORY_NAMES",
+        extended_repo_names,
+        registry_server_executor.on(liveserver),
+    ):
+        v2_pusher.push(
+            liveserver_session,
+            "devtable",
+            repo_name,
+            "latest",
+            basic_images,
+            credentials=credentials,
+            expected_failure=expected_failure,
+        )
+
+        if expected_failure is None:
+            v2_puller.pull(
+                liveserver_session,
+                "devtable",
+                repo_name,
+                "latest",
+                basic_images,
+                credentials=credentials,
+            )
 
 
 @pytest.mark.parametrize(

@@ -16,6 +16,10 @@
     $scope.Features = Features;
     $scope.TriggerService = TriggerService;
 
+    $scope.repositoryNameRegex = (Features.EXTENDED_REPOSITORY_NAMES) ?
+				 new RegExp('^[a-z0-9][.a-z0-9_-]*(\/[a-z0-9][.a-z0-9_-]*)*$') :
+				 new RegExp('^[a-z0-9][.a-z0-9_-]*$');
+
     $scope.repo = {
       'is_public': 0,
       'description': '',

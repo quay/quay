@@ -204,7 +204,7 @@ class DockerSchema1Manifest(ManifestInterface):
         self._tag = self._parsed[DOCKER_SCHEMA1_REPO_TAG_KEY]
 
         repo_name = self._parsed[DOCKER_SCHEMA1_REPO_NAME_KEY]
-        repo_name_tuple = repo_name.split("/")
+        repo_name_tuple = repo_name.split("/", 1)
         if len(repo_name_tuple) > 1:
             self._namespace, self._repo_name = repo_name_tuple
         elif len(repo_name_tuple) == 1:
