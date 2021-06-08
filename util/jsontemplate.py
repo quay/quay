@@ -81,7 +81,7 @@ def _process_inline(expression, data):
             return None
 
         if len(found) > 1:
-            return [f.data for f in found]
+            return [f.value for f in found]
 
         return found[0].value
     except IndexError:
