@@ -27,7 +27,7 @@ events = PROCESS_LOG
 [program:blobuploadcleanupworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/blobuploadcleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.blobuploadcleanupworker.blobuploadcleanupworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/blobuploadcleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.blobuploadcleanupworker.blobuploadcleanupworker:create_gunicorn_worker()'
 autostart = {{ config['blobuploadcleanupworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -35,7 +35,7 @@ stderr_events_enabled = true
 [program:buildlogsarchiver]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/buildlogsarchiver.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.buildlogsarchiver.buildlogsarchiver:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/buildlogsarchiver.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.buildlogsarchiver.buildlogsarchiver:create_gunicorn_worker()'
 autostart = {{ config['buildlogsarchiver']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -51,7 +51,7 @@ stderr_events_enabled = true
 [program:chunkcleanupworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/chunkcleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.chunkcleanupworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/chunkcleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.chunkcleanupworker:create_gunicorn_worker()'
 autostart = {{ config['chunkcleanupworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -59,7 +59,7 @@ stderr_events_enabled = true
 [program:expiredappspecifictokenworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/expiredappspecifictokenworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.expiredappspecifictokenworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/expiredappspecifictokenworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.expiredappspecifictokenworker:create_gunicorn_worker()'
 autostart = {{ config['expiredappspecifictokenworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -67,7 +67,7 @@ stderr_events_enabled = true
 [program:exportactionlogsworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/exportactionlogsworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.exportactionlogsworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/exportactionlogsworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.exportactionlogsworker:create_gunicorn_worker()'
 autostart = {{ config['exportactionlogsworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -75,7 +75,7 @@ stderr_events_enabled = true
 [program:gcworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/gcworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.gc.gcworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/gcworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.gc.gcworker:create_gunicorn_worker()'
 autostart = {{ config['gcworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -83,7 +83,7 @@ stderr_events_enabled = true
 [program:globalpromstats]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/globalpromstats.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.globalpromstats.globalpromstats:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/globalpromstats.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.globalpromstats.globalpromstats:create_gunicorn_worker()
 autostart = {{ config['globalpromstats']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -91,7 +91,7 @@ stderr_events_enabled = true
 [program:logrotateworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/logrotateworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.logrotateworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/logrotateworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.logrotateworker:create_gunicorn_worker()'
 autostart = {{ config['logrotateworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -99,7 +99,7 @@ stderr_events_enabled = true
 [program:repositorygcworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/repositorygcworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.repositorygcworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/repositorygcworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.repositorygcworker:create_gunicorn_worker()'
 autostart = {{ config['repositorygcworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -107,7 +107,7 @@ stderr_events_enabled = true
 [program:namespacegcworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/namespacegcworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.namespacegcworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/namespacegcworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.namespacegcworker:create_gunicorn_worker()'
 autostart = {{ config['namespacegcworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -115,7 +115,7 @@ stderr_events_enabled = true
 [program:notificationworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/notificationworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.notificationworker.notificationworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/notificationworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.notificationworker.notificationworker:create_gunicorn_worker()'
 autostart = {{ config['notificationworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -123,7 +123,7 @@ stderr_events_enabled = true
 [program:queuecleanupworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/queuecleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.queuecleanupworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/queuecleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.queuecleanupworker:create_gunicorn_worker()'
 autostart = {{ config['queuecleanupworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -131,7 +131,7 @@ stderr_events_enabled = true
 [program:repositoryactioncounter]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/repositoryactioncounter.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.repositoryactioncounter:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/repositoryactioncounter.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.repositoryactioncounter:create_gunicorn_worker()'
 autostart = {{ config['repositoryactioncounter']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -139,7 +139,7 @@ stderr_events_enabled = true
 [program:securityworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/securityworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.securityworker.securityworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/securityworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.securityworker.securityworker:create_gunicorn_worker()'
 autostart = {{ config['securityworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -147,7 +147,7 @@ stderr_events_enabled = true
 [program:storagereplication]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/storagereplication.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.storagereplication:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/storagereplication.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.storagereplication:create_gunicorn_worker()'
 autostart = {{ config['storagereplication']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -155,7 +155,7 @@ stderr_events_enabled = true
 [program:teamsyncworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/teamsyncworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.teamsyncworker.teamsyncworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/teamsyncworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.teamsyncworker.teamsyncworker:create_gunicorn_worker()'
 autostart = {{ config['teamsyncworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -179,7 +179,7 @@ stderr_events_enabled = true
 [program:gunicorn-secscan]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -c %(ENV_QUAYCONF)s/gunicorn_secscan.py secscan:application
+command=gunicorn --timeout=600 -c %(ENV_QUAYCONF)s/gunicorn_secscan.py secscan:application
 autostart = {{ config['gunicorn-secscan']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -187,7 +187,7 @@ stderr_events_enabled = true
 [program:gunicorn-web]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -c %(ENV_QUAYCONF)s/gunicorn_web.py web:application
+command=gunicorn --timeout=600 -c %(ENV_QUAYCONF)s/gunicorn_web.py web:application
 autostart = {{ config['gunicorn-web']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -221,7 +221,7 @@ stderr_events_enabled = true
 [program:servicekey]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/servicekey.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.servicekeyworker.servicekeyworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/servicekey.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.servicekeyworker.servicekeyworker:create_gunicorn_worker()'
 autostart = {{ config['servicekey']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -229,7 +229,7 @@ stderr_events_enabled = true
 [program:manifestbackfillworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/manifestbackfillworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.manifestbackfillworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/manifestbackfillworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.manifestbackfillworker:create_gunicorn_worker()'
 autostart = {{ config['manifestbackfillworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -237,7 +237,7 @@ stderr_events_enabled = true
 [program:securityscanningnotificationworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/securityscanningnotificationworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.securityscanningnotificationworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/securityscanningnotificationworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.securityscanningnotificationworker:create_gunicorn_worker()'
 autostart = {{ config['securityscanningnotificationworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
@@ -245,7 +245,7 @@ stderr_events_enabled = true
 [program:repomirrorworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn -b 'unix:/tmp/repomirrorworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.repomirrorworker.repomirrorworker:create_gunicorn_worker()' 
+command=gunicorn --timeout=600 -b 'unix:/tmp/repomirrorworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.repomirrorworker.repomirrorworker:create_gunicorn_worker()'
 autostart = {{ config['repomirrorworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
