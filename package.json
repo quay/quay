@@ -43,7 +43,7 @@
     "restangular": "^1.2.0",
     "rxjs": "5.5.7",
     "showdown": "^1.6.4",
-    "underscore": "^1.5.2",
+    "underscore": "^1.12.1",
     "urijs": "^1.18.10",
     "url-parse": "^1.4.3",
     "zeroclipboard": "^2.3.0"
