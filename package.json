@@ -44,7 +44,7 @@
     "rxjs": "5.5.7",
     "showdown": "^1.6.4",
     "underscore": "^1.5.2",
-    "urijs": "^1.18.10",
+    "urijs": "^1.19.6",
     "url-parse": "^1.4.3",
     "zeroclipboard": "^2.3.0"
   },
