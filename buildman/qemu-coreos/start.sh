@@ -9,7 +9,7 @@ set -o nounset
 
 echo "${USERDATA}" > /userdata/user_data
 
-MIN_IMAGE_SIZE_BYTES=$(qemu-img info rhcos-47.83.202011301442-0-qemu.x86_64.qcow2 | grep "virtual size" | cut -d " " -f 5 | tr -d "()")
+MIN_IMAGE_SIZE_BYTES=$(qemu-img info coreos_production_qemu_image.qcow2 | grep "virtual size" | cut -d " " -f 5 | tr -d "()")
 VM_VOLUME_SIZE_BYTES=$(numfmt --from=iec $VM_VOLUME_SIZE)
 
 if [ "$VM_VOLUME_SIZE_BYTES" -gt "$MIN_IMAGE_SIZE_BYTES" ]
