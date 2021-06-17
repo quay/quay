@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"crypto/tls"
 	"fmt"
 
 	"github.com/go-redis/redis/v8"
@@ -41,10 +42,18 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		addr = addr + ":" + fmt.Sprintf("%d", fg.BuildlogsRedis.Port)
 	}
 
+	var tlsConfig *tls.Config = nil
+	if fg.BuildlogsRedis.Ssl {
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
+
 	options := &redis.Options{
 		Addr:     addr,
 		Password: fg.BuildlogsRedis.Password,
 		DB:       0,
+		TLSConfig: tlsConfig,
 	}
 	if ok, err := shared.ValidateRedisConnection(options, "BUILDLOGS_REDIS", "Redis"); !ok {
 		errors = append(errors, err)
@@ -55,10 +64,19 @@ func (fg *RedisFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 	if fg.UserEventsRedis.Port != 0 {
 		addr = addr + ":" + fmt.Sprintf("%d", fg.BuildlogsRedis.Port)
 	}
+
+	tlsConfig = nil
+	if fg.UserEventsRedis.Ssl {
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
+
 	options = &redis.Options{
 		Addr:     addr,
 		Password: fg.UserEventsRedis.Password,
 		DB:       0,
+		TLSConfig: tlsConfig,
 	}
 	if ok, err := shared.ValidateRedisConnection(options, "USER_EVENTS_REDIS", "Redis"); !ok {
 		errors = append(errors, err)
