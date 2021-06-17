@@ -44,13 +44,15 @@ var validateCmd = &cobra.Command{
 		configFilePath := path.Join(configDir, "config.yaml")
 		configBytes, err := ioutil.ReadFile(configFilePath)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("Could not read the config bundle: " + err.Error())
+			os.Exit(1)
 		}
 
 		// Unmarshal from json
 		var conf map[string]interface{}
 		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
-			fmt.Println(err.Error())
+			fmt.Println("Could not parse config.yaml: " + err.Error())
+			os.Exit(1)
 		}
 
 		// Clean config
@@ -61,14 +63,14 @@ var validateCmd = &cobra.Command{
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
 			fmt.Println("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: " + err.Error())
-			return
+			os.Exit(1)
 		}
 
 		// Load certs
 		certs := shared.LoadCerts(configDir)
 		if err != nil {
 			fmt.Println(err.Error())
-			return
+			os.Exit(1)
 		}
 
 		// Sort keys
