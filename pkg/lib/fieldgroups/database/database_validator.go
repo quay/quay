@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-pg/pg/v10"
 	mysql "github.com/go-sql-driver/mysql" //mysql driver
-	_ "github.com/lib/pq"                  // postgres driver
+	"github.com/jackc/pgx/v4"
 	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
@@ -132,8 +131,10 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, rawURI, caCer
 		// Database is Postgres
 	} else if scheme == "postgresql" {
 
+		ctx := context.Background()
+
 		// Create connection options
-		dbOpts, err := pg.ParseURL(rawURI)
+		dbOpts, err := pgx.ParseConfig(rawURI)
 		if err != nil {
 			return err
 		}
@@ -161,18 +162,30 @@ func ValidateDatabaseConnection(opts shared.Options, uri *url.URL, rawURI, caCer
 		}
 
 		// Connect and defer closing
-		db := pg.Connect(dbOpts)
-		defer db.Close()
-
-		// If database is postgres, make sure that extension pg_trgm is installed
-		var extensions string
-		_, err = db.Query(pg.Scan(&extensions), `SELECT extname FROM pg_extension`)
+		conn, err := pgx.Connect(ctx, rawURI)
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(extensions, "pg_trgm") {
-			return errors.New("if you are using a Postgres database, you must install the pg_trgm extension")
+		defer conn.Close(ctx)
+
+		// If database is postgres, make sure that extension pg_trgm is installed
+		rows, err := conn.Query(ctx, `SELECT extname FROM pg_extension`)
+		if err != nil {
+			return err
 		}
+
+		for rows.Next() {
+			var extension string
+			err = rows.Scan(&extension)
+			if err != nil {
+				return err
+			}
+			fmt.Println(extension)
+			if strings.Contains(extension, "pg_trgm") {
+				return nil
+			}
+		}
+		return errors.New("if you are using a Postgres database, you must install the pg_trgm extension")
 
 	} else {
 		return errors.New("you must use a valid scheme")
