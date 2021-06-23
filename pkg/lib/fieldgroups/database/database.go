@@ -14,9 +14,14 @@ type DatabaseFieldGroup struct {
 
 // DbConnectionArgsStruct represents the DbConnectionArgsStruct config fields
 type DbConnectionArgsStruct struct {
-	Ssl          *SslStruct `default:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
-	Threadlocals bool       `default:"true" json:"threadlocals" yaml:"threadlocals"`
-	Autorollback bool       `default:"true"  json:"autorollback" yaml:"autorollback"`
+	// MySQL arguments
+	Ssl          *SslStruct `default:""  json:"ssl,omitempty" yaml:"ssl,omitempty"`
+	Threadlocals bool       `default:""  json:"threadlocals,omitempty" yaml:"threadlocals,omitempty"`
+	Autorollback bool       `default:""  json:"autorollback,omitempty" yaml:"autorollback,omitempty"`
+
+	// Postgres arguments
+	SslRootCert string `default:""  json:"sslrootcert,omitempty" yaml:"sslrootcert,omitempty"`
+	SslMode     string `default:""  json:"sslmode,omitempty" yaml:"sslmode,omitempty"`
 }
 
 // SslStruct represents the SslStruct config fields

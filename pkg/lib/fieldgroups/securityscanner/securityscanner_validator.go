@@ -61,7 +61,7 @@ func (fg *SecurityScannerFieldGroup) Validate(opts shared.Options) []shared.Vali
 		if opts.Mode == "online" {
 			// NOTE: We validate against the introspection endpoint, because the main endpoint will refuse connections until fully initialized.
 			endpoint, _ := url.Parse(fg.SecurityScannerV4Endpoint)
-			introspectionEndpoint := endpoint.Hostname() + ":" + introspectionPort
+			introspectionEndpoint := endpoint.Scheme + "://" + endpoint.Hostname() + ":" + introspectionPort
 
 			if ok, err := shared.ValidateHostIsReachable(opts, introspectionEndpoint, "SECURITY_SCANNER_V4_ENDPOINT", "SecurityScanner"); !ok {
 				errors = append(errors, err)

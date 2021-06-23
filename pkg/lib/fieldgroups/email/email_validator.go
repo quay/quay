@@ -1,11 +1,6 @@
 package email
 
 import (
-	net "net"
-	"net/smtp"
-	"strconv"
-	"time"
-
 	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
@@ -28,55 +23,6 @@ func (fg *EmailFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		return errors
 	}
 
-	// Dial smtp server
-	conn, err := net.DialTimeout("tcp", fg.MailServer+":"+strconv.Itoa(fg.MailPort), 3*time.Second)
-	if err != nil {
-		newError := shared.ValidationError{
-			Tags:       []string{"MAIL_SERVER"},
-			FieldGroup: fgName,
-			Message:    "Cannot reach " + fg.MailServer + ". Error: " + err.Error(),
-		}
-		errors = append(errors, newError)
-		return errors
-	}
-
-	client, err := smtp.NewClient(conn, fg.MailServer)
-	if err != nil {
-		newError := shared.ValidationError{
-			Tags:       []string{"MAIL_SERVER"},
-			FieldGroup: fgName,
-			Message:    "Cannot reach " + fg.MailServer + ". Error: " + err.Error(),
-		}
-		errors = append(errors, newError)
-		return errors
-	}
-
-	// If TLS is enabled.
-	if fg.MailUseTls {
-		config, err := shared.GetTlsConfig(opts)
-		if err != nil {
-			newError := shared.ValidationError{
-				Tags:       []string{"MAIL_USE_TLS"},
-				FieldGroup: fgName,
-				Message:    err.Error(),
-			}
-			errors = append(errors, newError)
-			return errors
-		}
-		config.ServerName = fg.MailServer
-
-		err = client.StartTLS(config)
-		if err != nil {
-			newError := shared.ValidationError{
-				Tags:       []string{"MAIL_USE_TLS"},
-				FieldGroup: fgName,
-				Message:    err.Error(),
-			}
-			errors = append(errors, newError)
-			return errors
-		}
-	}
-
 	// If FIPS is enabled, ensure mail tls is enabled
 	if fg.FeatureFIPS && !fg.MailUseTls {
 		newError := shared.ValidationError{
@@ -88,18 +34,9 @@ func (fg *EmailFieldGroup) Validate(opts shared.Options) []shared.ValidationErro
 		return errors
 	}
 
-	// If auth is enabled, try to authenticate
-	if fg.MailUseAuth {
-		auth := smtp.PlainAuth("", fg.MailUsername, fg.MailPassword, fg.MailServer)
-		if err = client.Auth(auth); err != nil {
-			newError := shared.ValidationError{
-				Tags:       []string{"MAIL_SERVER"},
-				FieldGroup: fgName,
-				Message:    "Error: " + err.Error(),
-			}
-			errors = append(errors, newError)
-			return errors
-		}
+	if ok, err := shared.ValidateEmailServer(opts, fg.MailServer, fg.MailPort, fg.MailUseTls, fg.MailUseAuth, fg.MailUsername, fg.MailPassword, fgName); !ok {
+		errors = append(errors, err)
+		return errors
 	}
 
 	return errors

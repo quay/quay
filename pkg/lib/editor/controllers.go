@@ -14,6 +14,7 @@ import (
 	"github.com/quay/config-tool/pkg/lib/config"
 	conf "github.com/quay/config-tool/pkg/lib/config"
 	"github.com/quay/config-tool/pkg/lib/shared"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -48,6 +49,7 @@ func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http
 		var config map[string]interface{}
 		defaultFieldGroups, err := conf.NewConfig(map[string]interface{}{})
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -56,11 +58,15 @@ func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http
 		for _, fg := range defaultFieldGroups {
 			fgBytes, err := yaml.Marshal(fg)
 			if err != nil {
+				log.Errorf(err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			err = yaml.Unmarshal(fgBytes, &config)
 			if err != nil {
+				log.Errorf(err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 		}
 
@@ -73,6 +79,7 @@ func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http
 		} else {
 			w.WriteHeader(http.StatusOK)
 			if err = yaml.Unmarshal(configBytes, &config); err != nil {
+				log.Errorf(err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -88,6 +95,7 @@ func getMountedConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http
 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		js, err := json.Marshal(resp)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -109,6 +117,7 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 		var confBundle ConfigBundle
 		err := json.NewDecoder(r.Body).Decode(&confBundle)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -116,6 +125,7 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 		files := make(map[string][]byte)
 		files["config.yaml"], err = yaml.Marshal(confBundle.Config)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -132,6 +142,7 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 			Mode:     0777,
 		}
 		if err := tw.WriteHeader(hdr); err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -142,10 +153,12 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 				Size: int64(len(contents)),
 			}
 			if err := tw.WriteHeader(hdr); err != nil {
+				log.Errorf(err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if _, err := tw.Write(contents); err != nil {
+				log.Errorf(err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -168,9 +181,12 @@ func downloadConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 // @Router /config/validate [post]
 func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Debug("Received config bundle. Decoding into ConfigBundle struct")
+
 		var configBundle ConfigBundle
 		err := json.NewDecoder(r.Body).Decode(&configBundle)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -179,6 +195,7 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 
 		loaded, err := config.NewConfig(configBundle.Config)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -198,6 +215,7 @@ func validateConfigBundle(opts *ServerOptions) func(http.ResponseWriter, *http.R
 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		js, err := json.Marshal(errors)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -219,6 +237,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 		var configBundle ConfigBundle
 		err := json.NewDecoder(r.Body).Decode(&configBundle)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -228,6 +247,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 		// TODO(alecmerdler): For each managed component fieldgroup, remove its fields from `config.yaml` using `Fields()` function...
 		newConfig, err := config.NewConfig(configBundle.Config)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -257,6 +277,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 		var json = jsoniter.ConfigCompatibleWithStandardLibrary
 		js, err := json.Marshal(preSecret)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -264,6 +285,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 		// FIXME: Currently hardcoding
 		req, err := http.NewRequest("POST", opts.operatorEndpoint+"/reconfigure", bytes.NewBuffer(js))
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -272,6 +294,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -279,6 +302,7 @@ func commitToOperator(opts *ServerOptions) func(w http.ResponseWriter, r *http.R
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
+			log.Errorf(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

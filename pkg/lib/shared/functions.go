@@ -170,7 +170,7 @@ func RemoveNullValues(m map[string]interface{}) map[string]interface{} {
 	for k, v := range m {
 		_ = k
 		if v, ok := v.(map[string]interface{}); ok {
-			FixNumbers(v)
+			RemoveNullValues(v)
 		}
 		if v == nil {
 			delete(m, k)

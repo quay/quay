@@ -64,8 +64,6 @@ var printCmd = &cobra.Command{
 		spew.Config.DisablePointerAddresses = true
 		spew.Config.SortKeys = true
 		spew.Config.DisableMethods = true
-		spew.Config.DisableTypes = true
-		spew.Config.DisableLengths = true
 		spew.Dump(configFieldGroups)
 
 	},

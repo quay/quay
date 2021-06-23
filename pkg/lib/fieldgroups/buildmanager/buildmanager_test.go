@@ -1,6 +1,7 @@
 package buildmanager
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -42,7 +43,7 @@ BUILD_MANAGER:
         WORKER_TAG: some_tag
         BUILDER_VM_CONTAINER_IMAGE: '<registry>/quay-quay-builder-qemu-rhcos:v3.4.0'
         SETUP_TIME: 180
-        MINIMUM_RETRY_THRESHOLD: 0
+        MINIMUM_RETRY_THRESHOLD: 1
         SSH_AUTHORIZED_KEYS:
           - ssh-rsa 12345 someuser@email.com
           - ssh-rsa 67890 someuser2@email.com
@@ -60,6 +61,8 @@ BUILD_MANAGER:
 		t.Errorf(err.Error())
 		return
 	}
+
+	fmt.Println(string(after))
 
 	var confMap2 BuildManagerFieldGroup
 	err = yaml.Unmarshal(after, &confMap2)

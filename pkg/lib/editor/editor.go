@@ -12,10 +12,11 @@ import (
 	"crypto/tls"
 	"errors"
 	"io/ioutil"
-	"log"
 	"mime"
 	"net/http"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/go-chi/chi"
@@ -133,12 +134,12 @@ func RunConfigEditor(password, configPath, operatorEndpoint string, readOnlyFiel
 	// Try to load TLS
 	tlsConfig, err := loadTLS(opts.publicKeyPath, opts.privateKeyPath)
 	if err != nil {
-		log.Printf("An error occurred loading TLS: " + err.Error() + ". Server falling back to HTTP.")
-		log.Printf("Running the configuration editor with HTTP on port %v with username %s", opts.port, opts.username)
+		log.Warningf("An error occurred loading TLS: " + err.Error() + ". Server falling back to HTTP.")
+		log.Infof("Running the configuration editor with HTTP on port %v with username %s", opts.port, opts.username)
 		log.Fatal(s.ListenAndServe())
 	} else {
 		s.TLSConfig = tlsConfig
-		log.Printf("Running the configuration editor with HTTPS on port %v with username %s", opts.port, opts.username)
+		log.Infof("Running the configuration editor with HTTPS on port %v with username %s", opts.port, opts.username)
 		log.Fatal(s.ListenAndServeTLS("", ""))
 	}
 }
