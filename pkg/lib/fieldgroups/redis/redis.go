@@ -17,6 +17,7 @@ type UserEventsRedisStruct struct {
 	Password string `default:"" validate:"" json:"password,omitempty" yaml:"password,omitempty"`
 	Port     int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
 	Host     string `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
+	Ssl      bool   `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
 }
 
 // BuildlogsRedisStruct represents the BuildlogsRedisStruct config fields
@@ -24,6 +25,7 @@ type BuildlogsRedisStruct struct {
 	Password string `default:"" validate:"" json:"password,omitempty" yaml:"password,omitempty"`
 	Port     int    `default:"" validate:"" json:"port,omitempty" yaml:"port,omitempty"`
 	Host     string `default:"" validate:"" json:"host,omitempty" yaml:"host,omitempty"`
+	Ssl      bool   `default:"false" validate:"" json:"ssl,omitempty" yaml:"ssl,omitempty"`
 }
 
 // NewRedisFieldGroup creates a new RedisFieldGroup
