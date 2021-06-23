@@ -3,7 +3,6 @@ package shared
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -17,6 +16,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/ncw/swift"
+	log "github.com/sirupsen/logrus"
 )
 
 // ValidateStorage will validate a S3 storage connection.
@@ -375,7 +375,7 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 		return false, newError
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	found, err := st.BucketExists(ctx, bucketName)
@@ -418,7 +418,7 @@ func validateAzureGateway(opts Options, storageName, accountName, accountKey, co
 	serviceURL := azblob.NewServiceURL(*u, p)
 	containerURL := serviceURL.NewContainerURL(containerName)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	_, err = containerURL.GetAccountInfo(ctx)

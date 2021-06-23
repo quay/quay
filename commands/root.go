@@ -30,7 +30,7 @@ var validationMode string
 var rootCmd = &cobra.Command{
 	Use:   "config-tool",
 	Short: "A Configuration Validation Tool for Quay",
-	Long:  `This tool allows Quay users to validate their configuration bundles11`,
+	Long:  `This tool allows Quay users to validate their configuration bundles.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -1,11 +1,8 @@
 package ldap
 
 import (
-	"fmt"
 	"net/url"
-	"strings"
 
-	"github.com/go-ldap/ldap/v3"
 	"github.com/quay/config-tool/pkg/lib/shared"
 )
 
@@ -49,85 +46,8 @@ func (fg *LDAPFieldGroup) Validate(opts shared.Options) []shared.ValidationError
 		return errors
 	}
 
-	// Get tls config
-	tlsConfig, err := shared.GetTlsConfig(opts)
-	if err != nil {
-		newError := shared.ValidationError{
-			Tags:       []string{"LDAP"},
-			FieldGroup: fgName,
-			Message:    err.Error(),
-		}
-		errors = append(errors, newError)
-		return errors
-	}
-
-	// Check for LDAP ca cert and add if present
-	if crt, ok := opts.Certificates["ldap.crt"]; ok {
-		certAdded := tlsConfig.RootCAs.AppendCertsFromPEM(crt)
-		if !certAdded {
-			newError := shared.ValidationError{
-				Tags:       []string{"LDAP"},
-				FieldGroup: fgName,
-				Message:    "Could not successfully load ldap.crt",
-			}
-			errors = append(errors, newError)
-			return errors
-		}
-	}
-
-	// Dial ldap server
-	l, err := ldap.DialURL(fg.LdapUri, ldap.DialWithTLSConfig(tlsConfig))
-	if err != nil {
-		newError := shared.ValidationError{
-			Tags:       []string{"LDAP_URI"},
-			FieldGroup: fgName,
-			Message:    "Could not connect to " + fg.LdapUri + ". Error: " + err.Error(),
-		}
-		errors = append(errors, newError)
-		return errors
-	}
-
-	// Authenticate
-	err = l.Bind(fg.LdapAdminDn, fg.LdapAdminPasswd)
-	if err != nil {
-		newError := shared.ValidationError{
-			Tags:       []string{"LDAP_URI"},
-			FieldGroup: fgName,
-			Message:    "Could not authenticate LDAP server. Error: " + err.Error(),
-		}
-		errors = append(errors, newError)
-		return errors
-	}
-
-	userFilter := fmt.Sprintf("(&(%s=*)%s)", fg.LdapUidAttr, fg.LdapUserFilter)
-	request := &ldap.SearchRequest{
-		BaseDN: strings.Join(shared.InterfaceArrayToStringArray(fg.LdapBaseDn), ","),
-		Scope:  ldap.ScopeWholeSubtree,
-		Filter: userFilter,
-		Attributes: []string{
-			fg.LdapEmailAttr, fg.LdapUidAttr,
-		},
-		Controls: []ldap.Control{ldap.NewControlPaging(32)},
-	}
-
-	result, err := l.Search(request)
-	if err != nil {
-		newError := shared.ValidationError{
-			Tags:       []string{"LDAP_URI"},
-			FieldGroup: fgName,
-			Message:    "Could not query LDAP server. Error: " + err.Error(),
-		}
-		errors = append(errors, newError)
-		return errors
-	}
-
-	if len(result.Entries) < 1 {
-		newError := shared.ValidationError{
-			Tags:       []string{"LDAP_URI"},
-			FieldGroup: fgName,
-			Message:    "Could not find any users matching filter in LDAP server",
-		}
-		errors = append(errors, newError)
+	if ok, err := shared.ValidateLDAPServer(opts, fg.LdapUri, fg.LdapAdminDn, fg.LdapAdminPasswd, fg.LdapUidAttr, fg.LdapEmailAttr, fg.LdapUserFilter, fg.LdapBaseDn, fgName); !ok {
+		errors = append(errors, err)
 		return errors
 	}
 

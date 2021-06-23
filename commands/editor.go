@@ -16,8 +16,10 @@ limitations under the License.
 package commands
 
 import (
+	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/quay/config-tool/pkg/lib/editor"
@@ -33,6 +35,12 @@ var editorCmd = &cobra.Command{
 	Short: "Runs a browser-based editor for your config.yaml",
 
 	Run: func(cmd *cobra.Command, args []string) {
+
+		log.SetOutput(os.Stdout)
+
+		// Only log the warning severity or above.
+		log.SetLevel(log.DebugLevel)
+
 		editor.RunConfigEditor(editorPassword, configDir, operatorEndpoint, strings.Split(readonlyFieldGroups, ","))
 	},
 }

@@ -16,17 +16,16 @@ limitations under the License.
 package commands
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/quay/config-tool/pkg/lib/config"
 	"github.com/quay/config-tool/pkg/lib/shared"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -38,39 +37,41 @@ var validateCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
+		log.SetOutput(os.Stdout)
+
+		// Only log the warning severity or above.
+		log.SetLevel(log.DebugLevel)
+
 		isValid := true
 
 		// Read config file
 		configFilePath := path.Join(configDir, "config.yaml")
 		configBytes, err := ioutil.ReadFile(configFilePath)
 		if err != nil {
-			fmt.Println("Could not read the config bundle: " + err.Error())
-			os.Exit(1)
+			log.Errorf(err.Error())
 		}
 
 		// Unmarshal from json
 		var conf map[string]interface{}
 		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
-			fmt.Println("Could not parse config.yaml: " + err.Error())
-			os.Exit(1)
+			log.Errorf(err.Error())
 		}
 
 		// Clean config
-		conf = shared.FixNumbers(conf)
 		conf = shared.RemoveNullValues(conf)
 
 		// Load into struct
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
-			fmt.Println("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: " + err.Error())
-			os.Exit(1)
+			log.Errorf("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: " + err.Error())
+			return
 		}
 
 		// Load certs
 		certs := shared.LoadCerts(configDir)
 		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			log.Errorf(err.Error())
+			return
 		}
 
 		// Sort keys
@@ -80,51 +81,38 @@ var validateCmd = &cobra.Command{
 		}
 		sort.Strings(fgNames)
 
-		// Create wait group
-		var wg sync.WaitGroup
-
 		// Initialize validaiton status grid
 		validationStatus := [][]string{}
 
 		for _, fgName := range fgNames {
 
-			// Add to wait group
-			wg.Add(1)
+			// Get field group for key
+			fieldGroup := configFieldGroups[fgName]
 
-			// Call func conncurrently
-			go func(wg *sync.WaitGroup) {
+			// Set options
+			opts := shared.Options{
+				Mode:         validationMode,
+				Certificates: certs,
+			}
 
-				// Call done at the end of func
-				defer wg.Done()
+			// Validate
+			log.Debugf("Validating %s", fgName)
+			validationErrors := fieldGroup.Validate(opts)
 
-				// Get field group for key
-				fieldGroup := configFieldGroups[fgName]
+			// If no errors, append row
+			if len(validationErrors) == 0 {
+				validationStatus = append(validationStatus, []string{fgName, "-", "🟢"})
+			}
 
-				// Set options
-				opts := shared.Options{
-					Mode:         validationMode,
-					Certificates: certs,
-				}
+			// Append error messages
+			for _, err := range validationErrors {
 
-				// Validate
-				validationErrors := fieldGroup.Validate(opts)
+				log.Debugf(err.FieldGroup, err.Message, err.Tags)
 
-				// If no errors, append row
-				if len(validationErrors) == 0 {
-					validationStatus = append(validationStatus, []string{fgName, "-", "🟢"})
-				}
-
-				// Append error messages
-				for _, err := range validationErrors {
-
-					// Append field group policy violation
-					validationStatus = append(validationStatus, []string{fgName, err.Message, "🔴"})
-					isValid = false
-				}
-			}(&wg)
-
-			// Wait for calls to finish
-			wg.Wait()
+				// Append field group policy violation
+				validationStatus = append(validationStatus, []string{fgName, err.Message, "🔴"})
+				isValid = false
+			}
 
 		}
 
