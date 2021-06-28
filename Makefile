@@ -24,9 +24,9 @@ build-local-dev:
 
 run-local-dev:
 	docker run -p 7070:8080 \
-	-v ${CT_DIR}/pkg/lib/editor/js:/jssrc/js \
-	-v ${CT_DIR}/pkg/lib/editor/editor.go:/jssrc/editor.go \
-	-v ${CT_DIR}/:/go/src/config-tool \
+	-v ${PWD}/pkg/lib/editor/js:/jssrc/js \
+	-v ${PWD}/pkg/lib/editor/editor.go:/jssrc/editor.go \
+	-v ${PWD}/:/go/src/config-tool \
 	-v ${CONFIG_MOUNT}:/conf \
 	-v ${CT_PRIVATE_KEY}:/tls/localhost.key \
 	-v ${CT_PUBLIC_KEY}:/tls/localhost.crt \
@@ -37,9 +37,9 @@ run-local-dev:
 
 run-local-dev-setup:
 	docker run -p 7070:8080 \
-	-v ${CT_DIR}/pkg/lib/editor/js:/jssrc/js \
-	-v ${CT_DIR}/pkg/lib/editor/editor.go:/jssrc/editor.go \
-	-v ${CT_DIR}/:/go/src/config-tool \
+	-v ${PWD}/pkg/lib/editor/js:/jssrc/js \
+	-v ${PWD}/pkg/lib/editor/editor.go:/jssrc/editor.go \
+	-v ${PWD}/:/go/src/config-tool \
 	-v ${CT_PRIVATE_KEY}:/tls/localhost.key \
 	-v ${CT_PUBLIC_KEY}:/tls/localhost.crt \
 	-e CONFIG_TOOL_PRIVATE_KEY=/tls/localhost.key \

@@ -186,6 +186,10 @@
                  </select>
               </td>
             </tr>
+            <div class="co-alert co-alert-warning"
+                 ng-if="mapped.database.kind == 'mysql+pymysql'">
+                    Note: MySQL (and MariaDB) support  is deprecated and support will be removed in a future version of Quay.  If starting  a new Quay installation please consider using PostgreSQL
+            </div>
             <tr ng-show="mapped.database.kind">
               <td>Database Server:</td>
               <td>
