@@ -77,6 +77,18 @@ func NewDbConnectionArgsStruct(fullConfig map[string]interface{}) (*DbConnection
 			return newDbConnectionArgsStruct, errors.New("autorollback must be of type bool")
 		}
 	}
+	if value, ok := fullConfig["sslmode"]; ok {
+		newDbConnectionArgsStruct.SslMode, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslmode must be of type string")
+		}
+	}
+	if value, ok := fullConfig["sslrootcert"]; ok {
+		newDbConnectionArgsStruct.SslRootCert, ok = value.(string)
+		if !ok {
+			return newDbConnectionArgsStruct, errors.New("sslrootcert must be of type string")
+		}
+	}
 
 	return newDbConnectionArgsStruct, nil
 }
