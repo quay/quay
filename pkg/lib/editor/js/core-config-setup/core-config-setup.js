@@ -1508,7 +1508,13 @@ angular.module("quay-config")
                   const c = new X509();
                   c.readCertPEM(atob(contents));
                   const current = new Date();
-                  const expired = current > new Date(c.getNotAfter());
+                  // This function returns a bad string, so we have to do some extra formatting to normalize it. 
+                  let originalDateString = "20"+c.getNotAfter()
+                  let formattedDateString = originalDateString.replace(
+                    /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/,
+                    "$1-$2-$3T$4:$5:$6"
+                  );
+                  const expired = current > Date.parse(formattedDateString);
                   let names = c
                     .getSubjectString()
                     .split("/")
