@@ -40,7 +40,11 @@ var validateCmd = &cobra.Command{
 		log.SetOutput(os.Stdout)
 
 		// Only log the warning severity or above.
-		log.SetLevel(log.DebugLevel)
+		if os.Getenv("DEBUGLOG") == "true" {
+			log.SetLevel(log.DebugLevel)
+		} else {
+			log.SetLevel(log.WarnLevel)
+		}
 
 		isValid := true
 
@@ -48,13 +52,13 @@ var validateCmd = &cobra.Command{
 		configFilePath := path.Join(configDir, "config.yaml")
 		configBytes, err := ioutil.ReadFile(configFilePath)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Fatalf(err.Error())
 		}
 
 		// Unmarshal from json
 		var conf map[string]interface{}
 		if err = yaml.Unmarshal(configBytes, &conf); err != nil {
-			log.Errorf(err.Error())
+			log.Fatalf(err.Error())
 		}
 
 		// Clean config
@@ -63,15 +67,13 @@ var validateCmd = &cobra.Command{
 		// Load into struct
 		configFieldGroups, err := config.NewConfig(conf)
 		if err != nil {
-			log.Errorf("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: " + err.Error())
-			return
+			log.Fatalf("An error occurred during validation. Process could not marshal config.yaml. This is most likely due to an incorrect type. \nMore info: " + err.Error())
 		}
 
 		// Load certs
 		certs := shared.LoadCerts(configDir)
 		if err != nil {
-			log.Errorf(err.Error())
-			return
+			log.Fatalf(err.Error())
 		}
 
 		// Sort keys

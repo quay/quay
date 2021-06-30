@@ -292,7 +292,12 @@ angular.module("quay-config")
         $scope.validateConfig = function() {
           $scope.validationStatus = 'validating';
 
-          if($scope.certs["database.pem"]){
+          if($scope.certs["database.pem"] && $scope.config["DB_URI"].startsWith("postgres")){
+            delete $scope.config["DB_CONNECTION_ARGS"]["ssl"];
+            $scope.config["DB_CONNECTION_ARGS"]["sslrootcert"] = "conf/stack/database.pem";
+          } else if 
+            ($scope.certs["database.pem"] && $scope.config["DB_URI"].startsWith("mysql")){
+            delete $scope.config["DB_CONNECTION_ARGS"]["sslrootcert"];  
             $scope.config["DB_CONNECTION_ARGS"]["ssl"] = {}
             $scope.config["DB_CONNECTION_ARGS"]["ssl"]["ca"] = "conf/stack/database.pem";
           }
