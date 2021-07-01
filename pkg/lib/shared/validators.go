@@ -473,9 +473,6 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 	if sslmode != "" {
 		params.Add("sslmode", sslmode)
 	}
-	if sslrootcert != "" {
-		params.Add("sslrootcert", sslrootcert)
-	}
 
 	// Database is MySQL
 	if scheme == "mysql+pymysql" {
