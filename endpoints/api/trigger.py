@@ -41,6 +41,7 @@ from endpoints.building import (
     start_build,
     MaximumBuildsQueuedException,
     BuildTriggerDisabledException,
+    UnverifiedNamespaceException,
 )
 from endpoints.exception import NotFound, Unauthorized, InvalidRequest
 from util.names import parse_robot_username
@@ -470,6 +471,8 @@ class ActivateBuildTrigger(RepositoryParamResource):
             abort(429, message="Maximum queued build rate exceeded.")
         except BuildTriggerDisabledException:
             abort(400, message="Build trigger is disabled")
+        except UnverifiedNamespaceException:
+            abort(403, message="Namespace is unverified")
 
         resp = build_status_view(build_request)
         repo_string = "%s/%s" % (namespace_name, repo_name)

@@ -20,7 +20,9 @@ from data.model import (
 )
 
 
-def create_organization(name, email, creating_user, email_required=True, is_possible_abuser=False):
+def create_organization(
+    name, email, creating_user, email_required=True, is_possible_abuser=False, auto_verify=False
+):
     with db_transaction():
         try:
             # Create the org
@@ -28,6 +30,7 @@ def create_organization(name, email, creating_user, email_required=True, is_poss
                 name, email, email_required=email_required, is_possible_abuser=is_possible_abuser
             )
             new_org.organization = True
+            new_org.verified = auto_verify
             new_org.save()
 
             # Create a team for the owners

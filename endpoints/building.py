@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 
 from flask import request
 
+import features
+
 from app import app, dockerfile_build_queue
 from data import model
 from data.logs_model import logs_model
@@ -36,6 +38,14 @@ class BuildTriggerDisabledException(Exception):
     pass
 
 
+class UnverifiedNamespaceException(Exception):
+    """
+    This exception is raised when a build is required, but the namespace hasn't been verified.
+    """
+
+    pass
+
+
 def start_build(repository, prepared_build, pull_robot_name=None):
     # Ensure that builds are only run in image repositories.
     if repository.kind.name != "image":
@@ -49,6 +59,10 @@ def start_build(repository, prepared_build, pull_robot_name=None):
                 % (repository.id, repository.state)
             )
         )
+
+    # Ensure that the user has been verified before it's allowed to start queuing builds
+    if features.BUILD_REQUIRE_VERIFIED_USER and not repository.namespace_user.verified:
+        raise UnverifiedNamespaceException()
 
     # Ensure that disabled triggers are not run.
     if prepared_build.trigger is not None and not prepared_build.trigger.enabled:
