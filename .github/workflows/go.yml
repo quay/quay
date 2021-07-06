@@ -61,3 +61,14 @@ jobs:
         run: go build -v ./...
       - name: Tests
         run: go test ./pkg/lib/fieldgroups/...
+
+  commit-check:
+    name: Commit Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: commit check
+        uses: gsactions/commit-message-checker@v1
+        with:
+          pattern: |
+            ^(.*):\s*(.*)\s(\(PROJQUAY-[0-9]+\))(\s\(#[0-9]+\))?\n(\n(\n|.)*)?$
+          error: "Commit must begin with <scope>: <subject> (PROJQUAY-####)"

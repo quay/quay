@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	"github.com/aws/aws-sdk-go/aws"
 	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudfront"
 	"github.com/minio/minio-go/v7"
@@ -80,14 +81,15 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 	case "S3Storage":
 
-		// Check access key
-		if ok, err := ValidateRequiredString(args.S3AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_access_key", fgName); !ok {
-			errors = append(errors, err)
-		}
-		// Check secret key
-		if ok, err := ValidateRequiredString(args.S3SecretKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_secret_key", fgName); !ok {
-			errors = append(errors, err)
-		}
+		// // Check access key
+		// if ok, err := ValidateRequiredString(args.S3AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_access_key", fgName); !ok {
+		// 	errors = append(errors, err)
+		// }
+		// // Check secret key
+		// if ok, err := ValidateRequiredString(args.S3SecretKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_secret_key", fgName); !ok {
+		// 	errors = append(errors, err)
+		// }
+
 		// Check bucket name
 		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
 			errors = append(errors, err)
@@ -115,6 +117,37 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			return false, errors
 		}
 
+		// If no keys are provided, we attempt to use IAM
+		if args.S3AccessKey == "" || args.S3SecretKey == "" {
+
+			sess, err := session.NewSession()
+			if err != nil {
+				newError := ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "Could not create S3 session.",
+				}
+				errors = append(errors, newError)
+				return false, errors
+			}
+
+			// Get credentials and set
+			appCreds := ec2rolecreds.NewCredentials(sess)
+			value, err := appCreds.Get()
+			if err != nil {
+				newError := ValidationError{
+					Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
+					FieldGroup: fgName,
+					Message:    "No access key or secret key were provided. Attempted to fetch IAM role and failed.",
+				}
+				errors = append(errors, newError)
+				return false, errors
+			}
+
+			accessKey = value.AccessKeyID
+			secretKey = value.SecretAccessKey
+
+		}
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
 			errors = append(errors, err)
 		}
