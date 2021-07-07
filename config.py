@@ -734,3 +734,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether the repository action count worker is enabled.
     FEATURE_REPOSITORY_ACTION_COUNTER = True
+
+    # Account recovery mode
+    ACCOUNT_RECOVERY_MODE = False

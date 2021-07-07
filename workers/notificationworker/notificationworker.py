@@ -1,4 +1,5 @@
 import logging
+import time
 
 from app import notification_queue
 from notifications.notificationmethod import NotificationMethod, InvalidNotificationMethodException
@@ -38,6 +39,11 @@ class NotificationWorker(QueueWorker):
 
 
 if __name__ == "__main__":
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     worker = NotificationWorker(
         notification_queue, poll_period_seconds=10, reservation_seconds=30, retry_after_seconds=30
     )

@@ -1,4 +1,5 @@
 import logging
+import time
 
 from gzip import GzipFile
 from tempfile import SpooledTemporaryFile
@@ -65,5 +66,10 @@ class ArchiveBuildLogsWorker(Worker):
 
 
 if __name__ == "__main__":
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     worker = ArchiveBuildLogsWorker()
     worker.start()

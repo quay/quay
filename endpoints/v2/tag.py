@@ -1,14 +1,20 @@
 from flask import jsonify
 
-from app import model_cache
+from app import app, model_cache
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.registry_model import registry_model
-from endpoints.decorators import anon_protect, parse_repository_name
+from endpoints.decorators import (
+    anon_protect,
+    disallow_for_account_recovery_mode,
+    parse_repository_name,
+    route_show_if,
+)
 from endpoints.v2 import v2_bp, require_repo_read, paginate
 from endpoints.v2.errors import NameUnknown
 
 
 @v2_bp.route("/<repopath:repository>/tags/list", methods=["GET"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read

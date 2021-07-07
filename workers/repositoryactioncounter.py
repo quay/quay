@@ -102,6 +102,11 @@ class RepositoryActionCountWorker(Worker):
 
 
 if __name__ == "__main__":
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     if not features.REPOSITORY_ACTION_COUNTER:
         logger.info("Repository action count is disabled; skipping")
         while True:
