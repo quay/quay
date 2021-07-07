@@ -158,6 +158,7 @@ def render_page_template(name, route_data=None, **kwargs):
         version_number=version_number,
         current_year=datetime.datetime.now().year,
         kubernetes_namespace=IS_KUBERNETES and QE_NAMESPACE,
+        account_recovery_mode=app.config.get("ACCOUNT_RECOVERY_MODE", False),
         **kwargs,
     )
 

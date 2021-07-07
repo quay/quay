@@ -33,6 +33,10 @@ export function provideRun($rootScope: QuayRunScope,
     stateService.setInReadOnlyMode();
   }
 
+  if ((<any>window).__account_recovery_mode) {
+    stateService.setInAccountRecoveryMode();
+  }
+
   // Handle session security.
   restangular.setDefaultHeaders({
     'X-Requested-With': 'XMLHttpRequest',

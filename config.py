@@ -773,3 +773,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Create organization on push if it does not exist
     CREATE_NAMESPACE_ON_PUSH = False
+
+    # Account recovery mode
+    ACCOUNT_RECOVERY_MODE = False

@@ -16,6 +16,7 @@ angular.module('quay').directive('quayMessageBar', function () {
 
       StateService.updateStateIn($scope, function(state) {
         $scope.inReadOnlyMode = state.inReadOnlyMode;
+        $scope.inAccountRecoveryMode = state.inAccountRecoveryMode;
       });
 
       ApiService.getGlobalMessages().then(function (data) {

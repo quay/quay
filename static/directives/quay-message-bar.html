@@ -1,8 +1,15 @@
-<div class="announcement inline quay-message-bar-element" ng-show="messages.length || inReadOnlyMode">
+<div class="announcement inline quay-message-bar-element" ng-show="messages.length || inReadOnlyMode || inAccountRecoveryMode">
   <div class="quay-service-status-description info" ng-if="inReadOnlyMode">
     <div style="display: inline-block">
       <span class="registry-name"></span>&nbsp;is currently in read-only mode. Pulls and other read-only operations
       will succeed but all other operations are currently suspended.
+    </div>
+  </div>
+  <div class="quay-service-status-description warning" ng-if="inAccountRecoveryMode">
+    <div style="display: inline-block">
+      <span class="registry-name"></span>&nbsp;is currently in account recovery mode. This instance should only be
+      used to link accounts to an external login service. e.g RedHat. Registry operations such as pushes/pulls
+      will not work.
     </div>
   </div>
   <div ng-repeat="token in NotificationService.expiringAppTokens">
