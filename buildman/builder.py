@@ -32,17 +32,20 @@ LOG_FORMAT = "%(asctime)s [%(process)d] [%(levelname)s] [%(name)s] %(message)s"
 
 
 def run_build_manager():
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     if not features.BUILD_SUPPORT:
         logger.debug("Building is disabled. Please enable the feature flag")
         while True:
             time.sleep(1000)
-        return
 
     if app.config.get("REGISTRY_STATE", "normal") == "readonly":
         logger.debug("Building is disabled while in read-only mode.")
         while True:
             time.sleep(1000)
-        return
 
     build_manager_config = app.config.get("BUILD_MANAGER")
     if build_manager_config is None:

@@ -21,6 +21,7 @@ from digest import digest_tools
 from endpoints.decorators import (
     anon_protect,
     anon_allowed,
+    disallow_for_account_recovery_mode,
     parse_repository_name,
     check_region_blacklisted,
     check_readonly,
@@ -55,6 +56,7 @@ class _InvalidRangeHeader(Exception):
 
 
 @v2_bp.route(BLOB_DIGEST_ROUTE, methods=["HEAD"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read
@@ -82,6 +84,7 @@ def check_blob_exists(namespace_name, repo_name, digest):
 
 
 @v2_bp.route(BLOB_DIGEST_ROUTE, methods=["GET"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read
@@ -216,6 +219,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 
 
 @v2_bp.route("/<repopath:repository>/blobs/uploads/", methods=["POST"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @require_repo_write
@@ -277,6 +281,7 @@ def start_blob_upload(namespace_name, repo_name):
 
 
 @v2_bp.route("/<repopath:repository>/blobs/uploads/<upload_uuid>", methods=["GET"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_write
@@ -304,6 +309,7 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 
 
 @v2_bp.route("/<repopath:repository>/blobs/uploads/<upload_uuid>", methods=["PATCH"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @require_repo_write
@@ -335,6 +341,7 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 
 
 @v2_bp.route("/<repopath:repository>/blobs/uploads/<upload_uuid>", methods=["PUT"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @require_repo_write
@@ -375,6 +382,7 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 
 
 @v2_bp.route("/<repopath:repository>/blobs/uploads/<upload_uuid>", methods=["DELETE"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @require_repo_write
@@ -396,6 +404,7 @@ def cancel_upload(namespace_name, repo_name, upload_uuid):
 
 
 @v2_bp.route("/<repopath:repository>/blobs/<digest>", methods=["DELETE"])
+@disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
 @require_repo_write

@@ -6,7 +6,8 @@ angular.module('quay')
   var stateService = {};
 
   var currentState = {
-    'inReadOnlyMode': false
+    'inReadOnlyMode': false,
+    'inAccountRecoveryMode': false
   };
 
   stateService.inReadOnlyMode = function() {
@@ -15,6 +16,15 @@ angular.module('quay')
 
   stateService.setInReadOnlyMode = function() {
     currentState.inReadOnlyMode = true;
+  };
+
+
+  stateService.inAccountRecoveryMode = function() {
+    return currentState.inAccountRecoveryMode;
+  };
+
+  stateService.setInAccountRecoveryMode = function() {
+    currentState.inAccountRecoveryMode = true;
   };
 
   stateService.updateStateIn = function(scope, opt_callback) {

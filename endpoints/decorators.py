@@ -171,6 +171,21 @@ def route_show_if(value):
     return decorator
 
 
+def disallow_for_account_recovery_mode(func):
+    """
+    Disable route if ACCOUNT_RECOVERY_MODE is set.
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+            abort(405, "Quay running for account recoveries only.")
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 def require_xhr_from_browser(func):
     """
     Requires that API GET calls made from browsers are made via XHR, in order to prevent reflected

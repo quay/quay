@@ -50,6 +50,11 @@ class RepositoryGCWorker(QueueWorker):
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+        logger.debug("Quay running in account recovery mode")
+        while True:
+            time.sleep(100000)
+
     if not features.REPOSITORY_GARBAGE_COLLECTION:
         logger.info("Repository garbage collection is disabled; skipping")
         while True:
