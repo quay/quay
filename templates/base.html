@@ -47,7 +47,7 @@
       window.__token = '{{ csrf_token() }}';
       window.__kubernetes_namespace = {{ kubernetes_namespace|tojson|safe }};
       window.__registry_state = '{{ registry_state }}';
-      window.__account_recovery_mode = '{{ account_recovery_mode }}';
+      window.__account_recovery_mode = {{ account_recovery_mode|tojson|safe }};
 
       {% if error_code %}
       window.__error_code = {{ error_code }};
