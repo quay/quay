@@ -269,7 +269,7 @@ parameters:
     value: "quay-component"
     displayName: quay app selector label
   - name: QUAY_APP_COMPONENT_LABEL_VALUE
-    value: "app"
+    value: "app-recovery"
     displayName:  quay app selector label value
   - name: LOADBALANCER_SERVICE_PORT
     value: "443"
