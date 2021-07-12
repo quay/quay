@@ -1,0 +1,429 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: quay-recovery
+objects:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: ${{NAME}}
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - secrets
+    verbs:
+    - get
+    - patch
+    - update
+  - apiGroups:
+    - ""
+    resources:
+    - namespaces
+    verbs:
+    - get
+  - apiGroups:
+    - extensions
+    - apps
+    resources:
+    - deployments
+    verbs:
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: ${{NAME}}
+  imagePullSecrets:
+  - name: quayio-backup-image-pull-secret
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: ${{NAME}}
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: ${{NAME}}
+  subjects:
+  - kind: ServiceAccount
+    name: ${{NAME}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-recovery-clusterip-service
+    labels:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+  spec:
+    type: ClusterIP
+    ports:
+      - protocol: TCP
+        name: clusterip
+        port: ${{CLUSTERIP_SERVICE_PORT}}
+        targetPort: ${{CLUSTERIP_SERVICE_TARGET_PORT}}
+      - protocol: TCP
+        name: metrics
+        port: ${{CLUSTERIP_METRICS_SERVICE_PORT}}
+        targetPort: ${{CLUSTERIP_METRICS_SERVICE_TARGET_PORT}}
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-recovery-load-balancer-proxy-protocol-service
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
+      service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: '*'
+  spec:
+    ports:
+    - name: http
+      protocol: TCP
+      port: ${{LOADBALANCER_SERVICE_HTTP_PORT}}
+      targetPort: ${{LOADBALANCER_SERVICE_PROXY_TARGET_HTTP_PORT}}
+    - name: https
+      protocol: TCP
+      port: ${{LOADBALANCER_SERVICE_PORT}}
+      targetPort: ${{LOADBALANCER_SERVICE_PROXY_TARGET_PORT}}
+    loadBalancerIP:
+    type: LoadBalancer
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: quay-recovery-endpoint
+    labels:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+  spec:
+    replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS}}
+    minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
+    progressDeadlineSeconds: ${{QUAY_APP_DEPLOYMENT_PROGRESS_DEADLINE_SECONDS}}
+    revisionHistoryLimit: ${{QUAY_APP_DEPLOYMENT_REVISION_HISTORY_LIMITS}}
+    strategy:
+      type: ${{QUAY_APP_DEPLOYMENT_STRATEGY_TYPE}}
+      rollingUpdate:
+        maxUnavailable: ${{QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE}}
+        maxSurge: ${{QUAY_APP_DEPLOYMENT_MAX_SURGE}}
+    selector:
+      matchLabels:
+        ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+    template:
+      metadata:
+        labels:
+          ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+        annotations:
+          ${{QUAY_APP_COMPONENT_ANNOTATIONS_KEY}}: ${{QUAY_APP_COMPONENT_ANNOTATIONS_VALUE}}
+      spec:
+        volumes:
+        - name: configvolume
+          secret:
+            secretName: ${{QUAY_APP_CONFIG_SECRET}}
+        serviceAccountName: ${{NAME}}
+        containers:
+        - name: syslog-cloudwatch-bridge
+          image:  ${SYSLOG_IMAGE}:${SYSLOG_IMAGE_TAG}
+          ports:
+          - containerPort: ${{SYSLOG_PORT}}
+            protocol: UDP
+            name: syslog-udp-port
+          - containerPort: ${{SYSLOG_PORT}}
+            protocol: TCP
+            name: syslog-tcp-port
+          env:
+          - name: STREAM_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: TICKER_TIME
+            value: ${TICKER_TIME}
+          - name: PORT
+            value: ${SYSLOG_PORT}
+          - name: AWS_REGION
+            valueFrom:
+              secretKeyRef:
+                name: ${{CLOUDWATCH_SECRET}}
+                key: AWS_REGION
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: ${{CLOUDWATCH_SECRET}}
+                key: AWS_ACCESS_KEY_ID
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ${{CLOUDWATCH_SECRET}}
+                key: AWS_SECRET_ACCESS_KEY
+          - name: LOG_GROUP_NAME
+            valueFrom:
+              secretKeyRef:
+                name: ${{CLOUDWATCH_SECRET}}
+                key: LOG_GROUP_NAME
+          resources:
+            limits:
+              cpu: ${{QUAY_SYSLOG_CPU_LIMIT}}
+              memory: ${{QUAY_SYSLOG_MEMORY_LIMIT}}
+            requests:
+              cpu: ${{QUAY_SYSLOG_CPU_REQUEST}}
+              memory: ${{QUAY_SYSLOG_MEMORY_REQUEST}}
+          readinessProbe:
+              tcpSocket:
+                port: ${{SYSLOG_PORT}}
+              initialDelaySeconds: ${{QUAY_SYSLOG_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
+              periodSeconds: ${{QUAY_SYSLOG_READINESS_PROBE_PERIOD_SECONDS}}
+              timeoutSeconds: ${{QUAY_SYSLOG_READINESS_PROBE_TIMEOUT_SECONDS}}
+          livenessProbe:
+            tcpSocket:
+              port: ${{SYSLOG_PORT}}
+            initialDelaySeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
+            periodSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_PERIOD_SECONDS}}
+            timeoutSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_TIMEOUT_SECONDS}}
+        - name: quay-recovery-endpoint
+          image: ${IMAGE}:${IMAGE_TAG}
+          imagePullPolicy: ${{IMAGE_PULL_POLICY}}
+          command:
+          - /quay-registry/quay-entrypoint.sh
+          - ${{QUAY_ENTRYPOINT}}
+          ports:
+          - containerPort: 8443
+          volumeMounts:
+          - name: configvolume
+            mountPath: /conf/stack
+          livenessProbe:
+            exec:
+              command:
+              - curl
+              - -k
+              - https://localhost:8443/health/instance
+            initialDelaySeconds: ${{QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
+            periodSeconds: ${{QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS}}
+            timeoutSeconds: ${{QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS}}
+          readinessProbe:
+            exec:
+              command:
+              - curl
+              - -k
+              - https://localhost:8443/health/endtoend
+            initialDelaySeconds: ${{QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
+            periodSeconds: ${{QUAY_APP_READINESS_PROBE_PERIOD_SECONDS}}
+            timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
+          resources:
+            limits:
+              cpu: ${{QUAY_APP_CPU_LIMIT}}
+              memory: ${{QUAY_APP_MEMORY_LIMIT}}
+            requests:
+              cpu: ${{QUAY_APP_CPU_REQUEST}}
+              memory: ${{QUAY_APP_MEMORY_REQUEST}}
+          env:
+          - name: QE_K8S_NAMESPACE
+            value: ${{QUAY_APP_DEPLOYMENT_NAMESPACE}}
+          - name: QE_K8S_CONFIG_SECRET
+            value: ${{QUAY_APP_CONFIG_SECRET}}
+          - name: DEBUGLOG
+            value: ${DEBUGLOG}
+          - name: SYSLOG_SERVER
+            value: ${{SYSLOG_SERVER}}
+          - name: SYSLOG_PORT
+            value: ${SYSLOG_PORT}
+          - name: SYSLOG_PROTO
+            value: ${{SYSLOG_PROTO}}
+          - name: QUAY_LOGGING
+            value: ${{QUAY_LOGGING}}
+          - name: WORKER_MULTIPLIER_REGISTRY
+            value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
+          - name: WORKER_CONNECTION_COUNT_REGISTRY
+            value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
+parameters:
+  - name: NAME
+    value: "quay-recovery-endpoint"
+    displayName: name
+    description: Defaults to quay.
+  - name: IMAGE
+    value: ""
+    displayName: quay image
+    description: quay docker image. Defaults to quay.io/app-sre/quay.
+  - name: IMAGE_TAG
+    value: "latest"
+    displayName: quay version
+    description: quay version which defaults to latest
+  - name: QUAY_ENTRYPOINT
+    value: "registry-nomigrate"
+    displayName: quay container entrypoint
+    description: the specific container entrypoint that will be run (e.g. registry, registry-nomigrate)
+  - name: CLUSTERIP_SERVICE_PORT
+    value: "443"
+    displayName: clusterip service port
+  - name: CLUSTERIP_SERVICE_TARGET_PORT
+    value: "8443"
+    displayName: clusterip service target port
+  - name: CLUSTERIP_METRICS_SERVICE_PORT
+    value: "9091"
+    displayName: clusterip metrics port
+  - name: CLUSTERIP_METRICS_SERVICE_TARGET_PORT
+    value: "9091"
+    displayName: clusterip metrics target port
+  - name: QUAY_APP_COMPONENT_LABEL_KEY
+    value: "quay-component"
+    displayName: quay app selector label
+  - name: QUAY_APP_COMPONENT_LABEL_VALUE
+    value: "app-recovery"
+    displayName:  quay app selector label value
+  - name: LOADBALANCER_SERVICE_PORT
+    value: "443"
+    displayName: loadbalancer service port
+  - name: LOADBALANCER_SERVICE_TARGET_PORT
+    value: "8443"
+    displayName: loadbalancer service target port
+  - name: LOADBALANCER_SERVICE_PROXY_TARGET_PORT
+    value: "7443"
+    displayName: loadbalancer service proxy target port
+  - name: LOADBALANCER_SERVICE_HTTP_PORT
+    value: "80"
+    displayName: loadbalancer service http port
+  - name: LOADBALANCER_SERVICE_PROXY_TARGET_HTTP_PORT
+    value: "8080"
+    displayName: loadbalancer service proxy target http port
+  - name: QUAY_APP_CONFIG_SECRET
+    value: "quay-config-recovery-secret"
+    displayName: quay app config secret
+  - name: QUAY_APP_DEPLOYMENT_REPLICAS
+    value: "1"
+    displayName: quay app deployment replicas
+  - name: QUAY_APP_DEPLOYMENT_REPLICAS_BLUE
+    value: "0"
+    displayName: quay app blue deployment replicas
+  - name: QUAY_APP_DEPLOYMENT_NAMESPACE
+    value: "quay"
+    displayName: quay app deployment namespace
+  - name: QUAY_APP_MEMORY_REQUEST
+    value: "4096Mi"
+    displayName: "quay app memory request"
+  - name: QUAY_APP_CPU_REQUEST
+    value: "1"
+    displayName: "quay app CPU request"
+  - name: QUAY_APP_MEMORY_LIMIT
+    value: "4096Mi"
+    displayName: "quay app memory limit"
+  - name: QUAY_APP_CPU_LIMIT
+    value: "1"
+    displayName: "quay app CPU limit"
+  - name: QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS
+    value: "0"
+    displayName: quay app deployment min ready seconds
+  - name: QUAY_APP_DEPLOYMENT_PROGRESS_DEADLINE_SECONDS
+    value: "600"
+    displayName: quay app deployment progress deadline seconds
+  - name: QUAY_APP_DEPLOYMENT_REVISION_HISTORY_LIMITS
+    value: "10"
+    displayName: quay app deployment revision history limits
+  - name: QUAY_APP_DEPLOYMENT_STRATEGY_TYPE
+    value: "RollingUpdate"
+    displayName: quay app deployment strategy
+  - name: QUAY_APP_DEPLOYMENT_MAX_SURGE
+    value: "1"
+    displayName: quay app deployment max surge
+  - name: QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE
+    value: "0"
+    displayName: quay app deployment max unavailable
+  - name: QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS
+    value: "15"
+    displayName: quay app liveness probe initial delay seconds
+  - name: QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS
+    value: "30"
+    displayName: quay app liveness probe period seconds
+  - name: QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS
+    value: "10"
+    displayName: quay app liveness probe timeout
+  - name: QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS
+    value: "15"
+    displayName: quay app readiness probe initial delay seconds
+  - name: QUAY_APP_READINESS_PROBE_PERIOD_SECONDS
+    value: "30"
+    displayName: quay app readiness probe period seconds
+  - name: QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS
+    value: "10"
+    displayName: quay app readiness probe timeout
+  - name: DEBUGLOG
+    value: "false"
+    displayName: debug log
+  - name: QUAY_APP_COMPONENT_ANNOTATIONS_KEY
+    value: "quay-recovery-deployment"
+    displayName: quay app annotation
+  - name: QUAY_APP_COMPONENT_ANNOTATIONS_VALUE
+    value: "update_me_when_secret_changes"
+    displayName:  quay app annotation value
+  - name: IMAGE_PULL_POLICY
+    value: "IfNotPresent"
+    displayName: image pull policy
+  - name: CLOUDWATCH_SECRET
+    value: "quay-cloudwatch-iam-user"
+    displayName: cloudwatch iam user creds secret
+  - name: SYSLOG_PORT
+    value: "5014"
+    displayName: syslog port
+  - name: QUAY_SYSLOG_MEMORY_REQUEST
+    value: "1Gi"
+    displayName: "quay syslog memory request"
+  - name: QUAY_SYSLOG_CPU_REQUEST
+    value: "1"
+    displayName: "quay syslog CPU request"
+  - name: QUAY_SYSLOG_MEMORY_LIMIT
+    value: "2Gi"
+    displayName: "quay syslog memory limit"
+  - name: QUAY_SYSLOG_CPU_LIMIT
+    value: "1"
+    displayName: "quay syslog CPU limit"
+  - name: QUAY_SYSLOG_LIVENESS_PROBE_INITIAL_DELAY_SECONDS
+    value: "30"
+    displayName: quay syslog liveness probe initial delay seconds
+  - name: QUAY_SYSLOG_LIVENESS_PROBE_PERIOD_SECONDS
+    value: "15"
+    displayName: quay syslog liveness probe period seconds
+  - name: QUAY_SYSLOG_LIVENESS_PROBE_TIMEOUT_SECONDS
+    value: "5"
+    displayName: quay syslog liveness probe timeout
+  - name: QUAY_SYSLOG_READINESS_PROBE_INITIAL_DELAY_SECONDS
+    value: "15"
+    displayName: quay syslog readiness probe initial delay seconds
+  - name: QUAY_SYSLOG_READINESS_PROBE_PERIOD_SECONDS
+    value: "30"
+    displayName: quay syslog readiness probe period seconds
+  - name: QUAY_SYSLOG_READINESS_PROBE_TIMEOUT_SECONDS
+    value: "5"
+    displayName: quay syslog readiness probe timeout
+  - name: SYSLOG_SERVER
+    value: "localhost"
+    displayName: syslog server
+  - name: SYSLOG_PROTO
+    value: "udp"
+    displayName: syslog protocol
+  - name: QUAY_LOGGING
+    value: "syslog"
+    displayName: quay logging handler
+  - name: SYSLOG_IMAGE
+    value: ""
+    displayName: syslog-cloudwatch-bridge image
+    description: syslog-cloudwatch-bridge docker image.
+  - name: SYSLOG_IMAGE_TAG
+    value: "latest"
+    displayName: syslog-cloudwatch-bridge version
+    description: syslog-cloudwatch-bridge version
+  - name: AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT
+    value: "3600"
+    displayName: aws load balancer connection idle timeout
+    description: aws load balancer connection idle timeout
+  - name: QUAY_WORKER_MULTIPLIER_REGISTRY
+    value: "2"
+    displayName: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
+    description: the number multiplied by the number of cores to produce the number of gunicorn workers for the registry routes
+  - name: QUAY_WORKER_CONNECTION_COUNT_REGISTRY
+    value: "50"
+    displayName: the maximum number of greenlets per gunicorn worker for the registry routes
+    description: the maximum number of greenlets per gunicorn worker for the registry routes
+  - name: DB_CONNECTION_POOLING
+    value: "true"
+  - name: TICKER_TIME
+    value: "200"
