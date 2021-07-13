@@ -2,6 +2,9 @@
 
 TOKEN={{ token }}
 SERVER={{ manager_hostname }}
+HTTP_PROXY={{ http_proxy }}
+HTTPS_PROXY={{ https_proxy }}
+NO_PROXY={{ no_proxy }}
 # TODO: Remove this eventually
 GODEBUG=x509ignoreCN=0
 
