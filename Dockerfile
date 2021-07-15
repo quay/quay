@@ -54,8 +54,7 @@ FROM build AS config-editor
 # the other CONFIGTOOL_VERSION argument.
 ARG CONFIGTOOL_VERSION=master
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
-	| tar xz --strip-components=4 --exclude=static --exclude='*.go'\
-		'*/pkg/lib/editor'
+	| tar xz --strip-components=4 --exclude='*.go'
 RUN set -ex\
 	; npm install --quiet --no-progress --ignore-engines\
 	; npm run --quiet build\
@@ -137,7 +136,7 @@ LABEL maintainer "thomasmckay@redhat.com"
 RUN alternatives --set python /usr/bin/python3
 RUN set -ex\
 	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
-	; newdir() { for d in "$@"; do mkdir -m g+w "$d" || { chgrp 0 "$d" && chmod g=u "$d"; }; ls -ld "$d"; done; }\
+	; newdir() { for d in "$@"; do mkdir -m g+w "$d" || { mkdir -p "$d" && chgrp 0 "$d" && chmod g=u "$d"; }; ls -ld "$d"; done; }\
 # Allow TLS certs to be created and installed as non-root user.
 # See also update-ca-trust(8).
 	; setperms /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors\
@@ -146,7 +145,7 @@ RUN set -ex\
 	; ln -sf /dev/stdout /var/log/nginx/access.log\
 	; ln -sf /dev/stdout /var/log/nginx/error.log\
 # Make a grip of runtime directories.
-	; newdir /certificates /conf /conf/stack /datastorage\
+	; newdir /certificates /conf/stack /datastorage\
 # The code doesn't agree on where the configuration lives, so create a
 # symlink.
 	; ln -s $QUAYCONF /conf\
