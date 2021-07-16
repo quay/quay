@@ -1,7 +1,7 @@
 import logging
 import time
 
-from app import notification_queue
+from app import app, notification_queue
 from notifications.notificationmethod import NotificationMethod, InvalidNotificationMethodException
 from notifications.notificationevent import NotificationEvent, InvalidNotificationEventException
 from workers.notificationworker.models_pre_oci import pre_oci_model as model
