@@ -1,3 +1,9 @@
+### v3.6.0
+
+**Release Notes**
+(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.6/html/red_hat_quay_release_notes/index]
+
+
 ## Red Hat Quay Release Notes
 (Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
 

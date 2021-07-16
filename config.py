@@ -452,9 +452,9 @@ class DefaultConfig(ImmutableConfig):
         }
     else:
         BRANDING = {
-            "logo": "/static/img/quay-horizontal-color.svg",
-            "footer_img": None,
-            "footer_url": None,
+            "logo": "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg",
+            "footer_img": "/static/img/RedHat.svg",
+            "footer_url": "https://access.redhat.com/documentation/en-us/red_hat_quay/3/",
         }
 
     # How often the Garbage Collection worker runs.
@@ -760,7 +760,7 @@ class DefaultConfig(ImmutableConfig):
     if os.environ.get("RED_HAT_QUAY", False):
         DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3/"
     else:
-        DOCUMENTATION_ROOT = "https://docs.projectquay.io/"
+        DOCUMENTATION_ROOT = "https://access.redhat.com/documentation/en-us/red_hat_quay/3/"
 
     # Feature Flag: Whether the repository action count worker is enabled.
     FEATURE_REPOSITORY_ACTION_COUNTER = True
