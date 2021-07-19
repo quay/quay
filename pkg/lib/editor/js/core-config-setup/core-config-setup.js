@@ -295,9 +295,11 @@ angular.module("quay-config")
           if($scope.certs["database.pem"] && $scope.config["DB_URI"].startsWith("postgres")){
             delete $scope.config["DB_CONNECTION_ARGS"]["ssl"];
             $scope.config["DB_CONNECTION_ARGS"]["sslrootcert"] = "conf/stack/database.pem";
+            $scope.config["DB_CONNECTION_ARGS"]["sslmode"] = "verify-full"
           } else if 
             ($scope.certs["database.pem"] && $scope.config["DB_URI"].startsWith("mysql")){
-            delete $scope.config["DB_CONNECTION_ARGS"]["sslrootcert"];  
+            delete $scope.config["DB_CONNECTION_ARGS"]["sslrootcert"];
+            delete $scope.config["DB_CONNECTION_ARGS"]["sslmode"];    
             $scope.config["DB_CONNECTION_ARGS"]["ssl"] = {}
             $scope.config["DB_CONNECTION_ARGS"]["ssl"]["ca"] = "conf/stack/database.pem";
           }
