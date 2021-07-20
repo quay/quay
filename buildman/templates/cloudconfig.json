@@ -2,6 +2,13 @@
 
 TOKEN={{ token }}
 SERVER={{ manager_hostname }}
+{% if http_proxy %}
+HTTP_PROXY={{ http_proxy }}
+{% elif https_proxy %}
+HTTPS_PROXY={{ https_proxy }}
+{% elif no_proxy %}
+NO_PROXY={{ no_proxy }}
+{% endif %}
 # TODO: Remove this eventually
 GODEBUG=x509ignoreCN=0
 

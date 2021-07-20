@@ -211,6 +211,9 @@ class BuilderExecutor(object):
                     container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker"),
                     ca_cert=self.executor_config.get("CA_CERT", self._ca_cert()),
                     debug=self.executor_config.get("DEBUG", False),
+                    http_proxy=self.executor_config.get("HTTP_PROXY", None),
+                    https_proxy=self.executor_config.get("HTTPS_PROXY", None),
+                    noproxy=self.executor_config.get("NO_PROXY", None),
                 )
             )
         )
