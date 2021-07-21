@@ -180,7 +180,9 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             "layers": [
                 {
                     "hash": str(l.layer_info.blob_digest),
-                    "uri": self._blob_url_retriever.url_for_download(manifest.repository, l.blob),
+                    "uri": self._blob_url_retriever.url_for_download(manifest.repository, l.blob)
+                    if not l.layer_info.is_remote
+                    else l.layer_info.urls[0],
                     "headers": _join(
                         {
                             "Accept": ["application/gzip"],
@@ -189,6 +191,8 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
                             self._blob_url_retriever.headers_for_download(
                                 manifest.repository, l.blob, DOWNLOAD_VALIDITY_LIFETIME_S
                             )
+                            if not l.layer_info.is_remote
+                            else {}
                         ),
                     ),
                 }
