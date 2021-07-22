@@ -19,6 +19,7 @@ angular.module('quay').directive('repoPanelSettings', function () {
 
       $scope.Features = Features;
       $scope.deleteDialogCounter = 0;
+      $scope.context = {}
 
       var getTitle = function(repo) {
         return repo.kind == 'application' ? 'application' : 'image';
@@ -52,7 +53,9 @@ angular.module('quay').directive('repoPanelSettings', function () {
       $scope.askDelete = function() {
         $scope.deleteDialogCounter++;
         $scope.deleteRepoInfo = {
-          'counter': $scope.deleteDialogCounter
+          'counter': $scope.deleteDialogCounter,
+          'verificationRegex': $scope.repository.namespace + "/" + $scope.repository.name,
+          'verification': ""
         };
       };
 
