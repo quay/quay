@@ -5,8 +5,7 @@ QUAYCONF=${QUAYCONF:-"$QUAYPATH/conf"}
 QUAYCONFIG=${QUAYCONFIG:-"$QUAYCONF/stack"}
 CERTDIR=${CERTDIR:-"$QUAYCONFIG/extra_ca_certs"}
 SYSTEM_CERTDIR=${SYSTEM_CERTDIR:-"/etc/pki/ca-trust/source/anchors"}
-
-PYTHONUSERBASE_SITE_PACKAGE=$(python -m site --user-site)
+PYTHONUSERBASE_SITE_PACKAGE=${PYTHONUSERBASE_SITE_PACKAGE:-"$(python -m site --user-site)"}
 
 cd ${QUAYDIR:-"/quay-registry"}
 

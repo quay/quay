@@ -578,3 +578,35 @@ def test_perform_indexing_manifest_list(initialized_db, set_secscan_config):
     assert ManifestSecurityStatus.select().count() == Manifest.select().count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.MANIFEST_UNSUPPORTED
+
+
+def test_enrichments_in_features_for():
+    vuln_report_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "vulnerabilityreport_withenrichments.json"
+    )
+    security_info_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "securityinformation_withenrichments.json"
+    )
+
+    with open(vuln_report_filename) as vuln_report_file:
+        vuln_report = json.load(vuln_report_file)
+
+    with open(security_info_filename) as security_info_file:
+        expected = json.load(security_info_file)
+
+    expected["Layer"]["Features"].sort(key=lambda d: d["Name"])
+    generated = SecurityInformation(
+        Layer(
+            "sha256:4b42c2e36b0bedf017e14dc270f315e627a2a0030f453687a06375fa88694298",
+            "",
+            "",
+            4,
+            features_for(vuln_report),
+        )
+    ).to_dict()
+
+    # Sort the Features' list so that the following assertion holds even if they are out of order
+    expected["Layer"]["Features"].sort(key=lambda d: d["Name"])
+    generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
+
+    assert generated == expected

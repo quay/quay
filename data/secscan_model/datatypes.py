@@ -30,8 +30,10 @@ Vulnerability = namedtuple(
     ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
 )
 Metadata = namedtuple(
-    "Metadata", ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion"]
+    "Metadata", ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion", "NVD"]
 )
+NVD = namedtuple("NVD", ["CVSSv3"])
+CVSSv3 = namedtuple("CVSSv3", ["Vectors", "Score"])
 Feature = namedtuple(
     "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
 )
@@ -110,6 +112,12 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                     "RepoLink": v.Metadata.RepoLink,
                                     "DistroName": v.Metadata.DistroName,
                                     "DistroVersion": v.Metadata.DistroVersion,
+                                    "NVD": {
+                                        "CVSSv3": {
+                                            "Vectors": v.Metadata.NVD.CVSSv3.Vectors,
+                                            "Score": v.Metadata.NVD.CVSSv3.Score,
+                                        }
+                                    },
                                 },
                             }
                             for v in f.Vulnerabilities

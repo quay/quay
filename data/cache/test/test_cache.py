@@ -1,6 +1,7 @@
 import pytest
 
-from mock import patch
+from unittest.mock import patch, MagicMock
+from rediscluster.nodemanager import NodeManager
 
 from data.cache import (
     InMemoryDataModelCache,
@@ -9,6 +10,11 @@ from data.cache import (
     RedisDataModelCache,
 )
 from data.cache.cache_key import CacheKey
+from data.cache.redis_cache import (
+    redis_cache_from_config,
+    REDIS_DRIVERS,
+    ReadEndpointSupportedRedis,
+)
 
 
 DATA = {}
@@ -90,30 +96,61 @@ def test_redis_cache():
     global DATA
     DATA = {}
 
-    redis_config = {
-        "primary": {
-            "host": "127.0.0.1",
-            "port": 6279,
-            "db": 0,
-            "password": "",
-            "ssl": False,
-            "ssl_ca_certs": None,
-        },
-        "replica": {
-            "host": "127.0.0.1",
-            "port": 6279,
-            "db": 0,
-            "password": "",
-            "ssl": False,
-            "ssl_ca_certs": None,
-        },
-    }
-
     key = CacheKey("foo", "60m")
-    with patch("data.cache.impl.StrictRedis", MockClient):
-        cache = RedisDataModelCache(
-            TEST_CACHE_CONFIG, redis_config.get("primary"), redis_config.get("replica")
-        )
+    cache = RedisDataModelCache(TEST_CACHE_CONFIG, MockClient())
 
-        assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
-        assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
+    assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
+    assert cache.retrieve(key, lambda: {"a": 1234}) == {"a": 1234}
+
+
+@pytest.mark.parametrize(
+    "cache_config, expected_exception",
+    [
+        pytest.param(
+            {
+                "engine": "rediscluster",
+                "redis_config": {
+                    "startup_nodes": [{"host": "127.0.0.1", "port": "6379"}],
+                    "password": "redisPassword",
+                },
+            },
+            None,
+            id="rediscluster",
+        ),
+        pytest.param(
+            {
+                "engine": "redis",
+                "redis_config": {
+                    "primary": {"host": "127.0.0.1", "password": "redisPassword"},
+                },
+            },
+            None,
+            id="redis",
+        ),
+        pytest.param(
+            {
+                "engine": "memcached",
+                "endpoint": "127.0.0.1",
+            },
+            (ValueError, "Invalid Redis driver for cache model"),
+            id="invalid engine for redis",
+        ),
+        pytest.param(
+            {
+                "engine": "redis",
+                "redis_config": {},
+            },
+            (ValueError, "Invalid Redis config for redis"),
+            id="invalid config for redis",
+        ),
+    ],
+)
+def test_redis_cache_config(cache_config, expected_exception):
+    with patch("rediscluster.nodemanager.NodeManager.initialize", MagicMock):
+        if expected_exception is not None:
+            with pytest.raises(expected_exception[0]) as e:
+                rc = redis_cache_from_config(cache_config)
+            assert str(e.value) == expected_exception[1]
+        else:
+            rc = redis_cache_from_config(cache_config)
+            assert isinstance(rc, REDIS_DRIVERS[cache_config["engine"]])

@@ -59,7 +59,6 @@ greenlet==0.4.15
 grpcio==1.30.0
 gunicorn==20.0.4
 hashids==1.2.0
-hiredis==1.0.1
 html5lib==1.0.1
 httmock==1.3.0
 httpretty==0.9.7
@@ -131,6 +130,7 @@ PyYAML==5.4
 raven==6.10.0
 recaptcha2==0.1
 redis==3.3.11
+redis-py-cluster==2.1.3
 redlock==1.2.0
 rehash==1.0.0
 reportlab==3.5.34
