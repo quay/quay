@@ -21,6 +21,7 @@
     $scope.resources = [];
     $scope.Features = Features;
     $scope.inReadOnlyMode = StateService.inReadOnlyMode();
+    $scope.repoMirroringEnabled = Config.FEATURE_REPO_MIRROR
 
     // When loading the UserService, if the user is logged in, create a list of
     // relevant namespaces and collect the relevant repositories.
@@ -103,7 +104,8 @@
           'namespace': namespace.name,
           'last_modified': true,
           'popularity': true,
-          'public': namespace.public
+          'public': namespace.public,
+          'state': true,
         };
 
         namespace.repositories = ApiService.listReposAsResource().withPagination('repositories').withOptions(options).get(function(resp) {

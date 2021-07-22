@@ -19,6 +19,11 @@
   font-size: 13px;
 }
 
+.repo-list-table .repo-state {
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
 .repo-list-table .strength-indicator {
   display: inline-block;
 }

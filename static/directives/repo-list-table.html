@@ -31,6 +31,12 @@
       <a ng-click="orderBy('last_modified_datetime')">Last Modified</a>
     </td>
     <td class="hidden-xs"
+        ng-class="tablePredicateClass('state', options.predicate, options.reverse)"
+        style="min-width: 20px;"
+        ng-show="repoMirroringEnabled">
+      <a ng-click="orderBy('state')">State</a>
+    </td>
+    <td class="hidden-xs"
         ng-class="tablePredicateClass('popularity', options.predicate, options.reverse)"
         style="min-width: 20px;">
       <a ng-click="orderBy('popularity')">Activity</a>
@@ -62,6 +68,11 @@
          </span>
          <span class="empty" ng-if="::!repository.last_modified">(Empty Repository)</span>
        </td>
+       <td class="repo-state" ng-show="repoMirroringEnabled">
+        <span>
+          {{ ::repository.state.replace('_', ' ').toLowerCase() }}
+        </span>
+      </td>
        <td class="popularity hidden-xs">
          <span class="strength-indicator" value="::repository.popularity" maximum="::maxPopularity"
                log-base="10"></span>
