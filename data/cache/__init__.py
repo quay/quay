@@ -1,3 +1,4 @@
+from data.cache.redis_cache import redis_cache_from_config
 from data.cache.impl import (
     NoopDataModelCache,
     InMemoryDataModelCache,
@@ -37,17 +38,9 @@ def get_model_cache(config):
 
         return cache
 
-    if engine == "redis":
-        primary_config = cache_config.get("primary", None)
-        replica_config = cache_config.get("replica", None)
+    if engine == "redis" or engine == "redis-cluster":
+        redis_client = redis_cache_from_config(cache_config)
 
-        if not primary_config or primary_config.get("host") is None:
-            raise Exception("Missing `primary_host` for Redis model cache configuration")
-
-        return RedisDataModelCache(
-            cache_config,
-            primary_config=primary_config,
-            replica_config=replica_config,
-        )
+        return RedisDataModelCache(cache_config, redis_client)
 
     raise Exception("Unknown model cache engine `%s`" % engine)

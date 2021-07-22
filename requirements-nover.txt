@@ -35,7 +35,7 @@ geoip2
 gevent
 gipc
 gunicorn
-hiredis
+hashids
 html5lib==0.9999999 # pinned due to xhtml2pdf
 httmock
 jsonpath-rw
@@ -70,6 +70,7 @@ python-swiftclient
 pyyaml
 raven
 redis
+redis-py-cluster
 redlock
 reportlab==2.7
 requests-aws4auth
@@ -86,5 +87,4 @@ trollius
 tzlocal
 xhtml2pdf
 recaptcha2
-mockredispy
 yapf
