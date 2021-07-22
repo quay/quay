@@ -152,12 +152,19 @@
     <div class="cor-confirm-dialog"
        dialog-context="deleteRepoInfo"
        dialog-action="deleteRepo(info, callback)"
-       dialog-title="Delete"
-       dialog-action-title="Delete">
-     <div class="co-alert co-alert-danger" style="margin-bottom: 10px;">
-       This action cannot be undone!
-     </div>
-
-     Continue with deletion of this <span class="repository-title" repository="repository"></span>?
-  </div>
+       dialog-title="Delete {{repository.namespace}}/{{repository.name}}"
+       dialog-action-title="Delete"
+       dialog-form="context.deleterepoform"
+       dialog-button-class="btn-danger">
+      <form name="context.deleterepoform" class="co-single-field-dialog">
+        <div class="co-alert co-alert-danger">
+          You are requesting to delete the repository <strong>{{repository.namespace}}/{{repository.name}}</strong>. This action is <strong>non-reversable</strong>.
+        </div>
+        
+        You must type <code>{{repository.namespace}}/{{repository.name}}</code> below to confirm deletion:
+        <input type="text" class="form-control" placeholder="Enter repository here"
+            ng-model="deleteRepoInfo.verification" ng-pattern="deleteRepoInfo.verificationRegex" match="deleteRepoInfo.verificationRegex"
+            required>
+      </form>
+    </div>
 </div>
