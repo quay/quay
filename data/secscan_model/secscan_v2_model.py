@@ -86,7 +86,7 @@ class V2SecurityScanner(SecurityScannerInterface):
 
         validator = V2SecurityConfigValidator(
             app.config.get("FEATURE_SECURITY_SCANNER", False),
-            app.config.get("SECURITY_SCANNER_ENDPOINT"),
+            app.config.get("SECURITY_SCANNER_ENDPOINT", None),
         )
 
         if not validator.valid():

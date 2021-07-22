@@ -457,7 +457,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SECURITY_NOTIFICATIONS = False
 
     # The endpoint for the (deprecated) V2 security scanner.
-    SECURITY_SCANNER_ENDPOINT = "http://192.168.99.101:6060"
+    SECURITY_SCANNER_ENDPOINT = None
 
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT = None
