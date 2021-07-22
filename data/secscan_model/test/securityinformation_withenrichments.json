@@ -1,0 +1,1119 @@
+{
+  "Layer": {
+    "Name": "sha256:4b42c2e36b0bedf017e14dc270f315e627a2a0030f453687a06375fa88694298",
+    "ParentName": "",
+    "NamespaceName": "",
+    "IndexedByVersion": 4,
+    "Features": [
+      {
+        "Name": "setuptools",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "28.8.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "pyopenssl",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "17.5.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "cffi",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.11.5",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "ncurses-terminfo-base",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "6.0_p20171125-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "musl-utils",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.1.18-r3",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libcrypto1.0",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.0.2o-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libstdc++",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "6.4.0-r5",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "scanelf",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "1.2.2-r1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "alpine-baselayout",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "3.0.5-r2",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libressl2.6-libssl",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "2.6.3-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "pip",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "9.0.1",
+        "Vulnerabilities": [
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "The pip package before 19.2 for Python allows Directory Traversal when a URL is given in an install command, because a Content-Disposition header can have ../ in a filename, as demonstrated by overwriting the /root/.ssh/authorized_keys file. This occurs in _download_http_url in _internal/download.py.",
+            "Name": "pyup.io-38765 (CVE-2019-20916)",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "Pip 21.1 updates urllib3 to 1.26.4 to fix CVE-2021-28363. The urllib3 library 1.26.x before 1.26.4 for Python omits SSL certificate validation in some cases involving HTTPS to HTTPS proxies. The initial connection to the HTTPS proxy (if an SSLContext isn't given via proxy_config) doesn't verify the hostname of the certificate. This means certificates for different servers that still validate properly with the default urllib3 SSLContext will be silently accepted.",
+            "Name": "pyup.io-40291 (CVE-2021-28363)",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.2/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+                  "Score": 7.5
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "Name": "expat",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2.2.5-r0",
+        "Vulnerabilities": [
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20843",
+            "FixedBy": "2.2.7-r0",
+            "Description": "",
+            "Name": "CVE-2018-20843",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-15903",
+            "FixedBy": "2.2.7-r1",
+            "Description": "",
+            "Name": "CVE-2019-15903",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "Score": 7.5
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "Name": "pyparsing",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2.2.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libbz2",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.0.6-r6",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "click",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "6.7",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "wsproto",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.11.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "ncurses-terminfo",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "6.0_p20171125-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "ncurses-libs",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "6.0_p20171125-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "pyperclip",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.6.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "mitmproxy",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "4.0.1",
+        "Vulnerabilities": [
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "mitmproxy before 4.0.3 does not protect mitmweb against DNS rebinding.",
+            "Name": "pyup.io-36353 (CVE-2018-14505)",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+                  "Score": 8.8
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "mitmproxy before 4.0.4 does not protect mitmweb against DNS rebinding.",
+            "Name": "pyup.io-36352 (CVE-2018-14505)",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+                  "Score": 8.8
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "Mitmproxy 5.0 fixes command injection vulnerabilities when exporting flows as curl/httpie commands. It also does not echo unsanitized user input in HTTP error responses.",
+            "Name": "pyup.io-38179",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "",
+                  "Score": ""
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "Name": "xz-libs",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "5.2.3-r1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "certifi",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2018.4.16",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libressl2.6-libcrypto",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "2.6.3-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "sortedcontainers",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.5.10",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "ruamel.yaml",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.15.37",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "brotlipy",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.7.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "asn1crypto",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.24.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "gdbm",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.13-r1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "urwid",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2.0.1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "readline",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "7.0.003-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "six",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.11.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libc-utils",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "0.7.1-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "sqlite-libs",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "3.21.0-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "h2",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "3.0.1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "openssl",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.0.2o-r0",
+        "Vulnerabilities": [
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1559",
+            "FixedBy": "1.0.2r-r0",
+            "Description": "",
+            "Name": "CVE-2019-1559",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 5.9
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1547",
+            "FixedBy": "1.0.2t-r0",
+            "Description": "",
+            "Name": "CVE-2019-1547",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 4.7
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1563",
+            "FixedBy": "1.0.2t-r0",
+            "Description": "",
+            "Name": "CVE-2019-1563",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+                  "Score": 3.7
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0732",
+            "FixedBy": "1.0.2o-r1",
+            "Description": "",
+            "Name": "CVE-2018-0732",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0737",
+            "FixedBy": "1.0.2o-r1",
+            "Description": "",
+            "Name": "CVE-2018-0737",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 5.9
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0734",
+            "FixedBy": "1.0.2q-r0",
+            "Description": "",
+            "Name": "CVE-2018-0734",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 5.9
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5407",
+            "FixedBy": "1.0.2q-r0",
+            "Description": "",
+            "Name": "CVE-2018-5407",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 4.7
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "Name": "hpack",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "3.0.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "ldap3",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2.5",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libssl1.0",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.0.2o-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "passlib",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.7.1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "pycparser",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2.18",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "kaitaistruct",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.8",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "libgcc",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "6.4.0-r5",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "python3",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "3.6.3-r9",
+        "Vulnerabilities": [
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1060",
+            "FixedBy": "3.6.5-r0",
+            "Description": "",
+            "Name": "CVE-2018-1060",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1061",
+            "FixedBy": "3.6.5-r0",
+            "Description": "",
+            "Name": "CVE-2018-1061",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-14647",
+            "FixedBy": "3.6.8-r0",
+            "Description": "",
+            "Name": "CVE-2018-14647",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20406",
+            "FixedBy": "3.6.8-r0",
+            "Description": "",
+            "Name": "CVE-2018-20406",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-9636",
+            "FixedBy": "3.6.8-r0",
+            "Description": "",
+            "Name": "CVE-2019-9636",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                  "Score": 9.8
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-16056",
+            "FixedBy": "3.6.8-r1",
+            "Description": "",
+            "Name": "CVE-2019-16056",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 7.5
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-16935",
+            "FixedBy": "3.6.9-r1",
+            "Description": "",
+            "Name": "CVE-2019-16935",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+                  "Score": 6.1
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "Name": "tornado",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "5.0.2",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "pyasn1",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.4.2",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "alpine-keys",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "2.1-r1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "hyperframe",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "5.1.0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "su-exec",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.2-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "idna",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2.6",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "cryptography",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "2.2.2",
+        "Vulnerabilities": [
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "Cryptography 3.3 no longer allows loading of finite field Diffie-Hellman parameters of less than 512 bits in length. This change is to conform with an upcoming OpenSSL release that no longer supports smaller sizes. These keys were already wildly insecure and should not have been used in any application outside of testing.",
+            "Name": "pyup.io-39252",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "",
+                  "Score": ""
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "In the cryptography package before 3.3.2 for Python, certain sequences of update calls to symmetrically encrypt multi-GB values could result in an integer overflow and buffer overflow, as demonstrated by the Fernet class. See CVE-2020-36242.",
+            "Name": "pyup.io-39606 (CVE-2020-36242)",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+                  "Score": 9.1
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "Cryptography 3.2 was released with the warning that its maintainers became aware of a Bleichenbacher vulnerability that they were only partly able to mitigate. See: CVE-2020-25659.",
+            "Name": "pyup.io-38932 (CVE-2020-25659)",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 5.9
+                }
+              }
+            }
+          },
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "",
+            "FixedBy": "",
+            "Description": "python-cryptography versions >=1.9.0 and <2.3 did not enforce a minimum tag length for finalize_with_tag API. If a user did not validate the input length prior to passing it to finalize_with_tag an attacker could craft an invalid payload with a shortened tag (e.g. 1 byte) such that they would have a 1 in 256 chance of passing the MAC check. GCM tag forgeries can cause key leakage.",
+            "Name": "pyup.io-36351 (CVE-2018-10903)",
+            "Metadata": {
+              "UpdatedBy": "pyupio",
+              "RepoName": "pypi",
+              "RepoLink": "https://pypi.org/simple",
+              "DistroName": "",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                  "Score": 7.5
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "Name": "libffi",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "3.2.1-r4",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "blinker",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.4",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "busybox",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "1.27.2-r7",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "musl",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "1.1.18-r3",
+        "Vulnerabilities": [
+          {
+            "Severity": "Unknown",
+            "NamespaceName": "",
+            "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-14697",
+            "FixedBy": "1.1.18-r4",
+            "Description": "",
+            "Name": "CVE-2019-14697",
+            "Metadata": {
+              "UpdatedBy": "alpine-main-v3.7-updater",
+              "RepoName": null,
+              "RepoLink": null,
+              "DistroName": "Alpine Linux",
+              "DistroVersion": "",
+              "NVD": {
+                "CVSSv3": {
+                  "Vectors": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                  "Score": 9.8
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "Name": "apk-tools",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "2.8.2-r0",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "zlib",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:ff3a5c916c92643ff77519ffa742d3ec61b7f591b6b7504599d95a4a41134e28",
+        "Version": "1.2.11-r1",
+        "Vulnerabilities": [
+
+        ]
+      },
+      {
+        "Name": "h11",
+        "VersionFormat": "",
+        "NamespaceName": "",
+        "AddedBy": "sha256:95200ab871bdbed0f4962f61926c67d1771dea166bb8469ce2036213bb406784",
+        "Version": "0.7.0",
+        "Vulnerabilities": [
+
+        ]
+      }
+    ]
+  }
+}
