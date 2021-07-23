@@ -382,7 +382,7 @@ def list_applications_for_org(org):
     return query
 
 
-def create_access_token_for_testing(user_obj, client_id, scope, access_token=None, expires_in=9000):
+def create_user_access_token(user_obj, client_id, scope, access_token=None, expires_in=9000):
     access_token = access_token or random_string_generator(length=40)()
     token_name = access_token[:ACCESS_TOKEN_PREFIX_LENGTH]
     token_code = access_token[ACCESS_TOKEN_PREFIX_LENGTH:]

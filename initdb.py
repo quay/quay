@@ -888,7 +888,7 @@ def populate_database(minimal=False):
         description="This is another test application",
     )
 
-    model.oauth.create_access_token_for_testing(
+    model.oauth.create_user_access_token(
         new_user_1, "deadbeef", "repo:admin", access_token="%s%s" % ("b" * 40, "c" * 40)
     )
 

@@ -777,3 +777,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Account recovery mode
     ACCOUNT_RECOVERY_MODE = False
+
+    # Feature Flag: If set to true, the first User account may be created via API /api/v1/user/initialize
+    FEATURE_USER_INITIALIZE = False

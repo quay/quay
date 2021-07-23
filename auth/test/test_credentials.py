@@ -48,9 +48,7 @@ def test_valid_token(app):
 def test_valid_oauth(app):
     user = model.user.get_user("devtable")
     app = model.oauth.list_applications_for_org(model.user.get_user_or_org("buynlarge"))[0]
-    oauth_token, code = model.oauth.create_access_token_for_testing(
-        user, app.client_id, "repo:read"
-    )
+    oauth_token, code = model.oauth.create_user_access_token(user, app.client_id, "repo:read")
     result, kind = validate_credentials(OAUTH_TOKEN_USERNAME, code)
     assert kind == CredentialKind.oauth_token
     assert result == ValidateResult(AuthKind.oauth, oauthtoken=oauth_token)

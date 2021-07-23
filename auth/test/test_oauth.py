@@ -28,7 +28,7 @@ def test_valid_oauth(app):
     user = model.user.get_user("devtable")
     app = model.oauth.list_applications_for_org(model.user.get_user_or_org("buynlarge"))[0]
     token_string = "%s%s" % ("a" * 20, "b" * 20)
-    oauth_token, _ = model.oauth.create_access_token_for_testing(
+    oauth_token, _ = model.oauth.create_user_access_token(
         user, app.client_id, "repo:read", access_token=token_string
     )
     result = validate_bearer_auth("bearer " + token_string)
@@ -40,7 +40,7 @@ def test_valid_oauth(app):
 def test_disabled_user_oauth(app):
     user = model.user.get_user("disabled")
     token_string = "%s%s" % ("a" * 20, "b" * 20)
-    oauth_token, _ = model.oauth.create_access_token_for_testing(
+    oauth_token, _ = model.oauth.create_user_access_token(
         user, "deadbeef", "repo:admin", access_token=token_string
     )
 
@@ -54,7 +54,7 @@ def test_disabled_user_oauth(app):
 def test_expired_token(app):
     user = model.user.get_user("devtable")
     token_string = "%s%s" % ("a" * 20, "b" * 20)
-    oauth_token, _ = model.oauth.create_access_token_for_testing(
+    oauth_token, _ = model.oauth.create_user_access_token(
         user, "deadbeef", "repo:admin", access_token=token_string, expires_in=-1000
     )
 

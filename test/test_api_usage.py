@@ -1265,7 +1265,7 @@ class TestCreateOrganization(ApiTestCase):
 
         # Attempt with auth with invalid scope.
         dt_user = model.user.get_user(ADMIN_ACCESS_USER)
-        token, code = model.oauth.create_access_token_for_testing(dt_user, "deadbeef", "repo:read")
+        token, code = model.oauth.create_user_access_token(dt_user, "deadbeef", "repo:read")
         self.postResponse(
             OrganizationList,
             data=dict(name="neworg", email="testorg@example.com"),
@@ -1274,7 +1274,7 @@ class TestCreateOrganization(ApiTestCase):
         )
 
         # Create OAuth token with user:admin scope.
-        token, code = model.oauth.create_access_token_for_testing(
+        token, code = model.oauth.create_user_access_token(
             dt_user, "deadbeef", "user:admin", access_token="d" * 40
         )
         data = self.postResponse(
