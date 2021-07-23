@@ -267,7 +267,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             layers = registry_model.list_manifest_layers(manifest, self.storage, True)
             if layers is None or len(layers) == 0:
                 logger.warning(
-                    "Cannot index %s/%s@%s due to manifest being invalid"
+                    "Cannot index %s/%s@%s due to manifest being invalid (manifest has no layers)"
                     % (
                         candidate.repository.namespace_user,
                         candidate.repository.name,
