@@ -52,7 +52,10 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
         legacy_info = self._legacy_model.load_security_information(
             manifest_or_legacy_image, include_vulnerabilities
         )
-        if legacy_info.status != ScanLookupStatus.UNSUPPORTED_FOR_INDEXING:
+        if (
+            legacy_info.status != ScanLookupStatus.UNSUPPORTED_FOR_INDEXING
+            and legacy_info.status != ScanLookupStatus.COULD_NOT_LOAD
+        ):
             return legacy_info
 
         return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)

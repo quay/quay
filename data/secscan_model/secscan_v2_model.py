@@ -49,7 +49,7 @@ class NoopV2SecurityScanner(SecurityScannerInterface):
     """
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
-        return None
+        return SecurityInformationLookupResult.for_request_error("not implemented (noop) scanner")
 
     def perform_indexing(self, start_token=None):
         return None
