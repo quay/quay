@@ -38,7 +38,7 @@ def get_model_cache(config):
 
         return cache
 
-    if engine == "redis" or engine == "redis-cluster":
+    if engine == "redis" or engine == "rediscluster":
         redis_client = redis_cache_from_config(cache_config)
 
         return RedisDataModelCache(cache_config, redis_client)
