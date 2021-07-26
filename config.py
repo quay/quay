@@ -748,6 +748,7 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether OCI manifest support should be enabled generally.
     FEATURE_GENERAL_OCI_SUPPORT = True
+    ALLOWED_OCI_ARTIFACT_TYPES = {}
 
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/

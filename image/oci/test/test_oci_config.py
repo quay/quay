@@ -5,6 +5,12 @@ from dateutil.tz import tzutc
 
 import pytest
 
+from image.oci import (
+    register_artifact_type,
+    ALLOWED_ARTIFACT_TYPES,
+    ADDITIONAL_LAYER_CONTENT_TYPES,
+    OCI_IMAGE_CONFIG_CONTENT_TYPE,
+)
 from image.oci.config import OCIConfig, MalformedConfig, LayerHistory
 from util.bytes import Bytes
 
@@ -114,3 +120,31 @@ def test_config_missing_required():
 def test_invalid_config():
     with pytest.raises(MalformedConfig):
         OCIConfig(Bytes.for_string_or_unicode("{}"))
+
+
+def test_artifact_registratioon():
+    # Register helm
+    register_artifact_type("application/vnd.cncf.helm.config.v1+json", ["application/tar+gzip"])
+    assert "application/vnd.cncf.helm.config.v1+json" in ALLOWED_ARTIFACT_TYPES
+    assert "application/tar+gzip" in ADDITIONAL_LAYER_CONTENT_TYPES
+
+    # Register a new layer type to an existing config type
+    register_artifact_type(
+        OCI_IMAGE_CONFIG_CONTENT_TYPE, ["application/vnd.oci.image.layer.v1.tar+zstd"]
+    )
+    assert (
+        OCI_IMAGE_CONFIG_CONTENT_TYPE in ALLOWED_ARTIFACT_TYPES
+        and ALLOWED_ARTIFACT_TYPES.count(OCI_IMAGE_CONFIG_CONTENT_TYPE) == 1
+    )
+    assert "application/vnd.oci.image.layer.v1.tar+zstd" in ADDITIONAL_LAYER_CONTENT_TYPES
+
+    # Attempt to register existing helm type
+    register_artifact_type("application/vnd.cncf.helm.config.v1+json", ["application/tar+gzip"])
+    assert (
+        "application/vnd.cncf.helm.config.v1+json" in ALLOWED_ARTIFACT_TYPES
+        and ALLOWED_ARTIFACT_TYPES.count("application/vnd.cncf.helm.config.v1+json") == 1
+    )
+    assert (
+        "application/tar+gzip" in ADDITIONAL_LAYER_CONTENT_TYPES
+        and ADDITIONAL_LAYER_CONTENT_TYPES.count("application/tar+gzip") == 1
+    )
