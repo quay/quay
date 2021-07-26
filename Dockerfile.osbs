@@ -21,23 +21,21 @@ RUN cd source/quay && \
 
 FROM openshift/golang-builder:1.15 AS build-gomod
 
-COPY --from=build-npm $REMOTE_SOURCE_DIR/app $REMOTE_SOURCE_DIR/app
+COPY --from=build-npm $REMOTE_SOURCE_DIR $REMOTE_SOURCE_DIR
 WORKDIR $REMOTE_SOURCE_DIR/app
+RUN source $CACHITO_ENV_FILE
 
 COPY --from=build-npm $REMOTE_SOURCE_DIR/app/source/config-tool/pkg/lib/editor/static/build $REMOTE_SOURCE_DIR/app/source/config-tool/pkg/lib/editor/static/build
 
-# https://projects.engineering.redhat.com/browse/CLOUDBLD-1611
-# Until above is fixed, "go mod vendor" can't be run since the go.mod must be
-# in the root dir (ie. no multiples). Once fixed, add "go mod vendor" as a step
-# here and remove vendor dirs from quay-osbs repo
-#
 RUN cd source/config-tool && \
+    go mod vendor && \
     go build ./cmd/config-tool
 
 RUN cd source/jwtproxy && \
     go build ./cmd/jwtproxy
 
 RUN cd source/pushgateway && \
+    go mod vendor && \
     go build
 
 
