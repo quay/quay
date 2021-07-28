@@ -51,7 +51,7 @@ from auth.permissions import (
 )
 from auth.auth_context import get_authenticated_user
 from auth import scopes
-from util.names import REPOSITORY_NAME_REGEX
+from util.names import REPOSITORY_NAME_REGEX, REPOSITORY_NAME_EXTENDED_REGEX
 from util.parsing import truthy_bool
 
 logger = logging.getLogger(__name__)
@@ -149,7 +149,12 @@ class RepositoryList(ApiResource):
                 check_allowed_private_repos(namespace_name)
 
             # Verify that the repository name is valid.
-            if not REPOSITORY_NAME_REGEX.match(repository_name):
+            if features.EXTENDED_REPOSITORY_NAMES:
+                valid_repository_name = REPOSITORY_NAME_EXTENDED_REGEX.match(repository_name)
+            else:
+                valid_repository_name = REPOSITORY_NAME_REGEX.match(repository_name)
+
+            if not valid_repository_name:
                 raise InvalidRequest("Invalid repository name")
 
             kind = req.get("repo_kind", "image") or "image"

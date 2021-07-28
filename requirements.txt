@@ -169,4 +169,3 @@ xhtml2pdf==0.2.4
 xmltodict==0.12.0
 yapf==0.29.0
 zipp==2.1.0
-zope.interface==4.7.1

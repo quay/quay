@@ -47,10 +47,11 @@
                   <span class="visible-xs xs-label">Repository Name:</span>
                   <span class="name-container">
                     <input id="repoName" name="repoName" type="text" class="form-control" placeholder="Repository Name" ng-model="repo.name"
-                           required autofocus data-trigger="manual" data-content="{{ createError }}" data-placement="right" ng-pattern="/^[a-z0-9][.a-z0-9_-]*$/">
+                           required autofocus data-trigger="manual" data-content="{{ createError }}" data-placement="right"
+                           ng-pattern="repositoryNameRegex">
                   </span>
                   <span class="co-alert co-alert-warning co-alert-popin-warning" ng-show="!creating && !newRepoForm.repoName.$error.required && !newRepoForm.repoName.$valid">
-                    Repository names must match [a-z0-9][.a-z0-9_-]*
+                    {{ Features.EXTENDED_REPOSITORY_NAMES ? "Repository names must match [a-z0-9][.a-z0-9_-]*(\/[a-z0-9][.a-z0-9_-]*)*" : "Repository names must match [a-z0-9][.a-z0-9_-]*" }}
                   </span>
                   <span class="co-alert co-alert-danger co-alert-popin-warning" ng-show="!creating && createError">
                     {{ createError }}

@@ -827,8 +827,8 @@ def attach_custom_build_trigger(namespace_name, repo_name):
     abort(403)
 
 
-@web.route("/<repopath:repository>")
-@web.route("/<repopath:repository>/")
+@web.route("/<repopathredirect:repository>")
+@web.route("/<repopathredirect:repository>/")
 @no_cache
 @process_oauth
 @parse_repository_name(include_tag=True)

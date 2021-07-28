@@ -6,7 +6,10 @@ from text_unidecode import unidecode
 from uuid import uuid4
 
 REPOSITORY_NAME_REGEX = re.compile(r"^[a-z0-9][\.a-z0-9_-]{0,254}$")
-
+# Extended repostitory name regex: allows "/" in repo names
+REPOSITORY_NAME_EXTENDED_REGEX = re.compile(
+    r"^(?=.{0,255}$)[a-z0-9][\.a-z0-9_-]*(?:\/[a-z0-9][\.a-z0-9_-]*)*$"
+)
 VALID_TAG_PATTERN = r"[\w][\w.-]{0,127}"
 FULL_TAG_PATTERN = r"^[\w][\w.-]{0,127}$"
 
@@ -58,7 +61,7 @@ def parse_namespace_repository(
         else:
             (repository, tag) = parts
 
-    repository = urllib.parse.quote_plus(repository)
+    repository = urllib.parse.quote_plus(repository, safe="/")
     if include_tag:
         return (namespace, repository, tag)
     return (namespace, repository)

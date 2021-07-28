@@ -35,7 +35,7 @@ class V1Protocol(RegistryProtocol):
             Failures.UNAUTHENTICATED: 401,
             Failures.UNAUTHORIZED: 403,
             Failures.APP_REPOSITORY: 405,
-            Failures.SLASH_REPOSITORY: 404,
+            Failures.SLASH_REPOSITORY: 400,
             Failures.INVALID_REPOSITORY: 400,
             Failures.DISALLOWED_LIBRARY_NAMESPACE: 400,
             Failures.NAMESPACE_DISABLED: 400,

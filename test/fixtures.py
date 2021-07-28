@@ -30,7 +30,13 @@ from endpoints.webhooks import webhooks
 
 from initdb import initialize_database, populate_database
 
-from path_converters import APIRepositoryPathConverter, RegexConverter, RepositoryPathConverter
+from path_converters import (
+    APIRepositoryPathConverter,
+    RegexConverter,
+    RepositoryPathConverter,
+    RepositoryPathRedirectConverter,
+    V1CreateRepositoryPathConverter,
+)
 from test.testconfig import FakeTransaction
 
 INIT_DB_PATH = 0
@@ -315,6 +321,8 @@ def app(appconfig, initialized_db):
     app.url_map.converters["regex"] = RegexConverter
     app.url_map.converters["apirepopath"] = APIRepositoryPathConverter
     app.url_map.converters["repopath"] = RepositoryPathConverter
+    app.url_map.converters["repopathredirect"] = RepositoryPathRedirectConverter
+    app.url_map.converters["v1createrepopath"] = V1CreateRepositoryPathConverter
 
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(appr_bp, url_prefix="/cnr")

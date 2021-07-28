@@ -6,6 +6,7 @@ from functools import wraps
 
 from flask import request, make_response, jsonify, session
 
+import features
 from app import userevents, storage, docker_v2_signing_key
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.credentials import validate_credentials, CredentialKind
@@ -181,7 +182,7 @@ def update_user(username):
     abort(403)
 
 
-@v1_bp.route("/repositories/<repopath:repository>/", methods=["PUT"])
+@v1_bp.route("/repositories/<v1createrepopath:repository>/", methods=["PUT"])
 @process_auth
 @parse_repository_name()
 @check_v1_push_enabled()

@@ -773,6 +773,12 @@ CONFIG_SCHEMA = {
             "description": "If not None, the number of successive failures that can occur before a build trigger is automatically disabled. Defaults to 100.",
             "x-example": 50,
         },
+        # Nested repository names
+        "FEATURE_EXTENDED_REPOSITORY_NAMES": {
+            "type": "boolean",
+            "description": "Whether repository names can have nested paths (/)",
+            "x-example": False,
+        },
         # Login
         "FEATURE_GITHUB_LOGIN": {
             "type": "boolean",

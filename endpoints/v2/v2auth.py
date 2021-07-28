@@ -31,7 +31,11 @@ from endpoints.v2.errors import (
     NamespaceDisabled,
 )
 from util.cache import no_cache
-from util.names import parse_namespace_repository, REPOSITORY_NAME_REGEX
+from util.names import (
+    parse_namespace_repository,
+    REPOSITORY_NAME_REGEX,
+    REPOSITORY_NAME_EXTENDED_REGEX,
+)
 from util.security.registry_jwt import (
     generate_bearer_token,
     build_context_and_subject,
@@ -181,13 +185,18 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
     namespace, reponame = parse_namespace_repository(namespace_and_repo, lib_namespace)
 
     # Ensure that we are never creating an invalid repository.
-    if not REPOSITORY_NAME_REGEX.match(reponame):
-        logger.debug("Found invalid repository name in auth flow: %s", reponame)
-        if len(namespace_and_repo.split("/")) > 1:
-            msg = "Nested repositories are not supported. Found: %s" % namespace_and_repo
-            raise NameInvalid(message=msg)
+    if features.EXTENDED_REPOSITORY_NAMES:
+        if not REPOSITORY_NAME_EXTENDED_REGEX.match(reponame):
+            logger.debug("Found invalid repository name in auth flow: %s", reponame)
+            raise NameInvalid(message="Invalid repository name: %s" % namespace_and_repo)
+    else:
+        if not REPOSITORY_NAME_REGEX.match(reponame):
+            logger.debug("Found invalid repository name in auth flow: %s", reponame)
+            if len(namespace_and_repo.split("/")) > 1:
+                msg = "Nested repositories are not supported. Found: %s" % namespace_and_repo
+                raise NameInvalid(message=msg)
 
-        raise NameInvalid(message="Invalid repository name: %s" % namespace_and_repo)
+            raise NameInvalid(message="Invalid repository name: %s" % namespace_and_repo)
 
     # Ensure the namespace is enabled.
     if registry_model.is_existing_disabled_namespace(namespace):

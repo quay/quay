@@ -123,7 +123,7 @@ location /api/suconfig {
 
 # This block handles blob requests, and will receive a high volume of traffic, so we set the burst
 # much higher.
-location ~ /v2/([^/]+)\/[^/]+/blobs/ {
+location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     # If we're being accessed via v1.quay.io, pretend we don't support v2.
     if ($host = "v1.quay.io") {
         return 404;

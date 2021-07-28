@@ -147,29 +147,43 @@ def test_list_app_repositories_last_modified(client):
 
 
 @pytest.mark.parametrize(
-    "repo_name, expected_status",
+    "repo_name, extended_repo_names, expected_status",
     [
-        pytest.param("x" * 255, 201, id="Maximum allowed length"),
-        pytest.param("x" * 256, 400, id="Over allowed length"),
-        pytest.param("a|b", 400, id="Invalid name"),
-        pytest.param("UpperCase", 400, id="Uppercase Not Allowed"),
+        pytest.param("x" * 255, False, 201, id="Maximum allowed length"),
+        pytest.param("x" * 255, True, 201, id="Maximum allowed length"),
+        pytest.param("x" * 256, False, 400, id="Over allowed length"),
+        pytest.param("x" * 256, True, 400, id="Over allowed length"),
+        pytest.param("a|b", False, 400, id="Invalid name"),
+        pytest.param("a|b", True, 400, id="Invalid name"),
+        pytest.param("UpperCase", False, 400, id="Uppercase Not Allowed"),
+        pytest.param("UpperCase", True, 400, id="Uppercase Not Allowed"),
+        pytest.param("testrepo/nested", False, 400, id="Slashes Not Allowed"),
+        pytest.param("testrepo/nested", True, 201, id="Slashes Allowed"),
+        pytest.param("testrepo/" + "x" * 247, True, 400, id="Slashes Allowed But Too Long"),
+        pytest.param("devtable/" + "x" * 246, True, 201, id="Slashes Allowed Max Allowed"),
+        pytest.param("devtable/nested1/nested2", False, 400, id="Slashes Allowed Multiple Levels"),
+        pytest.param("devtable/nested1/nested2", True, 201, id="Slashes Allowed Multiple Levels"),
     ],
 )
-def test_create_repository(repo_name, expected_status, client):
-    with client_with_identity("devtable", client) as cl:
-        body = {
-            "namespace": "devtable",
-            "repository": repo_name,
-            "visibility": "public",
-            "description": "foo",
-        }
+def test_create_repository(repo_name, extended_repo_names, expected_status, client):
+    with patch(
+        "features.EXTENDED_REPOSITORY_NAMES",
+        FeatureNameValue("EXTENDED_REPOSITORY_NAMES", extended_repo_names),
+    ):
+        with client_with_identity("devtable", client) as cl:
+            body = {
+                "namespace": "devtable",
+                "repository": repo_name,
+                "visibility": "public",
+                "description": "foo",
+            }
 
-        result = conduct_api_call(
-            client, RepositoryList, "post", None, body, expected_code=expected_status
-        ).json
-        if expected_status == 201:
-            assert result["name"] == repo_name
-            assert model.repository.get_repository("devtable", repo_name).name == repo_name
+            result = conduct_api_call(
+                client, RepositoryList, "post", None, body, expected_code=expected_status
+            ).json
+            if expected_status == 201:
+                assert result["name"] == repo_name
+                assert model.repository.get_repository("devtable", repo_name).name == repo_name
 
 
 @pytest.mark.parametrize(
