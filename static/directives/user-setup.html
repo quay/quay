@@ -27,7 +27,7 @@
 
     <div class="user-footer-links">
       <a ng-click="setView('createAccount')"
-         quay-show="!inReadOnlyMode && Features.USER_CREATION && Config.AUTHENTICATION_TYPE == 'Database' && Features.DIRECT_LOGIN && !Features.INVITE_ONLY_USER_CREATION"
+         quay-show="!inReadOnlyMode && Features.USER_CREATION && Config.AUTHENTICATION_TYPE == 'Database' && Features.DIRECT_LOGIN && !Features.INVITE_ONLY_USER_CREATION && !inAccountRecoveryMode"
          ng-if="currentView != 'createAccount'">Create Account</a>
       <span quay-show="Features.USER_CREATION && Config.AUTHENTICATION_TYPE == 'Database' && Features.DIRECT_LOGIN && Features.INVITE_ONLY_USER_CREATION"
          ng-if="currentView != 'createAccount'">Invitation required to sign up</span>

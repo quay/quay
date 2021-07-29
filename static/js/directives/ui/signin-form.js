@@ -14,13 +14,14 @@ angular.module('quay').directive('signinForm', function () {
       'signInStarted': '&signInStarted',
       'signedIn': '&signedIn'
     },
-    controller: function($scope, $location, $timeout, $interval, ApiService, KeyService, UserService, CookieService, Features, Config, ExternalLoginService) {
+    controller: function($scope, $location, $timeout, $interval, ApiService, KeyService, UserService, CookieService, Features, Config, ExternalLoginService, StateService) {
       $scope.tryAgainSoon = 0;
       $scope.tryAgainInterval = null;
       $scope.signingIn = false;
       $scope.EXTERNAL_LOGINS = ExternalLoginService.EXTERNAL_LOGINS;
       $scope.Features = Features;
       $scope.signInUser = {};
+      $scope.inAccountRecoveryMode = StateService.inAccountRecoveryMode();
 
       $scope.markStarted = function() {
         $scope.signingIn = true;
