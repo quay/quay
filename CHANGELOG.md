@@ -1,43 +1,49 @@
+### v3.5.5
+
+**Release Notes**
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
+
+
 ### v3.5.4
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
 
 
 ### v3.5.3
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
 
 
 ### v3.5.2
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
 
 
 ### v3.5.1
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
 
 **Fixed**
-- Fix Clair "duplicate key value violates unique constraint" after upgrade (PROJQUAY-1889)[https://issues.redhat.com/browse/PROJQUAY-1889]
+- Fix Clair "duplicate key value violates unique constraint" after upgrade [PROJQUAY-1889](https://issues.redhat.com/browse/PROJQUAY-1889)
 
 ### v3.5.0
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
 
 ### v3.4.3
 
 **Fixed**
-- Fix Quay security scanning backfill API (PROJQUAY-1613)[https://issues.redhat.com/browse/PROJQUAY-1613]
-- Fix Quay Operator handling of provided certificates related to BUILDMAN_HOSTNAME (PROJQUAY-1577)[https://issues.redhat.com/browse/PROJQUAY-1577]
-- Fix Clair python language matching (PROJQUAY-1692)[https://issues.redhat.com/browse/PROJQUAY-1692]
+- Fix Quay security scanning backfill API [PROJQUAY-1613](https://issues.redhat.com/browse/PROJQUAY-1613)
+- Fix Quay Operator handling of provided certificates related to BUILDMAN_HOSTNAME [PROJQUAY-1577](https://issues.redhat.com/browse/PROJQUAY-1577)
+- Fix Clair python language matching [PROJQUAY-1692](https://issues.redhat.com/browse/PROJQUAY-1692)
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index)
 
 ### v3.4.2
 
@@ -48,7 +54,7 @@
 - Quay config-tool generates default SECRET_KEY in config bundle if not specified
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index)
 
 ### v3.4.1
 
@@ -61,12 +67,12 @@
 - Quay config editor no longer requires Time Machine expiration when feature not enabled
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index)
 
 ### v3.4.0
 
 **Release Notes**
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index]
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.4/html/red_hat_quay_release_notes/index)
 
 ### v3.3.1
 
