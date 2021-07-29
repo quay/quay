@@ -5,7 +5,7 @@
       Login via service
     </h4>
 
-    <div class="external-logins" quay-show="EXTERNAL_LOGINS.length">
+    <div class="external-logins" quay-show="EXTERNAL_LOGINS.length && !inAccountRecoveryMode">
       <div class="external-login-button" provider="provider" redirect-url="redirectUrl"
            sign-in-started="markStarted()" ng-repeat="provider in EXTERNAL_LOGINS" is-link="true"></div>
     </div>

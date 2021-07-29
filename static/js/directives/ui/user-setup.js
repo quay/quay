@@ -23,6 +23,7 @@ angular.module('quay').directive('userSetup', function () {
       $scope.Features = Features;
       $scope.currentView = 'signin';
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
+      $scope.inAccountRecoveryMode = StateService.inAccountRecoveryMode();
 
       $scope.setView = function(view) {
         $scope.currentView = view;
