@@ -13,7 +13,7 @@ class ReadEndpointSupportedRedis(object):
             socket_connect_timeout=1,
             socket_timeout=2,
             health_check_interval=2,
-            **primary,
+            **primary
         )
 
         if not replica:
@@ -23,7 +23,7 @@ class ReadEndpointSupportedRedis(object):
                 socket_connect_timeout=1,
                 socket_timeout=2,
                 health_check_interval=2,
-                **replica,
+                **replica
             )
 
     def get(self, key, *args, **kwargs):
