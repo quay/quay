@@ -10,20 +10,20 @@ class ReadEndpointSupportedRedis(object):
             raise Exception("Missing primary host for Redis model cache configuration")
 
         self.write_client = StrictRedis(
-            **primary,
             socket_connect_timeout=1,
             socket_timeout=2,
             health_check_interval=2,
+            **primary,
         )
 
         if not replica:
             self.read_client = self.write_client
         else:
             self.read_client = StrictRedis(
-                **replica,
                 socket_connect_timeout=1,
                 socket_timeout=2,
                 health_check_interval=2,
+                **replica,
             )
 
     def get(self, key, *args, **kwargs):
