@@ -1,6 +1,7 @@
 import logging
 import re
 import json
+import mock
 
 import requests
 from flask_mail import Message
@@ -10,7 +11,9 @@ from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
 from data import model
 from util.config.validator import SSL_FILENAMES
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
+from util.fips import login_fips_safe
 from workers.queueworker import JobException
+import features
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +178,14 @@ class EmailMethod(NotificationMethod):
             msg.html = event_handler.get_message(notification_data["event_data"], notification_data)
 
             try:
-                mail.send(msg)
+                if features.FIPS:
+                    assert app.config[
+                        "MAIL_USE_TLS"
+                    ], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
+                    with mock.patch("smtplib.SMTP.login", login_fips_safe):
+                        mail.send(msg)
+                else:
+                    mail.send(msg)
             except Exception as ex:
                 logger.exception("Email was unable to be sent")
                 raise NotificationMethodPerformException(str(ex))

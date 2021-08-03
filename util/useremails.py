@@ -1,6 +1,8 @@
 import os
 import json
 import logging
+import features
+import mock
 
 from flask_mail import Message
 
@@ -10,7 +12,7 @@ from _init import ROOT_DIR
 from app import mail, app, get_app_url
 from util.jinjautil import get_template_env
 from util.html import html2text
-
+from util.fips import login_fips_safe
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +69,15 @@ def send_email(recipient, subject, template_file, parameters, action=None):
     msg.body = plain
 
     try:
-        mail.send(msg)
+        if features.FIPS:
+            assert app.config[
+                "MAIL_USE_TLS"
+            ], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
+            with mock.patch("smtplib.SMTP.login", login_fips_safe):
+                mail.send(msg)
+        else:
+            mail.send(msg)
+
         if app.config["TESTING"]:
             logger.debug("Quay is configured for testing. Email not sent: '%s'", msg.subject)
         else:
@@ -202,7 +212,12 @@ def send_invoice_email(email, contents):
     # normal template here.
     msg = Message("Quay payment received - Thank you!", recipients=[email])
     msg.html = contents
-    mail.send(msg)
+    if features.FIPS:
+        assert app.config["MAIL_USE_TLS"], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
+        with mock.patch("smtplib.SMTP.login", login_fips_safe):
+            mail.send(msg)
+    else:
+        mail.send(msg)
 
 
 def send_logs_exported_email(
@@ -238,4 +253,9 @@ def send_subscription_change(change_description, customer_id, customer_email, qu
     msg.html = SUBSCRIPTION_CHANGE.format(
         change_description, customer_id, customer_email, quay_username
     )
-    mail.send(msg)
+    if features.FIPS:
+        assert app.config["MAIL_USE_TLS"], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
+        with mock.patch("smtplib.SMTP.login", login_fips_safe):
+            mail.send(msg)
+    else:
+        mail.send(msg)

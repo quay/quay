@@ -9,7 +9,6 @@ from data import model
 import argparse
 
 from flask import Flask, current_app
-from flask_mail import Mail
 
 
 def sendInvoice(invoice_id):
