@@ -52,12 +52,9 @@ from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_SIZE
 from image.oci import (
     OCI_IMAGE_MANIFEST_CONTENT_TYPE,
     OCI_IMAGE_CONFIG_CONTENT_TYPE,
-    OCI_IMAGE_LAYER_CONTENT_TYPES,
     OCI_IMAGE_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPES,
     OCI_IMAGE_TAR_GZIP_LAYER_CONTENT_TYPE,
     OCI_IMAGE_TAR_GZIP_NON_DISTRIBUTABLE_LAYER_CONTENT_TYPE,
-    ADDITIONAL_LAYER_CONTENT_TYPES,
-    ALLOWED_ARTIFACT_TYPES,
 )
 from image.oci.config import OCIConfig
 from image.oci.descriptor import get_descriptor_schema
@@ -116,13 +113,11 @@ class OCIManifest(ManifestInterface):
                     "description": "The media type of the schema.",
                     "enum": [OCI_IMAGE_MANIFEST_CONTENT_TYPE],
                 },
-                OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(ALLOWED_ARTIFACT_TYPES),
+                OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(),
                 OCI_MANIFEST_LAYERS_KEY: {
                     "type": "array",
                     "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
-                    "items": get_descriptor_schema(
-                        OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
-                    ),
+                    "items": get_descriptor_schema(),
                 },
             },
             "required": [

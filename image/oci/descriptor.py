@@ -6,13 +6,12 @@ DESCRIPTOR_ANNOTATIONS_KEY = "annotations"
 
 
 def get_descriptor_schema(
-    allowed_media_types, additional_properties=None, additional_required=None
+    closed_media_types=None, additional_properties=None, additional_required=None
 ):
     properties = {
         DESCRIPTOR_MEDIATYPE_KEY: {
             "type": "string",
-            "description": "The MIME type of the referenced manifest",
-            "enum": allowed_media_types,
+            "description": "The MIME type of the referenced content.",
         },
         DESCRIPTOR_SIZE_KEY: {
             "type": "number",
@@ -24,6 +23,9 @@ def get_descriptor_schema(
         DESCRIPTOR_DIGEST_KEY: {
             "type": "string",
             "description": "The content addressable digest of the manifest in the blob store",
+            # This pattern is a transliteration of the grammar here:
+            # https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests
+            "pattern": "^([a-z0-9]+([+._-][a-z0-9]+)*):[a-zA-Z0-9=_-]+$",
         },
         DESCRIPTOR_ANNOTATIONS_KEY: {
             "type": "object",
@@ -38,6 +40,9 @@ def get_descriptor_schema(
             },
         },
     }
+
+    if closed_media_types:
+        properties[DESCRIPTOR_MEDIATYPE_KEY].enum = closed_media_types
 
     if additional_properties:
         properties.update(additional_properties)

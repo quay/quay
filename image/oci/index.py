@@ -100,7 +100,6 @@ class OCIIndex(ManifestListInterface):
                 "type": "array",
                 "description": "The manifests field contains a list of manifests for specific platforms",
                 "items": get_descriptor_schema(
-                    allowed_media_types=ALLOWED_MEDIA_TYPES,
                     additional_properties={
                         INDEX_PLATFORM_KEY: {
                             "type": "object",
@@ -174,6 +173,7 @@ class OCIIndex(ManifestListInterface):
             raise MalformedIndex("malformed manifest data: %s" % ve)
 
         try:
+            # TODO Fix to use a pre-constructed schema object.
             validate_schema(self._parsed, OCIIndex.METASCHEMA)
         except ValidationError as ve:
             raise MalformedIndex("manifest data does not match schema: %s" % ve)
