@@ -4,6 +4,45 @@ The Quay team has developed and supports a Docker based local development enviro
 This environment can quickly setup Quay and Clair for developing and testing changes.
 When utilizing the local development environment changes to your source code are automatically hot-reloaded, taking effect in real time.
 
+## Project Setup
+
+The Quay source code is a Python project. In order to setup the project on your local machine, use the following steps:
+
+Download Python and extract it using following command from python official site. You can also download the latest version in place of specified below. 
+```
+wget https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tgz
+tar xzf Python-3.8.10.tgz   
+```
+Note: Python 3.9 is not supported at the time of writing this doc
+
+Use below set of commands to install python 
+```
+cd Python-3.8.10
+yum install sqlite-devel
+./configure --enable-loadable-sqlite-extensions --prefix=<path-to-install-architecture-independent-files> 
+sudo make
+sudo make install
+```
+Note: 
+  - If `--prefix` is not specified, default will be `/usr/local`.
+  - You may need to install some dependant libraries during the setup.
+
+Clone the project repo and `cd` into the repo. Setup a virtual environment for the project. 
+```
+git clone git@github.com:quay/quay.git
+cd quay
+virtualenv venv --python=<path-to-install-architecture-independent-files>/bin/python3.8 
+source venv/bin/activate
+python3 -V    # verify that the correct version of python is installed
+```
+
+Install project dependecies
+```
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+If there are no errors, you development environment is now setup successfully. 
+
 ## Usage
 
 The local development environment is driven by the following `makefile` targets:
