@@ -19,7 +19,7 @@ RUN cd source/quay && \
     npm run build
 
 
-FROM openshift/golang-builder:1.15 AS build-gomod
+FROM openshift/golang-builder:1.16 AS build-gomod
 
 COPY --from=build-npm $REMOTE_SOURCE_DIR $REMOTE_SOURCE_DIR
 WORKDIR $REMOTE_SOURCE_DIR/app
@@ -57,7 +57,8 @@ ENV PYTHON_VERSION=3.8 \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8 \
     LANG=en_US.utf8 \
-    PYTHONUSERBASE_SITE_PACKAGE=/usr/local/lib/python3.8/site-packages
+    PYTHONUSERBASE_SITE_PACKAGE=/usr/local/lib/python3.8/site-packages \
+    GODEBUG x509ignoreCN=0
 
 ENV QUAYDIR=/quay-registry \
     QUAYCONF=/quay-registry/conf \

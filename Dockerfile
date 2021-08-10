@@ -23,6 +23,7 @@ ENV QUAYCONF /quay-registry/conf
 ENV QUAYPATH $QUAYDIR
 ENV PYTHONUSERBASE /app
 ENV PYTHONPATH $QUAYPATH
+ENV GODEBUG x509ignoreCN=0
 RUN set -ex\
 	; dnf -y -q --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install\
 		dnsmasq \
@@ -115,7 +116,7 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM docker.io/library/golang:1.15 as config-tool
+FROM docker.io/library/golang:1.16 as config-tool
 WORKDIR /go/src/config-tool
 ARG CONFIGTOOL_VERSION=master
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
