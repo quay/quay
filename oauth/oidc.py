@@ -182,6 +182,13 @@ class OIDCLoginService(OAuthService):
         else:
             user_info = decoded_id_token
 
+        # Verify for impersonation
+        if user_info.get("impersonated", False):
+            logger.debug(
+                "Requests from impersonated principals are not supported"
+            )
+            raise OAuthLoginException("Requests from impersonated principals are not supported")
+
         # Verify subs.
         if user_info["sub"] != decoded_id_token["sub"]:
             logger.debug(
