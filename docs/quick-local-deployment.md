@@ -186,7 +186,7 @@ coming soon
 ## Configuring CRDA remote matcher in clair for higher rps
 The CRDA remote matcher has best the best in industry vulnerability data powered by Snyk. However the default CRDA matcher supports low rps. We have different configuration which quay can use. This can be fetched by making a get api call.
 ```
-curl --location --request GET 'https://f8a-analytics-preview-2445582058137.production.gw.apicast.io/api/v2/get-token?user_key=3e42fa66f65124e6b1266a23431e3d08'
+curl --location --request GET 'https://f8a-analytics-2445582058137.production.gw.apicast.io:443/api/v2/get-token?user_key=9e7da76708fe374d8c10fa752e72989f'
 ```
 This call returns the required configuration which can be set in Clair's config file before deployment and CRDA retmote macther will be able to support a much higher rps.
 Below you can see how to set the configuration.
