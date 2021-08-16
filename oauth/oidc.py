@@ -184,9 +184,7 @@ class OIDCLoginService(OAuthService):
 
         # Verify for impersonation
         if user_info.get("impersonated", False):
-            logger.debug(
-                "Requests from impersonated principals are not supported"
-            )
+            logger.debug("Requests from impersonated principals are not supported")
             raise OAuthLoginException("Requests from impersonated principals are not supported")
 
         # Verify subs.
