@@ -61,10 +61,6 @@ function provideRoutes($routeProvider: ng.route.IRouteProvider,
     // Repo List
     .route('/application/', 'app-list')
 
-    // Repository View
-    .route('/repository/:namespace/:name*', 'repo-view')
-    .route('/repository/:namespace/:name*\/tag/:tag', 'repo-view')
-
     // Image View
     .route('/repository/:namespace/:name*\/manifest/:manifest_digest', 'manifest-view')
 
@@ -76,6 +72,10 @@ function provideRoutes($routeProvider: ng.route.IRouteProvider,
 
     // Create repository notification
     .route('/repository/:namespace/:name*\/create-notification', 'create-repository-notification')
+
+    // Repository View
+    .route('/repository/:namespace/:name*\/tag/:tag', 'repo-view')
+    .route('/repository/:namespace/:name*', 'repo-view')
 
     // Repo List
     .route('/repository/', 'repo-list')
