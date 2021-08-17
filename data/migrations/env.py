@@ -1,4 +1,5 @@
 import logging
+import logging.config
 import os
 
 from urllib.parse import unquote
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 # Alembic's configuration
 config = context.config
 
+logging.config.fileConfig(config.config_file_name)
 
 # Alembic is designed to be used with SQL Alchemy. These steps convert the schema as defined by the
 # Peewee models to a format usable by Alembic.
