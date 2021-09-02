@@ -748,7 +748,12 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Whether OCI manifest support should be enabled generally.
     FEATURE_GENERAL_OCI_SUPPORT = True
-    ALLOWED_OCI_ARTIFACT_TYPES = {}
+    ALLOWED_OCI_ARTIFACT_TYPES = {
+        "application/vnd.oci.image.config.v1+json": [
+            "application/vnd.dev.cosign.simplesigning.v1+json"
+        ],
+        "application/vnd.cncf.helm.config.v1+json": ["application/tar+gzip"],
+    }
 
     # Feature Flag: Whether to allow Helm OCI content types.
     # See: https://helm.sh/docs/topics/registries/
