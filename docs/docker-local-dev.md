@@ -6,35 +6,37 @@ When utilizing the local development environment changes to your source code are
 
 ## Project Setup
 
-The Quay source code is a Python project. In order to setup the project on your local machine, use the following steps:
+The Quay source code is a Python project. In order to setup the project on your local machine, you need the following requirements:
 
-Download Python and extract it using following command from python official site. You can also download the latest version in place of specified below. 
-```
-wget https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tgz
-tar xzf Python-3.8.10.tgz   
-```
-Note: Python 3.9 is not supported at the time of writing this doc
+- [Python](https://www.python.org/) 3.8.x
+- [docker](https://www.docker.com/)
+- [docker-compose](https://docs.docker.com/compose/)
 
-Use below set of commands to install python 
-```
-cd Python-3.8.10
-yum install sqlite-devel
-./configure --enable-loadable-sqlite-extensions --prefix=<path-to-install-architecture-independent-files> 
-sudo make
-sudo make install
-```
-Note: 
-  - If `--prefix` is not specified, default will be `/usr/local`.
-  - You may need to install some dependant libraries during the setup.
+---
+**NOTE**
 
-Clone the project repo and `cd` into the repo. Setup a virtual environment for the project. 
+Python 3.9 is not supported at the time of writing this doc.
+
+---
+
+Be mindful that overriding your operating system's default Python version is usually not a good idea. Check out [this guide](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_basic_system_settings/assembly_installing-and-using-python_configuring-basic-system-settings) for instructions on installing Python 3 on RHEL 8, or use [pyenv](github.com/pyenv/pyenv).
+
+### Getting Started
+
+Once you have installed the necessary requirements, it's time to clone the Quay repository and install the project's requirements.
+
+Clone the project repo and `cd` into the repo.
 ```
 git clone git@github.com:quay/quay.git
 cd quay
-virtualenv venv --python=<path-to-install-architecture-independent-files>/bin/python3.8 
-source venv/bin/activate
-python3 -V    # verify that the correct version of python is installed
 ```
+
+---
+**NOTE**
+
+Follow Python best practices and setup a [Python virtual environment](https://docs.python.org/3/library/venv.html) before installing the project's dependencies.
+
+---
 
 Install project dependecies
 ```
