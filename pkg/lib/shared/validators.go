@@ -529,32 +529,15 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		// Create connection options
-		dbOpts, err := pgx.ParseConfig(rawURI)
-		if err != nil {
-			return err
-		}
-
 		// If CA cert was included
-		if sslrootcert != "" {
-			certBytes, ok := opts.Certificates["database.pem"]
-			if !ok {
-				return errors.New("could not find database.pem in config bundle")
-			}
-			caCertPool := x509.NewCertPool()
-			if ok := caCertPool.AppendCertsFromPEM(certBytes); !ok {
-				return errors.New("could not add CA cert to pool")
-			}
-			tlsConfig := &tls.Config{
-				InsecureSkipVerify: true,
-				RootCAs:            caCertPool,
-			}
-			dbOpts.TLSConfig = tlsConfig
-		}
-
-		// If no SSL cert is provided
-		if sslrootcert == "" && uri.Query().Get("sslmode") != "required" {
-			dbOpts.TLSConfig = nil
+		// Check if sslmode is either "verify-full" or "verify-ca"
+		// If that's the case, then postgres needs sslrootcert in order to verify
+		// the CA against the server (defaults to ~/.postgresql/root.crt)
+		// In our case, we will temporarily write the database.pem in /tmp
+		// For the actual bundle, the value of sslrootcert should be conf/stack/database.pem
+		// Ref: https://www.postgresql.org/docs/9.1/libpq-ssl.html
+		if sslmode == "verify-full" || sslmode == "verify-ca" {
+			params.Add("sslrootcert", sslrootcert)
 		}
 
 		var dsn string
