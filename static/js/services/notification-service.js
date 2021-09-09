@@ -60,9 +60,9 @@ function($rootScope, $interval, UserService, ApiService, StringBuilderService, P
       'page': function(metadata) {
         var organization = UserService.getOrganization(metadata['namespace']);
         if (organization) {
-          return '/organization/' + metadata['namespace'] + '?tab=billing';
+          return '/organization/' + metadata['namespace'] + '/billing';
         } else {
-          return '/user/' + metadata['namespace'] + '?tab=billing';
+          return '/user/' + metadata['namespace'] + '/billing';
         }
       }
     },
