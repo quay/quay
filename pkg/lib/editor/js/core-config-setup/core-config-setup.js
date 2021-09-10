@@ -614,7 +614,7 @@ angular.module("quay-config")
 
             case 'internal-tls':
               $scope.config['PREFERRED_URL_SCHEME'] = 'https';
-              delete $scope.config['EXTERNAL_TLS_TERMINATION'];
+              $scope.config['EXTERNAL_TLS_TERMINATION'] = false;
               return;
           }
         };
