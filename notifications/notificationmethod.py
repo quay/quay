@@ -1,4 +1,5 @@
 import logging
+import os.path
 import re
 import json
 import mock
@@ -37,7 +38,9 @@ class NotificationMethodPerformException(JobException):
 
 def _ssl_cert():
     if app.config["PREFERRED_URL_SCHEME"] == "https":
-        return [OVERRIDE_CONFIG_DIRECTORY + f for f in SSL_FILENAMES]
+        cert_files = [OVERRIDE_CONFIG_DIRECTORY + f for f in SSL_FILENAMES]
+        cert_exists = all([os.path.isfile(f) for f in cert_files])
+        return cert_files if cert_exists else None
 
     return None
 
