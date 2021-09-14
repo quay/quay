@@ -86,3 +86,19 @@ def get_priority_for_index(index):
             return priority
 
     return "Unknown"
+
+
+def get_priority_from_cvssscore(score):
+    try:
+        if 0 < score < 4:
+            return PRIORITY_LEVELS["Low"]["value"]
+        if 4 <= score < 7:
+            return PRIORITY_LEVELS["Medium"]["value"]
+        if 7 <= score < 9:
+            return PRIORITY_LEVELS["High"]["value"]
+        if 9 <= score < 10:
+            return PRIORITY_LEVELS["Critical"]["value"]
+    except ValueError:
+        return "Unknown"
+
+    return "Unknown"

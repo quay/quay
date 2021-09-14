@@ -28,7 +28,7 @@ from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
 from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure, InvalidContentSent
-from util.secscan import PRIORITY_LEVELS
+from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore
 from util.secscan.blob import BlobURLRetriever
 from util.config import URLSchemeAndHostname
 
@@ -401,8 +401,8 @@ def features_for(report):
                 pkg["version"],
                 [
                     Vulnerability(
-                        vuln["normalized_severity"]
-                        if vuln["normalized_severity"]
+                        vuln["normalized_severity"] if vuln["normalized_severity"] and vuln["normalized_severity"] != PRIORITY_LEVELS["Unknown"]["value"]
+                        else get_priority_from_cvssscore(enrichments[vuln["id"]]["baseScore"]) if enrichments.get(vuln["id"], {}).get("baseScore", None)
                         else PRIORITY_LEVELS["Unknown"]["value"],
                         "",
                         vuln["links"],
