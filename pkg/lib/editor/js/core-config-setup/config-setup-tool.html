@@ -367,7 +367,11 @@
             <p>If enabled, scheduled mirroring of repositories from registries will be available.
           </div>
 
-          <div class="config-bool-field" binding="config.FEATURE_REPO_MIRROR">
+          <div class="co-alert co-alert-danger" ng-if="fieldGroupReadonly('RepoMirror')">
+                The repository mirroring configuration is currently managed externally. <button class="btn btn-link" ng-click="changeFieldGroupReadonly('RepoMirror', false)">Edit fields</button>
+          </div>
+
+          <div class="config-bool-field" binding="config.FEATURE_REPO_MIRROR" is-readonly="fieldGroupReadonly('RepoMirror')">
             Enable Repository Mirroring
           </div>
           <div class="co-alert co-alert-info" ng-if="config.FEATURE_REPO_MIRROR" style="margin-top: 20px;">
@@ -375,7 +379,7 @@
             on setting up and running this service can be found at <a target="_blank" rel="noopener noreferrer" href="https://access.redhat.com/documentation/en-us/red_hat_quay/3/html-single/manage_red_hat_quay/index#repository-mirroring" ng-safenewtab>Running Repository Mirroring Service</a>.
           </div>
 
-          <div class="config-bool-field" binding="config.REPO_MIRROR_TLS_VERIFY" ng-if="config.FEATURE_REPO_MIRROR">
+          <div class="config-bool-field" binding="config.REPO_MIRROR_TLS_VERIFY" is-readonly="fieldGroupReadonly('RepoMirror')" ng-if="config.FEATURE_REPO_MIRROR">
             Require HTTPS and verify certificates of Quay registry during mirror.
           </div>
         </div>
