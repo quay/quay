@@ -604,12 +604,16 @@ angular.module("quay-config")
           switch (value) {
             case 'none':
               $scope.config['PREFERRED_URL_SCHEME'] = 'http';
+              delete $scope.certs["ssl.key"]
+              delete $scope.certs["ssl.cert"]
               delete $scope.config['EXTERNAL_TLS_TERMINATION'];
               return;
 
             case 'external-tls':
               $scope.config['PREFERRED_URL_SCHEME'] = 'https';
               $scope.config['EXTERNAL_TLS_TERMINATION'] = true;
+              delete $scope.certs["ssl.key"];
+              delete $scope.certs["ssl.cert"];
               return;
 
             case 'internal-tls':

@@ -114,7 +114,7 @@
                 <select ng-disabled="fieldGroupReadonly('HostSettings')" class="form-control" ng-model="mapped.TLS_SETTING">
                   <option value="internal-tls">Red Hat Quay handles TLS</option>
                   <option value="external-tls">My own load balancer handles TLS</option>
-                  <option value="none">None</option>
+                  <option value="none" ng-if="!operatorEndpoint">None</option>
                 </select>
 
                 <table class="config-table" ng-if="mapped.TLS_SETTING == 'internal-tls' && !fieldGroupReadonly('HostSettings')">
