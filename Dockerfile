@@ -67,7 +67,7 @@ COPY requirements.txt .
 # flag.
 RUN set -ex\
 	; python3 -m pip install --no-cache-dir --quiet\
-		--upgrade setuptools==57.5.0 pip\
+		--upgrade setuptools pip\
 	; python3 -m pip install --no-cache-dir --progress-bar off\
 		--user --requirement requirements.txt --no-cache\
 	;
