@@ -84,7 +84,7 @@ maxminddb==1.5.2
 meld3==2.0.0
 mixpanel==4.5.0
 mock==3.0.5
-mockldap @ git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a
+mockldap @ git+https://github.com/quay/mockldap.git@136253ca136fc7898944a4b37893a99440f7335e
 monotonic==1.5
 msgpack==0.6.2
 msrest==0.6.19
