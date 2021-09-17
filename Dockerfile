@@ -1,4 +1,3 @@
-
 ###################
 FROM registry.centos.org/centos/centos:8 as config-editor
 
@@ -86,7 +85,7 @@ RUN INSTALL_PKGS="\
 COPY . .
 
 RUN alternatives --set python /usr/bin/python3 && \
-    python -m pip install --no-cache-dir --upgrade setuptools==57.5.0 pip && \
+    python -m pip install --no-cache-dir --upgrade setuptools pip && \
     python -m pip install --no-cache-dir -r requirements.txt --no-cache && \
     python -m pip freeze
 
