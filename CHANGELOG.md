@@ -1,3 +1,8 @@
+### v3.5.8
+
+**Release Notes**
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
+
 ### v3.5.7
 
 **Release Notes**

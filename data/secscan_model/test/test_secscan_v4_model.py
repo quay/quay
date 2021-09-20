@@ -416,7 +416,7 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
 
     next_token = secscan.perform_indexing()
 
-    assert next_token is None
+    assert next_token and next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
     assert ManifestSecurityStatus.select().count() == 0
 
     # Set security scanner to return good results and attempt indexing again

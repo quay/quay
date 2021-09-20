@@ -287,10 +287,10 @@ class V4SecurityScanner(SecurityScannerInterface):
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.exception("Failed to perform indexing, invalid content sent")
-                return None
+                continue
             except APIRequestFailure as ex:
                 logger.exception("Failed to perform indexing, security scanner API error")
-                return None
+                continue
 
             with db_transaction():
                 ManifestSecurityStatus.delete().where(
