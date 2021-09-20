@@ -1,4 +1,4 @@
-### v3.5.8
+### v3.5.8-pre-release-17bc45f5e01bd49049cebab74307d253d313c545
 
 **Release Notes**
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index)
