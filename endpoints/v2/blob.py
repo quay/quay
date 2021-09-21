@@ -136,7 +136,9 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
     logger.debug("Got mount request for blob `%s` into `%s`", mount_blob_digest, repository_ref)
     from_repo = request.args.get("from", None)
     if from_repo is None:
-        raise InvalidRequest(message="Missing `from` repository argument")
+        # If we cannot mount the blob, fall back to the standard upload behavior,
+        # since we don't support automatic mount origin discovery across all repos.
+        return None
 
     # Ensure the user has access to the repository.
     logger.debug(

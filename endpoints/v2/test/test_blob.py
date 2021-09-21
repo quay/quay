@@ -77,21 +77,28 @@ def test_blob_caching(method, endpoint, client, app):
 
 
 @pytest.mark.parametrize(
-    "mount_digest, source_repo, username, expect_success",
+    "mount_digest, source_repo, username, include_from_param, expected_code",
     [
         # Unknown blob.
-        ("sha256:unknown", "devtable/simple", "devtable", False),
+        ("sha256:unknown", "devtable/simple", "devtable", True, 202),
+        ("sha256:unknown", "devtable/simple", "devtable", False, 202),
         # Blob not in repo.
-        ("sha256:" + hashlib.sha256(b"a").hexdigest(), "devtable/complex", "devtable", False),
-        # Blob in repo.
-        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "devtable", True),
-        # No access to repo.
-        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "public", False),
-        # Public repo.
-        ("sha256:" + hashlib.sha256(b"c").hexdigest(), "public/publicrepo", "devtable", True),
+        ("sha256:" + hashlib.sha256(b"a").hexdigest(), "devtable/complex", "devtable", True, 202),
+        ("sha256:" + hashlib.sha256(b"a").hexdigest(), "devtable/complex", "devtable", False, 202),
+        # # Blob in repo.
+        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "devtable", True, 201),
+        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "devtable", False, 202),
+        # # No access to repo.
+        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "public", True, 202),
+        ("sha256:" + hashlib.sha256(b"b").hexdigest(), "devtable/complex", "public", False, 202),
+        # # Public repo.
+        ("sha256:" + hashlib.sha256(b"c").hexdigest(), "public/publicrepo", "devtable", True, 201),
+        ("sha256:" + hashlib.sha256(b"c").hexdigest(), "public/publicrepo", "devtable", False, 202),
     ],
 )
-def test_blob_mounting(mount_digest, source_repo, username, expect_success, client, app):
+def test_blob_mounting(
+    mount_digest, source_repo, username, include_from_param, expected_code, client, app
+):
     location = ImageStorageLocation.get(name="local_us")
 
     # Store and link some blobs.
@@ -109,8 +116,9 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
     params = {
         "repository": "devtable/building",
         "mount": mount_digest,
-        "from": source_repo,
     }
+    if include_from_param:
+        params["from"] = source_repo
 
     user = model.user.get_user(username)
     access = [
@@ -139,7 +147,6 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
         "Authorization": "Bearer %s" % token.decode("ascii"),
     }
 
-    expected_code = 201 if expect_success else 202
     conduct_call(
         client,
         "v2.start_blob_upload",
@@ -152,7 +159,7 @@ def test_blob_mounting(mount_digest, source_repo, username, expect_success, clie
 
     repository = model.repository.get_repository("devtable", "building")
 
-    if expect_success:
+    if expected_code == 201:
         # Ensure the blob now exists under the repo.
         assert model.oci.blob.get_repository_blob_by_digest(repository, mount_digest)
     else:
