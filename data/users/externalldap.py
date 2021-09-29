@@ -63,7 +63,7 @@ class LDAPConnection(object):
         self._conn = None
 
     def __enter__(self):
-        trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
+        trace_level = 1 if os.environ.get("USERS_DEBUG") == "1" else 0
 
         self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
         self._conn.set_option(ldap.OPT_REFERRALS, 1)
