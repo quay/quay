@@ -263,7 +263,13 @@ class RedisDataModelCache(DataModelCache):
                 else:
                     cache_count.labels("miss").inc()
             except RedisError as re:
-                logger.warning("Got exception when trying to retrieve key %s", cache_key.key)
+                logger.warning(
+                    "Got RedisError exception when trying to retrieve key %s: %s", cache_key.key, re
+                )
+            except Exception as e:
+                logger.exception(
+                    "Got unknown exception when trying to retrieve key %s: %s", cache_key.key, e
+                )
 
         logger.debug("Found no result in cache for key %s; calling loader", cache_key.key)
         result = loader()
@@ -291,9 +297,19 @@ class RedisDataModelCache(DataModelCache):
                     result,
                     cache_key.expiration,
                 )
-            except:
+            except RedisError as re:
                 logger.warning(
-                    "Got exception when trying to set key %s to %s", cache_key.key, result
+                    "Got RedisError exception when trying to set key %s to %s: %s",
+                    cache_key.key,
+                    result,
+                    re,
+                )
+            except Exception as e:
+                logger.exception(
+                    "Got unknown exception when trying to set key %s to %s: %s",
+                    cache_key.key,
+                    result,
+                    e,
                 )
         else:
             logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
