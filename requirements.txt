@@ -49,7 +49,7 @@ Flask-Login==0.4.1
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.7
-funcparserlib==0.3.6
+funcparserlib==1.0.0a0
 funcsigs==1.0.2
 furl==2.1.0
 future==0.18.2
