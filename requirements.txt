@@ -2,7 +2,7 @@ git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b#eg
 git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90#egg=aniso8601
 git+https://github.com/quay/boto.git@0041500f529547f592194c73c0a7d23275ed81c6#egg=boto
 git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
-git+https://github.com/quay/mockldap.git@4265554a3d89fe39bf05b18e91607bec3fcf215a#egg=mockldap
+git+https://github.com/quay/mockldap.git@136253ca136fc7898944a4b37893a99440f7335e#egg=mockldap
 git+https://github.com/quay/py-bitbucket.git@85301693ce3682f8e1244e90bd8a903181844bde#egg=py_bitbucket
 git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
 git+https://github.com/quay/supervisor-stdout.git@9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380#egg=supervisor_stdout
@@ -49,7 +49,7 @@ Flask-Login==0.4.1
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.7
-funcparserlib==0.3.6
+funcparserlib==1.0.0a0
 funcsigs==1.0.2
 furl==2.1.0
 future==0.18.2
