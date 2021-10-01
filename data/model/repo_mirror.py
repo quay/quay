@@ -52,7 +52,7 @@ def get_eligible_mirrors():
         (RepoMirrorConfig.sync_start_date <= now)
         & (RepoMirrorConfig.sync_retries_remaining > 0)
         & (RepoMirrorConfig.sync_status == RepoMirrorStatus.SYNCING)
-        & (RepoMirrorConfig.sync_expiration_date >= now)
+        & (RepoMirrorConfig.sync_expiration_date <= now)
         & (RepoMirrorConfig.is_enabled == True)
     )
 
@@ -118,7 +118,9 @@ def release_mirror(mirror, sync_status):
     if sync_status == RepoMirrorStatus.FAIL:
         retries = max(0, mirror.sync_retries_remaining - 1)
 
-    if sync_status == RepoMirrorStatus.SUCCESS or ((retries is not None and retries < 1) or mirror.sync_retries_remaining < 1):
+    if sync_status == RepoMirrorStatus.SUCCESS or (
+        (retries is not None and retries < 1) or mirror.sync_retries_remaining < 1
+    ):
         now = datetime.utcnow()
         delta = now - mirror.sync_start_date
         delta_seconds = (delta.days * 24 * 60 * 60) + delta.seconds
