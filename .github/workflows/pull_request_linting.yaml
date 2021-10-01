@@ -22,3 +22,13 @@ jobs:
           bodyRegex: 'PROJQUAY-(?<ticketNumber>\d+)'
           bodyURLRegex: 'http(s?):\/\/(issues.redhat.com)(\/browse)\/(PROJQUAY\-)(?<ticketNumber>\d+)'
           exemptUsers: 'dependabot'
+
+  check-for-cc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: check-for-cc
+        id: check-for-cc
+        uses: agenthunt/conventional-commit-checker-action@v1.0.0
