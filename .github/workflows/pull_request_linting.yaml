@@ -16,7 +16,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ticketLink: 'https://issues.redhat.com/browse/PROJQUAY-%ticketNumber%'
           ticketPrefix: 'PROJQUAY-'
-          titleRegex: '^(.*):\s*(.*)\s(\(PROJQUAY-(?<ticketNumber>\d+)\))(\s\(#[0-9]+\))?\n(\n(\n|.)*)?$'
+          titleRegex: '(.*)?PROJQUAY-(?<ticketNumber>\d+)\s?(.*)?+'
+          titleFormat: '%title% (%prefix%%id%)'
           branchRegex: '^PROJQUAY-(?<ticketNumber>\d+)'
           bodyRegex: 'PROJQUAY-(?<ticketNumber>\d+)'
           bodyURLRegex: 'http(s?):\/\/(issues.redhat.com)(\/browse)\/(PROJQUAY\-)(?<ticketNumber>\d+)'
