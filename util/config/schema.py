@@ -389,6 +389,14 @@ CONFIG_SCHEMA = {
                 "type": "string",
             },
         },
+        "GLOBAL_READONLY_SUPER_USERS": {
+            "type": "array",
+            "description": "Quay usernames of those super users to be granted global readonly privileges",
+            "uniqueItems": True,
+            "items": {
+                "type": "string",
+            },
+        },
         "DIRECT_OAUTH_CLIENTID_WHITELIST": {
             "type": "array",
             "description": "A list of client IDs of *Quay-managed* applications that are allowed "

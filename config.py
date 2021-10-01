@@ -274,6 +274,11 @@ class DefaultConfig(ImmutableConfig):
     # Super user config. Note: This MUST BE an empty list for the default config.
     SUPER_USERS = []
 
+    # Global readonly user.
+    # WARNING: THIS WILL GIVE USERS OF THIS LIST READ ACCESS TO ALL REPOS,
+    # REGARDLESS OF WHETHER THEY ARE PUBLIC OR NOT
+    GLOBAL_READONLY_SUPER_USERS = []
+
     # Feature Flag: Whether sessions are permanent.
     FEATURE_PERMANENT_SESSIONS = True
 

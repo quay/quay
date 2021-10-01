@@ -14,6 +14,7 @@ from auth.permissions import (
     ReadRepositoryPermission,
     CreateRepositoryPermission,
     AdministerRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
 )
 from data import model
 from data.database import RepositoryState
@@ -297,7 +298,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
 
     if "pull" in requested_actions:
         # Grant pull if the user can read the repo or it is public.
-        if ReadRepositoryPermission(namespace, reponame).can() or repo_is_public:
+        if (
+            ReadRepositoryPermission(namespace, reponame).can()
+            or repo_is_public
+            or GlobalReadOnlySuperUserPermission().can()
+        ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 

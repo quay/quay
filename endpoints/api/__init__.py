@@ -18,6 +18,7 @@ from auth.permissions import (
     AdministerRepositoryPermission,
     UserReadPermission,
     UserAdminPermission,
+    GlobalReadOnlySuperUserPermission,
 )
 from auth import scopes
 from auth.auth_context import (
@@ -289,8 +290,11 @@ def require_repo_permission(permission_class, scope, allow_public=False):
                 "Checking permission %s for repo: %s/%s", permission_class, namespace, repository
             )
             permission = permission_class(namespace, repository)
-            if permission.can() or (
-                allow_public and model.repository_is_public(namespace, repository)
+            global_readonly_permission = GlobalReadOnlySuperUserPermission()
+            if (
+                permission.can()
+                or (allow_public and model.repository_is_public(namespace, repository))
+                or global_readonly_permission.can()
             ):
                 return func(self, namespace, repository, *args, **kwargs)
             raise Unauthorized()

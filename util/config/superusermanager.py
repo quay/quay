@@ -17,6 +17,15 @@ class SuperUserManager(object):
         self._array = Array("c", self._max_length, lock=True)
         self._array.value = usernames_str.encode("utf8")
 
+        global_readonly_usernames = app.config.get("GLOBAL_READONLY_SUPER_USERS", [])
+        global_readonly_usernames_str = ",".join(global_readonly_usernames)
+
+        self._global_readonly_max_length = (
+            len(global_readonly_usernames_str) + MAX_USERNAME_LENGTH + 1
+        )
+        self._global_readonly_array = Array("c", self._global_readonly_max_length, lock=True)
+        self._global_readonly_array.value = global_readonly_usernames_str.encode("utf8")
+
     def is_superuser(self, username):
         """
         Returns if the given username represents a super user.
@@ -44,3 +53,10 @@ class SuperUserManager(object):
         Returns whether there are any superusers defined.
         """
         return bool(self._array.value)
+
+    def is_global_readonly_superuser(self, username):
+        """
+        Returns if the given username represents a super user.
+        """
+        usernames = self._global_readonly_array.value.decode("utf8").split(",")
+        return username in usernames

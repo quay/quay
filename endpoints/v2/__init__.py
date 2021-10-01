@@ -16,6 +16,8 @@ from auth.permissions import (
     ReadRepositoryPermission,
     ModifyRepositoryPermission,
     AdministerRepositoryPermission,
+    GlobalReadOnlySuperUserPermission,
+    SuperUserPermission,
 )
 from auth.registry_jwt_auth import process_registry_jwt_auth, get_auth_headers
 from data.registry_model import registry_model
@@ -122,7 +124,7 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
             )
 
             permission = permission_class(namespace_name, repo_name)
-            if permission.can():
+            if permission.can() or GlobalReadOnlySuperUserPermission().can():
                 return func(namespace_name, repo_name, *args, **kwargs)
 
             repository = namespace_name + "/" + repo_name

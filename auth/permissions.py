@@ -24,6 +24,9 @@ _TeamNeed = partial(_TeamTypeNeed, "orgteam")
 _UserTypeNeed = namedtuple("userspecificneed", ["type", "username", "role"])
 _UserNeed = partial(_UserTypeNeed, "user")
 _SuperUserNeed = partial(namedtuple("superuserneed", ["type"]), "superuser")
+_GlobalReadOnlySuperUserNeed = partial(
+    namedtuple("globalreadlonlysuperuserneed", ["type"]), "globalreadonlysuperuser"
+)
 
 
 REPO_ROLES = [None, "read", "write", "admin"]
@@ -149,6 +152,10 @@ class QuayDeferredPermissionUser(Identity):
         ) and superusers.is_superuser(user_object.username):
             logger.debug("Adding superuser to user: %s", user_object.username)
             self.provides.add(_SuperUserNeed())
+
+            if superusers.is_global_readonly_superuser(user_object.username):
+                logger.debug("Adding global readonly superuser to user: %s", user_object.username)
+                self.provides.add(_GlobalReadOnlySuperUserNeed())
 
     def _populate_namespace_wide_provides(self, user_object, namespace_filter):
         """
@@ -310,6 +317,12 @@ class SuperUserPermission(QuayPermission):
     def __init__(self):
         need = _SuperUserNeed()
         super(SuperUserPermission, self).__init__(need)
+
+
+class GlobalReadOnlySuperUserPermission(QuayPermission):
+    def __init__(self):
+        need = _GlobalReadOnlySuperUserNeed()
+        super(GlobalReadOnlySuperUserPermission, self).__init__(need)
 
 
 class UserAdminPermission(QuayPermission):
