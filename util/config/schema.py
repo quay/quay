@@ -180,7 +180,7 @@ CONFIG_SCHEMA = {
                 {
                     "type": "string",
                     "pattern": "^irc://(.)+$",
-                    "x-example": "irc://chat.freenode.net:6665/quay",
+                    "x-example": "irc://irc.libera.chat:6667/quay",
                     "description": "Adds a link to visit an IRC chat room",
                 },
                 {
