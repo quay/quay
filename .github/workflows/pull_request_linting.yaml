@@ -5,10 +5,9 @@ on:
     types: ['opened', 'edited', 'reopened', 'synchronize']
 
 jobs:
-  title:
+  ticket-check:
     name: ticket check
     runs-on: ubuntu-latest
-
     steps:
       - name: Check for ticket
         uses: neofinancial/ticket-check-action@v1
@@ -23,13 +22,14 @@ jobs:
           bodyURLRegex: 'http(s?):\/\/(issues.redhat.com)(\/browse)\/(PROJQUAY\-)(?<ticketNumber>\d+)'
           exemptUsers: 'dependabot'
 
-  check-for-cc:
+  conventional-commit:
     runs-on: ubuntu-latest
+    name: conventional commit check
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: check-for-cc
+      - name: check conventional commit
         id: check-for-cc
         uses: agenthunt/conventional-commit-checker-action@v1.0.0
         with:
