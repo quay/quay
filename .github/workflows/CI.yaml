@@ -146,6 +146,7 @@ jobs:
       with:
         repository: opencontainers/distribution-spec
         path: dist-spec
+        ref: 7be5e8534d10ebdb6d1631a6ecc1beaa5b622f65
 
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
