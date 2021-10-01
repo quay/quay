@@ -1,0 +1,23 @@
+name: Pull Request Lint
+
+on:
+  pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize']
+
+jobs:
+  title:
+    name: ticket check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check for ticket
+        uses: neofinancial/ticket-check-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ticketLink: 'https://issues.redhat.com/browse/PROJQUAY-%ticketNumber%'
+          ticketPrefix: 'PROJQUAY-'
+          titleRegex: '^PROJQUAY-(?<ticketNumber>\d+)'
+          branchRegex: '^PROJQUAY-(?<ticketNumber>\d+)'
+          bodyRegex: 'PROJQUAY-(?<ticketNumber>\d+)'
+          bodyURLRegex: 'http(s?):\/\/(issues.redhat.com)(\/browse)\/(PROJQUAY\-)(?<ticketNumber>\d+)'
+          exemptUsers: 'dependabot'
