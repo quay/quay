@@ -114,12 +114,12 @@ def release_mirror(mirror, sync_status):
     sync will be moved ahead as if it were a success. This is to allow a daily sync, for example, to
     retry the next day. Without this, users would need to manually run syncs to clear failure state.
     """
-    retries = None
+    retries = float("-inf")
     if sync_status == RepoMirrorStatus.FAIL:
         retries = max(0, mirror.sync_retries_remaining - 1)
 
     if sync_status == RepoMirrorStatus.SUCCESS or (
-        (retries is not None and retries < 1) or mirror.sync_retries_remaining < 1
+        (retries != float("-inf") and retries < 1) or mirror.sync_retries_remaining < 1
     ):
         now = datetime.utcnow()
         delta = now - mirror.sync_start_date
