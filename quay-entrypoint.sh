@@ -50,6 +50,7 @@ case "$QUAYENTRY" in
         exec /bin/bash
         ;;
     "config")
+        echo ""; echo "Startup timestamp: "; date; echo ""
         if [ -z "${QUAY_SERVICES}" ]; then
             echo "Running all default config services"
         else
@@ -74,12 +75,14 @@ case "$QUAYENTRY" in
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
     "migrate")
+        echo ""; echo "Startup timestamp: "; date; echo ""
         : "${MIGRATION_VERSION:=$2}"
         : "${MIGRATION_VERSION:?Missing version argument}"
         echo "Entering migration mode to version: ${MIGRATION_VERSION}"
         PYTHONPATH="${QUAYPATH}" alembic upgrade "${MIGRATION_VERSION}"
         ;;
     "registry-nomigrate")
+        echo ""; echo "Startup timestamp: "; date; echo ""
         echo "Running all default registry services without migration"
         for f in "${QUAYCONF}"/init/*.sh; do
             if [ "$f" != "/quay-registry/conf/init/runmigration.sh" ]; then
@@ -90,6 +93,7 @@ case "$QUAYENTRY" in
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
     "registry")
+        echo ""; echo "Startup timestamp: "; date; echo ""
         if [ -z "${QUAY_SERVICES}" ]; then
             echo "Running all default registry services"
         else
@@ -102,6 +106,7 @@ case "$QUAYENTRY" in
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
     "repomirror-nomigrate")
+        echo ""; echo "Startup timestamp: "; date; echo ""
         echo "Entering repository mirroring mode"
         export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}repomirrorworker,pushgateway"
         echo "Running services ${QUAY_SERVICES}"
@@ -114,6 +119,7 @@ case "$QUAYENTRY" in
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
         ;;
     "repomirror")
+        echo ""; echo "Startup timestamp: "; date; echo ""
         echo "Entering repository mirroring mode"
         export QUAY_SERVICES="${QUAY_SERVICES}${QUAY_SERVICES:+,}repomirrorworker,pushgateway"
         echo "Running services ${QUAY_SERVICES}"
