@@ -25,6 +25,9 @@ type AccessSettingsFieldGroup struct {
 	FeatureUserRename              bool   `default:"false" validate:"" json:"FEATURE_USER_RENAME" yaml:"FEATURE_USER_RENAME"`
 	FreshLoginTimeout              string `default:"10m" validate:"" json:"FRESH_LOGIN_TIMEOUT,omitempty" yaml:"FRESH_LOGIN_TIMEOUT,omitempty"`
 	UserRecoveryTokenLifetime      string `default:"30m" validate:"" json:"USER_RECOVERY_TOKEN_LIFETIME,omitempty" yaml:"USER_RECOVERY_TOKEN_LIFETIME,omitempty"`
+	FeatureExtendedRepositoryNames bool   `default:"true" validate:"" json:"FEATURE_EXTENDED_REPOSITORY_NAMES,omitempty" yaml:"FEATURE_EXTENDED_REPOSITORY_NAMES,omitempty"`
+	CreateRepositoryOnPushPublic   bool   `default:"false" validate:"" json:"CREATE_REPOSITORY_ON_PUSH_PUBLIC,omitempty" yaml:"CREATE_REPOSITORY_ON_PUSH_PUBLIC,omitempty"`
+	FeatureUserInitialize          bool   `default:"false" validate:"" json:"FEATURE_USER_INITIALIZE,omitempty" yaml:"FEATURE_USER_INITIALIZE,omitempty"`
 }
 
 // NewAccessSettingsFieldGroup creates a new AccessSettingsFieldGroup
@@ -120,6 +123,24 @@ func NewAccessSettingsFieldGroup(fullConfig map[string]interface{}) (*AccessSett
 		newAccessSettingsFieldGroup.UserRecoveryTokenLifetime, ok = value.(string)
 		if !ok {
 			return newAccessSettingsFieldGroup, errors.New("USER_RECOVERY_TOKEN_LIFETIME must be of type string")
+		}
+	}
+	if value, ok := fullConfig["FEATURE_EXTENDED_REPOSITORY_NAMES"]; ok {
+		newAccessSettingsFieldGroup.FeatureExtendedRepositoryNames, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("FEATURE_EXTENDED_REPOSITORY_NAMES must be of type bool")
+		}
+	}
+	if value, ok := fullConfig["CREATE_REPOSITORY_ON_PUSH_PUBLIC"]; ok {
+		newAccessSettingsFieldGroup.CreateRepositoryOnPushPublic, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("CREATE_REPOSITORY_ON_PUSH_PUBLIC must be of type bool")
+		}
+	}
+	if value, ok := fullConfig["FEATURE_USER_INITIALIZE"]; ok {
+		newAccessSettingsFieldGroup.FeatureUserInitialize, ok = value.(bool)
+		if !ok {
+			return newAccessSettingsFieldGroup, errors.New("FEATURE_USER_INITIALIZE must be of type bool")
 		}
 	}
 
