@@ -2015,13 +2015,19 @@ class TestCreateRepo(ApiTestCase):
     def test_invalidreponame(self):
         self.login(ADMIN_ACCESS_USER)
 
-        json = self.postJsonResponse(
-            RepositoryList,
-            data=dict(repository="some/repo", visibility="public", description=""),
-            expected_code=400,
-        )
-
-        self.assertEqual("Invalid repository name", json["detail"])
+        if app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]:
+            json = self.postJsonResponse(
+                RepositoryList,
+                data=dict(repository="some/repo", visibility="public", description=""),
+                expected_code=201,
+            )
+        else:
+            json = self.postJsonResponse(
+                RepositoryList,
+                data=dict(repository="some/repo", visibility="public", description=""),
+                expected_code=400,
+            )
+            self.assertEqual("Invalid repository name", json["detail"])
 
     def test_duplicaterepo(self):
         self.login(ADMIN_ACCESS_USER)
