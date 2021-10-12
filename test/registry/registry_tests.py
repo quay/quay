@@ -17,7 +17,7 @@ from test.registry.protocol_fixtures import *
 
 from test.registry.protocols import Failures, Image, layer_bytes_for_contents, ProtocolOptions
 
-from app import instance_keys
+from app import instance_keys, app as original_app
 from data.registry_model import registry_model
 from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
@@ -1988,7 +1988,21 @@ def test_login(
             True,
         ),
         # Basic pull with invalid endpoint.
-        ("devtable", "password", ["repository:someinvalid/devtable/simple:pull"], [], False),
+        (
+            "devtable",
+            "password",
+            ["repository:someinvalid/devtable/simple:pull"],
+            []
+            if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"]
+            else [
+                {
+                    "type": "repository",
+                    "name": "someinvalid/devtable/simple",
+                    "actions": [],
+                },
+            ],
+            False if not original_app.config["FEATURE_EXTENDED_REPOSITORY_NAMES"] else True,
+        ),
         # Pull with no access.
         (
             "public",

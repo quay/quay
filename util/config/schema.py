@@ -777,7 +777,7 @@ CONFIG_SCHEMA = {
         "FEATURE_EXTENDED_REPOSITORY_NAMES": {
             "type": "boolean",
             "description": "Whether repository names can have nested paths (/)",
-            "x-example": False,
+            "x-example": True,
         },
         # Login
         "FEATURE_GITHUB_LOGIN": {
@@ -1195,6 +1195,12 @@ CONFIG_SCHEMA = {
                     "application/vnd.sylabs.sif.layer.v1.sif"
                 ],
             },
+        },
+        # Create repo on public push
+        "CREATE_REPOSITORY_ON_PUSH_PUBLIC": {
+            "type": "boolean",
+            "description": "Whether to create a repository when pushing to an unexisting public repo",
+            "x-example": False,
         },
     },
 }
