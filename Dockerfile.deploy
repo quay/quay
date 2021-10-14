@@ -103,7 +103,7 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM docker.io/library/golang:1.15 as config-tool
+FROM openshift/golang-builder:1.15 as config-tool
 WORKDIR /go/src/config-tool
 ARG CONFIGTOOL_VERSION=master
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
