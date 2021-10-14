@@ -103,12 +103,12 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM openshift/golang-builder:1.15 as config-tool
-WORKDIR /go/src/config-tool
+FROM registry.redhat.io/rhel8/go-toolset:1.15 as config-tool
+WORKDIR /opt/app-root/src
 ARG CONFIGTOOL_VERSION=master
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
-COPY --from=config-editor /build/static/build  /go/src/config-tool/pkg/lib/editor/static/build
+COPY --from=config-editor /build/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install ./cmd/config-tool
 
 # Local dev only target. DO NOT USE FOR PROD!
@@ -169,7 +169,7 @@ RUN mkdir ${QUAYDIR}/config_app
 COPY --from=jwtproxy /usr/local/bin/jwtproxy /usr/local/bin/jwtproxy
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
-COPY --from=config-tool /go/bin/config-tool /bin
+COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=config-editor /build ${QUAYDIR}/config_app
 COPY --from=build-static /build/static ${QUAYDIR}/static
 # Copy in source and update local copy of AWS IP Ranges.
