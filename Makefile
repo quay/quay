@@ -136,10 +136,10 @@ docker-build: pkgs build
 	echo $(TAG)
 
 app-sre-docker-build-rhel7:
-	$(BUILD_CMD) -t ${IMG} -f Dockerfile.osbs .
+	$(BUILD_CMD) -t ${IMG} -f Dockerfile .
 
 app-sre-docker-build-centos7:
-	$(BUILD_CMD) -t ${IMG} -f Dockerfile.centos7.osbs .
+	$(BUILD_CMD) -t ${IMG} -f Dockerfile .
 
 run: license
 	goreman start
