@@ -17,7 +17,7 @@ BUILD_CMD="docker build" IMG="$IMG" make app-sre-docker-build
 
 # push the image
 skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-    "docker-daemon:${IMG}" \
+    "containers-storage:${IMG}" \
     "docker://${QUAY_IMAGE}:latest"
 
 skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
