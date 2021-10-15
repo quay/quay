@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: quay
+  name: quay-py3
 objects:
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: Role
@@ -54,7 +54,7 @@ objects:
 - apiVersion: v1
   kind: Service
   metadata:
-    name: quay-clusterip-service
+    name: quay-py3-clusterip-service
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
   spec:
@@ -73,7 +73,7 @@ objects:
 - apiVersion: v1
   kind: Service
   metadata:
-    name: quay-load-balancer-proxy-protocol-service
+    name: quay-py3-load-balancer-proxy-protocol-service
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
       service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: '*'
@@ -91,24 +91,10 @@ objects:
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
-- apiVersion: v1
-  kind: Service
-  metadata:
-    name: prometheus-proxy-loadbalancer
-  spec:
-    type: LoadBalancer
-    ports:
-    - name: prometheus-proxy-loadbalancer
-      protocol: TCP
-      port: 3000
-      targetPort: 3000
-    selector:
-      app: prometheus
-
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    name: quay-app
+    name: quay-py3-app
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
   spec:
@@ -250,171 +236,17 @@ objects:
             value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
           - name: WORKER_CONNECTION_COUNT_REGISTRY
             value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
-
-- apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: quay-app-blue
-    labels:
-      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
-  spec:
-    replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS_BLUE}}
-    minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
-    progressDeadlineSeconds: ${{QUAY_APP_DEPLOYMENT_PROGRESS_DEADLINE_SECONDS}}
-    revisionHistoryLimit: ${{QUAY_APP_DEPLOYMENT_REVISION_HISTORY_LIMITS}}
-    strategy:
-      type: ${{QUAY_APP_DEPLOYMENT_STRATEGY_TYPE}}
-      rollingUpdate:
-        maxUnavailable: ${{QUAY_APP_DEPLOYMENT_MAX_UNAVAILABLE}}
-        maxSurge: ${{QUAY_APP_DEPLOYMENT_MAX_SURGE}}
-    selector:
-      matchLabels:
-        ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
-    template:
-      metadata:
-        labels:
-          ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
-        annotations:
-          ${{QUAY_APP_COMPONENT_ANNOTATIONS_KEY}}: ${{QUAY_APP_COMPONENT_ANNOTATIONS_VALUE}}
-      spec:
-        volumes:
-        - name: configvolume
-          secret:
-            secretName: ${{QUAY_APP_CONFIG_SECRET_BLUE}}
-        serviceAccountName: ${{NAME}}
-        containers:
-        - name: syslog-cloudwatch-bridge
-          image:  ${SYSLOG_IMAGE}:${SYSLOG_IMAGE_TAG}
-          ports:
-          - containerPort: ${{SYSLOG_PORT}}
-            protocol: UDP
-            name: syslog-udp-port
-          - containerPort: ${{SYSLOG_PORT}}
-            protocol: TCP
-            name: syslog-tcp-port
-          env:
-          - name: STREAM_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: TICKER_TIME
-            value: ${TICKER_TIME}
-          - name: PORT
-            value: ${SYSLOG_PORT}
-          - name: AWS_REGION
-            valueFrom:
-              secretKeyRef:
-                name: ${{CLOUDWATCH_SECRET}}
-                key: AWS_REGION
-          - name: AWS_ACCESS_KEY_ID
-            valueFrom:
-              secretKeyRef:
-                name: ${{CLOUDWATCH_SECRET}}
-                key: AWS_ACCESS_KEY_ID
-          - name: AWS_SECRET_ACCESS_KEY
-            valueFrom:
-              secretKeyRef:
-                name: ${{CLOUDWATCH_SECRET}}
-                key: AWS_SECRET_ACCESS_KEY
-          - name: LOG_GROUP_NAME
-            valueFrom:
-              secretKeyRef:
-                name: ${{CLOUDWATCH_SECRET}}
-                key: LOG_GROUP_NAME
-          resources:
-            limits:
-              cpu: ${{QUAY_SYSLOG_CPU_LIMIT}}
-              memory: ${{QUAY_SYSLOG_MEMORY_LIMIT}}
-            requests:
-              cpu: ${{QUAY_SYSLOG_CPU_REQUEST}}
-              memory: ${{QUAY_SYSLOG_MEMORY_REQUEST}}
-          readinessProbe:
-              tcpSocket:
-                port: ${{SYSLOG_PORT}}
-              initialDelaySeconds: ${{QUAY_SYSLOG_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
-              periodSeconds: ${{QUAY_SYSLOG_READINESS_PROBE_PERIOD_SECONDS}}
-              timeoutSeconds: ${{QUAY_SYSLOG_READINESS_PROBE_TIMEOUT_SECONDS}}
-          livenessProbe:
-            tcpSocket:
-              port: ${{SYSLOG_PORT}}
-            initialDelaySeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
-            periodSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_PERIOD_SECONDS}}
-            timeoutSeconds: ${{QUAY_SYSLOG_LIVENESS_PROBE_TIMEOUT_SECONDS}}
-        - name: quay-app
-          image: ${IMAGE_BLUE}:${IMAGE_TAG_BLUE}
-          imagePullPolicy: ${{IMAGE_PULL_POLICY}}
-          command:
-          - /quay-registry/quay-entrypoint.sh
-          - ${{QUAY_ENTRYPOINT}}
-          ports:
-          - containerPort: 8443
-          volumeMounts:
-          - name: configvolume
-            mountPath: /conf/stack
-          livenessProbe:
-            exec:
-              command:
-              - curl
-              - -k
-              - https://localhost:8443/health/instance
-            initialDelaySeconds: ${{QUAY_APP_LIVENESS_PROBE_INITIAL_DELAY_SECONDS}}
-            periodSeconds: ${{QUAY_APP_LIVENESS_PROBE_PERIOD_SECONDS}}
-            timeoutSeconds: ${{QUAY_APP_LIVENESS_PROBE_TIMEOUT_SECONDS}}
-          readinessProbe:
-            exec:
-              command:
-              - curl
-              - -k
-              - https://localhost:8443/health/endtoend
-            initialDelaySeconds: ${{QUAY_APP_READINESS_PROBE_INITIAL_DELAY_SECONDS}}
-            periodSeconds: ${{QUAY_APP_READINESS_PROBE_PERIOD_SECONDS}}
-            timeoutSeconds: ${{QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS}}
-          resources:
-            limits:
-              cpu: ${{QUAY_APP_CPU_LIMIT}}
-              memory: ${{QUAY_APP_MEMORY_LIMIT}}
-            requests:
-              cpu: ${{QUAY_APP_CPU_REQUEST}}
-              memory: ${{QUAY_APP_MEMORY_REQUEST}}
-          env:
-          - name: QE_K8S_NAMESPACE
-            value: ${{QUAY_APP_DEPLOYMENT_NAMESPACE}}
-          - name: QE_K8S_CONFIG_SECRET
-            value: ${{QUAY_APP_CONFIG_SECRET_BLUE}}
-          - name: DEBUGLOG
-            value: ${DEBUGLOG}
-          - name: SYSLOG_SERVER
-            value: ${{SYSLOG_SERVER}}
-          - name: SYSLOG_PORT
-            value: ${SYSLOG_PORT}
-          - name: SYSLOG_PROTO
-            value: ${{SYSLOG_PROTO}}
-          - name: QUAY_LOGGING
-            value: ${{QUAY_LOGGING}}
-          - name: WORKER_MULTIPLIER_REGISTRY
-            value: ${QUAY_WORKER_MULTIPLIER_REGISTRY}
-          - name: WORKER_CONNECTION_COUNT_REGISTRY
-            value: ${QUAY_WORKER_CONNECTION_COUNT_REGISTRY}
 parameters:
   - name: NAME
-    value: "quay"
+    value: "quay-py3"
     displayName: name
     description: Defaults to quay.
   - name: IMAGE
     value: ""
     displayName: quay image
     description: quay docker image. Defaults to quay.io/app-sre/quay.
-  - name: IMAGE_BLUE
-    value: ""
-    displayName: quay blue-deployment image
-    description: quay blue-deployment docker image. Defaults to quay.io/app-sre/quay.
   - name: IMAGE_TAG
-    value: "latest"
-    displayName: quay version
-    description: quay version which defaults to latest
-  - name: IMAGE_TAG_BLUE
-    value: "latest"
+    value: ""
     displayName: quay version
     description: quay version which defaults to latest
   - name: QUAY_ENTRYPOINT
@@ -434,10 +266,10 @@ parameters:
     value: "9091"
     displayName: clusterip metrics target port
   - name: QUAY_APP_COMPONENT_LABEL_KEY
-    value: "quay-component"
+    value: "quay-py3-component"
     displayName: quay app selector label
   - name: QUAY_APP_COMPONENT_LABEL_VALUE
-    value: "app"
+    value: "app-py3"
     displayName:  quay app selector label value
   - name: LOADBALANCER_SERVICE_PORT
     value: "443"
@@ -455,16 +287,11 @@ parameters:
     value: "8080"
     displayName: loadbalancer service proxy target http port
   - name: QUAY_APP_CONFIG_SECRET
-    value: "quay-config-secret"
+    value: ""
     displayName: quay app config secret
-  - name: QUAY_APP_CONFIG_SECRET_BLUE
-    value: "quay-config-secret"
-    displayName: quay app blue-deployment config secret
   - name: QUAY_APP_DEPLOYMENT_REPLICAS
     value: "1"
     displayName: quay app deployment replicas
-  - name: QUAY_APP_DEPLOYMENT_REPLICAS_BLUE
-    value: "0"
   - name: QUAY_APP_DEPLOYMENT_NAMESPACE
     value: "quay"
     displayName: quay app deployment namespace
@@ -520,7 +347,7 @@ parameters:
     value: "false"
     displayName: debug log
   - name: QUAY_APP_COMPONENT_ANNOTATIONS_KEY
-    value: "quay-app-deployment"
+    value: "quay-py3-app-deployment"
     displayName: quay app annotation
   - name: QUAY_APP_COMPONENT_ANNOTATIONS_VALUE
     value: "update_me_when_secret_changes"
