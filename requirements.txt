@@ -71,7 +71,6 @@ gevent==1.4.0
 gipc==1.0.1
 greenlet==0.4.15
 gunicorn==19.9.0
-hiredis==1.0.0
 html5lib==0.9999999
 httmock==1.3.0
 httpretty==0.8.10
