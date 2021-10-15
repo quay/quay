@@ -102,3 +102,15 @@ def get_priority_from_cvssscore(score):
         return "Unknown"
 
     return "Unknown"
+
+
+def fetch_vuln_severity(vuln, enrichments):
+    if (
+        vuln["normalized_severity"]
+        and vuln["normalized_severity"] != PRIORITY_LEVELS["Unknown"]["value"]
+    ):
+        return vuln["normalized_severity"]
+
+    if enrichments.get(vuln["id"], {}).get("baseScore", None):
+        return get_priority_from_cvssscore(enrichments[vuln["id"]]["baseScore"])
+    return PRIORITY_LEVELS["Unknown"]["value"]

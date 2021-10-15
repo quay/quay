@@ -138,7 +138,10 @@ if features.GENERAL_OCI_SUPPORT:
 
 if features.HELM_OCI_SUPPORT:
     HELM_CHART_CONFIG_TYPE = "application/vnd.cncf.helm.config.v1+json"
-    HELM_CHART_LAYER_TYPES = ["application/tar+gzip"]
+    HELM_CHART_LAYER_TYPES = [
+        "application/tar+gzip",
+        "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
+    ]
     register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
 
 CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str).encode("utf-8")).hexdigest()[0:8]

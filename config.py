@@ -752,7 +752,10 @@ class DefaultConfig(ImmutableConfig):
         "application/vnd.oci.image.config.v1+json": [
             "application/vnd.dev.cosign.simplesigning.v1+json"
         ],
-        "application/vnd.cncf.helm.config.v1+json": ["application/tar+gzip"],
+        "application/vnd.cncf.helm.config.v1+json": [
+            "application/tar+gzip",
+            "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
+        ],
     }
 
     # Feature Flag: Whether to allow Helm OCI content types.
@@ -788,4 +791,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_USER_INITIALIZE = False
 
     # Allows "/" in repository names
-    FEATURE_EXTENDED_REPOSITORY_NAMES = False
+    FEATURE_EXTENDED_REPOSITORY_NAMES = True
+
+    # Allow creation of push to public repo
+    CREATE_REPOSITORY_ON_PUSH_PUBLIC = False

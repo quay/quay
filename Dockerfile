@@ -67,7 +67,7 @@ COPY requirements.txt .
 # flag.
 RUN set -ex\
 	; python3 -m pip install --no-cache-dir --quiet\
-		--upgrade setuptools==57.5.0 pip\
+		--upgrade setuptools pip\
 	; python3 -m pip install --no-cache-dir --progress-bar off\
 		--user --requirement requirements.txt --no-cache\
 	;
@@ -123,6 +123,26 @@ RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION
 COPY --from=config-editor /build/static/build  /go/src/config-tool/pkg/lib/editor/static/build
 RUN go install ./cmd/config-tool
 
+# Local dev only target. DO NOT USE FOR PROD!
+# It is similar to the `final` target, but uses development config.
+FROM base AS local-dev-env
+ENV QUAYCONF /quay-registry/local-dev
+
+RUN alternatives --set python /usr/bin/python3
+
+WORKDIR $QUAYDIR
+
+# Ordered from least changing to most changing.
+COPY --from=jwtproxy /usr/local/bin/jwtproxy /usr/local/bin/jwtproxy
+COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
+COPY --from=build-python /app /app
+COPY --from=build-static /build/static ${QUAYDIR}/static
+
+EXPOSE 8080 8443 7443 9091 55443
+
+ENTRYPOINT ["dumb-init", "--", "/quay-registry/quay-entrypoint.sh"]
+CMD ["registry"]
+
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
@@ -144,11 +164,11 @@ RUN set -ex\
 	; setperms /etc/nginx\
 	; ln -sf /dev/stdout /var/log/nginx/access.log\
 	; ln -sf /dev/stdout /var/log/nginx/error.log\
-# Make a grip of runtime directories.
-	; newdir /certificates /conf/stack /datastorage\
 # The code doesn't agree on where the configuration lives, so create a
 # symlink.
 	; ln -s $QUAYCONF /conf\
+# Make a grip of runtime directories.
+	; newdir /certificates /quay-registry/conf/stack /datastorage\
 # Another Openshift-ism: it doesn't bother picking a uid that means
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.

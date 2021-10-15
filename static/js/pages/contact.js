@@ -39,7 +39,7 @@
           return contactInfo.substr('tel:'.length);
 
         case 'irc':
-          // irc://chat.freenode.net:6665/quayio
+          // irc://irc.libera.chat:6667/quay
           var parts = contactInfo.substr('irc://'.length).split('/');
           var server = parts[0];
           if (server.indexOf('freenode') > 0) {

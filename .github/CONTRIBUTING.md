@@ -15,7 +15,7 @@ The project currently uses a mailing list and IRC channel:
 
 - Issues: [PROJQUAY Jira](https://issues.redhat.com/projects/PROJQUAY/issues)
 - Email: [quay-sig@googlegroups.com](https://groups.google.com/g/quay-sig)
-- IRC: #[quay](irc://irc.freenode.org:6667/#quay) IRC channel on freenode.org
+- IRC: #[quay](irc://irc.libera.chat:6667/#quay) IRC channel on libera.chat
 
 Please avoid emailing maintainers directly.
 They are very busy and read the mailing lists.

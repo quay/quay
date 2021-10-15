@@ -28,7 +28,7 @@ from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
 from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure, InvalidContentSent
-from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore
+from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore, fetch_vuln_severity
 from util.secscan.blob import BlobURLRetriever
 from util.config import URLSchemeAndHostname
 
@@ -289,10 +289,10 @@ class V4SecurityScanner(SecurityScannerInterface):
             except InvalidContentSent as ex:
                 mark_manifest_unsupported(manifest)
                 logger.exception("Failed to perform indexing, invalid content sent")
-                return None
+                continue
             except APIRequestFailure as ex:
                 logger.exception("Failed to perform indexing, security scanner API error")
-                return None
+                continue
 
             with db_transaction():
                 ManifestSecurityStatus.delete().where(
@@ -401,9 +401,7 @@ def features_for(report):
                 pkg["version"],
                 [
                     Vulnerability(
-                        vuln["normalized_severity"] if vuln["normalized_severity"] and vuln["normalized_severity"] != PRIORITY_LEVELS["Unknown"]["value"]
-                        else get_priority_from_cvssscore(enrichments[vuln["id"]]["baseScore"]) if enrichments.get(vuln["id"], {}).get("baseScore", None)
-                        else PRIORITY_LEVELS["Unknown"]["value"],
+                        fetch_vuln_severity(vuln, enrichments),
                         "",
                         vuln["links"],
                         vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",

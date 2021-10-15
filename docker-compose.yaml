@@ -42,9 +42,9 @@ services:
 
   quay:
     container_name: quay-quay
-    build: 
+    build:
       context: .
-      dockerfile: ./local-dev/Dockerfile
+      target: local-dev-env
     image: quay-local:local
     volumes:
       - ".:/quay-registry"

@@ -62,12 +62,12 @@ High-level features include:
 ## Community
 
 * Mailing List: [quay-sig@googlegroups.com]
-* IRC: #quay on [freenode.net]
+* IRC: #quay on [libera.chat]
 * Bug tracking: [JBoss JIRA]
 * Security Issues: [security@redhat.com]
 
 [quay-sig@googlegroups.com]: https://groups.google.com/forum/#!forum/quay-sig
-[freenode.net]: https://webchat.freenode.net
+[libera.chat]: https://web.libera.chat/?channel=#quay
 [JBoss JIRA]: https://issues.jboss.org/projects/PROJQUAY
 [security@redhat.com]: mailto:security@redhat.com
 
