@@ -5,4 +5,4 @@ BASE_IMG="quay"
 
 IMG="${BASE_IMG}:latest"
 
-BUILD_CMD="docker build" IMG="$IMG" make app-sre-docker-build-rhel7
+BUILD_CMD="docker build" IMG="$IMG" make app-sre-docker-build
