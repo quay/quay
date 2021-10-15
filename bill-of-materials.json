@@ -231,11 +231,6 @@
     }, 
     {
         "format": "Python", 
-        "license": "BSD License", 
-        "project": "hiredis"
-    }, 
-    {
-        "format": "Python", 
         "license": "MIT License", 
         "project": "html5lib"
     }, 
