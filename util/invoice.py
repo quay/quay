@@ -10,7 +10,7 @@ jinja_options = {
     "loader": FileSystemLoader("util"),
 }
 
-env = Environment(**jinja_options)  # type: ignore
+env = Environment(**jinja_options)
 
 
 def renderInvoiceToPdf(invoice, user):
