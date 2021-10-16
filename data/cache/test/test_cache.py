@@ -1,5 +1,5 @@
 import pytest
-
+from typing import Dict, Any
 from unittest.mock import patch, MagicMock
 from rediscluster.nodemanager import NodeManager
 
@@ -17,7 +17,7 @@ from data.cache.redis_cache import (
 )
 
 
-DATA = {}
+DATA: Dict[str, Any] = {}
 
 TEST_CACHE_CONFIG = {
     "repository_blob_cache_ttl": "240s",
