@@ -1,16 +1,6 @@
 # syntax=docker/dockerfile:1.2
-# Stream swaps to CentOS Stream once and is reused.
-FROM docker.io/library/centos:8 AS stream
-RUN set -ex\
-	; dnf -y -q install centos-release-stream\
-	; dnf -y -q swap centos-{linux,stream}-repos\
-# This "|| true" is needed if building in podman, it seems.
-# The filesystem package tries to modify permissions on /proc.
-	; dnf -y -q distro-sync || true\
-	; dnf -y -q clean all
-
 # Base is set up with the runtime dependencies and environment.
-FROM stream AS base
+FROM quay.io/centos/centos:stream8 AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 ENV PATH=/app/bin/:$PATH \
@@ -96,8 +86,8 @@ RUN set -ex\
 	;
 
 # Jwtproxy grabs jwtproxy.
-FROM stream as jwtproxy
-ENV OS=linux ARCH=amd64 
+FROM quay.io/centos/centos:stream8 as jwtproxy
+ENV OS=linux ARCH=amd64
 ARG JWTPROXY_VERSION=0.0.3
 RUN set -ex\
 	; curl -fsSL -o /usr/local/bin/jwtproxy "https://github.com/coreos/jwtproxy/releases/download/v${JWTPROXY_VERSION}/jwtproxy-${OS}-${ARCH}"\
@@ -105,8 +95,8 @@ RUN set -ex\
 	;
 
 # Pushgateway grabs pushgateway.
-FROM stream AS pushgateway
-ENV OS=linux ARCH=amd64 
+FROM quay.io/centos/centos:stream8 AS pushgateway
+ENV OS=linux ARCH=amd64
 ARG PUSHGATEWAY_VERSION=1.0.0
 RUN set -ex\
 	; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
