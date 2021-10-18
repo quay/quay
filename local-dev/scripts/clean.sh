@@ -18,6 +18,7 @@ Files=(
 	'/local-dev/*.sock'
 	'node_modules'
 	'static/webfonts/'
+	'static/build'
 	'supervisord.log'
 	'supervisord.pid'
 )
