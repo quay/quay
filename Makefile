@@ -184,14 +184,22 @@ black:
 local-dev-clean:
 	sudo ./local-dev/scripts/clean.sh
 
+.PHONY: local-dev-build-frontend
+local-dev-build-frontend:
+	make local-dev-clean
+	npm install --quiet --no-progress --ignore-engines --no-save
+	npm run --quiet build
+
 .PHONY: local-dev-build
 local-dev-build:
 	make local-dev-clean
+	make local-dev-build-frontend
 	docker-compose build
 
 .PHONY: local-dev-up
 local-dev-up:
 	make local-dev-clean
+	make local-dev-build-frontend
 	docker-compose up -d redis
 	docker-compose up -d quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
@@ -200,6 +208,7 @@ local-dev-up:
 .PHONY: local-dev-up-with-clair
 local-dev-up-with-clair:
 	make local-dev-clean
+	make local-dev-build-frontend
 	docker-compose up -d redis
 	docker-compose up -d quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
