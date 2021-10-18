@@ -402,7 +402,7 @@ def features_for(report):
                 [
                     Vulnerability(
                         fetch_vuln_severity(vuln, enrichments),
-                        "",
+                        vuln["updater"],
                         vuln["links"],
                         vuln["fixed_in_version"] if vuln["fixed_in_version"] != "0" else "",
                         vuln["description"],

@@ -838,7 +838,7 @@
             },
             {
               "Severity": "Unknown",
-              "NamespaceName": "",
+              "NamespaceName": "test_updater",
               "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2016-2781",
               "FixedBy": "",
               "Description": "chroot in GNU coreutils, when used with --userspec, allows local users to escape to the parent session via a crafted TIOCSTI ioctl call, which pushes characters to the terminal's input buffer.",
@@ -859,7 +859,7 @@
             },
             {
               "Severity": "Unknown",
-              "NamespaceName": "",
+              "NamespaceName": "test_updater",
               "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-18018",
               "FixedBy": "",
               "Description": "In GNU Coreutils through 8.29, chown-core.c in chown and chgrp does not prevent replacement of a plain file with a symlink during use of the POSIX \"-R -L\" options, which allows local users to modify the ownership of arbitrary files by leveraging a race condition.",
