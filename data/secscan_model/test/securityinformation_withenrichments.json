@@ -113,7 +113,7 @@
         "Version": "9.0.1",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "",
             "FixedBy": "",
@@ -134,7 +134,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "",
             "FixedBy": "",
@@ -164,7 +164,7 @@
         "Version": "2.2.5-r0",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20843",
             "FixedBy": "2.2.7-r0",
@@ -185,7 +185,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-15903",
             "FixedBy": "2.2.7-r1",
@@ -285,7 +285,7 @@
         "Version": "4.0.1",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "",
             "FixedBy": "",
@@ -306,7 +306,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "",
             "FixedBy": "",
@@ -497,7 +497,7 @@
         "Version": "1.0.2o-r0",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
+            "Severity": "Medium",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1559",
             "FixedBy": "1.0.2r-r0",
@@ -518,7 +518,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Medium",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1547",
             "FixedBy": "1.0.2t-r0",
@@ -539,7 +539,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Low",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1563",
             "FixedBy": "1.0.2t-r0",
@@ -560,7 +560,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0732",
             "FixedBy": "1.0.2o-r1",
@@ -581,7 +581,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Medium",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0737",
             "FixedBy": "1.0.2o-r1",
@@ -602,7 +602,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Medium",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0734",
             "FixedBy": "1.0.2q-r0",
@@ -623,7 +623,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Medium",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5407",
             "FixedBy": "1.0.2q-r0",
@@ -723,7 +723,7 @@
         "Version": "3.6.3-r9",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1060",
             "FixedBy": "3.6.5-r0",
@@ -744,7 +744,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1061",
             "FixedBy": "3.6.5-r0",
@@ -765,7 +765,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-14647",
             "FixedBy": "3.6.8-r0",
@@ -786,7 +786,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20406",
             "FixedBy": "3.6.8-r0",
@@ -807,7 +807,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Critical",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-9636",
             "FixedBy": "3.6.8-r0",
@@ -828,7 +828,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-16056",
             "FixedBy": "3.6.8-r1",
@@ -849,7 +849,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Medium",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-16935",
             "FixedBy": "3.6.9-r1",
@@ -960,7 +960,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Critical",
             "NamespaceName": "",
             "Link": "",
             "FixedBy": "",
@@ -981,7 +981,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "Medium",
             "NamespaceName": "",
             "Link": "",
             "FixedBy": "",
@@ -1002,7 +1002,7 @@
             }
           },
           {
-            "Severity": "Unknown",
+            "Severity": "High",
             "NamespaceName": "",
             "Link": "",
             "FixedBy": "",
@@ -1062,7 +1062,7 @@
         "Version": "1.1.18-r3",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
+            "Severity": "Critical",
             "NamespaceName": "",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-14697",
             "FixedBy": "1.1.18-r4",
