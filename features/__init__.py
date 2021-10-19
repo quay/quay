@@ -1,6 +1,6 @@
 from typing import Dict
 
-_FEATURES = {}  # type: Dict[str,FeatureNameValue]
+_FEATURES: Dict[str,FeatureNameValue] = {}
 
 
 def import_features(config_dict):

@@ -55,7 +55,7 @@ TRIGGER_PARAMS = {"repository": "devtable/simple", "trigger_uuid": "someuuid"}
 MANIFEST_PARAMS = {"repository": "devtable/simple", "manifestref": "sha256:deadbeef"}
 EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
 
-SECURITY_TESTS = [
+SECURITY_TESTS: List[Tuple[Type[ApiResource], str, Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[str], int]] = [
     (AppTokens, "GET", {}, {}, None, 401),
     (AppTokens, "GET", {}, {}, "freshuser", 200),
     (AppTokens, "GET", {}, {}, "reader", 200),
@@ -5740,7 +5740,7 @@ SECURITY_TESTS = [
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "devtable", 400),
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "freshuser", 403),
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "reader", 403),
-]  # type: List[Tuple[Type[ApiResource], str, Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[str], int]]
+]
 
 
 @pytest.mark.parametrize("resource,method,params,body,identity,expected", SECURITY_TESTS)
