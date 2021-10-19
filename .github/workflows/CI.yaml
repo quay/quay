@@ -194,19 +194,3 @@ jobs:
         name: oci-test-results-${{ github.sha }}
         path: .report/
       if: always()
-
-  commit-check:
-    name: Commit Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: commit check
-        uses: gsactions/commit-message-checker@v1
-        with:
-          pattern: |
-            ^(.*):\s*(.*)\s(\(PROJQUAY-[0-9]+\))(\s\(#[0-9]+\))?\n(\n(\n|.)*)?$
-          error: 'Commit must begin with <scope>: <subject> (PROJQUAY-####)'
-          flags: 'gm'
-          excludeTitle: true
-          excludeDescription: true
-          checkAllCommitMessages: true
-          accessToken: ${{ secrets.GITHUB_TOKEN }}

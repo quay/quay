@@ -1,0 +1,36 @@
+name: Pull Request Lint
+
+on:
+  pull_request:
+    types: ['opened', 'edited', 'reopened', 'synchronize']
+
+jobs:
+  ticket-check:
+    name: ticket check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for ticket
+        uses: neofinancial/ticket-check-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ticketLink: 'https://issues.redhat.com/browse/PROJQUAY-%ticketNumber%'
+          ticketPrefix: 'PROJQUAY-'
+          titleRegex: 'PROJQUAY-(?<ticketNumber>\d+)'
+          titleFormat: '%title% (%prefix%%id%)'
+          branchRegex: 'PROJQUAY-(?<ticketNumber>\d+)'
+          bodyRegex: 'PROJQUAY-(?<ticketNumber>\d+)'
+          bodyURLRegex: 'http(s?):\/\/(issues.redhat.com)(\/browse)\/(PROJQUAY\-)(?<ticketNumber>\d+)'
+          exemptUsers: 'dependabot'
+
+  conventional-commit:
+    runs-on: ubuntu-latest
+    name: conventional commit check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: check conventional commit
+        id: check-for-cc
+        uses: agenthunt/conventional-commit-checker-action@v1.0.0
+        with:
+          pr-body-regex: '(.*)?'
