@@ -1,5 +1,6 @@
 from flask import _request_ctx_stack
 
+
 def get_authenticated_context():
     """
     Returns the auth context for the current request context, if any.

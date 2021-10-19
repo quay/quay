@@ -55,7 +55,16 @@ TRIGGER_PARAMS = {"repository": "devtable/simple", "trigger_uuid": "someuuid"}
 MANIFEST_PARAMS = {"repository": "devtable/simple", "manifestref": "sha256:deadbeef"}
 EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
 
-SECURITY_TESTS: List[Tuple[Type[ApiResource], str, Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[str], int]] = [
+SECURITY_TESTS: List[
+    Tuple[
+        Type[ApiResource],
+        str,
+        Optional[Dict[str, Any]],
+        Optional[Dict[str, Any]],
+        Optional[str],
+        int,
+    ]
+] = [
     (AppTokens, "GET", {}, {}, None, 401),
     (AppTokens, "GET", {}, {}, "freshuser", 200),
     (AppTokens, "GET", {}, {}, "reader", 200),

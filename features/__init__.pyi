@@ -67,7 +67,6 @@ DIRECT_LOGIN: FeatureNameValue
 # Feature Flag: Whether the v2/ endpoint is visible
 ADVERTISE_V2: FeatureNameValue
 
-
 # Feature Flag: Whether to restrict V1 pushes to the whitelist.
 RESTRICTED_V1_PUSH: FeatureNameValue
 
