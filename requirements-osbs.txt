@@ -30,7 +30,7 @@ chardet==3.0.4
 click==7.1.2
 cnr-server @ git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b
 cookies==2.2.1
-cryptography==2.8
+cryptography==3.3.2
 DateTime==4.3
 debtcollector==1.22.0
 decorator==4.4.1
