@@ -1992,8 +1992,8 @@ class RepoMirrorConfig(BaseModel):
         backref="mirrorpullrobot",
     )
     external_reference = CharField()
-    external_registry_username = EncryptedCharField(max_length=2048, null=True)
-    external_registry_password = EncryptedCharField(max_length=2048, null=True)
+    external_registry_username = EncryptedCharField(max_length=4096, null=True)
+    external_registry_password = EncryptedCharField(max_length=4096, null=True)
     external_registry_config = JSONField(default={})
 
     # Worker Queuing
