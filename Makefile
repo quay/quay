@@ -17,26 +17,6 @@ show-modified:
 
 all: clean pkgs test build
 
-pkgs: requirements.txt requirements-dev.txt
-	pip install -r $<
-
-requirements.txt: requirements-nover.txt
-	# Create a new virtualenv and activate it
-	pyenv virtualenv 2.7.12 quay-deps
-	pyenv activate quay-deps
-
-	# Install unversioned dependencies with your changes
-	pip install -r requirements-nover.txt
-
-	# Run the unit test suite
-	$(MAKE) unit
-
-	# Freeze the versions of all of the dependencies
-	pip freeze > requirements.txt
-
-	# Delete the virtualenv
-	pyenv uninstall quay-deps
-
 QUAY_CONFIG ?= ../quay-config
 conf/stack/license: $(QUAY_CONFIG)/local/license
 	mkdir -p conf/stack
