@@ -8,9 +8,8 @@ from io import BytesIO
 from enum import Enum, unique
 from six import add_metaclass
 
-if TYPE_CHECKING:
-    from test.registry.protocol_v1 import V1ProtocolSteps
-    from test.registry.protocol_v2 import V2ProtocolSteps
+from test.registry.protocol_v1 import V1ProtocolSteps
+from test.registry.protocol_v2 import V2ProtocolSteps
 
 from image.docker.schema2 import EMPTY_LAYER_BYTES
 
