@@ -13,29 +13,9 @@ MODIFIED_FILES = $(shell git diff --name-only $(GIT_MERGE_BASED) | grep -E .+\.p
 show-modified:
 	echo $(MODIFIED_FILES)
 
-.PHONY: all unit-test registry-test registry-test-old buildman-test test pkgs build run clean
+.PHONY: all unit-test registry-test registry-test-old buildman-test test build run clean
 
-all: clean pkgs test build
-
-pkgs: requirements.txt requirements-dev.txt
-	pip install -r $<
-
-requirements.txt: requirements-nover.txt
-	# Create a new virtualenv and activate it
-	pyenv virtualenv 2.7.12 quay-deps
-	pyenv activate quay-deps
-
-	# Install unversioned dependencies with your changes
-	pip install -r requirements-nover.txt
-
-	# Run the unit test suite
-	$(MAKE) unit
-
-	# Freeze the versions of all of the dependencies
-	pip freeze > requirements.txt
-
-	# Delete the virtualenv
-	pyenv uninstall quay-deps
+all: clean test build
 
 QUAY_CONFIG ?= ../quay-config
 conf/stack/license: $(QUAY_CONFIG)/local/license
@@ -125,7 +105,7 @@ $(DIST): $(GRUNT)
 
 build: $(WEBPACK) $(GRUNT)
 
-docker-build: pkgs build
+docker-build: build
 	ifneq (0,$(shell git status --porcelain | awk 'BEGIN {print $N}'))
 	echo 'dirty build not supported - run `FORCE=true make clean` to remove'
 	exit 1
