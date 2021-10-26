@@ -11,7 +11,7 @@ Authlib==1.0.0a1
 aws-sam-translator==1.20.1
 azure-core==1.8.0
 azure-storage-blob==12.4.0
-Babel==2.8.0
+Babel==2.9.1
 bcrypt==3.1.7
 beautifulsoup4==4.8.2
 bintrees==2.1.0
