@@ -4,7 +4,7 @@ from config import build_requests_session
 from util.config import URLSchemeAndHostname
 from util.config.validator import ValidatorContext
 from util.config.validators.validate_secscan import SecurityScannerValidator
-from util.secscan.fake import fake_security_scanner
+from util.secscan.v4.fake import fake_security_scanner
 
 from test.fixtures import *
 
@@ -36,7 +36,7 @@ def test_validate_noop(unvalidated_config, app):
                 "TESTING": True,
                 "DISTRIBUTED_STORAGE_PREFERENCE": [],
                 "FEATURE_SECURITY_SCANNER": True,
-                "SECURITY_SCANNER_ENDPOINT": "http://invalidhost",
+                "SECURITY_SCANNER_V4_ENDPOINT": "http://invalidhost",
             },
             Exception,
         ),
@@ -45,7 +45,7 @@ def test_validate_noop(unvalidated_config, app):
                 "TESTING": True,
                 "DISTRIBUTED_STORAGE_PREFERENCE": [],
                 "FEATURE_SECURITY_SCANNER": True,
-                "SECURITY_SCANNER_ENDPOINT": "http://fakesecurityscanner",
+                "SECURITY_SCANNER_V4_ENDPOINT": "http://fakesecurityscanner",
             },
             None,
         ),

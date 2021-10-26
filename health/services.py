@@ -51,25 +51,6 @@ def _check_gunicorn(endpoint):
     return fn
 
 
-def _check_jwt_proxy(app):
-    """
-    Returns the status of JWT proxy in the container.
-    """
-    client = app.config["HTTPCLIENT"]
-    # FIXME(alecmerdler): This is no longer behind jwtproxy...
-    registry_url = _compute_internal_endpoint(app, "secscan")
-    try:
-        status_code = client.get(registry_url, verify=False, timeout=2).status_code
-        okay = status_code == 403
-        return (
-            okay,
-            ("Got non-403 response for JWT proxy: %s" % status_code) if not okay else None,
-        )
-    except Exception as ex:
-        logger.exception("Exception when checking jwtproxy health: %s", registry_url)
-        return (False, "Exception when checking jwtproxy health: %s" % registry_url)
-
-
 def _check_database(app):
     """
     Returns the status of the database, as accessed from this instance.
@@ -181,8 +162,6 @@ _INSTANCE_SERVICES = {
     "web_gunicorn": _check_gunicorn("_internal_ping"),
     "service_key": _check_service_key,
     "disk_space": _check_disk_space(for_warning=False),
-    # https://issues.redhat.com/browse/PROJQUAY-1193
-    # "jwtproxy": _check_jwt_proxy, TODO: remove with removal of jwtproxy in container
 }
 
 _GLOBAL_SERVICES = {

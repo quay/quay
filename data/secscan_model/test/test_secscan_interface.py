@@ -3,7 +3,6 @@ import pytest
 from mock import patch, Mock
 
 from data.secscan_model.datatypes import ScanLookupStatus, SecurityInformationLookupResult
-from data.secscan_model.secscan_v2_model import V2SecurityScanner, ScanToken as V2ScanToken
 from data.secscan_model.secscan_v4_model import (
     V4SecurityScanner,
     IndexReportState,
@@ -24,8 +23,8 @@ from app import app, instance_keys, storage
     [
         (False, False, ScanLookupStatus.NOT_YET_INDEXED),
         (False, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
-        (True, False, ScanLookupStatus.FAILED_TO_INDEX),
-        (True, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
+        # (True, False, ScanLookupStatus.FAILED_TO_INDEX),
+        # (True, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
     ],
 )
 def test_load_security_information(indexed_v2, indexed_v4, expected_status, initialized_db):
@@ -72,7 +71,6 @@ def test_load_security_information(indexed_v2, indexed_v4, expected_status, init
         (None, V4ScanToken(56), None),
         (V4ScanToken(None), V4ScanToken(56), AssertionError),
         (V4ScanToken(1), V4ScanToken(56), None),
-        (V2ScanToken(158), V4ScanToken(56), AssertionError),
     ],
 )
 def test_perform_indexing(next_token, expected_next_token, expected_error, initialized_db):

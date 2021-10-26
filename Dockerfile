@@ -74,15 +74,6 @@ RUN set -ex\
 	; npm run --quiet build\
 	;
 
-# Jwtproxy grabs jwtproxy.
-FROM registry.access.redhat.com/ubi8/ubi:latest AS jwtproxy
-ENV OS=linux ARCH=amd64
-ARG JWTPROXY_VERSION=0.0.3
-RUN set -ex\
-	; curl -fsSL -o /usr/local/bin/jwtproxy "https://github.com/coreos/jwtproxy/releases/download/v${JWTPROXY_VERSION}/jwtproxy-${OS}-${ARCH}"\
-	; chmod +x /usr/local/bin/jwtproxy\
-	;
-
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
 ENV OS=linux ARCH=amd64
@@ -137,7 +128,6 @@ RUN set -ex\
 WORKDIR $QUAYDIR
 RUN mkdir ${QUAYDIR}/config_app
 # Ordered from least changing to most changing.
-COPY --from=jwtproxy /usr/local/bin/jwtproxy /usr/local/bin/jwtproxy
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin

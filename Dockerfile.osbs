@@ -31,9 +31,6 @@ RUN cd source/config-tool && \
     go mod vendor && \
     go build ./cmd/config-tool
 
-RUN cd source/jwtproxy && \
-    go build ./cmd/jwtproxy
-
 RUN cd source/pushgateway && \
     go mod vendor && \
     go build
@@ -73,7 +70,6 @@ COPY --from=build-npm $PIP_CERT $PIP_CERT
 RUN cp -Rp $REMOTE_SOURCE_DIR/app/source/quay/* $QUAYDIR
 
 COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/config-tool/config-tool /usr/local/bin/config-tool
-COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/jwtproxy/jwtproxy /usr/local/bin/jwtproxy
 COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/config-tool/pkg/lib/editor $QUAYDIR/config_app
 COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/pushgateway/pushgateway /usr/local/bin/pushgateway
 

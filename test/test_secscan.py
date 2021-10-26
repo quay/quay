@@ -3,13 +3,15 @@ import time
 import unittest
 
 from app import app, storage, url_scheme_and_hostname
+from config import build_requests_session
 from data import model
 from data.registry_model import registry_model
 from data.database import Image, ManifestLegacyImage
 from initdb import setup_database_for_testing, finished_database_for_testing
 from util.secscan.secscan_util import get_blob_download_uri_getter
-from util.secscan.api import SecurityScannerAPI, APIRequestFailure
-from util.secscan.fake import fake_security_scanner
+from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure
+from util.secscan.v4.fake import fake_security_scanner
+from util.secscan.blob import BlobURLRetriever
 from util.security.instancekeys import InstanceKeys
 
 
@@ -39,15 +41,11 @@ class TestSecurityScanner(unittest.TestCase):
         self.ctx.__enter__()
 
         instance_keys = InstanceKeys(app)
-        self.api = SecurityScannerAPI(
-            app.config,
-            storage,
-            app.config["SERVER_HOSTNAME"],
-            app.config["HTTPCLIENT"],
-            uri_creator=get_blob_download_uri_getter(
-                app.test_request_context("/"), url_scheme_and_hostname
-            ),
-            instance_keys=instance_keys,
+
+        retriever = BlobURLRetriever(storage, instance_keys, app)
+
+        self.api = ClairSecurityScannerAPI(
+            "http://fakesecurityscanner", build_requests_session(), retriever
         )
 
     def tearDown(self):
@@ -75,24 +73,22 @@ class TestSecurityScanner(unittest.TestCase):
         """
         Test for basic retrieval of layers from the security scanner.
         """
-
         repo_ref = registry_model.lookup_repository(ADMIN_ACCESS_USER, SIMPLE_REPO)
         repo_tag = registry_model.get_repo_tag(repo_ref, "latest")
         manifest = registry_model.get_manifest_for_tag(repo_tag)
+        layers = registry_model.list_manifest_layers(manifest, storage, True)
         registry_model.populate_legacy_images_for_testing(manifest, storage)
 
         with fake_security_scanner() as security_scanner:
             # Ensure the layer doesn't exist yet.
-            self.assertFalse(security_scanner.has_layer(security_scanner.layer_id(manifest)))
-            self.assertIsNone(self.api.get_layer_data(manifest))
+            self.assertIsNone(self.api.index_report(manifest.digest))
 
             # Add the layer.
-            security_scanner.add_layer(security_scanner.layer_id(manifest))
+            self.api.index(manifest, layers)
 
             # Retrieve the results.
-            result = self.api.get_layer_data(manifest, include_vulnerabilities=True)
+            result = self.api.vulnerability_report(manifest.digest)
             self.assertIsNotNone(result)
-            self.assertEqual(result["Layer"]["Name"], security_scanner.layer_id(manifest))
 
 
 if __name__ == "__main__":

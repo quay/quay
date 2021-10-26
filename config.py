@@ -536,15 +536,6 @@ class DefaultConfig(ImmutableConfig):
     # Replaces the SERVER_HOSTNAME as the destination for mirroring.
     REPO_MIRROR_SERVER_HOSTNAME: Optional[str] = None
 
-    # JWTProxy Settings
-    # The address (sans schema) to proxy outgoing requests through the jwtproxy
-    # to be signed
-    JWTPROXY_SIGNER = "localhost:8081"
-
-    # The audience that jwtproxy should verify on incoming requests
-    # If None, will be calculated off of the SERVER_HOSTNAME (default)
-    JWTPROXY_AUDIENCE = None
-
     # "Secret" key for generating encrypted paging tokens. Only needed to be secret to
     # hide the ID range for production (in which this value is overridden). Should *not*
     # be relied upon for secure encryption otherwise.
@@ -562,14 +553,12 @@ class DefaultConfig(ImmutableConfig):
     SERVICE_LOG_ACCOUNT_ID = None
 
     # The service key ID for the instance service.
-    # NOTE: If changed, jwtproxy_conf.yaml.jnj must also be updated.
     INSTANCE_SERVICE_KEY_SERVICE = "quay"
 
     # The location of the key ID file generated for this instance.
     INSTANCE_SERVICE_KEY_KID_LOCATION = os.path.join(CONF_DIR, "quay.kid")
 
     # The location of the private key generated for this instance.
-    # NOTE: If changed, jwtproxy_conf.yaml.jnj must also be updated.
     INSTANCE_SERVICE_KEY_LOCATION = os.path.join(CONF_DIR, "quay.pem")
 
     # This instance's service key expiration in minutes.

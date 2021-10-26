@@ -20,7 +20,6 @@ from util.security.registry_jwt import (
 
 
 DEFAULT_HTTP_HEADERS = {"Connection": "close"}
-MITM_CERT_PATH = "/conf/mitm.cert"
 TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour
 
 logger = logging.getLogger(__name__)
