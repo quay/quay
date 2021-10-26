@@ -752,7 +752,10 @@ class DefaultConfig(ImmutableConfig):
         "application/vnd.oci.image.config.v1+json": [
             "application/vnd.dev.cosign.simplesigning.v1+json"
         ],
-        "application/vnd.cncf.helm.config.v1+json": ["application/tar+gzip"],
+        "application/vnd.cncf.helm.config.v1+json": [
+            "application/tar+gzip",
+            "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
+        ],
     }
 
     # Feature Flag: Whether to allow Helm OCI content types.
