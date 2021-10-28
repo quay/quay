@@ -1,6 +1,6 @@
 # Getting Started With Quay
 
-The quickest way to get Quay and (optionally) Clair running on for development and testing purposes would be to use our [docker based local development environment](./docker-local-dev.md)
+The quickest way to get Quay and (optionally) Clair running on for development and testing purposes would be to use our [docker based local development environment](./getting-started.md#running-quay-for-development)
 
 If you'd like to understand a Quay deployment in more details continue reading...
 
