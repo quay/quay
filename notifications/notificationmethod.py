@@ -2,7 +2,7 @@ import logging
 import os.path
 import re
 import json
-import mock
+from unittest import mock
 
 import requests
 from flask_mail import Message

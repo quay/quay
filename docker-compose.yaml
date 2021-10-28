@@ -60,7 +60,7 @@ services:
   # layers to clair over localhost.
   clair:
     container_name: quay-clair
-    image: quay.io/projectquay/clair:4.0.0-rc.22
+    image: quay.io/projectquay/clair:4.3.0
     volumes:
       - "./local-dev/clair:/src/clair/"
     environment:

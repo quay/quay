@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import features
-import mock
+from unittest import mock
 
 from flask_mail import Message
 

@@ -188,6 +188,21 @@ local-dev-up:
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	docker-compose up -d quay
 
+local-docker-rebuild:
+	docker-compose up -d redis --build
+	docker-compose up -d quay-db --build
+	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	docker-compose up -d quay --build
+
+ifeq ($(CLAIR),true)
+	docker-compose up -d clair-db --build
+	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	docker-compose up -d clair --build
+else
+	@echo "Skipping Clair"
+endif
+
+
 .PHONY: local-dev-up-with-clair
 local-dev-up-with-clair:
 	make local-dev-clean
