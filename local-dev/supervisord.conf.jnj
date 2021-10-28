@@ -83,7 +83,7 @@ stderr_events_enabled = true
 [program:globalpromstats]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s
-command=gunicorn --timeout=600 -b 'unix:/tmp/globalpromstats.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.globalpromstats.globalpromstats:create_gunicorn_worker()
+command=gunicorn --timeout=600 -b 'unix:/tmp/globalpromstats.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.globalpromstats.globalpromstats:create_gunicorn_worker()'
 autostart = {{ config['globalpromstats']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true

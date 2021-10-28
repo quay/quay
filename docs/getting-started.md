@@ -33,6 +33,7 @@ Python 3.8 and earlier are currently supported.
  - Docker
  - docker-compose
  - Python 3.8
+ - Node 16.12.0
  - libmagic
 
 :exclamation: Be mindful that overriding your operating system's default Python version is not a good idea. Check out [this guide](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_basic_system_settings/assembly_installing-and-using-python_configuring-basic-system-settings) for instructions on installing Python 3 on RHEL 8, or alternatively use [pyenv](https://github.com/pyenv/pyenv#readme).
@@ -91,6 +92,14 @@ To support hot-reloading each worker was modified to run as a gunicorn worker su
 When the source code is updated and saved to disk the gunicorn worker is restarted.
 
 The front end code supports hot-reload by running `npm watch` in the background during container startup.
+
+## Container Reload
+
+The make target `local-docker-rebuild` focuses on reloading all running docker containers. By default only `quay-quay`, `quay-db` and `quay-redis` are rebuilt. `quay-clair` and `clair-db` can be included in rebuild by passing an optional `CLAIR` variable. 
+
+```
+CLAIR=true make local-docker-rebuild
+```
 
 ## Troubleshooting
 
