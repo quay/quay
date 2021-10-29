@@ -113,8 +113,8 @@
         "Version": "9.0.1",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "The pip package before 19.2 for Python allows Directory Traversal when a URL is given in an install command, because a Content-Disposition header can have ../ in a filename, as demonstrated by overwriting the /root/.ssh/authorized_keys file. This occurs in _download_http_url in _internal/download.py.",
@@ -134,8 +134,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "Pip 21.1 updates urllib3 to 1.26.4 to fix CVE-2021-28363. The urllib3 library 1.26.x before 1.26.4 for Python omits SSL certificate validation in some cases involving HTTPS to HTTPS proxies. The initial connection to the HTTPS proxy (if an SSLContext isn't given via proxy_config) doesn't verify the hostname of the certificate. This means certificates for different servers that still validate properly with the default urllib3 SSLContext will be silently accepted.",
@@ -164,8 +164,8 @@
         "Version": "2.2.5-r0",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20843",
             "FixedBy": "2.2.7-r0",
             "Description": "",
@@ -185,8 +185,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-15903",
             "FixedBy": "2.2.7-r1",
             "Description": "",
@@ -285,8 +285,8 @@
         "Version": "4.0.1",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "mitmproxy before 4.0.3 does not protect mitmweb against DNS rebinding.",
@@ -306,8 +306,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "mitmproxy before 4.0.4 does not protect mitmweb against DNS rebinding.",
@@ -328,7 +328,7 @@
           },
           {
             "Severity": "Unknown",
-            "NamespaceName": "",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "Mitmproxy 5.0 fixes command injection vulnerabilities when exporting flows as curl/httpie commands. It also does not echo unsanitized user input in HTTP error responses.",
@@ -497,8 +497,8 @@
         "Version": "1.0.2o-r0",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Medium",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1559",
             "FixedBy": "1.0.2r-r0",
             "Description": "",
@@ -518,8 +518,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Medium",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1547",
             "FixedBy": "1.0.2t-r0",
             "Description": "",
@@ -539,8 +539,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Low",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-1563",
             "FixedBy": "1.0.2t-r0",
             "Description": "",
@@ -560,8 +560,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0732",
             "FixedBy": "1.0.2o-r1",
             "Description": "",
@@ -581,8 +581,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Medium",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0737",
             "FixedBy": "1.0.2o-r1",
             "Description": "",
@@ -602,8 +602,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Medium",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-0734",
             "FixedBy": "1.0.2q-r0",
             "Description": "",
@@ -623,8 +623,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Medium",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-5407",
             "FixedBy": "1.0.2q-r0",
             "Description": "",
@@ -723,8 +723,8 @@
         "Version": "3.6.3-r9",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1060",
             "FixedBy": "3.6.5-r0",
             "Description": "",
@@ -744,8 +744,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-1061",
             "FixedBy": "3.6.5-r0",
             "Description": "",
@@ -765,8 +765,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-14647",
             "FixedBy": "3.6.8-r0",
             "Description": "",
@@ -786,8 +786,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20406",
             "FixedBy": "3.6.8-r0",
             "Description": "",
@@ -807,8 +807,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Critical",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-9636",
             "FixedBy": "3.6.8-r0",
             "Description": "",
@@ -828,8 +828,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-16056",
             "FixedBy": "3.6.8-r1",
             "Description": "",
@@ -849,8 +849,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Medium",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-16935",
             "FixedBy": "3.6.9-r1",
             "Description": "",
@@ -940,7 +940,7 @@
         "Vulnerabilities": [
           {
             "Severity": "Unknown",
-            "NamespaceName": "",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "Cryptography 3.3 no longer allows loading of finite field Diffie-Hellman parameters of less than 512 bits in length. This change is to conform with an upcoming OpenSSL release that no longer supports smaller sizes. These keys were already wildly insecure and should not have been used in any application outside of testing.",
@@ -960,8 +960,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Critical",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "In the cryptography package before 3.3.2 for Python, certain sequences of update calls to symmetrically encrypt multi-GB values could result in an integer overflow and buffer overflow, as demonstrated by the Fernet class. See CVE-2020-36242.",
@@ -981,8 +981,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Medium",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "Cryptography 3.2 was released with the warning that its maintainers became aware of a Bleichenbacher vulnerability that they were only partly able to mitigate. See: CVE-2020-25659.",
@@ -1002,8 +1002,8 @@
             }
           },
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "High",
+            "NamespaceName": "pyupio",
             "Link": "",
             "FixedBy": "",
             "Description": "python-cryptography versions >=1.9.0 and <2.3 did not enforce a minimum tag length for finalize_with_tag API. If a user did not validate the input length prior to passing it to finalize_with_tag an attacker could craft an invalid payload with a shortened tag (e.g. 1 byte) such that they would have a 1 in 256 chance of passing the MAC check. GCM tag forgeries can cause key leakage.",
@@ -1062,8 +1062,8 @@
         "Version": "1.1.18-r3",
         "Vulnerabilities": [
           {
-            "Severity": "Unknown",
-            "NamespaceName": "",
+            "Severity": "Critical",
+            "NamespaceName": "alpine-main-v3.7-updater",
             "Link": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-14697",
             "FixedBy": "1.1.18-r4",
             "Description": "",
