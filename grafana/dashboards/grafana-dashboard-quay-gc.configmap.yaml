@@ -1,0 +1,1990 @@
+apiVersion: v1
+data:
+  quay-gc.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "description": "",
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 3,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "datasource": "$datasource",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 23,
+          "panels": [],
+          "title": "GC metrics",
+          "type": "row"
+        },
+        {
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "id": 25,
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "7.2.1",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Rows deleted",
+          "type": "gauge"
+        },
+        {
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 12,
+            "x": 12,
+            "y": 1
+          },
+          "id": 44,
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "7.2.1",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_iterations_total{process_name=\"gcworker.py\"})",
+              "interval": "",
+              "legendFormat": "gcworker iterations",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_repos_purged_total{process_name=~\"repositorygcworker.py|namespacegcworker.py\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repos purged",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_namespaces_purged_total{process_name=\"namespacegcworker.py\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespaces purged",
+              "refId": "C"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Workers",
+          "type": "gauge"
+        },
+        {
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 12,
+            "y": 6
+          },
+          "id": 63,
+          "options": {
+            "displayMode": "lcd",
+            "orientation": "horizontal",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showUnfilled": true,
+            "text": {}
+          },
+          "pluginVersion": "7.2.1",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(rate(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\"}[15m]))",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(rate(quay_gc_table_rows_deleted_total{process_name=~\"repositorygcworker.py\"}[15m]))",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(rate(quay_gc_table_rows_deleted_total{process_name=~\"namespacegcworker.py\"}[15m]))",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Rows deleted per second [15m]",
+          "type": "bargauge"
+        },
+        {
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 18,
+            "y": 6
+          },
+          "id": 105,
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "7.2.1",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_storage_blobs_deleted_total{process_name=~\"namespacegcworker.py|repositorygcworker.py|gcworker.py\"})",
+              "interval": "",
+              "legendFormat": "storage blobs deleted",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Storage blobs deleted",
+          "type": "gauge"
+        },
+        {
+          "aliasColors": {},
+          "bars": true,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 11
+          },
+          "hiddenSeries": false,
+          "id": 82,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": false,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "max(quay_queue_items_locked{queue_name=\"namespacegc\"})",
+              "interval": "",
+              "legendFormat": "locked",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "max(quay_queue_items_available{queue_name=\"namespacegc\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "available",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "max(quay_queue_items_available_unlocked{queue_name=\"namespacegc\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "available unlocked",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Namespace GC queue",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "string",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": true,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 11
+          },
+          "hiddenSeries": false,
+          "id": 84,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": false,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "max(quay_queue_items_locked{queue_name=\"repositorygc\"})",
+              "interval": "",
+              "legendFormat": "locked",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "max(quay_queue_items_available{queue_name=\"repositorygc\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "available",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "max(quay_queue_items_available_unlocked{queue_name=\"repositorygc\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "available unlocked",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Repository GC queue",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "string",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "collapsed": false,
+          "datasource": "$datasource",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "id": 4,
+          "panels": [],
+          "title": "Table rows deleted",
+          "type": "row"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 20
+          },
+          "hiddenSeries": false,
+          "id": 2,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeat": "tables",
+          "repeatDirection": "h",
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "ApprTag",
+              "value": "ApprTag"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 20
+          },
+          "hiddenSeries": false,
+          "id": 106,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "ImageStorage",
+              "value": "ImageStorage"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 20
+          },
+          "hiddenSeries": false,
+          "id": 107,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "ImageStoragePlacement",
+              "value": "ImageStoragePlacement"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 28
+          },
+          "hiddenSeries": false,
+          "id": 108,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "ImageStorageSignature",
+              "value": "ImageStorageSignature"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 28
+          },
+          "hiddenSeries": false,
+          "id": 109,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "Label",
+              "value": "Label"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 28
+          },
+          "hiddenSeries": false,
+          "id": 110,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "Manifest",
+              "value": "Manifest"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 36
+          },
+          "hiddenSeries": false,
+          "id": 111,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "ManifestBlob",
+              "value": "ManifestBlob"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 36
+          },
+          "hiddenSeries": false,
+          "id": 112,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "ManifestChild",
+              "value": "ManifestChild"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 36
+          },
+          "hiddenSeries": false,
+          "id": 113,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "ManifestLabel",
+              "value": "ManifestLabel"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "fill": 6,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 44
+          },
+          "hiddenSeries": false,
+          "id": 114,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "maxPerRow": 3,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.2.1",
+          "pointradius": 2,
+          "points": false,
+          "renderer": "flot",
+          "repeatDirection": "h",
+          "repeatIteration": 1618513262655,
+          "repeatPanelId": 2,
+          "scopedVars": {
+            "tables": {
+              "selected": true,
+              "text": "Tag",
+              "value": "Tag"
+            }
+          },
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"gcworker.py\", table=\"$tables\"})",
+              "interval": "",
+              "legendFormat": "gcworker",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"repositorygcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "repositorygcworker",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum(quay_gc_table_rows_deleted_total{process_name=\"namespacegcworker.py\", table=\"$tables\"})",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "namespacegcworker",
+              "refId": "C"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "$tables",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 10,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 26,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "tags": [],
+              "text": [
+                "ApprTag",
+                "ImageStorage",
+                "ImageStoragePlacement",
+                "ImageStorageSignature",
+                "Label",
+                "Manifest",
+                "ManifestBlob",
+                "ManifestChild",
+                "ManifestLabel",
+                "Tag"
+              ],
+              "value": [
+                "ApprTag",
+                "ImageStorage",
+                "ImageStoragePlacement",
+                "ImageStorageSignature",
+                "Label",
+                "Manifest",
+                "ManifestBlob",
+                "ManifestChild",
+                "ManifestLabel",
+                "Tag"
+              ]
+            },
+            "datasource": "$datasource",
+            "definition": "label_values(quay_gc_table_rows_deleted_total, table)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "table",
+            "multi": true,
+            "name": "tables",
+            "options": [
+              {
+                "selected": false,
+                "text": "All",
+                "value": "$__all"
+              },
+              {
+                "selected": true,
+                "text": "ApprTag",
+                "value": "ApprTag"
+              },
+              {
+                "selected": false,
+                "text": "DerivedStorageForImage",
+                "value": "DerivedStorageForImage"
+              },
+              {
+                "selected": false,
+                "text": "Image",
+                "value": "Image"
+              },
+              {
+                "selected": true,
+                "text": "ImageStorage",
+                "value": "ImageStorage"
+              },
+              {
+                "selected": true,
+                "text": "ImageStoragePlacement",
+                "value": "ImageStoragePlacement"
+              },
+              {
+                "selected": true,
+                "text": "ImageStorageSignature",
+                "value": "ImageStorageSignature"
+              },
+              {
+                "selected": true,
+                "text": "Label",
+                "value": "Label"
+              },
+              {
+                "selected": true,
+                "text": "Manifest",
+                "value": "Manifest"
+              },
+              {
+                "selected": true,
+                "text": "ManifestBlob",
+                "value": "ManifestBlob"
+              },
+              {
+                "selected": true,
+                "text": "ManifestChild",
+                "value": "ManifestChild"
+              },
+              {
+                "selected": true,
+                "text": "ManifestLabel",
+                "value": "ManifestLabel"
+              },
+              {
+                "selected": false,
+                "text": "ManifestLegacyImage",
+                "value": "ManifestLegacyImage"
+              },
+              {
+                "selected": false,
+                "text": "ManifestSecurityStatus",
+                "value": "ManifestSecurityStatus"
+              },
+              {
+                "selected": false,
+                "text": "RepositoryTag",
+                "value": "RepositoryTag"
+              },
+              {
+                "selected": true,
+                "text": "Tag",
+                "value": "Tag"
+              },
+              {
+                "selected": false,
+                "text": "TagManifest",
+                "value": "TagManifest"
+              },
+              {
+                "selected": false,
+                "text": "TagManifestLabelMap",
+                "value": "TagManifestLabelMap"
+              },
+              {
+                "selected": false,
+                "text": "TagManifestToManifest",
+                "value": "TagManifestToManifest"
+              },
+              {
+                "selected": false,
+                "text": "TagToRepositoryTag",
+                "value": "TagToRepositoryTag"
+              },
+              {
+                "selected": false,
+                "text": "TorrentInfo",
+                "value": "TorrentInfo"
+              }
+            ],
+            "query": {
+              "query": "label_values(quay_gc_table_rows_deleted_total, table)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 0,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          },
+          {
+            "hide": 0,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": ".*quay.*",
+            "skipUrlSync": false,
+            "type": "datasource"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "GC",
+      "uid": "",
+      "version": 1
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-quay-gc
+  labels:
+    grafana_dashboard: "true"
+  annotations:
+    grafana-folder: /grafana-dashboard-definitions/QuayIO
