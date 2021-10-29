@@ -1,6 +1,16 @@
 ## Red Hat Quay Release Notes
 (Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
 
+<a name="v3.6.1"></a>
+## [v3.6.1] - 2021-10-27
+### Chore
+- [b016844](https://github.com/quay/quay/commit/b016844a0ff4b78bc03722b52fcd93efef57e7ce): chore: build and publish workflow (PROJQUAY-2556) ([#914](https://github.com/quay/quay/issues/914))
+### Requirements
+- [1f9a9ae](https://github.com/quay/quay/commit/1f9a9aeecd987539bc20017f762590ce20dc7bd5): requirements: bump cryptography package version (PROJQUAY-2614) ([#940](https://github.com/quay/quay/issues/940))
+### Oci
+- [3b13ccd](https://github.com/quay/quay/commit/3b13ccd4f190f1fce40d27c15a4146f47dfcc4d1): oci: Accept the stricter oci layer type used by default in Helm 3.7 (PROJQUAY-2653) ([#922](https://github.com/quay/quay/issues/922))
+### Secscan
+- [1b06153](https://github.com/quay/quay/commit/1b0615341348aafc6ba2776ea90e84e4a6d175e4): continue iterating after failure (PROJQUAY-2563) ([#894](https://github.com/quay/quay/issues/894))
 
 <a name="v3.6.0"></a>
 ## [v3.6.0] - 2021-09-29
@@ -153,7 +163,8 @@ namespace.
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.6.0...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.6.1...HEAD
+[v3.6.1]: https://github.com/quay/quay/compare/v3.6.0-alpha.9...v3.6.1
 [v3.6.0]: https://github.com/quay/quay/compare/v3.6.0-alpha.9...v3.6.0
 [v3.6.0-alpha.9]: https://github.com/quay/quay/compare/v3.6.0-alpha.8...v3.6.0-alpha.9
 [v3.6.0-alpha.8]: https://github.com/quay/quay/compare/v3.6.0-alpha.7...v3.6.0-alpha.8
