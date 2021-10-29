@@ -757,6 +757,9 @@ class DefaultConfig(ImmutableConfig):
             "application/tar+gzip",
             "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
         ],
+        "application/vnd.oci.source.image.config.v1+json": [
+            "application/vnd.oci.image.layer.v1.tar+gzip"
+        ],
     }
 
     # Feature Flag: Whether to allow Helm OCI content types.
