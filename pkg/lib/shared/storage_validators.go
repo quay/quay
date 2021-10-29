@@ -174,6 +174,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accessKey = args.AccessKey
 		secretKey = args.SecretKey
 		endpoint = "storage.googleapis.com"
+		isSecure = true
 		bucketName = args.BucketName
 
 		if len(errors) > 0 {
