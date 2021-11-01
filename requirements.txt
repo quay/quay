@@ -101,7 +101,7 @@ pathspec==0.7.0
 pathvalidate==2.0.1
 pbr==5.4.4
 peewee==3.13.1
-Pillow==8.3.1
+Pillow==8.3.2
 ply==3.11
 prometheus-client==0.7.1
 protobuf==3.12.2
