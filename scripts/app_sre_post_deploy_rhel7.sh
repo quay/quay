@@ -13,9 +13,9 @@ GIT_HASH=`git rev-parse --short=7 HEAD`
 
 # push the image to backup repository
 skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
-    "docker-daemon:${IMG}" \
+    "docker-archive:${BASE_IMG}" \
     "docker://${BACKUP_IMAGE}:latest"
 
 skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
-    "docker-daemon:${IMG}" \
+    "docker-archive:${BASE_IMG}" \
     "docker://${BACKUP_IMAGE}:${GIT_HASH}"
