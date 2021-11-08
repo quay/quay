@@ -27,5 +27,3 @@ skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
     "docker-archive:${BASE_IMG}" \
     "docker://${QUAY_IMAGE}:${GIT_HASH}"
 
-# remove the archived image
-rm ${BASE_IMG}

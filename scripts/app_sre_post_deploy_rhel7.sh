@@ -19,3 +19,6 @@ skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
 skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
     "docker-archive:${BASE_IMG}" \
     "docker://${BACKUP_IMAGE}:${GIT_HASH}"
+
+# remove the archived image
+rm ${BASE_IMG}
