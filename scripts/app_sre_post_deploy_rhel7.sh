@@ -6,7 +6,7 @@ set -exv
 
 BASE_IMG="quay-py3"
 IMG="${BASE_IMG}:latest"
-BACKUP_BASE_IMG="quayio-backup"
+BACKUP_BASE_IMG="quayio-py3-backup"
 BACKUP_IMAGE="${BACKUP_URL}/${BACKUP_BASE_IMG}"
 
 GIT_HASH=`git rev-parse --short=7 HEAD`
