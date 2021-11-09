@@ -405,7 +405,7 @@ parameters:
     displayName: syslog-cloudwatch-bridge image
     description: syslog-cloudwatch-bridge docker image.
   - name: SYSLOG_IMAGE_TAG
-    value: "latest"
+    value: ""
     displayName: syslog-cloudwatch-bridge version
     description: syslog-cloudwatch-bridge version
   - name: AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT
