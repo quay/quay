@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from util.config.provider.baseprovider import BaseProvider
 
-REAL_FILES = ["test/data/signing-private.gpg", "test/data/signing-public.gpg", "test/data/test.pem"]
+REAL_FILES = ["test/data/test.pem"]
 
 
 class TestConfigProvider(BaseProvider):
