@@ -54,10 +54,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		if ok, err := ValidateRequiredString(args.BucketName, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".bucket_name", fgName); !ok {
 			errors = append(errors, err)
 		}
-		// Check bucket name
-		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
-			errors = append(errors, err)
-		}
 
 		// Grab necessary variables
 		accessKey = args.AccessKey
@@ -92,10 +88,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 		// Check bucket name
 		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
-			errors = append(errors, err)
-		}
-		// Check storage path
-		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -166,10 +158,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		if ok, err := ValidateRequiredString(args.BucketName, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".bucket_name", fgName); !ok {
 			errors = append(errors, err)
 		}
-		// Check storage path
-		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
-			errors = append(errors, err)
-		}
 
 		accessKey = args.AccessKey
 		secretKey = args.SecretKey
@@ -189,10 +177,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 		// Check access key
 		if ok, err := ValidateRequiredString(args.AzureContainer, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".azure_container", fgName); !ok {
-			errors = append(errors, err)
-		}
-		// Check storage path
-		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
 			errors = append(errors, err)
 		}
 		// Check account name
@@ -225,10 +209,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 		// Check bucket name
 		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
-			errors = append(errors, err)
-		}
-		// Check storage path
-		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
 			errors = append(errors, err)
 		}
 		// Check distribution domain
@@ -336,10 +316,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		}
 		// Check swift container
 		if ok, err := ValidateRequiredString(args.SwiftContainer, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".swift_container", fgName); !ok {
-			errors = append(errors, err)
-		}
-		// Check storage path
-		if ok, err := ValidateRequiredString(args.StoragePath, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_path", fgName); !ok {
 			errors = append(errors, err)
 		}
 		// Check swift user
