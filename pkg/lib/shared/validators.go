@@ -154,7 +154,7 @@ func ValidateRedisConnection(options *redis.Options, field, fgName string) (bool
 	rdb := redis.NewClient(options)
 
 	// Ping client
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
