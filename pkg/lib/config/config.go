@@ -22,7 +22,6 @@ import (
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/redis"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/repomirror"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/securityscanner"
-	"github.com/quay/config-tool/pkg/lib/fieldgroups/signingengine"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/teamsyncing"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/timemachine"
 	"github.com/quay/config-tool/pkg/lib/fieldgroups/uservisiblesettings"
@@ -42,11 +41,7 @@ func NewConfig(fullConfig map[string]interface{}) (Config, error) {
 		return newConfig, err
 	}
 	newConfig["BitbucketBuildTrigger"] = newBitbucketBuildTriggerFieldGroup
-	newSigningEngineFieldGroup, err := signingengine.NewSigningEngineFieldGroup(fullConfig)
-	if err != nil {
-		return newConfig, err
-	}
-	newConfig["SigningEngine"] = newSigningEngineFieldGroup
+
 	newElasticSearchFieldGroup, err := elasticsearch.NewElasticSearchFieldGroup(fullConfig)
 	if err != nil {
 		return newConfig, err

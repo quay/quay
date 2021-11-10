@@ -940,47 +940,6 @@
       "ct-validate": "",
       "ct-fieldgroups": ["Redis"]
     },
-    "SIGNING_ENGINE": {
-      "x-example": "gpg2",
-      "enum": ["gpg2"],
-      "type": "string",
-      "description": "The singing engine to use for signing ACIs.",
-      "ct-default": "",
-      "ct-validate": "",
-      "ct-fieldgroups": ["SigningEngine"]
-    },
-    "FEATURE_SIGNING": {
-      "x-example": "false",
-      "type": "boolean",
-      "description": "Whether or not to use the singing engine to use for signing ACIs.",
-      "ct-default": "false",
-      "ct-validate": "",
-      "ct-fieldgroups": ["SigningEngine"]
-    },
-    "GPG2_PRIVATE_KEY_NAME": {
-      "x-example": "gpg2key",
-      "type": "string",
-      "description": "The name of the private key used to sign ACIs.",
-      "ct-default": "",
-      "ct-validate": "",
-      "ct-fieldgroups": ["SigningEngine"]
-    },
-    "GPG2_PRIVATE_KEY_FILENAME": {
-      "x-example": "/path/to/file",
-      "type": "string",
-      "description": "The filename of the private key used to decrypte ACIs.",
-      "ct-default": "",
-      "ct-validate": "",
-      "ct-fieldgroups": ["SigningEngine"]
-    },
-    "GPG2_PUBLIC_KEY_FILENAME": {
-      "x-example": "/path/to/file",
-      "type": "string",
-      "description": "The filename of the public key used to encrypt ACIs.",
-      "ct-default": "",
-      "ct-validate": "",
-      "ct-fieldgroups": ["SigningEngine"]
-    },
     "SERVER_HOSTNAME": {
       "x-example": "quay.io",
       "type": "string",
