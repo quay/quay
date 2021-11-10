@@ -13,7 +13,6 @@ import (
 	awscredentials "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudfront"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/ncw/swift"
@@ -243,7 +242,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 			errors = append(errors, err)
 		}
 
-		sess, err := session.NewSession(&aws.Config{
+		_, err := session.NewSession(&aws.Config{
 			Credentials: awscredentials.NewStaticCredentials(accessKey, secretKey, ""),
 		})
 		if err != nil {
@@ -251,49 +250,6 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
 				FieldGroup: fgName,
 				Message:    "Could not create S3 session",
-			}
-			errors = append(errors, newError)
-			return false, errors
-		}
-
-		// Validate distribution
-		svc := cloudfront.New(sess)
-		res, err := svc.ListDistributions(&cloudfront.ListDistributionsInput{})
-		if err != nil {
-			newError := ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Could not list CloudFront distributions. Error: " + err.Error(),
-			}
-			errors = append(errors, newError)
-			return false, errors
-		}
-
-		found := false
-		for _, distribution := range res.DistributionList.Items {
-			if *distribution.DomainName == args.CloudfrontDistributionDomain {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			err = fmt.Errorf("No CloudFront distribution exists with given domain name (%s)", args.CloudfrontDistributionDomain)
-			newError := ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Could not get CloudFront distribution. Error: " + err.Error(),
-			}
-			errors = append(errors, newError)
-			return false, errors
-		}
-
-		_, err = svc.GetPublicKey(&cloudfront.GetPublicKeyInput{Id: &args.CloudfrontKeyID})
-		if err != nil {
-			newError := ValidationError{
-				Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-				FieldGroup: fgName,
-				Message:    "Could not get CloudFront public key. Error: " + err.Error(),
 			}
 			errors = append(errors, newError)
 			return false, errors
