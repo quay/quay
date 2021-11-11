@@ -107,7 +107,7 @@ RUN set -ex\
 # Config-tool builds the go binary in the configtool.
 FROM docker.io/library/golang:1.15 as config-tool
 WORKDIR /go/src/config-tool
-ARG CONFIGTOOL_VERSION=master
+ARG CONFIGTOOL_VERSION=v0.1.5
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
 COPY --from=config-editor /build/static/build  /go/src/config-tool/pkg/lib/editor/static/build
