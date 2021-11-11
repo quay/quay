@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # AppSRE team CD
-
 set -exv
 
 CURRENT_DIR=$(dirname $0)
