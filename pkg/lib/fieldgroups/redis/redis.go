@@ -77,6 +77,13 @@ func NewUserEventsRedisStruct(fullConfig map[string]interface{}) (*UserEventsRed
 		}
 	}
 
+	if value, ok := fullConfig["ssl"]; ok {
+		newUserEventsRedisStruct.Ssl, ok = value.(bool)
+		if !ok {
+			return newUserEventsRedisStruct, errors.New("ssl must be of type bool")
+		}
+	}
+
 	return newUserEventsRedisStruct, nil
 }
 
@@ -101,6 +108,13 @@ func NewBuildlogsRedisStruct(fullConfig map[string]interface{}) (*BuildlogsRedis
 		newBuildlogsRedisStruct.Host, ok = value.(string)
 		if !ok {
 			return newBuildlogsRedisStruct, errors.New("host must be of type string")
+		}
+	}
+
+	if value, ok := fullConfig["ssl"]; ok {
+		newBuildlogsRedisStruct.Ssl, ok = value.(bool)
+		if !ok {
+			return newBuildlogsRedisStruct, errors.New("ssl must be of type bool")
 		}
 	}
 
