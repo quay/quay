@@ -384,7 +384,7 @@ class FakeStripe(object):
             }
         )
 
-        ACTIVE_CUSTOMERS: Dict[str, FakeStripe] = {}
+        ACTIVE_CUSTOMERS = {}
 
         @property
         def card(self):
