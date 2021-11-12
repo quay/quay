@@ -165,7 +165,7 @@ black:
 
 .PHONY: local-dev-clean
 local-dev-clean:
-	sudo ./local-dev/scripts/clean.sh
+	./local-dev/scripts/clean.sh
 
 .PHONY: local-dev-build-frontend
 local-dev-build-frontend:
@@ -193,11 +193,13 @@ local-docker-rebuild:
 	docker-compose up -d quay-db --build
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	docker-compose up -d quay --build
+	docker-compose restart quay
 
 ifeq ($(CLAIR),true)
 	docker-compose up -d clair-db --build
 	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	docker-compose up -d clair --build
+	docker-compose restart clair
 else
 	@echo "Skipping Clair"
 endif
