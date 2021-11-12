@@ -18,12 +18,15 @@ from sqlalchemy.dialects import mysql
 
 def upgrade(op, tables, tester):
     for media_type in OCI_CONTENT_TYPES:
-        op.bulk_insert(
-            tables.mediatype,
-            [
-                {"name": media_type},
-            ],
-        )
+        try:
+            op.bulk_insert(
+                tables.mediatype,
+                [
+                    {"name": media_type},
+                ],
+            )
+        except sa.exc.IntegrityError:
+            continue
 
 
 def downgrade(op, tables, tester):
