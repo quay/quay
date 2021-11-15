@@ -799,3 +799,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Allow creation of push to public repo
     CREATE_REPOSITORY_ON_PUSH_PUBLIC = False
+
+    # Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads
+    CLEAN_BLOB_UPLOAD_FOLDER = False

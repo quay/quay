@@ -1203,5 +1203,11 @@ CONFIG_SCHEMA = {
             "description": "Whether to create a repository when pushing to an unexisting public repo",
             "x-example": False,
         },
+        # Clean partial uploads during S3 multipart upload
+        "CLEAN_BLOB_UPLOAD_FOLDER": {
+            "type": "boolean",
+            "description": "Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads",
+            "x-example": False,
+        },
     },
 }

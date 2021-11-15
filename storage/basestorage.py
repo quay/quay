@@ -90,6 +90,9 @@ class BaseStorage(StoragePaths):
     def get_checksum(self, path):
         raise NotImplementedError
 
+    def clean_partial_uploads(self, deletion_date_threshold):
+        raise NotImplementedError
+
     def stream_write_to_fp(self, in_fp, out_fp, num_bytes=READ_UNTIL_END):
         """
         Copy the specified number of bytes from the input file stream to the output stream.
