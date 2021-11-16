@@ -88,7 +88,7 @@ os-service-types==1.7.0
 pbr==5.4.4
 peewee==3.13.1
 Pillow==8.3.2
-pip==20.2.3
+pip==21.1
 pipdeptree==1.0.0
 ply==3.11
 prometheus-client==0.7.1
