@@ -1,10 +1,10 @@
 import os
+import time
 
 from io import BytesIO
 
 import pytest
 
-import moto
 import botocore.exceptions
 import boto3
 
@@ -15,11 +15,14 @@ from storage.cloud import _CloudStorage, _PartUploadMetadata
 from storage.cloud import _CHUNKS_KEY
 from storage.cloud import _build_endpoint_url
 
+from datetime import timedelta
+
 _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
 _TEST_PATH = "some/cool/path"
+_TEST_UPLOADS_PATH = "uploads/ee160658-9444-4950-8ec6-30faab40529c"
 _TEST_CONTEXT = StorageContext("nyc", None, None, None)
 
 
@@ -315,3 +318,28 @@ def test_rechunked(max_size, parts):
     assert len(rechunked) == len(parts)
     for index, chunk in enumerate(rechunked):
         assert chunk == parts[index]
+
+
+@pytest.mark.parametrize("path", ["/", _TEST_PATH])
+def test_clean_partial_uploads(storage_engine, path):
+
+    # Setup root path and add come content to _root_path/uploads
+    storage_engine._root_path = path
+    storage_engine.put_content(_TEST_UPLOADS_PATH, _TEST_CONTENT)
+    assert storage_engine.exists(_TEST_UPLOADS_PATH)
+    assert storage_engine.get_content(_TEST_UPLOADS_PATH) == _TEST_CONTENT
+
+    # Test ensure fresh blobs are not deleted
+    storage_engine.clean_partial_uploads(timedelta(days=2))
+    assert storage_engine.exists(_TEST_UPLOADS_PATH)
+    assert storage_engine.get_content(_TEST_UPLOADS_PATH) == _TEST_CONTENT
+
+    # Test deletion of stale blobs
+    time.sleep(1)
+    storage_engine.clean_partial_uploads(timedelta(seconds=0))
+    assert not storage_engine.exists(_TEST_UPLOADS_PATH)
+
+    # Test if uploads folder does not exist
+    storage_engine.remove("uploads")
+    assert not storage_engine.exists("uploads")
+    storage_engine.clean_partial_uploads(timedelta(seconds=0))
