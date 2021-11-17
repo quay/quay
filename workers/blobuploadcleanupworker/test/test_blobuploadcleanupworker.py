@@ -22,6 +22,10 @@ def test_blobuploadcleanupworker(initialized_db):
             worker = BlobUploadCleanupWorker()
             worker._cleanup_uploads()
 
+            storage_mock.locations = ["default"]
+            worker._try_clean_partial_uploads()
+
+    storage_mock.clean_partial_uploads.assert_called_once()
     storage_mock.cancel_chunked_upload.assert_called_once()
 
     # Ensure the blob no longer exists.
