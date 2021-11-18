@@ -144,11 +144,11 @@ RUN set -ex\
 	; setperms /etc/nginx\
 	; ln -sf /dev/stdout /var/log/nginx/access.log\
 	; ln -sf /dev/stdout /var/log/nginx/error.log\
-# Make a grip of runtime directories.
-	; newdir /certificates /conf/stack /datastorage\
 # The code doesn't agree on where the configuration lives, so create a
 # symlink.
 	; ln -s $QUAYCONF /conf\
+# Make a grip of runtime directories.
+	; newdir /certificates /quay-registry/conf/stack /datastorage\
 # Another Openshift-ism: it doesn't bother picking a uid that means
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
