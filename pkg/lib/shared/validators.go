@@ -458,7 +458,12 @@ func ValidateBitbucketOAuth(clientID, clientSecret string) bool {
 func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocals, autorollback bool, sslmode, sslrootcert, fgName string) error {
 
 	// Convert uri into correct format
-	uri, err := url.Parse(rawURI)
+	decodedURI, err := url.QueryUnescape(rawURI)
+	if err != nil {
+		return err
+	}
+
+	uri, err := url.Parse(decodedURI)
 	if err != nil {
 		return err
 	}
