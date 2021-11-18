@@ -14,6 +14,7 @@ import (
 	"net/smtp"
 	"net/url"
 	"os"
+	"path"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -487,7 +488,8 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		// Check if CA cert is used
 		if caCert != "" {
 			log.Debug("CA Cert provided")
-			certBytes, ok := opts.Certificates["database.pem"]
+			certKey := path.Base(caCert)
+			certBytes, ok := opts.Certificates[certKey]
 			if !ok {
 				return errors.New("Could not find database.pem in config bundle")
 			}
