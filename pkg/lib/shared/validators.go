@@ -458,19 +458,18 @@ func ValidateBitbucketOAuth(clientID, clientSecret string) bool {
 func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocals, autorollback bool, sslmode, sslrootcert, fgName string) error {
 
 	// Convert uri into correct format
-	decodedURI, err := url.PathUnescape(rawURI)
+	uri, err := url.Parse(rawURI)
 	if err != nil {
 		return err
 	}
 
-	uri, err := url.Parse(decodedURI)
+	credentials, err := url.PathUnescape(uri.User.String())
 	if err != nil {
 		return err
 	}
 
 	// Get database type
 	scheme := uri.Scheme
-	credentials := uri.User.String()
 	fullHostName := uri.Host
 	dbname := uri.Path[1:]
 	params := uri.Query()
