@@ -42,7 +42,7 @@ WORKDIR /build
 FROM build AS config-editor
 # This argument must be repeated, and should have the same default as
 # the other CONFIGTOOL_VERSION argument.
-ARG CONFIGTOOL_VERSION=v0.1.8
+ARG CONFIGTOOL_VERSION=v0.1.9
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=4 --exclude='*.go'
 RUN set -ex\
@@ -107,7 +107,7 @@ RUN set -ex\
 # Config-tool builds the go binary in the configtool.
 FROM docker.io/library/golang:1.15 as config-tool
 WORKDIR /go/src/config-tool
-ARG CONFIGTOOL_VERSION=v0.1.8
+ARG CONFIGTOOL_VERSION=v0.1.9
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
 COPY --from=config-editor /build/static/build  /go/src/config-tool/pkg/lib/editor/static/build
