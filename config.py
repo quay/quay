@@ -345,9 +345,6 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether or not to rotate old action logs to storage.
     FEATURE_ACTION_LOG_ROTATION = False
 
-    # Feature Flag: Whether to enable conversion to ACIs.
-    FEATURE_ACI_CONVERSION = False
-
     # Feature Flag: Whether to allow for "namespace-less" repositories when pulling and pushing from
     # Docker.
     FEATURE_LIBRARY_SUPPORT = True

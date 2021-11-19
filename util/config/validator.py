@@ -39,11 +39,8 @@ class ConfigValidationException(Exception):
 # Note: Only add files required for HTTPS to the SSL_FILESNAMES list.
 DB_SSL_FILENAMES = ["database.pem"]
 JWT_FILENAMES = ["jwt-authn.cert"]
-ACI_CERT_FILENAMES = ["signing-public.gpg", "signing-private.gpg"]
 LDAP_FILENAMES = [LDAP_CERT_FILENAME]
-CONFIG_FILENAMES = (
-    SSL_FILENAMES + DB_SSL_FILENAMES + JWT_FILENAMES + ACI_CERT_FILENAMES + LDAP_FILENAMES
-)
+CONFIG_FILENAMES = SSL_FILENAMES + DB_SSL_FILENAMES + JWT_FILENAMES + LDAP_FILENAMES
 CONFIG_FILE_SUFFIXES = ["-cloudfront-signing-key.pem"]
 EXTRA_CA_DIRECTORY = "extra_ca_certs"
 EXTRA_CA_DIRECTORY_PREFIX = "extra_ca_certs_"

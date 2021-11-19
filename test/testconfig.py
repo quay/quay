@@ -56,7 +56,6 @@ class TestConfig(DefaultConfig):
     LICENSE_EXPIRATION_WARNING = datetime.now() + timedelta(weeks=520)
 
     FEATURE_GITHUB_BUILD = True
-    FEATURE_ACI_CONVERSION = True
 
     CLOUDWATCH_NAMESPACE = None
 
@@ -69,12 +68,6 @@ class TestConfig(DefaultConfig):
     SECURITY_SCANNER_V4_ENDPOINT = "http://fakesecurityscanner/"
 
     FEATURE_SIGNING = True
-
-    SIGNING_ENGINE = "gpg2"
-
-    GPG2_PRIVATE_KEY_NAME = "EEB32221"
-    GPG2_PRIVATE_KEY_FILENAME = "test/data/signing-private.gpg"
-    GPG2_PUBLIC_KEY_FILENAME = "test/data/signing-public.gpg"
 
     INSTANCE_SERVICE_KEY_KID_LOCATION = "test/data/test.kid"
     INSTANCE_SERVICE_KEY_LOCATION = "test/data/test.pem"

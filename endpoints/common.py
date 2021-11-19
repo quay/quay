@@ -148,7 +148,6 @@ def render_page_template(name, route_data=None, **kwargs):
         google_anaytics_key=app.config.get("GOOGLE_ANALYTICS_KEY", ""),
         sentry_public_dsn=app.config.get("SENTRY_PUBLIC_DSN", ""),
         is_debug=str(app.config.get("DEBUGGING", False)).lower(),
-        aci_conversion=features.ACI_CONVERSION,
         has_billing=features.BILLING,
         onprem=not app.config.get("FEATURE_BILLING", False),
         contact_href=contact_href,

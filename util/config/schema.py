@@ -912,12 +912,6 @@ CONFIG_SCHEMA = {
             "description": "Whether or not to rotate old action logs to storage. Defaults to False",
             "x-example": False,
         },
-        # Feature Flag: ACI Conversion.
-        "FEATURE_ACI_CONVERSION": {
-            "type": "boolean",
-            "description": "Whether to enable conversion to ACIs. Defaults to False",
-            "x-example": False,
-        },
         # Feature Flag: Library Support.
         "FEATURE_LIBRARY_SUPPORT": {
             "type": "boolean",
