@@ -1,12 +1,8 @@
 package securityscanner
 
 import (
-	"net/url"
-
 	"github.com/quay/config-tool/pkg/lib/shared"
 )
-
-const introspectionPort = "8089"
 
 // Validate checks the configuration settings for this field group
 func (fg *SecurityScannerFieldGroup) Validate(opts shared.Options) []shared.ValidationError {
@@ -36,13 +32,6 @@ func (fg *SecurityScannerFieldGroup) Validate(opts shared.Options) []shared.Vali
 		if ok, err := shared.ValidateIsURL(fg.SecurityScannerEndpoint, "SECURITY_SCANNER_ENDPOINT", "SecurityScanner"); !ok {
 			errors = append(errors, err)
 		}
-
-		// Check that endpoint is reachable
-		if opts.Mode == "online" {
-			if ok, err := shared.ValidateHostIsReachable(opts, fg.SecurityScannerEndpoint, "SECURITY_SCANNER_ENDPOINT", "SecurityScanner"); !ok {
-				errors = append(errors, err)
-			}
-		}
 	}
 
 	// If v4 endpoint is present
@@ -55,17 +44,6 @@ func (fg *SecurityScannerFieldGroup) Validate(opts shared.Options) []shared.Vali
 		// Check endpoint is valid url
 		if ok, err := shared.ValidateIsURL(fg.SecurityScannerV4Endpoint, "SECURITY_SCANNER_V4_ENDPOINT", "SecurityScanner"); !ok {
 			errors = append(errors, err)
-		}
-
-		// Check that endpoint is reachable
-		if opts.Mode == "online" {
-			// NOTE: We validate against the introspection endpoint, because the main endpoint will refuse connections until fully initialized.
-			endpoint, _ := url.Parse(fg.SecurityScannerV4Endpoint)
-			introspectionEndpoint := endpoint.Scheme + "://" + endpoint.Hostname() + ":" + introspectionPort
-
-			if ok, err := shared.ValidateHostIsReachable(opts, introspectionEndpoint, "SECURITY_SCANNER_V4_ENDPOINT", "SecurityScanner"); !ok {
-				errors = append(errors, err)
-			}
 		}
 	}
 
