@@ -39,7 +39,6 @@ docutils==0.15.2
 dumb-init==1.2.2
 elasticsearch==7.0.4
 elasticsearch-dsl==7.0.0
-fakeredis==1.6.1
 Flask==1.1.1
 Flask-Cors==3.0.9
 Flask-Login==0.4.1
