@@ -61,6 +61,7 @@ ENV PYTHON_VERSION=3.8 \
 
 ENV QUAYDIR=/quay-registry \
     QUAYCONF=/quay-registry/conf \
+    QUAYRUN /quay-registry/conf \
     QUAYPATH="."
 
 RUN mkdir $QUAYDIR
