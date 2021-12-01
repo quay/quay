@@ -36,6 +36,8 @@ http {
         # This header must be set only for HTTPS
         add_header Strict-Transport-Security "max-age=63072000; preload";
 
+        real_ip_header X-Forwarded-For;
+
         access_log /var/log/nginx/access.log lb_logs;
     }
 
