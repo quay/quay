@@ -10,6 +10,7 @@ ENV PATH=/app/bin/:$PATH \
 	LANG=C.UTF-8
 ENV QUAYDIR /quay-registry
 ENV QUAYCONF /quay-registry/conf
+ENV QUAYRUN /quay-registry/conf
 ENV QUAYPATH $QUAYDIR
 ENV PYTHONUSERBASE /app
 ENV PYTHONPATH $QUAYPATH
@@ -163,6 +164,7 @@ RUN set -ex\
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
 	; setperms /etc/passwd\
+	; setperms /run\
 	;
 
 WORKDIR $QUAYDIR
