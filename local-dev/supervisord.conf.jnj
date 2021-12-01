@@ -2,11 +2,11 @@
 nodaemon=true
 
 [unix_http_server]
-file=%(ENV_QUAYCONF)s/supervisord.sock
+file=%(ENV_QUAYRUN)s/supervisord.sock
 user=root
 
 [supervisorctl]
-serverurl=unix:///%(ENV_QUAYCONF)s/supervisord.sock
+serverurl=unix:///%(ENV_QUAYRUN)s/supervisord.sock
 
 [rpcinterface:supervisor]
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface

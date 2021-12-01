@@ -7,6 +7,7 @@ import jinja2
 QUAYPATH = os.getenv("QUAYPATH", ".")
 QUAYDIR = os.getenv("QUAYDIR", "/")
 QUAYCONF_DIR = os.getenv("QUAYCONF", os.path.join(QUAYDIR, QUAYPATH, "conf"))
+QUAYRUN_DIR = os.getenv("QUAYRUN", QUAYCONF_DIR)
 
 QUAY_LOGGING = os.getenv("QUAY_LOGGING", "stdout")  # or "syslog"
 
