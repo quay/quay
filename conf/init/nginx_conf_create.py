@@ -126,6 +126,19 @@ def generate_rate_limiting_config(config):
     )
 
 
+def generate_http_base_config(config):
+    """
+    Generates http base config from the app config.
+    """
+    config = config or {}
+    trusted_proxy_cidr = config.get("TRUSTED_PROXY_CIDR", None)
+
+    write_config(
+        os.path.join(QUAYCONF_DIR, "nginx/http-base.conf"),
+        trusted_proxy_cidr=trusted_proxy_cidr,
+    )
+
+
 def generate_hosted_http_base_config(config):
     """
     Generates hosted http base config from the app config.
@@ -146,6 +159,7 @@ if __name__ == "__main__":
     else:
         config = None
 
+    generate_http_base_config(config)
     generate_hosted_http_base_config(config)
     generate_rate_limiting_config(config)
     generate_server_config(config)
