@@ -104,6 +104,22 @@ objects:
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-load-balancer-service
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
+  spec:
+    ports:
+    - name: https
+      protocol: TCP
+      port: ${{LOADBALANCER_SERVICE_PORT}}
+      targetPort: ${{LOADBALANCER_SERVICE_TARGET_PORT}}
+    loadBalancerIP:
+    type: LoadBalancer
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
