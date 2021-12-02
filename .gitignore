@@ -42,6 +42,5 @@ local-dev/quay.kid
 local-dev/quay.pem
 local-dev/supervisord.conf
 local-dev/__pycache__
-static/webfonts/
 supervisord.log
 supervisord.pid
