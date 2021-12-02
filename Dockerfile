@@ -80,14 +80,6 @@ RUN set -ex\
 
 # Build-static downloads the static javascript.
 FROM build-python AS build-static
-# The external library versions rarely change, do them first.
-COPY external_libraries.py _init.py ./
-RUN set -ex\
-	; mkdir -p static/{webfonts,fonts,ldn}\
-	; python3 -m external_libraries\
-	;
-# Now copy in the js and the control files.
-# As far as I can tell, this needs to be done in two steps.
 COPY --chown=0:0 static/  ./static/
 COPY --chown=0:0 *.json *.js  ./
 RUN set -ex\
