@@ -6,8 +6,6 @@ conf/stack
 dist
 dest
 node_modules
-static/ldn
-static/fonts
 static/build
 stack_local
 test/data/registry/
