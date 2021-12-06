@@ -1,6 +1,13 @@
 ## Red Hat Quay Release Notes
 (Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
 
+<a name="v3.6.2"></a>
+## [v3.6.2] - 2021-12-06
+### Security
+- [98c008e6](https://github.com/quay/quay/commit/98c008e63fbb59f5c58da4f4c7bb96a74a4ff66e): bump pillow from 8.3.1 to 8.3.2 ([#882](https://github.com/quay/quay/issues/882)) ([#958](https://github.com/quay/quay/issues/958))
+### UI
+- [0520aa7c](https://github.com/quay/quay/commit/0520aa7c49032b37e99077932566aea0e3cc75ca): Quayio nvd data UI improvements ([#957](https://github.com/quay/quay/issues/957))
+
 <a name="v3.6.1"></a>
 ## [v3.6.1] - 2021-10-27
 ### Chore
@@ -163,7 +170,8 @@ namespace.
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.6.1...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.6.2...HEAD
+[v3.6.2]: https://github.com/quay/quay/compare/v3.6.1...v3.6.2
 [v3.6.1]: https://github.com/quay/quay/compare/v3.6.0-alpha.9...v3.6.1
 [v3.6.0]: https://github.com/quay/quay/compare/v3.6.0-alpha.9...v3.6.0
 [v3.6.0-alpha.9]: https://github.com/quay/quay/compare/v3.6.0-alpha.8...v3.6.0-alpha.9
