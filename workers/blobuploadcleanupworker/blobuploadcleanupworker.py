@@ -15,7 +15,8 @@ from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
 
-DELETION_DATE_THRESHOLD = timedelta(days=2)
+threshold = app.config.get("BLOBUPLOAD_DELETION_DATE_THRESHOLD", 60 * 48)  # 2 days
+DELETION_DATE_THRESHOLD = timedelta(minutes=threshold)
 BLOBUPLOAD_CLEANUP_FREQUENCY = app.config.get("BLOBUPLOAD_CLEANUP_FREQUENCY", 60 * 60)
 LOCK_TTL = 60 * 20  # 20 minutes
 
