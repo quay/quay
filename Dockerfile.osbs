@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/rhel7:7.7
+FROM registry.access.redhat.com/rhel7:7.9-548.1638428390
 LABEL maintainer "thomasmckay@redhat.com"
 
 ENV OS=linux \
