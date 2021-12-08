@@ -170,14 +170,12 @@ def _request_start():
             suspend=False,
         )
 
+    debug_extra = {}
     x_forwarded_for = request.headers.get("X-Forwarded-For", None)
-    debug_extra = {
-        "request_id": request.request_id,
-    }
     if x_forwarded_for is not None:
         debug_extra["X-Forwarded-For"] = x_forwarded_for
 
-    logger.debug("Starting request: %s (%s)", request.request_id, request.path, extra=debug_extra)
+    logger.debug("Starting request: %s (%s) %s", request.request_id, request.path, debug_extra)
 
 
 DEFAULT_FILTER = lambda x: "[FILTERED]"
@@ -218,7 +216,7 @@ def _request_end(resp):
     if request.user_agent is not None:
         extra["user-agent"] = request.user_agent.string
 
-    logger.debug("Ending request: %s (%s)", request.request_id, request.path, extra=extra)
+    logger.debug("Ending request: %s (%s) %s", request.request_id, request.path, extra)
     return resp
 
 
