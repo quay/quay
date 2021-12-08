@@ -70,7 +70,6 @@ from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
 from util.greenlet_tracing import enable_tracing
 
-
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
 OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py")
 
@@ -171,12 +170,14 @@ def _request_start():
             suspend=False,
         )
 
-    logger.debug(
-        "Starting request: %s (%s)",
-        request.request_id,
-        request.path,
-        extra={"request_id": request.request_id},
-    )
+    x_forwarded_for = request.headers.get("X-Forwarded-For", None)
+    debug_extra = {
+        "request_id": request.request_id,
+    }
+    if x_forwarded_for is not None:
+        debug_extra["X-Forwarded-For"] = x_forwarded_for
+
+    logger.debug("Starting request: %s (%s)", request.request_id, request.path, extra=debug_extra)
 
 
 DEFAULT_FILTER = lambda x: "[FILTERED]"
@@ -223,7 +224,6 @@ def _request_end(resp):
 
 if app.config.get("GREENLET_TRACING", True):
     enable_tracing()
-
 
 root_logger = logging.getLogger()
 
@@ -319,7 +319,6 @@ else:
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
     raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
-
 
 database.configure(app.config)
 
