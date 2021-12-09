@@ -17,7 +17,6 @@ Files=(
 	'local-dev/__pycache__'
 	'/local-dev/*.sock'
 	'node_modules'
-	'static/webfonts/'
 	'static/build'
 	'supervisord.log'
 	'supervisord.pid'
