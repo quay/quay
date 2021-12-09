@@ -29,13 +29,33 @@ class BlobUploadCleanupWorker(Worker):
     def _try_cleanup_uploads(self):
         """
         Performs garbage collection on the blobupload table.
+        Will also perform garbage collection on the uploads folder in the S3 bucket,
+        if applicable.
         """
         try:
             with GlobalLock("BLOB_CLEANUP", lock_ttl=LOCK_TTL):
                 self._cleanup_uploads()
+                if app.config.get("CLEAN_BLOB_UPLOAD_FOLDER", False):
+                    self._try_clean_partial_uploads()
         except LockNotAcquiredException:
             logger.debug("Could not acquire global lock for blob upload cleanup worker")
-            return
+
+    def _try_clean_partial_uploads(self):
+        """
+        Uploads cancelled before completion leaves the possibility of untracked blobs being
+        leftover in the uploads storage folder.
+        This function cleans those blobs older than DELETION_DATE_THRESHOLD
+        """
+        try:
+            storage.clean_partial_uploads(storage.preferred_locations, DELETION_DATE_THRESHOLD)
+        except NotImplementedError:
+            if len(storage.preferred_locations) > 0:
+                logger.debug(
+                    'Cleaning partial uploads not applicable to storage location "%s"',
+                    storage.preferred_locations[0],
+                )
+            else:
+                logger.debug("No preferred locations found")
 
     def _cleanup_uploads(self):
         """
