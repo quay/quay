@@ -108,9 +108,9 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         # Make sure the token contains the given scopes (at least).
         return scopes.is_subset_string(long_scope_string, scope)
 
-    def from_authorization_code(self, client_id, full_code, scope):
-        code_name = full_code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
-        code_credential = full_code[AUTHORIZATION_CODE_PREFIX_LENGTH:]
+    def from_authorization_code(self, client_id, code, scope):
+        code_name = code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
+        code_credential = code[AUTHORIZATION_CODE_PREFIX_LENGTH:]
 
         try:
             found = (
@@ -131,13 +131,13 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
         except OAuthAuthorizationCode.DoesNotExist:
             return None
 
-    def persist_authorization_code(self, client_id, full_code, scope):
+    def persist_authorization_code(self, client_id, code, scope):
         oauth_app = OAuthApplication.get(client_id=client_id)
         data = self._generate_data_string()
 
-        assert len(full_code) >= (AUTHORIZATION_CODE_PREFIX_LENGTH * 2)
-        code_name = full_code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
-        code_credential = full_code[AUTHORIZATION_CODE_PREFIX_LENGTH:]
+        assert len(code) >= (AUTHORIZATION_CODE_PREFIX_LENGTH * 2)
+        code_name = code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
+        code_credential = code[AUTHORIZATION_CODE_PREFIX_LENGTH:]
 
         OAuthAuthorizationCode.create(
             application=oauth_app,
@@ -252,8 +252,8 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
     def from_refresh_token(self, client_id, refresh_token, scope):
         raise NotImplementedError()
 
-    def discard_authorization_code(self, client_id, full_code):
-        code_name = full_code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
+    def discard_authorization_code(self, client_id, code):
+        code_name = code[:AUTHORIZATION_CODE_PREFIX_LENGTH]
         try:
             found = (
                 OAuthAuthorizationCode.select()
