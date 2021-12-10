@@ -5,7 +5,7 @@ import boto3.session
 
 from auth.permissions import SuperUserPermission
 from flask import session
-from health.services import check_all_services, check_warning_services
+from health.services import check_all_services, check_service, check_warning_services, get_services
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,10 @@ def get_healthchecker(app, config_provider, instance_keys):
     Returns a HealthCheck instance for the given app.
     """
     return HealthCheck.get_checker(app, config_provider, instance_keys)
+
+
+def get_healthservices():
+    return get_services()
 
 
 class HealthCheck(object):
@@ -47,6 +51,14 @@ class HealthCheck(object):
         """
         service_statuses = check_all_services(self.app, [], for_instance=False)
         return self.calculate_overall_health(service_statuses)
+
+    def check_service(self, service):
+        """
+        Conducts a check on a specific service,  returning a dict representing the HealthCheck output and a
+        number indicating the health check response code.
+        """
+        service_status = check_service(self.app, service)
+        return self.calculate_overall_health(service_status)
 
     def get_instance_health(self, service_statuses):
         """

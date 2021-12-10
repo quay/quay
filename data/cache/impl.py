@@ -51,6 +51,13 @@ class DataModelCache(object):
         """
         pass
 
+    @abstractmethod
+    def validate(self, cache_key, loader, should_cache=is_not_none):
+        """
+        Checks that the cache service is accessible
+        """
+        pass
+
 
 class DisconnectWrapper(DataModelCache):
     """
@@ -75,6 +82,9 @@ class NoopDataModelCache(DataModelCache):
 
     def retrieve(self, cache_key, loader, should_cache=is_not_none):
         return loader()
+
+    def validate(self):
+        return True
 
 
 class InMemoryDataModelCache(DataModelCache):
@@ -123,6 +133,14 @@ class InMemoryDataModelCache(DataModelCache):
             logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
 
         return result
+
+    def validate(self):
+        not_found = [None]
+        self.cache.set("__validate", "pork", expires=convert_to_timedelta("5s") + datetime.now())
+        if self.cache.get("__validate", default_value=not_found) != not_found:
+            return True
+
+        return False
 
 
 _DEFAULT_MEMCACHE_TIMEOUT = 1  # second
@@ -238,6 +256,23 @@ class MemcachedModelCache(DataModelCache):
 
         return result
 
+    def validate(self):
+        not_found = [None]
+        client = self.client_pool
+        if client is not None:
+            try:
+                client.set(
+                    "__validate",
+                    "pork",
+                    expire=5,
+                )
+                if client.get("__validate", default=not_found) != not_found:
+                    return True
+            except:
+                pass
+
+        return False
+
 
 class RedisDataModelCache(DataModelCache):
     """
@@ -315,3 +350,19 @@ class RedisDataModelCache(DataModelCache):
             logger.debug("Not caching loaded result for key %s: %s", cache_key.key, result)
 
         return result
+
+    def validate(self):
+        not_found = None
+        if self.client is not None:
+            try:
+                self.client.set(
+                    "__validate",
+                    "pork",
+                    ex=5,
+                )
+                if self.client.get("__validate") != not_found:
+                    return True
+            except Exception as e:
+                pass
+
+        return False

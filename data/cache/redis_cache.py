@@ -27,10 +27,10 @@ class ReadEndpointSupportedRedis(object):
             )
 
     def get(self, key, *args, **kwargs):
-        return self.read_client(key, *args, **kwargs)
+        return self.read_client.get(key, *args, **kwargs)
 
     def set(self, key, val, *args, **kwargs):
-        return self.write_client(key, val, *args, **kwargs)
+        return self.write_client.set(key, val, *args, **kwargs)
 
     def __getattr__(self, name):
         return getattr(self.write_client, name, None)
