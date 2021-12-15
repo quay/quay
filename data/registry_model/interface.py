@@ -41,7 +41,9 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def lookup_repository(self, namespace_name, repo_name, kind_filter=None):
+    def lookup_repository(
+        self, namespace_name, repo_name, kind_filter=None, raise_on_error=False, manifest_ref=None
+    ):
         """
         Looks up and returns a reference to the repository with the given namespace and name, or
         None if none.
@@ -60,6 +62,7 @@ class RegistryDataInterface(object):
         manifest_digest,
         allow_dead=False,
         require_available=False,
+        raise_on_error=False,
     ):
         """
         Looks up the manifest with the given digest under the given repository and returns it or
@@ -192,7 +195,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_repo_tag(self, repository_ref, tag_name):
+    def get_repo_tag(self, repository_ref, tag_name, raise_on_error=False):
         """
         Returns the latest, *active* tag found in the repository, with the matching name or None if
         none.
@@ -372,7 +375,9 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
+    def get_schema1_parsed_manifest(
+        self, manifest, namespace_name, repo_name, tag_name, storage, raise_on_error=False
+    ):
         """
         Returns the schema 1 version of this manifest, or None if none.
         """
@@ -395,8 +400,22 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
+    def get_cached_repo_blob(self, model_cache, namespace_name, repo_name, blob_digest):
+        """
+        Returns the blob in the repository with the given digest if any or None if none.
+
+        Caches the result in the caching system.
+        """
+
+    @abstractmethod
     def convert_manifest(
-        self, manifest, namespace_name, repo_name, tag_name, allowed_mediatypes, storage
+        self,
+        manifest,
+        namespace_name,
+        repo_name,
+        tag_name,
+        allowed_mediatypes,
+        storage,
     ):
         """
         Attempts to convert the specified into a parsed manifest with a media type in the

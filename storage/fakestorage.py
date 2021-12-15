@@ -45,6 +45,9 @@ class FakeStorage(BaseStorageV2):
         self._fake_storage_map[path].write(content)
 
     def stream_read(self, path):
+        if not self.exists(path):
+            return None
+
         io_obj = self._fake_storage_map[path]
         io_obj.seek(0)
         while True:

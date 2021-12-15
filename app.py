@@ -11,7 +11,7 @@ from flask import Flask, request, Request
 from flask_login import LoginManager
 from flask_mail import Mail
 from flask_principal import Principal
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import HTTPException
 
 import features

@@ -12,9 +12,11 @@ from data.model import repository, namespacequota
 from digest import digest_tools
 from data.database import db_disallow_replica_use
 from data.registry_model import registry_model
+from data.model import RepositoryDoesNotExist, TagDoesNotExist, ManifestDoesNotExist
 from data.model.oci.manifest import CreateManifestException
 from data.model.oci.tag import RetargetTagException
 from endpoints.decorators import (
+    inject_registry_model,
     anon_protect,
     disallow_for_account_recovery_mode,
     parse_repository_name,
@@ -32,7 +34,11 @@ from endpoints.v2.errors import (
 )
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes
-from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE, DOCKER_SCHEMA1_CONTENT_TYPES
+from image.docker.schema1 import (
+    DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE,
+    DOCKER_SCHEMA1_CONTENT_TYPES,
+    DockerSchema1Manifest,
+)
 from image.docker.schema2 import DOCKER_SCHEMA2_CONTENT_TYPES
 from image.oci import OCI_CONTENT_TYPES
 from notifications import spawn_notification
@@ -55,14 +61,19 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read
 @anon_protect
-def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
-    repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
-    if repository_ref is None:
+@inject_registry_model()
+def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_model):
+    try:
+        repository_ref = registry_model.lookup_repository(
+            namespace_name, repo_name, raise_on_error=True, manifest_ref=manifest_ref
+        )
+    except RepositoryDoesNotExist as e:
         image_pulls.labels("v2", "tag", 404).inc()
-        raise NameUnknown()
+        raise NameUnknown(str(e))
 
-    tag = registry_model.get_repo_tag(repository_ref, manifest_ref)
-    if tag is None:
+    try:
+        tag = registry_model.get_repo_tag(repository_ref, manifest_ref, raise_on_error=True)
+    except TagDoesNotExist as e:
         if registry_model.has_expired_tag(repository_ref, manifest_ref):
             logger.debug(
                 "Found expired tag %s for repository %s/%s", manifest_ref, namespace_name, repo_name
@@ -74,7 +85,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
             raise TagExpired(msg)
 
         image_pulls.labels("v2", "tag", 404).inc()
-        raise ManifestUnknown()
+        raise ManifestUnknown(str(e))
 
     manifest = registry_model.get_manifest_for_tag(tag)
     if manifest is None:
@@ -82,9 +93,14 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
         image_pulls.labels("v2", "tag", 400).inc()
         raise ManifestInvalid()
 
-    manifest_bytes, manifest_digest, manifest_media_type = _rewrite_schema_if_necessary(
-        namespace_name, repo_name, manifest_ref, manifest
-    )
+    try:
+        manifest_bytes, manifest_digest, manifest_media_type = _rewrite_schema_if_necessary(
+            namespace_name, repo_name, manifest_ref, manifest, registry_model
+        )
+    except (ManifestException, ManifestDoesNotExist) as e:
+        image_pulls.labels("v2", "tag", 404).inc()
+        raise ManifestUnknown(str(e))
+
     if manifest_bytes is None:
         image_pulls.labels("v2", "tag", 404).inc()
         raise ManifestUnknown()
@@ -114,16 +130,23 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 @process_registry_jwt_auth(scopes=["pull"])
 @require_repo_read
 @anon_protect
-def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref):
-    repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
-    if repository_ref is None:
+@inject_registry_model()
+def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_model):
+    try:
+        repository_ref = registry_model.lookup_repository(
+            namespace_name, repo_name, raise_on_error=True, manifest_ref=manifest_ref
+        )
+    except RepositoryDoesNotExist as e:
         image_pulls.labels("v2", "manifest", 404).inc()
-        raise NameUnknown()
+        raise NameUnknown(str(e))
 
-    manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)
-    if manifest is None:
+    try:
+        manifest = registry_model.lookup_manifest_by_digest(
+            repository_ref, manifest_ref, raise_on_error=True
+        )
+    except ManifestDoesNotExist as e:
         image_pulls.labels("v2", "manifest", 404).inc()
-        raise ManifestUnknown()
+        raise ManifestUnknown(str(e))
 
     track_and_log("pull_repo", repository_ref, manifest_digest=manifest_ref)
     image_pulls.labels("v2", "manifest", 200).inc()
@@ -138,7 +161,9 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     )
 
 
-def _rewrite_schema_if_necessary(namespace_name, repo_name, tag_name, manifest):
+def _rewrite_schema_if_necessary(
+    namespace_name, repo_name, tag_name, manifest, registry_model=registry_model
+):
     # As per the Docker protocol, if the manifest is not schema version 1 and the manifest's
     # media type is not in the Accept header, we return a schema 1 version of the manifest for
     # the amd64+linux platform, if any, or None if none.
@@ -166,11 +191,8 @@ def _rewrite_schema_if_necessary(namespace_name, repo_name, tag_name, manifest):
 
     # For back-compat, we always default to schema 1 if the manifest could not be converted.
     schema1 = registry_model.get_schema1_parsed_manifest(
-        manifest, namespace_name, repo_name, tag_name, storage
+        manifest, namespace_name, repo_name, tag_name, storage, raise_on_error=True
     )
-    if schema1 is None:
-        return None, None, None
-
     return schema1.bytes, schema1.digest, schema1.media_type
 
 
@@ -230,7 +252,7 @@ def _doesnt_accept_schema_v1():
 @anon_protect
 @check_readonly
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
-    parsed = _parse_manifest()
+    parsed = _parse_manifest(request.content_type, request.data)
     return _write_manifest_and_log(namespace_name, repo_name, manifest_ref, parsed)
 
 
@@ -243,7 +265,7 @@ def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 @anon_protect
 @check_readonly
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
-    parsed = _parse_manifest()
+    parsed = _parse_manifest(request.content_type, request.data)
     if parsed.digest != manifest_ref:
         image_pushes.labels("v2", 400, "").inc()
         raise ManifestInvalid(detail={"message": "manifest digest mismatch"})
@@ -252,8 +274,9 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         return _write_manifest_and_log(namespace_name, repo_name, parsed.tag, parsed)
 
     # If the manifest is schema version 2, then this cannot be a normal tag-based push, as the
-    # manifest does not contain the tag and this call was not given a tag name. Instead, we write the
-    # manifest with a temporary tag, as it is being pushed as part of a call for a manifest list.
+    # manifest does not contain the tag and this call was not given a tag name.
+    # Instead, we write the manifest with a temporary tag, as it is being pushed
+    # as part of a call for a manifest list.
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         image_pushes.labels("v2", 404, "").inc()
@@ -282,14 +305,14 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     )
 
 
-def _parse_manifest():
-    content_type = request.content_type or DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
+def _parse_manifest(content_type, request_data):
+    content_type = content_type or DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
     if content_type == "application/json":
         # For back-compat.
         content_type = DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
 
     try:
-        return parse_manifest_from_bytes(Bytes.for_string_or_unicode(request.data), content_type)
+        return parse_manifest_from_bytes(Bytes.for_string_or_unicode(request_data), content_type)
     except ManifestException as me:
         logger.exception("failed to parse manifest when writing by tagname")
         raise ManifestInvalid(detail={"message": "failed to parse manifest: %s" % me})
@@ -332,6 +355,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 
 
 def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
+    _validate_schema1_manifest(namespace_name, repo_name, manifest_impl)
     with db_disallow_replica_use():
         repository_ref, manifest, tag = _write_manifest(
             namespace_name, repo_name, tag_name, manifest_impl
@@ -365,40 +389,9 @@ def _write_manifest_and_log(namespace_name, repo_name, tag_name, manifest_impl):
         )
 
 
-def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
-    # NOTE: These extra checks are needed for schema version 1 because the manifests
-    # contain the repo namespace, name and tag name.
-    if manifest_impl.schema_version == 1:
-        if (
-            manifest_impl.namespace == ""
-            and features.LIBRARY_SUPPORT
-            and namespace_name == app.config["LIBRARY_NAMESPACE"]
-        ):
-            pass
-        elif manifest_impl.namespace != namespace_name:
-            raise NameInvalid(
-                message="namespace name does not match manifest",
-                detail={
-                    "namespace name `%s` does not match `%s` in manifest"
-                    % (namespace_name, manifest_impl.namespace)
-                },
-            )
-
-        if manifest_impl.repo_name != repo_name:
-            raise NameInvalid(
-                message="repository name does not match manifest",
-                detail={
-                    "repository name `%s` does not match `%s` in manifest"
-                    % (repo_name, manifest_impl.repo_name)
-                },
-            )
-
-        try:
-            if not manifest_impl.layers:
-                raise ManifestInvalid(detail={"message": "manifest does not reference any layers"})
-        except ManifestException as me:
-            raise ManifestInvalid(detail={"message": str(me)})
-
+def _write_manifest(
+    namespace_name, repo_name, tag_name, manifest_impl, registry_model=registry_model
+):
     # Ensure that the repository exists.
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
@@ -426,3 +419,40 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
         raise ManifestInvalid()
 
     return repository_ref, manifest, tag
+
+
+def _validate_schema1_manifest(namespace: str, repo: str, manifest: DockerSchema1Manifest):
+    # NOTE: These extra checks are needed for schema version 1 because the manifests
+    # contain the repo namespace, name and tag name.
+    if manifest.schema_version != 1:
+        return
+
+    if (
+        manifest.namespace == ""
+        and features.LIBRARY_SUPPORT
+        and namespace == app.config["LIBRARY_NAMESPACE"]
+    ):
+        pass
+    elif manifest.namespace != namespace:
+        raise NameInvalid(
+            message="namespace name does not match manifest",
+            detail={
+                "message": "namespace name `%s` does not match `%s` in manifest"
+                % (namespace, manifest.namespace),
+            },
+        )
+
+    if manifest.repo_name != repo:
+        raise NameInvalid(
+            message="repository name does not match manifest",
+            detail={
+                "message": "repository name `%s` does not match `%s` in manifest"
+                % (repo, manifest.repo_name),
+            },
+        )
+
+    try:
+        if not manifest.layers:
+            raise ManifestInvalid(detail={"message": "manifest does not reference any layers"})
+    except ManifestException as me:
+        raise ManifestInvalid(detail={"message": str(me)})

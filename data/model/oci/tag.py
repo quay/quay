@@ -9,19 +9,14 @@ from data.database import (
     Manifest,
     ManifestLegacyImage,
     Image,
-    ImageStorage,
     MediaType,
     RepositoryTag,
     RepositoryState,
-    TagManifest,
-    TagManifestToManifest,
     get_epoch_timestamp_ms,
     db_transaction,
     Repository,
     TagToRepositoryTag,
     Namespace,
-    RepositoryNotification,
-    ExternalNotificationEvent,
     db_random_func,
 )
 from data.model import config
@@ -53,6 +48,25 @@ def get_tag_by_id(tag_id):
         return None
 
 
+def get_tag_by_manifest_id(repository_id, manifest_id):
+    """
+    Gets the tag with greatest lifetime_end_ms for the manifest with the given id,
+    regardless if the tag is alive or dead.
+
+    Retuns the tag joined with its manifest if one exists, or None otherwise.
+    """
+    try:
+        return (
+            Tag.select(Tag, Manifest)
+            .join(Manifest)
+            .where((Tag.repository_id == repository_id) & (Tag.manifest_id == manifest_id))
+            .order_by(-Tag.lifetime_end_ms)
+            .get()
+        )
+    except Tag.DoesNotExist:
+        return None
+
+
 def get_tag(repository_id, tag_name):
     """
     Returns the alive, non-hidden tag with the given name under the specified repository or None if
@@ -73,6 +87,26 @@ def get_tag(repository_id, tag_name):
         found = query.get()
         assert not found.hidden
         return found
+    except Tag.DoesNotExist:
+        return None
+
+
+def get_current_tag(repository_id, tag_name):
+    """
+    Returns the current tag with the given name for the given repository.
+
+    The current tag is the tag with the highest lifetime_end_ms, regardless of
+    the tag being expired or hidden.
+    """
+    try:
+        return (
+            Tag.select(Tag, Manifest)
+            .join(Manifest)
+            .where(Tag.repository == repository_id)
+            .where(Tag.name == tag_name)
+            .order_by(-Tag.lifetime_end_ms)
+            .get()
+        )
     except Tag.DoesNotExist:
         return None
 
@@ -343,7 +377,6 @@ def retarget_tag(
             return None
 
     now_ms = now_ms or get_epoch_timestamp_ms()
-    now_ts = int(now_ms // 1000)
 
     with db_transaction():
         # Lookup an existing tag in the repository with the same name and, if present, mark it

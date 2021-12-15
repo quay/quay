@@ -7,7 +7,7 @@ from enum import Enum, unique
 from cachetools.func import lru_cache
 
 from data import model
-from data.database import Manifest as ManifestTable
+from data.database import Manifest as ManifestTable, get_epoch_timestamp_ms
 from data.registry_model.datatype import datatype, requiresinput, optionalinput
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes, is_manifest_list_type
@@ -239,6 +239,11 @@ class Tag(
         )
 
     @property
+    def expired(self):
+        now_ms = get_epoch_timestamp_ms()
+        return self.lifetime_end_ms is not None and self.lifetime_end_ms <= now_ms
+
+    @property
     @requiresinput("manifest_row")
     def _manifest_row(self, manifest_row):
         """
@@ -330,6 +335,13 @@ class Manifest(
         return parse_manifest_from_bytes(
             self.internal_manifest_bytes, self.media_type, validate=validate
         )
+
+    @property
+    def id(self):
+        """
+        The ID of this manifest.
+        """
+        return self._db_id
 
     @property
     def is_manifest_list(self):

@@ -5815,8 +5815,9 @@ def test_all_apis_tested(app):
     for rule in app.url_map.iter_rules():
         endpoint_method = app.view_functions[rule.endpoint]
 
-        # Verify that we have a view class for this API method.
-        if not "view_class" in dir(endpoint_method):
+        # Verify that we have a view class for this API method,
+        # and that we're not testing a v2 endpoint.
+        if not "view_class" in dir(endpoint_method) or "v2" in rule.endpoint:
             continue
 
         view_class = endpoint_method.view_class

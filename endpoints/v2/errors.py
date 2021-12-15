@@ -75,8 +75,10 @@ class ManifestInvalid(V2RegistryException):
 
 
 class ManifestUnknown(V2RegistryException):
-    def __init__(self, detail=None):
-        super(ManifestUnknown, self).__init__("MANIFEST_UNKNOWN", "manifest unknown", detail, 404)
+    def __init__(self, message=None, detail=None):
+        super(ManifestUnknown, self).__init__(
+            "MANIFEST_UNKNOWN", message or "manifest unknown", detail, 404
+        )
 
 
 class TagExpired(V2RegistryException):
@@ -99,9 +101,9 @@ class NameInvalid(V2RegistryException):
 
 
 class NameUnknown(V2RegistryException):
-    def __init__(self, detail=None):
+    def __init__(self, message, detail=None):
         super(NameUnknown, self).__init__(
-            "NAME_UNKNOWN", "repository name not known to registry", detail, 404
+            "NAME_UNKNOWN", message or "repository name not known to registry", detail, 404
         )
 
 

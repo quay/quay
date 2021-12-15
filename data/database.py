@@ -1,5 +1,5 @@
 # pylint: disable=old-style-class,no-init
-
+from __future__ import annotations
 import inspect
 import logging
 import string
@@ -60,6 +60,8 @@ from util.validation import validate_postgres_precondition
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_CONNECT_TIMEOUT = 10  # seconds
+
+DEFAULT_PROXY_CACHE_EXPIRATION = 86400  # 24 hours, in seconds
 
 
 # IMAGE_NOT_SCANNED_ENGINE_VERSION is the version found in security_indexed_engine when the
@@ -2079,6 +2081,34 @@ class ManifestSecurityStatus(BaseModel):
     indexer_hash = CharField(max_length=128, index=True)
     indexer_version = ClientEnumField(IndexerVersion)
     metadata_json = JSONField(default={})
+
+
+class ProxyCacheConfig(BaseModel):
+    """
+    Represents the configuration for an organization of type proxy cache
+    """
+
+    organization = ForeignKeyField(User)
+    creation_date = DateTimeField(default=datetime.utcnow)
+    # upstream_registry is the images prefix of the cached registry
+    # i.e quay.io/myorg; docker.io
+    upstream_registry = CharField(max_length=270)
+    upstream_registry_username = EncryptedCharField(max_length=2048, null=True)
+    upstream_registry_password = EncryptedCharField(max_length=2048, null=True)
+    expiration_s = IntegerField(default=DEFAULT_PROXY_CACHE_EXPIRATION)
+    insecure = BooleanField(default=False)
+
+    @property
+    def upstream_registry_namespace(self) -> str | None:
+        parts = self.upstream_registry.split("/", 1)
+        if len(parts) == 1:
+            return None
+        return parts[-1]
+
+    @property
+    def upstream_registry_hostname(self) -> str:
+        parts = self.upstream_registry.split("/", 1)
+        return parts[0]
 
 
 # Defines a map from full-length index names to the legacy names used in our code

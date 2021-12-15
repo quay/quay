@@ -1,4 +1,4 @@
-import json
+from __future__ import annotations
 import logging
 import os
 
@@ -12,10 +12,6 @@ from data.database import (
     ManifestBlob,
     ManifestLegacyImage,
     ManifestChild,
-    ImageStorage,
-    ImageStoragePlacement,
-    ImageStorageTransformation,
-    ImageStorageSignature,
     Repository,
     RepositoryNotification,
     ExternalNotificationEvent,
@@ -28,10 +24,10 @@ from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
+from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException
 from image.docker.schema2.list import MalformedSchema2ManifestList
-from util.canonicaljson import canonicalize
 from util.validation import is_json
 
 
@@ -132,6 +128,63 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
         return query.get()
     except Manifest.DoesNotExist:
         return None
+
+
+def create_manifest(
+    repository_id: int,
+    manifest: ManifestInterface | ManifestListInterface,
+    raise_on_error: bool = True,
+) -> Manifest:
+    """
+    Creates a manifest in the database.
+    Does not handle sub manifests in a manifest list/index.
+    Raises a _ManifestAlreadyExists exception if the manifest has already been created.
+    """
+    media_type = Manifest.media_type.get_id(manifest.media_type)
+    created_manifest = None
+    try:
+        created_manifest = Manifest.create(
+            repository=repository_id,
+            digest=manifest.digest,
+            media_type=media_type,
+            manifest_bytes=manifest.bytes.as_encoded_str(),
+            config_media_type=manifest.config_media_type,
+            layers_compressed_size=manifest.layers_compressed_size,
+        )
+    except IntegrityError as e:
+        # NOTE: An IntegrityError means (barring a bug) that the manifest was created by
+        # another caller while we were attempting to create it. Since we need to return
+        # the manifest, we raise a specialized exception here to break out of the
+        # transaction so we can retrieve it.
+        if raise_on_error:
+            raise _ManifestAlreadyExists(e)
+
+    return created_manifest
+
+
+def connect_manifests(manifests: list[Manifest], parent: Manifest, repository_id: int):
+    """
+    Connects manifests to a manifest list.
+    Raises a _ManifestAlreadyExists if any of the manifest children already exist.
+    """
+    children = [
+        dict(manifest=parent, child_manifest=manifest, repository=repository_id)
+        for manifest in manifests
+    ]
+    try:
+        ManifestChild.insert_many(children).execute()
+    except IntegrityError as e:
+        raise _ManifestAlreadyExists(e)
+
+
+def connect_blobs(manifest: ManifestInterface, blob_ids: set[int], repository_id: int):
+    manifest_blobs = [
+        dict(manifest=manifest, repository=repository_id, blob=blob_id) for blob_id in blob_ids
+    ]
+    try:
+        ManifestBlob.insert_many(manifest_blobs).execute()
+    except IntegrityError as e:
+        raise _ManifestAlreadyExists(e)
 
 
 def get_or_create_manifest(
@@ -256,7 +309,6 @@ def _create_manifest(
         return None
 
     # Create the manifest and its blobs.
-    media_type = Manifest.media_type.get_id(manifest_interface_instance.media_type)
     storage_ids = {storage.id for storage in list(blob_map.values())}
 
     # Check for the manifest, in case it was created since we checked earlier.
@@ -268,44 +320,13 @@ def _create_manifest(
 
     try:
         with db_transaction():
-            # Create the manifest.
-            try:
-                manifest = Manifest.create(
-                    repository=repository_id,
-                    digest=manifest_interface_instance.digest,
-                    media_type=media_type,
-                    manifest_bytes=manifest_interface_instance.bytes.as_encoded_str(),
-                    config_media_type=manifest_interface_instance.config_media_type,
-                    layers_compressed_size=manifest_interface_instance.layers_compressed_size,
-                )
-            except IntegrityError as ie:
-                # NOTE: An IntegrityError means (barring a bug) that the manifest was created by
-                # another caller while we were attempting to create it. Since we need to return
-                # the manifest, we raise a specialized exception here to break out of the
-                # transaction so we can retrieve it.
-                raise _ManifestAlreadyExists(ie)
+            manifest = create_manifest(repository_id, manifest_interface_instance)
 
-            # Insert the blobs.
-            blobs_to_insert = [
-                dict(manifest=manifest, repository=repository_id, blob=storage_id)
-                for storage_id in storage_ids
-            ]
-            if blobs_to_insert:
-                try:
-                    ManifestBlob.insert_many(blobs_to_insert).execute()
-                except IntegrityError as ie:
-                    raise _ManifestAlreadyExists(ie)
+            if storage_ids:
+                connect_blobs(manifest, storage_ids, repository_id)
 
-            # Insert the manifest child rows (if applicable).
             if child_manifest_rows:
-                children_to_insert = [
-                    dict(manifest=manifest, child_manifest=child_manifest, repository=repository_id)
-                    for child_manifest in list(child_manifest_rows.values())
-                ]
-                try:
-                    ManifestChild.insert_many(children_to_insert).execute()
-                except IntegrityError as ie:
-                    raise _ManifestAlreadyExists(ie)
+                connect_manifests(child_manifest_rows.values(), manifest, repository_id)
 
             # If this manifest is being created not for immediate tagging, add a temporary tag to the
             # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're

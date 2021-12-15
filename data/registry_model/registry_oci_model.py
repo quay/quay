@@ -148,6 +148,7 @@ class OCIModel(RegistryDataInterface):
         manifest_digest,
         allow_dead=False,
         require_available=False,
+        raise_on_error=False,
     ):
         """
         Looks up the manifest with the given digest under the given repository and returns it or
@@ -160,6 +161,8 @@ class OCIModel(RegistryDataInterface):
             require_available=require_available,
         )
         if manifest is None:
+            if raise_on_error:
+                raise model.ManifestDoesNotExist()
             return None
 
         return Manifest.for_manifest(manifest, self._legacy_image_id_handler)
@@ -321,7 +324,7 @@ class OCIModel(RegistryDataInterface):
 
         return {repo_id: toSeconds(ms) for repo_id, ms in list(last_modified.items())}
 
-    def get_repo_tag(self, repository_ref, tag_name):
+    def get_repo_tag(self, repository_ref, tag_name, raise_on_error=False):
         """
         Returns the latest, *active* tag found in the repository, with the matching name or None if
         none.
@@ -330,6 +333,8 @@ class OCIModel(RegistryDataInterface):
 
         tag = oci.tag.get_tag(repository_ref._db_id, tag_name)
         if tag is None:
+            if raise_on_error:
+                raise model.TagDoesNotExist()
             return None
 
         return Tag.for_tag(tag, self._legacy_image_id_handler)
@@ -509,7 +514,7 @@ class OCIModel(RegistryDataInterface):
                 # TODO: This is only needed because preoci raises an exception. Remove and fix
                 # expected status codes once PreOCIModel is gone.
                 msg = "Invalid repository tag '%s' on repository" % tag_name
-                raise DataModelException(msg)
+                raise model.DataModelException(msg)
 
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
@@ -598,29 +603,44 @@ class OCIModel(RegistryDataInterface):
         with db_disallow_replica_use():
             oci.tag.set_tag_expiration_sec_for_manifest(manifest._db_id, expiration_sec)
 
-    def get_schema1_parsed_manifest(self, manifest, namespace_name, repo_name, tag_name, storage):
+    def get_schema1_parsed_manifest(
+        self, manifest, namespace_name, repo_name, tag_name, storage, raise_on_error=False
+    ):
         """
         Returns the schema 1 manifest for this manifest, or None if none.
         """
         try:
             parsed = manifest.get_parsed_manifest()
         except ManifestException:
+            if raise_on_error:
+                raise ManifestException
             return None
 
         try:
             manifest_row = database.Manifest.get(id=manifest._db_id)
         except database.Manifest.DoesNotExist:
+            if raise_on_error:
+                raise ManifestDoesNotExist
             return None
 
         retriever = RepositoryContentRetriever(manifest_row.repository_id, storage)
-        return parsed.get_schema1_manifest(namespace_name, repo_name, tag_name, retriever)
+        schema1 = parsed.get_schema1_manifest(namespace_name, repo_name, tag_name, retriever)
+        if schema1 is None and raise_on_error:
+            raise ManifestException
+        return schema1
 
     def convert_manifest(
-        self, manifest, namespace_name, repo_name, tag_name, allowed_mediatypes, storage
+        self,
+        manifest,
+        namespace_name,
+        repo_name,
+        tag_name,
+        allowed_mediatypes,
+        storage,
     ):
         try:
             parsed = manifest.get_parsed_manifest()
-        except ManifestException:
+        except ManifestException as e:
             return None
 
         try:
@@ -717,18 +737,25 @@ class OCIModel(RegistryDataInterface):
 
         return RepositoryReference.for_repo_obj(repo)
 
-    def lookup_repository(self, namespace_name, repo_name, kind_filter=None):
+    def lookup_repository(
+        self, namespace_name, repo_name, kind_filter=None, raise_on_error=False, manifest_ref=None
+    ):
         """
         Looks up and returns a reference to the repository with the given namespace and name, or
         None if none.
         """
         repo = model.repository.get_repository(namespace_name, repo_name, kind_filter=kind_filter)
-        state = repo.state if repo is not None else None
+        if repo is None:
+            if raise_on_error:
+                raise model.RepositoryDoesNotExist()
+            return None
+
+        state = repo.state
         return RepositoryReference.for_repo_obj(
             repo,
             namespace_name,
             repo_name,
-            repo.namespace_user.stripe_id is None if repo else None,
+            repo.namespace_user.stripe_id is None,
             state=state,
         )
 

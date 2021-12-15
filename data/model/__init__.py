@@ -29,6 +29,10 @@ class InvalidOrganizationException(DataModelException):
     pass
 
 
+class InvalidProxyCacheConfigException(DataModelException):
+    pass
+
+
 class InvalidPasswordException(DataModelException):
     pass
 
@@ -38,6 +42,10 @@ class InvalidRobotException(DataModelException):
 
 
 class InvalidUsernameException(DataModelException):
+    pass
+
+
+class RepositoryDoesNotExist(DataModelException):
     pass
 
 
@@ -77,6 +85,10 @@ class InvalidManifestException(DataModelException):
     pass
 
 
+class ManifestDoesNotExist(DataModelException):
+    pass
+
+
 class ServiceKeyDoesNotExist(DataModelException):
     pass
 
@@ -86,6 +98,10 @@ class ServiceKeyAlreadyApproved(DataModelException):
 
 
 class ServiceNameInvalid(DataModelException):
+    pass
+
+
+class TagDoesNotExist(DataModelException):
     pass
 
 
