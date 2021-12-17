@@ -188,6 +188,8 @@ def test_chunk_upload(storage_engine, chunk_count, force_client_side):
 
     # Ensure the file contents are valid.
     assert storage_engine.get_content("some/chunked/path") == final_data
+    # Ensure uploads have been cleaned up
+    assert not storage_engine.exists("some/path/uploads")
 
 
 @pytest.mark.parametrize(

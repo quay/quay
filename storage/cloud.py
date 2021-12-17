@@ -653,19 +653,14 @@ class _CloudStorage(BaseStorageV2):
                 for index, chunk in enumerate(updated_chunks):
                     abs_chunk_path = self._init_path(chunk.path)
 
-                    part = mpu.Part(index + 1)
-                    part_copy = part.copy_from(
-                        CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
-                        CopySourceRange="bytes=%s-%s"
-                        % (chunk.offset, chunk.length + chunk.offset - 1),
-                    )
-
                     part_copy = self._perform_action_with_retry(
                         mpu.Part(index + 1).copy_from,
                         CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
                         CopySourceRange="bytes=%s-%s"
                         % (chunk.offset, chunk.length + chunk.offset - 1),
                     )
+
+                    self.remove(abs_chunk_path)
 
                     upload_parts.append(_PartUpload(index + 1, part_copy["CopyPartResult"]["ETag"]))
 
