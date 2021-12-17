@@ -723,6 +723,12 @@ CONFIG_SCHEMA = {
             "description": "The endpoint for the V4 security scanner",
             "x-example": "http://192.168.99.101:6060",
         },
+        "SECURITY_SCANNER_V4_CACHE_URL": {
+            "type": ["string", "null"],
+            "pattern": "^(rediss?|unix)://.+$",
+            "description": "A URL specifying a redis database for caching API results. See also: https://redis-py.readthedocs.io/en/stable/index.html#redis.Redis.from_url",
+            "x-example": "redis://user:pass@cache/0",
+        },
         "SECURITY_SCANNER_INDEXING_INTERVAL": {
             "type": "number",
             "description": "The number of seconds between indexing intervals in the security scanner. Defaults to 30.",

@@ -5,7 +5,9 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from math import log10
 from peewee import fn, JOIN
-from enum import Enum
+from redis import Redis
+from requests import Session
+from requests_cache import CacheMixin, RedisCache
 
 from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.secscan_model.datatypes import (
@@ -28,17 +30,14 @@ from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
 from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure, InvalidContentSent
-from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore, fetch_vuln_severity
+from util.secscan import fetch_vuln_severity
 from util.secscan.blob import BlobURLRetriever
-from util.config import URLSchemeAndHostname
 
 from data.database import (
     Manifest,
     ManifestSecurityStatus,
     IndexerVersion,
     IndexStatus,
-    Repository,
-    User,
     db_transaction,
 )
 
@@ -88,6 +87,10 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
         raise NotImplementedError("Unsupported for this security scanner version")
 
 
+class CacheClient(CacheMixin, Session):
+    """A caching HTTP client"""
+
+
 class V4SecurityScanner(SecurityScannerInterface):
     """
     Implementation of the security scanner interface for Clair V4 API-compatible implementations.
@@ -112,9 +115,17 @@ class V4SecurityScanner(SecurityScannerInterface):
             logger.warning(msg)
             raise InvalidConfigurationException(msg)
 
+        client = app.config.get("HTTPCLIENT")
+        cache_url = app.config.get("SECURITY_SCANNER_V4_CACHE_URL", None)
+        if cache_url is not None:
+            c = Redis.from_url(cache_url)
+            backend = RedisCache(connection=c)
+            mixin = CacheMixin(backend=backend, cache_control=True)
+            client = CacheClient(mixin, client)
+
         self._secscan_api = ClairSecurityScannerAPI(
             endpoint=app.config.get("SECURITY_SCANNER_V4_ENDPOINT"),
-            client=app.config.get("HTTPCLIENT"),
+            client=client,
             blob_url_retriever=BlobURLRetriever(storage, instance_keys, app),
             jwt_psk=app.config.get("SECURITY_SCANNER_V4_PSK", None),
         )

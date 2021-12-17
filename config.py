@@ -472,6 +472,10 @@ class DefaultConfig(ImmutableConfig):
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT: Optional[str] = None
 
+    # A `Redis URL<https://redis-py.readthedocs.io/en/stable/connections.html#redis.client.Redis.from_url>`_ for caching
+    # security scanner API requests.
+    SECURITY_SCANNER_V4_CACHE_URL: Optional[str] = None
+
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
 
