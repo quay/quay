@@ -1,4 +1,4 @@
-from redis import StrictRedis, RedisError
+from redis import StrictRedis
 from rediscluster import RedisCluster
 
 
@@ -68,7 +68,7 @@ def redis_cache_from_config(cache_config):
           readonly_mode: true
 
     rediscluster uses the same client as redis internally for commands.
-    Anything that can be set in StricRedis() can also be set under the redis_config structure.
+    Anything that can be set in StrictRedis() can also be set under the redis_config structure.
 
     NOTE: Known issue - To allow read from replicas in redis cluster mode, set read_from_replicas instead
           of readonly_mode.
