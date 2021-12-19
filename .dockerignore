@@ -15,7 +15,6 @@ venv
 Bobfile
 README.md
 ROADMAP.md
-requirements-nover.txt
 run-local.sh
 .DS_Store
 **/*.pyc
