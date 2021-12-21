@@ -525,19 +525,41 @@ class KubernetesExecutor(BuilderExecutor):
 
         return resources
 
-    def _build_job_containers(self, user_data):
+    def _build_job_containers(self, token, build_uuid, manager_hostname):
         vm_memory_limit = self.executor_config.get("VM_MEMORY_LIMIT", "4G")
         vm_volume_size = self.executor_config.get("VOLUME_SIZE", "32G")
+        server_grpc_addr = (
+            manager_hostname.split(":", 1)[0] + ":" + str(SECURE_GRPC_SERVER_PORT)
+            if self.registry_hostname == self.manager_hostname
+            else self.manager_hostname
+        )
 
         container = {
             "name": "builder",
             "imagePullPolicy": "IfNotPresent",
             "image": self.image,
-            "securityContext": {"privileged": True},
+            "securityContext": {"privileged": False},
             "env": [
-                {"name": "USERDATA", "value": user_data},
                 {"name": "VM_MEMORY", "value": vm_memory_limit},
                 {"name": "VM_VOLUME_SIZE", "value": vm_volume_size},
+                {"name": "TOKEN", "value": token},
+                {"name": "BUILD_UUID", "value": build_uuid},
+                {"name": "QUAY_USERNAME", "value": self.executor_config["QUAY_USERNAME"]},
+                {"name": "QUAY_PASSWORD", "value": self.executor_config["QUAY_PASSWORD"]},
+                {"name": "SERVER", "value": server_grpc_addr},  # manager_hostname
+                {"name": "REGISTRY_HOSTNAME", "value": self.registry_hostname},
+                {"name": "VOLUME_SIZE", "value": self.executor_config.get("VOLUME_SIZE", "42G")},
+                {"name": "MAX_LIFETIME_S", "value": self.executor_config.get("MAX_LIFETIME_S", "10800")},
+                {"name": "SSH_AUTHORIZED_KEYS", "value": self.executor_config.get("SSH_AUTHORIZED_KEYS", "10800")},
+                {"name": "CONTAINER_RUNTIME", "value": "podman"},
+                {"name": "CA_CERT", "value": self._ca_cert()},
+                {"name": "DEBUG", "value": "true"},
+                {"name": "HTTP_PROXY", "value": self.executor_config.get("HTTP_PROXY", "")},
+                {"name": "HTTPS_PROXY", "value": self.executor_config.get("HTTPS_PROXY", "")},
+                {"name": "NO_PROXY", "value": self.executor_config.get("NO_PROXY", "")},
+                # Variables added during testing
+                {"name": "INSECURE", "value": "true"}, # Local testing only
+                {"name": "DOCKER_HOST", "value": "unix:///tmp/podman-run-1001/podman/podman.sock"}, # Local testing only
             ],
             "resources": self._build_job_container_resources(),
         }
@@ -552,7 +574,7 @@ class KubernetesExecutor(BuilderExecutor):
 
         return container
 
-    def _job_resource(self, build_uuid, user_data):
+    def _job_resource(self, token, build_uuid, manager_hostname):
         image_pull_secret_name = self.executor_config.get("IMAGE_PULL_SECRET_NAME", "builder")
         service_account = self.executor_config.get("SERVICE_ACCOUNT_NAME", "quay-builder-sa")
         node_selector_label_key = self.executor_config.get(
@@ -597,7 +619,7 @@ class KubernetesExecutor(BuilderExecutor):
                         "imagePullSecrets": [{"name": image_pull_secret_name}],
                         "restartPolicy": "Never",
                         "dnsPolicy": "Default",
-                        "containers": [self._build_job_containers(user_data)],
+                        "containers": [self._build_job_containers(token, build_uuid, manager_hostname)],
                     },
                 },
             },
@@ -635,8 +657,8 @@ class KubernetesExecutor(BuilderExecutor):
     @observe(build_start_duration, "k8s")
     def start_builder(self, token, build_uuid):
         # generate resource
-        user_data = self.generate_cloud_config(token, build_uuid, self.manager_hostname)
-        resource = self._job_resource(build_uuid, user_data)
+        # user_data = self.generate_cloud_config(token, build_uuid, self.manager_hostname)
+        resource = self._job_resource(token, build_uuid, self.manager_hostname)
         logger.debug("Using Kubernetes Distribution: %s", self._kubernetes_distribution())
         logger.debug("Generated kubernetes resource:\n%s", resource)
 
