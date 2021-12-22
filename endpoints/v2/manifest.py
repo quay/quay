@@ -24,6 +24,7 @@ from endpoints.v2 import v2_bp, require_repo_read, require_repo_write
 from endpoints.v2.errors import (
     ManifestInvalid,
     ManifestUnknown,
+    Unauthorized,
     NameInvalid,
     TagExpired,
     NameUnknown,
@@ -46,11 +47,13 @@ BASE_MANIFEST_ROUTE = '/<repopath:repository>/manifests/<regex("{0}"):manifest_r
 MANIFEST_DIGEST_ROUTE = BASE_MANIFEST_ROUTE.format(digest_tools.DIGEST_PATTERN)
 MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 
+FETCH_MANIFEST_SCOPES = ["pull"]
+
 
 @v2_bp.route(MANIFEST_TAGNAME_ROUTE, methods=["GET"])
 @disallow_for_account_recovery_mode
 @parse_repository_name()
-@process_registry_jwt_auth(scopes=["pull"])
+@process_registry_jwt_auth(scopes=FETCH_MANIFEST_SCOPES)
 @require_repo_read
 @anon_protect
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
@@ -109,13 +112,13 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 @v2_bp.route(MANIFEST_DIGEST_ROUTE, methods=["GET"])
 @disallow_for_account_recovery_mode
 @parse_repository_name()
-@process_registry_jwt_auth(scopes=["pull"])
+@process_registry_jwt_auth(scopes=FETCH_MANIFEST_SCOPES)
 @require_repo_read
 @anon_protect
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        image_pulls.labels("v2", "manifest", 404).inc()
+        image_pulls.labels("v2", "tag", 404).inc()
         raise NameUnknown()
 
     manifest = registry_model.lookup_manifest_by_digest(repository_ref, manifest_ref)

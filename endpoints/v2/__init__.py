@@ -128,7 +128,10 @@ def _require_repo_permission(permission_class, scopes=None, allow_public=False):
             repository = namespace_name + "/" + repo_name
             if allow_public:
                 repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
-                if repository_ref is None or not repository_ref.is_public:
+                if repository_ref is None:
+                    return func(namespace_name, repo_name, *args, **kwargs)
+
+                if not repository_ref.is_public:
                     raise Unauthorized(repository=repository, scopes=scopes)
 
                 if repository_ref.kind != "image":
