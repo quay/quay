@@ -40,6 +40,33 @@ This is a rough outline of what a contributor's workflow looks like:
 
 Thanks for your contributions!
 
+## Backporting
+
+Sometimes a change needs to be delivered in the next Quay z-stream. This is
+indicated by the "fixVersion" field in a JIRA ticket.
+
+If something you're working on has the "fixVersion" set to either `z-stream` or
+a specific version, such as `3.6.3`, it is the developer's responsibility to
+backport it.
+
+If you're not a project maintainer, make sure to notify one about the need for
+backporting.
+
+Commits that are not backported to a release branch (such as `redhat-3.6`) will
+not be part of the next release from that branch.
+
+To backport a change (after a PR is merged), simply invoke the cherry-pick bot
+by commenting the following in the PR:
+
+```
+/cherrypick redhat-3.6
+```
+
+After a few seconds, the cherry-pick bot will create a PR against the specified
+branch and write a comment with a link to the new PR in the original PR.
+
+The new PR needs to be reviewed and merged as usual.
+
 ### Format of the Commit Message
 
 We follow a rough convention for commit messages that is designed to answer two questions: what changed and why.
