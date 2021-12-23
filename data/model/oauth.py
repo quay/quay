@@ -249,6 +249,9 @@ class DatabaseAuthorizationProvider(AuthorizationProvider):
 
         return self._make_response(headers={"Location": url}, status_code=302)
 
+    def generate_refresh_token(self):
+        return None
+
     def from_refresh_token(self, client_id, refresh_token, scope):
         raise NotImplementedError()
 
