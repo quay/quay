@@ -752,7 +752,7 @@ def request_authorization_code():
 def exchange_code_for_token():
     grant_type = request.values.get("grant_type", None)
     client_id = request.values.get("client_id", None)
-    client_secret = request.values.get("client_id", None)
+    client_secret = request.values.get("client_secret", None)
     redirect_uri = request.values.get("redirect_uri", None)
     code = request.values.get("code", None)
     scope = request.values.get("scope", None)
