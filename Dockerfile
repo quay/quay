@@ -19,7 +19,7 @@ RUN set -ex\
 		nginx \
 		openldap \
 		openssl \
-		python38 \
+		python3 \
 		python3-gpg \
 		skopeo \
 	; dnf -y -q clean all
@@ -33,7 +33,7 @@ RUN set -ex\
 		git\
 		nodejs\
 		openldap-devel\
-		python38-devel\
+		python3-devel\
 	; dnf -y -q clean all
 WORKDIR /build
 
@@ -175,6 +175,8 @@ RUN set -ex\
 	;
 
 RUN rm -Rf node_modules config_app/node_modules
+
+ENV PYDEV_DEBUG=172.17.0.1:5555
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it

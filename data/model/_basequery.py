@@ -9,8 +9,13 @@ from data.model import DataModelException, config
 from data.readreplica import ReadOnlyModeException
 from data.database import (
     Repository,
+    RepositorySize,
     RepositoryState,
     User,
+    UserOrganizationQuota,
+    QuotaLimitGroups,
+    QuotaType,
+    QuotaLimits,
     Team,
     TeamMember,
     RepositoryPermission,
@@ -74,6 +79,29 @@ def get_existing_repository(namespace_name, repository_name, for_update=False, k
 
     return query.get()
 
+
+def get_existing_namespace_size(namespace_name):
+    query = (
+        Namespace.select(Namespace.username, fn.Sum(RepositorySize.size_bytes))
+        .join(Repository, on=(Repository.namespace_user == Namespace.id))
+        .join(RepositorySize)
+        .where(Namespace.username == namespace_name)
+        .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
+        .group_by(Namespace.username)
+    )
+
+    return query.get()
+
+def get_namespace_quota_limits(namespace_name):
+    query = (
+        UserOrganizationQuota.select(UserOrganizationQuota, QuotaLimitGroups, QuotaLimits, QuotaType)
+        .join(QuotaLimitGroups)
+        .join(User)
+        .join(QuotaLimits)
+        .join(QuotaType)
+    )
+
+    return query.get()
 
 @lru_cache(maxsize=1)
 def get_public_repo_visibility():

@@ -764,6 +764,26 @@ class RobotAccountToken(BaseModel):
     fully_migrated = BooleanField(default=False)
 
 
+class QuotaLimitGroups(BaseModel):
+    group_name = CharField()
+
+
+class QuotaType(BaseModel):
+    description = CharField()
+
+
+class QuotaLimits(BaseModel):
+    quota_limit_group = ForeignKeyField(QuotaLimitGroups)
+    quota_type = ForeignKeyField(QuotaType)
+    percent_of_limit = IntegerField(default=0)
+
+
+class UserOrganizationQuota(BaseModel):
+    organization = QuayUserField(index=True, unique=True)
+    limit_bytes = BigIntegerField()
+    quota_limit_group = ForeignKeyField(QuotaLimitGroups)
+
+
 class DeletedNamespace(BaseModel):
     namespace = QuayUserField(index=True, allows_robots=False, unique=True)
     marked = DateTimeField(default=datetime.now)
@@ -958,6 +978,11 @@ class RepositorySearchScore(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     score = BigIntegerField(index=True, default=0)
     last_updated = DateTimeField(null=True)
+
+
+class RepositorySize(BaseModel):
+    repository = ForeignKeyField(Repository, unique=True)
+    size_bytes = BigIntegerField()
 
 
 class DeletedRepository(BaseModel):
