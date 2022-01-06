@@ -50,7 +50,6 @@ BLOB_DIGEST_ROUTE = BASE_BLOB_ROUTE.format(digest_tools.DIGEST_PATTERN)
 RANGE_HEADER_REGEX = re.compile(r"^([0-9]+)-([0-9]+)$")
 BLOB_CONTENT_TYPE = "application/octet-stream"
 
-
 @v2_bp.route(BLOB_DIGEST_ROUTE, methods=["HEAD"])
 @disallow_for_account_recovery_mode
 @parse_repository_name()
@@ -229,7 +228,13 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @anon_protect
 @check_readonly
 def start_blob_upload(namespace_name, repo_name):
-    repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
+    namespace_size = registry_model.get_namespace_size(namespace_name)
+    print(namespace_size)
+    namespace_limit = registry_model.get_namespace
+    print(namespace_limit)
+    raise InvalidRequest(message=namespace_limit)
+
+    repository_ref = registry_model.get_namespace_limits(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown()
 
