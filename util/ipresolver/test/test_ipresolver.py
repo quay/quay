@@ -54,10 +54,13 @@ def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
         provider="aws", service=None, sync_token=123456789, country_iso_code=None
     )
     assert ipresolver.resolve_ip("6.0.0.2") == ResolvedLocation(
-        provider="aws", service=None, sync_token=123456789, country_iso_code="US"
+        provider="aws", service=None, sync_token=123456789, country_iso_code="US"  # DoD assigned
     )
-    assert ipresolver.resolve_ip("1.2.3.4") == ResolvedLocation(
-        provider="internet", service="US", sync_token=123456789, country_iso_code="US"
+    assert ipresolver.resolve_ip("56.0.0.2") == ResolvedLocation(
+        provider="internet",
+        service="US",
+        sync_token=123456789,
+        country_iso_code="US",  # USPS assigned
     )
     assert ipresolver.resolve_ip("127.0.0.1") == ResolvedLocation(
         provider="internet", service=None, sync_token=123456789, country_iso_code=None
