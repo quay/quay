@@ -36,7 +36,6 @@ class RedisBuildLogs(object):
                 "socket_connect_timeout": 1,
                 "socket_timeout": 2,
                 "health_check_interval": 2,
-                "single_connection_client": True,
             }
         )
 
@@ -132,7 +131,7 @@ class RedisBuildLogs(object):
         try:
             args = dict(self._redis_config)
             args.update(
-                {"socket_connect_timeout": 1, "socket_timeout": 1, "single_connection_client": True}
+                {"socket_connect_timeout": 1, "socket_timeout": 1}
             )
 
             with closing(redis.StrictRedis(**args)) as connection:
