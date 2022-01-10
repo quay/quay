@@ -732,6 +732,7 @@ class OCIModel(RegistryDataInterface):
             state=state,
         )
 
+
     def is_existing_disabled_namespace(self, namespace_name):
         """
         Returns whether the given namespace exists and is disabled.
@@ -745,6 +746,21 @@ class OCIModel(RegistryDataInterface):
         """
         namespace = model.user.get_namespace_user(namespace_name)
         return namespace is not None and namespace.enabled
+
+    def get_namespace_size(self, namespace_name):
+        size = model.user.get_org_size(namespace_name)
+        if size is None:
+            return 0
+        else:
+            return size.size_bytes
+
+    def get_namespace_limits(self, namespace_name):
+        size = model.user.get_org_limits(namespace_name)
+        if size is None:
+            return 0
+        else:
+            return size.size_bytes
+
 
     def lookup_cached_active_repository_tags(
         self, model_cache, repository_ref, start_pagination_id, limit

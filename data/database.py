@@ -773,15 +773,15 @@ class QuotaType(BaseModel):
 
 
 class QuotaLimits(BaseModel):
-    quota_limit_group = ForeignKeyField(QuotaLimitGroups)
-    quota_type = ForeignKeyField(QuotaType)
+    quota_limit_group_id = ForeignKeyField(QuotaLimitGroups)
+    quota_type_id = ForeignKeyField(QuotaType)
     percent_of_limit = IntegerField(default=0)
 
 
 class UserOrganizationQuota(BaseModel):
-    organization = QuayUserField(index=True, unique=True)
+    organization_id = QuayUserField(index=True, unique=True)
     limit_bytes = BigIntegerField()
-    quota_limit_group = ForeignKeyField(QuotaLimitGroups)
+    quota_limit_group_id = ForeignKeyField(QuotaLimitGroups)
 
 
 class DeletedNamespace(BaseModel):

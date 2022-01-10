@@ -82,7 +82,7 @@ def get_existing_repository(namespace_name, repository_name, for_update=False, k
 
 def get_existing_namespace_size(namespace_name):
     query = (
-        Namespace.select(Namespace.username, fn.Sum(RepositorySize.size_bytes))
+        Namespace.select(Namespace.username, fn.Sum(RepositorySize.size_bytes).alias('size_bytes'))
         .join(Repository, on=(Repository.namespace_user == Namespace.id))
         .join(RepositorySize)
         .where(Namespace.username == namespace_name)
@@ -94,11 +94,11 @@ def get_existing_namespace_size(namespace_name):
 
 def get_namespace_quota_limits(namespace_name):
     query = (
-        UserOrganizationQuota.select(UserOrganizationQuota, QuotaLimitGroups, QuotaLimits, QuotaType)
-        .join(QuotaLimitGroups)
-        .join(User)
-        .join(QuotaLimits)
-        .join(QuotaType)
+        UserOrganizationQuota.select(UserOrganizationQuota.limit_bytes, QuotaLimits.percent_of_limit)
+        .join(QuotaLimitGroups, on=(UserOrganizationQuota.quota_limit_group_id == QuotaLimitGroups.id))
+        .join(User, on=(UserOrganizationQuota.organization_id == User.id))
+        .join(QuotaLimits, on=(QuotaLimitGroups.id == QuotaLimits.quota_limit_group_id))
+        .join(QuotaType, on=(QuotaLimits.quota_type_id == QuotaType.id))
     )
 
     return query.get()
