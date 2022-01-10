@@ -25,23 +25,23 @@ def upgrade(op, tables, tester):
     op.create_table(
         "userorganizationquota",
         sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("organization", sa.Integer, nullable=False),
+        sa.Column("organization_id", sa.Integer, nullable=False),
         sa.Column("limit_bytes", sa.Integer, nullable=False),
-        sa.Column("quota_limit_group", sa.Integer, nullable=False),
+        sa.Column("quota_limit_group_id", sa.Integer, nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_userorganizationquota")),
         sa.ForeignKeyConstraint(
-            ["quota_limit_group"], ["quotalimitgroups.id"], name=op.f("fk_userorganizationquota_limit_group")
+            ["quota_limit_group_id"], ["quotalimitgroups.id"], name=op.f("fk_userorganizationquota_limit_group")
         ),
         sa.ForeignKeyConstraint(
-            ["organization"], ["user.id"], name=op.f("fk_userorganizationquota_organization")
+            ["organization_id"], ["user.id"], name=op.f("fk_userorganizationquota_organization")
         )
     )
 
     op.create_index(
-        "userorganizationquota_organization", "userorganizationquota", ["organization"], unique=True
+        "userorganizationquota_organization", "userorganizationquota", ["organization_id"], unique=True
     )
     op.create_index(
-        "userorganizationquota_limitgroup", "userorganizationquota", ["quota_limit_group"], unique=False
+        "userorganizationquota_limitgroup", "userorganizationquota", ["quota_limit_group_id"], unique=False
     )
 
     op.create_table(
@@ -55,15 +55,15 @@ def upgrade(op, tables, tester):
     op.create_table(
         "quotalimits",
         sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("limit_group_id", sa.Integer, nullable=False),
-        sa.Column("type", sa.Integer, nullable=False),
+        sa.Column("quota_limit_group_id", sa.Integer, nullable=False),
+        sa.Column("quota_type_id", sa.Integer, nullable=False),
         sa.Column("percent_of_limit", sa.Integer, nullable=False),
-        sa.ForeignKeyConstraint(["type"], ["quotatype.id"], name=op.f("fk_quotalimit_type")),
-        sa.ForeignKeyConstraint(["limit_group_id"], ["quotalimitgroups.id"], name=op.f("fk_quotalimit_limit_group"))
+        sa.ForeignKeyConstraint(["quota_type_id"], ["quotatype.id"], name=op.f("fk_quotalimit_type")),
+        sa.ForeignKeyConstraint(["quota_limit_group_id"], ["quotalimitgroups.id"], name=op.f("fk_quotalimit_limit_group"))
     )
 
     op.create_index(
-        "quotalimits_limitgroupid", "quotalimits", ["limit_group_id"], unique=False
+        "quotalimits_limitgroupid", "quotalimits", ["quota_limit_group_id"], unique=False
     )
 
     op.create_table(

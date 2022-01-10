@@ -230,7 +230,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 def start_blob_upload(namespace_name, repo_name):
     namespace_size = registry_model.get_namespace_size(namespace_name)
     print(namespace_size)
-    namespace_limit = registry_model.get_namespace
+    namespace_limit = registry_model.get_namespace_limits(namespace_name)
     print(namespace_limit)
     raise InvalidRequest(message=namespace_limit)
 

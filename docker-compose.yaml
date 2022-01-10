@@ -58,7 +58,6 @@ services:
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /var/run
-      PYDEV_DEBUG: 172.17.0.1:5555
 
   # clair is configured to share it's network 
   # namespace with quay. this allows quay to serve

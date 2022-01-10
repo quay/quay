@@ -809,6 +809,17 @@ def get_user_or_org(username):
     except User.DoesNotExist:
         return None
 
+def get_org_size(namespace_name):
+    try:
+        return _basequery.get_existing_namespace_size(namespace_name)
+    except User.DoesNotExist:
+        return None
+
+def get_org_limits(namespace_name):
+    try:
+        return _basequery.get_namespace_quota_limits(namespace_name)
+    except User.DoesNotExist:
+        return None
 
 def get_user_by_id(user_db_id):
     try:
