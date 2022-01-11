@@ -1198,5 +1198,11 @@ CONFIG_SCHEMA = {
             "description": "Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads",
             "x-example": False,
         },
+        # Enable Quota Management
+        "FEATURE_QUOTA_MANAGEMENT": {
+            "type": "boolean",
+            "description": "Enables configuration, caching, and validation for quota management feature",
+            "x-example": False,
+        },
     },
 }

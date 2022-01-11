@@ -66,3 +66,4 @@ USER_EVENTS_REDIS:
   host: quay-redis
   port: 6379
 USE_CDN: false
+FEATURE_QUOTA_MANAGEMENT: True

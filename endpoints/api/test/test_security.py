@@ -4,6 +4,7 @@ from mock import patch
 import pytest
 from flask_principal import AnonymousIdentity
 
+import features
 from endpoints.api import api
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity, toggle_feature
@@ -35,6 +36,7 @@ from endpoints.api.team import *
 from endpoints.api.trigger import *
 from endpoints.api.user import *
 from endpoints.api.mirror import *
+from endpoints.api.namespacequota import *
 
 from endpoints.api.repository import Repository
 
@@ -54,6 +56,7 @@ TOKEN_PARAMS = {"token_uuid": "someuuid"}
 TRIGGER_PARAMS = {"repository": "devtable/simple", "trigger_uuid": "someuuid"}
 MANIFEST_PARAMS = {"repository": "devtable/simple", "manifestref": "sha256:deadbeef"}
 EXPORTLOGS_PARAMS = {"callback_url": "http://foo"}
+
 
 SECURITY_TESTS: List[
     Tuple[
@@ -5749,6 +5752,36 @@ SECURITY_TESTS: List[
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "devtable", 400),
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "freshuser", 403),
     (RepositoryStateResource, "PUT", {"repository": "devtable/simple"}, None, "reader", 403),
+    (OrganizationQuota, "POST", {"namespace": "buynlarge"}, {"limit_bytes": 3050}, None, 401),
+    (OrganizationQuota, "GET", {"namespace": "buynlarge"}, None, None, 401),
+    (OrganizationQuota, "PUT", {"namespace": "buynlarge"}, {"limit_bytes": 3050}, None, 401),
+    (
+        OrganizationQuotaLimits,
+        "POST",
+        {"namespace": "buynlarge"},
+        {"percent_of_limit": 10, "quota_type_id": 2},
+        None,
+        401,
+    ),
+    (OrganizationQuotaLimits, "GET", {"namespace": "buynlarge"}, None, None, 401),
+    (
+        OrganizationQuotaLimits,
+        "PUT",
+        {"namespace": "buynlarge"},
+        {"percent_of_limit": 10, "quota_type_id": 2},
+        None,
+        401,
+    ),
+    (
+        OrganizationQuotaLimits,
+        "DELETE",
+        {"namespace": "buynlarge"},
+        {"percent_of_limit": 10, "quota_type_id": 2},
+        None,
+        401,
+    ),
+    (OrganizationQuota, "DELETE", {"namespace": "buynlarge"}, {}, None, 401),
+    (OrganizationQuotaReport, "GET", {"namespace": "buynlarge"}, {}, None, 401),
 ]
 
 

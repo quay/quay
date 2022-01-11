@@ -43,6 +43,7 @@ CLIENT_WHITELIST = [
     "BRANDING",
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
+    "FEATURE_QUOTA_MANAGEMENT",
 ]
 
 
@@ -796,3 +797,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads
     CLEAN_BLOB_UPLOAD_FOLDER = False
+
+    # Add quota management configuration, caching, and validation
+    FEATURE_QUOTA_MANAGEMENT = False

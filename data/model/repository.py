@@ -8,6 +8,7 @@ from datetime import timedelta, datetime
 from peewee import Case, JOIN, fn, SQL, IntegrityError
 from cachetools.func import ttl_cache
 
+import data
 from data.model import (
     config,
     DataModelException,
@@ -45,6 +46,9 @@ from data.database import (
     ManifestChild,
     ExternalNotificationEvent,
     RepositoryNotification,
+    RepositorySize,
+    ManifestBlob,
+    BlobUpload,
 )
 from data.text import prefix_search
 from util.itertoolrecipes import take
@@ -97,7 +101,7 @@ def get_min_id():
 
 
 def get_repository_count():
-    """ Returns the count of repositories. """
+    """Returns the count of repositories."""
     return Repository.select().count()
 
 
@@ -672,3 +676,81 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
         callback(namespace_name, repository_name)
 
     return marker.id
+
+
+def get_repository_size(repo_id: int):
+    try:
+        query = (
+            RepositorySize.select(Repository.name, Repository.id, RepositorySize.size_bytes)
+            .join(Repository)
+            .where(RepositorySize.repository_id == repo_id)
+        )
+        return query.get()
+    except RepositorySize.DoesNotExist:
+        return None
+
+
+def get_repository_size_and_cache(repo_id: int):
+
+    output = get_repository_size(repo_id)
+
+    if output is None:
+        force_cache_repo_size(repo_id)
+        output = get_repository_size(repo_id)
+
+    return {
+        "repository_name": output.repository.name,
+        "repository_id": output.repository.id,
+        "repository_size": output.size_bytes,
+    }
+
+
+def get_size_during_upload(repo_id: int):
+    # TODO: Make this one trip to the db instead of 2?
+    size = get_repository_size_and_cache(repo_id)
+
+    query = (
+        BlobUpload.select(fn.Sum(BlobUpload.byte_count).alias("size_bytes")).where(
+            BlobUpload.repository_id == repo_id
+        )
+    ).get()
+
+    repo_size = 0
+    size_bytes = 0
+    if size["repository_size"] is not None:
+        repo_size = size["repository_size"]
+
+    if query.size_bytes is not None:
+        size_bytes = query.size_bytes
+
+    size_bytes = repo_size + size_bytes
+
+    return size_bytes
+
+
+def force_cache_repo_size(repo_id: int):
+    try:
+        cache = (
+            Manifest.select(fn.Sum(Manifest.layers_compressed_size).alias("size_bytes")).where(
+                Manifest.repository == repo_id
+            )
+        ).scalar()
+
+        size = cache
+    except Manifest.DoesNotExist:
+        size = 0
+
+    repo = get_repository_size(repo_id)
+
+    if size is None:
+        size = 0
+
+    if repo is not None:
+        update = RepositorySize.update(size_bytes=size).where(
+            RepositorySize.repository_id == repo_id
+        )
+        update.execute()
+    else:
+        RepositorySize.create(repository_id=repo_id, size_bytes=size)
+
+    return size
