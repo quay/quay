@@ -7,8 +7,8 @@ Create Date: 2021-12-16 15:14:43.054705
 """
 
 # revision identifiers, used by Alembic.
-revision = 'e9f3e4dbb979'
-down_revision = '909d725887d3'
+revision = "e9f3e4dbb979"
+down_revision = "909d725887d3"
 
 import sqlalchemy as sa
 
@@ -16,55 +16,50 @@ import sqlalchemy as sa
 def upgrade(op, tables, tester):
 
     op.create_table(
-        "quotalimitgroups",
-        sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("group_name", sa.String(length=255), nullable=False),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_quotalimitgroups"))
-    )
-
-    op.create_table(
         "userorganizationquota",
         sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("organization_id", sa.Integer, nullable=False),
+        sa.Column("namespace_id", sa.Integer, nullable=False),
         sa.Column("limit_bytes", sa.Integer, nullable=False),
-        sa.Column("quota_limit_group_id", sa.Integer, nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_userorganizationquota")),
         sa.ForeignKeyConstraint(
-            ["quota_limit_group_id"], ["quotalimitgroups.id"], name=op.f("fk_userorganizationquota_limit_group")
+            ["namespace_id"], ["user.id"], name=op.f("fk_userorganizationquota_organization")
         ),
-        sa.ForeignKeyConstraint(
-            ["organization_id"], ["user.id"], name=op.f("fk_userorganizationquota_organization")
-        )
     )
 
     op.create_index(
-        "userorganizationquota_organization", "userorganizationquota", ["organization_id"], unique=True
-    )
-    op.create_index(
-        "userorganizationquota_limitgroup", "userorganizationquota", ["quota_limit_group_id"], unique=False
+        "userorganizationquota_organization",
+        "userorganizationquota",
+        ["namespace_id"],
+        unique=True,
     )
 
     op.create_table(
         "quotatype",
         sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("description", sa.String(length=255), nullable=False),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_quotatype"))
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_quotatype")),
     )
 
+    op.bulk_insert(tables.quotatype, [{"name": "Warning"}, {"name": "Reject"}])
 
     op.create_table(
         "quotalimits",
         sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("quota_limit_group_id", sa.Integer, nullable=False),
+        sa.Column("quota_id", sa.Integer, nullable=False),
         sa.Column("quota_type_id", sa.Integer, nullable=False),
         sa.Column("percent_of_limit", sa.Integer, nullable=False),
-        sa.ForeignKeyConstraint(["quota_type_id"], ["quotatype.id"], name=op.f("fk_quotalimit_type")),
-        sa.ForeignKeyConstraint(["quota_limit_group_id"], ["quotalimitgroups.id"], name=op.f("fk_quotalimit_limit_group"))
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_quotalimits")),
+        sa.ForeignKeyConstraint(
+            ["quota_type_id"], ["quotatype.id"], name=op.f("fk_quotalimit_type")
+        ),
+        sa.ForeignKeyConstraint(
+            ["quota_id"],
+            ["userorganizationquota.id"],
+            name=op.f("fk_quotalimit_id"),
+        ),
     )
 
-    op.create_index(
-        "quotalimits_limitgroupid", "quotalimits", ["quota_limit_group_id"], unique=False
-    )
+    op.create_index("quotalimits_quota_id", "quotalimits", ["quota_id"], unique=False)
 
     op.create_table(
         "repositorysize",
@@ -86,7 +81,7 @@ def upgrade(op, tables, tester):
         unique=True,
     )
 
-
+    op.bulk_insert(tables.notificationkind, [{"name": "quota_warning"}, {"name": "quota_error"}])
 
 
 def downgrade(op, tables, tester):

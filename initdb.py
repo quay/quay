@@ -58,6 +58,10 @@ from data.database import (
     RepoMirrorConfig,
     RepoMirrorRule,
     RepositoryState,
+    QuotaType,
+    QuotaLimits,
+    UserOrganizationQuota,
+    RepositorySize,
 )
 from data import model
 from data.decorators import is_deprecated_model
@@ -857,6 +861,14 @@ def populate_database(minimal=False):
     org = model.organization.create_organization("buynlarge", "quay@devtable.com", new_user_1)
     org.stripe_id = TEST_STRIPE_ID
     org.save()
+
+    QuotaType.create(name="Notify")
+    QuotaType.create(name="Error")
+
+    model.namespacequota.create_namespace_quota(org.username, 3050)
+    model.repository.force_cache_repo_size(publicrepo.id)
+
+    model.namespacequota.create_namespace_limit(org.username, 1, 50)
 
     liborg = model.organization.create_organization(
         "library", "quay+library@devtable.com", new_user_1

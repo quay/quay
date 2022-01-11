@@ -741,6 +741,9 @@ class User(BaseModel):
                     ManifestSecurityStatus,
                     RepoMirrorConfig,
                     UploadedBlob,
+                    RepositorySize,
+                    UserOrganizationQuota,
+                    QuotaLimits,
                 }
                 | appr_classes
                 | v22_classes
@@ -764,24 +767,19 @@ class RobotAccountToken(BaseModel):
     fully_migrated = BooleanField(default=False)
 
 
-class QuotaLimitGroups(BaseModel):
-    group_name = CharField()
-
-
 class QuotaType(BaseModel):
-    description = CharField()
-
-
-class QuotaLimits(BaseModel):
-    quota_limit_group_id = ForeignKeyField(QuotaLimitGroups)
-    quota_type_id = ForeignKeyField(QuotaType)
-    percent_of_limit = IntegerField(default=0)
+    name = CharField()
 
 
 class UserOrganizationQuota(BaseModel):
-    organization_id = QuayUserField(index=True, unique=True)
+    namespace_id = QuayUserField(index=True, unique=True)
     limit_bytes = BigIntegerField()
-    quota_limit_group_id = ForeignKeyField(QuotaLimitGroups)
+
+
+class QuotaLimits(BaseModel):
+    quota_id = ForeignKeyField(UserOrganizationQuota)
+    quota_type_id = ForeignKeyField(QuotaType)
+    percent_of_limit = IntegerField(default=0)
 
 
 class DeletedNamespace(BaseModel):
@@ -965,6 +963,7 @@ class Repository(BaseModel):
                 DeletedRepository,
                 ManifestSecurityStatus,
                 UploadedBlob,
+                RepositorySize,
             }
             | appr_classes
             | v22_classes

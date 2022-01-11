@@ -1,12 +1,12 @@
-import bcrypt
-import logging
 import json
+import logging
 import uuid
-from flask_login import UserMixin
-
-from peewee import JOIN, IntegrityError, fn
-from uuid import uuid4
 from datetime import datetime, timedelta
+from uuid import uuid4
+
+import bcrypt
+from flask_login import UserMixin
+from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
     User,
@@ -39,7 +39,7 @@ from data.database import (
     RepoMirrorConfig,
     RobotAccountToken,
 )
-from data.readreplica import ReadOnlyModeException
+from data.fields import Credential
 from data.model import (
     DataModelException,
     InvalidPasswordException,
@@ -50,25 +50,23 @@ from data.model import (
     db_transaction,
     notification,
     config,
-    repository,
     _basequery,
     gc,
+    namespacequota,
 )
-from data.fields import Credential
+from data.readreplica import ReadOnlyModeException
 from data.text import prefix_search
+from util.backoff import exponential_backoff
+from util.bytes import Bytes
 from util.names import format_robot_username, parse_robot_username
+from util.security.token import decode_public_private_token, encode_public_private_token
+from util.timedeltastring import convert_to_timedelta
 from util.validation import (
     validate_username,
     validate_email,
     validate_password,
     INVALID_PASSWORD_MESSAGE,
 )
-from util.backoff import exponential_backoff
-from util.timedeltastring import convert_to_timedelta
-from util.bytes import Bytes
-from util.unicode import remove_unicode
-from util.security.token import decode_public_private_token, encode_public_private_token
-
 
 logger = logging.getLogger(__name__)
 
@@ -809,17 +807,6 @@ def get_user_or_org(username):
     except User.DoesNotExist:
         return None
 
-def get_org_size(namespace_name):
-    try:
-        return _basequery.get_existing_namespace_size(namespace_name)
-    except User.DoesNotExist:
-        return None
-
-def get_org_limits(namespace_name):
-    try:
-        return _basequery.get_namespace_quota_limits(namespace_name)
-    except User.DoesNotExist:
-        return None
 
 def get_user_by_id(user_db_id):
     try:
@@ -1302,6 +1289,9 @@ def _delete_user_linked_data(user):
         )
         for trigger in triggers:
             trigger.delete_instance(recursive=True, delete_nullable=False)
+
+    with db_transaction():
+        namespacequota.delete_namespace_quota(user.username)
 
     # Delete any mirrors with robots owned by this user.
     with db_transaction():

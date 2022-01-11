@@ -8,6 +8,7 @@ import features
 
 from app import app, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
+from data.model import repository, namespacequota
 from digest import digest_tools
 from data.database import db_disallow_replica_use
 from data.registry_model import registry_model
@@ -27,6 +28,7 @@ from endpoints.v2.errors import (
     NameInvalid,
     TagExpired,
     NameUnknown,
+    QuotaExceeded,
 )
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes
@@ -323,6 +325,9 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         for tag in tags:
             track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
 
+        if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+            namespacequota.force_cache_repo_size(repository_ref)
+
         return Response(status=202)
 
 
@@ -398,6 +403,14 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+        quota = namespacequota.verify_namespace_quota_force_cache(namespace_name, repository_ref)
+        if quota["severity_level"] == 1:
+            namespacequota.notify_organization_admins(repository_ref, "quota_warning")
+        elif quota["severity_level"] == 2:
+            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            raise QuotaExceeded()
 
     # Create the manifest(s) and retarget the tag to point to it.
     try:

@@ -148,4 +148,5 @@ from data.model import (
     team,
     token,
     user,
+    namespacequota,
 )

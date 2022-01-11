@@ -86,6 +86,36 @@ function($rootScope, $interval, UserService, ApiService, StringBuilderService, P
       },
       'dismissable': true
     },
+    'quota_warning': {
+      'level': 'info',
+      'message': function(metadata) {
+          return '{namespace} quota has exceeded warning limit';
+      },
+      'page': function(metadata) {
+        var organization = UserService.getOrganization(metadata['namespace']);
+        if (organization) {
+          return '/organization/' + metadata['namespace'];
+        } else {
+          return '/user/' + metadata['namespace'];
+        }
+      },
+      'dismissable': true
+    },
+    'quota_error': {
+      'level': 'Error',
+      'message': function(metadata) {
+          return '{namespace} quota has been exceeded';
+      },
+      'page': function(metadata) {
+        var organization = UserService.getOrganization(metadata['namespace']);
+        if (organization) {
+          return '/organization/' + metadata['namespace'];
+        } else {
+          return '/user/' + metadata['namespace'];
+        }
+      },
+      'dismissable': true
+    },
     'repo_mirror_sync_started': {
       'level': 'info',
       'message': function(metadata) {

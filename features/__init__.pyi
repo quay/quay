@@ -182,3 +182,5 @@ USER_INITIALIZE: FeatureNameValue
 
 # Allows "/" in repository names
 EXTENDED_REPOSITORY_NAMES: FeatureNameValue
+
+QUOTA_MANAGEMENT: FeatureNameValue

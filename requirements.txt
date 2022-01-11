@@ -99,7 +99,7 @@ python-dateutil==2.8.1
 python-editor==1.0.4
 python-gitlab==2.0.0
 python-keystoneclient==3.22.0
-python-ldap==3.2.0
+python-ldap==3.4.0
 python-magic==0.4.15
 python-swiftclient==3.8.1
 pytz==2019.3
@@ -131,7 +131,7 @@ tldextract==2.2.2
 toposort==1.5
 tzlocal==2.0.0
 urllib3==1.25.8
-waitress==1.4.2
+waitress==1.4.3
 webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
@@ -142,6 +142,3 @@ yapf==0.29.0
 zipp==2.1.0
 zope.event==4.5.0
 zope.interface==5.4.0
-
-
-pydevd-pycharm~=212.4746.96
