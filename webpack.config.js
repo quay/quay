@@ -70,6 +70,10 @@ let config = {
     new webpack.ContextReplacementPlugin(/moment[\/\\]locale$/, /en/),
   ],
   devtool: "cheap-module-source-map",
+  watchOptions: {
+    aggregateTimeout: 200,
+    poll: 1000,
+  },
 };
 
 

@@ -20,7 +20,11 @@ workers = get_worker_count("registry", 4, minimum=8, maximum=64)
 worker_class = "gevent"
 worker_connections = get_worker_connections_count("registry")
 pythonpath = "."
-preload_app = True
+if os.getenv("QUAY_HOTRELOAD", "false") == "true":
+    reload = True
+    reload_engine = "auto"
+else:
+    preload_app = True
 
 
 def when_ready(server):
