@@ -2048,6 +2048,21 @@ class ManifestSecurityStatus(BaseModel):
     metadata_json = JSONField(default={})
 
 
+class ProxyCacheConfig(BaseModel):
+    """
+    Represents the configuration for an organization of type proxy cache
+    """
+    user_id = ForeignKeyField(User)
+    creation_date = DateTimeField(default=datetime.utcnow)
+    upstream_registry = CharField(max_length=2048)
+    upstream_registry_namespace = CharField(max_length=255)
+    upstream_registry_repository = CharField(max_length=255)
+    upstream_registry_username = EncryptedCharField(max_length=2048, null=True)
+    upstream_registry_password = EncryptedCharField(max_length=2048, null=True)
+    staleness_period_s = IntegerField(default=0)
+    quota_enabled = BooleanField(default=False)
+
+
 # Defines a map from full-length index names to the legacy names used in our code
 # to meet length restrictions.
 LEGACY_INDEX_MAP = {

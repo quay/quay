@@ -796,6 +796,13 @@ def get_user(username):
         return None
 
 
+def get_organization_from_name(orgname):
+    try:
+        return User.get(User.username == orgname, User.organization == True)
+    except User.DoesNotExist:
+        return None
+
+
 def get_namespace_user(username):
     try:
         return User.get(User.username == username)

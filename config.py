@@ -43,6 +43,7 @@ CLIENT_WHITELIST = [
     "BRANDING",
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
+    "FEATURE_PROXY_CACHE"
 ]
 
 
@@ -799,3 +800,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads
     CLEAN_BLOB_UPLOAD_FOLDER = False
+
+    # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
+    FEATURE_PROXY_CACHE = True
