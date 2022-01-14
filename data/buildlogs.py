@@ -31,9 +31,7 @@ class RedisBuildLogs(object):
             return self._redis_client
 
         args = dict(self._redis_config)
-        args.update(
-            {"socket_connect_timeout": 1, "socket_timeout": 2}
-        )
+        args.update({"socket_connect_timeout": 1, "socket_timeout": 2})
 
         self._redis_client = redis.StrictRedis(**args)
         return self._redis_client
@@ -126,9 +124,7 @@ class RedisBuildLogs(object):
     def check_health(self):
         try:
             args = dict(self._redis_config)
-            args.update(
-                {"socket_connect_timeout": 1, "socket_timeout": 1}
-            )
+            args.update({"socket_connect_timeout": 1, "socket_timeout": 1})
 
             with closing(redis.StrictRedis(**args)) as connection:
                 if not connection.ping():
