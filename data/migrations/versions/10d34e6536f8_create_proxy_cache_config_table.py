@@ -15,16 +15,16 @@ import sqlalchemy as sa
 
 def upgrade(op, tables, tester):
     op.create_table(
-        "proxy_cache_config",
-        sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("user_id", sa.Integer, nullable=False),
+        "proxycacheconfig",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("creation_date", sa.DateTime(), nullable=False),
         sa.Column("upstream_registry", sa.String(length=2048), nullable=False),
-        sa.Column("upstream_registry_namespace", sa.String(length=255), nullable=False),
-        sa.Column("upstream_registry_repository", sa.String(length=255), nullable=False),
+        sa.Column("upstream_registry_namespace", sa.String(length=255), nullable=True),
         sa.Column("upstream_registry_username", sa.String(length=2048), nullable=True),
         sa.Column("upstream_registry_password", sa.String(length=2048), nullable=True),
-        sa.Column("staleness_period_s", sa.Integer, server_default="0"),
+        sa.Column("staleness_period_s", sa.Integer(), server_default="0"),
+        sa.Column("quota_enabled", sa.Boolean(), server_default="0"),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["user.id"],
