@@ -37,7 +37,5 @@ def get_proxy_cache_config_for_org(org_name):
         Return the Proxy-Cache-Config associated with the given organization name, or None if it doesn't exist.
     """
     org = get_organization(org_name)
-    if not org:
-        return None
     return ProxyCacheConfig.get(ProxyCacheConfig.user_id == org.id)
 
