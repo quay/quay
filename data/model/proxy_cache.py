@@ -8,17 +8,16 @@ from data.model.organization import get_organization
 def create_proxy_cache_config(
     org_name,
     upstream_registry,
-    upstream_registry_namespace,
-    upstream_registry_username,
-    upstream_registry_password,
-    staleness_period_s
+    upstream_registry_namespace=None,
+    upstream_registry_username=None,
+    upstream_registry_password=None,
+    staleness_period_s=0,
+    quota_enabled=0
 ):
     """
         Creates proxy cache configuration for the given organization name
     """
     org = get_organization(org_name)
-    if not org:
-        return None
 
     new_entry = ProxyCacheConfig.create(
         user_id=org.id,
@@ -26,8 +25,10 @@ def create_proxy_cache_config(
         upstream_registry_namespace=upstream_registry_namespace,
         upstream_registry_username=upstream_registry_username,
         upstream_registry_password=upstream_registry_password,
-        staleness_period_s=staleness_period_s
+        staleness_period_s=staleness_period_s,
+        quota_enabled=quota_enabled
     )
+
     return new_entry
 
 

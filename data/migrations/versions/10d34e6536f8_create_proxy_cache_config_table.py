@@ -35,4 +35,4 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    pass
+    op.drop_table('proxycacheconfig')
