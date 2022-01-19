@@ -1,0 +1,22 @@
+name: Download AWS IP ranges
+
+on:
+  push:
+    paths:
+      - .github/workflows/aws-ip-json.yml # run workflow every time this file changes
+  workflow_dispatch: # Required even though this is currently empty
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  scheduled:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+
+      - name: Fetch data
+        uses: githubocto/flat@v3
+        with:
+          http_url: https://ip-ranges.amazonaws.com/ip-ranges.json
+          downloaded_filename: util/ipresolver/aws-ip-ranges.json
