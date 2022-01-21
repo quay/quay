@@ -170,7 +170,7 @@ Pygments==2.9.0
 backcall==0.2.0
 flit-core==3.2.0
 ipython-genutils==0.2.0
-ipython==7.24.1
+ipython==7.31.1
 jedi==0.18.0
 matplotlib-inline==0.1.2
 parso==0.8.2
