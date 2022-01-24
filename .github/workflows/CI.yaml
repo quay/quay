@@ -10,8 +10,8 @@ on:
     branches:
     - "*"
 jobs:
-  build:
-    name: Format
+  install-requirements:
+    name: Install Requirements
     runs-on: ubuntu-latest
     steps:
 
@@ -22,11 +22,35 @@ jobs:
       with:
         python-version: 3.8
 
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
     - name: Install dependencies
       run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
         python -m pip install --upgrade pip
-        pip install black==20.8b1
-        pip install flake8
+        pip install -r requirements-dev.txt
+
+  format:
+    name: Validate Format
+    runs-on: ubuntu-latest
+    needs: install-requirements
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
 
     - name: Check Formatting (Black)
       run: |
@@ -41,27 +65,33 @@ jobs:
   unit:
     name: Unit Test
     runs-on: ubuntu-latest
+    needs: install-requirements
     steps:
 
     - uses: actions/checkout@v2
+
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
         python-version: 3.8
 
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
 
-    - name: tox
-      run: tox -e py38-unit
+    - name: Run tests
+      run: make unit-test
 
   registry:
     name: E2E Registry Tests
     runs-on: ubuntu-latest
+    needs: install-requirements
     steps:
 
     - uses: actions/checkout@v2
@@ -70,15 +100,18 @@ jobs:
       with:
         python-version: 3.8
 
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
 
-    - name: tox
-      run: tox -e py38-registry
+    - name: Run tests
+      run: make registry-test
 
   docker:
     name: Docker Build
@@ -93,6 +126,7 @@ jobs:
   mysql:
     name: E2E MySQL Test
     runs-on: ubuntu-latest
+    needs: install-requirements
     steps:
 
     - uses: actions/checkout@v2
@@ -101,6 +135,11 @@ jobs:
       with:
         python-version: 3.8
 
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -108,8 +147,6 @@ jobs:
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
       run: tox -e py38-mysql
@@ -117,6 +154,7 @@ jobs:
   psql:
     name: E2E Postgres Test
     runs-on: ubuntu-latest
+    needs: install-requirements
     steps:
 
     - uses: actions/checkout@v2
@@ -125,6 +163,11 @@ jobs:
       with:
         python-version: 3.8
 
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -132,8 +175,6 @@ jobs:
         sudo systemctl unmask docker
         sudo systemctl start docker
         docker version
-        python -m pip install --upgrade pip
-        cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
       run: tox -e py38-psql
@@ -141,6 +182,7 @@ jobs:
   oci:
     name: OCI Conformance
     runs-on: ubuntu-latest
+    needs: install-requirements
     steps:
 
     - uses: actions/checkout@v2
@@ -153,6 +195,11 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: 3.8
+
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt') }}
 
     - name: Set up Go 1.14
       uses: actions/setup-go@v1
@@ -167,12 +214,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        # Quay
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
-
         # Conformance
         cd dist-spec/conformance
         go mod vendor

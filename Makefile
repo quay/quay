@@ -25,7 +25,7 @@ conf/stack/license: $(QUAY_CONFIG)/local/license
 unit-test:
 	TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
-	--timeout=3600 --verbose -x \
+	 --ignore=buildman/ --timeout=3600 --verbose -x \
 	./
 
 registry-test:
