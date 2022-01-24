@@ -40,7 +40,9 @@ _BLOCKS_KEY = "blocks"
 _CONTENT_TYPE_KEY = "content-type"
 
 
-AZURE_STORAGE_URL_STRING = "https://{}.blob.core.windows.net"
+AZURE_STORAGE_URL_STRING = {
+    "global": "https://{}.blob.core.windows.net",
+}
 
 
 class AzureStorage(BaseStorage):
@@ -52,7 +54,7 @@ class AzureStorage(BaseStorage):
         azure_account_name,
         azure_account_key=None,
         sas_token=None,
-        connection_string=None,
+        endpoint_url=None,
     ):
         super(AzureStorage, self).__init__()
         self._context = context
@@ -62,10 +64,12 @@ class AzureStorage(BaseStorage):
         self._azure_account_key = azure_account_key
         self._azure_sas_token = sas_token
         self._azure_container = azure_container
-        self._azure_connection_string = connection_string
+        self._azure_connection_string = endpoint_url
 
         self._blob_service_client = BlobServiceClient(
-            AZURE_STORAGE_URL_STRING.format(self._azure_account_name),
+            self._azure_connection_string
+            if self._azure_connection_string
+            else AZURE_STORAGE_URL_STRING["global"].format(self._azure_account_name),
             credential=self._azure_account_key,
         )
 
