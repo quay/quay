@@ -813,20 +813,12 @@ func ValidateLDAPServer(opts Options, ldapUri, ldapAdminDn, ldapAdminPasswd, lda
 		Controls: []ldap.Control{ldap.NewControlPaging(32)},
 	}
 
-	result, err := l.Search(request)
+	_, err = l.Search(request)
 	if err != nil {
 		return false, ValidationError{
 			Tags:       []string{"LDAP_URI"},
 			FieldGroup: fgName,
 			Message:    "Could not query LDAP server. Error: " + err.Error(),
-		}
-	}
-
-	if len(result.Entries) < 1 {
-		return false, ValidationError{
-			Tags:       []string{"LDAP_URI"},
-			FieldGroup: fgName,
-			Message:    "Could not find any users matching filter in LDAP server",
 		}
 	}
 
