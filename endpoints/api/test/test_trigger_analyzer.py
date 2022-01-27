@@ -19,7 +19,7 @@ BAD_CONF = {"context": "context", "dockerfile_path": "dockerfile_path"}
 
 ONE_ROBOT = {"can_read": False, "is_robot": True, "kind": "user", "name": "namespace+name"}
 
-DOCKERFILE_NOT_CHILD = "Dockerfile, context, is not a child of the context, dockerfile_path."
+DOCKERFILE_NOT_CHILD = "Dockerfile, dockerfile_path, is not a child of the context, context."
 
 THE_DOCKERFILE_SPECIFIED = "Could not parse the Dockerfile specified"
 
