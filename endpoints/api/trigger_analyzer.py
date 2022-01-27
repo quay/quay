@@ -67,8 +67,8 @@ class TriggerAnalyzer(object):
 
         # Check whether the dockerfile_path is correct
         if self.new_config_dict.get("context") and not is_parent(
-                self.new_config_dict.get("context"),
-                self.new_config_dict.get("dockerfile_path")):
+            self.new_config_dict.get("context"), self.new_config_dict.get("dockerfile_path")
+        ):
             return self.analyze_view(
                 self.namespace_name,
                 None,
@@ -93,14 +93,13 @@ class TriggerAnalyzer(object):
             return self.analyze_view(self.namespace_name, None, "publicbase")
 
         # Lookup the repository in Quay.
-        result = str(base_image)[len(quay_registry_prefix):].split("/", 2)
+        result = str(base_image)[len(quay_registry_prefix) :].split("/", 2)
         if len(result) != 2:
             msg = '"%s" is not a valid Quay repository path' % base_image
             return self.analyze_view(self.namespace_name, None, "warning", message=msg)
 
         (base_namespace, base_repository) = result
-        found_repository = model.repository.get_repository(
-            base_namespace, base_repository)
+        found_repository = model.repository.get_repository(base_namespace, base_repository)
         if not found_repository:
             return self.analyze_view(
                 self.namespace_name,
@@ -113,8 +112,7 @@ class TriggerAnalyzer(object):
         # mark it as not found.
         can_read = False
         if base_namespace == self.namespace_name:
-            can_read = permissions.ReadRepositoryPermission(
-                base_namespace, base_repository)
+            can_read = permissions.ReadRepositoryPermission(base_namespace, base_repository)
 
         if found_repository.visibility.name != "public" and not can_read:
             return self.analyze_view(
@@ -137,8 +135,7 @@ class TriggerAnalyzer(object):
                 perm_query = model.user.get_all_repo_users_transitive(
                     image_namespace, image_repository
                 )
-                user_ids_with_permission = set(
-                    [user.id for user in perm_query])
+                user_ids_with_permission = set([user.id for user in perm_query])
             else:
                 user_ids_with_permission = set()
 
