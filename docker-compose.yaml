@@ -2,6 +2,7 @@ version: "3.7"
 services:
 
   quay-db:
+    user: postgres
     container_name: quay-db
     image: postgres:12.1
     environment:
@@ -20,6 +21,7 @@ services:
       start_period: 10s
 
   clair-db:
+    user: postgres
     container_name: clair-db
     image: postgres:12.1
     environment:
@@ -35,6 +37,7 @@ services:
       start_period: 10s
 
   redis:
+    user: nobody
     container_name: quay-redis
     image: redis:latest
     ports:
@@ -54,6 +57,7 @@ services:
     environment:
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
+      QUAYRUN: /var/run
 
   # clair is configured to share it's network 
   # namespace with quay. this allows quay to serve
