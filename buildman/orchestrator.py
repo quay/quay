@@ -575,9 +575,6 @@ class RedisOrchestrator(Orchestrator):
             ssl_keyfile=key,
             ssl_ca_certs=ca_cert,
             ssl=ssl,
-            socket_connect_timeout=1,
-            socket_timeout=2,
-            health_check_interval=2,
         )
 
         self._shutting_down = False
