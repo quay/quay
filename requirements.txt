@@ -94,7 +94,7 @@ PyMySQL==0.9.3
 pyOpenSSL==19.1.0
 pyparsing==2.4.6
 PyPDF2==1.26.0
-pyrsistent==0.18.1
+pyrsistent==0.18.0
 python-dateutil==2.8.1
 python-editor==1.0.4
 python-gitlab==2.0.0
