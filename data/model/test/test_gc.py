@@ -1,6 +1,7 @@
 import hashlib
 import pytest
 import json
+import random
 
 from datetime import datetime, timedelta
 
@@ -88,14 +89,14 @@ def create_repository(namespace=ADMIN_ACCESS_USER, name=REPO, **kwargs):
 
 
 def gc_now(repository):
-    assert model.gc.garbage_collect_repo(repository)
+    return model.gc.garbage_collect_repo(repository)
 
 
 def delete_tag(repository, tag, perform_gc=True, expect_gc=True):
     repo_ref = RepositoryReference.for_repo_obj(repository)
     registry_model.delete_tag(repo_ref, tag)
     if perform_gc:
-        assert model.gc.garbage_collect_repo(repository) == expect_gc
+        assert gc_now(repository) == expect_gc
 
 
 def move_tag(repository, tag, image_ids, expect_gc=True):
@@ -138,7 +139,7 @@ def move_tag(repository, tag, image_ids, expect_gc=True):
     registry_model.populate_legacy_images_for_testing(manifest_ref, storage)
 
     if expect_gc:
-        assert model.gc.garbage_collect_repo(repository) == expect_gc
+        assert gc_now(repository) == expect_gc
 
 
 def assert_not_deleted(repository, *args):
@@ -192,6 +193,20 @@ def _get_dangling_manifest_count():
     manifest_ids = set([current.id for current in Manifest.select()])
     referenced_by_tag = set([tag.manifest_id for tag in Tag.select()])
     return len(manifest_ids - referenced_by_tag)
+
+
+@contextmanager
+def populate_storage_for_gc():
+    """
+    Populate FakeStorage with dummy data for each ImageStorage row.
+    """
+    preferred = storage.preferred_locations[0]
+    for storage_row in ImageStorage.select():
+        content = b"hello world"
+        storage.put_content({preferred}, storage.blob_path(storage_row.content_checksum), content)
+        assert storage.exists({preferred}, storage.blob_path(storage_row.content_checksum))
+
+    yield
 
 
 @contextmanager
@@ -349,7 +364,7 @@ def test_has_garbage(default_tag_policy, initialized_db):
     assert repository.name == REPO
 
     # GC the repository.
-    assert model.gc.garbage_collect_repo(repository)
+    assert gc_now(repository)
 
     # There should now be no repositories with garbage.
     assert model.oci.tag.find_repository_with_garbage(0) is None
@@ -556,7 +571,7 @@ def test_empty_gc(default_tag_policy, initialized_db):
             fourth=["i1", "f1"],
         )
 
-        assert not model.gc.garbage_collect_repo(repository)
+        assert not gc_now(repository)
         assert_not_deleted(repository, "i1", "i2", "i3", "t1", "t2", "t3", "f1", "f2")
 
 
@@ -653,6 +668,7 @@ def test_image_with_cas(default_tag_policy, initialized_db):
 
         # Delete the tag.
         delete_tag(repository, "first")
+
         assert_deleted(repository, "i1")
 
         # Ensure the CAS path is gone.
@@ -797,7 +813,7 @@ def test_manifest_v2_shared_config_and_blobs(app, default_tag_policy):
     with assert_gc_integrity(expect_storage_removed=True):
         # Delete tag2.
         model.oci.tag.delete_tag(repo, "tag2")
-        assert model.gc.garbage_collect_repo(repo)
+        assert gc_now(repo)
 
     # Ensure the blobs for manifest1 still all exist.
     preferred = storage.preferred_locations[0]
@@ -806,3 +822,77 @@ def test_manifest_v2_shared_config_and_blobs(app, default_tag_policy):
 
         assert storage_row.cas_path
         storage.get_content({preferred}, storage.blob_path(storage_row.content_checksum))
+
+
+def test_garbage_collect_storage(default_tag_policy, initialized_db):
+    with populate_storage_for_gc():
+        preferred = storage.preferred_locations[0]
+
+        # Get a random sample of storages
+        uploadedblobs = list(UploadedBlob.select())
+        random_uploadedblobs = random.sample(
+            uploadedblobs, random.randrange(1, len(uploadedblobs) + 1)
+        )
+        model.storage.garbage_collect_storage([b.blob.id for b in random_uploadedblobs])
+        # Ensure that the blobs' storage weren't removed, since we didn't GC anything
+        for uploadedblob in random_uploadedblobs:
+            assert storage.exists(
+                {preferred}, storage.blob_path(uploadedblob.blob.content_checksum)
+            )
+
+
+def test_purge_repository_storage_blob(default_tag_policy, initialized_db):
+    with populate_storage_for_gc():
+        expected_blobs_removed_from_storage = set()
+        preferred = storage.preferred_locations[0]
+
+        # Check that existing uploadedblobs has an object in storage
+        for repo in database.Repository.select().order_by(database.Repository.id):
+            for uploadedblob in UploadedBlob.select().where(UploadedBlob.repository == repo):
+                assert storage.exists(
+                    {preferred}, storage.blob_path(uploadedblob.blob.content_checksum)
+                )
+
+        # Remove eveyrhing
+        for repo in database.Repository.select():  # .order_by(database.Repository.id):
+            for uploadedblob in UploadedBlob.select().where(UploadedBlob.repository == repo):
+                # Check if only this repository is referencing the uploadedblob
+                # If so, the blob should be removed from storage
+                has_depedent_manifestblob = (
+                    ManifestBlob.select()
+                    .where(
+                        ManifestBlob.blob == uploadedblob.blob,
+                        ManifestBlob.repository != repo,
+                    )
+                    .count()
+                )
+                has_dependent_image = (
+                    Image.select()
+                    .where(
+                        Image.storage == uploadedblob.blob,
+                        Image.repository != repo,
+                    )
+                    .count()
+                )
+                has_dependent_uploadedblobs = (
+                    UploadedBlob.select()
+                    .where(
+                        UploadedBlob == uploadedblob,
+                        UploadedBlob.repository != repo,
+                    )
+                    .count()
+                )
+
+                if (
+                    not has_depedent_manifestblob
+                    and not has_dependent_image
+                    and not has_dependent_uploadedblobs
+                ):
+                    expected_blobs_removed_from_storage.add(uploadedblob.blob)
+
+            assert model.gc.purge_repository(repo, force=True)
+
+        for removed_blob_from_storage in expected_blobs_removed_from_storage:
+            assert not storage.exists(
+                {preferred}, storage.blob_path(removed_blob_from_storage.content_checksum)
+            )

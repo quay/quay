@@ -226,6 +226,8 @@ def _purge_repository_contents(repo):
                 assert uploaded_blob.repository_id == repo.id
                 _purge_uploaded_blob(uploaded_blob, context, allow_non_expired=True)
 
+            _run_garbage_collection(context)
+
         if not found:
             break
 
