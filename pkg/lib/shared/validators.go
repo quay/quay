@@ -44,16 +44,20 @@ func ValidateGitHubOAuth(clientID, clientSecret string) bool {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Warning(err)
 		return false
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		return true
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Warning(err)
+		return false
 	}
 
-	return false
+	log.Debugf("github response: %d, %s", resp.StatusCode, string(body))
 
+	return resp.StatusCode == 200
 }
 
 // ValidateRequiredObject validates that a object input is not nil
@@ -437,10 +441,19 @@ func ValidateBitbucketOAuth(clientID, clientSecret string) bool {
 	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, _ := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Warning(err)
+		return false
+	}
 
-	respBody, _ := ioutil.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Warning(err)
+		return false
+	}
 
+	log.Debugf("bitbucket response: %d, %s", resp.StatusCode, string(respBody))
 	// Load response into json
 	var responseJSON map[string]interface{}
 	_ = json.Unmarshal(respBody, &responseJSON)
