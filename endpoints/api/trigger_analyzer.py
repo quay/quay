@@ -75,8 +75,8 @@ class TriggerAnalyzer(object):
                 "error",
                 message="Dockerfile, %s, is not a child of the context, %s."
                 % (
-                    self.new_config_dict.get("context"),
                     self.new_config_dict.get("dockerfile_path"),
+                    self.new_config_dict.get("context"),
                 ),
             )
 
