@@ -135,6 +135,9 @@ class UserEventListener(object):
                 yield "pulse", {}
             else:
                 channel = item["channel"]
+                if isinstance(channel, bytes):
+                    channel = channel.decode()
+
                 event_id = channel.split("/")[3]  # user/{username}/{events}/{id}
                 data = None
 

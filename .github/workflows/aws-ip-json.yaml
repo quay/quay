@@ -1,12 +1,15 @@
 name: Download AWS IP ranges
 
 on:
-  push:
-    paths:
-      - .github/workflows/aws-ip-json.yml # run workflow every time this file changes
-  workflow_dispatch: # Required even though this is currently empty
-  schedule:
-    - cron: '0 0 * * *'
+  # push:
+  #   paths:
+  #     - .github/workflows/aws-ip-json.yml # run workflow every time this file changes
+  workflow_dispatch:
+  # unschedule for now. we must wait until the flat action can open a PRs,
+  # then set it to do so against master.
+  # this means this workflow needs to run manually against the target branches.
+  # schedule:
+  #   - cron: '0 0 * * *'
 
 jobs:
   scheduled:

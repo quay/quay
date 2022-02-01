@@ -1,6 +1,4 @@
-# syntax=docker/dockerfile:1.2
-# Base is set up with the runtime dependencies and environment.
-FROM quay.io/centos/centos:stream8 AS base
+FROM registry.access.redhat.com/ubi8/ubi:latest AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 ENV PATH=/app/bin/:$PATH \
@@ -43,7 +41,7 @@ WORKDIR /build
 FROM build AS config-editor
 # This argument must be repeated, and should have the same default as
 # the other CONFIGTOOL_VERSION argument.
-ARG CONFIGTOOL_VERSION=v0.1.9
+ARG CONFIGTOOL_VERSION=v0.1.10
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=4 --exclude='*.go'
 RUN set -ex\
@@ -79,7 +77,7 @@ RUN set -ex\
 	;
 
 # Jwtproxy grabs jwtproxy.
-FROM quay.io/centos/centos:stream8 as jwtproxy
+FROM registry.access.redhat.com/ubi8/ubi:latest AS jwtproxy
 ENV OS=linux ARCH=amd64
 ARG JWTPROXY_VERSION=0.0.3
 RUN set -ex\
@@ -88,7 +86,7 @@ RUN set -ex\
 	;
 
 # Pushgateway grabs pushgateway.
-FROM quay.io/centos/centos:stream8 AS pushgateway
+FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
 ENV OS=linux ARCH=amd64
 ARG PUSHGATEWAY_VERSION=1.0.0
 RUN set -ex\
@@ -98,12 +96,12 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM docker.io/library/golang:1.15 as config-tool
-WORKDIR /go/src/config-tool
-ARG CONFIGTOOL_VERSION=v0.1.9
+FROM registry.access.redhat.com/ubi8/go-toolset:1.16.12 as config-tool
+WORKDIR /opt/app-root/src
+ARG CONFIGTOOL_VERSION=v0.1.10
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
-COPY --from=config-editor /build/static/build  /go/src/config-tool/pkg/lib/editor/static/build
+COPY --from=config-editor /build/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install ./cmd/config-tool
 
 # Local dev only target. DO NOT USE FOR PROD!
@@ -156,7 +154,6 @@ RUN set -ex\
 # anything to the OS inside the container, so the process needs
 # permissions to modify the user database.
 	; setperms /etc/passwd\
-	; setperms /run\
 	;
 
 WORKDIR $QUAYDIR
@@ -165,7 +162,7 @@ RUN mkdir ${QUAYDIR}/config_app
 COPY --from=jwtproxy /usr/local/bin/jwtproxy /usr/local/bin/jwtproxy
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
-COPY --from=config-tool /go/bin/config-tool /bin
+COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=config-editor /build ${QUAYDIR}/config_app
 COPY --from=build-static /build/static ${QUAYDIR}/static
 # Copy in source and update local copy of AWS IP Ranges.

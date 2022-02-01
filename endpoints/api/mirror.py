@@ -84,6 +84,13 @@ common_properties = {
                     "communicating with the external repository."
                 ),
             },
+            "unsigned_images": {
+                "type": "boolean",
+                "description": (
+                    "Determines whether the image signature will be verified when pulling from "
+                    "the external repository."
+                ),
+            },
             "proxy": {
                 "type": "object",
                 "description": "Proxy configuration for use during synchronization.",
@@ -449,6 +456,16 @@ class RepoMirrorResource(RepositoryParamResource):
                         wrap_repository(repo),
                         changed="verify_tls",
                         to=external_registry_config["verify_tls"],
+                    )
+
+            if "unsigned_images" in external_registry_config:
+                updates = {"unsigned_images": external_registry_config["unsigned_images"]}
+                if model.repo_mirror.change_external_registry_config(repo, updates):
+                    track_and_log(
+                        "repo_mirror_config_changed",
+                        wrap_repository(repo),
+                        changed="unsigned_images",
+                        to=external_registry_config["unsigned_images"],
                     )
 
             if "proxy" in external_registry_config:

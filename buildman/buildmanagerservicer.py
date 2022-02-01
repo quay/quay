@@ -68,9 +68,8 @@ class BuildManagerServicer(buildman_pb2_grpc.BuildManagerServicer):
             return buildman_pb2.BuildPack()
 
         job_id = decoded_token["job_id"]
-        max_build_time = decoded_token["expiration"]
 
-        token, build_args = self._lifecycle_manager.start_job(job_id, max_build_time)
+        token, build_args = self._lifecycle_manager.start_job(job_id)
         if not token or not build_args:
             msg = "Build manager unable to start job"
             self._handle_error(context, grpc.StatusCode.INTERNAL, msg)

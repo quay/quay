@@ -1,6 +1,7 @@
 import unittest
 
 import ldap
+from ldap.filter import filter_format
 
 from app import app
 from initdb import setup_database_for_testing, finished_database_for_testing
@@ -638,6 +639,24 @@ class TestLDAP(unittest.TestCase):
             (response, err_msg) = ldap.at_least_one_user_exists()
             self.assertIsNone(err_msg)
             self.assertTrue(response)
+
+    def test_ldap_user_filter_format(self):
+        some_user_filter = "(filterField=somevalue)"
+        with mock_ldap(user_filter=some_user_filter) as ldap:
+            search_flt = filter_format("(memberOf=%s,%s)", ("cn=AwesomeFolk", ldap._base_dn))
+            search_flt = ldap._add_user_filter(search_flt)
+            self.assertEquals(
+                search_flt, "(&(memberOf=cn=AwesomeFolk,dc=quay,dc=io)(filterField=somevalue))"
+            )
+
+        some_other_user_filter = some_user_filter + "(filterField2=someothervalue)"
+        with mock_ldap(user_filter=some_other_user_filter) as ldap:
+            search_flt = filter_format("(memberOf=%s,%s)", ("cn=AwesomeFolk", ldap._base_dn))
+            search_flt = ldap._add_user_filter(search_flt)
+            self.assertEquals(
+                search_flt,
+                "(&(memberOf=cn=AwesomeFolk,dc=quay,dc=io)(filterField=somevalue)(filterField2=someothervalue))",
+            )
 
     def test_ldap_user_filtering_no_users(self):
         no_user_filter = "(filterField=anothervalue)"

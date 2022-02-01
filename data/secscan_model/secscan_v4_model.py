@@ -294,6 +294,14 @@ class V4SecurityScanner(SecurityScannerInterface):
                 logger.exception("Failed to perform indexing, security scanner API error")
                 continue
 
+            if report["state"] == IndexReportState.Index_Finished:
+                index_status = IndexStatus.COMPLETED
+            elif report["state"] == IndexReportState.Index_Error:
+                index_status = IndexStatus.FAILED
+            else:
+                # Unknown state don't save anything
+                continue
+
             with db_transaction():
                 ManifestSecurityStatus.delete().where(
                     ManifestSecurityStatus.manifest == candidate
@@ -302,11 +310,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     manifest=candidate,
                     repository=candidate.repository,
                     error_json=report["err"],
-                    index_status=(
-                        IndexStatus.FAILED
-                        if report["state"] == IndexReportState.Index_Error
-                        else IndexStatus.COMPLETED
-                    ),
+                    index_status=index_status,
                     indexer_hash=state,
                     indexer_version=IndexerVersion.V4,
                     metadata_json={},

@@ -27,7 +27,12 @@ from buildman.interface import (
     RESULT_PHASES,
 )
 from buildman.jobutil.buildjob import BuildJob, BuildJobLoadException
-from buildman.manager.executor import PopenExecutor, EC2Executor, KubernetesExecutor
+from buildman.manager.executor import (
+    PopenExecutor,
+    EC2Executor,
+    KubernetesExecutor,
+    KubernetesPodmanExecutor,
+)
 from buildman.orchestrator import (
     orchestrator_from_config,
     KeyEvent,
@@ -76,7 +81,7 @@ RETRY_IMMEDIATELY_SLEEP_DURATION = 0
 TOO_MANY_WORKERS_SLEEP_DURATION = 10
 CREATED_JOB_TIMEOUT_SLEEP_DURATION = 10
 
-CREATED_JOB_TIMEOUT = 15
+JOB_REGISTRATION_TIMEOUT = 30
 JOB_TIMEOUT_SECONDS = 300
 MINIMUM_JOB_EXTENSION = timedelta(minutes=1)
 
@@ -102,6 +107,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         "popen": PopenExecutor,
         "ec2": EC2Executor,
         "kubernetes": KubernetesExecutor,
+        "kubernetesPodman": KubernetesPodmanExecutor,
     }
 
     def __init__(
@@ -212,7 +218,7 @@ class EphemeralBuilderManager(BuildStateInterface):
 
     def create_job(self, build_id, build_metadata):
         """Create the job in the orchestrator.
-        The job will expire if it is not scheduled within CREATED_JOB_TIMEOUT.
+        The job will expire if it is not scheduled within JOB_REGISTRATION_TIMEOUT.
         """
         # Sets max threshold for build heartbeats. i.e max total running time of the build (default: 2h)
         # This is separate from the redis key expiration, which is kept alive with heartbeats from the worker.
@@ -226,7 +232,9 @@ class EphemeralBuilderManager(BuildStateInterface):
                 job_key,
                 json.dumps(build_metadata),
                 overwrite=False,
-                expiration=CREATED_JOB_TIMEOUT,
+                expiration=self._manager_config.get(
+                    "JOB_REGISTRATION_TIMEOUT", JOB_REGISTRATION_TIMEOUT
+                ),
             )
         except KeyError:
             raise BuildJobAlreadyExistsError(job_key)
@@ -282,7 +290,7 @@ class EphemeralBuilderManager(BuildStateInterface):
                 max_startup_time,
             )
         else:
-            logger.warning("Job %s not scheduled. Unable update build phase to SCHEDULED")
+            logger.warning("Job %s not scheduled. Unable update build phase to SCHEDULED", job_id)
 
         return updated
 
@@ -361,7 +369,7 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         logger.debug("Job completed for job %s with result %s", job_id, job_result)
 
-    def start_job(self, job_id, max_build_time):
+    def start_job(self, job_id):
         """Starts the build job. This is invoked by the worker once the job has been created and
         scheduled, returing the buildpack needed to start the actual build.
         """
@@ -423,7 +431,7 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         # Generate the build token
         token = self.generate_build_token(
-            BUILD_JOB_TOKEN_TYPE, build_job.build_uuid, job_id, max_build_time
+            BUILD_JOB_TOKEN_TYPE, build_job.build_uuid, job_id, self.machine_max_expiration
         )
 
         # Publish the time it took for a worker to ack the build
@@ -457,6 +465,12 @@ class EphemeralBuilderManager(BuildStateInterface):
                 phase,
             )
             return False
+
+        # Job is already in desired phase. Don't need to do anything.
+        # We return true to allow the caller to move forward.
+        if build_job.repo_build.phase == phase:
+            logger.warning("Job %s is already in the desired state/phase (%s)", job_id, phase)
+            return True
 
         # Update the build phase
         phase_metadata = phase_metadata or {}
@@ -614,7 +628,10 @@ class EphemeralBuilderManager(BuildStateInterface):
             return False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
 
         registration_token = self.generate_build_token(
-            BUILD_JOB_REGISTRATION_TYPE, build_job.build_uuid, job_id, EPHEMERAL_SETUP_TIMEOUT
+            BUILD_JOB_REGISTRATION_TYPE,
+            build_job.build_uuid,
+            job_id,
+            JOB_REGISTRATION_TIMEOUT + SETUP_LEEWAY_SECONDS,
         )
 
         started_with_executor = None
