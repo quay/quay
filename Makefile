@@ -119,7 +119,7 @@ docker-build: build
 	echo $(TAG)
 
 app-sre-docker-build:
-	$(BUILD_CMD) -t ${IMG} -f Dockerfile.deploy .
+	$(BUILD_CMD) -t ${IMG} -f Dockerfile .
 
 run: license
 	goreman start
