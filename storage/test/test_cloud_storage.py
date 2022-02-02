@@ -21,6 +21,7 @@ _TEST_CONTENT = os.urandom(1024)
 _TEST_BUCKET = "somebucket"
 _TEST_USER = "someuser"
 _TEST_PASSWORD = "somepassword"
+_TEST_REGION = "us-bacon-1"
 _TEST_PATH = "some/cool/path"
 _TEST_UPLOADS_PATH = "uploads/ee160658-9444-4950-8ec6-30faab40529c"
 _TEST_CONTEXT = StorageContext("nyc", None, None, None)
@@ -31,7 +32,12 @@ def storage_engine():
     with mock_s3():
         # Create a test bucket and put some test content.
         boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
-        engine = S3Storage(_TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD)
+        engine = S3Storage(
+            _TEST_CONTEXT, "some/path", _TEST_BUCKET, _TEST_USER, _TEST_PASSWORD, _TEST_REGION
+        )
+        assert engine._connect_kwargs["endpoint_url"] == "https://s3.{}.amazonaws.com".format(
+            _TEST_REGION
+        )
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
 
         yield engine
