@@ -731,6 +731,7 @@ class S3Storage(_CloudStorage):
         s3_bucket,
         s3_access_key=None,
         s3_secret_key=None,
+        s3_region=None,
         # Boto2 backward compatible options (host excluding scheme or port)
         host=None,
         port=None,
@@ -739,7 +740,12 @@ class S3Storage(_CloudStorage):
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
         connect_kwargs = {"config": Config(signature_version="s3v4")}
-        if host or endpoint_url:
+        if s3_region is not None:
+            connect_kwargs["region_name"] = s3_region
+            connect_kwargs["endpoint_url"] = "https://s3.{region}.amazonaws.com".format(
+                region=s3_region
+            )
+        elif host or endpoint_url:
             connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
                 host, port=port, is_secure=True
             )
