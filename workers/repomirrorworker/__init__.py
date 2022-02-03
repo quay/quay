@@ -19,6 +19,8 @@ from data.database import RepoMirrorStatus
 from data.model.oci.tag import delete_tag, retarget_tag, lookup_alive_tags_shallow
 from notifications import spawn_notification
 from util.audit import wrap_repository
+from _init import CONF_DIR
+
 
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
 
@@ -30,6 +32,8 @@ unmirrored_repositories = Gauge(
     "quay_repository_rows_unmirrored",
     "number of repositories in the database that have not yet been mirrored",
 )
+
+GENERATED_SKOPEO_POLICY_PATH = os.path.join(CONF_DIR, "skopeo-policy.json")
 
 
 class PreemptedException(Exception):
@@ -186,6 +190,10 @@ def perform_mirror(skopeo, mirror):
                 mirror.repository.name,
                 tag,
             )
+
+            policy = ""
+            if len(app.config.get("FEATURE_MIRROR_UNSIGNED_REGISTRIES", [])) > 0 and os.path.exists(GENERATED_SKOPEO_POLICY_PATH):
+                policy = GENERATED_SKOPEO_POLICY_PATH
             with database.CloseForLongOperation(app.config):
                 result = skopeo.copy(
                     src_image,
@@ -200,6 +208,7 @@ def perform_mirror(skopeo, mirror):
                     dest_password=retrieve_robot_token(mirror.internal_robot),
                     proxy=mirror.external_registry_config.get("proxy", {}),
                     verbose_logs=verbose_logs,
+                    policy=policy,
                 )
 
             if not result.success:

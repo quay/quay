@@ -1,3 +1,5 @@
+import filecmp
+
 import pytest
 import mock
 import json
@@ -13,7 +15,7 @@ from data.model.user import retrieve_robot_token
 from data.database import Manifest, RepoMirrorConfig, RepoMirrorStatus
 
 from workers.repomirrorworker import delete_obsolete_tags
-from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker
+from workers.repomirrorworker.repomirrorworker import RepoMirrorWorker, generate_skopeo_policy
 from io import BytesIO
 from util.repomirror.skopeomirror import SkopeoResults, SkopeoMirror
 
@@ -726,3 +728,79 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
     mirror = RepoMirrorConfig.get_by_id(mirror.id)
     assert 2 == len(skopeo_calls)
     assert 3 == mirror.sync_retries_remaining
+
+
+@disable_existing_mirrors
+@mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
+@patch("features.REPO_MIRROR", True)
+def test_mirror_config_unsigned_registries(run_skopeo_mock, initialized_db, app, monkeypatch):
+
+    mirror, repo = create_mirror_repo_robot(["latest"])
+    policy_path = "%s/test-policy.json" % os.path.dirname(os.path.realpath(__file__))
+
+    skopeo_calls = [
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "--debug",
+                "inspect",
+                "--tls-verify=True",
+                "docker://registry.example.com/namespace/repository:latest",
+            ],
+            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+        },
+        {
+            "args": [
+                "/usr/bin/skopeo",
+                "--debug",
+                "--policy=%s" % policy_path,
+                "copy",
+                "--all",
+                "--remove-signatures",
+                "--src-tls-verify=True",
+                "--dest-tls-verify=True",
+                "--dest-creds",
+                "%s:%s"
+                % (mirror.internal_robot.username, retrieve_robot_token(mirror.internal_robot)),
+                "docker://registry.example.com/namespace/repository:latest",
+                "docker://localhost:5000/mirror/repo:latest",
+            ],
+            "results": SkopeoResults(True, [], "Success", ""),
+        },
+    ]
+
+    def skopeo_test(args, proxy):
+        try:
+            skopeo_call = skopeo_calls.pop(0)
+            assert args == skopeo_call["args"]
+            assert proxy == {}
+
+            return skopeo_call["results"]
+        except Exception as e:
+            skopeo_calls.append(skopeo_call)
+            raise e
+
+    run_skopeo_mock.side_effect = skopeo_test
+
+    monkeypatch.setenv("DEBUGLOG", "true")
+    with patch.dict(
+            "data.model.config.app_config", {"FEATURE_REPO_MIRROR": True, "FEATURE_MIRROR_UNSIGNED_REGISTRIES":
+                ["registry.access.redhat.com","registry.redhat.io"]}
+    ):
+        with patch("workers.repomirrorworker.GENERATED_SKOPEO_POLICY_PATH", policy_path):
+            worker = RepoMirrorWorker()
+            worker._process_mirrors()
+
+    assert [] == skopeo_calls
+
+
+def test_generate_skopeo_policy(tmp_path):
+    generated_policy = tmp_path / "skopeo-policy.json"
+    policy_path = "%s/test-policy.json" % os.path.dirname(os.path.realpath(__file__))
+    correct_policy_path = "%s/correct-test-policy.json" % os.path.dirname(os.path.realpath(__file__))
+    with patch.dict(
+            "data.model.config.app_config", {"FEATURE_MIRROR_UNSIGNED_REGISTRIES": ["registry.access.redhat.com",
+                                                                                    "registry.redhat.io"]}
+    ):
+        generate_skopeo_policy([policy_path], str(generated_policy))
+    assert filecmp.cmp(correct_policy_path, str(generated_policy))

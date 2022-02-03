@@ -1,0 +1,1 @@
+{"default": [{"type": "insecureAcceptAnything"}], "transports": {"docker": {"registry.access.redhat.com": [{"type": "insecureAcceptAnything"}], "registry.redhat.io": [{"type": "insecureAcceptAnything"}]}, "docker-daemon": {"": [{"type": "insecureAcceptAnything"}]}}}

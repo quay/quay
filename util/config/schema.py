@@ -1204,5 +1204,13 @@ CONFIG_SCHEMA = {
             "description": "Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads",
             "x-example": False,
         },
+        "FEATURE_MIRROR_UNSIGNED_REGISTRIES": {
+            "type": "array",
+            "description": "Disable image signature verification when mirroring repositories for the list of registries",
+            "x-example": [
+                "registry.redhat.io",
+                "registry.access.redhat.com"
+            ],
+        }
     },
 }
