@@ -78,7 +78,7 @@ oslo.serialization==2.29.2
 oslo.utils==3.42.1
 pbr==5.4.4
 peewee==3.13.1
-Pillow==8.3.2
+Pillow==9.0.0
 ply==3.11
 prometheus-client==0.7.1
 protobuf==3.12.2
