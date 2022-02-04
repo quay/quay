@@ -20,7 +20,7 @@ RUN set -ex\
 		openssl \
 		python38 \
 		python3-gpg \
-		skopeo \
+		skopeo-1.5.0-2.module_el8.6.0+954+963caf36 \
 	; dnf -y -q clean all
 
 # Build has all the build-only tools.

@@ -485,6 +485,7 @@ def change_external_registry_config(repository, config_updates):
 
     Config has:
     verify_tls: True|False
+    unsigned_images: True|False
     proxy: JSON fields 'http_proxy', 'https_proxy', andn 'no_proxy'
     """
     mirror = get_mirror(repository)
@@ -492,6 +493,9 @@ def change_external_registry_config(repository, config_updates):
 
     if "verify_tls" in config_updates:
         external_registry_config["verify_tls"] = config_updates["verify_tls"]
+
+    if "unsigned_images" in config_updates:
+        external_registry_config["unsigned_images"] = config_updates["unsigned_images"]
 
     if "proxy" in config_updates:
         proxy_updates = config_updates["proxy"]
