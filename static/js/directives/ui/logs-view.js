@@ -116,6 +116,9 @@ angular.module('quay').directive('logsView', function () {
             case 'verify_tls':
               metadata.changed = 'Verify TLS';
               return 'Mirror {changed} changed to {to}';
+            case 'unsigned_images':
+              metadata.changed = 'Accept Unsigned Images';
+              return 'Mirror {changed} changed to {to}';
             case 'http_proxy':
               metadata.changed = 'HTTP_PROXY';
               return 'Mirror {changed} changed to {to}';
