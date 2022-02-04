@@ -1,6 +1,6 @@
 {
-  "syncToken": "1643828001",
-  "createDate": "2022-02-02-18-53-21",
+  "syncToken": "1643903004",
+  "createDate": "2022-02-03-15-43-24",
   "prefixes": [
     {
       "ip_prefix": "3.5.140.0/22",
@@ -883,6 +883,12 @@
       "region": "ap-southeast-2",
       "service": "AMAZON",
       "network_border_group": "ap-southeast-2"
+    },
+    {
+      "ip_prefix": "13.248.72.0/24",
+      "region": "il-central-1",
+      "service": "AMAZON",
+      "network_border_group": "il-central-1"
     },
     {
       "ip_prefix": "15.230.39.196/31",
@@ -6709,6 +6715,12 @@
       "region": "us-east-1",
       "service": "AMAZON",
       "network_border_group": "us-east-1"
+    },
+    {
+      "ip_prefix": "52.94.152.177/32",
+      "region": "ap-southeast-2",
+      "service": "AMAZON",
+      "network_border_group": "ap-southeast-2"
     },
     {
       "ip_prefix": "64.252.103.0/24",
@@ -16749,6 +16761,12 @@
       "network_border_group": "us-east-1"
     },
     {
+      "ip_prefix": "52.94.152.178/32",
+      "region": "ap-southeast-2",
+      "service": "AMAZON",
+      "network_border_group": "ap-southeast-2"
+    },
+    {
       "ip_prefix": "54.240.236.65/32",
       "region": "eu-south-1",
       "service": "AMAZON",
@@ -17541,6 +17559,12 @@
       "network_border_group": "eu-south-1"
     },
     {
+      "ip_prefix": "52.94.152.176/32",
+      "region": "ap-southeast-2",
+      "service": "AMAZON",
+      "network_border_group": "ap-southeast-2"
+    },
+    {
       "ip_prefix": "52.144.211.200/31",
       "region": "eu-west-2",
       "service": "AMAZON",
@@ -17647,6 +17671,12 @@
       "region": "ap-northeast-1",
       "service": "AMAZON",
       "network_border_group": "ap-northeast-1"
+    },
+    {
+      "ip_prefix": "52.94.152.179/32",
+      "region": "ap-southeast-2",
+      "service": "AMAZON",
+      "network_border_group": "ap-southeast-2"
     },
     {
       "ip_prefix": "52.95.16.0/21",
@@ -24643,6 +24673,12 @@
       "region": "eu-west-1",
       "service": "DYNAMODB",
       "network_border_group": "eu-west-1"
+    },
+    {
+      "ip_prefix": "13.248.72.0/24",
+      "region": "il-central-1",
+      "service": "DYNAMODB",
+      "network_border_group": "il-central-1"
     },
     {
       "ip_prefix": "35.71.99.0/24",
