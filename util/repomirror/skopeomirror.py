@@ -32,11 +32,15 @@ class SkopeoMirror(object):
         dest_password=None,
         proxy=None,
         verbose_logs=False,
+        unsigned_images=False,
     ):
 
         args = ["/usr/bin/skopeo"]
         if verbose_logs:
             args = args + ["--debug"]
+        if unsigned_images:
+            args = args + ["--insecure-policy"]
+
         args = args + [
             "copy",
             "--all",

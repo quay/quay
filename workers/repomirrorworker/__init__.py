@@ -200,6 +200,7 @@ def perform_mirror(skopeo, mirror):
                     dest_password=retrieve_robot_token(mirror.internal_robot),
                     proxy=mirror.external_registry_config.get("proxy", {}),
                     verbose_logs=verbose_logs,
+                    unsigned_images=mirror.external_registry_config.get("unsigned_images", False),
                 )
 
             if not result.success:

@@ -136,6 +136,19 @@
             </td>
           </tr>
           <tr>
+            <td>
+              <label for="sync_unsigned_images">Accept Unsigned Images</label><br>
+              <small>
+                Allow unsigned images to be mirrored.
+              </small>
+            </td>
+            <td>
+              <input type="checkbox"
+                      ng-model="vm.unsignedImages"
+                      id="sync_unsigned_images"></input>
+            </td>
+          </tr>
+          <tr>
             <td><label for="sync_http_proxy">HTTP Proxy</label></td>
             <td>
               <input ng-model="vm.httpProxy"
@@ -304,6 +317,17 @@
           </td>
           <td>
             <input type="checkbox" ng-click="vm.toggleVerifyTLS()" ng-checked="vm.verifyTLS"></input>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <label>Accept Unsigned Images</label><br>
+            <small>
+              Allow unsigned images to be mirrored.
+            </small>
+          </td>
+          <td>
+            <input type="checkbox" ng-click="vm.toggleUnsignedImages()" ng-checked="vm.unsignedImages"></input>
           </td>
         </tr>
         <tr>
