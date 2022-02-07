@@ -96,12 +96,9 @@ oslo.config==7.0.0
 oslo.i18n==3.25.1
 oslo.serialization==2.29.2
 oslo.utils==3.42.1
-pathlib2==2.3.5
-pathspec==0.7.0
-pathvalidate==2.0.1
 pbr==5.4.4
 peewee==3.13.1
-Pillow==8.3.2
+Pillow==8.4.0
 ply==3.11
 prometheus-client==0.7.1
 protobuf==3.12.2
