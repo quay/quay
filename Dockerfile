@@ -19,7 +19,7 @@ RUN set -ex\
 		nginx \
 		openldap \
 		openssl \
-		python3 \
+		python38 \
 		python3-gpg \
 		skopeo \
 	; dnf -y -q clean all
@@ -33,7 +33,7 @@ RUN set -ex\
 		git\
 		nodejs\
 		openldap-devel\
-		python3-devel\
+		python38-devel\
 	; dnf -y -q clean all
 WORKDIR /build
 
