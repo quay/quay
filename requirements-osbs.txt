@@ -81,7 +81,7 @@ oslo.utils==3.42.1
 os-service-types==1.7.0
 pbr==5.4.4
 peewee==3.13.1
-Pillow==9.0.0
+Pillow==8.3.2
 pip==21.1
 pipdeptree==1.0.0
 ply==3.11
