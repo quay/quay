@@ -1,16 +1,4 @@
-# syntax=docker/dockerfile:1.2
-# Stream swaps to CentOS Stream once and is reused.
-FROM docker.io/library/centos:8 AS stream
-RUN set -ex\
-	; dnf -y -q install centos-release-stream\
-	; dnf -y -q swap centos-{linux,stream}-repos\
-# This "|| true" is needed if building in podman, it seems.
-# The filesystem package tries to modify permissions on /proc.
-	; dnf -y -q distro-sync || true\
-	; dnf -y -q clean all
-
-# Base is set up with the runtime dependencies and environment.
-FROM stream AS base
+FROM registry.access.redhat.com/ubi8/ubi:latest AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 ENV PATH=/app/bin/:$PATH \
@@ -30,7 +18,7 @@ RUN set -ex\
 		nginx \
 		openldap \
 		openssl \
-		python3 \
+		python38 \
 		python3-gpg \
 		skopeo \
 	; dnf -y -q clean all
@@ -44,7 +32,7 @@ RUN set -ex\
 		git\
 		nodejs\
 		openldap-devel\
-		python3-devel\
+		python38-devel\
 	; dnf -y -q clean all
 WORKDIR /build
 
@@ -88,8 +76,8 @@ RUN set -ex\
 	;
 
 # Jwtproxy grabs jwtproxy.
-FROM stream as jwtproxy
-ENV OS=linux ARCH=amd64 
+FROM registry.access.redhat.com/ubi8/ubi:latest AS jwtproxy
+ENV OS=linux ARCH=amd64
 ARG JWTPROXY_VERSION=0.0.3
 RUN set -ex\
 	; curl -fsSL -o /usr/local/bin/jwtproxy "https://github.com/coreos/jwtproxy/releases/download/v${JWTPROXY_VERSION}/jwtproxy-${OS}-${ARCH}"\
@@ -97,8 +85,8 @@ RUN set -ex\
 	;
 
 # Pushgateway grabs pushgateway.
-FROM stream AS pushgateway
-ENV OS=linux ARCH=amd64 
+FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
+ENV OS=linux ARCH=amd64
 ARG PUSHGATEWAY_VERSION=1.0.0
 RUN set -ex\
 	; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
@@ -107,12 +95,12 @@ RUN set -ex\
 	;
 
 # Config-tool builds the go binary in the configtool.
-FROM docker.io/library/golang:1.15 as config-tool
-WORKDIR /go/src/config-tool
-ARG CONFIGTOOL_VERSION=master
+FROM registry.access.redhat.com/ubi8/go-toolset:1.16.12 as config-tool
+WORKDIR /opt/app-root/src
+ARG CONFIGTOOL_VERSION=v0.1.10
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
-COPY --from=config-editor /build/static/build  /go/src/config-tool/pkg/lib/editor/static/build
+COPY --from=config-editor /build/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install ./cmd/config-tool
 
 # Final is the end container, where all the work from the other
@@ -153,7 +141,7 @@ RUN mkdir ${QUAYDIR}/config_app
 COPY --from=jwtproxy /usr/local/bin/jwtproxy /usr/local/bin/jwtproxy
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
-COPY --from=config-tool /go/bin/config-tool /bin
+COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=config-editor /build ${QUAYDIR}/config_app
 COPY --from=build-static /build/static ${QUAYDIR}/static
 # Copy in source and update local copy of AWS IP Ranges.
