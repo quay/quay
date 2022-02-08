@@ -436,6 +436,22 @@ class KubernetesExecutor(BuilderExecutor):
 
     @property
     def running_builders_count(self):
+        def _completed(job):
+            if not job.get("status"):
+                return False
+
+            conditions = job["status"].get("conditions")
+            if not conditions:
+                return False
+
+            if (
+                conditions[0]["type"] in ("Complete", "Failed")
+                and conditions[0]["status"] == "True"
+            ):
+                return True
+
+            return False
+
         q = {"labelSelector": "build,time,manager,quay-sha"}
         jobs_list = self._request("GET", self._jobs_path(), params=q)
         if jobs_list.status_code != 200:
@@ -451,7 +467,10 @@ class KubernetesExecutor(BuilderExecutor):
                 jobs_list.status_code,
                 jobs_list.reason,
             )
-        return len(jobs_list.json()["items"])
+
+        running_jobs = [j for j in jobs_list.json()["items"] if not _completed(j)]
+
+        return len(running_jobs)
 
     def _request(self, method, path, **kwargs):
         request_options = dict(kwargs)
