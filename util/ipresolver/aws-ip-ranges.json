@@ -1,6 +1,6 @@
 {
-  "syncToken": "1644251602",
-  "createDate": "2022-02-07-16-33-22",
+  "syncToken": "1644335600",
+  "createDate": "2022-02-08-15-53-20",
   "prefixes": [
     {
       "ip_prefix": "3.5.140.0/22",
@@ -516,7 +516,7 @@
       "ip_prefix": "15.220.216.0/22",
       "region": "ap-south-1",
       "service": "AMAZON",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-del-2"
     },
     {
       "ip_prefix": "35.71.115.0/24",
@@ -5544,7 +5544,7 @@
       "ip_prefix": "15.220.232.0/24",
       "region": "ap-south-1",
       "service": "AMAZON",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-ccu-2"
     },
     {
       "ip_prefix": "23.20.0.0/14",
@@ -8346,7 +8346,7 @@
       "ip_prefix": "15.220.228.0/22",
       "region": "ap-south-1",
       "service": "AMAZON",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-ccu-2"
     },
     {
       "ip_prefix": "15.230.64.192/26",
@@ -10014,7 +10014,7 @@
       "ip_prefix": "15.220.227.0/24",
       "region": "ap-south-1",
       "service": "AMAZON",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-del-2"
     },
     {
       "ip_prefix": "15.230.4.162/31",
@@ -25194,7 +25194,7 @@
       "ip_prefix": "15.220.216.0/22",
       "region": "ap-south-1",
       "service": "EC2",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-del-2"
     },
     {
       "ip_prefix": "35.71.115.0/24",
@@ -26304,7 +26304,7 @@
       "ip_prefix": "15.220.232.0/24",
       "region": "ap-south-1",
       "service": "EC2",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-ccu-2"
     },
     {
       "ip_prefix": "23.20.0.0/14",
@@ -26910,7 +26910,7 @@
       "ip_prefix": "15.220.228.0/22",
       "region": "ap-south-1",
       "service": "EC2",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-ccu-2"
     },
     {
       "ip_prefix": "52.12.0.0/15",
@@ -27234,7 +27234,7 @@
       "ip_prefix": "15.220.227.0/24",
       "region": "ap-south-1",
       "service": "EC2",
-      "network_border_group": "ap-south-1"
+      "network_border_group": "ap-south-1-del-2"
     },
     {
       "ip_prefix": "18.208.0.0/13",
