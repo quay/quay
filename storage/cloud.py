@@ -252,7 +252,6 @@ class _CloudStorage(BaseStorageV2):
             Params={
                 "Bucket": self._bucket_name,
                 "Key": path,
-                "ServerSideEncryption": "AES256",
                 "ContentType": mime_type,
             },
             ExpiresIn=300,
