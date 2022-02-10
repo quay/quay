@@ -107,6 +107,22 @@ objects:
     type: LoadBalancer
     selector:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: quay-py3-grpc-load-balancer-service
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: ${AWS_LOAD_BALANCER_CONNECTION_IDLE_TIMEOUT}
+  spec:
+    ports:
+    - name: https
+      protocol: TCP
+      port: ${{GRPC_SERVICE_PORT}}
+      targetPort: ${{GRPC_SERVICE_TARGET_PORT}}
+    loadBalancerIP:
+    type: LoadBalancer
+    selector:
+      ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -292,6 +308,10 @@ parameters:
     displayName: loadbalancer service port
   - name: LOADBALANCER_SERVICE_TARGET_PORT
     value: "8443"
+  - name: GRPC_SERVICE_PORT
+    value: "443"
+  - name: GRPC_SERVICE_TARGET_PORT
+    value: "55443"
     displayName: loadbalancer service target port
   - name: LOADBALANCER_SERVICE_PROXY_TARGET_PORT
     value: "7443"
