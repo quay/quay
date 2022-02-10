@@ -153,3 +153,8 @@ xhtml2pdf==0.2.4
 yapf==0.29.0
 zipp==2.1.0
 zope.interface==5.1.2
+
+# Build dependencies
+Cython==0.29.23
+toml==0.10.2
+jsonpickle==1.2
