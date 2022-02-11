@@ -544,7 +544,8 @@ class KubernetesExecutor(BuilderExecutor):
 
         return resources
 
-    def _build_job_containers(self, user_data):
+    def _build_job_containers(self, token, build_uuid):
+        user_data = self.generate_cloud_config(token, build_uuid, self.manager_hostname)
         vm_memory_limit = self.executor_config.get("VM_MEMORY_LIMIT", "4G")
         vm_volume_size = self.executor_config.get("VOLUME_SIZE", "32G")
 
@@ -571,7 +572,7 @@ class KubernetesExecutor(BuilderExecutor):
 
         return container
 
-    def _job_resource(self, build_uuid, user_data):
+    def _job_resource(self, token, build_uuid):
         image_pull_secret_name = self.executor_config.get("IMAGE_PULL_SECRET_NAME", "builder")
         service_account = self.executor_config.get("SERVICE_ACCOUNT_NAME", "quay-builder-sa")
         node_selector_label_key = self.executor_config.get(
@@ -616,7 +617,7 @@ class KubernetesExecutor(BuilderExecutor):
                         "imagePullSecrets": [{"name": image_pull_secret_name}],
                         "restartPolicy": "Never",
                         "dnsPolicy": "Default",
-                        "containers": [self._build_job_containers(user_data)],
+                        "containers": [self._build_job_containers(token, build_uuid)],
                     },
                 },
             },
@@ -654,8 +655,7 @@ class KubernetesExecutor(BuilderExecutor):
     @observe(build_start_duration, "k8s")
     def start_builder(self, token, build_uuid):
         # generate resource
-        user_data = self.generate_cloud_config(token, build_uuid, self.manager_hostname)
-        resource = self._job_resource(build_uuid, user_data)
+        resource = self._job_resource(token, build_uuid)
         logger.debug("Using Kubernetes Distribution: %s", self._kubernetes_distribution())
         logger.debug("Generated kubernetes resource:\n%s", resource)
 
@@ -688,6 +688,58 @@ class KubernetesExecutor(BuilderExecutor):
         except:
             logger.error("Failed to send delete pod call for job %s", builder_id)
             raise ExecutorException("Failed to send delete pod call for job %s", builder_id)
+
+
+class KubernetesPodmanExecutor(KubernetesExecutor):
+    def __init__(self, *args, **kwargs):
+        super(KubernetesExecutor, self).__init__(*args, **kwargs)
+        self.namespace = self.executor_config.get("BUILDER_NAMESPACE", "builder")
+        self.image = self.executor_config.get(
+            "BUILDER_CONTAINER_IMAGE", "quay.io/quay/quay-builder-podman:stable"
+        )
+
+    def _build_job_containers(self, token, build_uuid):
+        server_grpc_addr = (
+            self.manager_hostname.split(":", 1)[0] + ":" + str(SECURE_GRPC_SERVER_PORT)
+            if self.registry_hostname == self.manager_hostname
+            else self.manager_hostname
+        )
+
+        container = {
+            "name": "builder",
+            "imagePullPolicy": "Always",
+            "image": self.image,
+            "env": [
+                {"name": "TOKEN", "value": token},
+                {"name": "BUILD_UUID", "value": build_uuid},
+                {"name": "SERVER", "value": server_grpc_addr},  # manager_hostname
+                {"name": "REGISTRY_HOSTNAME", "value": self.registry_hostname},
+                {"name": "CONTAINER_RUNTIME", "value": "podman"},
+                {"name": "BULDAH_ISOLATION", "value": "chroot"},
+                {"name": "CA_CERT", "value": self.executor_config.get("CA_CERT", self._ca_cert())},
+                {"name": "TLS_CERT_PATH", "value": "/certs/cacert.crt"},  # Used by build manager
+                {
+                    "name": "SSL_CERT_FILE",
+                    "value": "/certs/cacert.crt",
+                },  # Used for other Podman and other Go libraries
+                {"name": "DEBUG", "value": "false"},
+                {"name": "HTTP_PROXY", "value": self.executor_config.get("HTTP_PROXY", "")},
+                {"name": "HTTPS_PROXY", "value": self.executor_config.get("HTTPS_PROXY", "")},
+                {"name": "NO_PROXY", "value": self.executor_config.get("NO_PROXY", "")},
+                {"name": "DOCKER_HOST", "value": "unix:///tmp/podman-run-1000/podman/podman.sock"},
+            ],
+            "resources": self._build_job_container_resources(),
+        }
+
+        if self._is_basic_kubernetes_distribution():
+            container["volumeMounts"] = [
+                {
+                    "name": "secrets-mask",
+                    "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                }
+            ]
+
+        return container
 
 
 class LogPipe(threading.Thread):

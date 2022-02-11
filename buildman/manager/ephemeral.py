@@ -27,7 +27,12 @@ from buildman.interface import (
     RESULT_PHASES,
 )
 from buildman.jobutil.buildjob import BuildJob, BuildJobLoadException
-from buildman.manager.executor import PopenExecutor, EC2Executor, KubernetesExecutor
+from buildman.manager.executor import (
+    PopenExecutor,
+    EC2Executor,
+    KubernetesExecutor,
+    KubernetesPodmanExecutor,
+)
 from buildman.orchestrator import (
     orchestrator_from_config,
     KeyEvent,
@@ -102,6 +107,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         "popen": PopenExecutor,
         "ec2": EC2Executor,
         "kubernetes": KubernetesExecutor,
+        "kubernetesPodman": KubernetesPodmanExecutor,
     }
 
     def __init__(
