@@ -408,6 +408,36 @@ def test_perform_indexing_api_request_failure_state(initialized_db, set_secscan_
     assert ManifestSecurityStatus.select().count() == 0
 
 
+def test_perform_indexing_api_request_index_error_response(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "xyz"}
+    secscan._secscan_api.index.return_value = (
+        {"err": "something", "state": IndexReportState.Index_Error},
+        "xyz",
+    )
+
+    next_token = secscan.perform_indexing()
+    assert next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
+    assert ManifestSecurityStatus.select().count() == Manifest.select(fn.Max(Manifest.id)).count()
+    for mss in ManifestSecurityStatus.select():
+        assert mss.index_status == IndexStatus.FAILED
+
+
+def test_perform_indexing_api_request_non_finished_state(initialized_db, set_secscan_config):
+    secscan = V4SecurityScanner(app, instance_keys, storage)
+    secscan._secscan_api = mock.Mock()
+    secscan._secscan_api.state.return_value = {"state": "xyz"}
+    secscan._secscan_api.index.return_value = (
+        {"err": "something", "state": "ScanLayers"},
+        "xyz",
+    )
+
+    next_token = secscan.perform_indexing()
+    assert next_token and next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
+    assert ManifestSecurityStatus.select().count() == 0
+
+
 def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_config):
     secscan = V4SecurityScanner(app, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
