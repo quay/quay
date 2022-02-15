@@ -19,6 +19,7 @@ def _create_ldap(requires_email=True, user_filter=None):
     user_rdn = ["ou=employees"]
     uid_attr = "uid"
     email_attr = "mail"
+    memberof_attr = "memberOf"
     secondary_user_rdns = ["ou=otheremployees"]
 
     ldap = LDAPUsers(
@@ -29,6 +30,7 @@ def _create_ldap(requires_email=True, user_filter=None):
         user_rdn,
         uid_attr,
         email_attr,
+        memberof_attr,
         secondary_user_rdns=secondary_user_rdns,
         requires_email=requires_email,
         ldap_user_filter=user_filter,
@@ -61,6 +63,16 @@ def mock_ldap(requires_email=True, user_filter=None):
             "mail": ["foo@bar.com"],
             "memberOf": ["cn=AwesomeFolk,dc=quay,dc=io", "cn=*Guys,dc=quay,dc=io"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
+        },
+        "uid=strange-memberof,ou=employees,dc=quay,dc=io": {
+            "dc": ["quay", "io"],
+            "ou": "employees",
+            "uid": ["strange-memberof"],
+            "userPassword": ["somepass"],
+            "mail": ["foo@bar.com"],
+            "strangeMemberOf": ["cn=StrangeFolk,dc=quay,dc=io"],
+            "filterField": ["strangevalue"],
             "objectClass": "user",
         },
         "uid=nomail,ou=employees,dc=quay,dc=io": {
@@ -441,6 +453,7 @@ class TestLDAP(unittest.TestCase):
             user_rdn = []
             uid_attr = "uid"
             email_attr = "mail"
+            memberof_attr = "memberOf"
             secondary_user_rdns = ["ou=otheremployees"]
 
             ldap = LDAPUsers(
@@ -451,6 +464,7 @@ class TestLDAP(unittest.TestCase):
                 user_rdn,
                 uid_attr,
                 email_attr,
+                memberof_attr,
                 secondary_user_rdns=secondary_user_rdns,
             )
 
@@ -505,6 +519,7 @@ class TestLDAP(unittest.TestCase):
         user_rdn = ["ou=employees"]
         uid_attr = "uid"
         email_attr = "mail"
+        memberof_attr = "memberOf"
         secondary_user_rdns = ["ou=otheremployees"]
 
         with self.assertRaisesRegex(Exception, "Can't contact LDAP server"):
@@ -516,6 +531,7 @@ class TestLDAP(unittest.TestCase):
                 user_rdn,
                 uid_attr,
                 email_attr,
+                memberof_attr,
                 secondary_user_rdns=secondary_user_rdns,
                 requires_email=False,
                 timeout=5,
@@ -640,6 +656,31 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err_msg)
             self.assertTrue(response)
 
+    def test_ldap_memberof_attr(self):
+        base_dn = ["dc=quay", "dc=io"]
+        admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
+        admin_passwd = "password"
+        user_rdn = ["ou=employees"]
+        uid_attr = "uid"
+        email_attr = "mail"
+        memberof_attr = "strangeMemberOf"
+        with mock_ldap():
+            ldap = LDAPUsers(
+                "ldap://localhost",
+                base_dn,
+                admin_dn,
+                admin_passwd,
+                user_rdn,
+                uid_attr,
+                email_attr,
+                memberof_attr,
+            )
+            (result, err) = ldap.check_group_lookup_args(
+                {"group_dn": "cn=StrangeFolk"}, disable_pagination=True
+            )
+            self.assertTrue(result)
+            self.assertIsNone(err)
+
     def test_ldap_user_filter_format(self):
         some_user_filter = "(filterField=somevalue)"
         with mock_ldap(user_filter=some_user_filter) as ldap:
@@ -695,6 +736,7 @@ class TestLDAP(unittest.TestCase):
         user_rdn = ["ou=employees"]
         uid_attr = "uid"
         email_attr = "mail"
+        memberof_attr = "memberOf"
         secondary_user_rdns = ["ou=otheremployees"]
 
         with mock_ldap():
@@ -706,6 +748,7 @@ class TestLDAP(unittest.TestCase):
                 user_rdn,
                 uid_attr,
                 email_attr,
+                memberof_attr,
                 ldap_user_filter="(filterField=somevalue)",
             )
             (response, err_msg) = ldap.at_least_one_user_exists()
@@ -719,6 +762,7 @@ class TestLDAP(unittest.TestCase):
         user_rdn = ["ou=employees"]
         uid_attr = "uid"
         email_attr = "mail"
+        memberof_attr = "memberOf"
         secondary_user_rdns = ["ou=otheremployees"]
 
         with mock_ldap():
@@ -730,6 +774,7 @@ class TestLDAP(unittest.TestCase):
                 user_rdn,
                 uid_attr,
                 email_attr,
+                memberof_attr,
                 ldap_user_filter="(filterField=someothervalue)",
             )
             (response, err_msg) = ldap.at_least_one_user_exists()

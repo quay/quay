@@ -59,7 +59,7 @@ class LDAPValidator(BaseValidator):
         user_rdn = config.get("LDAP_USER_RDN", [])
         uid_attr = config.get("LDAP_UID_ATTR", "uid")
         email_attr = config.get("LDAP_EMAIL_ATTR", "mail")
-        email_attr = config.get("LDAP_EMAIL_ATTR", "mail")
+        memberof_attr = config.get("LDAP_MEMBEROF_ATTR", "memberOf")
         ldap_user_filter = config.get("LDAP_USER_FILTER", None)
 
         if ldap_user_filter:
@@ -74,6 +74,7 @@ class LDAPValidator(BaseValidator):
             user_rdn,
             uid_attr,
             email_attr,
+            memberof_attr,
             allow_tls_fallback,
             ldap_user_filter=ldap_user_filter,
         )

@@ -57,6 +57,7 @@ def get_users_handler(config, _, override_config_dir):
         user_rdn = config.get("LDAP_USER_RDN", [])
         uid_attr = config.get("LDAP_UID_ATTR", "uid")
         email_attr = config.get("LDAP_EMAIL_ATTR", "mail")
+        memberof_attr = config.get("LDAP_MEMBEROF_ATTR", "memberOf")
         secondary_user_rdns = config.get("LDAP_SECONDARY_USER_RDNS", [])
         timeout = config.get("LDAP_TIMEOUT")
         network_timeout = config.get("LDAP_NETWORK_TIMEOUT")
@@ -71,6 +72,7 @@ def get_users_handler(config, _, override_config_dir):
             user_rdn,
             uid_attr,
             email_attr,
+            memberof_attr,
             allow_tls_fallback,
             secondary_user_rdns=secondary_user_rdns,
             requires_email=features.MAILING,
