@@ -256,6 +256,8 @@ objects:
             value: ${{QUAY_APP_CONFIG_SECRET}}
           - name: DEBUGLOG
             value: ${DEBUGLOG}
+          - name: IGNORE_VALIDATION
+            value: ${IGNORE_VALIDATION}
           - name: SYSLOG_SERVER
             value: ${{SYSLOG_SERVER}}
           - name: SYSLOG_PORT
@@ -460,4 +462,7 @@ parameters:
     value: "true"
   - name: TICKER_TIME
     value: "200"
+  - name: IGNORE_VALIDATION
+    value: "false"
+
 
