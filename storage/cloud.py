@@ -745,6 +745,9 @@ class S3Storage(_CloudStorage):
             connect_kwargs["endpoint_url"] = "https://s3.{region}.amazonaws.com".format(
                 region=s3_region
             )
+            # cn-north-1's endpoint has a .com.cn TLD
+            if s3_region == "cn-north-1":
+                connect_kwargs["endpoint_url"] = connect_kwargs["endpoint_url"] + ".cn"
         elif host or endpoint_url:
             connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
                 host, port=port, is_secure=True
