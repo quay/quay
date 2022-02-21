@@ -21,6 +21,7 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
 from data.database import ServiceKeyApprovalType
 from data.logs_model import logs_model
+from data.model import namespacequota
 from endpoints.api import (
     ApiResource,
     nickname,
@@ -209,6 +210,39 @@ class SuperUserOrganizationList(ApiResource):
         """
         if SuperUserPermission().can():
             return {"organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]}
+
+        raise Unauthorized()
+
+
+@resource("/v1/superuser/quota/")
+@internal_only
+@show_if(features.SUPER_USERS)
+@show_if(features.QUOTA_MANAGEMENT)
+class SuperUserOrganizationList(ApiResource):
+    """
+    Resource for listing organizations in the system.
+    """
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname("listAllOrganizations")
+    @require_scope(scopes.SUPERUSER)
+    def get(self):
+        """
+        Returns a list of all organizations in the system.
+        """
+        if SuperUserPermission().can():
+            return {
+                "organizations": [
+                    {
+                        "organization": org.username,
+                        "size": namespacequota.get_namespace_size(
+                            org.username
+                        ),
+                    }
+                    for org in pre_oci_model.get_organizations()
+                ]
+            }
 
         raise Unauthorized()
 

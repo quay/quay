@@ -7,6 +7,7 @@ import logging
 from flask import request
 
 import features
+from app import app
 from auth.permissions import (
     AdministerOrganizationPermission,
     SuperUserPermission,
@@ -141,8 +142,12 @@ class OrganizationQuota(ApiResource):
         orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not orgperm.can() and not superperm.can():
-            raise Unauthorized()
+        if not superperm.can():
+            if orgperm.can():
+                if app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) != 0:
+                    return Unauthorized()
+            else:
+                return Unauthorized()
 
         quota = model.namespacequota.get_namespace_quota(namespace)
 

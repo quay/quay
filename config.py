@@ -816,3 +816,5 @@ class DefaultConfig(ImmutableConfig):
 
     # Add quota management configuration, caching, and validation
     FEATURE_QUOTA_MANAGEMENT = False
+    # default value for all organizations to reject by default. 0 = no configuration
+    DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
