@@ -39,7 +39,7 @@ TimeoutStopSec={{ timeout_stop_sec if timeout_stop_sec else 2000 }}
 {% if username and password %}
 ExecStartPre=/usr/bin/podman login -u {{ username }} -p {{ password }} {{ container|registry }}
 {% endif %}
-ExecStart=/usr/bin/podman run --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
+ExecStart=/usr/bin/podman run --user 0 --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
 {% for start_post in exec_start_post -%}
 ExecStartPost={{ start_post }}
 {% endfor %}
@@ -50,7 +50,7 @@ ExecStop=/usr/bin/podman stop {{ name }}
 {% if username and password %}
 ExecStartPre=/usr/bin/docker login -u {{ username }} -p {{ password }} {{ container|registry }}
 {% endif %}
-ExecStart=/usr/bin/docker run --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
+ExecStart=/usr/bin/docker run --user 0 --rm {{ extra_args }} --name {{ name }} {{ container }}:{{ tag }} {{ command }}
 {% for start_post in exec_start_post -%}
 ExecStartPost={{ start_post }}
 {% endfor %}
