@@ -26,6 +26,7 @@ def _setup_mirror():
         "external_registry_password": "fakePassword",
         "external_registry_config": {
             "verify_tls": True,
+            "unsigned_images": False,
             "proxy": {
                 "http_proxy": "http://insecure.proxy.corp",
                 "https_proxy": "https://secure.proxy.corp",
@@ -107,7 +108,8 @@ def test_get_mirror(client):
     assert resp["external_registry_username"] == "fakeUsername"
     assert "external_registry_password" not in resp
     assert "external_registry_config" in resp
-    assert resp["external_registry_config"]["verify_tls"] == True
+    assert resp["external_registry_config"]["verify_tls"] is True
+    assert resp["external_registry_config"]["unsigned_images"] is False
     assert "proxy" in resp["external_registry_config"]
     assert resp["external_registry_config"]["proxy"]["http_proxy"] == "http://insecure.proxy.corp"
     assert resp["external_registry_config"]["proxy"]["https_proxy"] == "https://secure.proxy.corp"
@@ -160,6 +162,10 @@ def test_get_mirror(client):
         ("verify_tls", False, 201),
         ("verify_tls", None, 400),
         ("verify_tls", "abc", 400),
+        ("unsigned_images", True, 201),
+        ("unsigned_images", False, 201),
+        ("unsigned_images", None, 400),
+        ("unsigned_images", "abc", 400),
         ("root_rule", {"rule_kind": "tag_glob_csv", "rule_value": ["3.1", "3.1*"]}, 201),
         ("root_rule", {"rule_kind": "tag_glob_csv"}, 400),
         ("root_rule", {"rule_kind": "tag_glob_csv", "rule_value": []}, 400),
@@ -176,7 +182,7 @@ def test_change_config(key, value, expected_status, client):
         params = {"repository": "devtable/simple"}
         if key in ("http_proxy", "https_proxy", "no_proxy"):
             request_body = {"external_registry_config": {"proxy": {key: value}}}
-        elif key == "verify_tls":
+        elif key == "verify_tls" or key == "unsigned_images":
             request_body = {"external_registry_config": {key: value}}
         else:
             request_body = {key: value}
@@ -191,6 +197,8 @@ def test_change_config(key, value, expected_status, client):
             assert key not in resp.json
         elif key == "verify_tls":
             assert resp.json["external_registry_config"]["verify_tls"] == value
+        elif key == "unsigned_images":
+            assert resp.json["external_registry_config"]["unsigned_images"] == value
         elif key in ("http_proxy", "https_proxy", "no_proxy"):
             assert resp.json["external_registry_config"]["proxy"][key] == value
         else:
@@ -199,6 +207,8 @@ def test_change_config(key, value, expected_status, client):
         if key == "external_registry_password":
             assert key not in resp.json
         elif key == "verify_tls":
+            assert resp.json["external_registry_config"][key] != value
+        elif key == "unsigned_images":
             assert resp.json["external_registry_config"][key] != value
         elif key in ("http_proxy", "https_proxy", "no_proxy"):
             assert resp.json["external_registry_config"]["proxy"][key] != value

@@ -138,7 +138,7 @@ def remove_team(org_name, team_name, removed_by_username):
     team = found[0]
     if team.role.name == "admin":
         admin_teams = list(__get_user_admin_teams(org_name, removed_by_username))
-        if len(admin_teams) <= 1:
+        if len(admin_teams) <= 1 and admin_teams[0].name == team_name:
             # The team we are trying to remove is the only admin team containing this user.
             msg = "Deleting team '%s' would remove admin ability for user '%s' in organization '%s'"
             raise DataModelException(msg % (team_name, removed_by_username, org_name))
