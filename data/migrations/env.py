@@ -38,7 +38,6 @@ def get_db_url():
     an environment variable or expected to default with a SQLite database for testing purposes.
     """
     db_url = app.config.get("DB_URI", "sqlite:///test/data/test.db")
-    db_url = unquote(db_url)  # TODO: determine and comment why this is important
     return db_url
 
 
