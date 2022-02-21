@@ -10,9 +10,6 @@ from data.secscan_model.datatypes import (
     ScanLookupStatus,
     SecurityInformationLookupResult,
     SecurityInformation,
-    Layer,
-    Feature,
-    Vulnerability,
 )
 
 from data.registry_model import registry_model
