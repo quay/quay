@@ -81,7 +81,7 @@ RETRY_IMMEDIATELY_SLEEP_DURATION = 0
 TOO_MANY_WORKERS_SLEEP_DURATION = 10
 CREATED_JOB_TIMEOUT_SLEEP_DURATION = 10
 
-CREATED_JOB_TIMEOUT = 15
+JOB_REGISTRATION_TIMEOUT = 30
 JOB_TIMEOUT_SECONDS = 300
 MINIMUM_JOB_EXTENSION = timedelta(minutes=1)
 
@@ -218,7 +218,7 @@ class EphemeralBuilderManager(BuildStateInterface):
 
     def create_job(self, build_id, build_metadata):
         """Create the job in the orchestrator.
-        The job will expire if it is not scheduled within CREATED_JOB_TIMEOUT.
+        The job will expire if it is not scheduled within JOB_REGISTRATION_TIMEOUT.
         """
         # Sets max threshold for build heartbeats. i.e max total running time of the build (default: 2h)
         # This is separate from the redis key expiration, which is kept alive with heartbeats from the worker.
@@ -232,7 +232,9 @@ class EphemeralBuilderManager(BuildStateInterface):
                 job_key,
                 json.dumps(build_metadata),
                 overwrite=False,
-                expiration=CREATED_JOB_TIMEOUT,
+                expiration=self._manager_config.get(
+                    "JOB_REGISTRATION_TIMEOUT", JOB_REGISTRATION_TIMEOUT
+                ),
             )
         except KeyError:
             raise BuildJobAlreadyExistsError(job_key)
