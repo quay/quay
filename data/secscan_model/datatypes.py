@@ -81,7 +81,7 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                         CVSSv3(
                                             **vuln.get("Metadata", {})
                                             .get("NVD", {})
-                                            .get(["CVSv3"], {})
+                                            .get("CVSv3", {})
                                         )
                                     ),
                                 ),
