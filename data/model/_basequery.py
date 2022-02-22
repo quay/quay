@@ -5,7 +5,7 @@ from cachetools.func import lru_cache
 
 from datetime import datetime, timedelta
 
-from app import app
+import features
 from data.model import DataModelException, config
 from data.readreplica import ReadOnlyModeException
 from data.database import (
@@ -112,20 +112,20 @@ def get_namespace_quota_limits(namespace_name):
     ).dicts()
 
     # define limits if a system default is defined in config.py and no namespace specific limits are set
-    if app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) != 0 and len(query) == 0:
+    if features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES != 0 and len(query) == 0:
         query = [
             {
-                "limit_bytes": app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0),
+                "limit_bytes": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES,
                 "percent_of_limit": 80,
                 "name": "System Warning Limit",
-                "bytes_allowed": app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) * 0.8,
+                "bytes_allowed": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES * 0.8,
                 "type_id": 1,
             },
             {
-                "limit_bytes": app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0),
+                "limit_bytes": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES,
                 "percent_of_limit": 100,
                 "name": "System Reject Limit",
-                "bytes_allowed": app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0),
+                "bytes_allowed": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES,
                 "type_id": 2,
             },
         ]
