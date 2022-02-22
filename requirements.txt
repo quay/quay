@@ -21,8 +21,8 @@ bencode.py==2.1.0
 bintrees==2.1.0
 bitmath==1.3.3.1
 blinker==1.4
-boto3==1.17.21
-botocore==1.20.21
+boto3==1.20.46
+botocore==1.23.46
 cachetools==4.0.0
 certifi==2019.11.28
 cffi==1.13.2
@@ -53,11 +53,10 @@ furl==2.1.0
 future==0.18.2
 futures==3.1.1
 geoip2==3.0.0
-gevent==1.4.0
-gipc==1.0.1
-greenlet==0.4.15
+gevent==21.8.0
+greenlet==1.1.2
 grpcio==1.30.0
-gunicorn==20.0.4
+gunicorn==20.1.0
 hashids==1.2.0
 html5lib==1.0.1
 httmock==1.3.0
@@ -114,7 +113,7 @@ PyMySQL==0.9.3
 pyOpenSSL==19.1.0
 pyparsing==2.4.6
 PyPDF2==1.26.0
-pyrsistent==0.18.1
+pyrsistent==0.18.0
 python-dateutil==2.8.1
 python-editor==1.0.4
 python-gitlab==2.0.0
@@ -137,7 +136,7 @@ requests-file==1.4.3
 requests-oauthlib==1.3.0
 responses==0.10.9
 rfc3986==1.3.2
-s3transfer==0.3.2
+s3transfer==0.5.1
 scandir==1.10.0
 semantic-version==2.8.4
 six==1.14.0
@@ -156,7 +155,7 @@ tldextract==2.2.2
 toposort==1.5
 tzlocal==2.0.0
 urllib3==1.25.8
-waitress==1.4.2
+waitress==1.4.3
 webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
