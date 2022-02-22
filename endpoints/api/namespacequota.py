@@ -14,6 +14,7 @@ from auth.permissions import (
     UserReadPermission,
 )
 from data import model
+from data.model import config
 from endpoints.api import (
     resource,
     nickname,
@@ -93,7 +94,7 @@ class OrganizationQuota(ApiResource):
 
         if not superperm.can():
             if orgperm.can():
-                if int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES) != 0:
+                if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
                     return Unauthorized()
             else:
                 return Unauthorized()
@@ -213,7 +214,7 @@ class OrganizationQuotaLimits(ApiResource):
 
         if not superperm.can():
             if orgperm.can():
-                if int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES) != 0:
+                if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
                     return Unauthorized()
             else:
                 return Unauthorized()
