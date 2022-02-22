@@ -93,7 +93,7 @@ class OrganizationQuota(ApiResource):
 
         if not superperm.can():
             if orgperm.can():
-                if features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES != 0:
+                if int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES) != 0:
                     return Unauthorized()
             else:
                 return Unauthorized()
@@ -213,7 +213,7 @@ class OrganizationQuotaLimits(ApiResource):
 
         if not superperm.can():
             if orgperm.can():
-                if features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES != 0:
+                if int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES) != 0:
                     return Unauthorized()
             else:
                 return Unauthorized()

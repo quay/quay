@@ -112,20 +112,20 @@ def get_namespace_quota_limits(namespace_name):
     ).dicts()
 
     # define limits if a system default is defined in config.py and no namespace specific limits are set
-    if features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES != 0 and len(query) == 0:
+    if int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES) != 0 and len(query) == 0:
         query = [
             {
-                "limit_bytes": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES,
+                "limit_bytes": int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES),
                 "percent_of_limit": 80,
                 "name": "System Warning Limit",
-                "bytes_allowed": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES * 0.8,
+                "bytes_allowed": int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES) * 0.8,
                 "type_id": 1,
             },
             {
-                "limit_bytes": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES,
+                "limit_bytes": int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES),
                 "percent_of_limit": 100,
                 "name": "System Reject Limit",
-                "bytes_allowed": features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES,
+                "bytes_allowed": int(features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES),
                 "type_id": 2,
             },
         ]
