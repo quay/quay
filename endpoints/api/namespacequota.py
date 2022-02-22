@@ -95,9 +95,9 @@ class OrganizationQuota(ApiResource):
         if not superperm.can():
             if orgperm.can():
                 if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
-                    return Unauthorized()
+                    raise Unauthorized()
             else:
-                return Unauthorized()
+                raise Unauthorized()
 
         quota_data = request.get_json()
 
@@ -215,9 +215,9 @@ class OrganizationQuotaLimits(ApiResource):
         if not superperm.can():
             if orgperm.can():
                 if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
-                    return Unauthorized()
+                    raise Unauthorized()
             else:
-                return Unauthorized()
+                raise Unauthorized()
 
         quota_limit_data = request.get_json()
 
