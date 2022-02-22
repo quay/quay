@@ -30,10 +30,11 @@ Vulnerability = namedtuple(
     ["Severity", "NamespaceName", "Link", "FixedBy", "Description", "Name", "Metadata"],
 )
 Metadata = namedtuple(
-    "Metadata", ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion", "NVD"]
+    "Metadata",
+    ["UpdatedBy", "RepoName", "RepoLink", "DistroName", "DistroVersion", "NVD"],
 )
 NVD = namedtuple("NVD", ["CVSSv3"])
-CVSSv3 = namedtuple("CVSSv3", ["Vectors", "Score"])
+CVSSv3 = namedtuple("CVSSv3", ["Vectors", "Score"], defaults=(None, None))
 Feature = namedtuple(
     "Feature", ["Name", "VersionFormat", "NamespaceName", "AddedBy", "Version", "Vulnerabilities"]
 )
@@ -69,11 +70,20 @@ class SecurityInformation(namedtuple("SecurityInformation", ["Layer"])):
                                 Description=vuln.get("Description", None),
                                 Name=vuln.get("Name", None),
                                 Metadata=Metadata(
-                                    UpdatedBy=vuln["Metadata"].get("UpdatedBy", None),
-                                    RepoName=vuln["Metadata"].get("RepoName", None),
-                                    RepoLink=vuln["Metadata"].get("RepoLink", None),
-                                    DistroName=vuln["Metadata"].get("DistroName", None),
-                                    DistroVersion=vuln["Metadata"].get("DistroVersion", None),
+                                    UpdatedBy=vuln.get("Metadata", {}).get("UpdatedBy", None),
+                                    RepoName=vuln.get("Metadata", {}).get("RepoName", None),
+                                    RepoLink=vuln.get("Metadata", {}).get("RepoLink", None),
+                                    DistroName=vuln.get("Metadata", {}).get("DistroName", None),
+                                    DistroVersion=vuln.get("Metadata", {}).get(
+                                        "DistroVersion", None
+                                    ),
+                                    NVD=NVD(
+                                        CVSSv3(
+                                            **vuln.get("Metadata", {})
+                                            .get("NVD", {})
+                                            .get(["CVSv3"], {})
+                                        )
+                                    ),
                                 ),
                             )
                             for vuln in f.get("Vulnerabilities", [])
