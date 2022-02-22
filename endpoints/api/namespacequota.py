@@ -7,7 +7,6 @@ import logging
 from flask import request
 
 import features
-from app import app
 from auth.permissions import (
     AdministerOrganizationPermission,
     SuperUserPermission,
@@ -94,7 +93,7 @@ class OrganizationQuota(ApiResource):
 
         if not superperm.can():
             if orgperm.can():
-                if app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) != 0:
+                if features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES != 0:
                     return Unauthorized()
             else:
                 return Unauthorized()
@@ -215,7 +214,7 @@ class OrganizationQuotaLimits(ApiResource):
 
         if not superperm.can():
             if orgperm.can():
-                if app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) != 0:
+                if features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES != 0:
                     return Unauthorized()
             else:
                 return Unauthorized()
