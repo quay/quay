@@ -92,8 +92,12 @@ class OrganizationQuota(ApiResource):
         orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not orgperm.can() and not superperm.can():
-            raise Unauthorized()
+        if not superperm.can():
+            if orgperm.can():
+                if app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) != 0:
+                    return Unauthorized()
+            else:
+                return Unauthorized()
 
         quota_data = request.get_json()
 
@@ -115,10 +119,9 @@ class OrganizationQuota(ApiResource):
     @validate_json_request("NewOrgQuota")
     def put(self, namespace):
 
-        orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not orgperm.can() and not superperm.can():
+        if not superperm.can():
             raise Unauthorized()
 
         quota_data = request.get_json()
@@ -139,15 +142,10 @@ class OrganizationQuota(ApiResource):
     @nickname("deleteOrganizationQuota")
     def delete(self, namespace):
 
-        orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
         if not superperm.can():
-            if orgperm.can():
-                if app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) != 0:
-                    return Unauthorized()
-            else:
-                return Unauthorized()
+            raise Unauthorized()
 
         quota = model.namespacequota.get_namespace_quota(namespace)
 
@@ -214,8 +212,13 @@ class OrganizationQuotaLimits(ApiResource):
         orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not orgperm.can() and not superperm.can():
-            raise Unauthorized()
+
+        if not superperm.can():
+            if orgperm.can():
+                if app.config.get("DEFAULT_SYSTEM_REJECT_QUOTA", 0) != 0:
+                    return Unauthorized()
+            else:
+                return Unauthorized()
 
         quota_limit_data = request.get_json()
 
@@ -241,10 +244,9 @@ class OrganizationQuotaLimits(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     def put(self, namespace):
 
-        orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not orgperm.can() and not superperm.can():
+        if not superperm.can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -278,10 +280,9 @@ class OrganizationQuotaLimits(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     def delete(self, namespace):
 
-        orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not orgperm.can() and not superperm.can():
+        if not superperm.can():
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
