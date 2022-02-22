@@ -218,7 +218,7 @@ class SuperUserOrganizationList(ApiResource):
 @internal_only
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
-class SuperUserOrganizationList(ApiResource):
+class SuperUserOrganizationQuotaReport(ApiResource):
     """
     Resource for listing organizations in the system.
     """
