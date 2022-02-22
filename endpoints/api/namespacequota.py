@@ -211,7 +211,6 @@ class OrganizationQuotaLimits(ApiResource):
         orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-
         if not superperm.can():
             if orgperm.can():
                 if features.DEFAULT_SYSTEM_REJECT_QUOTA_BYTES != 0:

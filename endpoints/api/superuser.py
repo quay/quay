@@ -236,9 +236,7 @@ class SuperUserOrganizationList(ApiResource):
                 "organizations": [
                     {
                         "organization": org.username,
-                        "size": namespacequota.get_namespace_size(
-                            org.username
-                        ),
+                        "size": namespacequota.get_namespace_size(org.username),
                     }
                     for org in pre_oci_model.get_organizations()
                 ]
