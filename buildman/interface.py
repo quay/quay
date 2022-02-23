@@ -70,10 +70,9 @@ class BuildStateInterface(ABC):
         """
 
     @abstractmethod
-    def start_job(self, job_id, max_build_time):
+    def start_job(self, job_id):
         """Mark a job as started.
         Returns False if the job does not exists, or has already started.
-        The worker's lifetime should be set to max_build_time
         """
 
     @abstractmethod
