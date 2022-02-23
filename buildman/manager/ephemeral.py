@@ -369,7 +369,7 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         logger.debug("Job completed for job %s with result %s", job_id, job_result)
 
-    def start_job(self, job_id, max_build_time):
+    def start_job(self, job_id):
         """Starts the build job. This is invoked by the worker once the job has been created and
         scheduled, returing the buildpack needed to start the actual build.
         """
@@ -431,7 +431,7 @@ class EphemeralBuilderManager(BuildStateInterface):
 
         # Generate the build token
         token = self.generate_build_token(
-            BUILD_JOB_TOKEN_TYPE, build_job.build_uuid, job_id, max_build_time
+            BUILD_JOB_TOKEN_TYPE, build_job.build_uuid, job_id, self.machine_max_expiration
         )
 
         # Publish the time it took for a worker to ack the build
