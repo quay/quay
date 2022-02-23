@@ -346,13 +346,6 @@ class RedisOrchestrator(Orchestrator):
                 key = self._key_from_expiration(message_tup)
                 expired_value = self._client.get(key)
 
-                if expired_value is None:
-                    logger.exception(
-                        "Exception handling expiration of key %s: - couldn't get original value. Removing keys.",
-                        key,
-                    )
-                    self.delete_key(key)
-
                 # Mark key as expired. This key is used to track post job cleanup in the callback,
                 # to allow another manager to pickup the cleanup if this fails.
                 self._client.set(slash_join(key, REDIS_EXPIRED_SUFFIX), expired_value)
