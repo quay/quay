@@ -51,13 +51,17 @@ def compute_layer_id(layer):
     """
     Returns the ID for the layer in the security scanner.
     """
-    assert isinstance(layer, ManifestDataType)
+    # TODO (kleesc): Temporary, until we full deprecate the image endpoints.
+    # This will be removed once ClairV2/Image apis are fully deprecated
+    if isinstance(layer, ManifestDataType):
+        manifest = Manifest.get(id=layer._db_id)
+        try:
+            layer = ManifestLegacyImage.get(manifest=manifest).image
+        except ManifestLegacyImage.DoesNotExist:
+            return None
 
-    manifest = Manifest.get(id=layer._db_id)
-    try:
-        layer = ManifestLegacyImage.get(manifest=manifest).image
-    except ManifestLegacyImage.DoesNotExist:
-        return None
+    elif isinstance(layer, LegacyImage):
+        layer = Image.get(id=layer._db_id)
 
     assert layer.docker_image_id
     assert layer.storage.uuid
