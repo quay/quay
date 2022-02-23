@@ -290,7 +290,7 @@ class EphemeralBuilderManager(BuildStateInterface):
                 max_startup_time,
             )
         else:
-            logger.warning("Job %s not scheduled. Unable update build phase to SCHEDULED")
+            logger.warning("Job %s not scheduled. Unable update build phase to SCHEDULED", job_id)
 
         return updated
 
@@ -466,6 +466,12 @@ class EphemeralBuilderManager(BuildStateInterface):
             )
             return False
 
+        # Job is already in desired phase. Don't need to do anything.
+        # We return true to allow the caller to move forward.
+        if build_job.repo_build.phase == phase:
+            logger.warning("Job %s is already in the desired state/phase (%s)", job_id, phase)
+            return True
+
         # Update the build phase
         phase_metadata = phase_metadata or {}
         updated = model.build.update_phase_then_close(build_job.build_uuid, phase)
@@ -622,7 +628,10 @@ class EphemeralBuilderManager(BuildStateInterface):
             return False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
 
         registration_token = self.generate_build_token(
-            BUILD_JOB_REGISTRATION_TYPE, build_job.build_uuid, job_id, EPHEMERAL_SETUP_TIMEOUT
+            BUILD_JOB_REGISTRATION_TYPE,
+            build_job.build_uuid,
+            job_id,
+            JOB_REGISTRATION_TIMEOUT + SETUP_LEEWAY_SECONDS,
         )
 
         started_with_executor = None
