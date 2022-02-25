@@ -63,7 +63,6 @@ from image.oci.config import OCIConfig
 from image.oci.descriptor import get_descriptor_schema
 from image.docker.schema1 import DockerSchema1ManifestBuilder
 from util.bytes import Bytes
-from util.security.v2_signing_key import get_docker_v2_signing_key
 
 # Keys.
 OCI_MANIFEST_VERSION_KEY = "schemaVersion"
@@ -418,7 +417,7 @@ class OCIManifest(ManifestInterface):
 
         v1_builder = DockerSchema1ManifestBuilder(namespace_name, repo_name, tag_name)
         self._populate_schema1_builder(v1_builder, content_retriever)
-        return v1_builder.build(get_docker_v2_signing_key())
+        return v1_builder.build()
 
     def unsigned(self):
         return self

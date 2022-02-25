@@ -787,14 +787,11 @@ class DockerSchema1ManifestBuilder(object):
         logger.debug("Generated signature: %s", signature)
         logger.debug("Generated protected block: %s", protected)
 
-        # Constructing public key
-        # Removing kid as it is optional and breaks older clients
-        # ref: https://self-issued.info/docs/rfc7517.txt
         public_members = set(json_web_key.REQUIRED_JSON_FIELDS + json_web_key.ALLOWED_PARAMS)
         public_key = {
             comp: value
             for comp, value in list(json_web_key.as_dict().items())
-            if comp in public_members and comp != "kid"
+            if comp in public_members
         }
         public_key["kty"] = json_web_key.kty
 
