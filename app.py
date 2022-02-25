@@ -5,6 +5,7 @@ import os
 
 from functools import partial
 
+from authlib.jose import JsonWebKey
 from cryptography.hazmat.primitives import serialization
 from flask import Flask, request, Request
 from flask_login import LoginManager
@@ -67,7 +68,6 @@ from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
 from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
-from util.security.v2_signing_key import get_docker_v2_signing_key
 from util.greenlet_tracing import enable_tracing
 
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
@@ -75,6 +75,7 @@ OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py
 
 OVERRIDE_CONFIG_KEY = "QUAY_OVERRIDE_CONFIG"
 
+DOCKER_V2_SIGNINGKEY_FILENAME = "docker_v2.pem"
 INIT_SCRIPTS_LOCATION = "/conf/init/"
 
 app = Flask(__name__)
@@ -305,7 +306,13 @@ repo_mirror_api = RepoMirrorAPI(
 
 tuf_metadata_api = TUFMetadataAPI(app, app.config)
 
-docker_v2_signing_key = get_docker_v2_signing_key()
+# Check for a key in config. If none found, generate a new signing key for Docker V2 manifests.
+_v2_key_path = os.path.join(OVERRIDE_CONFIG_DIRECTORY, DOCKER_V2_SIGNINGKEY_FILENAME)
+if os.path.exists(_v2_key_path):
+    with open(_v2_key_path) as key_file:
+        docker_v2_signing_key = JsonWebKey.import_key(key_file.read())
+else:
+    docker_v2_signing_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
 
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
