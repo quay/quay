@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from image.docker.schema1 import DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
+from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
 from image.oci.manifest import OCIManifest, MalformedOCIManifest
 from image.oci import register_artifact_type
 from image.shared.schemautil import ContentRetrieverForTesting
@@ -160,7 +160,7 @@ def test_get_schema1_manifest():
 
     schema1 = manifest.get_schema1_manifest("somenamespace", "somename", "sometag", retriever)
     assert schema1 is not None
-    assert schema1.media_type == DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
+    assert schema1.media_type == DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
     assert set(schema1.local_blob_digests) == (
         set(manifest.local_blob_digests)
         - {"sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"}
@@ -220,7 +220,7 @@ def test_get_schema1_manifest_missing_history():
 
     schema1 = manifest.get_schema1_manifest("somenamespace", "somename", "sometag", retriever)
     assert schema1 is not None
-    assert schema1.media_type == DOCKER_SCHEMA1_MANIFEST_CONTENT_TYPE
+    assert schema1.media_type == DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
     assert set(schema1.local_blob_digests) == (
         set(manifest.local_blob_digests)
         - {"sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"}
