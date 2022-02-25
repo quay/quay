@@ -202,11 +202,23 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         # TODO(alecmerdler): We want to index newer manifests first, while backfilling older manifests...
         iterator = itertools.chain(
+            # Guarantees at least one batch of most recent manifests
             yield_random_entries(
                 not_indexed_query,
                 Manifest.id,
                 batch_size,
                 max_id,
+                # Because we have multiple workers and must stay random to ensure minimal duplicative work
+                # we will instead limit the set worked to the most recent batch.
+                max_id - batch_size,
+            ),
+            # Could be a huge batch of work
+            yield_random_entries(
+                not_indexed_query,
+                Manifest.id,
+                batch_size,
+                # compensation for the above batch guarentee
+                max_id - batch_size,
                 min_id,
             ),
             yield_random_entries(
