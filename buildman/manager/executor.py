@@ -207,6 +207,7 @@ class BuilderExecutor(object):
                     worker_tag=self.executor_config["WORKER_TAG"],
                     volume_size=self.executor_config.get("VOLUME_SIZE", "42G"),
                     max_lifetime_s=self.executor_config.get("MAX_LIFETIME_S", 10800),
+                    timeout_start_sec=self.executor_config.get("MAX_LIFETIME_S", 10800),
                     ssh_authorized_keys=self.executor_config.get("SSH_AUTHORIZED_KEYS", []),
                     container_runtime=self.executor_config.get("CONTAINER_RUNTIME", "docker"),
                     ca_cert=self.executor_config.get("CA_CERT", self._ca_cert()),
