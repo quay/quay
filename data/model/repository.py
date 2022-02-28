@@ -691,10 +691,9 @@ def get_repository_size(repo_id: int):
 
 
 def get_repository_size_and_cache(repo_id: int):
-
     output = get_repository_size(repo_id)
 
-    if output is None:
+    if output is None or output.size_bytes == 0:
         force_cache_repo_size(repo_id)
         output = get_repository_size(repo_id)
 

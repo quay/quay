@@ -98,7 +98,10 @@ def get_namespace_quota_limits(namespace_name):
         UserOrganizationQuota.select(
             UserOrganizationQuota.limit_bytes,
             QuotaLimits.percent_of_limit,
+            QuotaLimits.quota_id,
+            QuotaLimits.id,
             QuotaType.name,
+            QuotaType.id,
             (
                 UserOrganizationQuota.limit_bytes.cast("decimal")
                 * (QuotaLimits.percent_of_limit.cast("decimal") / 100.0).cast("decimal")

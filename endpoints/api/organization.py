@@ -8,6 +8,7 @@ import recaptcha2
 from flask import request
 
 import features
+import humanfriendly
 
 from app import (
     billing as stripe,
@@ -65,7 +66,7 @@ def team_view(orgname, team):
     }
 
 
-def org_view(o, teams):
+def org_view(o, teams, quota=None):
     is_admin = AdministerOrganizationPermission(o.username).can()
     is_member = OrganizationMemberPermission(o.username).can()
 
@@ -75,6 +76,7 @@ def org_view(o, teams):
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
+        "quota": quota,
     }
 
     if teams is not None:
@@ -220,7 +222,10 @@ class Organization(ApiResource):
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
 
-        return org_view(org, teams)
+        if features.QUOTA_MANAGEMENT:
+            quota = model.namespacequota.get_org_quota_for_view(org.username)
+
+        return org_view(org, teams, quota)
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("changeOrganizationDetails")

@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from datetime import datetime, timedelta
 
+import features
 from auth.permissions import ReadRepositoryPermission
 from data.database import Repository as RepositoryTable, RepositoryState
 from data import model
@@ -24,6 +25,9 @@ from endpoints.api.repository_models_interface import (
     Release,
     Count,
 )
+
+import humanfriendly
+
 
 MAX_DAYS_IN_3_MONTHS = 92
 REPOS_PER_PAGE = 100
@@ -89,6 +93,7 @@ class PreOCIModel(RepositoryDataInterface):
         page_token,
         last_modified,
         popularity,
+        quota,
     ):
         next_page_token = None
 
@@ -110,7 +115,7 @@ class PreOCIModel(RepositoryDataInterface):
             # get_visible_repositories will return if there is a logged-in user (for performance reasons).
             #
             # Also note the +1 on the limit, as paginate_query uses the extra result to determine whether
-            # there is a next page.
+            # there is a next page.endpoints/api/namespacequota.py
             start_id = model.modelutil.pagination_start(page_token)
             repo_query = model.repository.get_visible_repositories(
                 username=username,
@@ -132,6 +137,7 @@ class PreOCIModel(RepositoryDataInterface):
         # and/or last modified.
         last_modified_map = {}
         action_sum_map = {}
+        quota_map = {}
         if last_modified or popularity:
             repository_refs = [RepositoryReference.for_id(repo.rid) for repo in repos]
             repository_ids = [repo.rid for repo in repos]
@@ -147,6 +153,12 @@ class PreOCIModel(RepositoryDataInterface):
 
             if popularity:
                 action_sum_map = model.log.get_repositories_action_sums(repository_ids)
+
+        if features.QUOTA_MANAGEMENT and quota:
+            for repo_id in repository_ids:
+                quota_map[repo_id] = model.namespacequota.get_repo_quota_for_view(
+                    repo_id, namespace
+                )
 
         # Collect the IDs of the repositories that are starred for the user, so we can mark them
         # in the returned results.
@@ -173,6 +185,7 @@ class PreOCIModel(RepositoryDataInterface):
                     username,
                     None,
                     repo.state,
+                    quota_map.get(repo.rid),
                 )
                 for repo in repos
             ],
@@ -232,6 +245,7 @@ class PreOCIModel(RepositoryDataInterface):
             False,
             repo.namespace_user.stripe_id is None,
             repo.state,
+            features.QUOTA_MANAGEMENT is True,
         )
 
         if base.kind_name == "application":

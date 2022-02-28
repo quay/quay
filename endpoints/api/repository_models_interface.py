@@ -28,6 +28,7 @@ class RepositoryBaseElement(
             "should_is_starred",
             "is_free_account",
             "state",
+            "quota",
         ],
     )
 ):
@@ -44,6 +45,7 @@ class RepositoryBaseElement(
     :type should_last_modified: boolean
     :type should_popularity: boolean
     :type should_is_starred: boolean
+    :type: quota: dictionary
     """
 
     def to_dict(self):
@@ -54,6 +56,7 @@ class RepositoryBaseElement(
             "is_public": self.is_public,
             "kind": self.kind_name,
             "state": self.state.name if self.state is not None else None,
+            "quota": self.quota if features.QUOTA_MANAGEMENT else None,
         }
 
         if self.should_last_modified:
@@ -114,6 +117,8 @@ class ImageRepositoryRepository(
     :type badge_token: string
     :type trust_enabled: boolean
     """
+
+    # TODO: Add quota stuff here?
 
     def to_dict(self):
         img_repo = {
