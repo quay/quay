@@ -5782,6 +5782,7 @@ SECURITY_TESTS: List[
     ),
     (OrganizationQuota, "DELETE", {"namespace": "buynlarge"}, {}, None, 401),
     (OrganizationQuotaReport, "GET", {"namespace": "buynlarge"}, {}, None, 401),
+    (SuperUserOrganizationQuotaReport, "GET", {"namespace": "buynlarge"}, {}, None, 401),
 ]
 
 
