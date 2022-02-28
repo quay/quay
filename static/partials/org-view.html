@@ -55,8 +55,13 @@
       <cor-tab-content>
         <!-- Repositories -->
         <cor-tab-pane id="repos">
-          <div class="repo-list-view" namespaces="[organization]"
-               in-read-only-mode="inReadOnlyMode"><h3>Repositories</h3></div>
+          <div class="repo-list-view" namespaces="[organization]" in-read-only-mode="inReadOnlyMode"
+               quota-management-enabled="quotaManagementEnabled">
+            <h3>Repositories</h3>
+              <span ng-show="Features.QUOTA_MANAGEMENT">
+                  <h4>Total Quota Consumed: {{ organization.quota.percent_consumed ? (organization.quota.quota_consumed + "(" + organization.quota.percent_consumed + "%)") : organization.quota.quota_consumed }}</h4>
+              </span>
+          </div>
         </cor-tab-pane>
 
         <!-- Teams -->
@@ -125,6 +130,8 @@
               <div class="delete-namespace-view" subscription-status="subscriptionStatus" organization="organization" namespace-title="organization"></div>
 
               <time-machine-settings organization="organization"></time-machine-settings>
+
+              <quota-management-view quay-show="Features.QUOTA_MANAGEMENT" organization="organization"></quota-management-view>
             </div>
 
             <!-- Billing Information -->

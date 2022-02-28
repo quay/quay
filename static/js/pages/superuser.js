@@ -10,7 +10,7 @@
       })
   }]);
 
-  function SuperuserCtrl($scope, $location, ApiService, Features, UserService, ContainerService,
+  function SuperuserCtrl($scope, $location, ApiService, Features, UserService, ContainerService, $sce,
                          AngularPollChannel, CoreDialog, TableService, StateService) {
     if (!Features.SUPER_USERS) {
       return;
@@ -35,12 +35,22 @@
     $scope.manageUsersActive = false;
     $scope.orderedOrgs = [];
     $scope.orgsPerPage = 10;
+    $scope.quotaConfiguration = null;
     $scope.options = {
       'predicate': 'name',
       'reverse': false,
       'filter': null,
       'page': 0,
     }
+
+    $scope.showQuotaConfig = function (org) {
+        if (StateService.inReadOnlyMode()) {
+          return;
+        }
+
+        $scope.quotaConfiguration = $sce.trustAsHtml('<quota-management-view organization="' + org + '"></quota-management-view>"');
+        $('#quotaConfigModal').modal('show');
+    };
 
     $scope.loadMessageOfTheDay = function () {
       $scope.globalMessagesActive = true;
