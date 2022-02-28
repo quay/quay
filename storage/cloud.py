@@ -723,6 +723,13 @@ class _CloudStorage(BaseStorageV2):
 
 
 class S3Storage(_CloudStorage):
+    REGIONS = {
+        "cn": [
+            "cn-north-1",
+            "cn-northwest-1",
+        ]
+    }
+
     def __init__(
         self,
         context,
@@ -745,7 +752,7 @@ class S3Storage(_CloudStorage):
                 region=s3_region
             )
             # cn-north-1's endpoint has a .com.cn TLD
-            if s3_region == "cn-north-1":
+            if s3_region in S3Storage.REGIONS["cn"]:
                 connect_kwargs["endpoint_url"] = connect_kwargs["endpoint_url"] + ".cn"
         elif host or endpoint_url:
             connect_kwargs["endpoint_url"] = endpoint_url or _build_endpoint_url(
