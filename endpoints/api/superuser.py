@@ -225,7 +225,7 @@ class SuperUserOrganizationQuotaReport(ApiResource):
 
     @require_fresh_login
     @verify_not_prod
-    @nickname("listAllOrganizations")
+    @nickname("allOrganizationQuotaReport")
     @require_scope(scopes.SUPERUSER)
     def get(self):
         """
