@@ -1192,12 +1192,6 @@ CONFIG_SCHEMA = {
                 ],
             },
         },
-        # Create repo on public push
-        "CREATE_REPOSITORY_ON_PUSH_PUBLIC": {
-            "type": "boolean",
-            "description": "Whether to create a repository when pushing to an unexisting public repo",
-            "x-example": False,
-        },
         # Clean partial uploads during S3 multipart upload
         "CLEAN_BLOB_UPLOAD_FOLDER": {
             "type": "boolean",

@@ -794,8 +794,5 @@ class DefaultConfig(ImmutableConfig):
     # Allows "/" in repository names
     FEATURE_EXTENDED_REPOSITORY_NAMES = True
 
-    # Allow creation of push to public repo
-    CREATE_REPOSITORY_ON_PUSH_PUBLIC = False
-
     # Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads
     CLEAN_BLOB_UPLOAD_FOLDER = False
