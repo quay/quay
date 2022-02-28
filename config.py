@@ -208,6 +208,16 @@ class DefaultConfig(ImmutableConfig):
 
     @staticmethod
     def create_transaction(db):
+        # This hack is for handling possible MySQL closing idle connections.
+        # Peewee/pymysql's will try to reuse the existing connection after the MySQL server
+        # has already closed it, which will return an InterfaceError.
+        # AFAIK, there isn't a way to actually test for a a stale connection without actually
+        # running a query. Closing the connection before the transaction forces peewee/pymysql
+        # to reopen a new session to MySQL. This should only applies to non-registry workers,
+        # as the registry workers use a pool by default, and shouldn't have this issue.
+        if type(db.obj).__name__ == "ObservableRetryingMySQLDatabase":
+            db.close()
+
         return db.transaction()
 
     DB_TRANSACTION_FACTORY = create_transaction
