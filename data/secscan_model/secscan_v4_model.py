@@ -42,9 +42,7 @@ from data.database import (
     db_transaction,
 )
 
-
 logger = logging.getLogger(__name__)
-
 
 IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(
     "IndexFinished", "IndexError"
@@ -198,15 +196,29 @@ class V4SecurityScanner(SecurityScannerInterface):
             )
 
         # 4^log10(total) gives us a scalable batch size into the billions.
-        batch_size = int(4 ** log10(max(10, max_id - min_id)))
+        batch_size = self.app.config.get(
+            "SECURITY_SCANNER_V4_BATCH_SIZE", int(4 ** log10(max(10, max_id - min_id)))
+        )
 
         # TODO(alecmerdler): We want to index newer manifests first, while backfilling older manifests...
         iterator = itertools.chain(
+            # Guarantees at least one batch of most recent manifests
             yield_random_entries(
                 not_indexed_query,
                 Manifest.id,
                 batch_size,
                 max_id,
+                # Because we have multiple workers and must stay random to ensure minimal duplicative work
+                # we will instead limit the set worked to the most recent batch.
+                max_id - batch_size,
+            ),
+            # Could be a huge batch of work
+            yield_random_entries(
+                not_indexed_query,
+                Manifest.id,
+                batch_size,
+                # compensation for the above batch guarentee
+                max_id - batch_size,
                 min_id,
             ),
             yield_random_entries(

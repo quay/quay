@@ -222,7 +222,16 @@ class RetryOperationalError(object):
     def execute_sql(self, sql, params=None, commit=True):
         try:
             cursor = super(RetryOperationalError, self).execute_sql(sql, params, commit)
-        except OperationalError:
+        except (OperationalError, InterfaceError) as pe:
+            if isinstance(pe, InterfaceError) and not str(pe) == "(0, '')":
+                # InterfaceError("(0, '')") is raised by PyMySQL after a connection has been idle for longer
+                # than the MySQL database's interactive_timeout setting.
+                # This can happen on some workers without work to be done for a long time.
+                # This causes Peewee to be unable to reuse its stale connection.
+                # Instead, the peewee connection needs to be closed, and a new session opened with MySQL.
+                # https://github.com/PyMySQL/PyMySQL/blob/main/pymysql/connections.py#L1354
+                raise
+
             if not self.is_closed():
                 self.close()
 
