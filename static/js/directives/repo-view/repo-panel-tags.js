@@ -430,6 +430,10 @@ angular.module('quay').directive('repoPanelTags', function () {
         $scope.setTab('history');
       };
 
+      $scope.toggleExpandedView = function() {
+        $scope.expandedView = !$scope.expandedView;
+      };
+
       $scope.setExpanded = function(expanded) {
         $scope.expandedView = expanded;
       };
@@ -464,6 +468,25 @@ angular.module('quay').directive('repoPanelTags', function () {
         }, ApiService.errorDisplay('Could not load manifest list contents'))
       };
 
+      $scope.loadManifestLayers = function(manifest) {
+        if (manifest.layers_loading) {
+          return;
+        }
+
+        manifest.layers_loading = true;
+
+        var params = {
+          'repository': $scope.repository.namespace + '/' + $scope.repository.name,
+          'manifestref': manifest.digest
+        };
+
+        ApiService.getRepoManifest(null, params).then(function(resp) {
+          child_manifest = JSON.parse(resp['manifest_data']);
+          manifest.layers = child_manifest["layers"];
+          manifest.layers_loading = false;
+        }, ApiService.errorDisplay('Could not load manifest contents'))
+      };
+
       $scope.manifestsOf = function(tag) {
         if (!tag.is_manifest_list) {
           return [];
@@ -474,14 +497,30 @@ angular.module('quay').directive('repoPanelTags', function () {
           return [];
         }
 
+        if (!tag.manifest_list.manifests.every(function(manifest) {
+          return manifest.layers
+        })) {
+          tag.manifest_list.manifests.forEach(function(child_manifest) {
+            $scope.loadManifestLayers(child_manifest);
+          });
+          return [];
+        }
+
         if (!tag._mapped_manifests) {
           // Calculate once and cache to avoid angular digest cycles.
           tag._mapped_manifests = tag.manifest_list.manifests.map(function(manifest) {
+
+            var layers_compressed_size = 0;
+            for (var i = 0; i < manifest.layers.length; i++) {
+              layers_compressed_size += manifest.layers[i]["size"];
+            }
+
             return {
               'raw': manifest,
               'os': manifest.platform.os,
               'size': manifest.size,
               'digest': manifest.digest,
+              'layers_compressed_size': layers_compressed_size,
               'description': `${manifest.platform.os} on ${manifest.platform.architecture}`,
             };
           });
