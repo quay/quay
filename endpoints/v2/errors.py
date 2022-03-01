@@ -147,7 +147,7 @@ class LayerTooLarge(V2RegistryException):
 class QuotaExceeded(V2RegistryException):
     def __init__(self):
         super(QuotaExceeded, self).__init__(
-            "QuotaExceeded", "Quota has been exceed on namespace", {}, 403
+            "DENIED", "Quota has been exceed on namespace", {}, 403
         )
 
 
