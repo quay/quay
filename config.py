@@ -216,7 +216,13 @@ class DefaultConfig(ImmutableConfig):
         # to reopen a new session to MySQL. This should only applies to non-registry workers,
         # as the registry workers use a pool by default, and shouldn't have this issue.
         if type(db.obj).__name__ == "ObservableRetryingMySQLDatabase":
-            db.close()
+            try:
+                db.close()
+            except:
+                # Only try to close the connection. Otherwise closing connections in a nested transaction
+                # will return an OperationalError. In that case, we can just continue with the normal flow,
+                # as we know the connection is likely in use and not stale.
+                pass
 
         return db.transaction()
 
