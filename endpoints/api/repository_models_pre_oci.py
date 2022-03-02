@@ -26,9 +26,6 @@ from endpoints.api.repository_models_interface import (
     Count,
 )
 
-import humanfriendly
-
-
 MAX_DAYS_IN_3_MONTHS = 92
 REPOS_PER_PAGE = 100
 

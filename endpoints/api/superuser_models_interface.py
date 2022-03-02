@@ -1,5 +1,4 @@
 import json
-import humanfriendly
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from datetime import datetime
