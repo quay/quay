@@ -728,6 +728,10 @@ class KubernetesPodmanExecutor(KubernetesExecutor):
                 {"name": "HTTPS_PROXY", "value": self.executor_config.get("HTTPS_PROXY", "")},
                 {"name": "NO_PROXY", "value": self.executor_config.get("NO_PROXY", "")},
                 {"name": "DOCKER_HOST", "value": "unix:///tmp/podman-run-1000/podman/podman.sock"},
+                {
+                    "name": "EXECUTOR",
+                    "value": self.executor_config.get("EXECUTOR", "kubernetesPodman"),
+                },
             ],
             "resources": self._build_job_container_resources(),
         }

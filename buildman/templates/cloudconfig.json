@@ -56,6 +56,13 @@ WantedBy=multi-user.target
 
 {%- endmacro %}
 
+{% macro podmanregistryconfig() -%}
+
+unqualified-search-registries = ["registry.fedoraproject.org", "registry.access.redhat.com", "docker.io", "quay.io"]
+short-name-mode="permissive"
+
+{%- endmacro %}
+
 
 {
   "ignition": {
@@ -90,6 +97,14 @@ WantedBy=multi-user.target
           "source": {{ ca_cert | dataurl | jsonify }}
         },
         "mode": 420
+      },
+      {
+        "overwrite": true,
+        "path": "/etc/containers/registries.conf",
+        "contents": {
+          "source": {{ podmanregistryconfig() | dataurl | jsonify }}
+        },
+        "mode": 444
       },
       {% else %}
       {
