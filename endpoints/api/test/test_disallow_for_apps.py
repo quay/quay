@@ -8,16 +8,15 @@ from endpoints.api.build import (
     RepositoryBuildStatus,
     RepositoryBuildLogs,
 )
-from endpoints.api.image import RepositoryImageList, RepositoryImage
 from endpoints.api.manifest import RepositoryManifestLabels, ManageRepositoryManifestLabel
 from endpoints.api.repositorynotification import (
     RepositoryNotification,
     RepositoryNotificationList,
     TestRepositoryNotification,
 )
-from endpoints.api.secscan import RepositoryImageSecurity, RepositoryManifestSecurity
+from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.signing import RepositorySignatures
-from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RepositoryTagImages, RestoreTag
+from endpoints.api.tag import ListRepositoryTags, RepositoryTag, RestoreTag
 from endpoints.api.trigger import (
     BuildTriggerList,
     BuildTrigger,
@@ -53,8 +52,6 @@ FIELD_ARGS = {"trigger_uuid": "1234", "field_name": "foobar"}
         (RepositoryBuildResource, "delete", BUILD_ARGS),
         (RepositoryBuildStatus, "get", BUILD_ARGS),
         (RepositoryBuildLogs, "get", BUILD_ARGS),
-        (RepositoryImageList, "get", None),
-        (RepositoryImage, "get", IMAGE_ARGS),
         (RepositoryManifestLabels, "get", MANIFEST_ARGS),
         (RepositoryManifestLabels, "post", MANIFEST_ARGS),
         (ManageRepositoryManifestLabel, "get", LABEL_ARGS),
@@ -65,13 +62,11 @@ FIELD_ARGS = {"trigger_uuid": "1234", "field_name": "foobar"}
         (RepositoryNotification, "delete", NOTIFICATION_ARGS),
         (RepositoryNotification, "post", NOTIFICATION_ARGS),
         (TestRepositoryNotification, "post", NOTIFICATION_ARGS),
-        (RepositoryImageSecurity, "get", IMAGE_ARGS),
         (RepositoryManifestSecurity, "get", MANIFEST_ARGS),
         (RepositorySignatures, "get", None),
         (ListRepositoryTags, "get", None),
         (RepositoryTag, "put", TAG_ARGS),
         (RepositoryTag, "delete", TAG_ARGS),
-        (RepositoryTagImages, "get", TAG_ARGS),
         (RestoreTag, "post", TAG_ARGS),
         (BuildTriggerList, "get", None),
         (BuildTrigger, "get", TRIGGER_ARGS),

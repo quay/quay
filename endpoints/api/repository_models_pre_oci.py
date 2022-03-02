@@ -268,7 +268,6 @@ class PreOCIModel(RepositoryDataInterface):
             tags = [
                 Tag(
                     tag.name,
-                    tag.manifest.legacy_image_root_id,
                     tag.manifest_layers_size,
                     tag.lifetime_start_ts,
                     tag.manifest_digest,

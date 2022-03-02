@@ -75,42 +75,6 @@ def _security_info(manifest_or_legacy_image, include_vulnerabilities=True):
     }
 
 
-@resource("/v1/repository/<apirepopath:repository>/image/<imageid>/security")
-@show_if(features.SECURITY_SCANNER)
-@path_param("repository", "The full path of the repository. e.g. namespace/name")
-@path_param("imageid", "The image ID")
-class RepositoryImageSecurity(RepositoryParamResource):
-    """
-    Operations for managing the vulnerabilities in a repository image.
-
-    DEPRECATED: Please retrieve security by manifest .
-    """
-
-    @process_basic_auth_no_pass
-    @anon_allowed
-    @require_repo_read
-    @nickname("getRepoImageSecurity")
-    @deprecated()
-    @disallow_for_app_repositories
-    @parse_args()
-    @query_param(
-        "vulnerabilities", "Include vulnerabilities information", type=truthy_bool, default=False
-    )
-    def get(self, namespace, repository, imageid, parsed_args):
-        """
-        Fetches the features and vulnerabilities (if any) for a repository image.
-        """
-        repo_ref = registry_model.lookup_repository(namespace, repository)
-        if repo_ref is None:
-            raise NotFound()
-
-        legacy_image = registry_model.get_legacy_image(repo_ref, imageid, storage)
-        if legacy_image is None:
-            raise NotFound()
-
-        return _security_info(legacy_image, parsed_args.vulnerabilities)
-
-
 @resource(MANIFEST_DIGEST_ROUTE + "/security")
 @show_if(features.SECURITY_SCANNER)
 @path_param("repository", "The full path of the repository. e.g. namespace/name")

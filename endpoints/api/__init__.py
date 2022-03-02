@@ -503,7 +503,6 @@ import endpoints.api.build
 import endpoints.api.discovery
 import endpoints.api.error
 import endpoints.api.globalmessages
-import endpoints.api.image
 import endpoints.api.logs
 import endpoints.api.manifest
 import endpoints.api.organization
