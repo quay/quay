@@ -11,7 +11,6 @@ from data.database import (
     Tag,
     Manifest,
     ManifestBlob,
-    ManifestLegacyImage,
     ManifestChild,
     Repository,
     RepositoryNotification,
@@ -29,7 +28,6 @@ from data.model.oci.tag import (
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
-from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
 from data.registry_model.quota import add_blob_size, reset_backfill
 from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
@@ -518,103 +516,3 @@ def _build_blob_map(
             blob_map[EMPTY_LAYER_BLOB_DIGEST] = shared_blob
 
     return blob_map
-
-
-def populate_legacy_images_for_testing(manifest, manifest_interface_instance, storage):
-    """Populates the legacy image rows for the given manifest."""
-    # NOTE: This method is only kept around for use by legacy tests that still require
-    # legacy images. As a result, we make sure we're in testing mode before we run.
-    assert os.getenv("TEST") == "true"
-
-    repository_id = manifest.repository_id
-    retriever = RepositoryContentRetriever.for_repository(repository_id, storage)
-
-    blob_map = _build_blob_map(
-        repository_id, manifest_interface_instance, storage, True, require_empty_layer=True
-    )
-    if blob_map is None:
-        return None
-
-    # Determine and populate the legacy image if necessary. Manifest lists will not have a legacy
-    # image.
-    legacy_image = None
-    if manifest_interface_instance.has_legacy_image:
-        try:
-            legacy_image_id = _populate_legacy_image(
-                repository_id, manifest_interface_instance, blob_map, retriever, True
-            )
-        except ManifestException as me:
-            raise CreateManifestException(
-                "Attempt to create an invalid manifest: %s. Please report this issue." % me
-            )
-
-        if legacy_image_id is None:
-            return None
-
-        legacy_image = get_image(repository_id, legacy_image_id)
-        if legacy_image is None:
-            return None
-
-        # Set the legacy image (if applicable).
-        if legacy_image is not None:
-            ManifestLegacyImage.create(
-                repository=repository_id, image=legacy_image, manifest=manifest
-            )
-
-
-def _populate_legacy_image(
-    repository_id, manifest_interface_instance, blob_map, retriever, raise_on_error=False
-):
-    # Lookup all the images and their parent images (if any) inside the manifest.
-    # This will let us know which v1 images we need to synthesize and which ones are invalid.
-    docker_image_ids = list(manifest_interface_instance.get_legacy_image_ids(retriever))
-    images_query = lookup_repository_images(repository_id, docker_image_ids)
-    image_storage_map = {i.docker_image_id: i.storage for i in images_query}
-
-    # Rewrite any v1 image IDs that do not match the checksum in the database.
-    try:
-        rewritten_images = manifest_interface_instance.generate_legacy_layers(
-            image_storage_map, retriever
-        )
-        rewritten_images = list(rewritten_images)
-        parent_image_map = {}
-
-        for rewritten_image in rewritten_images:
-            if not rewritten_image.image_id in image_storage_map:
-                parent_image = None
-                if rewritten_image.parent_image_id:
-                    parent_image = parent_image_map.get(rewritten_image.parent_image_id)
-                    if parent_image is None:
-                        parent_image = get_image(repository_id, rewritten_image.parent_image_id)
-                        if parent_image is None:
-                            if raise_on_error:
-                                raise CreateManifestException(
-                                    "Missing referenced parent image %s"
-                                    % rewritten_image.parent_image_id
-                                )
-
-                            return None
-
-                storage_reference = blob_map[rewritten_image.content_checksum]
-                synthesized = synthesize_v1_image(
-                    repository_id,
-                    storage_reference.id,
-                    storage_reference.image_size,
-                    rewritten_image.image_id,
-                    rewritten_image.created,
-                    rewritten_image.comment,
-                    rewritten_image.command,
-                    rewritten_image.compat_json,
-                    parent_image,
-                )
-
-                parent_image_map[rewritten_image.image_id] = synthesized
-    except ManifestException as me:
-        logger.exception("exception when rewriting v1 metadata")
-        if raise_on_error:
-            raise CreateManifestException(me)
-
-        return None
-
-    assert rewritten_images
-    return rewritten_images[-1].image_id
