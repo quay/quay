@@ -1,5 +1,4 @@
 import json
-import humanfriendly
 
 from peewee import fn, JOIN
 
@@ -22,8 +21,6 @@ from data.model import (
     repository,
     notification,
 )
-
-HUMANIZED_QUOTA_UNITS = [i.decimal.symbol for i in humanfriendly.disk_size_units] + ["bytes"]
 
 
 def verify_namespace_quota(namespace_name, repository_ref):
@@ -203,6 +200,19 @@ def get_namespace_limit_types():
     return [{"quota_type_id": qtype.id, "name": qtype.name} for qtype in QuotaType.select()]
 
 
+def fetch_limit_id_from_name(name):
+    for i in get_namespace_limit_types():
+        if name == i["name"]:
+            return i["quota_type_id"]
+    return None
+
+
+def is_reject_limit_type(quota_type_id):
+    if quota_type_id == fetch_limit_id_from_name("Reject"):
+        return True
+    return False
+
+
 def get_namespace_limit_types_for_id(quota_limit_type_id):
     return QuotaType.select().where(QuotaType.id == quota_limit_type_id).get()
 
@@ -221,10 +231,11 @@ def change_namespace_quota(name, limit_bytes):
     return quota
 
 
-def change_namespace_quota_limit(name, percent_of_limit, quota_type_id, new_percent_of_limit):
-    quota_limit = get_namespace_limit(name, quota_type_id, percent_of_limit)
+def change_namespace_quota_limit(name, percent_of_limit, quota_type_id, quota_limit_id):
+    quota_limit = get_namespace_limit_from_id(name, quota_limit_id)
 
-    quota_limit.percent_of_limit = new_percent_of_limit
+    quota_limit.percent_of_limit = percent_of_limit
+    quota_limit.quota_type_id = quota_type_id
     quota_limit.save()
 
     return quota_limit
@@ -346,7 +357,6 @@ def get_repo_quota_for_view(repo_id, namespace):
         percent_consumed = str(round((repo_quota / namespace_quota.limit_bytes) * 100, 2))
 
     return {
-        "quota_consumed": humanfriendly.format_size(repo_quota),
         "percent_consumed": percent_consumed,
         "quota_bytes": repo_quota,
     }
@@ -365,7 +375,6 @@ def get_org_quota_for_view(namespace):
         )
 
     return {
-        "quota_consumed": humanfriendly.format_size(namespace_quota_consumed),
         "percent_consumed": percent_consumed,
         "quota_bytes": str(namespace_quota_consumed),
     }

@@ -8,7 +8,6 @@ import recaptcha2
 from flask import request
 
 import features
-import humanfriendly
 
 from app import (
     billing as stripe,

@@ -48,7 +48,6 @@ grpcio==1.30.0
 gunicorn==20.1.0
 hashids==1.2.0
 html5lib==1.0.1
-humanfriendly==10.0
 idna==2.8
 importlib-metadata==1.4.0
 iso8601==0.1.12

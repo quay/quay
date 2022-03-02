@@ -14,19 +14,25 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.updating = false;
             $scope.limitCounter = 0;
             $scope.quotaLimitTypes = [];
-            $scope.quotaUnits = [];
-            $scope.prevQuotaConfig = {'quota': null, 'limits': [], 'bytes_unit': null};
-            $scope.currentQuotaConfig = {'quota': null, 'limits': [], 'bytes_unit': null};
+            $scope.prevQuotaConfig = {'limit_bytes': null, 'quota': null, 'limits': [], 'bytes_unit': null};
+            $scope.currentQuotaConfig = {'limit_bytes': null, 'quota': null, 'limits': [], 'bytes_unit': null};
             $scope.defer = null;
+            $scope.disk_size_units = {
+                'Bytes': 1,
+                'KB': 1024**1,
+                'MB': 1024**2,
+                'GB': 1024**3,
+                'TB': 1024**4,
+            };
+            $scope.quotaUnits = Object.keys($scope.disk_size_units);
 
             var loadOrgQuota = function (fresh) {
                 $scope.nameSpaceResource = ApiService.getNamespaceQuota(null,
                 {'namespace': $scope.organization.name}).then((resp) => {
-                    $scope.prevQuotaConfig['quota'] = resp["limit_bytes"];
-                    $scope.currentQuotaConfig['quota'] = resp["limit_bytes"];
-                    $scope.prevQuotaConfig['bytes_unit'] = resp["bytes_unit"];
-                    $scope.currentQuotaConfig['bytes_unit'] = resp["bytes_unit"];
-                    $scope.quotaUnits = resp["quota_units"];
+                    $scope.prevQuotaConfig['limit_bytes'] = $scope.currentQuotaConfig['limit_bytes'] = resp["limit_bytes"];
+                    let { result, byte_unit } = bytes_to_human_readable_string(resp["limit_bytes"]);
+                    $scope.prevQuotaConfig['quota'] = $scope.currentQuotaConfig['quota'] = result
+                    $scope.prevQuotaConfig['bytes_unit'] = $scope.currentQuotaConfig['bytes_unit'] = byte_unit;
 
                     if (fresh) {
                         for (let i = 0; i < resp["quota_limit_types"].length; i++) {
@@ -42,26 +48,57 @@ angular.module('quay').directive('quotaManagementView', function () {
                 });
             }
 
+            var human_readable_string_to_bytes = function(quota, bytes_unit) {
+                if (bytes_unit == 'Bytes') {
+                    return quota;
+                }
+
+                return Number(quota*$scope.disk_size_units[bytes_unit]);
+            };
+
+            var bytes_to_human_readable_string = function (bytes) {
+                let units = Object.keys($scope.disk_size_units).reverse();
+                let result = null;
+                let byte_unit = null;
+                for (const key in units) {
+                    byte_unit = units[key];
+                    if (bytes >= $scope.disk_size_units[byte_unit]) {
+                        result = bytes / $scope.disk_size_units[byte_unit];
+                        return { result, byte_unit };
+                    }
+                }
+                return { result, byte_unit };
+            };
+
             var loadQuotaLimits = function (fresh) {
                 $scope.nameSpaceQuotaLimitsResource = ApiService.getOrganizationQuotaLimit(null,
                     {'namespace': $scope.organization.name}).then((resp) => {
-                    $scope.prevQuotaConfig['limits'] = [...resp['quota_limits']];
-                    $scope.currentQuotaConfig['limits'] = [...resp['quota_limits']];
+                    $scope.prevQuotaConfig['limits'] = [];
+                    $scope.currentQuotaConfig['limits'] = [];
+                    for (let i = 0; i < resp['quota_limits'].length; i ++) {
+                        $scope.prevQuotaConfig['limits'].push({...resp['quota_limits'][i]});
+                        $scope.currentQuotaConfig['limits'].push({...resp['quota_limits'][i]});
+                    }
 
                     if (fresh) {
                       if ($scope.currentQuotaConfig['limits']) {
                         for (let i = 0; i < $scope.currentQuotaConfig['limits'].length; i++) {
-                          populateQuotaLimit($scope.currentQuotaConfig['limits'][i]);
+                          populateQuotaLimit();
                         }
                       }
                     }
                 });
             }
 
-            var updateOrganizationQuota = function(data, params) {
+            var updateOrganizationQuota = function(params) {
+
                 if (!$scope.prevquotaEnabled || $scope.prevQuotaConfig['quota'] != $scope.currentQuotaConfig['quota']) {
                     let quotaMethod = ApiService.createNamespaceQuota;
                     let m1 = "createNamespaceQuota";
+                    let limit_bytes = human_readable_string_to_bytes($scope.currentQuotaConfig['quota'], $scope.currentQuotaConfig['bytes_unit']);
+                    let data = {
+                        'limit_bytes': limit_bytes,
+                    };
 
                     if ($scope.prevquotaEnabled) {
                         quotaMethod = ApiService.changeOrganizationQuota;
@@ -70,9 +107,7 @@ angular.module('quay').directive('quotaManagementView', function () {
 
                     quotaMethod(data, params).then((resp) => {
                         $scope.updating = false;
-                        $scope.prevQuotaConfig['quota'] = $scope.currentQuotaConfig['quota'];
-                        $scope.prevQuotaConfig['bytes_unit'] = $scope.currentQuotaConfig['bytes_unit'];
-                        $scope.prevquotaEnabled = true;
+                        loadOrgQuota(false);
                     },  displayError());
                 }
             }
@@ -126,8 +161,8 @@ angular.module('quay').directive('quotaManagementView', function () {
                 let currentQuotaConfig = $scope.currentQuotaConfig['limits'];
                 let prevQuotaConfig = $scope.prevQuotaConfig['limits'];
                 return prevQuotaConfig.filter(function(obj1) {
-                    return !currentQuotaConfig.some(function(obj2) {
-                        return obj1.percent_of_limit === obj2.percent_of_limit && obj1.limit_type.name === obj2.limit_type.name;
+                    return obj1.limit_type.quota_limit_id != null && !currentQuotaConfig.some(function(obj2) {
+                        return obj1.limit_type.quota_limit_id === obj2.limit_type.quota_limit_id;
                     });
                 });
             }
@@ -137,7 +172,7 @@ angular.module('quay').directive('quotaManagementView', function () {
                 let currentQuotaConfig = $scope.currentQuotaConfig['limits'];
                 let prevQuotaConfig = $scope.prevQuotaConfig['limits'];
                 return currentQuotaConfig.filter(function(obj1) {
-                    return !prevQuotaConfig.some(function(obj2) {
+                    return obj1.limit_type.quota_limit_id == null && !prevQuotaConfig.some(function(obj2) {
                         return obj1.limit_type.name === obj2.limit_type.name && obj1.percent_of_limit === obj2.percent_of_limit;
                     });
                 });
@@ -147,7 +182,6 @@ angular.module('quay').directive('quotaManagementView', function () {
                 // In current and prev but different values
                 let currentQuotaConfig = $scope.currentQuotaConfig['limits'];
                 let prevQuotaConfig = $scope.prevQuotaConfig['limits'];
-
                 return currentQuotaConfig.filter(function(obj1) {
                     return prevQuotaConfig.some(function(obj2) {
                         return obj1.limit_type.quota_limit_id == obj2.limit_type.quota_limit_id &&
@@ -157,22 +191,14 @@ angular.module('quay').directive('quotaManagementView', function () {
 
             }
 
-            var filterDelFromUpdateItems = function(deletedItems, updatedItems) {
-                return updatedItems.filter(function(obj1) {
-                    return !deletedItems.find(function(obj2) {
-                        return obj1.limit_type.name === obj2.limit_type.name && obj1.percent_of_limit === obj2.percent_of_limit;
-                    });
-                });
-            }
-
-            var updateQuotaLimits = function(data, params) {
+            var updateQuotaLimits = function(params) {
                 if (similarLimits()) {
                     return;
                 }
 
                 let toDelete = fetchLimitsToDelete();
                 let toAdd = fetchLimitsToAdd();
-                let toUpdate = filterDelFromUpdateItems(toDelete, fetchLimitsToUpdate());
+                let toUpdate = fetchLimitsToUpdate();
 
                 createOrgQuotaLimit(toAdd, params);
                 updateOrgQuotaLimit(toUpdate, params);
@@ -227,13 +253,8 @@ angular.module('quay').directive('quotaManagementView', function () {
                   'namespace': $scope.organization.name
                 };
 
-                let data = {
-                  'limit_bytes': $scope.currentQuotaConfig['quota'],
-                  'bytes_unit': $scope.currentQuotaConfig['bytes_unit'],
-                };
-
-                updateOrganizationQuota(data, params);
-                updateQuotaLimits(data, params);
+                updateOrganizationQuota(params);
+                updateQuotaLimits(params);
                 $scope.defer.resolve();
             }
 
