@@ -166,7 +166,12 @@ def yield_random_entries(batch_query, primary_key_field, batch_size, max_id, min
                 allocator.mark_completed(start_index, end_index)
                 continue
 
-            logger.info("Found %s candidates, processing block", len(all_candidates))
+            logger.info(
+                "Found %s candidates, processing block start: %d end: %d",
+                len(all_candidates),
+                start_index,
+                end_index,
+            )
             batch_completed = 0
             for candidate in all_candidates:
                 abort_early = Event()
