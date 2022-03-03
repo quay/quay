@@ -80,19 +80,6 @@ def get_existing_repository(namespace_name, repository_name, for_update=False, k
     return query.get()
 
 
-def get_existing_namespace_size(namespace_name):
-    query = (
-        Namespace.select(Namespace.username, fn.Sum(RepositorySize.size_bytes).alias("size_bytes"))
-        .join(Repository, on=(Repository.namespace_user == Namespace.id))
-        .join(RepositorySize)
-        .where(Namespace.username == namespace_name)
-        .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
-        .group_by(Namespace.username)
-    )
-
-    return query
-
-
 def get_namespace_quota_limits(namespace_name):
     query = (
         UserOrganizationQuota.select(
