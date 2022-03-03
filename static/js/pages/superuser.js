@@ -35,7 +35,6 @@
     $scope.manageUsersActive = false;
     $scope.orderedOrgs = [];
     $scope.orgsPerPage = 10;
-    $scope.quotaConfiguration = null;
     $scope.options = {
       'predicate': 'name',
       'reverse': false,
@@ -48,8 +47,7 @@
           return;
         }
 
-        $scope.quotaConfiguration = $sce.trustAsHtml('<quota-management-view organization="' + org + '"></quota-management-view>"');
-        $('#quotaConfigModal').modal('show');
+        $('#quotaConfigModal-'+org.name).modal('show');
     };
 
     $scope.loadMessageOfTheDay = function () {
