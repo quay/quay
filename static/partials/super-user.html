@@ -142,18 +142,19 @@
       </cor-tab-content>
     </cor-tab-panel>
 
-
     <!-- Modal quota configuration -->
-      <div class="co-dialog modal fade" id="quotaConfigModal">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-              <h4 class="modal-title">Manage Quota Configuration</h4>
+      <div ng-repeat="current_org in orderedOrgs.entries" class="org-row">
+          <div class="co-dialog modal fade" id="quotaConfigModal-{{ current_org.name }}">
+            <div class="modal-dialog">
+              <div class="modal-content padding-2percent">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                  <h4 class="modal-title">Manage Quota Configuration</h4>
+                </div>
+                  <quota-management-view organization="current_org"></quota-management-view>
+              </div>
             </div>
-              <div id="loadQuotaConfig" ng-bind-html="quotaConfiguration"></div>
           </div>
-        </div>
       </div>
 
 
