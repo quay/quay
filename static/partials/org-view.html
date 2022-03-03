@@ -59,7 +59,7 @@
                quota-management-enabled="quotaManagementEnabled">
             <h3>Repositories</h3>
               <span ng-show="Features.QUOTA_MANAGEMENT">
-                  <h4>Total Quota Consumed: {{ organization.quota.percent_consumed ? (organization.quota.quota_consumed + "(" + organization.quota.percent_consumed + "%)") : organization.quota.quota_consumed }}</h4>
+                  <h4>Total Quota Consumed: {{ organization.quota.percent_consumed ? (bytesToHumanReadableString(organization.quota.quota_bytes) + "(" + organization.quota.percent_consumed + "%)") : bytesToHumanReadableString(organization.quota.quota_bytes) }}</h4>
               </span>
           </div>
         </cor-tab-pane>

@@ -22,7 +22,6 @@ angular.module('quay').directive('repoListTable', function () {
       $scope.reposPerPage = 25;
       $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT;
       $scope.repoMirroringEnabled = Config.FEATURE_REPO_MIRROR;
-
       $scope.maxPopularity = 0;
       $scope.options = {
         'predicate': 'popularity',
@@ -30,6 +29,14 @@ angular.module('quay').directive('repoListTable', function () {
         'filter': null,
         'page': 0
       };
+      $scope.disk_size_units = {
+        'Bytes': 1,
+        'KB': 1024**1,
+        'MB': 1024**2,
+        'GB': 1024**3,
+        'TB': 1024**4,
+      };
+      $scope.quotaUnits = Object.keys($scope.disk_size_units);
 
       var buildOrderedRepositories = function() {
         if (!$scope.repositories) { return; }
@@ -55,6 +62,20 @@ angular.module('quay').directive('repoListTable', function () {
 
         $scope.options.reverse = false;
         $scope.options.predicate = predicate;
+      };
+
+      $scope.bytesToHumanReadableString = function(bytes) {
+        let units = Object.keys($scope.disk_size_units).reverse();
+        let result = null;
+        let byte_unit = null;
+        for (const key in units) {
+            byte_unit = units[key];
+            if (bytes >= $scope.disk_size_units[byte_unit]) {
+                result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+                return result.toString() + " " + byte_unit;
+            }
+        }
+        return null
       };
 
       $scope.getAvatarData = function(namespace) {

@@ -112,7 +112,7 @@
                   <a href="mailto:{{ current_org.email }}">{{ current_org.email }}</a>
                 </td>
                 <td ng-if="Features.QUOTA_MANAGEMENT">
-                  {{ current_org.quota.percent_consumed ? (current_org.quota.quota_consumed + "(" + current_org.quota.percent_consumed + "%)") : current_org.quota.quota_consumed }}
+                  {{ current_org.quota.percent_consumed ? ( bytesToHumanReadableString(current_org.quota.quota_bytes) + "(" + current_org.quota.percent_consumed + "%)") : bytesToHumanReadableString(current_org.quota.quota_bytes) }}
                 </td>
                 <td style="text-align: center;">
                   <span class="cor-options-menu" ng-show="!inReadOnlyMode">
