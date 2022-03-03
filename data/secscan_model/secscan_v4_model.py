@@ -292,8 +292,13 @@ class V4SecurityScanner(SecurityScannerInterface):
                 continue
 
             logger.debug(
-                "Indexing %s/%s@%s"
-                % (candidate.repository.namespace_user, candidate.repository.name, manifest.digest)
+                "Indexing manifest [%d] %s/%s@%s"
+                % (
+                    manifest._db_id,
+                    candidate.repository.namespace_user,
+                    candidate.repository.name,
+                    manifest.digest,
+                )
             )
 
             try:
