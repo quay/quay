@@ -200,17 +200,19 @@ class V4SecurityScanner(SecurityScannerInterface):
             "SECURITY_SCANNER_V4_BATCH_SIZE", int(4 ** log10(max(10, max_id - min_id)))
         )
 
-        # TODO(alecmerdler): We want to index newer manifests first, while backfilling older manifests...
+        recent_max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
+        recent_min_id = max(recent_max_id - batch_size, 1)
+
         iterator = itertools.chain(
             # Guarantees at least one batch of most recent manifests
             yield_random_entries(
                 not_indexed_query,
                 Manifest.id,
                 batch_size,
-                max_id,
+                recent_max_id,
                 # Because we have multiple workers and must stay random to ensure minimal duplicative work
                 # we will instead limit the set worked to the most recent batch.
-                max_id - batch_size,
+                recent_min_id,
             ),
             # Could be a huge batch of work
             yield_random_entries(
@@ -218,7 +220,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 Manifest.id,
                 batch_size,
                 # compensation for the above batch guarentee
-                max_id - batch_size,
+                max_id,
                 min_id,
             ),
             yield_random_entries(
@@ -245,12 +247,17 @@ class V4SecurityScanner(SecurityScannerInterface):
         except APIRequestFailure:
             return None
 
+        batch_size = self.app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
+
         min_id = (
             start_token.min_id
             if start_token is not None
             else Manifest.select(fn.Min(Manifest.id)).scalar()
         )
-        max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
+
+        max_id = (
+            min_id + batch_size if batch_size else Manifest.select(fn.Max(Manifest.id)).scalar()
+        )
 
         if max_id is None or min_id is None or min_id > max_id:
             return None
