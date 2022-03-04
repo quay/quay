@@ -59,7 +59,7 @@ def check_limits(namespace_name, size):
 
 
 def notify_organization_admins(repository_ref, notification_kind, metadata={}):
-    namespace = model.user.get_namespace_user(repository_ref.namespace_user)
+    namespace = model.user.get_namespace_user(repository_ref.namespace_name)
     if namespace is None:
         raise InvalidUsernameException("Namespace does not exist")
 
@@ -68,13 +68,13 @@ def notify_organization_admins(repository_ref, notification_kind, metadata={}):
 
         for admin in admins:
             notification.create_notification(
-                notification_kind, admin, {"namespace": repository_ref.namespace_user}
+                notification_kind, admin, {"namespace": repository_ref.namespace_name}
             )
     else:
         notification.create_notification(
             notification_kind,
-            repository_ref.namespace_user,
-            {"namespace": repository_ref.namespace_user},
+            repository_ref.namespace_name,
+            {"namespace": repository_ref.namespace_name},
         )
 
 
