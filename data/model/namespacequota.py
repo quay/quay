@@ -81,10 +81,10 @@ def force_cache_repo_size(repository_ref):
 
 def create_namespace_quota(name, limit_bytes):
     user_object = user.get_namespace_user(name)
-
-    UserOrganizationQuota.create(namespace_id=user_object.id, limit_bytes=limit_bytes)
-
-    return UserOrganizationQuota
+    try:
+        return UserOrganizationQuota.create(namespace_id=user_object.id, limit_bytes=limit_bytes)
+    except model.DataModelException as ex:
+        return None
 
 
 def create_namespace_limit(orgname, quota_type_id, percent_of_limit):
