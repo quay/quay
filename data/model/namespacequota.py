@@ -26,23 +26,23 @@ from data.model import (
 
 def verify_namespace_quota(repository_ref):
     model.repository.get_repository_size_and_cache(repository_ref._db_id)
-    namespace_size = get_namespace_size(repository_ref.namespace_user)
-    return check_limits(repository_ref.namespace_user, namespace_size)
+    namespace_size = get_namespace_size(repository_ref.namespace_name)
+    return check_limits(repository_ref.namespace_name, namespace_size)
 
 
 def verify_namespace_quota_force_cache(repository_ref):
     force_cache_repo_size(repository_ref)
-    namespace_size = get_namespace_size(repository_ref.namespace_user)
-    return check_limits(repository_ref.namespace_user, namespace_size)
+    namespace_size = get_namespace_size(repository_ref.namespace_name)
+    return check_limits(repository_ref.namespace_name, namespace_size)
 
 
 def verify_namespace_quota_during_upload(repository_ref):
     size = model.repository.get_size_during_upload(repository_ref._db_id)
-    namespace_size = get_namespace_size(repository_ref.namespace_user)
+    namespace_size = get_namespace_size(repository_ref.namespace_name)
     if namespace_size is None:
         namespace_size = 0
 
-    return check_limits(repository_ref.namespace_user, size + namespace_size)
+    return check_limits(repository_ref.namespace_name, size + namespace_size)
 
 
 def check_limits(namespace_name, size):
