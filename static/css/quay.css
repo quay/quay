@@ -204,6 +204,10 @@
   font-size: 12px;
 }
 
+.padding-2percent {
+    padding: 2%;
+}
+
 .dockerfile-path {
   margin-top: 10px;
   padding: 20px;

@@ -82,10 +82,10 @@
       </td>
        <td class="repo-quota hidden-xs" ng-show="quotaManagementEnabled">
          <span ng-if="::repository.quota.percent_consumed != null">
-             {{ ::repository.quota.quota_consumed }} ({{::repository.quota.percent_consumed}}%)
-        </span>
+             <span ng-bind="::bytesToHumanReadableString(repository.quota.quota_bytes)"></span> ({{::repository.quota.percent_consumed}}%)
+         </span>
         <span ng-if="::repository.quota.percent_consumed == null">
-            {{ ::repository.quota.quota_consumed }}
+            <span ng-bind="::bytesToHumanReadableString(repository.quota.quota_bytes)"></span>
         </span>
       </td>
        <td class="popularity hidden-xs">

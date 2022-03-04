@@ -92,7 +92,8 @@ angular.module('quay').directive('quotaManagementView', function () {
 
             var updateOrganizationQuota = function(params) {
 
-                if (!$scope.prevquotaEnabled || $scope.prevQuotaConfig['quota'] != $scope.currentQuotaConfig['quota']) {
+                if (!$scope.prevquotaEnabled || $scope.prevQuotaConfig['quota'] != $scope.currentQuotaConfig['quota']
+                     || $scope.prevQuotaConfig['bytes_unit'] != $scope.currentQuotaConfig['bytes_unit'] ) {
                     let quotaMethod = ApiService.createNamespaceQuota;
                     let m1 = "createNamespaceQuota";
                     let limit_bytes = human_readable_string_to_bytes($scope.currentQuotaConfig['quota'], $scope.currentQuotaConfig['bytes_unit']);
