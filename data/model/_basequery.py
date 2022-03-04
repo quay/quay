@@ -5,17 +5,12 @@ from cachetools.func import lru_cache
 
 from datetime import datetime, timedelta
 
-import features
 from data.model import DataModelException, config
 from data.readreplica import ReadOnlyModeException
 from data.database import (
     Repository,
-    RepositorySize,
     RepositoryState,
     User,
-    UserOrganizationQuota,
-    QuotaType,
-    QuotaLimits,
     Team,
     TeamMember,
     RepositoryPermission,
@@ -78,49 +73,6 @@ def get_existing_repository(namespace_name, repository_name, for_update=False, k
         query = db_for_update(query)
 
     return query.get()
-
-
-def get_namespace_quota_limits(namespace_name):
-    query = (
-        UserOrganizationQuota.select(
-            UserOrganizationQuota.limit_bytes,
-            QuotaLimits.percent_of_limit,
-            QuotaLimits.quota_id,
-            QuotaLimits.id,
-            QuotaType.name,
-            QuotaType.id,
-            (
-                UserOrganizationQuota.limit_bytes.cast("decimal")
-                * (QuotaLimits.percent_of_limit.cast("decimal") / 100.0).cast("decimal")
-            ).alias("bytes_allowed"),
-            QuotaType.id.alias("type_id"),
-        )
-        .join(User, on=(UserOrganizationQuota.namespace_id == User.id))
-        .join(QuotaLimits, on=(UserOrganizationQuota.id == QuotaLimits.quota_id))
-        .join(QuotaType, on=(QuotaLimits.quota_type_id == QuotaType.id))
-        .where(User.username == namespace_name)
-    ).dicts()
-
-    # define limits if a system default is defined in config.py and no namespace specific limits are set
-    if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0 and len(query) == 0:
-        query = [
-            {
-                "limit_bytes": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES"),
-                "percent_of_limit": 80,
-                "name": "System Warning Limit",
-                "bytes_allowed": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") * 0.8,
-                "type_id": 1,
-            },
-            {
-                "limit_bytes": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES"),
-                "percent_of_limit": 100,
-                "name": "System Reject Limit",
-                "bytes_allowed": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES"),
-                "type_id": 2,
-            },
-        ]
-
-    return query
 
 
 @lru_cache(maxsize=1)

@@ -862,8 +862,8 @@ def populate_database(minimal=False):
     org.stripe_id = TEST_STRIPE_ID
     org.save()
 
-    QuotaType.create(name="Notify")
-    QuotaType.create(name="Error")
+    QuotaType.create(name="Warning")
+    QuotaType.create(name="Reject")
 
     model.namespacequota.create_namespace_quota(org.username, 3050)
     model.repository.force_cache_repo_size(publicrepo.id)

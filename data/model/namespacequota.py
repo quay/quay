@@ -11,41 +11,42 @@ from data.database import (
     get_epoch_timestamp_ms,
     Tag,
     RepositorySize,
+    User,
 )
+from data import model
 from data.model import (
-    InvalidOrganizationException,
-    _basequery,
     organization,
     user,
     InvalidUsernameException,
-    repository,
     notification,
+    config,
+    InvalidSystemQuotaConfig,
 )
 
 
-def verify_namespace_quota(namespace_name, repository_ref):
-    repository.get_repository_size_and_cache(repository_ref._db_id)
-    namespace_size = get_namespace_size(namespace_name)
-    return check_limits(namespace_name, namespace_size)
+def verify_namespace_quota(repository_ref):
+    model.repository.get_repository_size_and_cache(repository_ref._db_id)
+    namespace_size = get_namespace_size(repository_ref.namespace_user)
+    return check_limits(repository_ref.namespace_user, namespace_size)
 
 
-def verify_namespace_quota_force_cache(namespace_name, repository_ref):
+def verify_namespace_quota_force_cache(repository_ref):
     force_cache_repo_size(repository_ref)
-    namespace_size = get_namespace_size(namespace_name)
-    return check_limits(namespace_name, namespace_size)
+    namespace_size = get_namespace_size(repository_ref.namespace_user)
+    return check_limits(repository_ref.namespace_user, namespace_size)
 
 
-def verify_namespace_quota_during_upload(namespace_name, repository_ref):
-    size = __gather_size_by_chunk_upload(repository_ref._db_id)
-    namespace_size = get_namespace_size(namespace_name)
+def verify_namespace_quota_during_upload(repository_ref):
+    size = model.repository.get_size_during_upload(repository_ref._db_id)
+    namespace_size = get_namespace_size(repository_ref.namespace_user)
     if namespace_size is None:
         namespace_size = 0
 
-    return check_limits(namespace_name, size + namespace_size)
+    return check_limits(repository_ref.namespace_user, size + namespace_size)
 
 
 def check_limits(namespace_name, size):
-    limits = __get_namespace_limits(namespace_name)
+    limits = get_namespace_limits(namespace_name)
     limit_bytes = 0
     severity_level = None
     for limit in limits:
@@ -55,10 +56,6 @@ def check_limits(namespace_name, size):
                 severity_level = limit["type_id"]
 
     return {"limit_bytes": limit_bytes, "severity_level": severity_level}
-
-
-def __gather_size_by_chunk_upload(repo_id):
-    return repository.get_size_during_upload(repo_id)
 
 
 def notify_organization_admins(repository_ref, notification_kind, metadata={}):
@@ -78,12 +75,8 @@ def notify_organization_admins(repository_ref, notification_kind, metadata={}):
         )
 
 
-def __get_namespace_limits(namespace_name):
-    return get_namespace_limits(namespace_name)
-
-
 def force_cache_repo_size(repository_ref):
-    return repository.force_cache_repo_size(repository_ref._db_id)
+    return model.repository.force_cache_repo_size(repository_ref._db_id)
 
 
 def create_namespace_quota(name, limit_bytes):
@@ -124,8 +117,60 @@ def get_namespace_quota(name):
         return None
 
 
+def check_system_quota_bytes_enabled():
+
+    if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") < 0:
+        raise InvalidSystemQuotaConfig(
+            "Invalid Configuration: Quota bytes must be greater than or equal to 0"
+        )
+
+    if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+        return True
+    else:
+        return False
+
+
 def get_namespace_limits(name):
-    return _basequery.get_namespace_quota_limits(name)
+    query = (
+        UserOrganizationQuota.select(
+            UserOrganizationQuota.limit_bytes,
+            QuotaLimits.percent_of_limit,
+            QuotaLimits.quota_id,
+            QuotaLimits.id,
+            QuotaType.name,
+            QuotaType.id,
+            (
+                UserOrganizationQuota.limit_bytes.cast("decimal")
+                * (QuotaLimits.percent_of_limit.cast("decimal") / 100.0).cast("decimal")
+            ).alias("bytes_allowed"),
+            QuotaType.id.alias("type_id"),
+        )
+        .join(User, on=(UserOrganizationQuota.namespace_id == User.id))
+        .join(QuotaLimits, on=(UserOrganizationQuota.id == QuotaLimits.quota_id))
+        .join(QuotaType, on=(QuotaLimits.quota_type_id == QuotaType.id))
+        .where(User.username == name)
+    ).dicts()
+
+    # define limits if a system default is defined in config.py and no namespace specific limits are set
+    if check_system_quota_bytes_enabled() and len(query) == 0:
+        query = [
+            {
+                "limit_bytes": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES"),
+                "percent_of_limit": 80,
+                "name": "System Warning Limit",
+                "bytes_allowed": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") * 0.8,
+                "type_id": 1,
+            },
+            {
+                "limit_bytes": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES"),
+                "percent_of_limit": 100,
+                "name": "System Reject Limit",
+                "bytes_allowed": config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES"),
+                "type_id": 2,
+            },
+        ]
+
+    return query
 
 
 def get_namespace_limit(name, quota_type_id, percent_of_limit):
@@ -349,7 +394,7 @@ def get_namespace_size(namespace_name):
 
 
 def get_repo_quota_for_view(repo_id, namespace):
-    repo_quota = repository.get_repository_size_and_cache(repo_id).get("repository_size", 0)
+    repo_quota = model.repository.get_repository_size_and_cache(repo_id).get("repository_size", 0)
     namespace_quota = get_namespace_quota(namespace)
     namespace_quota = namespace_quota.get() if namespace_quota else None
     percent_consumed = None
