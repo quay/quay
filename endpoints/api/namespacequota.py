@@ -114,10 +114,13 @@ class OrganizationQuota(ApiResource):
             raise request_error(message=msg)
 
         try:
-            model.namespacequota.create_namespace_quota(
+            newquota = model.namespacequota.create_namespace_quota(
                 name=namespace, limit_bytes=quota_data["limit_bytes"]
             )
-            return "Created", 201
+            if newquota is not None:
+                return "Created", 201
+            else:
+                raise request_error("Quota Failed to Create")
         except model.DataModelException as ex:
             raise request_error(exception=ex)
 
