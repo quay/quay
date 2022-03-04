@@ -19,4 +19,4 @@ def test_create_quota(initialized_db):
     new_quota = namespacequota.create_namespace_quota(org_name, limit_bytes)
 
     assert new_quota.limit_bytes == limit_bytes
-    assert new_quota.namespace_id == new_org.id
+    assert new_quota.namespace_id.id == new_org.id
