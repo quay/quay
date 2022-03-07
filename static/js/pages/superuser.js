@@ -42,8 +42,6 @@
       'page': 0,
     }
     $scope.disk_size_units = {
-        'Bytes': 1,
-        'KB': 1024**1,
         'MB': 1024**2,
         'GB': 1024**3,
         'TB': 1024**4,
