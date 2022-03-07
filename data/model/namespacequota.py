@@ -53,7 +53,7 @@ def check_limits(namespace_name, size):
         if size > limit["bytes_allowed"]:
             if limit_bytes < limit["bytes_allowed"]:
                 limit_bytes = limit["bytes_allowed"]
-                severity_level = limit["type_id"]
+                severity_level = limit["name"]
 
     return {"limit_bytes": limit_bytes, "severity_level": severity_level}
 

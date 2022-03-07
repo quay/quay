@@ -238,7 +238,7 @@ def start_blob_upload(namespace_name, repo_name):
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
         quota = namespacequota.verify_namespace_quota(repository_ref)
-        if quota["severity_level"] == 2:
+        if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(repository_ref, "quota_error")
             raise QuotaExceeded
 
@@ -334,7 +334,7 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
         quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
-        if quota["severity_level"] == 2:
+        if quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(repository_ref, "quota_error")
             raise QuotaExceeded
 

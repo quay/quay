@@ -118,8 +118,6 @@ class ImageRepositoryRepository(
     :type trust_enabled: boolean
     """
 
-    # TODO: Add quota stuff here?
-
     def to_dict(self):
         img_repo = {
             "namespace": self.repository_base_elements.namespace_name,

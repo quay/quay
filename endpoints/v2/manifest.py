@@ -406,9 +406,9 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
         quota = namespacequota.verify_namespace_quota_force_cache(repository_ref)
-        if quota["severity_level"] == 1:
+        if quota["severity_level"] == "Warning":
             namespacequota.notify_organization_admins(repository_ref, "quota_warning")
-        elif quota["severity_level"] == 2:
+        elif quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(repository_ref, "quota_error")
             raise QuotaExceeded()
 
