@@ -112,7 +112,7 @@ class PreOCIModel(RepositoryDataInterface):
             # get_visible_repositories will return if there is a logged-in user (for performance reasons).
             #
             # Also note the +1 on the limit, as paginate_query uses the extra result to determine whether
-            # there is a next page.endpoints/api/namespacequota.py
+            # there is a next page.
             start_id = model.modelutil.pagination_start(page_token)
             repo_query = model.repository.get_visible_repositories(
                 username=username,
