@@ -5,12 +5,12 @@
              Quota Management:
          </td>
          <td>
-             <div class="width-50">
+             <fieldset ng-disabled="disabled">
                  <div class="row-alignment">
 
-                     <label class="margin-2 width-350">Set Organization quota: </label>
+                     <label class="margin-2 width-100">Set Quota: </label>
 
-                     <input class="margin-2 form-control width-50 width-440" type="number" name="quota-limit" ng-model="currentQuotaConfig['quota']">
+                     <input class="margin-2 form-control width-440" type="number" name="quota-limit" ng-model="currentQuotaConfig['quota']">
                      <select class="form-control"
                      ng-model="currentQuotaConfig['bytes_unit']"
                      ng-options="val for val in quotaUnits">
@@ -22,24 +22,46 @@
                      </button>
                  </div>
 
-                 <div class="row-alignment" ng-model="limitCounter" ng-repeat="x in [].constructor(limitCounter) track by $index" id="limit-id-limitCounter">
-                     <select class="form-control" name="quotaLimitType" id="quotaLimitType"
-                        ng-options="obj as obj.name for obj in quotaLimitTypes track by obj.name"
-                        ng-model="currentQuotaConfig['limits'][$index]['limit_type']">
-                     </select>
+                 <table class="co-table" ng-if="limitCounter > 0">
+                     <thead>
+                        <td class="hidden-xs">
+                            <span>Action</span>
+                        </td>
+                        <td class="hidden-xs">
+                            <span>Limit Percent</span>
+                        </td>
+                        <td class="hidden-xs">
+                            <span></span>
+                        </td>
+                     </thead>
 
-                     <input class="form-control margin-2" type="number" name="limit-percent" min="1" max="100" placeholder="Limit Percent" ng-model="currentQuotaConfig['limits'][$index]['percent_of_limit']"/>
+                     <tbody ng-model="limitCounter" ng-repeat="x in [].constructor(limitCounter) track by $index" id="limit-id-limitCounter">
+                        <tr>
+                            <td>
+                                <select class="form-control" name="quotaLimitType" id="quotaLimitType"
+                                    ng-options="obj as obj.name for obj in quotaLimitTypes track by obj.name"
+                                    ng-model="currentQuotaConfig['limits'][$index]['limit_type']">
+                                </select>
+                            </td>
 
-                     <span class="margin-2" ng-hide="limitCounter < 1">
-                        <button class="margin-2 btn btn-danger" ng-click="removeQuotaLimit($index)" ng-model="$index">
-                            <i class="fa fa-trash"></i>
-                            Remove
-                        </button>
-                     </span>
+                            <td>
+                                <input class="form-control margin-2" type="number" name="limit-percent" min="1" max="100" placeholder="Limit Percent" ng-model="currentQuotaConfig['limits'][$index]['percent_of_limit']"/>
+                            </td>
 
-                 </div>
+                            <td>
+                                <span class="margin-2" ng-hide="limitCounter < 1">
+                                    <button class="margin-2 btn btn-danger" ng-click="removeQuotaLimit($index)" ng-model="$index">
+                                    <i class="fa fa-trash"></i>
+                                    Remove
+                                    </button>
+                                </span>
+                            </td>
+                        </tr>
+                     </tbody>
+                 </table>
+
                  <button class="margin-2 btn btn-primary save-quota-details" ng-disabled="disableSave()" ng-click="updateQuotaDetailsOnSave()">Save Quota Details</button>
-             </div>
+             </fieldset>
 
          </td>
      </tr>

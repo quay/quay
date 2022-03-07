@@ -85,8 +85,6 @@ class OrganizationQuota(ApiResource):
 
         quota = model.namespacequota.get_namespace_quota(namespace)
         quota_limit_types = model.namespacequota.get_namespace_limit_types()
-        quota = quota.get() if quota else None
-
         return quota_view(namespace, quota, quota_limit_types)
 
     @nickname("createNamespaceQuota")
