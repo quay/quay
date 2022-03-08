@@ -140,7 +140,9 @@
 
               <time-machine-settings organization="organization"></time-machine-settings>
 
-              <quota-management-view quay-show="Features.QUOTA_MANAGEMENT" organization="organization" disabled="true"></quota-management-view>
+              <div quay-show="Features.QUOTA_MANAGEMENT">
+                <quota-management-view organization="organization" disabled="true"></quota-management-view>
+              </div>
             </div>
 
             <!-- Billing Information -->
