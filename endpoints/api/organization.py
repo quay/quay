@@ -225,6 +225,7 @@ class Organization(ApiResource):
         if features.QUOTA_MANAGEMENT:
             quota = model.namespacequota.get_org_quota_for_view(org.username)
 
+        print("features.QUOTA_MANAGEMENT", features.QUOTA_MANAGEMENT)
         return org_view(org, teams, quota)
 
     @require_scope(scopes.ORG_ADMIN)
