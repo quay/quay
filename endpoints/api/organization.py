@@ -217,6 +217,7 @@ class Organization(ApiResource):
             raise NotFound()
 
         teams = None
+        quota = None
         if OrganizationMemberPermission(orgname).can():
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
