@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from six import add_metaclass
 from tzlocal import get_localzone
 
+import features
 from app import avatar, superusers
 from buildtrigger.basehandler import BuildTriggerHandler
 from data import model
@@ -246,6 +247,9 @@ class Organization(namedtuple("Organization", ["username", "email"])):
             "name": self.username,
             "email": self.email,
             "avatar": avatar.get_data_for_org(self),
+            "quota": model.namespacequota.get_org_quota_for_view(self.username)
+            if features.QUOTA_MANAGEMENT
+            else None,
         }
 
 

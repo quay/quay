@@ -13,13 +13,15 @@ angular.module('quay').directive('repoListTable', function () {
       'namespaces': '=namespaces',
       'starToggled': '&starToggled',
       'repoKind': '@repoKind',
-      'repoMirroringEnabled': '=repoMirroringEnabled'}, 
-    controller: function($scope, $element, $filter, TableService, UserService, StateService) {
+      'repoMirroringEnabled': '=repoMirroringEnabled'
+    },
+    controller: function($scope, $element, $filter, TableService, UserService, StateService, Config) {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.repositories = null;
       $scope.orderedRepositories = [];
       $scope.reposPerPage = 25;
-
+      $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT;
+      $scope.repoMirroringEnabled = Config.FEATURE_REPO_MIRROR;
       $scope.maxPopularity = 0;
       $scope.options = {
         'predicate': 'popularity',
@@ -27,13 +29,19 @@ angular.module('quay').directive('repoListTable', function () {
         'filter': null,
         'page': 0
       };
+      $scope.disk_size_units = {
+        'MB': 1024**2,
+        'GB': 1024**3,
+        'TB': 1024**4,
+      };
+      $scope.quotaUnits = Object.keys($scope.disk_size_units);
 
       var buildOrderedRepositories = function() {
         if (!$scope.repositories) { return; }
 
         $scope.orderedRepositories = TableService.buildOrderedItems($scope.repositories,
             $scope.options,
-            ['namespace', 'name'], ['last_modified_datetime', 'popularity'])
+            ['namespace', 'name', 'state'], ['last_modified_datetime', 'popularity', 'quota'])
       };
 
       $scope.tablePredicateClass = function(name, predicate, reverse) {
@@ -52,6 +60,20 @@ angular.module('quay').directive('repoListTable', function () {
 
         $scope.options.reverse = false;
         $scope.options.predicate = predicate;
+      };
+
+      $scope.bytesToHumanReadableString = function(bytes) {
+        let units = Object.keys($scope.disk_size_units).reverse();
+        let result = null;
+        let byte_unit = null;
+        for (const key in units) {
+            byte_unit = units[key];
+            if (bytes >= $scope.disk_size_units[byte_unit]) {
+                result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+                return result.toString() + " " + byte_unit;
+            }
+        }
+        return null
       };
 
       $scope.getAvatarData = function(namespace) {

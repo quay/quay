@@ -23,6 +23,7 @@
     $scope.showTeamsCounter = 0;
     $scope.changeEmailInfo = null;
     $scope.context = {};
+    $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT
 
     $scope.Config = Config;
     $scope.Features = Features;
@@ -31,17 +32,41 @@
       'changingOrganization': false,
       'organizationEmail': ''
     };
+    $scope.disk_size_units = {
+        'Bytes': 1,
+        'KB': 1024**1,
+        'MB': 1024**2,
+        'GB': 1024**3,
+        'TB': 1024**4,
+      };
+    $scope.quotaUnits = Object.keys($scope.disk_size_units);
+
 
     $scope.$watch('orgScope.organizationEmail', function(e) {
       UIService.hidePopover('#changeEmailForm input');
     });
+
+    $scope.bytesToHumanReadableString = function(bytes) {
+        let units = Object.keys($scope.disk_size_units).reverse();
+        let result = null;
+        let byte_unit = null;
+        for (const key in units) {
+            byte_unit = units[key];
+            if (bytes >= $scope.disk_size_units[byte_unit]) {
+                result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+                return result.toString() + " " + byte_unit;
+            }
+        }
+        return null
+    };
 
     var loadRepositories = function() {
       var options = {
         'namespace': orgname,
         'public': true,
         'last_modified': true,
-        'popularity': true
+        'popularity': true,
+        'quota': $scope.quotaManagementEnabled,
       };
 
       $scope.organization.repositories = ApiService.listReposAsResource().withPagination('repositories').withOptions(options).get(function(resp) {

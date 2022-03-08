@@ -108,3 +108,6 @@ class TestConfig(DefaultConfig):
     OCI_NAMESPACE_WHITELIST: List[str] = []
 
     FEATURE_USER_INITIALIZE = True
+
+    FEATURE_QUOTA_MANAGEMENT = True
+    DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0

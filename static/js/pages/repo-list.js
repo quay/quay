@@ -22,6 +22,7 @@
     $scope.Features = Features;
     $scope.inReadOnlyMode = StateService.inReadOnlyMode();
     $scope.repoMirroringEnabled = Config.FEATURE_REPO_MIRROR
+    $scope.quotaManagementEnabled = Config.FEATURE_QUOTA_MANAGEMENT
 
     // When loading the UserService, if the user is logged in, create a list of
     // relevant namespaces and collect the relevant repositories.
@@ -106,6 +107,7 @@
           'popularity': true,
           'public': namespace.public,
           'state': true,
+          'quota': $scope.quotaManagementEnabled,
         };
 
         namespace.repositories = ApiService.listReposAsResource().withPagination('repositories').withOptions(options).get(function(resp) {
