@@ -24,6 +24,11 @@
   text-transform: capitalize;
 }
 
+.repo-list-table .repo-quota {
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
 .repo-list-table .strength-indicator {
   display: inline-block;
 }

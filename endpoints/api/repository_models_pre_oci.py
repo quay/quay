@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from datetime import datetime, timedelta
 
+import features
 from auth.permissions import ReadRepositoryPermission
 from data.database import Repository as RepositoryTable, RepositoryState
 from data import model
@@ -89,6 +90,7 @@ class PreOCIModel(RepositoryDataInterface):
         page_token,
         last_modified,
         popularity,
+        quota,
     ):
         next_page_token = None
 
@@ -132,6 +134,7 @@ class PreOCIModel(RepositoryDataInterface):
         # and/or last modified.
         last_modified_map = {}
         action_sum_map = {}
+        quota_map = {}
         if last_modified or popularity:
             repository_refs = [RepositoryReference.for_id(repo.rid) for repo in repos]
             repository_ids = [repo.rid for repo in repos]
@@ -147,6 +150,12 @@ class PreOCIModel(RepositoryDataInterface):
 
             if popularity:
                 action_sum_map = model.log.get_repositories_action_sums(repository_ids)
+
+        if features.QUOTA_MANAGEMENT and quota:
+            for repo_id in repository_ids:
+                quota_map[repo_id] = model.namespacequota.get_repo_quota_for_view(
+                    repo_id, namespace
+                )
 
         # Collect the IDs of the repositories that are starred for the user, so we can mark them
         # in the returned results.
@@ -173,6 +182,7 @@ class PreOCIModel(RepositoryDataInterface):
                     username,
                     None,
                     repo.state,
+                    quota_map.get(repo.rid),
                 )
                 for repo in repos
             ],
@@ -232,6 +242,7 @@ class PreOCIModel(RepositoryDataInterface):
             False,
             repo.namespace_user.stripe_id is None,
             repo.state,
+            features.QUOTA_MANAGEMENT is True,
         )
 
         if base.kind_name == "application":

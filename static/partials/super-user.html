@@ -91,6 +91,10 @@
                   ng-if="Features.MAILING">
                 <a ng-click="orderBy('email')">Admin Email</a>
               </td>
+              <td ng-class="tablePredicateClass('quota', options.predicate, options.reverse)"
+                  ng-if="Features.QUOTA_MANAGEMENT">
+                <a ng-click="orderBy('quota.quota_bytes')">Quota Consumed</a>
+              </td>
               <td style="width: 24px;"></td>
               </thead>
 
@@ -107,6 +111,19 @@
                 <td ng-if="Features.MAILING">
                   <a href="mailto:{{ current_org.email }}">{{ current_org.email }}</a>
                 </td>
+                <td ng-if="Features.QUOTA_MANAGEMENT">
+                  <span ng-if="current_org.quota.quota_bytes != '0'">
+                  {{
+                    current_org.quota.percent_consumed ?
+                    ( bytesToHumanReadableString(current_org.quota.quota_bytes) + "(" + current_org.quota.percent_consumed + "%)") :
+                    bytesToHumanReadableString(current_org.quota.quota_bytes)
+                  }}
+                  </span>
+                  <span ng-if="current_org.quota.quota_bytes == '0'">--</span>
+                  <span ng-if="current_org.quota.configured_quota">
+                  {{ " of " + bytesToHumanReadableString(current_org.quota.configured_quota) }}
+                  </span>
+                </td>
                 <td style="text-align: center;">
                   <span class="cor-options-menu" ng-show="!inReadOnlyMode">
                     <span class="cor-option" option-click="askRenameOrganization(current_org)">
@@ -117,6 +134,9 @@
                     </span>
                     <span class="cor-option" option-click="askTakeOwnership(current_org)">
                       <i class="fa fa-bolt"></i> Take Ownership
+                    </span>
+                    <span class="cor-option" ng-show="Features.QUOTA_MANAGEMENT" option-click="showQuotaConfig(current_org)">
+                      <i class="fa fa-gear"></i> Configure Quota
                     </span>
                   </span>
                 </td>
@@ -131,6 +151,22 @@
         </cor-tab-pane> <!-- users-tab -->
       </cor-tab-content>
     </cor-tab-panel>
+
+    <!-- Modal quota configuration -->
+      <div ng-repeat="current_org in orderedOrgs.entries" class="org-row">
+          <div class="co-dialog modal fade" id="quotaConfigModal-{{ current_org.name }}">
+            <div class="modal-dialog">
+              <div class="modal-content padding-2percent">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                  <h4 class="modal-title">Manage Quota Configuration</h4>
+                </div>
+                  <quota-management-view organization="current_org" disabled="false"></quota-management-view>
+              </div>
+            </div>
+          </div>
+      </div>
+
 
     <!-- Modal message dialog -->
     <div class="co-dialog modal fade" id="restartingContainerModal">

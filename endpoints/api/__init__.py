@@ -524,3 +524,4 @@ import endpoints.api.user
 import endpoints.api.secscan
 import endpoints.api.signing
 import endpoints.api.mirror
+import endpoints.api.namespacequota

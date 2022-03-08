@@ -1198,5 +1198,16 @@ CONFIG_SCHEMA = {
             "description": "Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads",
             "x-example": False,
         },
+        # Enable Quota Management
+        "FEATURE_QUOTA_MANAGEMENT": {
+            "type": "boolean",
+            "description": "Enables configuration, caching, and validation for quota management feature",
+            "x-example": False,
+        },
+        "DEFAULT_SYSTEM_REJECT_QUOTA_BYTES": {
+            "type": "int",
+            "description": "Enables system default quota reject byte allowance for all organizations",
+            "x-example": False,
+        },
     },
 }

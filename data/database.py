@@ -741,6 +741,9 @@ class User(BaseModel):
                     ManifestSecurityStatus,
                     RepoMirrorConfig,
                     UploadedBlob,
+                    RepositorySize,
+                    UserOrganizationQuota,
+                    QuotaLimits,
                 }
                 | appr_classes
                 | v22_classes
@@ -762,6 +765,21 @@ class RobotAccountToken(BaseModel):
     robot_account = QuayUserField(index=True, allows_robots=True, unique=True)
     token = EncryptedCharField(default_token_length=64)
     fully_migrated = BooleanField(default=False)
+
+
+class QuotaType(BaseModel):
+    name = CharField()
+
+
+class UserOrganizationQuota(BaseModel):
+    namespace_id = QuayUserField(index=True, unique=True)
+    limit_bytes = BigIntegerField()
+
+
+class QuotaLimits(BaseModel):
+    quota_id = ForeignKeyField(UserOrganizationQuota)
+    quota_type_id = ForeignKeyField(QuotaType)
+    percent_of_limit = IntegerField(default=0)
 
 
 class DeletedNamespace(BaseModel):
@@ -945,6 +963,7 @@ class Repository(BaseModel):
                 DeletedRepository,
                 ManifestSecurityStatus,
                 UploadedBlob,
+                RepositorySize,
             }
             | appr_classes
             | v22_classes
@@ -958,6 +977,11 @@ class RepositorySearchScore(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     score = BigIntegerField(index=True, default=0)
     last_updated = DateTimeField(null=True)
+
+
+class RepositorySize(BaseModel):
+    repository = ForeignKeyField(Repository, unique=True)
+    size_bytes = BigIntegerField()
 
 
 class DeletedRepository(BaseModel):

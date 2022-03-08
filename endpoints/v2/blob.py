@@ -7,6 +7,7 @@ from app import storage, app, get_app_url, model_cache
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from auth.permissions import ReadRepositoryPermission
 from data import database
+from data.model import namespacequota
 from data.registry_model import registry_model
 from data.registry_model.blobuploader import (
     create_blob_upload,
@@ -37,6 +38,7 @@ from endpoints.v2.errors import (
     LayerTooLarge,
     InvalidRequest,
     BlobDownloadGeoBlocked,
+    QuotaExceeded,
 )
 from util.cache import cache_control
 from util.names import parse_namespace_repository
@@ -229,9 +231,16 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @anon_protect
 @check_readonly
 def start_blob_upload(namespace_name, repo_name):
+
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+        quota = namespacequota.verify_namespace_quota(repository_ref)
+        if quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            raise QuotaExceeded
 
     # Check for mounting of a blob from another repository.
     mount_blob_digest = request.args.get("mount", None)
@@ -322,6 +331,12 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            raise QuotaExceeded
 
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
