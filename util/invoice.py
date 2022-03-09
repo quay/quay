@@ -18,7 +18,7 @@ def renderInvoiceToPdf(invoice, user):
     Renders a nice PDF display for the given invoice.
     """
     sourceHtml = renderInvoiceToHtml(invoice, user)
-    output = io.StringIO()
+    output = io.BytesIO()
     pisaStatus = pisa.CreatePDF(sourceHtml, dest=output)
     if pisaStatus.err:
         return None
