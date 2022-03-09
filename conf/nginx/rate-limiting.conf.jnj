@@ -43,24 +43,24 @@ limit_req_zone $http_authorization zone=staticauth:10m rate=30r/s;
 limit_req_zone $request_id zone=staticauth:10m rate=300r/s;
 {% endif %}
 
-limit_req_zone $http1_bucket zone=dynamicauth_very_light_http1:10m rate=30r/s;
+limit_req_zone $http1_bucket zone=dynamicauth_very_light_http1:10m rate=60r/s;
 limit_req_zone $http2_bucket zone=dynamicauth_very_light_http2:10m rate=600r/s;
-limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_very_light_http1:10m rate=30r/s;
+limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_very_light_http1:10m rate=60r/s;
 limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_very_light_http2:10m rate=600r/s;
 
-limit_req_zone $http1_bucket zone=dynamicauth_light_http1:10m rate=20r/s;
-limit_req_zone $http2_bucket zone=dynamicauth_light_http2:10m rate=400r/s;
-limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_light_http1:10m rate=20r/s;
-limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_light_http2:10m rate=400r/s;
+limit_req_zone $http1_bucket zone=dynamicauth_light_http1:10m rate=50r/s;
+limit_req_zone $http2_bucket zone=dynamicauth_light_http2:10m rate=500r/s;
+limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_light_http1:10m rate=50r/s;
+limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_light_http2:10m rate=500r/s;
 
 # This zone should always be used with burst=<number> (nodelay|delay) as the
 # limit is very low on purpose but should allow for the burst of traffic
 # required for a registry operation. The burst number should also vary per
 # endpoint.
-limit_req_zone $http1_bucket zone=dynamicauth_heavy_http1:10m rate=1r/s;
-limit_req_zone $http2_bucket zone=dynamicauth_heavy_http2:10m rate=20r/s;
-limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_heavy_http1:10m rate=1r/s;
-limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_heavy_http2:10m rate=20r/s;
+limit_req_zone $http1_bucket zone=dynamicauth_heavy_http1:10m rate=20r/s;
+limit_req_zone $http2_bucket zone=dynamicauth_heavy_http2:10m rate=200r/s;
+limit_req_zone $namespaced_http1_bucket zone=namespaced_dynamicauth_heavy_http1:10m rate=20r/s;
+limit_req_zone $namespaced_http2_bucket zone=namespaced_dynamicauth_heavy_http2:10m rate=200r/s;
 
 limit_req_status 429;
 limit_req_log_level warn;
