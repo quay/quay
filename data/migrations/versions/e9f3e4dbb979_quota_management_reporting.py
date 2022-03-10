@@ -20,6 +20,7 @@ def upgrade(op, tables, tester):
         sa.Column("id", sa.Integer, nullable=False),
         sa.Column("namespace_id", sa.Integer, nullable=False),
         sa.Column("limit_bytes", sa.BigInteger, nullable=False),
+        sa.Column("set_by_super", sa.Boolean, nullable=False, default=0),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_userorganizationquota")),
         sa.ForeignKeyConstraint(
             ["namespace_id"], ["user.id"], name=op.f("fk_userorganizationquota_organization")
