@@ -17,11 +17,6 @@ show-modified:
 
 all: clean test build
 
-QUAY_CONFIG ?= ../quay-config
-conf/stack/license: $(QUAY_CONFIG)/local/license
-	mkdir -p conf/stack
-	ln -s $(QUAY_CONFIG)/local/license conf/stack/license
-
 unit-test:
 	TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
@@ -68,7 +63,9 @@ ensure-test-db:
 
 PG_PASSWORD := quay
 PG_USER := quay
-PG_HOST := postgresql://$(PG_USER):$(PG_PASSWORD)@localhost/quay
+PG_PORT := 5433
+PG_VERSION := 12.1
+PG_HOST := postgresql://$(PG_USER):$(PG_PASSWORD)@localhost:$(PG_PORT)/quay
 
 test_postgres : TEST_ENV := SKIP_DB_SCHEMA=true TEST=true \
 	TEST_DATABASE_URI=$(PG_HOST) PYTHONPATH=.
@@ -77,53 +74,24 @@ test_postgres:
 	docker rm -f postgres-testrunner-postgres || true
 	docker run --name postgres-testrunner-postgres \
 		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=${PG_USER} \
-		-p 5432:5432 -d postgres:9.2
-	until pg_isready -d $(PG_HOST); do sleep 1; echo "Waiting for postgres"; done
+		-p ${PG_PORT}:5432 -d postgres:${PG_VERSION}
+	docker exec -it postgres-testrunner-postgres bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	docker exec -it postgres-testrunner-postgres bash -c "psql -U ${PG_USER} -d $(PG_PASSWORD) -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'"
 	$(TEST_ENV) alembic upgrade head
-	$(TEST_ENV) py.test --timeout=7200 --verbose --show-count ./ --color=no \
-		--ignore=endpoints/appr/test/ -x
-	docker rm -f postgres-testrunner-postgres || true
+	@echo '------------------------------------------------------------------------------------------------------------------------'
+	@echo "postgres is ready to accept connections!"
+	@echo "now run pytest with the necessary env vars, i.e:"
+	@echo "'$(TEST_ENV) pytest <your-test-file.py>'"
+	@echo "attaching to postgres container, use Ctrl+C detach and stop the container"
+	@echo '------------------------------------------------------------------------------------------------------------------------'
+	docker attach postgres-testrunner-postgres
 
-WEBPACK := node_modules/.bin/webpack
-$(WEBPACK): package.json
-	npm install webpack
-	npm install
-
-BUNDLE := static/js/build/bundle.js
-$(BUNDLE): $(WEBPACK) tsconfig.json webpack.config.js typings.json
-	$(WEBPACK)
-
-GRUNT := grunt/node_modules/.bin/grunt
-$(GRUNT): grunt/package.json
-	cd grunt && npm install
-
-JS  := quay-frontend.js quay-frontend.min.js template-cache.js
-CSS := quay-frontend.css
-DIST := $(addprefix static/dist/, $(JS) $(CSS) cachebusters.json)
-$(DIST): $(GRUNT)
-	cd grunt && ../$(GRUNT)
-
-build: $(WEBPACK) $(GRUNT)
-
-docker-build: build
-	ifneq (0,$(shell git status --porcelain | awk 'BEGIN {print $N}'))
-	echo 'dirty build not supported - run `FORCE=true make clean` to remove'
-	exit 1
-	endif
-	# get named head (ex: branch, tag, etc..)
-	NAME = $(shell git rev-parse --abbrev-ref HEAD)
-	# checkout commit so .git/HEAD points to full sha (used in Dockerfile)
-	git checkout $(SHA)
+docker-build:
 	docker build -t $(TAG) .
-	git checkout $(NAME)
-	echo $(TAG)
+	@echo $(TAG)
 
 app-sre-docker-build:
 	$(BUILD_CMD) -t ${IMG} -f Dockerfile .
-
-run: license
-	goreman start
-
 
 clean:
 	find . -name "*.pyc" -exec rm -rf {} \;
@@ -138,19 +106,6 @@ clean:
 	rm -rf build
 	rm -rf conf/stack
 	rm -rf screenshots
-
-
-yapf-all:
-	yapf -r . -p -i
-
-
-yapf-diff:
-	if [ $(MODIFIED_FILES_COUNT) -ne 0 ]; then yapf -d -p $(MODIFIED_FILES) ; fi
-
-
-yapf-test:
-	if [ `yapf -d -p $(MODIFIED_FILES) | wc -l` -gt 0 ] ; then false ; else true ;fi
-
 
 generate-proto-py:
 	python -m grpc_tools.protoc -Ibuildman/buildman_pb --python_out=buildman/buildman_pb --grpc_python_out=buildman/buildman_pb buildman.proto
