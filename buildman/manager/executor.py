@@ -723,7 +723,7 @@ class KubernetesPodmanExecutor(KubernetesExecutor):
                     "name": "SSL_CERT_FILE",
                     "value": "/certs/cacert.crt",
                 },  # Used for other Podman and other Go libraries
-                {"name": "DEBUG", "value": "false"},
+                {"name": "DEBUG", "value": str(self.executor_config.get("DEBUG", False)).lower()},
                 {"name": "HTTP_PROXY", "value": self.executor_config.get("HTTP_PROXY", "")},
                 {"name": "HTTPS_PROXY", "value": self.executor_config.get("HTTPS_PROXY", "")},
                 {"name": "NO_PROXY", "value": self.executor_config.get("NO_PROXY", "")},
