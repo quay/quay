@@ -43,7 +43,6 @@ CLIENT_WHITELIST = [
     "BRANDING",
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
-    "FEATURE_QUOTA_MANAGEMENT",
 ]
 
 
@@ -209,22 +208,6 @@ class DefaultConfig(ImmutableConfig):
 
     @staticmethod
     def create_transaction(db):
-        # This hack is for handling possible MySQL closing idle connections.
-        # Peewee/pymysql's will try to reuse the existing connection after the MySQL server
-        # has already closed it, which will return an InterfaceError.
-        # AFAIK, there isn't a way to actually test for a a stale connection without actually
-        # running a query. Closing the connection before the transaction forces peewee/pymysql
-        # to reopen a new session to MySQL. This should only applies to non-registry workers,
-        # as the registry workers use a pool by default, and shouldn't have this issue.
-        if type(db.obj).__name__ == "ObservableRetryingMySQLDatabase":
-            try:
-                db.close()
-            except:
-                # Only try to close the connection. Otherwise closing connections in a nested transaction
-                # will return an OperationalError. In that case, we can just continue with the normal flow,
-                # as we know the connection is likely in use and not stale.
-                pass
-
         return db.transaction()
 
     DB_TRANSACTION_FACTORY = create_transaction
@@ -813,8 +796,3 @@ class DefaultConfig(ImmutableConfig):
 
     # Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads
     CLEAN_BLOB_UPLOAD_FOLDER = False
-
-    # Add quota management configuration, caching, and validation
-    FEATURE_QUOTA_MANAGEMENT = False
-    # default value for all organizations to reject by default. 0 = no configuration
-    DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0

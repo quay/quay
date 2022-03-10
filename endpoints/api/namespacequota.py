@@ -34,6 +34,7 @@ def quota_view(orgname: str, quota, quota_limit_types):
         "orgname": orgname,
         "limit_bytes": quota.limit_bytes if quota else None,
         "quota_limit_types": quota_limit_types,
+        "set_by_super": quota.set_by_super if quota else None,
     }
 
 
@@ -113,7 +114,7 @@ class OrganizationQuota(ApiResource):
 
         try:
             newquota = model.namespacequota.create_namespace_quota(
-                name=namespace, limit_bytes=quota_data["limit_bytes"]
+                name=namespace, limit_bytes=quota_data["limit_bytes"], superuser=superperm.can()
             )
             if newquota is not None:
                 return "Created", 201
@@ -126,33 +127,44 @@ class OrganizationQuota(ApiResource):
     @validate_json_request("NewOrgQuota")
     def put(self, namespace):
 
+        orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not superperm.can():
+        if not orgperm.can() and not superperm.can():
+            raise Unauthorized()
+
+        quota = model.namespacequota.get_namespace_quota(namespace)
+
+        if quota.set_by_super and not superperm.can():
             raise Unauthorized()
 
         quota_data = request.get_json()
-
-        quota = model.namespacequota.get_namespace_quota(namespace)
 
         if quota is None:
             msg = "quota does not exist"
             raise request_error(message=msg)
 
         try:
-            model.namespacequota.change_namespace_quota(namespace, quota_data["limit_bytes"])
+            model.namespacequota.change_namespace_quota(
+                namespace, quota_data["limit_bytes"], superperm.can()
+            )
             return "Updated", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
 
     @nickname("deleteOrganizationQuota")
     def delete(self, namespace):
+
+        orgperm = AdministerOrganizationPermission(namespace)
         superperm = SuperUserPermission()
 
-        if not superperm.can():
+        if not orgperm.can() and not superperm.can():
             raise Unauthorized()
 
         quota = model.namespacequota.get_namespace_quota(namespace)
+
+        if quota.set_by_super and not superperm.can():
+            raise Unauthorized()
 
         if quota is None:
             msg = "quota does not exist"
