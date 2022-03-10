@@ -627,11 +627,14 @@ class EphemeralBuilderManager(BuildStateInterface):
             )
             return False, ORCHESTRATOR_UNAVAILABLE_SLEEP_DURATION
 
+        registration_timeout = self._manager_config.get(
+            "JOB_REGISTRATION_TIMEOUT", JOB_REGISTRATION_TIMEOUT
+        )
         registration_token = self.generate_build_token(
             BUILD_JOB_REGISTRATION_TYPE,
             build_job.build_uuid,
             job_id,
-            JOB_REGISTRATION_TIMEOUT + SETUP_LEEWAY_SECONDS,
+            registration_timeout + SETUP_LEEWAY_SECONDS,
         )
 
         started_with_executor = None
