@@ -774,6 +774,7 @@ class QuotaType(BaseModel):
 class UserOrganizationQuota(BaseModel):
     namespace_id = QuayUserField(index=True, unique=True)
     limit_bytes = BigIntegerField()
+    set_by_super = BooleanField()
 
 
 class QuotaLimits(BaseModel):

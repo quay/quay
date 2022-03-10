@@ -82,10 +82,10 @@ def force_cache_repo_size(repository_ref):
     return model.repository.force_cache_repo_size(repository_ref._db_id)
 
 
-def create_namespace_quota(name, limit_bytes):
+def create_namespace_quota(name, limit_bytes, superuser=False):
     user_object = user.get_namespace_user(name)
     try:
-        return UserOrganizationQuota.create(namespace_id=user_object.id, limit_bytes=limit_bytes)
+        return UserOrganizationQuota.create(namespace_id=user_object.id, limit_bytes=limit_bytes, set_by_super=superuser)
     except model.DataModelException as ex:
         return None
 
@@ -261,11 +261,12 @@ def get_namespace_limit_types_for_name(name):
     return QuotaType.select().where(QuotaType.name == name).get()
 
 
-def change_namespace_quota(name, limit_bytes):
+def change_namespace_quota(name, limit_bytes, superuser=False):
     org = user.get_namespace_user(name)
     quota = UserOrganizationQuota.select().where(UserOrganizationQuota.namespace_id == org.id).get()
 
     quota.limit_bytes = limit_bytes
+    quota.set_by_super = superuser
     quota.save()
 
     return quota
