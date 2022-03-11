@@ -484,8 +484,13 @@ angular.module('quay').directive('repoPanelTags', function () {
           child_manifest = JSON.parse(resp['manifest_data']);
           manifest.layers = child_manifest["layers"];
           manifest.layers_loading = false;
-        }, ApiService.errorDisplay('Could not load manifest contents'))
-      };
+        }, ApiService.errorDisplay(
+	  'Could not load manifest contents',
+	  function() {
+	    manifest.layers_loading = false;
+	  }
+	)
+      )};
 
       $scope.manifestsOf = function(tag) {
         if (!tag.is_manifest_list) {
