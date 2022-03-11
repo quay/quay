@@ -53,6 +53,24 @@ from proxy import Proxy, UpstreamRegistryError
 logger = logging.getLogger(__name__)
 
 
+def quota_view(quota):
+    quota_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+
+    return {
+        "id": quota.id,  # Generate uuid instead?
+        "limit_bytes": quota.limit_bytes,
+        "limits": [limit_view(limit) for limit in quota_limits],
+    }
+
+
+def limit_view(limit):
+    return {
+        "id": limit.id,
+        "type": limit.quota_type.name,
+        "limit_percent": limit.percent_of_limit,
+    }
+
+
 def team_view(orgname, team):
     return {
         "name": team.name,
@@ -66,7 +84,7 @@ def team_view(orgname, team):
     }
 
 
-def org_view(o, teams, quota=None):
+def org_view(o, teams):
     is_admin = AdministerOrganizationPermission(o.username).can()
     is_member = OrganizationMemberPermission(o.username).can()
 
@@ -76,7 +94,6 @@ def org_view(o, teams, quota=None):
         "avatar": avatar.get_data_for_user(o),
         "is_admin": is_admin,
         "is_member": is_member,
-        "quota": quota,
     }
 
     if teams is not None:
@@ -89,6 +106,11 @@ def org_view(o, teams, quota=None):
         view["invoice_email_address"] = o.invoice_email_address
         view["tag_expiration_s"] = o.removed_tag_expiration_s
         view["is_free_account"] = o.stripe_id is None
+
+        if features.QUOTA_MANAGEMENT:
+            quotas = model.namespacequota.get_namespace_quota_list(o.username)
+            view["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
+            view["quota_report"] = model.namespacequota.get_org_quota_for_view(o.username)
 
     return view
 
@@ -218,15 +240,11 @@ class Organization(ApiResource):
             raise NotFound()
 
         teams = None
-        quota = None
         if OrganizationMemberPermission(orgname).can():
             has_syncing = features.TEAM_SYNCING and bool(authentication.federated_service)
             teams = model.team.get_teams_within_org(org, has_syncing)
 
-        if features.QUOTA_MANAGEMENT:
-            quota = model.namespacequota.get_org_quota_for_view(org.username)
-
-        return org_view(org, teams, quota)
+        return org_view(org, teams)
 
     @require_scope(scopes.ORG_ADMIN)
     @nickname("changeOrganizationDetails")

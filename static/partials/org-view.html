@@ -58,18 +58,15 @@
           <div class="repo-list-view" namespaces="[organization]" in-read-only-mode="inReadOnlyMode"
                quota-management-enabled="quotaManagementEnabled">
             <h3>Repositories</h3>
-              <span ng-show="Features.QUOTA_MANAGEMENT && organization.quota.configured_quota">
-                  <h4>
-                    Total Quota Consumed:
-                    <span ng-if="organization.quota.quota_bytes != '0'">
-                      {{ organization.quota.percent_consumed ?
-                      (bytesToHumanReadableString(organization.quota.quota_bytes) + "(" + organization.quota.percent_consumed + "%)") :
-                      bytesToHumanReadableString(organization.quota.quota_bytes) }}
-                    </span>
-                    <span ng-if="organization.quota.quota_bytes == '0'">--</span>
-                    {{ " of " +  bytesToHumanReadableString(organization.quota.configured_quota) }}
-                  </h4>
-              </span>
+            <span ng-show="Features.QUOTA_MANAGEMENT && organization.quotas.length > 0">
+              <h4>
+                Total Quota Consumed:
+                <span ng-if="organization.quota_report.quota_bytes">
+                  {{ bytesToHumanReadableString(organization.quota_report.quota_bytes) + "(" + quotaPercentConsumed(organization) + "%)" }}
+                </span>
+                <span ng-if="organization.quota_report.quota_bytes == '0'">--</span>
+              </h4>
+            </span>
           </div>
         </cor-tab-pane>
 

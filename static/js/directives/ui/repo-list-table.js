@@ -30,6 +30,7 @@ angular.module('quay').directive('repoListTable', function () {
         'page': 0
       };
       $scope.disk_size_units = {
+	'KB': 1024,
         'MB': 1024**2,
         'GB': 1024**3,
         'TB': 1024**4,
@@ -41,7 +42,7 @@ angular.module('quay').directive('repoListTable', function () {
 
         $scope.orderedRepositories = TableService.buildOrderedItems($scope.repositories,
             $scope.options,
-            ['namespace', 'name', 'state'], ['last_modified_datetime', 'popularity', 'quota'])
+            ['namespace', 'name', 'state'], ['last_modified_datetime', 'popularity', 'quota_report'])
       };
 
       $scope.tablePredicateClass = function(name, predicate, reverse) {
@@ -67,13 +68,21 @@ angular.module('quay').directive('repoListTable', function () {
         let result = null;
         let byte_unit = null;
         for (const key in units) {
-            byte_unit = units[key];
-            if (bytes >= $scope.disk_size_units[byte_unit]) {
-                result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
-                return result.toString() + " " + byte_unit;
-            }
+          byte_unit = units[key];
+          result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+          if (bytes >= $scope.disk_size_units[byte_unit]) {
+            return result.toString() + " " + byte_unit;
+          }
         }
-        return null
+
+        return result.toString() + " " + byte_unit;
+      };
+
+      $scope.quotaPercentConsumed = function(repository) {
+	if (repository.quota_report) {
+	  return (repository.quota_report.quota_bytes / repository.quota_report.configured_quota * 100).toFixed(2);
+	}
+	return 0;
       };
 
       $scope.getAvatarData = function(namespace) {

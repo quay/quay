@@ -769,18 +769,23 @@ class RobotAccountToken(BaseModel):
     fully_migrated = BooleanField(default=False)
 
 
+class QuotaTypes(object):
+    WARNING = "Warning"
+    REJECT = "Reject"
+
+
 class QuotaType(BaseModel):
     name = CharField()
 
 
 class UserOrganizationQuota(BaseModel):
-    namespace_id = QuayUserField(index=True, unique=True)
+    namespace = QuayUserField(index=True, unique=True)
     limit_bytes = BigIntegerField()
 
 
 class QuotaLimits(BaseModel):
-    quota_id = ForeignKeyField(UserOrganizationQuota)
-    quota_type_id = ForeignKeyField(QuotaType)
+    quota = ForeignKeyField(UserOrganizationQuota)
+    quota_type = ForeignKeyField(QuotaType)
     percent_of_limit = IntegerField(default=0)
 
 

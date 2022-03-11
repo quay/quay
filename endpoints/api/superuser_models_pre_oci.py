@@ -22,10 +22,20 @@ from endpoints.api.superuser_models_interface import (
 from util.request import get_request_ip
 
 
+def _get_namespace_quotas(namespace_user):
+    if not features.QUOTA_MANAGEMENT:
+        return None
+
+    return model.namespacequota.get_namespace_quota_list(namespace_user.username)
+
+
 def _create_user(user):
     if user is None:
         return None
-    return User(user.username, user.email, user.verified, user.enabled, user.robot)
+
+    quotas = _get_namespace_quotas(user)
+
+    return User(user.username, user.email, user.verified, user.enabled, user.robot, quotas)
 
 
 def _create_key(key):
@@ -163,7 +173,9 @@ class PreOCIModel(SuperuserDataInterface):
         if new_org_name is not None:
             org = model.user.change_username(org.id, new_org_name)
 
-        return Organization(org.username, org.email)
+        quotas = _get_namespace_quotas(org)
+
+        return Organization(org.username, org.email, quotas)
 
     def mark_organization_for_deletion(self, name):
         org = model.organization.get_organization(name)
@@ -235,7 +247,8 @@ class PreOCIModel(SuperuserDataInterface):
 
     def get_organizations(self):
         return [
-            Organization(org.username, org.email) for org in model.organization.get_organizations()
+            Organization(org.username, org.email, _get_namespace_quotas(org))
+            for org in model.organization.get_organizations()
         ]
 
 

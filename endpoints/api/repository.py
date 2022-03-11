@@ -211,12 +211,6 @@ class RepositoryList(ApiResource):
         type=truthy_bool,
         default=False,
     )
-    @query_param(
-        "quota",
-        "Whether to include the repository's consumed quota.",
-        type=truthy_bool,
-        default=False,
-    )
     @query_param("repo_kind", "The kind of repositories to return", type=str, default="image")
     @page_support()
     def get(self, page_token, parsed_args):
@@ -237,7 +231,6 @@ class RepositoryList(ApiResource):
         username = user.username if user else None
         last_modified = parsed_args["last_modified"]
         popularity = parsed_args["popularity"]
-        quota = parsed_args["quota"]
 
         if parsed_args["starred"] and not username:
             # No repositories should be returned, as there is no user.
@@ -253,7 +246,6 @@ class RepositoryList(ApiResource):
             page_token,
             last_modified,
             popularity,
-            quota,
         )
 
         return {"repositories": [repo.to_dict() for repo in repos]}, next_page_token

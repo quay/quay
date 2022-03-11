@@ -58,7 +58,7 @@
                   <span class="cor-options-menu"
                         ng-if="user.username != current_user.username && !current_user.super_user && !inReadOnlyMode">
                     <span class="cor-option" option-click="showChangeEmail(current_user)"
-                          quay-show="Config.AUTHENTICATION_TYPE == 'Database' || Config>.AUTHENTICATION_TYPE == 'AppToken'">
+                          quay-show="Config.AUTHENTICATION_TYPE == 'Database' || Config.AUTHENTICATION_TYPE == 'AppToken'">
                       <i class="fa fa-envelope-o"></i> Change E-mail Address
                     </span>
                     <span class="cor-option" option-click="showChangePassword(current_user)"
