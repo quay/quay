@@ -2,10 +2,10 @@
   <body>
    <table width="100%" style="max-width: 640px">
      <tr>
-       <td valign="center" style="padding: 10px;">
-         <img src="{{ logo }}" alt="Quay" style="width: 100px;">
+       <td style="padding: 10px;" width="20%">
+         <img src="{{ logo }}" alt="Quay" width="200px">
        </td>
-       <td valign="center">
+       <td width="20%">
          <h3>Quay</h3>
          <p style="font-size: 12px; -webkit-text-adjust: none">
            Red Hat, Inc<br>
@@ -14,7 +14,7 @@
            Raleigh, North Carolina 27601
          </p>
        </td>
-       <td align="right" width="100%">
+       <td align="right" width="60%">
          <h1 style="color: #ddd;">RECEIPT</h1>
          <table>
            <tr><td>Date:</td><td>{{ invoice_date }}</td></tr>
@@ -40,15 +40,14 @@
      <tbody>
 {%- for line in invoice.lines.data -%}
        <tr>
-         <td width="100%" style="padding: 4px;">{{ line.description or ('Plan Subscription' + getRange(line)) }}</td>
-         <td style="padding: 4px; min-width: 150px;">{{ getPrice(line.amount) }}</td>
+         <td width="60%" style="padding: 4px;">{{ line.description or ('Plan Subscription' + getRange(line)) }}</td>
+         <td width="40%" style="padding: 4px; min-width: 150px;">{{ getPrice(line.amount) }}</td>
        </tr>
 {%- endfor -%}
 
-
        <tr>
          <td></td>
-         <td valign="right">
+         <td valign="middle">
            <table>
              <tr><td><b>Subtotal: </b></td><td>{{ getPrice(invoice.subtotal) }}</td></tr>
              <tr><td><b>Total: </b></td><td>{{ getPrice(invoice.total) }}</td></tr>
