@@ -9,11 +9,13 @@ import rehash
 
 from prometheus_client import Counter, Histogram
 
+from data.model import QuotaExceeded, namespacequota
 from data.registry_model import registry_model
 from data.database import CloseForLongOperation, db_transaction
 from digest import digest_tools
 from util.registry.filelike import wrap_with_handler, StreamSlice
 from util.registry.gzipstream import calculate_size_handler
+import features
 
 
 logger = logging.getLogger(__name__)
@@ -179,6 +181,12 @@ class _BlobUploadManager(object):
         """
         assert start_offset is not None
         assert length is not None
+
+        if features.QUOTA_MANAGEMENT:
+            quota = namespacequota.verify_namespace_quota_during_upload(self.repository_ref)
+            if quota["severity_level"] == "Reject":
+                namespacequota.notify_organization_admins(self.repository_ref, "quota_error")
+                raise QuotaExceeded
 
         if start_offset > 0 and start_offset > self.blob_upload.byte_count:
             logger.error("start_offset provided greater than blob_upload.byte_count")

@@ -107,6 +107,12 @@ class TooManyLoginAttemptsException(Exception):
         self.retry_after = retry_after
 
 
+class QuotaExceeded(DataModelException):
+    def __init__(self):
+        msg = "Quota has been exceeded on namespace"
+        super(QuotaExceeded, self).__init__(msg)
+
+
 class Config(object):
     def __init__(self):
         self.app_config = None

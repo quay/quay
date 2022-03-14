@@ -7,7 +7,7 @@ from app import storage, app, get_app_url, model_cache
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from auth.permissions import ReadRepositoryPermission
 from data import database
-from data.model import namespacequota
+from data.model import namespacequota, QuotaExceeded
 from data.registry_model import registry_model
 from data.registry_model.blobuploader import (
     create_blob_upload,
@@ -38,7 +38,7 @@ from endpoints.v2.errors import (
     LayerTooLarge,
     InvalidRequest,
     BlobDownloadGeoBlocked,
-    QuotaExceeded,
+    Denied,
 )
 from util.cache import cache_control
 from util.names import parse_namespace_repository
@@ -231,29 +231,28 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @anon_protect
 @check_readonly
 def start_blob_upload(namespace_name, repo_name):
-
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown()
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-        quota = namespacequota.verify_namespace_quota(repository_ref)
-        if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
-            raise QuotaExceeded
-
     # Check for mounting of a blob from another repository.
     mount_blob_digest = request.args.get("mount", None)
     if mount_blob_digest is not None:
-        response = _try_to_mount_blob(repository_ref, mount_blob_digest)
-        if response is not None:
-            return response
+        try:
+            response = _try_to_mount_blob(repository_ref, mount_blob_digest)
+            if response is not None:
+                return response
+        except QuotaExceeded as e:
+            raise Denied(str(e))
 
     # Begin the blob upload process.
-    blob_uploader = create_blob_upload(repository_ref, storage, _upload_settings())
-    if blob_uploader is None:
-        logger.debug("Could not create a blob upload for `%s/%s`", namespace_name, repo_name)
-        raise InvalidRequest(message="Unable to start blob upload for unknown repository")
+    try:
+        blob_uploader = create_blob_upload(repository_ref, storage, _upload_settings())
+        if blob_uploader is None:
+            logger.debug("Could not create a blob upload for `%s/%s`", namespace_name, repo_name)
+            raise InvalidRequest(message="Unable to start blob upload for unknown repository")
+    except QuotaExceeded as e:
+        raise Denied(str(e))
 
     # Check if the blob will be uploaded now or in followup calls. If the `digest` is given, then
     # the upload will occur as a monolithic chunk in this call. Otherwise, we return a redirect
@@ -331,12 +330,6 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown()
-
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
-        if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
-            raise QuotaExceeded
 
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()

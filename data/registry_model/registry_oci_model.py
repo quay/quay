@@ -40,6 +40,7 @@ from image.docker.schema1 import (
 )
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from util.timedeltastring import convert_to_timedelta
+import features
 
 
 logger = logging.getLogger(__name__)
@@ -350,6 +351,14 @@ class OCIModel(RegistryDataInterface):
         raise_on_error is set to True, in which case a CreateManifestException may also be
         raised.
         """
+        if features.QUOTA_MANAGEMENT:
+            quota = model.namespacequota.verify_namespace_quota_force_cache(repository_ref)
+            if quota["severity_level"] == "Warning":
+                model.namespacequota.notify_organization_admins(repository_ref, "quota_warning")
+            elif quota["severity_level"] == "Reject":
+                model.namespacequota.notify_organization_admins(repository_ref, "quota_error")
+                raise model.QuotaExceeded
+
         with db_disallow_replica_use():
             # Get or create the manifest itself.
             created_manifest = oci.manifest.get_or_create_manifest(
@@ -520,6 +529,9 @@ class OCIModel(RegistryDataInterface):
 
         Returns the tags (ShallowTag) deleted. Returns None on error.
         """
+        if features.QUOTA_MANAGEMENT:
+            model.namespacequota.force_cache_repo_size(manifest.repository)
+
         with db_disallow_replica_use():
             deleted_tags = oci.tag.delete_tags_for_manifest(manifest._db_id)
             return [ShallowTag.for_tag(tag) for tag in deleted_tags]
@@ -836,6 +848,12 @@ class OCIModel(RegistryDataInterface):
 
         If the blob upload could not be created, returns None.
         """
+        if features.QUOTA_MANAGEMENT:
+            quota = model.namespacequota.verify_namespace_quota(repository_ref)
+            if quota["severity_level"] == "Reject":
+                model.namespacequota.notify_organization_admins(repository_ref, "quota_error")
+                raise model.QuotaExceeded
+
         with db_disallow_replica_use():
             repo = model.repository.lookup_repository(repository_ref._db_id)
             if repo is None:
@@ -933,6 +951,12 @@ class OCIModel(RegistryDataInterface):
         This function is useful during push operations if an existing blob from another repository
         is being pushed. Returns False if the mounting fails.
         """
+        if features.QUOTA_MANAGEMENT:
+            quota = model.namespacequota.verify_namespace_quota(target_repository_ref)
+            if quota["severity_level"] == "Reject":
+                namespacequota.notify_organization_admins(repository_ref, "quota_error")
+                raise model.QuotaExceeded
+
         with db_disallow_replica_use():
             storage = model.blob.temp_link_blob(
                 target_repository_ref._db_id, blob.digest, expiration_sec

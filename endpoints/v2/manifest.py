@@ -8,7 +8,7 @@ import features
 
 from app import app, storage
 from auth.registry_jwt_auth import process_registry_jwt_auth
-from data.model import repository, namespacequota
+from data.model import repository, QuotaExceeded
 from digest import digest_tools
 from data.database import db_disallow_replica_use
 from data.registry_model import registry_model
@@ -28,7 +28,7 @@ from endpoints.v2.errors import (
     NameInvalid,
     TagExpired,
     NameUnknown,
-    QuotaExceeded,
+    Denied,
 )
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes
@@ -325,9 +325,6 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         for tag in tags:
             track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
 
-        if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-            namespacequota.force_cache_repo_size(repository_ref)
-
         return Response(status=202)
 
 
@@ -404,23 +401,15 @@ def _write_manifest(namespace_name, repo_name, tag_name, manifest_impl):
     if repository_ref is None:
         raise NameUnknown()
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-        quota = namespacequota.verify_namespace_quota_force_cache(repository_ref)
-        if quota["severity_level"] == "Warning":
-            namespacequota.notify_organization_admins(repository_ref, "quota_warning")
-        elif quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
-            raise QuotaExceeded()
-
     # Create the manifest(s) and retarget the tag to point to it.
     try:
         manifest, tag = registry_model.create_manifest_and_retarget_tag(
             repository_ref, manifest_impl, tag_name, storage, raise_on_error=True
         )
-    except CreateManifestException as cme:
-        raise ManifestInvalid(detail={"message": str(cme)})
-    except RetargetTagException as rte:
-        raise ManifestInvalid(detail={"message": str(rte)})
+    except (CreateManifestException, RetargetTagException) as e:
+        raise ManifestInvalid(detail={"message": str(e)})
+    except QuotaExceeded as e:
+        raise Denied(str(e))
 
     if manifest is None:
         raise ManifestInvalid()

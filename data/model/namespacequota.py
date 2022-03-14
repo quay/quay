@@ -33,6 +33,8 @@ def verify_namespace_quota(repository_ref):
 def verify_namespace_quota_force_cache(repository_ref):
     force_cache_repo_size(repository_ref)
     namespace_size = get_namespace_size(repository_ref.namespace_name)
+    if namespace_size is None:
+        namespace_size = 0
     return check_limits(repository_ref.namespace_name, namespace_size)
 
 
