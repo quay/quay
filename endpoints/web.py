@@ -688,6 +688,7 @@ def request_authorization_code():
     client_id = request.args.get("client_id", None)
     redirect_uri = request.args.get("redirect_uri", None)
     scope = request.args.get("scope", None)
+    state = request.args.get("state", None)
 
     if not current_user.is_authenticated or not provider.validate_has_scopes(
         client_id, current_user.db_user().username, scope
@@ -737,9 +738,13 @@ def request_authorization_code():
         )
 
     if response_type == "token":
-        return provider.get_token_response(response_type, client_id, redirect_uri, scope=scope)
+        return provider.get_token_response(
+            response_type, client_id, redirect_uri, scope=scope, state=state
+        )
     else:
-        return provider.get_authorization_code(response_type, client_id, redirect_uri, scope=scope)
+        return provider.get_authorization_code(
+            response_type, client_id, redirect_uri, scope=scope, state=state
+        )
 
 
 @web.route("/oauth/access_token", methods=["POST"])
