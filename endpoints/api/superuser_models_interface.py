@@ -24,15 +24,12 @@ def user_view(user):
 
 
 class BuildTrigger(
-    namedtuple(
-        "BuildTrigger", ["uuid", "service_name", "pull_robot", "can_read", "can_admin", "for_build"]
-    )
+    namedtuple("BuildTrigger", ["trigger", "pull_robot", "can_read", "can_admin", "for_build"])
 ):
     """
     BuildTrigger represent a trigger that is associated with a build.
 
-    :type uuid: string
-    :type service_name: string
+    :type trigger: RepositoryBuildTrigger
     :type pull_robot: User
     :type can_read: boolean
     :type can_admin: boolean
@@ -40,18 +37,18 @@ class BuildTrigger(
     """
 
     def to_dict(self):
-        if not self.uuid:
+        if not self.trigger and not self.trigger.uuid:
             return None
 
-        build_trigger = BuildTriggerHandler.get_handler(self)
+        build_trigger = BuildTriggerHandler.get_handler(self.trigger)
         build_source = build_trigger.config.get("build_source")
 
         repo_url = build_trigger.get_repository_url() if build_source else None
         can_read = self.can_read or self.can_admin
 
         trigger_data = {
-            "id": self.uuid,
-            "service": self.service_name,
+            "id": self.trigger.uuid,
+            "service": self.trigger.service.name,
             "is_active": build_trigger.is_active(),
             "build_source": build_source if can_read else None,
             "repository_url": repo_url if can_read else None,
