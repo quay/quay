@@ -28,6 +28,12 @@ def get_worker_count(worker_kind_name, multiplier, minimum=None, maximum=None):
     minimum = minimum or multiplier
     maximum = maximum or (multiplier * multiplier)
 
+    minimum_override = os.environ.get("WORKER_COUNT_UNSUPPORTED_MINIMUM")
+    if minimum_override is not None:
+        minimum_override = int(minimum_override)
+        if minimum_override < minimum:
+            minimum = minimum_override
+
     # Check for a process-specific override via an environment variable.
     override_value = os.environ.get("WORKER_COUNT_" + worker_kind_name.upper())
     if override_value is not None:

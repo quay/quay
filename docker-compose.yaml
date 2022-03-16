@@ -43,26 +43,50 @@ services:
     ports:
       - "6379:6379"
 
+  local-dev-frontend:
+    user: ${DOCKER_USER:-root}
+    container_name: quay-local-dev-frontend
+    build:
+      context: .
+      target: build-python
+    image: quay-build:latest
+    init: true
+    volumes:
+      - ".:/quay-registry"
+    working_dir: /quay-registry
+    environment:
+      npm_config_cache: /quay-registry/.npm
+    entrypoint:
+      - sh
+      - -c
+      - npm run watch
+
   quay:
+    user: ${DOCKER_USER:-nobody:0}
     container_name: quay-quay
     build:
       context: .
-      target: local-dev-env
-    image: quay-local:local
+      target: final
+    image: quay-local:latest
     volumes:
       - ".:/quay-registry"
+      - "./local-dev/stack:/quay-registry/conf/stack"
     ports:
       - "8080:8080" 
       - "8443:8443"
     environment:
+      QUAY_HOTRELOAD: "true"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
-      QUAYRUN: /var/run
+      QUAYRUN: /run
+      WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
+      WORKER_COUNT: "1"
 
   # clair is configured to share it's network 
   # namespace with quay. this allows quay to serve
   # layers to clair over localhost.
   clair:
+    user: nobody
     container_name: quay-clair
     image: quay.io/projectquay/clair:4.3.0
     volumes:

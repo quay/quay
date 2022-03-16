@@ -163,36 +163,51 @@ black:
 # Local Development Environment #
 #################################
 
+.PHONY: quay-build-image
+quay-build-image:
+# docker-compose run does not build images, so let's build it if needed
+	test -n "$$(docker images quay-build:latest -q)" || docker-compose build local-dev-frontend
+
+node_modules: node_modules/.npm-install-stamp
+
+node_modules/.npm-install-stamp: package.json package-lock.json | quay-build-image
+	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-frontend npm install --ignore-engines
+# if npm install fails for some reason, it may have already created
+# node_modules, so we cannot rely on the directory timestamps and should mark
+# successfull runs of npm install with a stamp file.
+	touch $@
+
 .PHONY: local-dev-clean
 local-dev-clean:
-	./local-dev/scripts/clean.sh
+	rm -f ./conf/jwtproxy_conf.yaml ./conf/mitm.cert ./conf/mitm.key ./conf/quay.kid ./conf/quay.pem ./conf/supervisord.conf
+	rm -rf ./conf/__pycache__ ./static/build
 
 .PHONY: local-dev-build-frontend
-local-dev-build-frontend:
-	make local-dev-clean
-	npm install --quiet --no-progress --ignore-engines --no-save
-	npm run --quiet build
+local-dev-build:: local-dev-build-frontend
+local-dev-build-frontend: node_modules
+	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose run --rm --name quay-local-dev-frontend-build --entrypoint="" local-dev-frontend npm run build
 
-.PHONY: local-dev-build
-local-dev-build:
-	make local-dev-clean
-	make local-dev-build-frontend
+.PHONY: local-dev-build-images
+local-dev-build:: local-dev-build-images
+local-dev-build-images:
 	docker-compose build
 
 .PHONY: local-dev-up
-local-dev-up:
-	make local-dev-clean
-	make local-dev-build-frontend
-	docker-compose up -d redis
-	docker-compose up -d quay-db
+local-dev-up: local-dev-clean node_modules | quay-build-image
+	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose up -d local-dev-frontend --force-recreate
+	docker-compose up -d redis quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d quay
+	DOCKER_USER="$$(id -u):0" docker-compose up -d quay
+	# Waiting until the frontend is built...
+	# Use 'docker-compose logs -f local-dev-frontend' to see the progress
+	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
+	@echo "You can now access the frontend at http://localhost:8080"
 
 local-docker-rebuild:
 	docker-compose up -d redis --build
 	docker-compose up -d quay-db --build
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d quay --build
+	DOCKER_USER="$$(id -u):0" docker-compose up -d quay --build
 	docker-compose restart quay
 
 ifeq ($(CLAIR),true)
@@ -212,12 +227,12 @@ local-dev-up-with-clair:
 	docker-compose up -d redis
 	docker-compose up -d quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d quay
+	DOCKER_USER="$$(id -u):0" docker-compose up -d quay
 	docker-compose up -d clair-db
 	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	docker-compose up -d clair
 
-.PHONY: local-dev-up
+.PHONY: local-dev-down
 local-dev-down:
 	docker-compose down
-	make local-dev-clean
+	$(MAKE) local-dev-clean
