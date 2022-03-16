@@ -1,6 +1,9 @@
 version: "3.7"
-services:
+volumes:
+  quay-db-data:
+  clair-db-data:
 
+services:
   quay-db:
     user: postgres
     container_name: quay-db
@@ -11,6 +14,7 @@ services:
       POSTGRES_DB: "quay"
     volumes:
       - "./local-dev/init/pg_bootstrap.sql:/docker-entrypoint-initdb.d/pg_bootstrap.sql"
+      - "quay-db-data:/var/lib/postgresql/data"
     ports:
       - "5432:5432"
     healthcheck:
@@ -27,6 +31,8 @@ services:
     environment:
       POSTGRES_USER: "clair"
       POSTGRES_DB: "clair"
+    volumes:
+      - "clair-db-data:/var/lib/postgresql/data"
     ports:
       - "5433:5432"
     healthcheck:
