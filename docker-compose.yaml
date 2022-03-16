@@ -78,7 +78,7 @@ services:
       QUAY_HOTRELOAD: "true"
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
-      QUAYRUN: /run
+      QUAYRUN: /tmp
       WORKER_COUNT_UNSUPPORTED_MINIMUM: "1"
       WORKER_COUNT: "1"
 
