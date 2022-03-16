@@ -83,7 +83,9 @@ class PreOCIModel(SuperuserDataInterface):
         can_admin = AdministerRepositoryPermission(repo_namespace, repo_name).can()
         job_config = get_job_config(build.job_config)
         phase, status, error = _get_build_status(build)
-        url = userfiles.get_file_url(self.resource_key, get_request_ip(), requires_cors=True)
+        url = ""
+        if build.resource_key is not None:
+            url = userfiles.get_file_url(build.resource_key, get_request_ip(), requires_cors=True)
 
         return RepositoryBuild(
             build.uuid,
@@ -95,14 +97,12 @@ class PreOCIModel(SuperuserDataInterface):
             _create_user(build.pull_robot),
             build.resource_key,
             BuildTrigger(
-                build.trigger.uuid,
-                build.trigger.service.name,
+                build.trigger,
                 _create_user(build.trigger.pull_robot),
                 can_read,
                 can_admin,
                 True,
             ),
-            build.display_name,
             build.display_name,
             build.started,
             job_config,
