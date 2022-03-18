@@ -78,7 +78,7 @@ class DoubleWriteWrapper(AutomaticFailoverWrapper):
         self._secondary_write_db = secondary_write_db
 
     def __getattr__(self, attribute):
-        super(AutomaticFailoverWrapper, self).__getattr__(attribute)
+        return super(AutomaticFailoverWrapper, self).__getattr__(attribute)
 
     def execute(self, query, commit=SENTINEL, **context_options):
         ctx = self.get_sql_context(**context_options)
@@ -86,13 +86,16 @@ class DoubleWriteWrapper(AutomaticFailoverWrapper):
         return self.execute_sql(sql, params, commit=commit)
 
     def execute_sql(self, sql, params=None, commit=SENTINEL):
-        super(AutomaticFailoverWrapper, self).execute_sql(sql, params, commit)
+        result = super(AutomaticFailoverWrapper, self).execute_sql(sql, params, commit)
 
         if self._secondary_write_db is not None:
             try:
                 return self._secondary_write_db.execute_sql(sql, params, commit)
             except OperationalError:
-                raise
+                #TODO: No-op for now to protect initial db write
+                pass
+
+        return result
 
 
 class ReadReplicaSupportedModel(Model):
