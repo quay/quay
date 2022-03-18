@@ -71,6 +71,30 @@ class AutomaticFailoverWrapper(object):
                     raise
 
 
+class DoubleWriteWrapper(AutomaticFailoverWrapper):
+
+    def __init__(self, primary_db, fallback_db, secondary_write_db=None):
+        super(AutomaticFailoverWrapper, self).__init__(primary_db, fallback_db)
+        self._secondary_write_db = secondary_write_db
+
+    def __getattr__(self, attribute):
+        super(AutomaticFailoverWrapper, self).__getattr__(attribute)
+
+    def execute(self, query, commit=SENTINEL, **context_options):
+        ctx = self.get_sql_context(**context_options)
+        sql, params = ctx.sql(query).query()
+        return self.execute_sql(sql, params, commit=commit)
+
+    def execute_sql(self, sql, params=None, commit=SENTINEL):
+        super(AutomaticFailoverWrapper, self).execute_sql(sql, params, commit)
+
+        if self._secondary_write_db is not None:
+            try:
+                return self._secondary_write_db.execute_sql(sql, params, commit)
+            except OperationalError:
+                raise
+
+
 class ReadReplicaSupportedModel(Model):
     """
     Base model for peewee data models that support using a read replica for SELECT requests not
@@ -125,7 +149,9 @@ class ReadReplicaSupportedModel(Model):
         # Otherwise, return a read replica database with auto-retry onto the main database.
         replicas = read_only_config.read_replicas
         selected_read_replica = replicas[random.randrange(len(replicas))]
-        return AutomaticFailoverWrapper(selected_read_replica, cls._meta.database)
+
+        # TODO: add config for supplying secondary write db
+        return DoubleWriteWrapper(selected_read_replica, cls._meta.database)
 
     @classmethod
     def select(cls, *args, **kwargs):
