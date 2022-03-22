@@ -60,6 +60,10 @@
                      </tbody>
                  </table>
 
+                 <div class="co-alert co-alert-danger" ng-if="errorMessage">
+                     {{ errorMessage }}
+                 </div>
+
                  <button class="margin-2 btn btn-primary save-quota-details" ng-disabled="disableSave()" ng-click="updateQuotaDetailsOnSave()">Save Quota Details</button>
              </fieldset>
 

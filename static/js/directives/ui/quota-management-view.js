@@ -26,6 +26,11 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.quotaUnits = Object.keys($scope.disk_size_units);
             $scope.rejectLimitType = 'Reject';
             $scope.isUpdateable = false;
+            $scope.errorMessage = '';
+            $scope.errorMessagesObj = {
+                'quotaLessThanZero': 'A quota greater 0 must be defined.',
+                'validNumber': 'Please enter a valid number.',
+            }
 
             var loadOrgQuota = function (fresh) {
                 $scope.nameSpaceResource = ApiService.getNamespaceQuota(null,
@@ -231,6 +236,10 @@ angular.module('quay').directive('quotaManagementView', function () {
             }
 
             $scope.disableSave = function() {
+                if (!$scope.validOrgQuota()) {
+                    return true;
+                }
+
                 return $scope.prevQuotaConfig['quota'] === $scope.currentQuotaConfig['quota'] &&
                        $scope.prevQuotaConfig['bytes_unit'] === $scope.currentQuotaConfig['bytes_unit'] &&
                        similarLimits();
@@ -281,9 +290,25 @@ angular.module('quay').directive('quotaManagementView', function () {
                 $scope.limitCounter--;
             }
 
+            $scope.validOrgQuota = function () {
+                if (isNaN(parseInt($scope.currentQuotaConfig['quota']))) {
+                    $scope.errorMessage = $scope.errorMessagesObj['validNumber'];
+                    return false;
+                }
+
+                if (parseInt($scope.currentQuotaConfig['quota']) <= 0) {
+                    $scope.errorMessage = $scope.errorMessagesObj['quotaLessThanZero'];
+                    return false;
+                }
+
+                $scope.errorMessage = '';
+                return true;
+            }
+
             loadOrgQuota(true);
             loadQuotaLimits(true);
-        }
+        },
+
     }
 
     return directiveDefinitionObject;
