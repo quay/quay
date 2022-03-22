@@ -1499,7 +1499,7 @@ angular.module("quay-config")
           $scope.certsUploading = true;
           $scope.certMeta = Object.entries($scope.certs)
             .filter(([filename, contents]) =>
-              filename.startsWith("extra_ca_certs/")
+              filename.startsWith("extra_ca_cert_")
             )
             .map(([filename, contents]) => {
               try {
