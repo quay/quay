@@ -280,6 +280,12 @@ CONFIG_SCHEMA = {
             },
             "required": ["threadlocals", "autorollback"],
         },
+        "SECONDARY_WRITE_DB_URI": {
+            "type": "string",
+            "description": "The URI at which to access the database, including any credentials.",
+            "x-example": "mysql+pymysql://username:password@dns.of.database/quay",
+            "x-reference": "https://www.postgresql.org/docs/9.3/static/libpq-connect.html#AEN39495",
+        },
         "ALLOW_PULLS_WITHOUT_STRICT_LOGGING": {
             "type": "boolean",
             "description": "If true, pulls in which the pull audit log entry cannot be written will "

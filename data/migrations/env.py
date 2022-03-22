@@ -41,6 +41,14 @@ def get_db_url():
     return db_url
 
 
+def get_secondary_db_url():
+    """
+    Return the Database URI. This is typically set in config.yaml but may be overridden using
+    an environment variable or expected to default with a SQLite database for testing purposes.
+    """
+    db_url = app.config.get("SECONDARY_WRITE_DB_URI", "sqlite:///test/data/test.db")
+    return db_url
+
 def get_tester():
     """
     Returns the tester to use.
@@ -56,11 +64,10 @@ def get_tester():
     return NoopTester()
 
 
-def get_engine():
+def get_engine(db_url):
     """
     Return a SQL Alchemy engine object which Alembic uses to connect to the database.
     """
-    db_url = get_db_url()
     peewee_connection_args = app.config.get("DB_CONNECTION_ARGS", {})
     sa_connection_args = {}
 
@@ -92,7 +99,7 @@ def run_migrations_offline():
         context.run_migrations(op=alembic_op, tables=tables, tester=get_tester())
 
 
-def run_migrations_online():
+def run_migrations_online(engine):
     """
     Run migrations in 'online' mode.
 
@@ -102,7 +109,6 @@ def run_migrations_online():
         logger.info("Skipping Sqlite migration!")
         return
 
-    engine = get_engine()
     connection = engine.connect()
     context.configure(
         connection=connection,
@@ -136,4 +142,6 @@ def run_migrations_online():
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    run_migrations_online(get_engine(get_db_url()))
+    if app.config.get("SECONDARY_WRITE_DB_URI", None) is not None:
+        run_migrations_online(get_engine(get_secondary_db_url()))
