@@ -507,7 +507,7 @@ def configure(config_object, testing=False):
 
     read_replicas = config_object.get("DB_READ_REPLICAS", None)
     is_read_only = config_object.get("REGISTRY_STATE", "normal") == "readonly"
-    secondary_write_db = config_object.get("SECONDARY_WRITE_DB_URI", None)
+    secondary_write_db_uri = config_object.get("SECONDARY_WRITE_DB_URI", None)
 
     read_replica_dbs = []
     if read_replicas:
@@ -521,7 +521,9 @@ def configure(config_object, testing=False):
         ]
 
     read_only_config.initialize(ReadOnlyConfig(is_read_only, read_replica_dbs))
-    double_write_config.initialize(_db_from_url(secondary_write_db, db_kwargs))
+
+    if secondary_write_db_uri is not None:
+        double_write_config.initialize(_db_from_url(secondary_write_db_uri, db_kwargs))
 
     def _db_transaction():
         return config_object["DB_TRANSACTION_FACTORY"](db)
