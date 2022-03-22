@@ -29,6 +29,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import collections
+import collections.abc
 import json
 from json.encoder import encode_basestring, encode_basestring_ascii, INFINITY  # type: ignore
 from types import GeneratorType
@@ -244,9 +245,9 @@ def _make_iterencode(
             elif isinstance(value, float):
                 yield _floatstr(value)
             else:
-                if isinstance(value, collections.Mapping):
+                if isinstance(value, collections.abc.Mapping):
                     chunks = _iterencode_dict(value, _current_indent_level)
-                elif isinstance(value, collections.Iterable):
+                elif isinstance(value, collections.abc.Iterable):
                     chunks = _iterencode_list(value, _current_indent_level)
                 else:
                     chunks = _iterencode(value, _current_indent_level)
@@ -272,10 +273,10 @@ def _make_iterencode(
             yield str(o)
         elif isinstance(o, float):
             yield _floatstr(o)
-        elif isinstance(o, collections.Mapping):
+        elif isinstance(o, collections.abc.Mapping):
             for chunk in _iterencode_dict(o, _current_indent_level):
                 yield chunk
-        elif isinstance(o, collections.Iterable):
+        elif isinstance(o, collections.abc.Iterable):
             for chunk in _iterencode_list(o, _current_indent_level):
                 yield chunk
         else:
