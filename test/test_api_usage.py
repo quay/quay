@@ -48,9 +48,8 @@ from endpoints.api.team import (
     TeamPermissions,
     InviteTeamMember,
 )
-from endpoints.api.tag import RepositoryTagImages, RepositoryTag, RestoreTag, ListRepositoryTags
+from endpoints.api.tag import RepositoryTag, RestoreTag, ListRepositoryTags
 from endpoints.api.search import EntitySearch, ConductSearch
-from endpoints.api.image import RepositoryImage, RepositoryImageList
 from endpoints.api.build import RepositoryBuildStatus, RepositoryBuildList, RepositoryBuildResource
 from endpoints.api.robot import (
     UserRobotList,
@@ -139,7 +138,7 @@ from endpoints.api.globalmessages import (
     GlobalUserMessage,
     GlobalUserMessages,
 )
-from endpoints.api.secscan import RepositoryImageSecurity, RepositoryManifestSecurity
+from endpoints.api.secscan import RepositoryManifestSecurity
 from endpoints.api.manifest import RepositoryManifestLabels, ManageRepositoryManifestLabel
 from util.morecollections import AttrDict
 
@@ -3119,51 +3118,6 @@ class TestRepositoryNotifications(ApiTestCase):
         self.assertEqual("Some Notification", json["title"])
 
 
-class TestListAndGetImage(ApiTestCase):
-    def test_listandgetimages(self):
-        self.login(ADMIN_ACCESS_USER)
-
-        json = self.getJsonResponse(
-            RepositoryImageList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
-        )
-
-        assert len(json["images"]) > 0
-
-        for image in json["images"]:
-            assert "id" in image
-            assert "tags" in image
-            assert "created" in image
-            assert "comment" in image
-            assert "command" in image
-            assert "ancestors" in image
-            assert "size" in image
-
-            ijson = self.getJsonResponse(
-                RepositoryImage,
-                params=dict(repository=ADMIN_ACCESS_USER + "/simple", image_id=image["id"]),
-            )
-
-            self.assertEqual(image["id"], ijson["id"])
-
-
-class TestGetImageChanges(ApiTestCase):
-    def test_getimagechanges(self):
-        self.login(ADMIN_ACCESS_USER)
-
-        # Find an image to check.
-        json = self.getJsonResponse(
-            RepositoryImageList, params=dict(repository=ADMIN_ACCESS_USER + "/simple")
-        )
-
-        image_id = json["images"][0]["id"]
-
-        # Lookup the image's changes.
-        # TODO: Fix me once we can get fake changes into the test data
-        # self.getJsonResponse(RepositoryImageChanges,
-        #                     params=dict(repository=ADMIN_ACCESS_USER + '/simple',
-        #                                 image_id=image_id))
-
-
 class TestRestoreTag(ApiTestCase):
     def test_restoretag_invalidtag(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3171,7 +3125,7 @@ class TestRestoreTag(ApiTestCase):
         self.postResponse(
             RestoreTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="invalidtag"),
-            data=dict(image="invalid_image"),
+            data=dict(manifest_digest="invalid_image"),
             expected_code=404,
         )
 
@@ -3181,7 +3135,7 @@ class TestRestoreTag(ApiTestCase):
         self.postResponse(
             RestoreTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="latest"),
-            data=dict(image="invalid_image"),
+            data=dict(manifest_digest="invalid_image"),
             expected_code=404,
         )
 
@@ -3205,12 +3159,12 @@ class TestRestoreTag(ApiTestCase):
         self.assertEqual(2, len(json["tags"]))
         self.assertFalse("end_ts" in json["tags"][0])
 
-        previous_image_id = json["tags"][1]["docker_image_id"]
+        previous_image_id = json["tags"][1]["manifest_digest"]
 
         self.postJsonResponse(
             RestoreTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="latest"),
-            data=dict(image=previous_image_id),
+            data=dict(manifest_digest=previous_image_id),
         )
 
         json = self.getJsonResponse(
@@ -3218,7 +3172,7 @@ class TestRestoreTag(ApiTestCase):
         )
         self.assertEqual(3, len(json["tags"]))
         self.assertFalse("end_ts" in json["tags"][0])
-        self.assertEqual(previous_image_id, json["tags"][0]["docker_image_id"])
+        self.assertEqual(previous_image_id, json["tags"][0]["manifest_digest"])
 
     def test_restoretag_to_digest(self):
         self.login(ADMIN_ACCESS_USER)
@@ -3235,7 +3189,7 @@ class TestRestoreTag(ApiTestCase):
         self.postJsonResponse(
             RestoreTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/history", tag="latest"),
-            data=dict(image="foo", manifest_digest=previous_manifest),
+            data=dict(manifest_digest=previous_manifest),
         )
 
         json = self.getJsonResponse(
@@ -3252,24 +3206,28 @@ class TestListAndDeleteTag(ApiTestCase):
 
         # List the images for staging.
         json = self.getJsonResponse(
-            RepositoryTagImages,
-            params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="staging"),
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex",
+                specificTag="staging",
+                onlyActiveTags=True,
+            ),
         )
 
-        staging_images = json["images"]
+        staging_images = json["tags"]
 
         # Try to add some invalid tags.
         self.putResponse(
             RepositoryTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="-fail"),
-            data=dict(image=staging_images[0]["id"]),
+            data=dict(manifest_digest=staging_images[0]["manifest_digest"]),
             expected_code=400,
         )
 
         self.putResponse(
             RepositoryTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="北京"),
-            data=dict(image=staging_images[0]["id"]),
+            data=dict(manifest_digest=staging_images[0]["manifest_digest"]),
             expected_code=400,
         )
 
@@ -3278,20 +3236,27 @@ class TestListAndDeleteTag(ApiTestCase):
 
         # List the images for prod.
         json = self.getJsonResponse(
-            RepositoryTagImages, params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="prod")
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex", specificTag="prod", onlyActiveTags=True
+            ),
         )
 
-        prod_images = json["images"]
+        prod_images = json["tags"]
         assert len(prod_images) > 0
 
         # List the images for staging.
         json = self.getJsonResponse(
-            RepositoryTagImages,
-            params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="staging"),
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex",
+                specificTag="staging",
+                onlyActiveTags=True,
+            ),
         )
 
-        staging_images = json["images"]
-        assert len(prod_images) == len(staging_images) + 2
+        staging_images = json["tags"]
+        assert len(prod_images) == len(staging_images)
 
         # Delete prod.
         self.deleteEmptyResponse(
@@ -3301,25 +3266,30 @@ class TestListAndDeleteTag(ApiTestCase):
         )
 
         # Make sure the tag is gone.
-        self.getResponse(
-            RepositoryTagImages,
-            params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="prod"),
-            expected_code=404,
+        json = self.getJsonResponse(
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex", specificTag="prod", onlyActiveTags=True
+            ),
+            expected_code=200,
         )
+        assert len(json["tags"]) == 0
 
         # Make the sure the staging images are still there.
         json = self.getJsonResponse(
-            RepositoryTagImages,
-            params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="staging"),
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex",
+                specificTag="staging",
+                onlyActiveTags=True,
+            ),
         )
-
-        self.assertEqual(staging_images, json["images"])
 
         # Require a valid tag name.
         self.putResponse(
             RepositoryTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="-fail"),
-            data=dict(image=staging_images[0]["id"]),
+            data=dict(manifest_digest=json["tags"][0]["manifest_digest"]),
             expected_code=400,
         )
 
@@ -3327,44 +3297,55 @@ class TestListAndDeleteTag(ApiTestCase):
         self.putResponse(
             RepositoryTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="sometag"),
-            data=dict(image=staging_images[0]["id"]),
+            data=dict(manifest_digest=json["tags"][0]["manifest_digest"]),
             expected_code=201,
         )
 
         # Make sure the tag is present.
         json = self.getJsonResponse(
-            RepositoryTagImages,
-            params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="sometag"),
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex",
+                specificTag="sometag",
+                onlyActiveTags=True,
+            ),
         )
 
-        assert json["images"]
+        assert len(json["tags"]) > 0
 
         # Move the tag.
         self.putResponse(
             RepositoryTag,
             params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="sometag"),
-            data=dict(image=staging_images[-1]["id"]),
+            data=dict(manifest_digest=json["tags"][0]["manifest_digest"]),
             expected_code=201,
         )
 
         # Make sure the tag has moved.
         json = self.getJsonResponse(
-            RepositoryTagImages,
-            params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="sometag"),
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex",
+                specificTag="sometag",
+                onlyActiveTags=True,
+            ),
         )
 
-        sometag_new_images = json["images"]
-        assert sometag_new_images
+        sometag_new_images = json["tags"]
+        assert len(sometag_new_images) > 0
 
     def test_deletesubtag(self):
         self.login(ADMIN_ACCESS_USER)
 
         # List the images for prod.
         json = self.getJsonResponse(
-            RepositoryTagImages, params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="prod")
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex", specificTag="prod", onlyActiveTags=True
+            ),
         )
 
-        prod_images = json["images"]
+        prod_images = json["tags"]
         assert len(prod_images) > 0
 
         # Delete staging.
@@ -3376,10 +3357,13 @@ class TestListAndDeleteTag(ApiTestCase):
 
         # Make sure the prod images are still around.
         json = self.getJsonResponse(
-            RepositoryTagImages, params=dict(repository=ADMIN_ACCESS_USER + "/complex", tag="prod")
+            ListRepositoryTags,
+            params=dict(
+                repository=ADMIN_ACCESS_USER + "/complex", specificTag="prod", onlyActiveTags=True
+            ),
         )
 
-        self.assertEqual(prod_images, json["images"])
+        self.assertEqual(prod_images, json["tags"])
 
     def test_listtag_digest(self):
         self.login(ADMIN_ACCESS_USER)

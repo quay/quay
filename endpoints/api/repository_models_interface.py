@@ -201,7 +201,6 @@ class Tag(
         "Tag",
         [
             "name",
-            "image_docker_image_id",
             "image_aggregate_size",
             "lifetime_start_ts",
             "tag_manifest_digest",
@@ -211,7 +210,6 @@ class Tag(
 ):
     """
     :type name: string
-    :type image_docker_image_id: string
     :type image_aggregate_size: int
     :type lifetime_start_ts: int
     :type lifetime_end_ts: int|None
@@ -222,7 +220,6 @@ class Tag(
     def to_dict(self):
         tag_info = {
             "name": self.name,
-            "image_id": self.image_docker_image_id,
             "size": self.image_aggregate_size,
         }
 

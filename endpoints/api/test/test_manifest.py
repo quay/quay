@@ -22,4 +22,3 @@ def test_repository_manifest(client):
             result = conduct_api_call(cl, RepositoryManifest, "GET", params, None, 200).json
             assert result["digest"] == manifest_digest
             assert result["manifest_data"]
-            assert result["image"]
