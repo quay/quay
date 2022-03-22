@@ -73,11 +73,11 @@ class AutomaticFailoverWrapper(object):
 class DoubleWriteWrapper(AutomaticFailoverWrapper):
 
     def __init__(self, primary_db, fallback_db, secondary_write_db=None):
-        super(AutomaticFailoverWrapper, self).__init__(primary_db, fallback_db)
+        super().__init__(primary_db, fallback_db)
         self._secondary_write_db = secondary_write_db
 
     def __getattr__(self, attribute):
-        return super(AutomaticFailoverWrapper, self).__getattr__(attribute)
+        return super().__getattr__(attribute)
 
     def execute(self, query, commit=SENTINEL, **context_options):
         ctx = self.get_sql_context(**context_options)
@@ -85,7 +85,7 @@ class DoubleWriteWrapper(AutomaticFailoverWrapper):
         return self.execute_sql(sql, params, commit=commit)
 
     def execute_sql(self, sql, params=None, commit=SENTINEL):
-        result = super(AutomaticFailoverWrapper, self).execute_sql(sql, params, commit)
+        result = super().execute_sql(sql, params, commit)
 
         if self._primary_db.transaction_depth() > 0:
             if self._secondary_write_db is not None:
