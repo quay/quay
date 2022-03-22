@@ -153,7 +153,7 @@ class ReadReplicaSupportedModel(Model):
         replicas = read_only_config.read_replicas
         selected_read_replica = replicas[random.randrange(len(replicas))]
 
-        return DoubleWriteWrapper(selected_read_replica, cls._meta.double_write_database)
+        return DoubleWriteWrapper(selected_read_replica, cls._meta.database, cls._meta.double_write_database)
 
     @classmethod
     def select(cls, *args, **kwargs):
