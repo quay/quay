@@ -194,7 +194,7 @@ local-dev-build-images:
 
 .PHONY: local-dev-up
 local-dev-up: local-dev-clean node_modules | quay-build-image
-	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose up -d local-dev-frontend --force-recreate
+	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose up -d --force-recreate local-dev-frontend
 	docker-compose up -d redis quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" docker-compose up -d quay
