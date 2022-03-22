@@ -10,7 +10,6 @@ from data.decorators import is_deprecated_model
 
 ReadOnlyConfig = namedtuple("ReadOnlyConfig", ["is_readonly", "read_replicas"])
 
-
 class ReadOnlyModeException(Exception):
     """
     Exception raised if a write operation was attempted when in read only mode.
@@ -88,12 +87,13 @@ class DoubleWriteWrapper(AutomaticFailoverWrapper):
     def execute_sql(self, sql, params=None, commit=SENTINEL):
         result = super(AutomaticFailoverWrapper, self).execute_sql(sql, params, commit)
 
-        if self._secondary_write_db is not None:
-            try:
-                return self._secondary_write_db.execute_sql(sql, params, commit)
-            except OperationalError:
-                #TODO: No-op for now to protect initial db write
-                pass
+        if self._primary_db.transaction_depth() > 0:
+            if self._secondary_write_db is not None:
+                # TODO: remove try when we tie primary and secondary together under transaction
+                try:
+                    self._secondary_write_db.execute_sql(sql, params, commit)
+                except:
+                    pass
 
         return result
 
@@ -153,8 +153,7 @@ class ReadReplicaSupportedModel(Model):
         replicas = read_only_config.read_replicas
         selected_read_replica = replicas[random.randrange(len(replicas))]
 
-        # TODO: add config for supplying secondary write db
-        return DoubleWriteWrapper(selected_read_replica, cls._meta.database)
+        return DoubleWriteWrapper(selected_read_replica, cls._meta.double_write_database)
 
     @classmethod
     def select(cls, *args, **kwargs):

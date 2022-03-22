@@ -207,6 +207,7 @@ class DefaultConfig(ImmutableConfig):
         "threadlocals": True,
         "autorollback": True,
     }
+    SECONDARY_WRITE_DB_URI = None
 
     @staticmethod
     def create_transaction(db):

@@ -325,6 +325,7 @@ class TupleSelector(object):
 
 db = Proxy()
 read_only_config = Proxy()
+double_write_config = Proxy()
 db_random_func = CallableProxy()
 db_match_func = CallableProxy()
 db_for_update = CallableProxy()
@@ -506,6 +507,7 @@ def configure(config_object, testing=False):
 
     read_replicas = config_object.get("DB_READ_REPLICAS", None)
     is_read_only = config_object.get("REGISTRY_STATE", "normal") == "readonly"
+    secondary_write_db = config_object.get("SECONDARY_WRITE_DB_URI", None)
 
     read_replica_dbs = []
     if read_replicas:
@@ -519,6 +521,7 @@ def configure(config_object, testing=False):
         ]
 
     read_only_config.initialize(ReadOnlyConfig(is_read_only, read_replica_dbs))
+    double_write_config.initialize(_db_from_url(secondary_write_db, db_kwargs))
 
     def _db_transaction():
         return config_object["DB_TRANSACTION_FACTORY"](db)
@@ -649,6 +652,7 @@ class BaseModel(ReadReplicaSupportedModel):
         database = db
         encrypter = db_encrypter
         read_only_config = read_only_config
+        double_write_database = double_write_config
 
     def __getattribute__(self, name):
         """
