@@ -47,9 +47,9 @@
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal"
                   aria-hidden="true" ng-show="!addingTag">&times;</button>
-          <h4 class="modal-title">{{ isAnotherImageTag(toTagImage, tagToCreate) ? 'Move' : 'Add' }} Tag to {{ toTagManifestDigest ? ('Manifest ' + toTagManifestDigest.substr(0, 19)) : ('Image ' + toTagImage.substr(0, 12)) }}</h4>
+          <h4 class="modal-title">{{ isAnotherImageTag(toTagManifestDigest, tagToCreate) ? 'Move' : 'Add' }} Tag to {{ 'Manifest ' + toTagManifestDigest.substr(0, 19) }}</h4>
         </div>
-        <form name="addTagForm" ng-submit="createOrMoveTag(toTagImage, tagToCreate, toTagManifestDigest);">
+        <form name="addTagForm" ng-submit="createOrMoveTag(toTagManifestDigest, tagToCreate);">
           <div class="modal-body">
             <div class="cor-loader" ng-show="addingTag"></div>
             <div ng-show="!addingTag">
@@ -59,22 +59,22 @@
                      ng-disabled="creatingTag" autofocus required>
 
               <div style="margin: 10px; margin-top: 20px;"
-                   ng-show="isOwnedTag(toTagImage, tagToCreate)">
+                   ng-show="isOwnedTag(toTagManifestDigest, tagToCreate)">
                 Note: <span class="label tag label-default">{{ tagToCreate }}</span> is already applied to this image.
               </div>
 
               <div style="margin: 10px; margin-top: 20px;"
-                   ng-show="isAnotherImageTag(toTagImage, tagToCreate)">
+                   ng-show="isAnotherImageTag(toTagManifestDigest, tagToCreate)">
                 Note: <span class="label tag label-default">{{ tagToCreate }}</span> is already applied to another image. This will <b>move</b> the tag.
               </div>
             </div>
           </div>
           <div class="modal-footer" ng-show="!addingTag">
             <button type="submit" class="btn btn-primary"
-                    ng-disabled="addTagForm.$invalid || isOwnedTag(toTagImage, tagToCreate)"
-                    ng-class="isAnotherImageTag(toTagImage, tagToCreate) ? 'btn-warning' : 'btn-primary'"
+                    ng-disabled="addTagForm.$invalid || isOwnedTag(toTagManifestDigest, tagToCreate)"
+                    ng-class="isAnotherImageTag(toTagManifestDigest, tagToCreate) ? 'btn-warning' : 'btn-primary'"
                     ng-show="!creatingTag">
-              {{ isAnotherImageTag(toTagImage, tagToCreate) ? 'Move Tag' : 'Create Tag' }}
+              {{ isAnotherImageTag(toTagManifestDigest, tagToCreate) ? 'Move Tag' : 'Create Tag' }}
             </button>
             <button class="btn btn-default" data-dismiss="modal" ng-show="!addingTag">Cancel</button>
           </div>
@@ -137,7 +137,7 @@
   <!-- Restore Tag Confirm -->
   <div class="cor-confirm-dialog"
        dialog-context="restoreTagInfo"
-       dialog-action="restoreTag(info.tag, info.image_id, info.manifest_digest, callback)"
+       dialog-action="restoreTag(info.tag, info.manifest_digest, callback)"
        dialog-title="Restore Tag"
        dialog-action-title="Restore Tag">
 
@@ -148,7 +148,6 @@
     Are you sure you want to restore tag
     <span class="label label-default tag">{{ restoreTagInfo.tag.name }}</span> to image
     <manifest-link repository="repository"
-                   image-id="restoreTagInfo.image_id"
                    manifest-digest="restoreTagInfo.manifest_digest"></manifest-link>?
   </div>
 

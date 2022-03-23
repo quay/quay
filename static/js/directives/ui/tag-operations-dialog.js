@@ -66,23 +66,23 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         return false;
       };
 
-      $scope.isAnotherImageTag = function(image, tag) {
+      $scope.isAnotherImageTag = function(manifest_digest, tag) {
         if (!$scope.repositoryTags) { return; }
 
         var found = $scope.repositoryTags[tag];
         if (found == null) { return false; }
-        return found.image_id != image;
+        return found.manifest_digest != manifest_digest;
       };
 
-      $scope.isOwnedTag = function(image, tag) {
+      $scope.isOwnedTag = function(manifest_digest, tag) {
         if (!$scope.repositoryTags) { return; }
 
         var found = $scope.repositoryTags[tag];
         if (found == null) { return false; }
-        return found.image_id == image;
+        return found.manifest_digest == manifest_digest;
       };
 
-      $scope.createOrMoveTag = function(image, tag, opt_manifest_digest) {
+      $scope.createOrMoveTag = function(manifest_digest, tag) {
         if (!$scope.repository.can_write) { return; }
         if ($scope.alertOnTagOpsDisabled()) {
           return;
@@ -96,12 +96,8 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         };
 
         var data = {};
-        if (image) {
-          data['image'] = image;
-        }
-
-        if (opt_manifest_digest) {
-          data['manifest_digest'] = opt_manifest_digest;
+        if (manifest_digest) {
+          data['manifest_digest'] = manifest_digest;
         }
 
         var errorHandler = ApiService.errorDisplay('Cannot create or move tag', function(resp) {
@@ -202,7 +198,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         }, errorHandler);
       };
 
-      $scope.restoreTag = function(tag, image_id, opt_manifest_digest, callback) {
+      $scope.restoreTag = function(tag, manifest_digest, callback) {
         if (!$scope.repository.can_write) { return; }
 
         var params = {
@@ -211,12 +207,8 @@ angular.module('quay').directive('tagOperationsDialog', function () {
         };
 
         var data = {
-          'image': image_id
+          'manifest_digest': manifest_digest
         };
-
-        if (opt_manifest_digest) {
-          data['manifest_digest'] = opt_manifest_digest;
-        }
 
         var errorHandler = ApiService.errorDisplay('Cannot restore tag', callback);
         ApiService.restoreTag(data, params).then(function() {
@@ -333,14 +325,13 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askAddTag': function(image, opt_manifest_digest) {
+        'askAddTag': function(manifest_digest) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
 
           $scope.tagToCreate = '';
-          $scope.toTagImage = image;
-          $scope.toTagManifestDigest = opt_manifest_digest;
+          $scope.toTagManifestDigest = manifest_digest;
           $scope.addingTag = false;
           $scope.addTagForm.$setPristine();
           $element.find('#createOrMoveTagModal').modal('show');
@@ -382,15 +373,14 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           };
         },
 
-        'askRestoreTag': function(tag, image_id, opt_manifest_digest) {
+        'askRestoreTag': function(tag, manifest_digest) {
           if ($scope.alertOnTagOpsDisabled()) {
             return;
           }
 
           $scope.restoreTagInfo = {
             'tag': tag,
-            'image_id': image_id,
-            'manifest_digest': opt_manifest_digest
+            'manifest_digest': manifest_digest,
           };
 
           $element.find('#restoreTagModal').modal('show');
