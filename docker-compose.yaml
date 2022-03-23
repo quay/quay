@@ -24,6 +24,7 @@ services:
       retries: 3
       start_period: 10s
 
+
   clair-db:
     user: postgres
     container_name: clair-db
@@ -31,8 +32,6 @@ services:
     environment:
       POSTGRES_USER: "clair"
       POSTGRES_DB: "clair"
-    volumes:
-      - "clair-db-data:/var/lib/postgresql/data"
     ports:
       - "5433:5432"
     healthcheck:
@@ -41,6 +40,18 @@ services:
       timeout: 9s
       retries: 3
       start_period: 10s
+
+  crdb:
+    container_name: quay-cockroach
+    image: cockroachdb/cockroach:latest
+    ports:
+      - "26257:26257"
+      - "8081:8081"
+    command: start-single-node --insecure --http-addr=0.0.0.0:8081
+    volumes:
+      - "${PWD}/cockroach-data/crdb:/cockroach/cockroach-data"
+
+
 
   redis:
     user: nobody
@@ -91,6 +102,7 @@ services:
   # clair is configured to share it's network 
   # namespace with quay. this allows quay to serve
   # layers to clair over localhost.
+
   clair:
     user: nobody
     container_name: quay-clair

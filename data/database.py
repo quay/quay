@@ -76,6 +76,7 @@ _SCHEME_DRIVERS = {
     "sqlite": schemedriver(SqliteDatabase, PooledSqliteDatabase),
     "postgresql": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
     "postgresql+psycopg2": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
+    "cockroachdb": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
 }
 
 
@@ -85,6 +86,7 @@ SCHEME_MATCH_FUNCTION = {
     "sqlite": match_like,
     "postgresql": match_like,
     "postgresql+psycopg2": match_like,
+    "cockroachdb": match_like,
 }
 
 
@@ -94,6 +96,7 @@ SCHEME_RANDOM_FUNCTION = {
     "sqlite": fn.Random,
     "postgresql": fn.Random,
     "postgresql+psycopg2": fn.Random,
+    "cockroachdb": fn.Random,
 }
 
 
@@ -103,12 +106,14 @@ SCHEME_ESTIMATOR_FUNCTION = {
     "sqlite": normal_row_count,
     "postgresql": normal_row_count,
     "postgresql+psycopg2": normal_row_count,
+    "cockroachdb": normal_row_count,
 }
 
 
 PRECONDITION_VALIDATION = {
     "postgresql": validate_postgres_precondition,
     "postgresql+psycopg2": validate_postgres_precondition,
+    "cockroachdb": validate_postgres_precondition,
 }
 
 
