@@ -765,7 +765,8 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_GENERAL_OCI_SUPPORT = True
     ALLOWED_OCI_ARTIFACT_TYPES = {
         "application/vnd.oci.image.config.v1+json": [
-            "application/vnd.dev.cosign.simplesigning.v1+json"
+            "application/vnd.dev.cosign.simplesigning.v1+json",
+            "application/vnd.dsse.envelope.v1+json",
         ],
         "application/vnd.cncf.helm.config.v1+json": [
             "application/tar+gzip",
