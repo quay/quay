@@ -53,7 +53,6 @@ angular.module('quay').directive('repoTagHistory', function () {
         // For each tag, turn the tag into create, move, delete, restore, etc entries.
         tags.forEach(function(tag) {
           var tagName = tag.name;
-          var dockerImageId = tag.docker_image_id;
           var manifestDigest = tag.manifest_digest;
 
           if (!tagEntries[tagName]) {
@@ -65,8 +64,7 @@ angular.module('quay').directive('repoTagHistory', function () {
             tagEntries[entry.tag_name].splice(tagEntries[entry.tag_name].indexOf(entry), 1);
           };
 
-          var addEntry = function(action, time, opt_docker_id, opt_old_docker_id,
-                                  opt_manifest_digest, opt_old_manifest_digest) {
+          var addEntry = function(action, time, opt_manifest_digest, opt_old_manifest_digest) {
             var entry = {
               'tag': tag,
               'tag_name': tagName,
@@ -75,8 +73,6 @@ angular.module('quay').directive('repoTagHistory', function () {
               'end_ts': tag.end_ts,
               'reversion': tag.reversion,
               'time': time * 1000, // JS expects ms, not s since epoch.
-              'docker_image_id': opt_docker_id || dockerImageId,
-              'old_docker_image_id': opt_old_docker_id || '',
               'manifest_digest': opt_manifest_digest || manifestDigest,
               'old_manifest_digest': opt_old_manifest_digest || null
             };
@@ -99,7 +95,7 @@ angular.module('quay').directive('repoTagHistory', function () {
             if (futureEntry.start_ts - tag.end_ts <= MOVE_THRESHOLD) {
               removeEntry(futureEntry);
               addEntry(futureEntry.reversion ? 'revert': 'move', tag.end_ts,
-                       futureEntry.docker_image_id, dockerImageId, futureEntry.manifest_digest,
+                       futureEntry.manifest_digest,
                        manifestDigest);
             } else {
               addEntry('delete', tag.end_ts)
@@ -156,9 +152,8 @@ angular.module('quay').directive('repoTagHistory', function () {
 
       $scope.askRestoreTag = function(entity, use_current_id) {
         if ($scope.repository.can_write) {
-          var docker_id = use_current_id ? entity.docker_image_id : entity.old_docker_image_id;
           var digest = use_current_id ? entity.manifest_digest : entity.old_manifest_digest;
-          $scope.tagActionHandler.askRestoreTag(entity.tag, docker_id, digest);
+          $scope.tagActionHandler.askRestoreTag(entity.tag, digest);
         }
       };
 
@@ -187,8 +182,6 @@ angular.module('quay').directive('repoTagHistory', function () {
         var isMatch = parts.some(function(part) {
           if (part && entry.tag_name) {
             isMatch = entry.tag_name.indexOf(part) >= 0;
-            isMatch = isMatch || entry.docker_image_id.indexOf(part) >= 0;
-            isMatch = isMatch || entry.old_docker_image_id.indexOf(part) >= 0;
             return isMatch;
           }
         });

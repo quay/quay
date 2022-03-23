@@ -40,13 +40,11 @@
                   <span ng-switch-when="recreate">
                     was recreated pointing to
                     <manifest-link repository="repository"
-                          image-id="entry.docker_image_id"
                           manifest-digest="entry.manifest_digest"></manifest-link>
                   </span>
                   <span ng-switch-when="create">
                     was created pointing to
                     <manifest-link repository="repository"
-                          image-id="entry.docker_image_id"
                           manifest-digest="entry.manifest_digest"></manifest-link>
                   </span>
                   <span ng-switch-when="delete">
@@ -56,21 +54,17 @@
                   <span ng-switch-when="move">
                     was moved to
                     <manifest-link repository="repository"
-                          image-id="entry.docker_image_id"
                           manifest-digest="entry.manifest_digest"></manifest-link>
                     from
                     <manifest-link repository="repository"
-                          image-id="entry.old_docker_image_id"
                           manifest-digest="entry.old_manifest_digest"></manifest-link>
                   </span>
                   <span ng-switch-when="revert">
                     was reverted to
                     <manifest-link repository="repository"
-                          image-id="entry.docker_image_id"
                           manifest-digest="entry.manifest_digest"></manifest-link>
                     from
                     <manifest-link repository="repository"
-                          image-id="entry.old_docker_image_id"
                           manifest-digest="entry.old_manifest_digest"></manifest-link>
                   </span>
                 </span>
@@ -90,19 +84,16 @@
                   <a ng-switch-when="delete" ng-click="askRestoreTag(entry, true)">
                     Restore to
                     <manifest-link repository="repository"
-                          image-id="entry.docker_image_id"
                           manifest-digest="entry.manifest_digest"></manifest-link>
                   </a>
                   <a ng-switch-when="move" ng-click="askRestoreTag(entry, false)">
                     Revert to
                     <manifest-link repository="repository"
-                          image-id="entry.old_docker_image_id"
                           manifest-digest="entry.old_manifest_digest"></manifest-link>
                   </a>
                   <a ng-switch-when="revert" ng-click="askRestoreTag(entry, false)">
                     Restore to
                     <manifest-link repository="repository"
-                          image-id="entry.old_docker_image_id"
                           manifest-digest="entry.old_manifest_digest"></manifest-link>
                   </a>
                 </span>

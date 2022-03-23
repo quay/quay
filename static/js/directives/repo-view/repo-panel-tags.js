@@ -373,7 +373,7 @@ angular.module('quay').directive('repoPanelTags', function () {
         if ($scope.inReadOnlyMode) {
           return;
         }
-        $scope.tagActionHandler.askAddTag(tag.image_id, tag.manifest_digest);
+        $scope.tagActionHandler.askAddTag(tag.manifest_digest);
       };
 
       $scope.showLabelEditor = function(tag) {
