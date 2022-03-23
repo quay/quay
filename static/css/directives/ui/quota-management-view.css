@@ -12,14 +12,18 @@
     margin-right: 4px;
 }
 
-.width-100 {
-    width: 100%;
-}
-
-width-350 {
-    width: 350%;
-}
-
 width-440 {
     width: 440%;
+}
+
+min-width-100 {
+    min-width: 100% !important;
+}
+
+.border-radius-50 {
+    border-radius: 50%;
+}
+
+.capitalize-text {
+    text-transform: capitalize !important;
 }
