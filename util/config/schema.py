@@ -297,6 +297,11 @@ CONFIG_SCHEMA = {
             "description": "Whether to proxy all direct download URLs in storage via the registry nginx. Defaults to False",
             "x-example": False,
         },
+        "FEATURE_PROXY_CACHE": {
+            "type": "boolean",
+            "description": "Whether pull through proxy cache feature is enabled. Defaults to False",
+            "x-example": False,
+        },
         "MAXIMUM_LAYER_SIZE": {
             "type": "string",
             "description": "Maximum allowed size of an image layer. Defaults to 20G",

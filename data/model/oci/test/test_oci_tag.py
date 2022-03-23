@@ -23,6 +23,8 @@ from data.model.oci.tag import (
     list_repository_tag_history,
     get_expired_tag,
     get_tag,
+    get_tag_by_manifest_id,
+    get_current_tag,
     delete_tag,
     delete_tags_for_manifest,
     change_tag_expiration,
@@ -132,6 +134,122 @@ def test_get_tag(initialized_db):
         found = True
 
     assert found
+
+
+def test_get_tag_by_manifest_id_tag_doesnt_exist(initialized_db):
+    tag = get_tag_by_manifest_id(1111, 9999)
+    assert tag is None
+
+
+def test_get_tag_by_manifest_id_valid_tag(initialized_db):
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repo, "1")
+    tag = get_tag_by_manifest_id(repo.id, manifest.id)
+    assert tag is not None
+
+
+def test_get_tag_by_manifest_id_expired_tag(initialized_db):
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repo, "1")
+    before_ms = get_epoch_timestamp_ms() - timedelta(hours=24).total_seconds() * 1000
+    count = (
+        Tag.update(
+            lifetime_start_ms=before_ms,
+            lifetime_end_ms=before_ms + 5,
+        )
+        .where(Tag.manifest == manifest.id)
+        .execute()
+    )
+    assert count == 1
+    tag = get_tag_by_manifest_id(repo.id, manifest.id)
+    assert tag is not None
+
+
+def test_get_tag_by_manifest_id_multiple_tags_returns_latest(initialized_db):
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repo, "1")
+    before_ms = get_epoch_timestamp_ms() - timedelta(hours=24).total_seconds() * 1000
+    count = (
+        Tag.update(
+            lifetime_start_ms=before_ms,
+            lifetime_end_ms=before_ms + 5,
+        )
+        .where(Tag.manifest == manifest.id)
+        .execute()
+    )
+    assert count == 1
+    expired_tag = get_tag_by_manifest_id(repo.id, manifest.id)
+    new_tag = create_temporary_tag_if_necessary(manifest, get_epoch_timestamp_ms() + 3600 * 1000)
+    tag = get_tag_by_manifest_id(repo.id, manifest.id)
+    assert tag is not None
+    assert tag.id == new_tag.id
+    assert tag.lifetime_end_ms > expired_tag.lifetime_end_ms
+
+
+def test_get_current_tag_with_single_existing_tag(initialized_db):
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repo, "1")
+    t = manifest.tag_set.get()
+    tag = get_current_tag(repo.id, t.name)
+    assert tag.id == t.id
+
+
+def test_get_current_tag_with_no_existing_tag(initialized_db):
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    tag = get_current_tag(repo.id, "does-not-exist")
+    assert tag is None
+
+
+def test_get_current_tag_with_expired_tag(initialized_db):
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repo, "1")
+    before_ms = get_epoch_timestamp_ms() - timedelta(hours=24).total_seconds() * 1000
+    count = (
+        Tag.update(
+            lifetime_start_ms=before_ms,
+            lifetime_end_ms=before_ms + 5,
+        )
+        .where(Tag.manifest == manifest.id)
+        .execute()
+    )
+    assert count == 1
+
+
+def test_get_current_tag_with_multiple_expired_tags(initialized_db):
+    repo = model.repository.create_repository("devtable", "newrepo", None)
+    manifest, _ = create_manifest_for_testing(repo, "1")
+    nowms = get_epoch_timestamp_ms()
+    count = (
+        Tag.update(
+            lifetime_start_ms=nowms - timedelta(hours=24).total_seconds() * 1000,
+            lifetime_end_ms=nowms - timedelta(hours=12).total_seconds() * 1000,
+        )
+        .where(Tag.manifest == manifest.id)
+        .execute()
+    )
+    expired_tag = create_temporary_tag_if_necessary(manifest, 3600)
+    expired_tag = Tag.create(
+        name="v6.6.6",
+        repository=repo.id,
+        lifetime_start_ms=nowms - timedelta(hours=10).total_seconds() * 1000,
+        lifetime_end_ms=nowms - timedelta(hours=8).total_seconds() * 1000,
+        reversion=False,
+        hidden=False,
+        manifest=manifest,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+    tag = Tag.create(
+        name="v6.6.6",
+        repository=repo.id,
+        lifetime_start_ms=nowms - timedelta(hours=5).total_seconds() * 1000,
+        lifetime_end_ms=nowms + timedelta(hours=5).total_seconds() * 1000,
+        reversion=False,
+        hidden=False,
+        manifest=manifest,
+        tag_kind=Tag.tag_kind.get_id("tag"),
+    )
+    current_tag = get_current_tag(repo.id, tag.name)
+    assert current_tag.id == tag.id
 
 
 @pytest.mark.parametrize(

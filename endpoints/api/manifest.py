@@ -110,7 +110,11 @@ class RepositoryManifest(RepositoryParamResource):
             raise NotFound()
 
         manifest = registry_model.lookup_manifest_by_digest(repo_ref, manifestref)
-        if manifest is None:
+        # sub-manifests created via pull-thru proxy cache as part of a manifest list
+        # pull will not contain the manifest bytes unless individually pulled.
+        # to avoid a parsing error from `_manifest_dict`, we return a 404 either
+        # when the manifest doesn't exist or if the manifest bytes are empty.
+        if manifest is None or manifest.internal_manifest_bytes.as_unicode() == "":
             raise NotFound()
 
         return _manifest_dict(manifest)

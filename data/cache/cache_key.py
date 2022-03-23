@@ -9,6 +9,14 @@ class CacheKey(namedtuple("CacheKey", ["key", "expiration"])):
     pass
 
 
+def for_upstream_registry_token(org_name, repo_name, expires_in):
+    """
+    Returns a cache key for an upstream registry auth token.
+    """
+    key = f"upstream_token__{org_name}_{repo_name}"
+    return CacheKey(key, expires_in)
+
+
 def for_repository_blob(namespace_name, repo_name, digest, version, cache_config):
     """
     Returns a cache key for a blob in a repository.

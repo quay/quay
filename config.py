@@ -44,6 +44,7 @@ CLIENT_WHITELIST = [
     "DOCUMENTATION_ROOT",
     "FEATURE_REPO_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
+    "FEATURE_PROXY_CACHE",
 ]
 
 
@@ -819,3 +820,6 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_QUOTA_MANAGEMENT = False
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
+
+    # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
+    FEATURE_PROXY_CACHE = False

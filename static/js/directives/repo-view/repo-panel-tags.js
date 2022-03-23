@@ -484,7 +484,12 @@ angular.module('quay').directive('repoPanelTags', function () {
           child_manifest = JSON.parse(resp['manifest_data']);
           manifest.layers = child_manifest["layers"];
           manifest.layers_loading = false;
-        }, ApiService.errorDisplay('Could not load manifest contents'))
+        }, function() {
+          // if we fail to get the manifest child for some reason, set layers to
+          // an empty array to avoid an infinite loop.
+          manifest.layers_loading = false;
+          manifest.layers = [];
+	});
       };
 
       $scope.manifestsOf = function(tag) {
@@ -497,13 +502,14 @@ angular.module('quay').directive('repoPanelTags', function () {
           return [];
         }
 
-        if (!tag.manifest_list.manifests.every(function(manifest) {
+        childrenLayers = tag.manifest_list.manifests.every(function(manifest) {
           return manifest.layers
-        })) {
+        })
+        if (!childrenLayers) {
           tag.manifest_list.manifests.forEach(function(child_manifest) {
             $scope.loadManifestLayers(child_manifest);
           });
-          return [];
+          return tag.manifest_list.manifests;
         }
 
         if (!tag._mapped_manifests) {

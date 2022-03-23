@@ -25,20 +25,25 @@ conf/stack/license: $(QUAY_CONFIG)/local/license
 unit-test:
 	TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
-	--timeout=3600 --verbose -x \
+	-m 'not e2e' --timeout=3600 --verbose -x --ignore=buildman/ \
+	./
+
+e2e-test:
+	TEST=true PYTHONPATH="." py.test \
+	--cov="." --cov-report=html --cov-report=term-missing \
+	-m 'e2e' --timeout=3600 --verbose -x --ignore=buildman/ \
 	./
 
 registry-test:
 	TEST=true PYTHONPATH="." py.test  \
 	--cov="." --cov-report=html --cov-report=term-missing \
-	--timeout=3600 --verbose --show-count -x \
+	-m 'not e2e' --timeout=3600 --verbose -x \
 	test/registry/registry_tests.py
-
 
 buildman-test:
 	TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
-	--timeout=3600 --verbose --show-count -x \
+	-m 'not e2e' --timeout=3600 --verbose -x \
 	./buildman/
 
 certs-test:
@@ -48,8 +53,8 @@ full-db-test: ensure-test-db
 	TEST=true PYTHONPATH=. QUAY_OVERRIDE_CONFIG='{"DATABASE_SECRET_KEY": "anothercrazykey!"}' \
 	alembic upgrade head
 	TEST=true PYTHONPATH=. \
-	SKIP_DB_SCHEMA=true py.test --timeout=7200 \
-	--verbose --show-count -x --ignore=endpoints/appr/test/ \
+	SKIP_DB_SCHEMA=true py.test -m 'not e2e' --timeout=7200 \
+	--verbose -x --ignore=endpoints/appr/test/ \
 	./
 
 clients-test:

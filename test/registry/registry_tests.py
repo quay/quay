@@ -1372,39 +1372,6 @@ def test_cancel_upload(manifest_protocol, basic_images, liveserver_session, app_
     )
 
 
-def test_blob_caching(
-    manifest_protocol,
-    basic_images,
-    liveserver_session,
-    app_reloader,
-    liveserver,
-    registry_server_executor,
-):
-    """ Test: Pulling of blobs after initially pulled will result in the blobs being cached. """
-    credentials = ("devtable", "password")
-
-    # Push a tag.
-    result = manifest_protocol.push(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
-    )
-
-    # Conduct the initial pull to prime the cache.
-    manifest_protocol.pull(
-        liveserver_session, "devtable", "newrepo", "latest", basic_images, credentials=credentials
-    )
-
-    # Disconnect the server from the database.
-    registry_server_executor.on(liveserver).break_database()
-
-    # Pull each blob, which should succeed due to caching. If caching is broken, this will
-    # fail when it attempts to hit the database.
-    for blob_id in result.manifests["latest"].local_blob_digests:
-        r = liveserver_session.get(
-            "/v2/devtable/newrepo/blobs/%s" % blob_id, headers=result.headers
-        )
-        assert r.status_code == 200
-
-
 @pytest.mark.parametrize(
     "chunks",
     [

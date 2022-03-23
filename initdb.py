@@ -1279,6 +1279,7 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestSecurityStatus",
     "ManifestLegacyImage",
     "Image",
+    "ProxyCacheConfig",
 ]
 
 

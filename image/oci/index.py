@@ -214,6 +214,10 @@ class OCIIndex(ManifestListInterface):
     def bytes(self):
         return self._manifest_bytes
 
+    @property
+    def filesystem_layers(self):
+        return None
+
     def get_layers(self, content_retriever):
         """
         Returns the layers of this manifest, from base to leaf or None if this kind of manifest does
@@ -239,6 +243,10 @@ class OCIIndex(ManifestListInterface):
 
     @property
     def config_media_type(self):
+        return None
+
+    @property
+    def config(self):
         return None
 
     @lru_cache(maxsize=1)

@@ -57,6 +57,14 @@ class ManifestInterface(object):
         """
 
     @abstractproperty
+    def config(self):
+        """
+        Returns the config of this manifest or None if this manifest does not
+        support a configuration type.
+        """
+        pass
+
+    @abstractproperty
     def config_media_type(self):
         """Returns the media type of the config of this manifest or None if
         this manifest does not support a configuration type.
@@ -68,6 +76,14 @@ class ManifestInterface(object):
         Performs validation of required assertions about the manifest.
 
         Raises a ManifestException on failure.
+        """
+        pass
+
+    @abstractproperty
+    def filesystem_layers(self):
+        """
+        Returns the file system layers of this manifest, from base to leaf or None if this kind of manifest does
+        not support layers.
         """
         pass
 
@@ -191,7 +207,7 @@ class ManifestInterface(object):
 
 
 @add_metaclass(ABCMeta)
-class ManifestListInterface(object):
+class ManifestListInterface(ManifestInterface):
     """
     Defines the interface for the various manifest list types supported.
     """

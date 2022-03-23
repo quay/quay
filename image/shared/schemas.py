@@ -4,6 +4,7 @@ from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
+from image.shared.types import SparseManifestList
 from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.docker.schema2.list import DockerSchema2ManifestList
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
@@ -20,13 +21,18 @@ def is_manifest_list_type(content_type):
     return content_type in MANIFEST_LIST_TYPES
 
 
-def parse_manifest_from_bytes(manifest_bytes, media_type, validate=True):
+def parse_manifest_from_bytes(
+    manifest_bytes, media_type, validate=True, sparse_manifest_support=False
+):
     """
     Parses and returns a manifest from the given bytes, for the given media type.
 
     Raises a ManifestException if the parse fails for some reason.
     """
     assert isinstance(manifest_bytes, Bytes)
+
+    if is_manifest_list_type(media_type) and sparse_manifest_support:
+        return SparseManifestList(manifest_bytes)
 
     if media_type == DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE:
         return DockerSchema2Manifest(manifest_bytes)

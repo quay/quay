@@ -237,6 +237,10 @@ class DockerSchema2Manifest(ManifestInterface):
         return False
 
     @property
+    def is_image_manifest(self):
+        return True
+
+    @property
     def blob_digests(self):
         return [str(layer.digest) for layer in self.filesystem_layers] + [str(self.config.digest)]
 
