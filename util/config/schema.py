@@ -765,6 +765,11 @@ CONFIG_SCHEMA = {
             "description": "Whether to support Dockerfile build. Defaults to True",
             "x-example": True,
         },
+        "FEATURE_BUILD_REQUIRE_VERIFIED_USER": {
+            "type": "boolean",
+            "description": "Whether to only allow verified users and orgs to start builds. Defaults to False",
+            "x-example": False,
+        },
         "DEFAULT_NAMESPACE_MAXIMUM_BUILD_COUNT": {
             "type": ["number", "null"],
             "description": "If not None, the default maximum number of builds that can be queued in a namespace.",

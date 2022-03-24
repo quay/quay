@@ -326,6 +326,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Dockerfile build support.
     FEATURE_BUILD_SUPPORT = True
 
+    # Feature Flag: Build support requires users/orgs to be verified
+    FEATURE_BUILD_REQUIRE_VERIFIED_USER = False
+
     # Feature Flag: Whether emails are enabled.
     FEATURE_MAILING = True
 

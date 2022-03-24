@@ -47,6 +47,7 @@ from data import model
 from data.billing import get_plan
 from util.names import parse_robot_username
 from util.request import get_request_ip
+from util.useremails import send_change_email, send_confirmation_email
 
 
 logger = logging.getLogger(__name__)
@@ -160,13 +161,19 @@ class OrganizationList(ApiResource):
 
         is_possible_abuser = ip_resolver.is_ip_possible_threat(get_request_ip())
         try:
-            model.organization.create_organization(
+            new_org = model.organization.create_organization(
                 org_data["name"],
                 org_data.get("email"),
                 user,
                 email_required=features.MAILING,
+                auto_verify=not features.MAILING,
                 is_possible_abuser=is_possible_abuser,
             )
+
+            if features.MAILING:
+                confirmation_code = model.user.create_confirm_email_code(new_org)
+                send_confirmation_email(org_data["name"], org_data.get("email"), confirmation_code)
+
             return "Created", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -260,8 +267,14 @@ class Organization(ApiResource):
                     raise request_error(message="E-mail address already used")
 
                 logger.debug("Changing email address for organization: %s", org.username)
-                model.user.update_email(org, new_email)
 
+                if features.MAILING:
+                    confirmation_code = model.user.create_confirm_email_code(
+                        org, new_email=new_email
+                    )
+                    send_change_email(orgname, new_email, confirmation_code)
+                else:
+                    model.user.update_email(org, new_email)
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in org_data:
                 logger.debug(
                     "Changing organization tag expiration to: %ss", org_data["tag_expiration_s"]

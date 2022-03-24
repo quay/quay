@@ -48,6 +48,7 @@ from endpoints.building import (
     PreparedBuild,
     MaximumBuildsQueuedException,
     BuildTriggerDisabledException,
+    UnverifiedNamespaceException,
 )
 from endpoints.exception import Unauthorized, NotFound, InvalidRequest
 from util.names import parse_robot_username
@@ -342,12 +343,15 @@ class RepositoryBuildList(RepositoryParamResource):
         prepared.context = context
         prepared.is_manual = True
         prepared.metadata = {}
+
         try:
             build_request = start_build(repo, prepared, pull_robot_name=pull_robot_name)
         except MaximumBuildsQueuedException:
             abort(429, message="Maximum queued build rate exceeded.")
         except BuildTriggerDisabledException:
             abort(400, message="Build trigger is disabled")
+        except UnverifiedNamespaceException:
+            abort(403, message="Namespace is unverified")
 
         resp = build_status_view(build_request)
         repo_string = "%s/%s" % (namespace, repository)

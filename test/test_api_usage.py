@@ -668,10 +668,11 @@ class TestChangeUserDetails(ApiTestCase):
         self.putJsonResponse(User, data=dict(password="someunicode北京市pass"))
         self.login(READ_ACCESS_USER, password="someunicode北京市pass")
 
-    def test_changeeemail(self):
+    def test_changeemail(self):
         self.login(READ_ACCESS_USER)
-
-        self.putJsonResponse(User, data=dict(email="test+foo@devtable.com"))
+        with patch("endpoints.api.user.send_change_email") as mock_send_email:
+            self.putJsonResponse(User, data=dict(email="test+foo@devtable.com"))
+            mock_send_email.assert_called()
 
     def test_changeinvoiceemail(self):
         self.login(READ_ACCESS_USER)
@@ -1328,11 +1329,13 @@ class TestChangeOrganizationDetails(ApiTestCase):
     def test_changemail(self):
         self.login(ADMIN_ACCESS_USER)
 
-        json = self.putJsonResponse(
-            Organization, params=dict(orgname=ORGANIZATION), data=dict(email="newemail@example.com")
-        )
-
-        self.assertEqual("newemail@example.com", json["email"])
+        with patch("endpoints.api.organization.send_change_email") as mock_send_email:
+            json = self.putJsonResponse(
+                Organization,
+                params=dict(orgname=ORGANIZATION),
+                data=dict(email="newemail@example.com"),
+            )
+            mock_send_email.assert_called()
 
 
 class TestGetOrganizationPrototypes(ApiTestCase):
