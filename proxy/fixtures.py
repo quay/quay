@@ -1,3 +1,4 @@
+import io
 from unittest.mock import MagicMock
 
 import pytest
@@ -29,7 +30,7 @@ def proxy_manifest_response():
             return {"status": 200}
 
         def mock_get_blob(digest):
-            return b"test", 4
+            return io.BytesIO(b"test"), 4
 
         proxy_mock = MagicMock()
         proxy_mock.manifest_exists.side_effect = mock_manifest_exists

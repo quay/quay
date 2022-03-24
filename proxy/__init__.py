@@ -3,16 +3,13 @@ The proxy module provides the means to proxy images from other registry instance
 Registries following the distribution spec are supported.
 """
 from __future__ import annotations
-from typing import Any
 import re
-import json
 
 import requests
 
 from app import model_cache
 from data.cache import cache_key
 from data.database import ProxyCacheConfig
-from digest.digest_tools import sha256_digest
 
 
 WWW_AUTHENTICATE_REGEX = re.compile(r'(\w+)[=] ?"?([^",]+)"?')
@@ -94,12 +91,9 @@ class Proxy:
         resp = self.get(
             url,
             allow_redirects=True,
+            stream=True,
         )
-        size = resp.headers.get("content-length")
-        content_digest = sha256_digest(resp.content)
-        if digest != content_digest:
-            UpstreamRegistryError(f"digest mismatch, expected {digest}, got {content_digest}")
-        return resp.content, size
+        return resp
 
     def blob_exists(self, digest: str):
         url = f"{self.base_url}/v2/{self._repo}/blobs/{digest}"
