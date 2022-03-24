@@ -1,36 +1,44 @@
 <div class="quota-management-view-element">
-    <table class="min-width-100">
+
+    <div ng-if="view == 'organization-view' && !currentQuotaConfig['quota'] && !configModeSelected">
+        <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="toggleOrgConfigView()">
+            <i class="fa margin-right-4"></i>
+            Add Storage Quota
+        </button>
+    </div>
+    <div ng-if="!(view == 'organization-view' && !currentQuotaConfig['quota'] && !configModeSelected) || view == 'super-user'" class="min-width-100 co-table">
+    <table class="co-table no-lines">
         <tbody>
             <tr>
                 <td>
                     Set storage quota:
                 </td>
+
                 <td>
-                    <fieldset ng-disabled="disabled">
-                        <div class="row-alignment">
+                    <input class="form-control" type="number" name="quota-limit" ng-model="currentQuotaConfig['quota']">
+                </td>
 
-                            <input class="margin-2 form-control width-440" type="number" name="quota-limit" ng-model="currentQuotaConfig['quota']">
+                <td>
 
-                            <select class="form-control"
-                            ng-model="currentQuotaConfig['bytes_unit']"
-                            ng-options="val for val in quotaUnits">
-                            </select>
-
-                            <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="addQuotaLimit($event)">
-                                <i class="fa fa-plus margin-right-4"></i>
-                                Add Quota Limit
-                            </button>
-                        </div>
-                    </fieldset>
+                    <select class="form-control"
+                    ng-model="currentQuotaConfig['bytes_unit']"
+                    ng-options="val for val in quotaUnits">
+                    </select>
+                </td>
+                <td>
+                    <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="addQuotaLimit($event)">
+                        <i class="fa fa-plus margin-right-4"></i>
+                        Add Quota Limit
+                    </button>
                 </td>
             </tr>
 
             <tr>
-                <td>
+                <td class="float-left">
                     Quota Policy:
                 </td>
                 <td>
-                    <table class="co-table">
+                    <table class="co-table no-lines">
                         <thead>
                             <td>
                                 <span class="capitalize-text">Quota Threshold</span>
@@ -45,7 +53,7 @@
                             </td>
                         </thead>
 
-                        <tbody ng-model="limitCounter" ng-if="limitCounter > 0" ng-repeat="x in [].constructor(limitCounter) track by $index" id="limit-id-limitCounter">
+                        <tbody ng-model="limitCounter" ng-repeat="x in [].constructor(limitCounter) track by $index" id="limit-id-limitCounter">
                             <tr>
                                 <td>
                                     <select class="form-control" name="quotaLimitType" id="quotaLimitType"
@@ -55,11 +63,11 @@
                                 </td>
 
                                 <td>
-                                    <input class="form-control margin-2" type="number" name="limit-percent" min="1" max="100" placeholder="Limit Percent" ng-model="currentQuotaConfig['limits'][$index]['percent_of_limit']"/>
+                                    <input class="form-control margin-2 min-width-171" type="number" name="limit-percent" min="1" max="100" placeholder="Limit Percent" ng-model="currentQuotaConfig['limits'][$index]['percent_of_limit']"/>
                                 </td>
 
                                 <td>
-                                    <span class="margin-2" ng-hide="limitCounter < 1">
+                                    <span class="margin-2 margin-left-110" ng-hide="limitCounter < 1">
                                         <button class="margin-2 btn btn-danger border-radius-50" ng-click="removeQuotaLimit($index)" ng-model="$index">
                                             <i class="fa fa-minus"></i>
                                         </button>
@@ -69,19 +77,30 @@
                         </tbody>
                     </table>
                 </td>
-
-                <div class="co-alert co-alert-danger" ng-if="errorMessage">
-                    {{ errorMessage }}
-                </div>
             </tr>
 
             <tr>
-                <td></td>
+                <td>
+                    <div class="co-alert co-alert-danger" ng-if="errorMessage">
+                        {{ errorMessage }}
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="co-table no-lines">
+        <tbody>
+            <tr>
                 <td>
                     <button class="margin-2 btn btn-primary save-quota-details" ng-disabled="disableSave()" ng-click="updateQuotaDetailsOnSave()">Save Quota Details</button>
                 </td>
-            </tr>
 
+                <td ng-if="view == 'organization-view' && !previousQuotaConfig['quota']">
+                    <button class="margin-2 btn btn-primary" ng-click="toggleOrgConfigView()">Cancel</button>
+                </td>
+            </tr>
         </tbody>
     </table>
+    </div>
 </div>

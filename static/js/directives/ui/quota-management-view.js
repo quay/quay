@@ -7,7 +7,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         restrict: 'AEC',
         scope: {
             'organization': '=organization',
-            'disabled': '=disabled'
+            'view': '@view',
         },
         controller: function ($scope, $timeout, $location, $element, ApiService, UserService,
                           TableService, Features, StateService, $q) {
@@ -31,6 +31,7 @@ angular.module('quay').directive('quotaManagementView', function () {
                 'quotaLessThanZero': 'A quota greater 0 must be defined.',
                 'validNumber': 'Please enter a valid number.',
             }
+            $scope.configModeSelected = false;
 
             var loadOrgQuota = function (fresh) {
                 $scope.nameSpaceResource = ApiService.getNamespaceQuota(null,
@@ -235,10 +236,15 @@ angular.module('quay').directive('quotaManagementView', function () {
                 return valid;
             }
 
+            var checkForWarnings = function() {
+
+            }
+
             $scope.disableSave = function() {
                 if (!$scope.validOrgQuota()) {
                     return true;
                 }
+                checkForWarnings();
 
                 return $scope.prevQuotaConfig['quota'] === $scope.currentQuotaConfig['quota'] &&
                        $scope.prevQuotaConfig['bytes_unit'] === $scope.currentQuotaConfig['bytes_unit'] &&
@@ -291,6 +297,11 @@ angular.module('quay').directive('quotaManagementView', function () {
             }
 
             $scope.validOrgQuota = function () {
+                // No quota set
+                if (!$scope.currentQuotaConfig['quota']) {
+                    return true;
+                }
+
                 if (isNaN(parseInt($scope.currentQuotaConfig['quota']))) {
                     $scope.errorMessage = $scope.errorMessagesObj['validNumber'];
                     return false;
@@ -305,9 +316,13 @@ angular.module('quay').directive('quotaManagementView', function () {
                 return true;
             }
 
+            $scope.toggleOrgConfigView = function () {
+                $scope.configModeSelected = !$scope.configModeSelected;
+            }
+
             loadOrgQuota(true);
             loadQuotaLimits(true);
-        },
+            },
 
     }
 

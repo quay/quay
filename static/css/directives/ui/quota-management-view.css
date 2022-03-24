@@ -12,12 +12,16 @@
     margin-right: 4px;
 }
 
-width-440 {
-    width: 440%;
+.margin-left-110 {
+    margin-left: 110%;
 }
 
-min-width-100 {
+.min-width-100 {
     min-width: 100% !important;
+}
+
+.min-width-171 {
+    min-width: 171% !important;
 }
 
 .border-radius-50 {
@@ -26,4 +30,8 @@ min-width-100 {
 
 .capitalize-text {
     text-transform: capitalize !important;
+}
+
+.float-left {
+    float: left;
 }
