@@ -78,11 +78,19 @@
                     </table>
                 </td>
             </tr>
+        </tbody>
+    </table>
 
+    <table class="co-table no-lines">
+        <tbody>
             <tr>
+                <td class="width-120px"></td>
                 <td>
                     <div class="co-alert co-alert-danger" ng-if="errorMessage">
                         {{ errorMessage }}
+                    </div>
+                    <div class="co-help-text" ng-if="warningMessage">
+                        {{ warningMessage }}
                     </div>
                 </td>
             </tr>

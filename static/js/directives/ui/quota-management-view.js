@@ -27,9 +27,13 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.rejectLimitType = 'Reject';
             $scope.isUpdateable = false;
             $scope.errorMessage = '';
+            $scope.warningMessage = '';
             $scope.errorMessagesObj = {
                 'quotaLessThanZero': 'A quota greater 0 must be defined.',
                 'validNumber': 'Please enter a valid number.',
+            }
+            $scope.warningMessagesObj = {
+                'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
             }
             $scope.configModeSelected = false;
 
@@ -284,6 +288,7 @@ angular.module('quay').directive('quotaManagementView', function () {
                 $scope.limitCounter++;
                 let temp = {'percent_of_limit': '', 'limit_type': $scope.quotaLimitTypes[0]};
                 $scope.currentQuotaConfig['limits'].push(temp);
+                populateDefaultQuotaLimits();
                 $event.preventDefault();
             }
 
@@ -320,8 +325,17 @@ angular.module('quay').directive('quotaManagementView', function () {
                 $scope.configModeSelected = !$scope.configModeSelected;
             }
 
+            var populateDefaultQuotaLimits = function () {
+                if ($scope.prevquotaEnabled || $scope.currentQuotaConfig['limits'].length > 0) {
+                    $scope.warningMessage = '';
+                    return;
+                }
+                $scope.warningMessage = $scope.warningMessagesObj['noQuotaLimit'];
+            }
+
             loadOrgQuota(true);
             loadQuotaLimits(true);
+            populateDefaultQuotaLimits();
             },
 
     }
