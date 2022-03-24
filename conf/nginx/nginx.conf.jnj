@@ -69,6 +69,10 @@ http {
         listen 55443 ssl http2 default;
         ssl on;
 
+        # Required for gRPC streaming
+        client_header_timeout 2h;
+        client_body_timeout 2h;
+
         location / {
                  grpc_pass grpc://build_manager_server;
         }
