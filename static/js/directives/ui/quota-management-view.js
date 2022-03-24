@@ -86,13 +86,13 @@ angular.module('quay').directive('quotaManagementView', function () {
                         $scope.prevQuotaConfig['limits'].push({...resp['quota_limits'][i]});
                         $scope.currentQuotaConfig['limits'].push({...resp['quota_limits'][i]});
                     }
-
                     if (fresh) {
                       if ($scope.currentQuotaConfig['limits']) {
                         for (let i = 0; i < $scope.currentQuotaConfig['limits'].length; i++) {
                           populateQuotaLimit();
                         }
                       }
+                      populateDefaultQuotaLimits();
                     }
                 });
             }
@@ -288,8 +288,8 @@ angular.module('quay').directive('quotaManagementView', function () {
                 $scope.limitCounter++;
                 let temp = {'percent_of_limit': '', 'limit_type': $scope.quotaLimitTypes[0]};
                 $scope.currentQuotaConfig['limits'].push(temp);
-                populateDefaultQuotaLimits();
                 $event.preventDefault();
+                populateDefaultQuotaLimitWarnings();
             }
 
             var populateQuotaLimit = function() {
@@ -299,6 +299,7 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.removeQuotaLimit = function(index) {
                 $scope.currentQuotaConfig['limits'].splice(index, 1);
                 $scope.limitCounter--;
+                populateDefaultQuotaLimitWarnings();
             }
 
             $scope.validOrgQuota = function () {
@@ -327,6 +328,15 @@ angular.module('quay').directive('quotaManagementView', function () {
 
             var populateDefaultQuotaLimits = function () {
                 if ($scope.prevquotaEnabled || $scope.currentQuotaConfig['limits'].length > 0) {
+                    return;
+                }
+                let temp = {"percent_of_limit": 100, "limit_type":{"quota_type_id":2,"name":"Reject","quota_limit_id":null}};
+                $scope.currentQuotaConfig['limits'].push(temp);
+                $scope.limitCounter++;
+            }
+
+            var populateDefaultQuotaLimitWarnings = function () {
+                if ($scope.prevquotaEnabled || $scope.currentQuotaConfig['limits'].length > 0) {
                     $scope.warningMessage = '';
                     return;
                 }
@@ -335,7 +345,6 @@ angular.module('quay').directive('quotaManagementView', function () {
 
             loadOrgQuota(true);
             loadQuotaLimits(true);
-            populateDefaultQuotaLimits();
             },
 
     }
