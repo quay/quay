@@ -34,6 +34,7 @@ angular.module('quay').directive('quotaManagementView', function () {
             }
             $scope.warningMessagesObj = {
                 'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
+                'noRejectLimit': 'Note: This quota has no hard limit enforced via a rejection thresholds. Users will be able to exceed the storage quota set above.',
             }
             $scope.configModeSelected = false;
 
@@ -53,7 +54,7 @@ angular.module('quay').directive('quotaManagementView', function () {
                         }
                     }
 
-                    if (resp["limit_bytes"] != null) {
+                    if (resp["limit_bytes"] && resp["limit_bytes"] != 0) {
                         $scope.prevquotaEnabled = true;
                     }
                 });
@@ -240,8 +241,26 @@ angular.module('quay').directive('quotaManagementView', function () {
                 return valid;
             }
 
-            var checkForWarnings = function() {
+            var rejectLimitExists = function () {
+                for (let i = 0; i < $scope.currentQuotaConfig['limits'].length; i++) {
+                    if ($scope.currentQuotaConfig['limits'][i]['limit_type']['name'] == $scope.rejectLimitType) {
+                        return true;
+                    }
+                }
+                return false;
+            }
 
+            var checkForWarnings = function() {
+                if ($scope.currentQuotaConfig['limits'].length == 0){
+                    return;
+                }
+
+                if (!rejectLimitExists()) {
+                    $scope.warningMessage = $scope.warningMessagesObj['noRejectLimit'];
+                }
+                else {
+                    $scope.warningMessage = '';
+                }
             }
 
             $scope.disableSave = function() {
@@ -285,11 +304,16 @@ angular.module('quay').directive('quotaManagementView', function () {
             }
 
             $scope.addQuotaLimit = function($event) {
-                $scope.limitCounter++;
-                let temp = {'percent_of_limit': '', 'limit_type': $scope.quotaLimitTypes[0]};
-                $scope.currentQuotaConfig['limits'].push(temp);
-                $event.preventDefault();
+                if ($scope.currentQuotaConfig['limits'].length == 0) {
+                    populateDefaultQuotaLimits();
+                }
+                else {
+                    $scope.limitCounter++;
+                    let temp = {'percent_of_limit': '', 'limit_type': $scope.quotaLimitTypes[0]};
+                    $scope.currentQuotaConfig['limits'].push(temp);
+                }
                 populateDefaultQuotaLimitWarnings();
+                $event.preventDefault();
             }
 
             var populateQuotaLimit = function() {
@@ -333,6 +357,7 @@ angular.module('quay').directive('quotaManagementView', function () {
                 let temp = {"percent_of_limit": 100, "limit_type":{"quota_type_id":2,"name":"Reject","quota_limit_id":null}};
                 $scope.currentQuotaConfig['limits'].push(temp);
                 $scope.limitCounter++;
+                checkForWarnings();
             }
 
             var populateDefaultQuotaLimitWarnings = function () {
