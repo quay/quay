@@ -32,6 +32,7 @@ angular.module('quay').directive('quotaManagementView', function () {
                 'quotaLessThanZero': 'A quota greater 0 must be defined.',
                 'validNumber': 'Please enter a valid number.',
                 'identicalThresholds': 'Error: The quota policy contains two identical thresholds.',
+                'singleRejectLimit': 'Error: A quota policy should only have a single reject threshold.',
             }
             $scope.warningMessagesObj = {
                 'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
@@ -369,6 +370,19 @@ angular.module('quay').directive('quotaManagementView', function () {
                 }
             }
 
+            var multipleRejectLimits = function (array) {
+                let count = 0;
+                for (var i = 0; i < array.length; i++) {
+                    if (array[i]['limit_type']['name'] == $scope.rejectLimitType) {
+                        count++;
+                    }
+                    if (count > 1) {
+                        return true
+                    }
+                }
+                return false
+            }
+
             var validOrgLimitQuota = function () {
                 // Missing Quota Limit values
                 for (var i = 0; i < $scope.currentQuotaConfig['limits'].length; i++) {
@@ -383,12 +397,18 @@ angular.module('quay').directive('quotaManagementView', function () {
                 let { duplicateExists, duplicateIndex } = hasDuplicateObjects($scope.currentQuotaConfig['limits']);
                 if (duplicateExists) {
                     $scope.errorMessage = $scope.errorMessagesObj["identicalThresholds"];
+                    $scope.quotaLimitErrorIndex = duplicateIndex
                     updateErrorBorder(duplicateIndex, true);
                     return false;
-                }
-                else {
+                } else {
+                    updateErrorBorder($scope.quotaLimitErrorIndex, false);
                     $scope.quotaLimitErrorIndex = -1;
-                    updateErrorBorder(duplicateIndex, false);
+                }
+
+                // Check for multiple rejects
+                if (multipleRejectLimits($scope.currentQuotaConfig['limits'])) {
+                    $scope.errorMessage = $scope.errorMessagesObj["singleRejectLimit"];
+                    return false
                 }
 
                 $scope.errorMessage = '';
@@ -397,7 +417,7 @@ angular.module('quay').directive('quotaManagementView', function () {
 
             var validOrgQuota = function () {
                 // No quota set
-                if ($scope.currentQuotaConfig['quota'] == null) {\
+                if ($scope.currentQuotaConfig['quota'] == null) {
                     return false;
                 }
 
