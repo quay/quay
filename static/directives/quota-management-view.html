@@ -56,14 +56,14 @@
                         <tbody ng-model="limitCounter" ng-repeat="x in [].constructor(limitCounter) track by $index" id="limit-id-limitCounter">
                             <tr>
                                 <td>
-                                    <select class="form-control" name="quotaLimitType" id="quotaLimitType"
+                                    <select class="form-control" name="quotaLimitType" id="quotaLimitType-{{ $index }}"
                                     ng-options="obj as obj.name for obj in quotaLimitTypes track by obj.name"
                                     ng-model="currentQuotaConfig['limits'][$index]['limit_type']">
                                     </select>
                                 </td>
 
                                 <td>
-                                    <input class="form-control margin-2 min-width-171" type="number" name="limit-percent" min="1" max="100" placeholder="Limit Percent" ng-model="currentQuotaConfig['limits'][$index]['percent_of_limit']"/>
+                                    <input class="form-control margin-2 min-width-171" id="quotaLimitPercent-{{ $index }}" type="number" name="limit-percent" min="1" max="100" placeholder="Limit Percent" ng-model="currentQuotaConfig['limits'][$index]['percent_of_limit']"/>
                                 </td>
 
                                 <td>

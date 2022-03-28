@@ -39,3 +39,7 @@
 .width-120px {
     width: 120px;
 }
+
+.error-border {
+    border: 1px solid red !important;
+}
