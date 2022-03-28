@@ -1,12 +1,12 @@
 <div class="quota-management-view-element">
 
-    <div ng-if="view == 'organization-view' && !currentQuotaConfig['quota'] && !configModeSelected">
+    <div ng-if="view == 'organization-view' && !configModeSelected">
         <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="toggleOrgConfigView()">
             <i class="fa margin-right-4"></i>
             Add Storage Quota
         </button>
     </div>
-    <div ng-if="!(view == 'organization-view' && !currentQuotaConfig['quota'] && !configModeSelected) || view == 'super-user'" class="min-width-100 co-table">
+    <div ng-if="!(view == 'organization-view' && !configModeSelected) || view == 'super-user'" class="min-width-100 co-table">
     <table class="co-table no-lines">
         <tbody>
             <tr>
