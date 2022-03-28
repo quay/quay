@@ -137,6 +137,7 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 
 			accessKey = value.AccessKeyID
 			secretKey = value.SecretAccessKey
+			token = value.SessionToken
 
 		}
 		if ok, err := validateMinioGateway(opts, storageName, endpoint, accessKey, secretKey, bucketName, token, isSecure, fgName); !ok {
