@@ -40,6 +40,10 @@
     width: 120px;
 }
 
+.display-block {
+    display: block;
+}
+
 .error-border {
     border: 1px solid red !important;
 }

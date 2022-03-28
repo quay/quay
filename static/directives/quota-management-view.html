@@ -99,16 +99,35 @@
 
     <table class="co-table no-lines">
         <tbody>
-            <tr>
+            <tr class="display-block">
                 <td>
-                    <button class="margin-2 btn btn-primary save-quota-details" ng-disabled="disableSave()" ng-click="updateQuotaDetailsOnSave()">Save Quota Details</button>
+                    <button class="margin-2 btn btn-primary" ng-disabled="disableSave()" ng-click="updateQuotaDetailsOnSave()">Save Quota Details</button>
                 </td>
 
                 <td ng-if="view == 'organization-view' && !previousQuotaConfig['quota']">
                     <button class="margin-2 btn btn-primary" ng-click="toggleOrgConfigView()">Cancel</button>
                 </td>
+
+                <td>
+                    <button class="margin-2 btn btn-danger" ng-disabled="!prevquotaEnabled" ng-click="showdeleteOrgQuota()">Remove</button>
+                </td>
             </tr>
         </tbody>
     </table>
+    </div>
+
+    <!-- Delete Quota dialog -->
+    <div class="cor-confirm-dialog"
+        dialog-context="showQuotaDeletionModal"
+        dialog-action="deleteOrgQuota(info, callback)"
+        dialog-title="Really remove Quota?"
+        dialog-action-title="Ok"
+        dialog-form="context.deleteQuota"
+        dialog-button-class="btn-danger">
+        <form name="context.deleteQuota" class="co-single-field-dialog">
+            <div>
+                When you remove the quota storage, users can consume arbitrary amount of storage resources.
+            </div>
+        </form>
     </div>
 </div>

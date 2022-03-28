@@ -40,6 +40,7 @@ angular.module('quay').directive('quotaManagementView', function () {
             }
             $scope.configModeSelected = false;
             $scope.quotaLimitErrorIndex = -1;
+            $scope.showQuotaDeletionModal = false;
 
             var loadOrgQuota = function (fresh) {
                 $scope.nameSpaceResource = ApiService.getNamespaceQuota(null,
@@ -455,6 +456,24 @@ angular.module('quay').directive('quotaManagementView', function () {
                     return;
                 }
                 $scope.warningMessage = $scope.warningMessagesObj['noQuotaLimit'];
+            }
+
+            $scope.showdeleteOrgQuota = function () {
+                $scope.showQuotaDeletionModal = true;
+            }
+
+            $scope.deleteOrgQuota = function(info, callback) {
+                let handleSuccess = function() {
+                    loadOrgQuota(true);
+                    loadQuotaLimits(true);
+                    $scope.showQuotaDeletionModal = false;
+                    $scope.prevquotaEnabled = false;
+                    if (callback) callback(true);
+                }
+
+                let errMsg = "Unable to delete Quota";
+                let handleError = ApiService.errorDisplay(errMsg, callback);
+                ApiService.deleteOrganizationQuota(null, {"namespace": $scope.organization.name}).then(handleSuccess, handleError);
             }
 
             loadOrgQuota(true);
