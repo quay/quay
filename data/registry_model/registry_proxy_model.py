@@ -19,11 +19,18 @@ from data.model import (
     RepositoryDoesNotExist,
     ManifestDoesNotExist,
     TagDoesNotExist,
-    InvalidImageException,
 )
 from data.model.repository import get_repository, create_repository
 from data.model.proxy_cache import get_proxy_cache_config_for_org
-from data.model.storage import get_image_location_for_name, get_layer_path
+from data.registry_model.blobuploader import (
+    create_blob_upload,
+    complete_when_uploaded,
+    BlobTooLargeException,
+    BlobRangeMismatchException,
+    BlobUploadException,
+    BlobDigestMismatchException,
+    BlobUploadSettings,
+)
 from data.registry_model.registry_oci_model import OCIModel
 from data.registry_model.datatypes import Manifest, Tag, RepositoryReference
 from image.oci import OCI_IMAGE_MANIFEST_CONTENT_TYPE, OCI_IMAGE_INDEX_CONTENT_TYPE
@@ -441,36 +448,43 @@ class ProxyModel(OCIModel):
             except ImageStorage.DoesNotExist:
                 return None
 
-        with db_disallow_replica_use():
-            with db_transaction():
-                try:
-                    ImageStoragePlacement.select().where(
-                        ImageStoragePlacement.storage == blob
-                    ).get()
-                except ImageStoragePlacement.DoesNotExist:
-                    try:
-                        self._proxy.blob_exists(blob_digest)
-                    except UpstreamRegistryError:
-                        return None
-                    try:
-                        raw_blob, size = self._proxy.get_blob(blob_digest)
-                    except UpstreamRegistryError:
-                        return None
-                    location_name = storage.preferred_locations[0]
-                    path = get_layer_path(blob)
-                    # TODO: use range requests to download the blob when the server supports it
-                    storage.put_content([location_name], path, raw_blob)
-                    location = get_image_location_for_name(location_name)
-                    if blob.image_size != size:
-                        q = ImageStorage.update(
-                            image_size=size,
-                        ).where(ImageStorage.id == blob.id)
-                        affected = q.execute()
-                        if affected != 1:
-                            return None
-                    ImageStoragePlacement.create(storage=blob, location=location.id)
+        try:
+            ImageStoragePlacement.select().where(ImageStoragePlacement.storage == blob).get()
+        except ImageStoragePlacement.DoesNotExist:
+            try:
+                self._download_blob(repository_ref, blob_digest)
+            except BlobDigestMismatchException:
+                raise UpstreamRegistryError("blob digest mismatch")
+            except BlobTooLargeException as e:
+                raise UpstreamRegistryError(f"blob too large, max allowed is {e.max_allowed}")
+            except BlobRangeMismatchException:
+                raise UpstreamRegistryError("range mismatch")
+            except BlobUploadException:
+                raise UpstreamRegistryError("invalid blob upload")
 
         return super().get_repo_blob_by_digest(repository_ref, blob_digest, include_placements)
+
+    def _download_blob(self, repo_ref: RepositoryReference, digest: str) -> int:
+        """
+        Download blob from upstream registry and perform a monolitic upload to
+        Quay's own storage.
+        """
+        expiration = (
+            self._config.expiration_s
+            if self._config.expiration_s
+            else app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
+        )
+        settings = BlobUploadSettings(
+            maximum_blob_size=app.config["MAXIMUM_LAYER_SIZE"],
+            committed_blob_expiration=expiration,
+        )
+        uploader = create_blob_upload(repo_ref, storage, settings)
+        with self._proxy.get_blob(digest) as resp:
+            start_offset = 0
+            length = int(resp.headers.get("content-length", -1))
+            with complete_when_uploaded(uploader):
+                uploader.upload_chunk(app.config, resp.raw, start_offset, length)
+                uploader.commit_to_blob(app.config, digest)
 
     def convert_manifest(
         self,

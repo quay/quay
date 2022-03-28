@@ -1,12 +1,9 @@
-import io
-import gzip
 import json
 import unittest
 import hashlib
 import pytest
 from unittest.mock import MagicMock, patch
 
-from mock import patch
 from flask import url_for
 from playhouse.test_utils import assert_query_count
 
@@ -15,14 +12,14 @@ from auth.auth_context_type import ValidatedAuthContext
 from data import model
 from data.cache import InMemoryDataModelCache, NoopDataModelCache
 from data.cache.test.test_cache import TEST_CACHE_CONFIG
-from data.database import ImageStorageLocation, ManifestBlob, ImageStorage, ImageStoragePlacement
+from data.database import ImageStorageLocation, ImageStorage, ImageStoragePlacement
 from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
 from data.model.storage import get_layer_path
+from digest.digest_tools import sha256_digest
 from endpoints.test.shared import conduct_call
 from image.docker.schema2 import DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
-from image.shared.schemas import parse_manifest_from_bytes
-from proxy import Proxy
+from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from util.bytes import Bytes
 from util.security.registry_jwt import generate_bearer_token, build_context_and_subject
 from test.fixtures import *
@@ -54,7 +51,8 @@ class TestBlobPullThroughStorage:
     image_name = "library/hello-world"
     repository = f"{orgname}/{image_name}"
     tag = "14"
-    digest = "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"
+    # digest for 'test'. matches the one used in proxy/fixtures.py
+    digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
     config = None
     org = None
     manifest = None
@@ -98,20 +96,40 @@ class TestBlobPullThroughStorage:
             self.repo_ref = registry_model.lookup_repository(self.orgname, self.image_name)
             assert self.repo_ref is not None
 
-        if self.manifest is None:
-            proxy_mock = proxy_manifest_response(
-                self.tag, HELLO_WORLD_SCHEMA2_MANIFEST_JSON, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        def get_blob(layer):
+            content = Bytes.for_string_or_unicode(layer).as_encoded_str()
+            digest = str(sha256_digest(content))
+            blob = model.blob.store_blob_record_and_temp_link(
+                self.orgname,
+                self.image_name,
+                digest,
+                ImageStorageLocation.get(name="local_us"),
+                len(content),
+                120,
             )
-            with patch(
-                "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
-            ):
-                proxy_model = ProxyModel(
-                    self.orgname,
-                    self.image_name,
-                    self.user,
-                )
-                tag = proxy_model.get_repo_tag(self.repo_ref, self.tag)
-                self.manifest = tag.manifest
+            storage.put_content(["local_us"], get_layer_path(blob), content)
+            return blob, digest
+
+        if self.manifest is None:
+            layer1 = json.dumps(
+                {
+                    "config": {},
+                    "rootfs": {"type": "layers", "diff_ids": []},
+                    "history": [{}],
+                }
+            )
+            _, config_digest = get_blob(layer1)
+            layer2 = "test"
+            _, blob_digest = get_blob(layer2)
+            builder = DockerSchema2ManifestBuilder()
+            builder.set_config_digest(config_digest, len(layer1.encode("utf-8")))
+            builder.add_layer(blob_digest, len(layer2.encode("utf-8")))
+            manifest = builder.build()
+            created_manifest = model.oci.manifest.get_or_create_manifest(
+                self.repo_ref.id, manifest, storage
+            )
+            self.manifest = created_manifest.manifest
+            assert self.digest == blob_digest
             assert self.manifest is not None
 
         if self.blob is None:
