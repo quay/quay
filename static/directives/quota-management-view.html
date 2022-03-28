@@ -25,12 +25,6 @@
                     ng-options="val for val in quotaUnits">
                     </select>
                 </td>
-                <td>
-                    <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="addQuotaLimit($event)">
-                        <i class="fa fa-plus margin-right-4"></i>
-                        Add Quota Limit
-                    </button>
-                </td>
             </tr>
 
             <tr>
@@ -72,6 +66,11 @@
                                             <i class="fa fa-minus"></i>
                                         </button>
                                     </span>
+                                </td>
+                                <td ng-if="$index == 0">
+                                    <button class="margin-2 btn btn-success hidden-xs border-radius-50 margin-left-110" ng-click="addQuotaLimit($event)">
+                                        <i class="fa fa-plus"></i>
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
