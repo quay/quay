@@ -62,6 +62,7 @@ from data.database import (
     QuotaLimits,
     UserOrganizationQuota,
     RepositorySize,
+    ProxyCacheConfig,
 )
 from data import model
 from data.decorators import is_deprecated_model
@@ -869,6 +870,8 @@ def populate_database(minimal=False):
     model.repository.force_cache_repo_size(publicrepo.id)
 
     model.namespacequota.create_namespace_limit(org.username, 1, 50)
+
+    model.proxy_cache.create_proxy_cache_config(org.username, "some-upstream-registry")
 
     liborg = model.organization.create_organization(
         "library", "quay+library@devtable.com", new_user_1
