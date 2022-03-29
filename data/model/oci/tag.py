@@ -611,7 +611,7 @@ def tags_containing_legacy_image(image):
         .join(Image)
         .where(Tag.repository == image.repository_id)
         .where(Image.repository == image.repository_id)
-        .where((Image.id == image.id) | (Image.ancestors ** ancestors_str))
+        .where((Image.id == image.id) | (Image.ancestors**ancestors_str))
     )
     return filter_to_alive_tags(tags)
 

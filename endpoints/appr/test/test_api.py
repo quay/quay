@@ -92,7 +92,7 @@ class TestServerQuayDB(BaseTestServer):
         return "basic ZGV2dGFibGU6cGFzc3dvcmQ="
 
     def test_search_package_match(self, db_with_data1, client):
-        """ TODO: search cross namespace and package name """
+        """TODO: search cross namespace and package name"""
         BaseTestServer.test_search_package_match(self, db_with_data1, client)
 
     def test_list_search_package_match(self, db_with_data1, client):

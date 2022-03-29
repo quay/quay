@@ -240,7 +240,7 @@ class OCIManifest(ManifestInterface):
 
     @property
     def annotations(self):
-        """ Returns the annotations on the manifest itself. """
+        """Returns the annotations on the manifest itself."""
         return self._parsed.get(OCI_MANIFEST_ANNOTATIONS_KEY) or {}
 
     def get_blob_digests_for_translation(self):
