@@ -8,7 +8,7 @@ class BaseManager(ABC):
     """
 
     def __new__(cls, *args, **kwargs):
-        """Hack to ensure method defined as async are implemented as such. """
+        """Hack to ensure method defined as async are implemented as such."""
         coroutines = inspect.getmembers(BaseManager, predicate=inspect.iscoroutinefunction)
         for coroutine in coroutines:
             implemented_method = getattr(cls, coroutine[0])

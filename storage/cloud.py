@@ -51,7 +51,7 @@ _LIST_OBJECT_VERSIONS = {"v1": "list_objects", "v2": "list_objects_v2"}
 
 
 def _build_endpoint_url(hostname, port=None, is_secure=True):
-    """Normalize the formats from boto2 and boto3. """
+    """Normalize the formats from boto2 and boto3."""
 
     # If the scheme is not in the hostname, check if is_secure is set to set http or https as the scheme
     if not hostname.startswith("http://") and not hostname.startswith("https://"):
