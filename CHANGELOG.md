@@ -1,7 +1,8 @@
 ## Red Hat Quay Release Notes
 (Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
 
-
+<a name="v3.6.5"></a>
+## [v3.6.5] - 2022-03-29
 <a name="v3.6.4"></a>
 ## [v3.6.4] - 2022-03-02
 ### Auth
