@@ -7,6 +7,8 @@ Create Date: 2019-10-07 13:11:20.424715
 """
 
 # revision identifiers, used by Alembic.
+import re
+
 revision = "34c8ef052ec9"
 down_revision = "cc6778199cdb"
 
@@ -85,59 +87,64 @@ def _iterate(model_class, clause):
 def upgrade(op, tables, tester):
     from app import app
 
+    engine_name = op.get_bind().engine.name
+
     logger.info("Migrating to external_reference from existing columns")
     op.add_column("repomirrorconfig", sa.Column("external_reference", sa.Text(), nullable=True))
 
     logger.info("Reencrypting existing columns")
-    if app.config.get("SETUP_COMPLETE", False) and not tester.is_testing():
-        old_key_encrypter = FieldEncrypter(app.config.get("SECRET_KEY"))
+    if not re.search(engine_name, app.config.get("SECONDARY_WRITE_DB_URI", None)):
+        if app.config.get("SETUP_COMPLETE", False) and not tester.is_testing():
+            old_key_encrypter = FieldEncrypter(app.config.get("SECRET_KEY"))
 
-        starting_id = 0
-        has_additional = True
-        while has_additional:
-            has_additional = False
+            starting_id = 0
+            has_additional = True
+            while has_additional:
+                has_additional = False
 
-            query = RepoMirrorConfig.select().where(RepoMirrorConfig.id >= starting_id).limit(10)
-            for row in query:
-                starting_id = max(starting_id, row.id + 1)
-                has_additional = True
-                logger.debug("Re-encrypting information for row %s", row.id)
+                query = RepoMirrorConfig.select().where(RepoMirrorConfig.id >= starting_id).limit(10)
+                for row in query:
+                    starting_id = max(starting_id, row.id + 1)
+                    has_additional = True
+                    logger.debug("Re-encrypting information for row %s", row.id)
 
-                has_changes = False
-                try:
-                    if row.external_registry_username:
-                        row.external_registry_username.decrypt()
-                except DecryptionFailureException:
-                    # Encrypted using the older SECRET_KEY. Migrate it.
-                    decrypted = row.external_registry_username.decrypt(old_key_encrypter)
-                    row.external_registry_username = DecryptedValue(decrypted)
-                    has_changes = True
+                    has_changes = False
+                    try:
+                        if row.external_registry_username:
+                            row.external_registry_username.decrypt()
+                    except DecryptionFailureException:
+                        # Encrypted using the older SECRET_KEY. Migrate it.
+                        decrypted = row.external_registry_username.decrypt(old_key_encrypter)
+                        row.external_registry_username = DecryptedValue(decrypted)
+                        has_changes = True
 
-                try:
-                    if row.external_registry_password:
-                        row.external_registry_password.decrypt()
-                except DecryptionFailureException:
-                    # Encrypted using the older SECRET_KEY. Migrate it.
-                    decrypted = row.external_registry_password.decrypt(old_key_encrypter)
-                    row.external_registry_password = DecryptedValue(decrypted)
-                    has_changes = True
+                    try:
+                        if row.external_registry_password:
+                            row.external_registry_password.decrypt()
+                    except DecryptionFailureException:
+                        # Encrypted using the older SECRET_KEY. Migrate it.
+                        decrypted = row.external_registry_password.decrypt(old_key_encrypter)
+                        row.external_registry_password = DecryptedValue(decrypted)
+                        has_changes = True
 
-                if has_changes:
-                    logger.debug("Saving re-encrypted information for row %s", row.id)
-                    row.save()
+                    if has_changes:
+                        logger.debug("Saving re-encrypted information for row %s", row.id)
+                        row.save()
 
-    if app.config.get("SETUP_COMPLETE", False) or tester.is_testing():
-        for repo_mirror in _iterate(
-            RepoMirrorConfig, (RepoMirrorConfig.external_reference >> None)
-        ):
-            repo = "%s/%s/%s" % (
-                repo_mirror.external_registry,
-                repo_mirror.external_namespace,
-                repo_mirror.external_repository,
-            )
-            logger.info("migrating %s" % repo)
-            repo_mirror.external_reference = repo
-            repo_mirror.save()
+    if not re.search(engine_name, app.config.get("SECONDARY_WRITE_DB_URI", None)):
+        if app.config.get("SETUP_COMPLETE", False) or tester.is_testing():
+            for repo_mirror in _iterate(
+                RepoMirrorConfig, (RepoMirrorConfig.external_reference >> None)
+            ):
+                repo = "%s/%s/%s" % (
+                    repo_mirror.external_registry,
+                    repo_mirror.external_namespace,
+                    repo_mirror.external_repository,
+                )
+                logger.info("migrating %s" % repo)
+                repo_mirror.external_reference = repo
+                repo_mirror.save()
+
 
     op.drop_column("repomirrorconfig", "external_registry")
     op.drop_column("repomirrorconfig", "external_namespace")

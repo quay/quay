@@ -86,14 +86,12 @@ class DoubleWriteWrapper(AutomaticFailoverWrapper):
 
     def execute_sql(self, sql, params=None, commit=SENTINEL):
         result = super().execute_sql(sql, params, commit)
+        # TODO: remove try when we tie primary and secondary together under transaction
+        #try:
+        self._secondary_write_db.execute_sql(sql, params, commit)
 
-        if self._primary_db.transaction_depth() > 0:
-            if self._secondary_write_db is not None:
-                # TODO: remove try when we tie primary and secondary together under transaction
-                try:
-                    self._secondary_write_db.execute_sql(sql, params, commit)
-                except:
-                    pass
+        #except:
+            #pass
 
         return result
 
@@ -139,21 +137,21 @@ class ReadReplicaSupportedModel(Model):
         # Select the master DB if read replica support is not enabled.
         read_only_config = cls._read_only_config()
         if not read_only_config.read_replicas:
-            return cls._meta.database
+            return DoubleWriteWrapper( cls._meta.database, None, cls._meta.double_write_database)
 
         # Select the master DB if we're ever under a transaction.
         if cls._meta.database.transaction_depth() > 0:
-            return cls._meta.database
+            return DoubleWriteWrapper( cls._meta.database, None, cls._meta.double_write_database)
 
         # Select if forced.
         if getattr(cls._meta.database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, 0) > 0:
-            return cls._meta.database
+            return DoubleWriteWrapper(cls._meta.database, None, cls._meta.double_write_database)
 
         # Otherwise, return a read replica database with auto-retry onto the main database.
         replicas = read_only_config.read_replicas
         selected_read_replica = replicas[random.randrange(len(replicas))]
 
-        return DoubleWriteWrapper(selected_read_replica, cls._meta.database, cls._meta.double_write_database)
+        return DoubleWriteWrapper(cls._meta.database,selected_read_replica, cls._meta.double_write_database)
 
     @classmethod
     def select(cls, *args, **kwargs):
@@ -169,6 +167,13 @@ class ReadReplicaSupportedModel(Model):
         query = super(ReadReplicaSupportedModel, cls).insert(*args, **kwargs)
         if cls._in_readonly_mode():
             raise ReadOnlyModeException()
+        query._database = cls._select_database()
+        return query
+
+    @classmethod
+    def insert_many(cls, *args, **kwargs):
+        query = super(ReadReplicaSupportedModel, cls).insert_many(*args, **kwargs)
+        query._database = cls._select_database()
         return query
 
     @classmethod
@@ -176,6 +181,7 @@ class ReadReplicaSupportedModel(Model):
         query = super(ReadReplicaSupportedModel, cls).update(*args, **kwargs)
         if cls._in_readonly_mode():
             raise ReadOnlyModeException()
+        query._database = cls._select_database()
         return query
 
     @classmethod

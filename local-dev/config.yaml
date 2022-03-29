@@ -62,4 +62,4 @@ USER_EVENTS_REDIS:
   port: 6379
 USE_CDN: false
 FEATURE_QUOTA_MANAGEMENT: True
-SECONDARY_WRITE_DB_URI: cockroachdb://quay-cockroach:26257/defaultdb
+SECONDARY_WRITE_DB_URI: cockroachdb://root@quay-cockroach:26257/defaultdb
