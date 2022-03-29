@@ -17,7 +17,7 @@ MANIFEST_LIST_TYPES = [DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE, OCI_IMAGE_INDEX
 
 
 def is_manifest_list_type(content_type):
-    """ Returns True if the given content type refers to a manifest list of some kind. """
+    """Returns True if the given content type refers to a manifest list of some kind."""
     return content_type in MANIFEST_LIST_TYPES
 
 

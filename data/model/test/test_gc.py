@@ -62,7 +62,7 @@ def default_tag_policy(initialized_db):
 
 
 def _delete_temp_links(repo):
-    """ Deletes any temp links to blobs. """
+    """Deletes any temp links to blobs."""
     UploadedBlob.delete().where(UploadedBlob.repository == repo).execute()
 
 
