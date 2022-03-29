@@ -3,7 +3,7 @@ from rediscluster import RedisCluster
 
 
 class ReadEndpointSupportedRedis(object):
-    """ Wrapper class for Redis to split read/write requests between separate endpoints."""
+    """Wrapper class for Redis to split read/write requests between separate endpoints."""
 
     def __init__(self, primary=None, replica=None):
         if not primary or primary.get("host") is None:

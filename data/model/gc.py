@@ -151,7 +151,7 @@ def purge_repository(repo, force=False):
 
 
 def _chunk_delete_all(repo, model, force=False, chunk_size=500):
-    """ Deletes all rows referencing the given repository in the given model. """
+    """Deletes all rows referencing the given repository in the given model."""
     assert repo.state == RepositoryState.MARKED_FOR_DELETION or force
 
     while True:

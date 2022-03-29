@@ -38,7 +38,7 @@ class assert_action_logged(object):
 
 
 class log_queries(object):
-    """ Logs all queries that occur under the context. """
+    """Logs all queries that occur under the context."""
 
     def __init__(self, query_filters=None):
         self.filters = query_filters

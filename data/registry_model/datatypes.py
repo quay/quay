@@ -391,7 +391,7 @@ class Manifest(
         return legacy_id_handler.encode(self._db_id)
 
     def as_manifest(self):
-        """ Returns the manifest or legacy image as a manifest. """
+        """Returns the manifest or legacy image as a manifest."""
         return self
 
     @property
@@ -493,7 +493,7 @@ class LegacyImage(
         )
 
     def with_blob(self, blob):
-        """ Sets the blob for the legacy image. """
+        """Sets the blob for the legacy image."""
         return self._replace(blob=blob)
 
     @property
@@ -516,7 +516,7 @@ class LegacyImage(
         return [self.docker_image_id] + self.ancestor_ids
 
     def as_manifest(self):
-        """ Returns the parent manifest for the legacy image. """
+        """Returns the parent manifest for the legacy image."""
         return self.manifest
 
 
