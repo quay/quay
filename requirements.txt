@@ -3,7 +3,6 @@ git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd
 git+https://github.com/quay/py-bitbucket.git@3ba167408d92eb4ba2cae78c0047b8f1e8821c67#egg=py_bitbucket
 git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14#egg=python_etcd
 git+https://github.com/quay/supervisor-stdout.git@9bdf630d0d1b4a16cf8b60b96adafb1ed98e7380#egg=supervisor_stdout
-aiowsgi==0.7
 alembic==1.3.3
 APScheduler==3.6.3
 attrs==19.3.0

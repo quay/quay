@@ -2,11 +2,6 @@
     {
         "format": "Python", 
         "license": "MIT License", 
-        "project": "aiowsgi"
-    }, 
-    {
-        "format": "Python", 
-        "license": "MIT License", 
         "project": "alembic"
     }, 
     {
