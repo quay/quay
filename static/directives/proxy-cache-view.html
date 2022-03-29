@@ -1,0 +1,53 @@
+<div class="proxy-cache-view-element">
+    <form ng-submit="saveDetails()">
+        <table class="co-list-table">
+            <tbody>
+                <tr>
+                    <td class="td-decoration">
+                        Upstream Registry:
+                    </td>
+                    <td>
+                        <input class="form-control" type="text" required ng-model="currentConfig['upstream_registry']"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Upstream Registry username:
+                    </td>
+                    <td>
+                        <input class="form-control" type="text" ng-model="currentConfig['upstream_registry_username']"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Upstream Registry password:
+                    </td>
+                    <td>
+                        <input class="form-control" type="text" ng-model="currentConfig['upstream_registry_password']"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Expiration:
+                    </td>
+                    <td>
+                        <input class="form-control" type="text" ng-model="currentConfig['expiration_s']"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Insecure:
+                    </td>
+                    <td>
+                        <input class="form-control width-30" type="checkbox" ng-model="currentConfig['insecure']"/>
+                    </td>
+                </tr>
+
+            </tbody>
+        </table>
+        <div class="decorate-form-btn">
+            <button type="submit" class="decorate-save form-control btn-success margin-right-2" ng-disabled="prevEnabled">Save</button>
+            <button class="decorate-save form-control btn-danger" ng-disabled="!prevEnabled" ng-click="deleteConfig()">Remove</button>
+        </div>
+    </form>
+</div>

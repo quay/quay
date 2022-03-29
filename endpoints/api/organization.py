@@ -823,9 +823,9 @@ class OrganizationApplicationResetClientSecret(ApiResource):
 
 def proxy_cache_view(proxy_cache_config):
     return {
-        "id": proxy_cache_config.id,
-        "expiration_s": proxy_cache_config.expiration_s,
-        "insecure": proxy_cache_config.insecure,
+        "upstream_registry": proxy_cache_config.upstream_registry if proxy_cache_config else "",
+        "expiration_s": proxy_cache_config.expiration_s if proxy_cache_config else "",
+        "insecure": proxy_cache_config.insecure if proxy_cache_config else "",
     }
 
 
@@ -840,12 +840,8 @@ class OrganizationProxyCacheConfig(ApiResource):
         "NewProxyCacheConfig": {
             "type": "object",
             "description": "Proxy cache configuration for an organization",
-            "required": ["org_name", "upstream_registry"],
+            "required": ["upstream_registry"],
             "properties": {
-                "org_name": {
-                    "type": "string",
-                    "description": "Name of the organization",
-                },
                 "upstream_registry": {
                     "type": "string",
                     "description": "Name of the upstream registry that is to be cached",
@@ -866,7 +862,8 @@ class OrganizationProxyCacheConfig(ApiResource):
         try:
             config = model.proxy_cache.get_proxy_cache_config_for_org(orgname)
         except model.InvalidProxyCacheConfigException:
-            raise NotFound()
+            return proxy_cache_view(None)
+
         return proxy_cache_view(config)
 
 
@@ -888,6 +885,10 @@ class OrganizationProxyCacheConfig(ApiResource):
             pass
 
         data = request.get_json()
+
+        # filter None values
+        data = {k: v for k, v in data.items() if v is not None}
+
         try:
             new_config = model.proxy_cache.create_proxy_cache_config(**data)
             if new_config is not None:
