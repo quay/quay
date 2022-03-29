@@ -86,13 +86,6 @@ class TagExpired(V2RegistryException):
         super(TagExpired, self).__init__("TAG_EXPIRED", message or "Tag has expired", detail, 404)
 
 
-class ManifestUnverified(V2RegistryException):
-    def __init__(self, detail=None):
-        super(ManifestUnverified, self).__init__(
-            "MANIFEST_UNVERIFIED", "manifest failed signature verification", detail
-        )
-
-
 class NameInvalid(V2RegistryException):
     def __init__(self, detail=None, message=None):
         super(NameInvalid, self).__init__(
@@ -112,18 +105,6 @@ class SizeInvalid(V2RegistryException):
         super(SizeInvalid, self).__init__(
             "SIZE_INVALID", "provided length did not match content length", detail
         )
-
-
-class TagAlreadyExists(V2RegistryException):
-    def __init__(self, detail=None):
-        super(TagAlreadyExists, self).__init__(
-            "TAG_ALREADY_EXISTS", "tag was already pushed", detail, 409
-        )
-
-
-class TagInvalid(V2RegistryException):
-    def __init__(self, detail=None):
-        super(TagInvalid, self).__init__("TAG_INVALID", "manifest tag did not match URI", detail)
 
 
 class LayerTooLarge(V2RegistryException):
