@@ -132,8 +132,11 @@ class Proxy:
         username = self._config.upstream_registry_username
         password = self._config.upstream_registry_password
         if username is not None and password is not None:
-            auth = (username.decrypt(), password.decrypt()) if not \
-                (type(username) != str and type(password) != str) else (username, password)
+            auth = (
+                (username, password)
+                if isinstance(username, str) and isinstance(password, str)
+                else (username.decrypt(), password.decrypt())
+            )
         return auth
 
     def _authorize(self, auth: tuple[str, str] | None = None, force_renewal: bool = False) -> None:
@@ -174,7 +177,7 @@ class Proxy:
         resp = self._session.get(auth_url, auth=basic_auth)
         if not resp.ok:
             raise UpstreamRegistryError(
-                f"Failed to get token from '{auth_url}', {resp.status_code}"
+                f"Failed to get token from: '{realm}', with status code: {resp.status_code}"
             )
 
         resp_json = resp.json()

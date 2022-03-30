@@ -5634,7 +5634,7 @@ SECURITY_TESTS: List[
     (
         OrganizationProxyCacheConfig,
         "DELETE",
-        {"orgname": "library"},
+        {"orgname": "proxyorg"},
         None,
         "devtable",
         201,

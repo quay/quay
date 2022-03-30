@@ -47,14 +47,12 @@ def get_proxy_cache_config_for_org(org_name):
 
 def delete_proxy_cache_config(org_name):
     """
-        Delete proxy cache configuration for the given organization name
+    Delete proxy cache configuration for the given organization name
     """
     org = get_organization(org_name)
 
     try:
-        config = (
-            ProxyCacheConfig.select().where(ProxyCacheConfig.organization == org.id)
-        ).get()
+        config = (ProxyCacheConfig.select().where(ProxyCacheConfig.organization == org.id)).get()
     except ProxyCacheConfig.DoesNotExist:
         return False
 

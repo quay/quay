@@ -48,7 +48,7 @@ from data.database import ProxyCacheConfig
 from data.billing import get_plan
 from util.names import parse_robot_username
 from util.request import get_request_ip
-from proxy import Proxy
+from proxy import Proxy, UpstreamRegistryError
 
 logger = logging.getLogger(__name__)
 
@@ -837,6 +837,7 @@ class OrganizationProxyCacheConfig(ApiResource):
     """
     Resource for managing Proxy Cache Config.
     """
+
     schemas = {
         "NewProxyCacheConfig": {
             "type": "object",
@@ -854,7 +855,7 @@ class OrganizationProxyCacheConfig(ApiResource):
     @nickname("getProxyCacheConfig")
     def get(self, orgname):
         """
-            Retrieves the proxy cache configuration of the organization.
+        Retrieves the proxy cache configuration of the organization.
         """
         permission = OrganizationMemberPermission(orgname)
         if not permission.can():
@@ -867,12 +868,11 @@ class OrganizationProxyCacheConfig(ApiResource):
 
         return proxy_cache_view(config)
 
-
     @nickname("createProxyCacheConfig")
     @validate_json_request("NewProxyCacheConfig")
     def post(self, orgname):
         """
-            Creates proxy cache configuration for the organization.
+        Creates proxy cache configuration for the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can():
@@ -886,7 +886,7 @@ class OrganizationProxyCacheConfig(ApiResource):
 
         data = request.get_json()
         # filter None values
-        data = {k: v for k, v in data.items() if (v is not None or not '')}
+        data = {k: v for k, v in data.items() if (v is not None or not "")}
 
         try:
             config = model.proxy_cache.create_proxy_cache_config(**data)
@@ -897,11 +897,10 @@ class OrganizationProxyCacheConfig(ApiResource):
 
         return request_error("Error while creating Proxy cache configuration")
 
-
     @nickname("deleteProxyCacheConfig")
     def delete(self, orgname):
         """
-            Delete proxy cache configuration for the organization.
+        Delete proxy cache configuration for the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
         if not permission.can():
@@ -925,8 +924,9 @@ class OrganizationProxyCacheConfig(ApiResource):
 @show_if(features.PROXY_CACHE)
 class ProxyCacheConfigValidation(ApiResource):
     """
-        Resource for validating Proxy Cache Config.
+    Resource for validating Proxy Cache Config.
     """
+
     schemas = {
         "NewProxyCacheConfig": {
             "type": "object",
@@ -968,8 +968,6 @@ class ProxyCacheConfigValidation(ApiResource):
             response = proxy.get(f"{proxy.base_url}/v2/")
             if response.status_code == 200:
                 return "Valid", 200
-        except Exception as e:
-            logger.error("Error while trying to validate Proxy cache configuration as: %s", str(e))
+        except UpstreamRegistryError as e:
+            raise request_error(message=str(e))
         raise request_error(message="Failed to validate Proxy cache configuration")
-
-

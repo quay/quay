@@ -8,16 +8,15 @@ angular.module('quay').directive('proxyCacheView', function () {
         scope: {
             'organization': '=organization'
         },
-        controller: function ($scope, $timeout, $location, $element, ApiService, UserService,
-                          TableService, Features, StateService, $q) {
+        controller: function ($scope, $timeout, $location, $element, ApiService) {
             $scope.prevEnabled = false;
 
             $scope.initializeData = function () {
                 return {
-                    'org_name': $scope.organization.name,
+                    "org_name": $scope.organization.name,
+                    "expiration_s": 86400,
+                    "insecure": false,
                     'upstream_registry': null,
-                    'expiration_s': 86400,
-                    'insecure': false,
                     'upstream_registry_username': null,
                     'upstream_registry_password': null,
                 };
@@ -28,8 +27,8 @@ angular.module('quay').directive('proxyCacheView', function () {
                 ApiService.getProxyCacheConfig(null, {'orgname': $scope.currentConfig.org_name})
                     .then((resp) => {
                         $scope.currentConfig['upstream_registry'] = resp["upstream_registry"];
-                        $scope.currentConfig['expiration_s'] = resp["expiration_s"];
-                        $scope.currentConfig['insecure'] = resp["insecure"];
+                        $scope.currentConfig['expiration_s'] = resp["expiration_s"] || 86400;
+                        $scope.currentConfig['insecure'] = resp["insecure"] || false;
 
                         if ($scope.currentConfig['upstream_registry']) {
                             $scope.prevEnabled = true;
