@@ -968,6 +968,9 @@ class TestDeleteNamespace(ApiTestCase):
             )
             self.deleteResponse(User, expected_code=400)  # Should still fail.
             self.deleteEmptyResponse(Organization, params=dict(orgname="titi"), expected_code=204)
+            self.deleteEmptyResponse(
+                Organization, params=dict(orgname="proxyorg"), expected_code=204
+            )
 
         # Add some queue items for the user.
         notification_queue.put([ADMIN_ACCESS_USER, "somerepo", "somename"], "{}")
