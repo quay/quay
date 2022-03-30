@@ -5634,7 +5634,7 @@ SECURITY_TESTS: List[
     (
         OrganizationProxyCacheConfig,
         "DELETE",
-        {"orgname": "sellnsmall"},
+        {"orgname": "library"},
         None,
         "devtable",
         201,
