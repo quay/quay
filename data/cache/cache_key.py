@@ -9,11 +9,13 @@ class CacheKey(namedtuple("CacheKey", ["key", "expiration"])):
     pass
 
 
-def for_upstream_registry_token(org_name, repo_name, expires_in):
+def for_upstream_registry_token(org_name, upstream_registry, repo_name, expires_in):
     """
     Returns a cache key for an upstream registry auth token.
     """
-    key = f"upstream_token__{org_name}_{repo_name}"
+    # use / to separate input values because org names cannot contain /, meaning
+    # that the token cannot be spoofed by a malicious actor.
+    key = f"upstream_token__{org_name}/{upstream_registry}/{repo_name}"
     return CacheKey(key, expires_in)
 
 
