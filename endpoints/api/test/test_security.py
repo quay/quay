@@ -5603,14 +5603,6 @@ SECURITY_TESTS: List[
         OrganizationProxyCacheConfig,
         "POST",
         {"orgname": "sellnsmall"},
-        {"org_name": "sellnsmall", "upstream_registry": "some-upstream-registry"},
-        "devtable",
-        400,
-    ),  # Configuration already exists
-    (
-        OrganizationProxyCacheConfig,
-        "POST",
-        {"orgname": "sellnsmall"},
         {"org_name": "sellnsmall", "upstream_registry": None},
         "devtable",
         400,
