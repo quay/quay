@@ -209,16 +209,16 @@ local-dev-up: local-dev-clean node_modules | quay-build-image
 	@echo "You can now access the frontend at http://localhost:8080"
 
 local-docker-rebuild:
-	docker-compose up -d redis --build
-	docker-compose up -d quay-db --build
+	docker-compose up -d --build redis
+	docker-compose up -d --build quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	DOCKER_USER="$$(id -u):0" docker-compose up -d quay --build
+	DOCKER_USER="$$(id -u):0" docker-compose up -d --build quay
 	docker-compose restart quay
 
 ifeq ($(CLAIR),true)
-	docker-compose up -d clair-db --build
+	docker-compose up -d --build clair-db
 	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d clair --build
+	docker-compose up -d --build clair
 	docker-compose restart clair
 else
 	@echo "Skipping Clair"
