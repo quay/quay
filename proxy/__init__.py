@@ -170,7 +170,9 @@ class Proxy:
 
         resp = self._session.get(auth_url, auth=basic_auth)
         if not resp.ok:
-            raise Exception(f"Failed to get token from '{auth_url}', {resp.status_code}")
+            raise UpstreamRegistryError(
+                f"Failed to get token from '{auth_url}', {resp.status_code}"
+            )
 
         resp_json = resp.json()
         token = resp_json.get("token")
@@ -187,6 +189,7 @@ class Proxy:
     def _cache_key(self, expires_in=TOKEN_VALIDITY_LIFETIME_S):
         key = cache_key.for_upstream_registry_token(
             self._config.organization.username,
+            self._config.upstream_registry,
             self._repo,
             f"{expires_in}s",
         )
