@@ -43,8 +43,9 @@ def parse_www_auth(value: str) -> dict[str, str]:
 
 
 class Proxy:
-    def __init__(self, config: ProxyCacheConfig, repository: str):
+    def __init__(self, config: ProxyCacheConfig, repository: str, validation: bool = False):
         self._config = config
+        self._validation = validation
 
         hostname = REGISTRY_URLS.get(
             config.upstream_registry_hostname,
@@ -58,6 +59,8 @@ class Proxy:
         self._session = requests.Session()
         self._repo = repository
         self._authorize(self._credentials())
+        # flag used for validating Proxy cache config before saving to db
+
 
     def get_manifest(
         self, image_ref: str, media_types: list[str] | None = None
@@ -130,7 +133,7 @@ class Proxy:
         username = self._config.upstream_registry_username
         password = self._config.upstream_registry_password
         if username is not None and password is not None:
-            auth = (username.decrypt(), password.decrypt())
+            auth = (username.decrypt(), password.decrypt()) if not self._validation else (username, password)
         return auth
 
     def _authorize(self, auth: tuple[str, str] | None = None, force_renewal: bool = False) -> None:

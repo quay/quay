@@ -16,7 +16,7 @@ angular.module('quay').directive('proxyCacheView', function () {
                 return {
                     'org_name': $scope.organization.name,
                     'upstream_registry': null,
-                    'expiration_s': null,
+                    'expiration_s': 86400,
                     'insecure': false,
                     'upstream_registry_username': null,
                     'upstream_registry_password': null,
@@ -44,16 +44,22 @@ angular.module('quay').directive('proxyCacheView', function () {
 
             $scope.saveDetails = function () {
                 let params = {'orgname': $scope.currentConfig.org_name};
-                ApiService.createProxyCacheConfig($scope.currentConfig, params).then((resp) => {
-                    console.log("response is", resp);
-                },  displayError());
-                fetchProxyConfig();
+
+                // validate payload
+                ApiService.validateProxyCacheConfig($scope.currentConfig, params).then(function(response) {
+                    if (response == "Valid") {
+                        // save payload
+                        ApiService.createProxyCacheConfig($scope.currentConfig, params).then((resp) => {
+                            fetchProxyConfig();
+                        },  displayError());
+                    }
+                },  displayError("Failed to Validate!"));
+
             }
 
             $scope.deleteConfig = function () {
                 let params = {'orgname': $scope.currentConfig.org_name};
                 ApiService.deleteProxyCacheConfig(null, params).then((resp) => {
-                    console.log("response is", resp);
                     $scope.prevEnabled = false;
                 }, displayError());
                 $scope.currentConfig = $scope.initializeData();

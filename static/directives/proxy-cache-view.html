@@ -4,34 +4,49 @@
             <tbody>
                 <tr>
                     <td class="td-decoration">
-                        Upstream Registry:
+                        Remote Registry:
                     </td>
                     <td>
                         <input class="form-control" type="text" required ng-model="currentConfig['upstream_registry']"/>
+                        <div class="help-text">
+                            Remote registry that is to be cached. (Eg: For docker hub, docker.io, docker.io/library, docker.io/library/busybox)
+                        </div>
                     </td>
                 </tr>
                 <tr>
                     <td class="td-decoration">
-                        Upstream Registry username:
+                        Remote Registry username:
                     </td>
                     <td>
-                        <input class="form-control" type="text" ng-model="currentConfig['upstream_registry_username']"/>
+                        <input id="remote-registry-username" class="form-control" type="text" ng-model="currentConfig['upstream_registry_username']"/>
+                        <div class="help-text">
+                            Username for authenticating into the entered remote registry
+                        </div>
                     </td>
                 </tr>
                 <tr>
                     <td class="td-decoration">
-                        Upstream Registry password:
+                        Remote Registry password:
                     </td>
                     <td>
-                        <input class="form-control" type="text" ng-model="currentConfig['upstream_registry_password']"/>
+                        <input id="remote-registry-password" class="form-control" type="password" ng-model="currentConfig['upstream_registry_password']"/>
+                        <div class="help-text">
+                            Password for authenticating into the entered remote registry
+                        </div>
                     </td>
                 </tr>
                 <tr>
                     <td class="td-decoration">
                         Expiration:
+                        <div class="help-text">
+                            In seconds
+                        </div>
                     </td>
                     <td>
-                        <input class="form-control" type="text" ng-model="currentConfig['expiration_s']"/>
+                        <input class="form-control" type="number" min="1" max="2147483647" ng-model="currentConfig['expiration_s']"/>
+                        <div class="help-text">
+                            Number of seconds until which the cache will not expire. Default is 86400 i.e, 24 hours
+                        </div>
                     </td>
                 </tr>
                 <tr>
@@ -40,6 +55,10 @@
                     </td>
                     <td>
                         <input class="form-control width-30" type="checkbox" ng-model="currentConfig['insecure']"/>
+                        <div class="help-text">
+                            If set, http (unsecure protocol) will be used. If not set, https (secure protocol) will be used
+                            to request the remote registry.
+                        </div>
                     </td>
                 </tr>
 
