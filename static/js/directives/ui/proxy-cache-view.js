@@ -10,6 +10,8 @@ angular.module('quay').directive('proxyCacheView', function () {
         },
         controller: function ($scope, $timeout, $location, $element, ApiService) {
             $scope.prevEnabled = false;
+            $scope.alertSaveSuccess = false;
+            $scope.alertRemoveSuccess = false;
 
             $scope.initializeData = function () {
                 return {
@@ -50,16 +52,36 @@ angular.module('quay').directive('proxyCacheView', function () {
                         // save payload
                         ApiService.createProxyCacheConfig($scope.currentConfig, params).then((resp) => {
                             fetchProxyConfig();
+                            alertSaveSuccessMessage();
                         },  displayError());
                     }
-                },  displayError("Failed to Validate!"));
+                },  displayError("Validation Error"));
 
             }
+
+            var alertSaveSuccessMessage = function() {
+                $timeout(function () {
+                    $scope.alertSaveSuccess = true;
+                }, 1);
+                $timeout(function () {
+                    $scope.alertSaveSuccess = false;
+                }, 5000);
+            };
+
+            var alertRemoveSuccessMessage = function() {
+                $timeout(function () {
+                    $scope.alertRemoveSuccess = true;
+                }, 1);
+                $timeout(function () {
+                    $scope.alertRemoveSuccess = false;
+                }, 5000);
+            };
 
             $scope.deleteConfig = function () {
                 let params = {'orgname': $scope.currentConfig.org_name};
                 ApiService.deleteProxyCacheConfig(null, params).then((resp) => {
                     $scope.prevEnabled = false;
+                    alertRemoveSuccessMessage();
                 }, displayError());
                 $scope.currentConfig = $scope.initializeData();
             }

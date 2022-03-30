@@ -65,6 +65,13 @@
 
             </tbody>
         </table>
+        <div class="co-alert co-alert-success" ng-show="alertSaveSuccess">
+            Successfully created proxy cache configuration
+        </div>
+        <div class="co-alert co-alert-success" ng-show="alertRemoveSuccess">
+            Successfully removed proxy cache configuration
+        </div>
+
         <div class="decorate-form-btn">
             <button type="submit" class="decorate-save form-control btn-success margin-right-2" ng-disabled="prevEnabled">Save</button>
             <button class="decorate-save form-control btn-danger" ng-disabled="!prevEnabled" ng-click="deleteConfig()">Remove</button>

@@ -969,5 +969,7 @@ class ProxyCacheConfigValidation(ApiResource):
             if response.status_code == 200:
                 return "Valid", 202
         except UpstreamRegistryError as e:
-            raise request_error(message=str(e))
+            raise request_error(
+                message="Failed login to remote registry. Please verify entered details and try again."
+            )
         raise request_error(message="Failed to validate Proxy cache configuration")
