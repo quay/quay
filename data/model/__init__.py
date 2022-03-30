@@ -117,6 +117,10 @@ class InvalidSystemQuotaConfig(Exception):
     pass
 
 
+class QuotaExceededException(DataModelException):
+    pass
+
+
 class TooManyLoginAttemptsException(Exception):
     def __init__(self, message, retry_after):
         super(TooManyLoginAttemptsException, self).__init__(message)
