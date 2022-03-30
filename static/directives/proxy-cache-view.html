@@ -9,7 +9,7 @@
                     <td>
                         <input class="form-control" type="text" required ng-model="currentConfig['upstream_registry']"/>
                         <div class="help-text">
-                            Remote registry that is to be cached. (Eg: For docker hub, docker.io, docker.io/library, docker.io/library/busybox)
+                            Remote registry that is to be cached. (Eg: For docker hub, docker.io, docker.io/library)
                         </div>
                     </td>
                 </tr>
@@ -45,7 +45,8 @@
                     <td>
                         <input class="form-control" type="number" min="1" max="2147483647" ng-model="currentConfig['expiration_s']"/>
                         <div class="help-text">
-                            Number of seconds until which the cache will not expire. Default is 86400 i.e, 24 hours
+                            Default tag expiration for cached images, in seconds. This value is refreshed on every pull.
+                            Default is 86400 i.e, 24 hours.
                         </div>
                     </td>
                 </tr>

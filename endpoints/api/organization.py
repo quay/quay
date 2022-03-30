@@ -879,9 +879,8 @@ class OrganizationProxyCacheConfig(ApiResource):
             raise Unauthorized()
 
         try:
-            config = model.proxy_cache.get_proxy_cache_config_for_org(orgname)
-            if config:
-                raise request_error("Proxy Cache Configuration already exists")
+            model.proxy_cache.get_proxy_cache_config_for_org(orgname)
+            raise request_error("Proxy Cache Configuration already exists")
         except model.InvalidProxyCacheConfigException:
             pass
 
@@ -950,9 +949,8 @@ class ProxyCacheConfigValidation(ApiResource):
             raise Unauthorized()
 
         try:
-            config = model.proxy_cache.get_proxy_cache_config_for_org(orgname)
-            if config:
-                raise request_error("Proxy Cache Configuration already exists")
+            model.proxy_cache.get_proxy_cache_config_for_org(orgname)
+            request_error("Proxy Cache Configuration already exists")
         except model.InvalidProxyCacheConfigException:
             pass
 
@@ -966,7 +964,7 @@ class ProxyCacheConfigValidation(ApiResource):
             existing = model.organization.get_organization(orgname)
             config.organization = existing
 
-            proxy = Proxy(config, "", True)
+            proxy = Proxy(config, "something-totally-fake", True)
             response = proxy.get(f"{proxy.base_url}/v2/")
             if response.status_code == 200:
                 return "Valid", 200

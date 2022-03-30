@@ -886,7 +886,9 @@ def populate_database(minimal=False):
 
     model.user.create_robot("coolrobot", org)
 
-    model.proxy_cache.create_proxy_cache_config(thirdorg.username, "docker.io")
+    proxyorg = model.organization.create_organization("proxyorg", "quay@devtable.com", new_user_1)
+    proxyorg.save()
+    model.proxy_cache.create_proxy_cache_config(proxyorg.username, "docker.io")
 
     oauth_app_1 = model.oauth.create_application(
         org,
