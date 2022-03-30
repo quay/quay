@@ -5570,7 +5570,7 @@ SECURITY_TESTS: List[
     (
         OrganizationProxyCacheConfig,
         "GET",
-        {"orgname": "sellnsmall"},
+        {"orgname": "buynlarge"},
         None,
         "randomuser",
         403,
@@ -5586,16 +5586,16 @@ SECURITY_TESTS: List[
     (
         OrganizationProxyCacheConfig,
         "POST",
-        {"orgname": "sellnsmall"},
-        {"org_name": "sellnsmall", "upstream_registry": "some-upstream-registry"},
+        {"orgname": "buynlarge"},
+        {"org_name": "buynlarge", "upstream_registry": "some-upstream-registry"},
         None,
         401,
     ),
     (
         OrganizationProxyCacheConfig,
         "POST",
-        {"orgname": "sellnsmall"},
-        {"org_name": "sellnsmall", "upstream_registry": "some-upstream-registry"},
+        {"orgname": "buynlarge"},
+        {"org_name": "buynlarge", "upstream_registry": "some-upstream-registry"},
         "randomuser",
         403,
     ),
@@ -5626,7 +5626,7 @@ SECURITY_TESTS: List[
     (
         OrganizationProxyCacheConfig,
         "DELETE",
-        {"orgname": "sellnsmall"},
+        {"orgname": "buynlarge"},
         None,
         None,
         401,
@@ -5634,7 +5634,7 @@ SECURITY_TESTS: List[
     (
         OrganizationProxyCacheConfig,
         "DELETE",
-        {"orgname": "sellnsmall"},
+        {"orgname": "buynlarge"},
         None,
         "randomuser",
         403,
