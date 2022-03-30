@@ -967,7 +967,7 @@ class ProxyCacheConfigValidation(ApiResource):
             proxy = Proxy(config, "something-totally-fake", True)
             response = proxy.get(f"{proxy.base_url}/v2/")
             if response.status_code == 200:
-                return "Valid", 200
+                return "Valid", 202
         except UpstreamRegistryError as e:
             raise request_error(message=str(e))
         raise request_error(message="Failed to validate Proxy cache configuration")

@@ -5639,6 +5639,38 @@ SECURITY_TESTS: List[
         "devtable",
         201,
     ),
+    (
+        ProxyCacheConfigValidation,
+        "POST",
+        {"orgname": "buynlarge"},
+        {"org_name": "buynlarge", "upstream_registry": "some-upstream-registry"},
+        None,
+        401,
+    ),
+    (
+        ProxyCacheConfigValidation,
+        "POST",
+        {"orgname": "buynlarge"},
+        {"org_name": "buynlarge", "upstream_registry": "some-upstream-registry"},
+        "randomuser",
+        403,
+    ),
+    (
+        ProxyCacheConfigValidation,
+        "POST",
+        {"orgname": "sellnsmall"},
+        {"org_name": "sellnsmall", "upstream_registry": None},
+        "devtable",
+        400,
+    ),
+    (
+        ProxyCacheConfigValidation,
+        "POST",
+        {"orgname": "buynlarge"},
+        {"org_name": "buynlarge", "upstream_registry": "docker.io"},
+        "devtable",
+        202,
+    ),
 ]
 
 
