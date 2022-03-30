@@ -27,11 +27,13 @@ from endpoints.v2.errors import (
     Unsupported,
     NameUnknown,
     ReadOnlyMode,
+    InvalidRequest,
 )
 from util.http import abort
 from util.metrics.prometheus import timed_blueprint
 from util.registry.dockerver import docker_version
 from util.pagination import encrypt_page_token, decrypt_page_token
+from proxy import UpstreamRegistryError
 
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,15 @@ def handle_readonly(ex):
     error = ReadOnlyMode()
     response = jsonify({"errors": [error.as_dict()]})
     response.status_code = error.http_status_code
+    logger.debug("sending response: %s", response.get_data())
+    return response
+
+
+@v2_bp.app_errorhandler(UpstreamRegistryError)
+def handle_proxy_cache_errors(error):
+    e = InvalidRequest(message=str(error))
+    response = jsonify({"errors": [e.as_dict()]})
+    response.status_code = e.http_status_code
     logger.debug("sending response: %s", response.get_data())
     return response
 
