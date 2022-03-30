@@ -348,8 +348,10 @@ class RedisOrchestrator(Orchestrator):
 
                 # Mark key as expired. This key is used to track post job cleanup in the callback,
                 # to allow another manager to pickup the cleanup if this fails.
-                self._client.set(slash_join(key, REDIS_EXPIRED_SUFFIX), expired_value)
-                self._client.delete(key)
+                if expired_value:
+                    self._client.set(slash_join(key, REDIS_EXPIRED_SUFFIX), expired_value)
+                    self._client.delete(key)
+
         except redis.ConnectionError:
             _sleep_orchestrator()
         except redis.RedisError as re:
