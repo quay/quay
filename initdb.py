@@ -871,8 +871,6 @@ def populate_database(minimal=False):
 
     model.namespacequota.create_namespace_limit(org.username, 1, 50)
 
-    model.proxy_cache.create_proxy_cache_config(org.username, "some-upstream-registry")
-
     liborg = model.organization.create_organization(
         "library", "quay+library@devtable.com", new_user_1
     )
@@ -887,6 +885,8 @@ def populate_database(minimal=False):
     thirdorg.save()
 
     model.user.create_robot("coolrobot", org)
+
+    model.proxy_cache.create_proxy_cache_config(thirdorg.username, "docker.io")
 
     oauth_app_1 = model.oauth.create_application(
         org,
