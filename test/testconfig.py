@@ -1,5 +1,6 @@
 import os
 
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
 
@@ -80,8 +81,8 @@ class TestConfig(DefaultConfig):
 
     PROMETHEUS_PUSHGATEWAY_URL = None
 
-    GITHUB_LOGIN_CONFIG = {}
-    GOOGLE_LOGIN_CONFIG = {}
+    GITHUB_LOGIN_CONFIG: Optional[Dict[str, Any]] = {}
+    GOOGLE_LOGIN_CONFIG: Optional[Dict[str, Any]] = {}
 
     FEATURE_GITHUB_LOGIN = True
     FEATURE_GOOGLE_LOGIN = True
@@ -111,6 +112,6 @@ class TestConfig(DefaultConfig):
 
     FEATURE_REPO_MIRROR = True
     FEATURE_GENERAL_OCI_SUPPORT = True
-    OCI_NAMESPACE_WHITELIST = []
+    OCI_NAMESPACE_WHITELIST: List[str] = []
 
     FEATURE_USER_INITIALIZE = True

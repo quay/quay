@@ -30,7 +30,7 @@
 
 import collections
 import json
-from json.encoder import encode_basestring, encode_basestring_ascii, INFINITY
+from json.encoder import encode_basestring, encode_basestring_ascii, INFINITY  # type: ignore
 from types import GeneratorType
 
 

@@ -1,3 +1,4 @@
+from typing import DefaultDict, Tuple
 from app import billing
 from collections import defaultdict
 
@@ -8,7 +9,7 @@ def empty_tuple():
     return (0, 0)
 
 
-plan_revenue = defaultdict(empty_tuple)
+plan_revenue: DefaultDict[Tuple[int, int], Tuple[int, int]] = defaultdict(empty_tuple)
 
 batch = billing.Customer.all(count=100, offset=offset)
 while batch.data:

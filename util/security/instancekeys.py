@@ -61,7 +61,7 @@ class InstanceKeys(object):
         """
         return self.app.config.get("INSTANCE_SERVICE_KEY_EXPIRATION", 120)
 
-    @property
+    @property  # type: ignore
     @lru_cache(maxsize=1)
     def local_key_id(self):
         """
@@ -69,7 +69,7 @@ class InstanceKeys(object):
         """
         return _load_file_contents(self.app.config["INSTANCE_SERVICE_KEY_KID_LOCATION"])
 
-    @property
+    @property  # type: ignore
     @lru_cache(maxsize=1)
     def local_private_key(self):
         """

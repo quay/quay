@@ -1,10 +1,11 @@
+from typing import Optional
 from oauth.services.github import GithubOAuthService
 from util.config.validators import BaseValidator, ConfigValidationException
 
 
 class BaseGitHubValidator(BaseValidator):
-    name = None
-    config_key = None
+    name: Optional[str] = None
+    config_key: Optional[str] = None
 
     @classmethod
     def validate(cls, validator_context):

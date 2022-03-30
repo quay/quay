@@ -17,7 +17,7 @@ import toposort
 
 from enum import IntEnum, Enum, unique
 from peewee import *
-from peewee import __exception_wrapper__, Function
+from peewee import __exception_wrapper__, Function  # type: ignore
 from playhouse.pool import (
     PooledDatabase,
     PooledMySQLDatabase,

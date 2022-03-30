@@ -1,3 +1,4 @@
+from typing import Union, List
 import os
 import os.path
 import sys
@@ -9,8 +10,8 @@ QUAYCONF_DIR = os.getenv("QUAYCONF", os.path.join(QUAYDIR, QUAYPATH, "conf"))
 
 QUAY_LOGGING = os.getenv("QUAY_LOGGING", "stdout")  # or "syslog"
 
-QUAY_SERVICES = os.getenv("QUAY_SERVICES", [])
-QUAY_OVERRIDE_SERVICES = os.getenv("QUAY_OVERRIDE_SERVICES", [])
+QUAY_SERVICES: Union[List, str] = os.getenv("QUAY_SERVICES", [])
+QUAY_OVERRIDE_SERVICES: Union[List, str] = os.getenv("QUAY_OVERRIDE_SERVICES", [])
 
 
 def registry_services():
