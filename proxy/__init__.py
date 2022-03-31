@@ -160,7 +160,7 @@ class Proxy:
 
         # the /v2/ endpoint returns 401 when the client is not authorized.
         # if we get 200, there's no need to proceed.
-        resp = self._session.get(f"{self.base_url}/v2/")
+        resp = self._safe_request(self._session.get, f"{self.base_url}/v2/")
         if resp.status_code == 200:
             return
 
