@@ -664,7 +664,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
         assert updated_tag.lifetime_end_ms > manifest_tag.lifetime_end_ms
         assert updated_list_tag.lifetime_end_ms > manifest_list_tag.lifetime_end_ms
 
-    def test_update_manifest_bytes_when_manifest_is_placeholder(
+    def test_update_relevant_manifest_fields_when_manifest_is_placeholder(
         self, create_repo, proxy_manifest_response
     ):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
@@ -699,6 +699,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
         mbytes = manifest.internal_manifest_bytes.as_unicode()
         assert mbytes != ""
         assert manifest.digest == UBI8_LATEST_DIGEST
+        assert manifest.layers_compressed_size == 772795
 
     def test_renew_tag_when_cache_is_expired_and_manifest_is_up_to_date_with_upstream(
         self, create_repo, proxy_manifest_response

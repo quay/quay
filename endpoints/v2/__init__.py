@@ -5,7 +5,7 @@ from functools import wraps
 from urllib.parse import urlparse
 from urllib.parse import urlencode
 
-from flask import Blueprint, make_response, url_for, request, jsonify
+from flask import Blueprint, make_response, url_for, request, jsonify, Response
 from semantic_version import Spec
 
 import features
@@ -20,6 +20,7 @@ from auth.permissions import (
 from auth.registry_jwt_auth import process_registry_jwt_auth, get_auth_headers
 from data.registry_model import registry_model
 from data.readreplica import ReadOnlyModeException
+from data.model import QuotaExceededException
 from endpoints.decorators import anon_protect, anon_allowed, route_show_if
 from endpoints.v2.errors import (
     V2RegistryException,
@@ -28,6 +29,7 @@ from endpoints.v2.errors import (
     NameUnknown,
     ReadOnlyMode,
     InvalidRequest,
+    QuotaExceeded,
 )
 from util.http import abort
 from util.metrics.prometheus import timed_blueprint
@@ -53,18 +55,22 @@ def handle_registry_v2_exception(error):
 
 @v2_bp.app_errorhandler(ReadOnlyModeException)
 def handle_readonly(ex):
-    error = ReadOnlyMode()
-    response = jsonify({"errors": [error.as_dict()]})
-    response.status_code = error.http_status_code
-    logger.debug("sending response: %s", response.get_data())
-    return response
+    return _format_error_response(ReadOnlyMode())
 
 
 @v2_bp.app_errorhandler(UpstreamRegistryError)
-def handle_proxy_cache_errors(error):
-    e = InvalidRequest(message=str(error))
-    response = jsonify({"errors": [e.as_dict()]})
-    response.status_code = e.http_status_code
+def handle_proxy_cache_error(error):
+    return _format_error_response(InvalidRequest(message=str(error)))
+
+
+@v2_bp.app_errorhandler(QuotaExceededException)
+def handle_quota_error(error):
+    return _format_error_response(QuotaExceeded())
+
+
+def _format_error_response(error: Exception) -> Response:
+    response = jsonify({"errors": [error.as_dict()]})
+    response.status_code = error.http_status_code
     logger.debug("sending response: %s", response.get_data())
     return response
 
