@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 
 import requests
+from requests.exceptions import RequestException
 
 from app import model_cache
 from data.cache import cache_key
@@ -119,13 +120,19 @@ class Proxy:
         return self._request(self._session.head, *args, **kwargs)
 
     def _request(self, request_func, *args, **kwargs) -> requests.Response:
-        resp = request_func(*args, **kwargs)
+        resp = self._safe_request(request_func, *args, **kwargs)
         if resp.status_code == 401:
             self._authorize(self._credentials(), force_renewal=True)
-            resp = request_func(*args, **kwargs)
+            resp = self._safe_request(request_func, *args, **kwargs)
         if not resp.ok:
             raise UpstreamRegistryError(resp.status_code)
         return resp
+
+    def _safe_request(self, request_func, *args, **kwargs):
+        try:
+            return request_func(*args, **kwargs)
+        except (RequestException, ConnectionError) as e:
+            raise UpstreamRegistryError(str(e))
 
     def _credentials(self) -> tuple[str, str] | None:
         auth = None
@@ -174,7 +181,7 @@ class Proxy:
         if auth is not None:
             basic_auth = requests.auth.HTTPBasicAuth(auth[0], auth[1])
 
-        resp = self._session.get(auth_url, auth=basic_auth)
+        resp = self._safe_request(self._session.get, auth_url, auth=basic_auth)
         if not resp.ok:
             raise UpstreamRegistryError(
                 f"Failed to get token from: '{realm}', with status code: {resp.status_code}"
