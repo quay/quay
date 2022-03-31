@@ -43,8 +43,9 @@ def parse_www_auth(value: str) -> dict[str, str]:
 
 
 class Proxy:
-    def __init__(self, config: ProxyCacheConfig, repository: str):
+    def __init__(self, config: ProxyCacheConfig, repository: str, validation: bool = False):
         self._config = config
+        self._validation = validation
 
         hostname = REGISTRY_URLS.get(
             config.upstream_registry_hostname,
@@ -57,7 +58,8 @@ class Proxy:
         self.base_url = url
         self._session = requests.Session()
         self._repo = repository
-        self._authorize(self._credentials())
+        self._authorize(self._credentials(), force_renewal=self._validation)
+        # flag used for validating Proxy cache config before saving to db
 
     def get_manifest(
         self, image_ref: str, media_types: list[str] | None = None
@@ -130,7 +132,11 @@ class Proxy:
         username = self._config.upstream_registry_username
         password = self._config.upstream_registry_password
         if username is not None and password is not None:
-            auth = (username.decrypt(), password.decrypt())
+            auth = (
+                (username, password)
+                if isinstance(username, str) and isinstance(password, str)
+                else (username.decrypt(), password.decrypt())
+            )
         return auth
 
     def _authorize(self, auth: tuple[str, str] | None = None, force_renewal: bool = False) -> None:
@@ -171,7 +177,7 @@ class Proxy:
         resp = self._session.get(auth_url, auth=basic_auth)
         if not resp.ok:
             raise UpstreamRegistryError(
-                f"Failed to get token from '{auth_url}', {resp.status_code}"
+                f"Failed to get token from: '{realm}', with status code: {resp.status_code}"
             )
 
         resp_json = resp.json()

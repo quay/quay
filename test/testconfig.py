@@ -111,3 +111,4 @@ class TestConfig(DefaultConfig):
 
     FEATURE_QUOTA_MANAGEMENT = True
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
+    FEATURE_PROXY_CACHE = True

@@ -1,0 +1,27 @@
+.td-decoration {
+    text-transform: capitalize !important;
+    font-weight: 100 !important;
+    width: 250px !important;
+}
+
+.width-30 {
+    width: 30px;
+}
+
+.decorate-save {
+    width: 17%;
+}
+
+.decorate-form-btn {
+    display: flex;
+    width: 110%;
+}
+
+.margin-right-2 {
+    margin-right: 2%;
+}
+
+.disable-remove {
+    background-color: #e7a2a0;
+    border-color: #e7a2a0;
+}

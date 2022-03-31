@@ -62,6 +62,7 @@ from data.database import (
     QuotaLimits,
     UserOrganizationQuota,
     RepositorySize,
+    ProxyCacheConfig,
 )
 from data import model
 from data.decorators import is_deprecated_model
@@ -884,6 +885,12 @@ def populate_database(minimal=False):
     thirdorg.save()
 
     model.user.create_robot("coolrobot", org)
+
+    proxyorg = model.organization.create_organization(
+        "proxyorg", "quay+proxyorg@devtable.com", new_user_1
+    )
+    proxyorg.save()
+    model.proxy_cache.create_proxy_cache_config(proxyorg.username, "docker.io")
 
     oauth_app_1 = model.oauth.create_application(
         org,

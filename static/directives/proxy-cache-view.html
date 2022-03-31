@@ -1,0 +1,80 @@
+<div class="proxy-cache-view-element">
+    <form ng-submit="saveDetails()">
+        <table class="co-list-table">
+            <tbody>
+                <tr>
+                    <td class="td-decoration">
+                        Remote Registry:
+                    </td>
+                    <td>
+                        <input class="form-control" type="text" required ng-model="currentConfig['upstream_registry']"/>
+                        <div class="help-text">
+                            Remote registry that is to be cached. (Eg: For docker hub, docker.io, docker.io/library)
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Remote Registry username:
+                    </td>
+                    <td>
+                        <input autocomplete="new-username" class="form-control" type="text" ng-model="currentConfig['upstream_registry_username']"/>
+                        <div class="help-text">
+                            Username for authenticating into the entered remote registry
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Remote Registry password:
+                    </td>
+                    <td>
+                        <input autocomplete="new-password" class="form-control" type="password" ng-model="currentConfig['upstream_registry_password']"/>
+                        <div class="help-text">
+                            Password for authenticating into the entered remote registry
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Expiration:
+                        <div class="help-text">
+                            In seconds
+                        </div>
+                    </td>
+                    <td>
+                        <input class="form-control" type="number" min="1" max="2147483647" ng-model="currentConfig['expiration_s']"/>
+                        <div class="help-text">
+                            Default tag expiration for cached images, in seconds. This value is refreshed on every pull.
+                            Default is 86400 i.e, 24 hours.
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="td-decoration">
+                        Insecure:
+                    </td>
+                    <td>
+                        <input class="form-control width-30" type="checkbox" ng-model="currentConfig['insecure']"/>
+                        <div class="help-text">
+                            If set, http (unsecure protocol) will be used. If not set, https (secure protocol) will be used
+                            to request the remote registry.
+                        </div>
+                    </td>
+                </tr>
+
+            </tbody>
+        </table>
+        <div class="co-alert co-alert-success" ng-show="alertSaveSuccess">
+            Successfully created proxy cache configuration
+        </div>
+        <div class="co-alert co-alert-success" ng-show="alertRemoveSuccess">
+            Successfully removed proxy cache configuration
+        </div>
+
+        <div class="decorate-form-btn">
+            <button type="submit" class="decorate-save form-control btn-success margin-right-2" ng-disabled="prevEnabled">Save</button>
+            <button class="decorate-save form-control btn-danger" ng-disabled="!prevEnabled" ng-click="deleteConfig()">Remove</button>
+        </div>
+    </form>
+</div>

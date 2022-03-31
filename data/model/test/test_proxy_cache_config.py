@@ -121,3 +121,26 @@ def test_get_proxy_cache_config_for_org_only_queries_db_once(initialized_db):
     # first call caches the result
     with assert_query_count(1):
         get_proxy_cache_config_for_org(org.username)
+
+
+def test_delete_proxy_cache_config(initialized_db):
+    org = create_org(
+        user_name="test",
+        user_email="test@example.com",
+        org_name="foobar",
+        org_email="foo@example.com",
+    )
+    create_proxy_cache_config(org.username, "docker.io")
+    result = delete_proxy_cache_config(org.username)
+    assert result is True
+
+
+def test_delete_for_nonexistant_config(initialized_db):
+    org = create_org(
+        user_name="test",
+        user_email="test@example.com",
+        org_name="foobar",
+        org_email="foo@example.com",
+    )
+    result = delete_proxy_cache_config(org.username)
+    assert result is False
