@@ -13,29 +13,9 @@ MODIFIED_FILES = $(shell git diff --name-only $(GIT_MERGE_BASED) | grep -E .+\.p
 show-modified:
 	echo $(MODIFIED_FILES)
 
-.PHONY: all unit-test registry-test registry-test-old buildman-test test pkgs build run clean
+.PHONY: all unit-test registry-test registry-test-old buildman-test test build run clean
 
-all: clean pkgs test build
-
-pkgs: requirements.txt requirements-dev.txt
-	pip install -r $<
-
-requirements.txt: requirements-nover.txt
-	# Create a new virtualenv and activate it
-	pyenv virtualenv 2.7.12 quay-deps
-	pyenv activate quay-deps
-
-	# Install unversioned dependencies with your changes
-	pip install -r requirements-nover.txt
-
-	# Run the unit test suite
-	$(MAKE) unit
-
-	# Freeze the versions of all of the dependencies
-	pip freeze > requirements.txt
-
-	# Delete the virtualenv
-	pyenv uninstall quay-deps
+all: clean test build
 
 QUAY_CONFIG ?= ../quay-config
 conf/stack/license: $(QUAY_CONFIG)/local/license
@@ -125,7 +105,7 @@ $(DIST): $(GRUNT)
 
 build: $(WEBPACK) $(GRUNT)
 
-docker-build: pkgs build
+docker-build: build
 	ifneq (0,$(shell git status --porcelain | awk 'BEGIN {print $N}'))
 	echo 'dirty build not supported - run `FORCE=true make clean` to remove'
 	exit 1
@@ -193,12 +173,32 @@ local-dev-build:
 	docker-compose build
 
 .PHONY: local-dev-up
-local-dev-up:
-	make local-dev-clean
-	docker-compose up -d redis
-	docker-compose up -d quay-db
+local-dev-up: local-dev-clean node_modules | quay-build-image
+	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose up -d --force-recreate local-dev-frontend
+	docker-compose up -d redis quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d quay
+	DOCKER_USER="$$(id -u):0" docker-compose up -d quay
+	# Waiting until the frontend is built...
+	# Use 'docker-compose logs -f local-dev-frontend' to see the progress
+	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
+	@echo "You can now access the frontend at http://localhost:8080"
+
+local-docker-rebuild:
+	docker-compose up -d --build redis
+	docker-compose up -d --build quay-db
+	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" docker-compose up -d --build quay
+	docker-compose restart quay
+
+ifeq ($(CLAIR),true)
+	docker-compose up -d --build clair-db
+	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	docker-compose up -d --build clair
+	docker-compose restart clair
+else
+	@echo "Skipping Clair"
+endif
+
 
 .PHONY: local-dev-up-with-clair
 local-dev-up-with-clair:
