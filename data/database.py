@@ -45,7 +45,7 @@ from data.fields import (
 from data.decorators import deprecated_model
 from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
-from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig, disallow_replica_use
+from data.readreplica import QuayDatabaseModel, ReadOnlyConfig, disallow_replica_use
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from util.names import urn_generator
 from util.metrics.prometheus import (
@@ -654,7 +654,7 @@ def deprecated_field(field, flag):
     return None
 
 
-class BaseModel(ReadReplicaSupportedModel):
+class BaseModel(QuayDatabaseModel):
     class Meta:
         database = db
         encrypter = db_encrypter

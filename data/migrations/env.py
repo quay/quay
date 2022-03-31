@@ -49,6 +49,7 @@ def get_secondary_db_url():
     db_url = app.config.get("SECONDARY_WRITE_DB_URI", "sqlite:///test/data/test.db")
     return db_url
 
+
 def get_tester():
     """
     Returns the tester to use.

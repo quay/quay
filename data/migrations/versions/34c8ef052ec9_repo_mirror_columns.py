@@ -102,7 +102,9 @@ def upgrade(op, tables, tester):
             while has_additional:
                 has_additional = False
 
-                query = RepoMirrorConfig.select().where(RepoMirrorConfig.id >= starting_id).limit(10)
+                query = (
+                    RepoMirrorConfig.select().where(RepoMirrorConfig.id >= starting_id).limit(10)
+                )
                 for row in query:
                     starting_id = max(starting_id, row.id + 1)
                     has_additional = True
@@ -144,7 +146,6 @@ def upgrade(op, tables, tester):
                 logger.info("migrating %s" % repo)
                 repo_mirror.external_reference = repo
                 repo_mirror.save()
-
 
     op.drop_column("repomirrorconfig", "external_registry")
     op.drop_column("repomirrorconfig", "external_namespace")
