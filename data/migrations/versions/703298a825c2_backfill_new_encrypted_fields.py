@@ -138,8 +138,9 @@ def upgrade(op, tables, tester):
     from app import app
 
     # TODO: Figure this out better
-    if re.search(engine_name, app.config.get("SECONDARY_WRITE_DB_URI", "")):
-        return
+    if app.config.get("SECONDARY_WRITE_DB_URI", None) is not None:
+        if re.search(engine_name, app.config.get("SECONDARY_WRITE_DB_URI", "")):
+            return
 
     if app.config.get("SETUP_COMPLETE", False) or tester.is_testing():
         # AccessToken.
