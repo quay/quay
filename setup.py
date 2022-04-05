@@ -46,7 +46,6 @@ packages = [
     "PyJWT",
     "pyOpenSSL",
     "raven",
-    "redlock",
     "requests",
     "Werkzeug",
     "xhtml2pdf",

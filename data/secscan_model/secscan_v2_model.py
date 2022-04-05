@@ -29,7 +29,7 @@ unscanned_images = Gauge(
 )
 
 
-class ScanToken(namedtuple("NextScanToken", ["min_id"])):
+class ScanToken(namedtuple("NextScanToken", ["min_id", "batch_size", "indexer_state"])):
     """
     ScanToken represents an opaque token that can be passed between runs of the security worker to
     continue scanning whereever the previous run left off. Note that the data of the token is.
