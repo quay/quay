@@ -145,6 +145,6 @@ Cython==0.29.23
 toml==0.10.2
 jsonpickle==1.2
 pip==21.1
-setuptools==56.0.0
+setuptools==50.3.0
 setuptools-scm[toml]==4.1.2
 wheel==0.35.1
