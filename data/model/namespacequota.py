@@ -94,13 +94,11 @@ def get_namespace_quota_limit_list(quota, quota_type=None, percent_of_limit=None
     if percent_of_limit and (not percent_of_limit > 0 or not percent_of_limit <= 100):
         raise InvalidNamespaceQuotaLimit("Quota limit threshold must be between 1 and 100")
 
-    query = QuotaLimits.select().where(QuotaLimits.quota == quota)
+    query = QuotaLimits.select().join(QuotaType).where(QuotaLimits.quota == quota)
 
     if quota_type:
         quota_type_name = _quota_type(quota_type)
-        query = query.where(
-            QuotaLimits.quota_type == (QuotaType.get(QuotaType.name == quota_type_name))
-        )
+        query = query.where(QuotaType.name == quota_type_name)
 
     if percent_of_limit:
         query = query.where(QuotaLimits.percent_of_limit == percent_of_limit)
