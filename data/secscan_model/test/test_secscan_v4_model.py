@@ -38,7 +38,6 @@ from app import app, instance_keys, storage
 @pytest.fixture()
 def set_secscan_config():
     app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
-    app.config["SECURITY_SCANNER_V4_BATCH_SIZE"] = 100
 
 
 def test_load_security_information_queued(initialized_db, set_secscan_config):
@@ -160,8 +159,7 @@ def test_perform_indexing_whitelist(initialized_db, set_secscan_config):
 
     next_token = secscan.perform_indexing()
 
-    min_id = Manifest.select(fn.Min(Manifest.id)).scalar()
-    assert next_token.min_id == min_id + app.config["SECURITY_SCANNER_V4_BATCH_SIZE"] + 1
+    assert next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
 
     assert secscan._secscan_api.index.call_count == Manifest.select().count()
     assert ManifestSecurityStatus.select().count() == Manifest.select().count()
@@ -420,10 +418,7 @@ def test_perform_indexing_api_request_index_error_response(initialized_db, set_s
     )
 
     next_token = secscan.perform_indexing()
-
-    min_id = Manifest.select(fn.Min(Manifest.id)).scalar()
-
-    assert next_token.min_id == min_id + app.config["SECURITY_SCANNER_V4_BATCH_SIZE"] + 1
+    assert next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
     assert ManifestSecurityStatus.select().count() == Manifest.select(fn.Max(Manifest.id)).count()
     for mss in ManifestSecurityStatus.select():
         assert mss.index_status == IndexStatus.FAILED
@@ -439,13 +434,7 @@ def test_perform_indexing_api_request_non_finished_state(initialized_db, set_sec
     )
 
     next_token = secscan.perform_indexing()
-
-    min_id = Manifest.select(fn.Min(Manifest.id)).scalar()
-
-    assert (
-        next_token
-        and next_token.min_id == min_id + app.config["SECURITY_SCANNER_V4_BATCH_SIZE"] + 1
-    )
+    assert next_token and next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
     assert ManifestSecurityStatus.select().count() == 0
 
 
@@ -457,12 +446,7 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
 
     next_token = secscan.perform_indexing()
 
-    min_id = Manifest.select(fn.Min(Manifest.id)).scalar()
-
-    assert (
-        next_token
-        and next_token.min_id == min_id + app.config["SECURITY_SCANNER_V4_BATCH_SIZE"] + 1
-    )
+    assert next_token and next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
     assert ManifestSecurityStatus.select().count() == 0
 
     # Set security scanner to return good results and attempt indexing again
@@ -474,12 +458,7 @@ def test_perform_indexing_api_request_failure_index(initialized_db, set_secscan_
 
     next_token = secscan.perform_indexing()
 
-    min_id = Manifest.select(fn.Min(Manifest.id)).scalar()
-
-    assert (
-        next_token
-        and next_token.min_id == min_id + app.config["SECURITY_SCANNER_V4_BATCH_SIZE"] + 1
-    )
+    assert next_token.min_id == Manifest.select(fn.Max(Manifest.id)).scalar() + 1
     assert ManifestSecurityStatus.select().count() == Manifest.select(fn.Max(Manifest.id)).count()
 
 

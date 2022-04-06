@@ -9,7 +9,6 @@ from app import app
 from data.secscan_model import secscan_model
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
-from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from endpoints.v2 import v2_bp
 
@@ -30,19 +29,7 @@ class SecurityWorker(Worker):
         self.add_operation(self._index_in_scanner, interval)
 
     def _index_in_scanner(self):
-        try:
-            with GlobalLock(
-                self._next_token.normalize(),
-                lock_ttl=DEFAULT_INDEXING_INTERVAL + 60,
-                auto_renewal=True,
-            ):
-                self._next_token = self._model.perform_indexing(self._next_token)
-        except LockNotAcquiredException:
-            logger.debug(
-                "Could not acquire global lock for security worker indexing: %s",
-                self._next_token.normalize(),
-            )
-            self._next_token = self._next_token.next_page()
+        self._next_token = self._model.perform_indexing(self._next_token)
 
 
 def create_gunicorn_worker():

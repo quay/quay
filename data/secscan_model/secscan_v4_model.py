@@ -49,21 +49,13 @@ IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Erro
 )
 
 
-class ScanToken(namedtuple("NextScanToken", ["min_id", "batch_size", "indexer_state"])):
+class ScanToken(namedtuple("NextScanToken", ["min_id"])):
     """
     ScanToken represents an opaque token that can be passed between runs of the security worker
     to continue scanning whereever the previous run left off. Note that the data of the token is
-    *opaque* to the security worker, and the operations supported on a token are getting its normalized
-    string representation, and the generating the next page token.
+    *opaque* to the security worker, and the security worker should *not* pull any data out or modify
+    the token in any way.
     """
-
-    def normalize(self):
-        return (
-            str(indexer_state) + "_" + str(self.min_id) + "_" + str(self.min_id + self.batch_size)
-        )
-
-    def next_page(self):
-        return ScanToken(self.min_id + self.batch_size + 1, self.batch_size, self.indexer_state)
 
 
 class NoopV4SecurityScanner(SecurityScannerInterface):
@@ -169,7 +161,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             SecurityInformation(Layer(report["manifest_hash"], "", "", 4, features_for(report)))
         )
 
-    def _get_manifest_iterator(self, indexer_state, min_id, max_id, batch_size=None):
+    def _get_manifest_iterator(self, indexer_state, min_id, max_id):
         reindex_threshold = lambda: datetime.utcnow() - timedelta(
             seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD")
         )
@@ -204,8 +196,9 @@ class V4SecurityScanner(SecurityScannerInterface):
             )
 
         # 4^log10(total) gives us a scalable batch size into the billions.
-        if not batch_size:
-            batch_size = int(4 ** log10(max(10, max_id - min_id)))
+        batch_size = self.app.config.get(
+            "SECURITY_SCANNER_V4_BATCH_SIZE", int(4 ** log10(max(10, max_id - min_id)))
+        )
 
         recent_max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
         recent_min_id = max(recent_max_id - batch_size, 1)
@@ -269,7 +262,7 @@ class V4SecurityScanner(SecurityScannerInterface):
         if max_id is None or min_id is None or min_id > max_id:
             return None
 
-        iterator = self._get_manifest_iterator(indexer_state, min_id, max_id, batch_size)
+        iterator = self._get_manifest_iterator(indexer_state, min_id, max_id)
 
         def mark_manifest_unsupported(manifest):
             with db_transaction():
@@ -347,7 +340,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                     metadata_json={},
                 )
 
-        return ScanToken(max_id + 1, batch_size, indexer_state)
+        return ScanToken(max_id + 1)
 
     def lookup_notification_page(self, notification_id, page_index=None):
         try:

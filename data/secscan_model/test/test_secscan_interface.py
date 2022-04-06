@@ -69,31 +69,14 @@ def test_load_security_information(indexed_v2, indexed_v4, expected_status, init
 @pytest.mark.parametrize(
     "next_token, expected_next_token, expected_error",
     [
-        (
-            None,  # MIN(id) is used in this case (1 in test db)
-            V4ScanToken(52, 50, {"state": "abc"}),
-            None,
-        ),
-        (
-            V4ScanToken(None, None, None),
-            V4ScanToken(51, 50, {"state": "abc"}),
-            AssertionError,
-        ),
-        (
-            V4ScanToken(1, 50, {"state": "abc"}),
-            V4ScanToken(52, 50, {"state": "abc"}),
-            None,
-        ),
-        (
-            V2ScanToken(158, 50, {"state": "abc"}),
-            V4ScanToken(56, 50, {"state": "abc"}),
-            AssertionError,
-        ),
+        (None, V4ScanToken(56), None),
+        (V4ScanToken(None), V4ScanToken(56), AssertionError),
+        (V4ScanToken(1), V4ScanToken(56), None),
+        (V2ScanToken(158), V4ScanToken(56), AssertionError),
     ],
 )
 def test_perform_indexing(next_token, expected_next_token, expected_error, initialized_db):
     app.config["SECURITY_SCANNER_V4_ENDPOINT"] = "http://clairv4:6060"
-    app.config["SECURITY_SCANNER_V4_BATCH_SIZE"] = 50  # There are 55 manifests in the test db set
 
     def secscan_api(*args, **kwargs):
         api = Mock()
@@ -110,18 +93,3 @@ def test_perform_indexing(next_token, expected_next_token, expected_error, initi
                 secscan_model.perform_indexing(next_token)
         else:
             assert secscan_model.perform_indexing(next_token) == expected_next_token
-
-
-def test_token_next_page():
-    import random
-
-    batch_size = random.randint(1, 1000)
-    indexer_state = "test"
-    min_id = 1
-
-    scan_token = V4ScanToken(min_id, batch_size, indexer_state)
-    next_token = scan_token.next_page()
-
-    assert next_token.min_id == scan_token.min_id + batch_size + 1
-    assert next_token.indexer_state == scan_token.indexer_state
-    assert next_token.batch_size == scan_token.batch_size
