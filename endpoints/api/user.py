@@ -187,9 +187,7 @@ def user_view(user, previous_username=None):
         if features.QUOTA_MANAGEMENT:
             quotas = model.namespacequota.get_namespace_quota_list(user.username)
             user_response["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
-            user_response[
-                "quota_report"
-            ] = model.namespacequota.get_namespace_repository_sizes_and_cache(user.username)
+            user_response["quota_report"] = model.namespacequota.get_quota_for_view(user.username)
 
     user_view_perm = UserReadPermission(user.username)
     if user_view_perm.can():

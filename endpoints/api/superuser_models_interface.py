@@ -249,7 +249,7 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
             user_data["quotas"] = (
                 [quota_view(quota) for quota in self.quotas] if self.quotas else []
             )
-            user_data["quota_report"] = model.namespacequota.get_org_quota_for_view(self.username)
+            user_data["quota_report"] = model.namespacequota.get_quota_for_view(self.username)
 
         return user_data
 
@@ -272,7 +272,7 @@ class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
 
         if features.QUOTA_MANAGEMENT and self.quotas is not None:
             d["quotas"] = [quota_view(quota) for quota in self.quotas] if self.quotas else []
-            d["quota_report"] = model.namespacequota.get_org_quota_for_view(self.username)
+            d["quota_report"] = model.namespacequota.get_quota_for_view(self.username)
 
         return d
 

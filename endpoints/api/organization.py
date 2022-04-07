@@ -110,7 +110,7 @@ def org_view(o, teams):
         if features.QUOTA_MANAGEMENT:
             quotas = model.namespacequota.get_namespace_quota_list(o.username)
             view["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
-            view["quota_report"] = model.namespacequota.get_org_quota_for_view(o.username)
+            view["quota_report"] = model.namespacequota.get_quota_for_view(o.username)
 
     return view
 

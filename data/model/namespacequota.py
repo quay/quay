@@ -218,10 +218,6 @@ def force_cache_repo_size(repository_ref):
     return model.repository.force_cache_repo_size(repository_ref._db_id)
 
 
-def get_namespace_repository_sizes_and_cache(namespace_name):
-    return cache_namespace_repository_sizes(namespace_name)
-
-
 def cache_namespace_repository_sizes(namespace_name):
     namespace = user.get_user_or_org(namespace_name)
     now_ms = get_epoch_timestamp_ms()
@@ -256,19 +252,6 @@ def cache_namespace_repository_sizes(namespace_name):
         insert_query,
         fields=[RepositorySize.repository_id, RepositorySize.size_bytes],
     ).execute()
-
-    output = []
-
-    for size in namespace_repo_sizes.dicts():
-        output.append(
-            {
-                "repository_name": size["repository_name"],
-                "repository_id": size["repository_id"],
-                "repository_size": str(size["repository_size"]),
-            }
-        )
-
-    return json.dumps(output)
 
 
 def get_namespace_size(namespace_name):
@@ -319,7 +302,9 @@ def get_repo_quota_for_view(namespace_name, repo_name):
     }
 
 
-def get_org_quota_for_view(namespace_name):
+def get_quota_for_view(namespace_name):
+    cache_namespace_repository_sizes(namespace_name)
+
     namespace_user = model.user.get_user_or_org(namespace_name)
     quotas = get_namespace_quota_list(namespace_user.username)
     if not quotas:
