@@ -131,7 +131,24 @@ def swagger_route_data(include_internal=False, compact=False):
                 logger.debug("Unable to find method for %s in class %s", method_name, view_class)
                 continue
 
-            operationId = method_metadata(method, "nickname")
+            _operationId = method_metadata(method, "nickname")
+
+            if isinstance(_operationId, list):
+                operationId = None
+                for oid in _operationId:
+                    if oid in operationIds:
+                        continue
+                    else:
+                        operationId = oid
+
+                        break
+
+                if operationId is None:
+                    raise Exception("Duplicate operation Id: %s" % operationId)
+
+            else:
+                operationId = _operationId
+
             operation_swagger = {
                 "operationId": operationId,
                 "parameters": [],

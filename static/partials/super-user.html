@@ -93,7 +93,7 @@
               </td>
               <td ng-class="tablePredicateClass('quota', options.predicate, options.reverse)"
                   ng-if="Features.QUOTA_MANAGEMENT">
-                <a ng-click="orderBy('quota.quota_bytes')">Quota Consumed</a>
+                <a ng-click="orderBy('quota_report.quota_bytes')">Quota Consumed</a>
               </td>
               <td style="width: 24px;"></td>
               </thead>
@@ -112,16 +112,16 @@
                   <a href="mailto:{{ current_org.email }}">{{ current_org.email }}</a>
                 </td>
                 <td ng-if="Features.QUOTA_MANAGEMENT">
-                  <span ng-if="current_org.quota.quota_bytes != '0'">
+                  <span ng-if="current_org.quota_report.quota_bytes != '0'">
                   {{
-                    current_org.quota.percent_consumed ?
-                    ( bytesToHumanReadableString(current_org.quota.quota_bytes) + "(" + current_org.quota.percent_consumed + "%)") :
-                    bytesToHumanReadableString(current_org.quota.quota_bytes)
+                    current_org.quota_report.percent_consumed ?
+                    ( bytesToHumanReadableString(current_org.quota_report.quota_bytes) + "(" + current_org.quota_report.percent_consumed + "%)") :
+                    bytesToHumanReadableString(current_org.quota_report.quota_bytes)
                   }}
                   </span>
-                  <span ng-if="current_org.quota.quota_bytes == '0'">--</span>
-                  <span ng-if="current_org.quota.configured_quota">
-                  {{ " of " + bytesToHumanReadableString(current_org.quota.configured_quota) }}
+                  <span ng-if="current_org.quota_report.quota_bytes == '0'">--</span>
+                  <span ng-if="current_org.quota_report.configured_quota">
+                  {{ " of " + bytesToHumanReadableString(current_org.quota_report.configured_quota) }}
                   </span>
                 </td>
                 <td style="text-align: center;">

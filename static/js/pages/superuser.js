@@ -42,11 +42,12 @@
       'page': 0,
     }
     $scope.disk_size_units = {
-        'MB': 1024**2,
-        'GB': 1024**3,
-        'TB': 1024**4,
-      };
-      $scope.quotaUnits = Object.keys($scope.disk_size_units);
+      'KB': 1024,
+      'MB': 1024**2,
+      'GB': 1024**3,
+      'TB': 1024**4,
+    };
+    $scope.quotaUnits = Object.keys($scope.disk_size_units);
 
     $scope.showQuotaConfig = function (org) {
         if (StateService.inReadOnlyMode()) {
@@ -67,8 +68,8 @@
                 return result.toString() + " " + byte_unit;
             }
         }
-        return null
-      };
+      return (bytes / $scope.disk_size_units["MB"]).toFixed(2).toString() + " MB";
+    };
 
     $scope.loadMessageOfTheDay = function () {
       $scope.globalMessagesActive = true;

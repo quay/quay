@@ -6,6 +6,7 @@ from six import add_metaclass
 
 import features
 from data.database import RepositoryState
+from data import model
 from endpoints.api import format_date
 
 
@@ -28,7 +29,6 @@ class RepositoryBaseElement(
             "should_is_starred",
             "is_free_account",
             "state",
-            "quota",
         ],
     )
 ):
@@ -45,7 +45,6 @@ class RepositoryBaseElement(
     :type should_last_modified: boolean
     :type should_popularity: boolean
     :type should_is_starred: boolean
-    :type: quota: dictionary
     """
 
     def to_dict(self):
@@ -56,8 +55,12 @@ class RepositoryBaseElement(
             "is_public": self.is_public,
             "kind": self.kind_name,
             "state": self.state.name if self.state is not None else None,
-            "quota": self.quota if features.QUOTA_MANAGEMENT else None,
         }
+
+        if features.QUOTA_MANAGEMENT:
+            repo["quota_report"] = model.namespacequota.get_repo_quota_for_view(
+                self.namespace_name, self.repository_name
+            )
 
         if self.should_last_modified:
             repo["last_modified"] = self.last_modified

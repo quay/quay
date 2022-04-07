@@ -23,6 +23,24 @@ def user_view(user):
     }
 
 
+def quota_view(quota):
+    quota_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+
+    return {
+        "id": quota.id,  # Generate uuid instead?
+        "limit_bytes": quota.limit_bytes,
+        "limits": [limit_view(limit) for limit in quota_limits],
+    }
+
+
+def limit_view(limit):
+    return {
+        "id": limit.id,
+        "type": limit.quota_type.name,
+        "limit_percent": limit.percent_of_limit,
+    }
+
+
 class BuildTrigger(
     namedtuple("BuildTrigger", ["trigger", "pull_robot", "can_read", "can_admin", "for_build"])
 ):
@@ -205,7 +223,7 @@ class ServiceKey(
         }
 
 
-class User(namedtuple("User", ["username", "email", "verified", "enabled", "robot"])):
+class User(namedtuple("User", ["username", "email", "verified", "enabled", "robot", "quotas"])):
     """
     User represents a single user.
 
@@ -227,27 +245,36 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
             "super_user": superusers.is_superuser(self.username),
             "enabled": self.enabled,
         }
+        if features.QUOTA_MANAGEMENT and self.quotas is not None:
+            user_data["quotas"] = (
+                [quota_view(quota) for quota in self.quotas] if self.quotas else []
+            )
+            user_data["quota_report"] = model.namespacequota.get_quota_for_view(self.username)
 
         return user_data
 
 
-class Organization(namedtuple("Organization", ["username", "email"])):
+class Organization(namedtuple("Organization", ["username", "email", "quotas"])):
     """
     Organization represents a single org.
 
     :type username: string
     :type email: string
+    :type quotas: [UserOrganizationQuota] | None
     """
 
     def to_dict(self):
-        return {
+        d = {
             "name": self.username,
             "email": self.email,
             "avatar": avatar.get_data_for_org(self),
-            "quota": model.namespacequota.get_org_quota_for_view(self.username)
-            if features.QUOTA_MANAGEMENT
-            else None,
         }
+
+        if features.QUOTA_MANAGEMENT and self.quotas is not None:
+            d["quotas"] = [quota_view(quota) for quota in self.quotas] if self.quotas else []
+            d["quota_report"] = model.namespacequota.get_quota_for_view(self.username)
+
+        return d
 
 
 @add_metaclass(ABCMeta)

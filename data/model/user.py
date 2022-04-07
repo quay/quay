@@ -1291,7 +1291,9 @@ def _delete_user_linked_data(user):
             trigger.delete_instance(recursive=True, delete_nullable=False)
 
     with db_transaction():
-        namespacequota.delete_namespace_quota(user.username)
+        quotas = namespacequota.get_namespace_quota_list(user.username)
+        for quota in quotas:
+            namespacequota.delete_namespace_quota(quota)
 
     # Delete any mirrors with robots owned by this user.
     with db_transaction():

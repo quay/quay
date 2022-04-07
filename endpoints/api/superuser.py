@@ -21,7 +21,7 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
 from data.database import ServiceKeyApprovalType
 from data.logs_model import logs_model
-from data.model import namespacequota
+from data.model import user, namespacequota, InvalidNamespaceQuota, DataModelException
 from endpoints.api import (
     ApiResource,
     nickname,
@@ -43,7 +43,9 @@ from endpoints.api import (
     Unauthorized,
     InvalidResponse,
 )
+from endpoints.api import request_error
 from endpoints.api.build import get_logs_or_log_url
+from endpoints.api.namespacequota import quota_view, limit_view, get_quota
 from endpoints.api.superuser_models_pre_oci import (
     pre_oci_model,
     ServiceKeyDoesNotExist,
@@ -214,33 +216,108 @@ class SuperUserOrganizationList(ApiResource):
         raise Unauthorized()
 
 
-@resource("/v1/superuser/quota/")
+@resource(
+    "/v1/superuser/users/<namespace>/quota/",
+    "/v1/superuser/organization/<namespace>/quota/",
+)
 @internal_only
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
-class SuperUserOrganizationQuotaReport(ApiResource):
-    """
-    Resource for listing organizations in the system.
-    """
+class SuperUserUserQuotaList(ApiResource):
+
+    schemas = {
+        "NewNamespaceQuota": {
+            "type": "object",
+            "description": "Description of a new organization quota",
+            "required": ["limit_bytes"],
+            "properties": {
+                "limit_bytes": {
+                    "type": "integer",
+                    "description": "Number of bytes the organization is allowed",
+                },
+            },
+        },
+    }
 
     @require_fresh_login
     @verify_not_prod
-    @nickname("allOrganizationQuotaReport")
+    @nickname(["createUserQuotaSuperUser", "createOrganizationQuotaSuperUser"])
     @require_scope(scopes.SUPERUSER)
-    def get(self):
-        """
-        Returns a list of all organizations in the system.
-        """
+    @validate_json_request("NewNamespaceQuota")
+    def post(self, namespace):
         if SuperUserPermission().can():
-            return {
-                "organizations": [
-                    {
-                        "organization": org.username,
-                        "size": namespacequota.get_namespace_size(org.username),
-                    }
-                    for org in pre_oci_model.get_organizations()
-                ]
-            }
+            quota_data = request.get_json()
+            limit_bytes = quota_data["limit_bytes"]
+
+            namespace_user = user.get_user_or_org(namespace)
+            quotas = namespacequota.get_namespace_quota_list(namespace_user.username)
+
+            if quotas:
+                raise request_error(message="Quota for '%s' already exists" % namespace)
+
+            try:
+                newquota = namespacequota.create_namespace_quota(namespace_user, limit_bytes)
+                return "Created", 201
+            except DataModelException as ex:
+                raise request_error(exception=ex)
+
+        raise Unauthorized()
+
+
+@resource(
+    "/v1/superuser/users/<namespace>/quota/<quota_id>",
+    "/v1/superuser/organization/<namespace>/quota/<quota_id>",
+)
+@internal_only
+@show_if(features.SUPER_USERS)
+@show_if(features.QUOTA_MANAGEMENT)
+class SuperUserUserQuota(ApiResource):
+
+    schemas = {
+        "UpdateNamespaceQuota": {
+            "type": "object",
+            "description": "Description of a new organization quota",
+            "properties": {
+                "limit_bytes": {
+                    "type": "integer",
+                    "description": "Number of bytes the organization is allowed",
+                },
+            },
+        },
+    }
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname(["changeUserQuotaSuperUser", "changeOrganizationQuotaSuperUser"])
+    @require_scope(scopes.SUPERUSER)
+    @validate_json_request("UpdateNamespaceQuota")
+    def put(self, namespace, quota_id):
+        if SuperUserPermission().can():
+            quota_data = request.get_json()
+
+            namespace_user = user.get_user_or_org(namespace)
+            quota = get_quota(namespace_user.username, quota_id)
+
+            try:
+                if "limit_bytes" in quota_data:
+                    limit_bytes = quota_data["limit_bytes"]
+                    model.namespacequota.update_namespace_quota_size(quota, limit_bytes)
+            except model.DataModelException as ex:
+                raise request_error(exception=ex)
+
+            return quota_view(quota)
+
+        raise Unauthorized()
+
+    @nickname(["deleteUserQuotaSuperUser", "deleteOrganizationQuotaSuperUser"])
+    @require_scope(scopes.SUPERUSER)
+    def delete(self, namespace, quota_id):
+        if SuperUserPermission().can():
+            namespace_user = user.get_user_or_org(namespace)
+            quota = get_quota(namespace_user.username, quota_id)
+            namespacequota.delete_namespace_quota(quota)
+
+            return "", 204
 
         raise Unauthorized()
 

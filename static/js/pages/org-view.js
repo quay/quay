@@ -33,8 +33,7 @@
       'organizationEmail': ''
     };
     $scope.disk_size_units = {
-        'Bytes': 1,
-        'KB': 1024**1,
+        'KB': 1024,
         'MB': 1024**2,
         'GB': 1024**3,
         'TB': 1024**4,
@@ -47,17 +46,26 @@
     });
 
     $scope.bytesToHumanReadableString = function(bytes) {
-        let units = Object.keys($scope.disk_size_units).reverse();
-        let result = null;
-        let byte_unit = null;
-        for (const key in units) {
-            byte_unit = units[key];
-            if (bytes >= $scope.disk_size_units[byte_unit]) {
-                result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
-                return result.toString() + " " + byte_unit;
-            }
+      let units = Object.keys($scope.disk_size_units).reverse();
+      let result = null;
+      let byte_unit = null;
+
+      for (const key in units) {
+        byte_unit = units[key];
+        result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+        if (bytes >= $scope.disk_size_units[byte_unit]) {
+          return result.toString() + " " + byte_unit;
         }
-        return null
+      }
+
+      return result.toString() + " " + byte_unit;
+    };
+
+    $scope.quotaPercentConsumed = function(organization) {
+      if (organization.quota_report) {
+	return (organization.quota_report.quota_bytes / organization.quota_report.configured_quota * 100).toFixed(2);
+      }
+      return 0;
     };
 
     var loadRepositories = function() {

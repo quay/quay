@@ -16,7 +16,8 @@ def test_create_quota(initialized_db):
     limit_bytes = 2048
 
     new_org = create_org(user_name, user_email, org_name, org_email)
-    new_quota = namespacequota.create_namespace_quota(org_name, limit_bytes)
+    new_quota = namespacequota.create_namespace_quota(new_org, limit_bytes)
 
     assert new_quota.limit_bytes == limit_bytes
-    assert new_quota.namespace_id.id == new_org.id
+    assert new_quota.namespace == new_org
+    assert new_quota.namespace.id == new_org.id
