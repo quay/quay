@@ -34,6 +34,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       $scope.errorMessage = '';
       $scope.errorMessagesObj = {
         'quotaLessThanZero': 'A quota greater 0 must be defined.',
+        'quotaLimitNotInRange': 'A quota limit greater 0 and less than 100 must be defined.',
         'validNumber': 'Please enter a valid number.',
         'setQuotaBeforeLimit': 'Please set quota before adding a quota Limit.',
       };
@@ -213,6 +214,9 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       $scope.disableUpdateQuota = function (limitId) {
+        if ($scope.errorMessage || !validOrgQuotaLimit($scope.currentQuotaConfig['limits'][limitId]['limit_percent'])) {
+          return true;
+        }
         return $scope.prevQuotaConfig['limits'][limitId]['type'] === $scope.currentQuotaConfig['limits'][limitId]['type'] &&
           $scope.prevQuotaConfig['limits'][limitId]['limit_percent'] === $scope.currentQuotaConfig['limits'][limitId]['limit_percent'];
       }
@@ -230,6 +234,16 @@ angular.module('quay').directive('quotaManagementView', function () {
           return false;
         }
         $scope.errorMessage = "";
+        return true;
+      }
+
+      var validOrgQuotaLimit = function (limit_percent) {
+        if (isNaN(parseInt(limit_percent))) {
+          $scope.errorMessage = $scope.errorMessagesObj['quotaLimitNotInRange'];
+          return false;
+        }
+
+        $scope.errorMessage = '';
         return true;
       }
 
