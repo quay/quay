@@ -166,9 +166,6 @@ def verify_namespace_quota_force_cache(repository_ref):
 def verify_namespace_quota_during_upload(repository_ref):
     size = model.repository.get_size_during_upload(repository_ref._db_id)
     namespace_size = get_namespace_size(repository_ref.namespace_name)
-    if namespace_size is None:
-        namespace_size = 0
-
     return check_limits(repository_ref.namespace_name, size + namespace_size)
 
 
@@ -273,7 +270,7 @@ def get_namespace_size(namespace_name):
         .where(Repository.namespace_user == namespace.id)
     ).scalar()
 
-    return namespace_size
+    return namespace_size or 0
 
 
 def get_repo_quota_for_view(namespace_name, repo_name):
