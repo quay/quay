@@ -205,6 +205,9 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       $scope.disableSaveQuota = function () {
+        if (!validOrgQuota()) {
+          return true;
+        }
         return $scope.prevQuotaConfig['quota'] === $scope.currentQuotaConfig['quota'] &&
           $scope.prevQuotaConfig['byte_unit'] === $scope.currentQuotaConfig['byte_unit'];
       }
@@ -227,6 +230,21 @@ angular.module('quay').directive('quotaManagementView', function () {
           return false;
         }
         $scope.errorMessage = "";
+        return true;
+      }
+
+      var validOrgQuota = function () {
+        if (isNaN(parseInt($scope.currentQuotaConfig['quota']))) {
+          $scope.errorMessage = $scope.errorMessagesObj['validNumber'];
+          return false;
+        }
+
+        if (parseInt($scope.currentQuotaConfig['quota']) <= 0) {
+          $scope.errorMessage = $scope.errorMessagesObj['quotaLessThanZero'];
+          return false;
+        }
+
+        $scope.errorMessage = '';
         return true;
       }
 
