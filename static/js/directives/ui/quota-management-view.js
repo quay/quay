@@ -171,8 +171,12 @@ angular.module('quay').directive('quotaManagementView', function () {
         };
 
         ApiService.createOrganizationQuotaLimit(data, params).then((resp) => {
-          $scope.newLimitConfig['type'] = null;
-          $scope.newLimitConfig['limit_percent'] = null;
+          if (!rejectLimitExists()) {
+            $scope.newLimitConfig = {"limit_percent": 100, "type": $scope.rejectLimitType};
+          } else {
+            $scope.newLimitConfig['type'] = null;
+            $scope.newLimitConfig['limit_percent'] = null;
+          }
           loadOrgQuota();
         });
       }

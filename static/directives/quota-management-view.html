@@ -25,14 +25,14 @@
         Limits:
       </td>
       <td>
-        <table class="co-table" ng-if="currentQuotaConfig">
+        <table class="co-table no-lines" ng-if="currentQuotaConfig">
 
           <thead>
             <td class="hidden-xs">
-              <span>Action</span>
+              <span class="text-capitalize">Action</span>
             </td>
             <td class="hidden-xs">
-              <span>Quota Threshold</span>
+              <span class="text-capitalize">Quota Threshold</span>
             </td>
             <td class="hidden-xs">
               <span></span>
@@ -68,6 +68,7 @@
           </tr>
 
 	  <!-- Add limit -->
+            newLimitConfig: {{ newLimitConfig }}
           <tr>
             <td>
               <select class="form-control" name="quotaLimitType" id="quotaLimitType"
@@ -80,9 +81,8 @@
             </td>
             <td>
               <span class="margin-2">
-		<button class="add-quota-limit btn btn-success hidden-xs" ng-click="addQuotaLimit()" ng-disabled="disableAddQuotaLimit()">
-		  <i class="fa fa-plus margin-right-4"></i>
-		  Add Quota Limit
+		<button class="add-quota-limit btn btn-success border-radius-50" ng-click="addQuotaLimit()" ng-disabled="disableAddQuotaLimit()">
+		  <i class="fa fa-plus"></i>
 		</button>
               </span>
             </td>
