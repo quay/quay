@@ -43,6 +43,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
         'noRejectLimit': 'Note: This quota has no hard limit enforced via a rejection thresholds. Users will be able to exceed the storage quota set above.',
       }
+      $scope.showQuotaDeletionModal = false;
 
       var loadOrgQuota = function () {
         $scope.nameSpaceResource = ApiService.listOrganizationQuota(
@@ -298,6 +299,29 @@ angular.module('quay').directive('quotaManagementView', function () {
         }
 
         return false;
+      }
+
+      $scope.showdeleteOrgQuota = function () {
+        $scope.showQuotaDeletionModal = true;
+      }
+
+      $scope.deleteOrgQuota = function(info, callback) {
+        let handleSuccess = function() {
+          loadOrgQuota();
+          $scope.showQuotaDeletionModal = false;
+          $scope.prevquotaEnabled = false;
+          $scope.prevQuotaConfig = {'quota': null, 'limits': {}};
+          $scope.currentQuotaConfig = {'quota': null, 'limits': {}};
+          $scope.newLimitConfig = {'type': null, 'limit_percent': null};
+
+          if (callback) callback(true);
+        }
+        let errMsg = "Unable to delete Quota";
+        let handleError = ApiService.errorDisplay(errMsg, callback);
+
+        ApiService.deleteOrganizationQuota(null,
+          {"orgname": $scope.organization.name, "quota_id": $scope.currentQuotaConfig.id}
+        ).then(handleSuccess, handleError);
       }
 
       loadOrgQuota();
