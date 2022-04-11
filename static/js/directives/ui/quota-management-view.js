@@ -278,7 +278,26 @@ angular.module('quay').directive('quotaManagementView', function () {
           return;
         }
 
+        if (!rejectLimitExists()) {
+          $scope.warningMessage = $scope.warningMessagesObj['noRejectLimit'];
+          return;
+        }
+
         $scope.warningMessage = '';
+      }
+
+      var rejectLimitExists = function() {
+        if ($scope.newLimitConfig['type'] == $scope.rejectLimitType) {
+          return true;
+        }
+
+        for (var key in $scope.currentQuotaConfig['limits']) {
+          if ($scope.currentQuotaConfig['limits'][key]['type'] == $scope.rejectLimitType) {
+            return true;
+          }
+        }
+
+        return false;
       }
 
       loadOrgQuota();
