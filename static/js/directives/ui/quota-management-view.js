@@ -38,6 +38,11 @@ angular.module('quay').directive('quotaManagementView', function () {
         'validNumber': 'Please enter a valid number.',
         'setQuotaBeforeLimit': 'Please set quota before adding a quota Limit.',
       };
+      $scope.warningMessage = '';
+      $scope.warningMessagesObj = {
+        'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
+        'noRejectLimit': 'Note: This quota has no hard limit enforced via a rejection thresholds. Users will be able to exceed the storage quota set above.',
+      }
 
       var loadOrgQuota = function () {
         $scope.nameSpaceResource = ApiService.listOrganizationQuota(
@@ -154,9 +159,6 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       $scope.addQuotaLimit = function () {
-        if (!quotaIsSet()) {
-          return;
-        }
         var params = {
           'orgname': $scope.organization.name,
           'quota_id': $scope.currentQuotaConfig.id,
@@ -209,6 +211,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         if (!validOrgQuota()) {
           return true;
         }
+        checkForWarnings();
         return $scope.prevQuotaConfig['quota'] === $scope.currentQuotaConfig['quota'] &&
           $scope.prevQuotaConfig['byte_unit'] === $scope.currentQuotaConfig['byte_unit'];
       }
@@ -228,13 +231,14 @@ angular.module('quay').directive('quotaManagementView', function () {
         $scope.newLimitConfig = {"limit_percent": 100, "type": $scope.rejectLimitType};
       }
 
-      var quotaIsSet = function () {
+      $scope.disableAddQuotaLimit = function () {
         if (!$scope.currentQuotaConfig.id) {
           $scope.errorMessage = $scope.errorMessagesObj["setQuotaBeforeLimit"];
-          return false;
+          return true;
         }
+
         $scope.errorMessage = "";
-        return true;
+        return false;
       }
 
       var validOrgQuotaLimit = function (limit_percent) {
@@ -248,6 +252,12 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       var validOrgQuota = function () {
+        // Empty state - when no quota is set. Don't throw any errors.
+        if (!$scope.currentQuotaConfig['quota'] && !$scope.prevquotaEnabled) {
+          $scope.errorMessage = '';
+          return true;
+        }
+
         if (isNaN(parseInt($scope.currentQuotaConfig['quota']))) {
           $scope.errorMessage = $scope.errorMessagesObj['validNumber'];
           return false;
@@ -260,6 +270,15 @@ angular.module('quay').directive('quotaManagementView', function () {
 
         $scope.errorMessage = '';
         return true;
+      }
+
+      var checkForWarnings = function() {
+        if (Object.keys($scope.currentQuotaConfig['limits']).length == 0 && ($scope.newLimitConfig['type'] == null && $scope.newLimitConfig['limit_percent'] == null)) {
+          $scope.warningMessage = $scope.warningMessagesObj['noQuotaLimit'];
+          return;
+        }
+
+        $scope.warningMessage = '';
       }
 
       loadOrgQuota();

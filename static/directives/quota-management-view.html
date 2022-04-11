@@ -80,7 +80,7 @@
             </td>
             <td>
               <span class="margin-2">
-		<button class="add-quota-limit btn btn-success hidden-xs" ng-click="addQuotaLimit()">
+		<button class="add-quota-limit btn btn-success hidden-xs" ng-click="addQuotaLimit()" ng-disabled="disableAddQuotaLimit()">
 		  <i class="fa fa-plus margin-right-4"></i>
 		  Add Quota Limit
 		</button>
@@ -95,6 +95,9 @@
   </table>
       <div class="co-alert co-alert-danger" ng-if="errorMessage">
           {{ errorMessage }}
+      </div>
+      <div class="co-help-text" ng-if="warningMessage">
+          {{ warningMessage }}
       </div>
 	  <button class="margin-2 btn btn-primary save-quota-details margin-3"
       ng-disabled="disableSaveQuota()" ng-click="updateQuotaConfig()">Apply</button>
