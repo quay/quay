@@ -44,6 +44,10 @@ from data.database import (
 
 logger = logging.getLogger(__name__)
 
+
+DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 86400  # 1 day
+
+
 IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(
     "IndexFinished", "IndexError"
 )
@@ -161,65 +165,62 @@ class V4SecurityScanner(SecurityScannerInterface):
             SecurityInformation(Layer(report["manifest_hash"], "", "", 4, features_for(report)))
         )
 
-    def _get_manifest_iterator(self, indexer_state, min_id, max_id):
-        reindex_threshold = lambda: datetime.utcnow() - timedelta(
-            seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD")
-        )
-
+    def _get_manifest_iterator(
+        self, indexer_state, min_id, max_id, batch_size=None, reindex_threshold=None
+    ):
         # TODO(alecmerdler): Filter out any `Manifests` that are still being uploaded
         def not_indexed_query():
             return (
-                Manifest.select()
+                Manifest.select(Manifest, ManifestSecurityStatus)
                 .join(ManifestSecurityStatus, JOIN.LEFT_OUTER)
                 .where(ManifestSecurityStatus.id >> None)
             )
 
         def index_error_query():
             return (
-                Manifest.select()
+                Manifest.select(Manifest, ManifestSecurityStatus)
                 .join(ManifestSecurityStatus)
                 .where(
                     ManifestSecurityStatus.index_status == IndexStatus.FAILED,
-                    ManifestSecurityStatus.last_indexed < reindex_threshold(),
+                    ManifestSecurityStatus.last_indexed < reindex_threshold
+                    or DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD,
                 )
             )
 
         def needs_reindexing_query(indexer_hash):
             return (
-                Manifest.select()
+                Manifest.select(Manifest, ManifestSecurityStatus)
                 .join(ManifestSecurityStatus)
                 .where(
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
                     ManifestSecurityStatus.indexer_hash != indexer_hash,
-                    ManifestSecurityStatus.last_indexed < reindex_threshold(),
+                    ManifestSecurityStatus.last_indexed < reindex_threshold
+                    or DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD,
                 )
             )
 
         # 4^log10(total) gives us a scalable batch size into the billions.
-        batch_size = self.app.config.get(
-            "SECURITY_SCANNER_V4_BATCH_SIZE", int(4 ** log10(max(10, max_id - min_id)))
-        )
+        if not batch_size:
+            batch_size = int(4 ** log10(max(10, max_id - min_id)))
 
         recent_max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
         recent_min_id = max(recent_max_id - batch_size, 1)
 
         iterator = itertools.chain(
-            # Guarantees at least one batch of most recent manifests
+            # TODO(kleesc): remove the this at some point. Once manifests have been backfilled,
+            # randomily selecting entries should be enough.
+            # Guarantees at least one batch of recent manifests gets indexed first.
             yield_random_entries(
                 not_indexed_query,
                 Manifest.id,
                 batch_size,
                 recent_max_id,
-                # Because we have multiple workers and must stay random to ensure minimal duplicative work
-                # we will instead limit the set worked to the most recent batch.
                 recent_min_id,
             ),
-            # Could be a huge batch of work
             yield_random_entries(
                 not_indexed_query,
                 Manifest.id,
                 batch_size,
-                # compensation for the above batch guarentee
                 max_id,
                 min_id,
             ),
@@ -248,6 +249,9 @@ class V4SecurityScanner(SecurityScannerInterface):
             return None
 
         batch_size = self.app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
+        reindex_threshold = datetime.utcnow() - timedelta(
+            seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 86400)
+        )
 
         min_id = (
             start_token.min_id
@@ -255,6 +259,8 @@ class V4SecurityScanner(SecurityScannerInterface):
             else Manifest.select(fn.Min(Manifest.id)).scalar()
         )
 
+        # TODO(kleesc): Workaround to index recent manifests.
+        # Revert to actual max id once backfill is done
         max_id = (
             min_id + batch_size if batch_size else Manifest.select(fn.Max(Manifest.id)).scalar()
         )
@@ -262,7 +268,13 @@ class V4SecurityScanner(SecurityScannerInterface):
         if max_id is None or min_id is None or min_id > max_id:
             return None
 
-        iterator = self._get_manifest_iterator(indexer_state, min_id, max_id)
+        iterator = self._get_manifest_iterator(
+            indexer_state,
+            min_id,
+            max_id,
+            batch_size=batch_size,
+            reindex_threshold=reindex_threshold,
+        )
 
         def mark_manifest_unsupported(manifest):
             with db_transaction():
@@ -278,6 +290,16 @@ class V4SecurityScanner(SecurityScannerInterface):
                     indexer_version=IndexerVersion.V4,
                     metadata_json={},
                 )
+
+        def should_skip_indexing(manifest_candidate):
+            """Check whether this manifest was preempted by another worker.
+            That would be the case if the manifest references a manifestsecuritystatus,
+            or if the reindex threshold is no longer valid.
+            """
+            if getattr(manifest_candidate, "manifestsecuritystatus", None):
+                return manifest_candidate.manifestsecuritystatus.last_indexed >= reindex_threshold
+
+            return len(manifest_candidate.manifestsecuritystatus_set) > 0
 
         for candidate, abt, num_remaining in iterator:
             manifest = ManifestDataType.for_manifest(candidate, None)
@@ -296,6 +318,11 @@ class V4SecurityScanner(SecurityScannerInterface):
                     )
                 )
                 mark_manifest_unsupported(manifest)
+                continue
+
+            if should_skip_indexing(candidate):
+                logger.debug("Another worker preempted this worker")
+                abt.set()
                 continue
 
             logger.debug(

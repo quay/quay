@@ -296,7 +296,7 @@ def test_perform_indexing_needs_reindexing_skip_unsupported(initialized_db, set_
         ),
         # Old hash and recent scan, don't rescan
         (IndexStatus.COMPLETED, {"status": "old hash"}, 0, True),
-        # Old hash and old scan, rescan
+        # old hash and old scan, rescan
         (
             IndexStatus.COMPLETED,
             {"status": "old hash"},
@@ -354,6 +354,8 @@ def test_manifest_iterator(
         indexer_state,
         Manifest.select(fn.Min(Manifest.id)).scalar(),
         Manifest.select(fn.Max(Manifest.id)).scalar(),
+        reindex_threshold=datetime.utcnow()
+        - timedelta(seconds=app.config["SECURITY_SCANNER_V4_REINDEX_THRESHOLD"]),
     )
 
     count = 0
