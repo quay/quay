@@ -70,12 +70,12 @@
 	  <!-- Add limit -->
           <tr>
             <td>
-              <select class="form-control" name="quotaLimitType" id="quotaLimitType"
+              <select class="form-control" name="quotaLimitType" id="newQuotaLimitType"
                       ng-options="type for type in quotaLimitTypes" ng-model="newLimitConfig['type']">
               </select>
             </td>
             <td>
-              <input class="form-control margin-2" type="number" name="limit-percent"
+              <input class="form-control margin-2" type="number" name="limit-percent" id="newQuotaLimitPercent"
 		     min="1" max="100" placeholder="Percent threshold" ng-model="newLimitConfig['limit_percent']"/>
             </td>
             <td>

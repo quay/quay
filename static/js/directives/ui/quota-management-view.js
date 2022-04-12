@@ -38,6 +38,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         'validNumber': 'Please enter a valid number.',
         'setQuotaBeforeLimit': 'Please set quota before adding a quota Limit.',
         'singleRejectLimit': 'Error: A quota policy should only have a single reject threshold.',
+        'identicalThresholds': 'Error: The quota policy contains two identical thresholds.',
       };
       $scope.warningMessage = '';
       $scope.warningMessagesObj = {
@@ -263,6 +264,16 @@ angular.module('quay').directive('quotaManagementView', function () {
           return true;
         }
 
+        // Check for duplicates in Quota Limit values
+        if (duplicateExists($scope.currentQuotaConfig['limits'], $scope.newLimitConfig)) {
+          $scope.errorMessage = $scope.errorMessagesObj["identicalThresholds"];
+          updateErrorBorder(true);
+          return true;
+        }
+        else {
+          updateErrorBorder(false);
+        }
+
         $scope.errorMessage = "";
         return false;
       }
@@ -347,6 +358,33 @@ angular.module('quay').directive('quotaManagementView', function () {
         ApiService.deleteOrganizationQuota(null,
           {"orgname": $scope.organization.name, "quota_id": $scope.currentQuotaConfig.id}
         ).then(handleSuccess, handleError);
+      }
+
+      var duplicateExists = function(obj, toCheck) {
+        if (!obj || !toCheck) {
+          return false;
+        }
+
+        for (let key in obj) {
+          if (obj[key]['type'] === toCheck['type'] && obj[key]['limit_percent'] == toCheck['limit_percent']) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      var updateErrorBorder = function(toAdd) {
+        var limitTypeEle = document.getElementById("newQuotaLimitType");
+        var limitPercentEle = document.getElementById("newQuotaLimitPercent");
+
+        if (toAdd) {
+          limitTypeEle.classList.add("error-border");
+          limitPercentEle.classList.add("error-border");
+        }
+        else {
+          limitTypeEle.classList.remove("error-border");
+          limitPercentEle.classList.remove("error-border");
+        }
       }
 
       loadOrgQuota();

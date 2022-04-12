@@ -19,3 +19,7 @@
 .border-radius-50 {
     border-radius: 50% !important;
 }
+
+.error-border {
+    border: 1px solid red !important;
+}
