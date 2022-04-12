@@ -109,7 +109,7 @@
       <div>
           <button class="margin-2 btn btn-primary save-quota-details margin-3"
           ng-disabled="disableSaveQuota()" ng-click="updateQuotaConfig()">Apply</button>
-          <button class="margin-2 btn btn-danger" ng-disabled="!prevquotaEnabled" ng-click="showdeleteOrgQuota()">Remove</button>
+          <button ng-show="prevquotaEnabled" class="margin-2 btn btn-danger" ng-disabled="!prevquotaEnabled" ng-click="showdeleteOrgQuota()">Remove</button>
           <button ng-if="view == 'super-user'" class="btn btn-default" data-dismiss="modal">Close</button>
           <button ng-if="view == 'organization-view' && !prevquotaEnabled" class="margin-2 btn btn-primary" ng-click="toggleOrgConfigView()">
             Cancel
