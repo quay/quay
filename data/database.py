@@ -2098,8 +2098,8 @@ class ProxyCacheConfig(BaseModel):
     # upstream_registry is the images prefix of the cached registry
     # i.e quay.io/myorg; docker.io
     upstream_registry = CharField(max_length=270)
-    upstream_registry_username = EncryptedCharField(max_length=2048, null=True)
-    upstream_registry_password = EncryptedCharField(max_length=2048, null=True)
+    upstream_registry_username = EncryptedCharField(max_length=4096, null=True)
+    upstream_registry_password = EncryptedCharField(max_length=4096, null=True)
     expiration_s = IntegerField(default=DEFAULT_PROXY_CACHE_EXPIRATION)
     insecure = BooleanField(default=False)
 
