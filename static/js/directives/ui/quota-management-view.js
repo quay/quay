@@ -74,8 +74,6 @@ angular.module('quay').directive('quotaManagementView', function () {
 
             $scope.organization.quota_report.configured_quota = quota["limit_bytes"];
             $scope.organization.quota_report.percent_consumed = (parseInt($scope.organization.quota_report.quota_bytes) / $scope.organization.quota_report.configured_quota * 100).toFixed(2);
-          } else {
-            populateDefaultQuotaLimits();
           }
         });
       };
@@ -211,6 +209,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         ApiService.deleteOrganizationQuotaLimit(null, params).then((resp) => {
           delete $scope.currentQuotaConfig['limits'][limitId];
           delete $scope.prevQuotaConfig['limits'][limitId];
+          populateDefaultQuotaLimits();
         });
       }
 
@@ -232,7 +231,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       var populateDefaultQuotaLimits = function () {
-        if ($scope.prevquotaEnabled || $scope.currentQuotaConfig['limits'].length > 0) {
+        if ($scope.currentQuotaConfig['limits'].length > 0) {
           return;
         }
         $scope.newLimitConfig = {"limit_percent": 100, "type": $scope.rejectLimitType};
@@ -252,8 +251,8 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       $scope.disableAddQuotaLimit = function () {
+        // Cannot add limits without configuring quota
         if (!$scope.currentQuotaConfig.id) {
-          $scope.errorMessage = $scope.errorMessagesObj["setQuotaBeforeLimit"];
           return true;
         }
 
@@ -305,12 +304,17 @@ angular.module('quay').directive('quotaManagementView', function () {
           return false;
         }
 
+        // Enable Apply button only if quota and the unit is selected
+        if (!$scope.currentQuotaConfig['quota'] || !$scope.currentQuotaConfig['byte_unit']) {
+          return false;
+        }
+
         $scope.errorMessage = '';
         return true;
       }
 
       var checkForWarnings = function() {
-        if (Object.keys($scope.currentQuotaConfig['limits']).length == 0 && ($scope.newLimitConfig['type'] == null && $scope.newLimitConfig['limit_percent'] == null)) {
+        if (Object.keys($scope.currentQuotaConfig['limits']).length == 0) {
           $scope.warningMessage = $scope.warningMessagesObj['noQuotaLimit'];
           return;
         }
@@ -349,8 +353,6 @@ angular.module('quay').directive('quotaManagementView', function () {
           $scope.prevQuotaConfig = {'quota': null, 'limits': {}};
           $scope.currentQuotaConfig = {'quota': null, 'limits': {}};
           $scope.newLimitConfig = {'type': null, 'limit_percent': null};
-
-          if (callback) callback(true);
         }
         let errMsg = "Unable to delete Quota";
         let handleError = ApiService.errorDisplay(errMsg, callback);
@@ -391,6 +393,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       /* loadQuotaLimits(true); */
       $scope.$watch('isEnabled', loadOrgQuota);
       $scope.$watch('organization', loadOrgQuota);
+      populateDefaultQuotaLimits();
     }
   }
   return directiveDefinitionObject;
