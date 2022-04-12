@@ -6,7 +6,7 @@ angular.module('quay').directive('quotaManagementView', function () {
     templateUrl: '/static/directives/quota-management-view.html',
     restrict: 'AEC',
     scope: {
-      'isEnabled': '=isEnabled',
+      'view': '@view',
       'organization': '=organization',
     },
     controller: function ($scope, $timeout, $location, $element, ApiService, UserService,
@@ -46,6 +46,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         'noRejectLimit': 'Note: This quota has no hard limit enforced via a rejection thresholds. Users will be able to exceed the storage quota set above.',
       }
       $scope.showQuotaDeletionModal = false;
+      $scope.showConfigPanel = false;
 
       var loadOrgQuota = function () {
         $scope.nameSpaceResource = ApiService.listOrganizationQuota(
@@ -75,6 +76,7 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.organization.quota_report.configured_quota = quota["limit_bytes"];
             $scope.organization.quota_report.percent_consumed = (parseInt($scope.organization.quota_report.quota_bytes) / $scope.organization.quota_report.configured_quota * 100).toFixed(2);
           }
+          populateDefaultQuotaLimits();
         });
       };
 
@@ -231,7 +233,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       var populateDefaultQuotaLimits = function () {
-        if ($scope.currentQuotaConfig['limits'].length > 0) {
+        if (Object.keys($scope.currentQuotaConfig['limits']).length > 0) {
           return;
         }
         $scope.newLimitConfig = {"limit_percent": 100, "type": $scope.rejectLimitType};
@@ -389,11 +391,14 @@ angular.module('quay').directive('quotaManagementView', function () {
         }
       }
 
+      $scope.toggleOrgConfigView = function () {
+        $scope.showConfigPanel = !$scope.showConfigPanel;
+      }
+
       loadOrgQuota();
       /* loadQuotaLimits(true); */
       $scope.$watch('isEnabled', loadOrgQuota);
       $scope.$watch('organization', loadOrgQuota);
-      populateDefaultQuotaLimits();
     }
   }
   return directiveDefinitionObject;

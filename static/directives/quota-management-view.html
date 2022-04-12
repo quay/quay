@@ -1,9 +1,17 @@
 <div class="quota-management-view-element">
+  <div ng-if="view == 'organization-view' && !showConfigPanel && !prevquotaEnabled">
+    <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="toggleOrgConfigView()">
+      <i class="fa margin-right-4"></i>
+      Add Storage Quota
+    </button>
+  </div>
+  <div ng-if="!(view == 'organization-view' && !showConfigPanel && !prevquotaEnabled) || view == 'super-user'">
+  <fieldset ng-disabled="view == 'organization-view' && prevquotaEnabled">
   <form>
   <table class="co-list-table">
     <tr>
-      <td>
-        Quota Management:
+      <td class="row-alignment">
+        Set storage quota:
       </td>
       <td>
 	<table class="co-table">
@@ -21,8 +29,8 @@
     </tr>
 
     <tr>
-      <td>
-        Limits:
+      <td class="row-alignment">
+        Quota Policy:
       </td>
       <td>
         <table class="co-table no-lines" ng-if="currentQuotaConfig">
@@ -102,9 +110,14 @@
           <button class="margin-2 btn btn-primary save-quota-details margin-3"
           ng-disabled="disableSaveQuota()" ng-click="updateQuotaConfig()">Apply</button>
           <button class="margin-2 btn btn-danger" ng-disabled="!prevquotaEnabled" ng-click="showdeleteOrgQuota()">Remove</button>
-          <button class="btn btn-default" data-dismiss="modal">Close</button>
+          <button ng-if="view == 'super-user'" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button ng-if="view == 'organization-view' && !prevquotaEnabled" class="margin-2 btn btn-primary" ng-click="toggleOrgConfigView()">
+            Cancel
+          </button>
       </div>
   </form>
+</fieldset>
+</div>
 </div>
 
 <!-- Delete Quota dialog -->

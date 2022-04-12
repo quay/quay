@@ -138,7 +138,14 @@
               <time-machine-settings organization="organization"></time-machine-settings>
 
               <div quay-show="Features.QUOTA_MANAGEMENT">
-                <quota-management-view organization="organization" disabled="true"></quota-management-view>
+                <table class="co-list-table">
+                  <tr>
+                    <td>Quota Management:</td>
+                    <td>
+                      <quota-management-view organization="organization" view="organization-view"></quota-management-view>
+                    </td>
+                  </tr>
+                </table>
               </div>
 
               <div quay-show="Features.PROXY_CACHE">
