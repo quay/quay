@@ -1,9 +1,11 @@
+import functools
 import logging
 import requests
 import json
 import os
 import jwt
 import base64
+import time
 
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -16,11 +18,27 @@ from jsonschema import validate, RefResolver
 
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.model.storage import get_storage_locations
+from util.metrics.prometheus import secscan_index_request_duration
 
 
 logger = logging.getLogger(__name__)
 
 DOWNLOAD_VALIDITY_LIFETIME_S = 60  # Amount of time the security scanner has to call the layer URL
+
+
+def observe(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+
+        retval = f(*args, **kwargs)
+
+        dur = time.time() - start_time
+        secscan_index_request_duration.observe(dur)
+
+        return retval
+
+    return wrapper
 
 
 class Non200ResponseException(Exception):
@@ -167,6 +185,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         return resp.json()
 
+    @observe
     def index(self, manifest, layers):
         # TODO: Better method of determining if a manifest can be indexed (new field or content-type whitelist)
         assert isinstance(manifest, ManifestDataType) and not manifest.is_manifest_list
