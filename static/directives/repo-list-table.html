@@ -83,11 +83,9 @@
        <td class="repo-quota hidden-xs" ng-show="quotaManagementEnabled">
          <span ng-if="::repository.quota_report.configured_quota != null">
            <span ng-bind="::bytesToHumanReadableString(repository.quota_report.quota_bytes)"></span>
-	   {{ ::quotaPercentConsumed(repository) }}%
+	   ({{ ::quotaPercentConsumed(repository) }})%
          </span>
-         <span ng-if="::repository.quota_report.configured_quota == null">
-	   --
-         </span>
+         <span ng-if="::repository.quota_report.configured_quota == null"></span>
       </td>
        <td class="popularity hidden-xs">
          <span class="strength-indicator" value="::repository.popularity" maximum="::maxPopularity"

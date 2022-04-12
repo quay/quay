@@ -37,6 +37,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         'quotaLimitNotInRange': 'A quota limit greater 0 and less than 100 must be defined.',
         'validNumber': 'Please enter a valid number.',
         'setQuotaBeforeLimit': 'Please set quota before adding a quota Limit.',
+        'singleRejectLimit': 'Error: A quota policy should only have a single reject threshold.',
       };
       $scope.warningMessage = '';
       $scope.warningMessagesObj = {
@@ -236,9 +237,29 @@ angular.module('quay').directive('quotaManagementView', function () {
         $scope.newLimitConfig = {"limit_percent": 100, "type": $scope.rejectLimitType};
       }
 
+      var multipleRejectTypes = function (obj) {
+        let count = 0;
+        for (var key in obj) {
+          if (obj[key]['type'] == $scope.rejectLimitType) {
+            count++;
+          }
+          if (count > 1) {
+            return true
+          }
+        }
+        return false
+      }
+
       $scope.disableAddQuotaLimit = function () {
         if (!$scope.currentQuotaConfig.id) {
           $scope.errorMessage = $scope.errorMessagesObj["setQuotaBeforeLimit"];
+          return true;
+        }
+
+        let temp = {};
+        temp['new'] = $scope.newLimitConfig;
+        if (multipleRejectTypes({...$scope.currentQuotaConfig['limits'], ...temp})) {
+          $scope.errorMessage = $scope.errorMessagesObj["singleRejectLimit"];
           return true;
         }
 
