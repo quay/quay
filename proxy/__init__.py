@@ -23,7 +23,10 @@ REGISTRY_URLS = {"docker.io": "registry-1.docker.io"}
 
 class UpstreamRegistryError(Exception):
     def __init__(self, detail):
-        msg = f"Error requesting upstream registry: {detail}"
+        msg = (
+            "the requested image may not exist in the upstream registry, or the configured "
+            f"Quay organization credentials have insufficient rights to access it ({detail})"
+        )
         super().__init__(msg)
 
 
