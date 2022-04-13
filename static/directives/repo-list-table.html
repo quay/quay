@@ -86,7 +86,7 @@
            <span ng-bind="::bytesToHumanReadableString(repository.quota_report.quota_bytes)"></span>
          </span>
          <span ng-if="::!repository.quota_report.quota_bytes"></span>
-         <span ng-if="::repository.quota_report.configured_quota">
+         <span ng-if="::repository.quota_report.configured_quota.length > 0">
 	       ({{ ::quotaPercentConsumed(repository) }})%
          </span>
       </td>
