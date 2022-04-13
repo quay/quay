@@ -114,7 +114,9 @@ angular.module('quay').directive('quotaManagementView', function () {
           }
           quotaMethod(data, params).then((resp) => {
             loadOrgQuota();
-          }, displayError());
+          }, function (resp) {
+            handleError(resp)
+          });
         }
       }
 
@@ -197,7 +199,10 @@ angular.module('quay').directive('quotaManagementView', function () {
         ApiService.changeOrganizationQuotaLimit(data, params).then((resp) => {
           $scope.prevQuotaConfig['limits'][limitId]['type'] = $scope.currentQuotaConfig['limits'][limitId]['type'];
           $scope.prevQuotaConfig['limits'][limitId]['limit_percent'] = $scope.currentQuotaConfig['limits'][limitId]['limit_percent'];
-        });
+        }, function (resp) {
+          handleError(resp);
+        }
+        );
       }
 
       $scope.deleteQuotaLimit = function (limitId) {
@@ -211,7 +216,21 @@ angular.module('quay').directive('quotaManagementView', function () {
           delete $scope.currentQuotaConfig['limits'][limitId];
           delete $scope.prevQuotaConfig['limits'][limitId];
           populateDefaultQuotaLimits();
+        }, function (resp) {
+          handleError(resp);
         });
+      }
+
+      let displayErrorAlert = function (message) {
+        bootbox.alert(message);
+      }
+
+      let handleError = function (resp) {
+        if (resp.status == 403) {
+          displayErrorAlert("You do not have sufficient permissions to perform the action.");
+        } else {
+          displayErrorAlert(resp.data.error_message);
+        }
       }
 
       $scope.disableSaveQuota = function () {
@@ -358,14 +377,16 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.newLimitConfig = {'type': null, 'limit_percent': null};
           }
 
-          let errMsg = "Unable to delete Quota";
-          let handleError = ApiService.errorDisplay(errMsg);
-
           ApiService.deleteOrganizationQuota(null,
           {"orgname": $scope.organization.name, "quota_id": $scope.currentQuotaConfig.id}
-          ).then(handleSuccess, handleError);
+          ).then((resp) => {
+            handleSuccess();
+          }, function(resp){
+            handleError(resp);
+          });
         });
-      };
+      }
+
 
       var duplicateExists = function(obj, toCheck) {
         if (!obj || !toCheck) {

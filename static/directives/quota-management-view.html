@@ -6,7 +6,6 @@
     </button>
   </div>
   <div ng-if="!(view == 'organization-view' && !showConfigPanel && !prevquotaEnabled) || view == 'super-user'">
-  <fieldset ng-disabled="view == 'organization-view' && prevquotaEnabled">
   <form>
   <table class="co-list-table">
     <tr>
@@ -88,8 +87,8 @@
             </td>
             <td>
               <span class="margin-2">
-		<button class="add-quota-limit btn btn-success border-radius-50" ng-click="addQuotaLimit()" ng-disabled="disableAddQuotaLimit()">
-		  <i class="fa fa-plus"></i>
+		<button class="add-quota-limit btn btn-success" ng-click="addQuotaLimit()" ng-disabled="disableAddQuotaLimit()">
+		  <i class="fa fa-plus"></i> Add Limit
 		</button>
               </span>
             </td>
@@ -116,6 +115,5 @@
           </button>
       </div>
   </form>
-</fieldset>
 </div>
 </div>
