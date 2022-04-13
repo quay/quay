@@ -99,7 +99,7 @@ class OrganizationQuotaList(ApiResource):
         if not features.SUPER_USERS or not SuperUserPermission().can():
             if (
                 not orgperm.can()
-                and not config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
+                or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
             ):
                 raise Unauthorized()
 
