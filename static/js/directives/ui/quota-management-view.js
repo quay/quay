@@ -107,11 +107,25 @@ angular.module('quay').directive('quotaManagementView', function () {
         if (!$scope.prevquotaEnabled ||
           $scope.prevQuotaConfig['quota'] != $scope.currentQuotaConfig['quota'] ||
           $scope.prevQuotaConfig['byte_unit'] != $scope.currentQuotaConfig['byte_unit']) {
+
           if ($scope.prevquotaEnabled) {
-            quotaMethod = ApiService.changeOrganizationQuota;
+
+            if ($scope.view == "super-user") {
+              quotaMethod = ApiService.changeOrganizationQuotaSuperUser;
+            } else {
+              quotaMethod = ApiService.changeOrganizationQuota;
+            }
+
           } else {
-            quotaMethod = ApiService.createOrganizationQuota;
+
+            if ($scope.view == "super-user") {
+              quotaMethod = ApiService.createOrganizationQuotaSuperUser;
+            } else {
+              quotaMethod = ApiService.createOrganizationQuota;
+            }
+
           }
+
           quotaMethod(data, params).then((resp) => {
             loadOrgQuota();
           }, function (resp) {
@@ -155,9 +169,14 @@ angular.module('quay').directive('quotaManagementView', function () {
         }
 
         let params = {
-          'orgname': $scope.organization.name,
           'quota_id': $scope.currentQuotaConfig.id,
         };
+
+        if ($scope.view == 'super-user') {
+          params['namespace'] = $scope.organization.name;
+        } else {
+          params['orgname'] = $scope.organization.name;
+        }
 
         updateOrganizationQuota(params);
       }
@@ -234,6 +253,11 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       $scope.disableSaveQuota = function () {
+        // If quota exists and if user is in organization settings, cannot update the settings.
+        if ($scope.prevquotaEnabled && $scope.view == "organization-view") {
+          return true;
+        }
+
         if (!validOrgQuota()) {
           return true;
         }
@@ -242,7 +266,19 @@ angular.module('quay').directive('quotaManagementView', function () {
           $scope.prevQuotaConfig['byte_unit'] === $scope.currentQuotaConfig['byte_unit'];
       }
 
+      $scope.disableDeleteQuota = function () {
+        // Cannot delete from organization settings page
+        if ($scope.view == "organization-view") {
+          return true;
+        }
+      }
+
       $scope.disableUpdateQuota = function (limitId) {
+        // Cannot update from organization settings page
+        if ($scope.view == "organization-view") {
+          return true;
+        }
+
         if ($scope.errorMessage || !validOrgQuotaLimit($scope.currentQuotaConfig['limits'][limitId]['limit_percent'])) {
           return true;
         }
@@ -377,9 +413,21 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.newLimitConfig = {'type': null, 'limit_percent': null};
           }
 
-          ApiService.deleteOrganizationQuota(null,
-          {"orgname": $scope.organization.name, "quota_id": $scope.currentQuotaConfig.id}
-          ).then((resp) => {
+          let params =  {
+            "quota_id": $scope.currentQuotaConfig.id
+          }
+          let quotaMethod = null;
+
+          if ($scope.view == "super-user") {
+            quotaMethod = ApiService.deleteOrganizationQuotaSuperUser;
+            params["namespace"] = $scope.organization.name;
+          }
+          else {
+            quotaMethod = ApiService.deleteOrganizationQuota;
+            params["orgname"] = $scope.organization.name;
+          }
+
+          quotaMethod(null, params).then((resp) => {
             handleSuccess();
           }, function(resp){
             handleError(resp);

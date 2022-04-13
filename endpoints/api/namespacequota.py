@@ -151,9 +151,9 @@ class OrganizationQuota(ApiResource):
     def put(self, orgname, quota_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
-        # Only super users can update quota
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            raise Unauthorized()
+            if not orgperm.can():
+                raise Unauthorized()
 
         quota_data = request.get_json()
 
@@ -172,9 +172,9 @@ class OrganizationQuota(ApiResource):
     def delete(self, orgname, quota_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
-        # Only super users can delete quota
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            raise Unauthorized()
+            if not orgperm.can():
+                raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
 
