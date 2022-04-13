@@ -31,6 +31,9 @@ unmirrored_repositories = Gauge(
     "number of repositories in the database that have not yet been mirrored",
 )
 
+# Used only for testing - should not be set in production
+TAG_ROLLBACK_PAGE_SIZE = app.config.get("REPO_MIRROR_TAG_ROLLBACK_PAGE_SIZE", 100)
+
 
 class PreemptedException(Exception):
     """
@@ -355,9 +358,17 @@ def rollback(mirror, since_ms):
     repository_ref = registry_model.lookup_repository(
         mirror.repository.namespace_user.username, mirror.repository.name
     )
-    tags, has_more = registry_model.list_repository_tag_history(
-        repository_ref, 1, 100, since_time_ms=since_ms
-    )
+
+    tags = []
+    index = 1
+    has_more = True
+    while has_more:
+        tags_page, has_more = registry_model.list_repository_tag_history(
+            repository_ref, index, TAG_ROLLBACK_PAGE_SIZE, since_time_ms=since_ms
+        )
+        tags.extend(tags_page)
+        index = index + 1
+
     for tag in tags:
         logger.debug("Repo mirroring rollback tag '%s'" % tag)
 
@@ -365,7 +376,7 @@ def rollback(mirror, since_ms):
         if tag.lifetime_end_ms:
             #  If a future entry exists with a start time equal to the end time for this tag,
             # then the action was a move, rather than a delete and a create.
-            newer_tag = list(
+            tag_list = list(
                 filter(
                     lambda t: tag != t
                     and tag.name == t.name
@@ -373,8 +384,8 @@ def rollback(mirror, since_ms):
                     and t.lifetime_start_ms == tag.lifetime_end_ms,
                     tags,
                 )
-            )[0]
-            if newer_tag:
+            )
+            if len(tag_list) > 0:
                 logger.debug("Repo mirroring rollback revert tag '%s'" % tag)
                 retarget_tag(tag.name, tag.manifest._db_id, is_reversion=True)
             else:
