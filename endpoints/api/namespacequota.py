@@ -97,10 +97,7 @@ class OrganizationQuotaList(ApiResource):
         orgperm = AdministerOrganizationPermission(orgname)
 
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if (
-                not orgperm.can()
-                or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
-            ):
+            if not orgperm.can() or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
                 raise Unauthorized()
 
         quota_data = request.get_json()
@@ -226,10 +223,7 @@ class OrganizationQuotaLimitList(ApiResource):
         orgperm = AdministerOrganizationPermission(orgname)
 
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if (
-                not orgperm.can()
-                or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
-            ):
+            if not orgperm.can() or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
                 raise Unauthorized()
 
         quota_limit_data = request.get_json()
