@@ -45,7 +45,6 @@ angular.module('quay').directive('quotaManagementView', function () {
         'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
         'noRejectLimit': 'Note: This quota has no hard limit enforced via a rejection thresholds. Users will be able to exceed the storage quota set above.',
       }
-      $scope.showQuotaDeletionModal = false;
       $scope.showConfigPanel = false;
 
       var loadOrgQuota = function () {
@@ -343,31 +342,30 @@ angular.module('quay').directive('quotaManagementView', function () {
         return false;
       }
 
-      $scope.showdeleteOrgQuota = function () {
-        if ($scope.showQuotaDeletionModal == true) {
-          $scope.showQuotaDeletionModal = false;
-        } else {
-          $scope.showQuotaDeletionModal = true;
-        }
-      }
+      $scope.deleteOrgQuota = function() {
+        bootbox.confirm('Are you sure you want to delete quota for this organization? ' +
+          'When you remove the quota storage, users can consume arbitrary amount of storage resources.',
+        function(result) {
+          if (!result) {
+            return;
+          }
 
-      $scope.deleteOrgQuota = function(info, callback) {
-        let handleSuccess = function() {
-          loadOrgQuota();
-          $scope.showQuotaDeletionModal = false;
-          $scope.prevquotaEnabled = false;
-          $scope.prevQuotaConfig = {'quota': null, 'limits': {}};
-          $scope.currentQuotaConfig = {'quota': null, 'limits': {}};
-          $scope.newLimitConfig = {'type': null, 'limit_percent': null};
-        }
-        let errMsg = "Unable to delete Quota";
-        let handleError = ApiService.errorDisplay(errMsg, callback);
-        $scope.showQuotaDeletionModal = false;
+          let handleSuccess = function() {
+            loadOrgQuota();
+            $scope.prevquotaEnabled = false;
+            $scope.prevQuotaConfig = {'quota': null, 'limits': {}};
+            $scope.currentQuotaConfig = {'quota': null, 'limits': {}};
+            $scope.newLimitConfig = {'type': null, 'limit_percent': null};
+          }
 
-        ApiService.deleteOrganizationQuota(null,
+          let errMsg = "Unable to delete Quota";
+          let handleError = ApiService.errorDisplay(errMsg);
+
+          ApiService.deleteOrganizationQuota(null,
           {"orgname": $scope.organization.name, "quota_id": $scope.currentQuotaConfig.id}
-        ).then(handleSuccess, handleError);
-      }
+          ).then(handleSuccess, handleError);
+        });
+      };
 
       var duplicateExists = function(obj, toCheck) {
         if (!obj || !toCheck) {
