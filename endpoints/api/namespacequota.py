@@ -147,13 +147,14 @@ class OrganizationQuota(ApiResource):
         return quota_view(quota)
 
     @nickname("changeOrganizationQuota")
+    @require_scope(scopes.SUPERUSER)
+    @show_if(features.SUPER_USERS)
     @validate_json_request("UpdateOrgQuota")
     def put(self, orgname, quota_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
-        if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can():
-                raise Unauthorized()
+        if not orgperm.can():
+            raise Unauthorized()
 
         quota_data = request.get_json()
 
@@ -169,12 +170,13 @@ class OrganizationQuota(ApiResource):
         return quota_view(quota)
 
     @nickname("deleteOrganizationQuota")
+    @require_scope(scopes.SUPERUSER)
+    @show_if(features.SUPER_USERS)
     def delete(self, orgname, quota_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
-        if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can():
-                raise Unauthorized()
+        if not orgperm.can():
+            raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
 
