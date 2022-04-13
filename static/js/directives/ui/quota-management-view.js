@@ -344,7 +344,11 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       $scope.showdeleteOrgQuota = function () {
-        $scope.showQuotaDeletionModal = true;
+        if ($scope.showQuotaDeletionModal == true) {
+          $scope.showQuotaDeletionModal = false;
+        } else {
+          $scope.showQuotaDeletionModal = true;
+        }
       }
 
       $scope.deleteOrgQuota = function(info, callback) {
@@ -358,6 +362,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         }
         let errMsg = "Unable to delete Quota";
         let handleError = ApiService.errorDisplay(errMsg, callback);
+        $scope.showQuotaDeletionModal = false;
 
         ApiService.deleteOrganizationQuota(null,
           {"orgname": $scope.organization.name, "quota_id": $scope.currentQuotaConfig.id}
