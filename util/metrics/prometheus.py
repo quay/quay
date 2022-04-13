@@ -58,6 +58,11 @@ gc_namespaces_purged = Counter(
 )
 gc_iterations = Counter("quay_gc_iterations", "number of iterations by the GCWorker")
 
+secscan_index_request_duration = Histogram(
+    "quay_secscan_index_duration_seconds",
+    "seconds taken to make an index request to the secscan service",
+)
+
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24

@@ -1,5 +1,7 @@
 import logging
+import functools
 import itertools
+import random
 
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -206,10 +208,13 @@ class V4SecurityScanner(SecurityScannerInterface):
         recent_max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
         recent_min_id = max(recent_max_id - batch_size, 1)
 
-        iterator = itertools.chain(
-            # TODO(kleesc): remove the this at some point. Once manifests have been backfilled,
-            # randomily selecting entries should be enough.
-            # Guarantees at least one batch of recent manifests gets indexed first.
+        iterator = functools.partial(
+            itertools.chain,
+            # TODO(kleesc): remove the this at some point.
+            # Once manifests have been backfilled, randomily selecting entries from the entire dataset should be enough.
+            # Guarantees at least one batch of recent manifests gets indexed first, but also increases
+            # the likelyhood of duplicate work from multiple workers by requiring us setting a relatively small min_id -> max_id range
+            # This is done in order to frequently index the most recent batch, and not spend too much time on the following iterators.
             yield_random_entries(
                 not_indexed_query,
                 Manifest.id,
@@ -239,6 +244,22 @@ class V4SecurityScanner(SecurityScannerInterface):
                 min_id,
             ),
         )
+
+        # TODO(kleesc): remove the this at some point.
+        # Once manifests have been backfilled, randomily selecting entries from the entire dataset should be enough.
+        if min_id + batch_size < Manifest.select(fn.Max(Manifest.id)).scalar() - batch_size:
+            rand_min = random.randint(
+                min_id + batch_size,
+                Manifest.select(fn.Max(Manifest.id)).scalar() - batch_size,
+            )
+
+            iterator = iterator(
+                yield_random_entries(
+                    not_indexed_query, Manifest.id, batch_size, rand_min, rand_min + batch_size
+                )
+            )
+        else:
+            iterator = iterator()
 
         return iterator
 
