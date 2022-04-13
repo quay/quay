@@ -278,7 +278,7 @@ angular.module('quay').directive('quotaManagementView', function () {
 
         let temp = {};
         temp['new'] = $scope.newLimitConfig;
-        if (multipleRejectTypes({...$scope.currentQuotaConfig['limits'], ...temp})) {
+        if (multipleRejectTypes({...$scope.prevQuotaConfig['limits'], ...temp})) {
           $scope.errorMessage = $scope.errorMessagesObj["singleRejectLimit"];
           return true;
         }
