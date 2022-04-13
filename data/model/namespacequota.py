@@ -279,20 +279,16 @@ def get_repo_quota_for_view(namespace_name, repo_name):
         return None
 
     quotas = get_namespace_quota_list(repository_ref.namespace_user.username)
-    if not quotas:
-        return {
-            "quota_bytes": None,
-            "configured_quota": None,
-        }
 
     # Currently only one quota per namespace is supported
-    quota = quotas[0]
-    configured_namespace_quota = quota.limit_bytes
+    configured_namespace_quota = quotas[0].limit_bytes if quotas else None
 
     repo_size = model.repository.get_repository_size_and_cache(repository_ref.id).get(
         "repository_size", 0
     )
 
+    # If FEATURE_QUOTA_MANAGEMENT is enabled & quota is not set for an org,
+    # we still want to report repo's storage consumption
     return {
         "quota_bytes": repo_size,
         "configured_quota": configured_namespace_quota,
@@ -304,19 +300,15 @@ def get_quota_for_view(namespace_name):
 
     namespace_user = model.user.get_user_or_org(namespace_name)
     quotas = get_namespace_quota_list(namespace_user.username)
-    if not quotas:
-        return {
-            "quota_bytes": None,
-            "configured_quota": None,
-        }
 
     # Currently only one quota per namespace is supported
-    quota = quotas[0]
-    configured_namespace_quota = quota.limit_bytes
+    configured_namespace_quota = quotas[0].limit_bytes if quotas else None
 
     namespace_quota_consumed = get_namespace_size(namespace_name)
     namespace_quota_consumed = int(namespace_quota_consumed) if namespace_quota_consumed else 0
 
+    # If FEATURE_QUOTA_MANAGEMENT is enabled & quota is not set for an org,
+    # we still want to report org's storage consumption
     return {
         "quota_bytes": namespace_quota_consumed,
         "configured_quota": configured_namespace_quota,
