@@ -76,7 +76,7 @@ class OrganizationQuotaList(ApiResource):
     @nickname("listOrganizationQuota")
     def get(self, orgname):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can():
+        if not orgperm.can() and not SuperUserPermission().can():
             raise Unauthorized()
 
         try:
@@ -99,7 +99,7 @@ class OrganizationQuotaList(ApiResource):
         if not features.SUPER_USERS or not SuperUserPermission().can():
             if (
                 not orgperm.can()
-                or not config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
+                and not config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
             ):
                 raise Unauthorized()
 
