@@ -29,7 +29,7 @@ class SecurityWorker(Worker):
         self.add_operation(self._index_in_scanner, interval)
 
     def _index_in_scanner(self):
-        self._next_token = self._model.perform_indexing(self._next_token)
+        self._next_token = self._model.index_manifests(self._next_token)
 
 
 def create_gunicorn_worker():
