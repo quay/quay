@@ -76,7 +76,7 @@ class OrganizationQuotaList(ApiResource):
     @nickname("listOrganizationQuota")
     def get(self, orgname):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can():
+        if not orgperm.can() and not SuperUserPermission().can():
             raise Unauthorized()
 
         try:
@@ -97,10 +97,7 @@ class OrganizationQuotaList(ApiResource):
         orgperm = AdministerOrganizationPermission(orgname)
 
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if (
-                not orgperm.can()
-                or not config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
-            ):
+            if not orgperm.can() or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
                 raise Unauthorized()
 
         quota_data = request.get_json()
@@ -142,7 +139,7 @@ class OrganizationQuota(ApiResource):
     @nickname("getOrganizationQuota")
     def get(self, orgname, quota_id):
         orgperm = OrganizationMemberPermission(orgname)
-        if not orgperm.can():
+        if not orgperm.can() and not SuperUserPermission().can():
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
@@ -150,13 +147,14 @@ class OrganizationQuota(ApiResource):
         return quota_view(quota)
 
     @nickname("changeOrganizationQuota")
+    @require_scope(scopes.SUPERUSER)
+    @show_if(features.SUPER_USERS)
     @validate_json_request("UpdateOrgQuota")
     def put(self, orgname, quota_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
-        if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can():
-                raise Unauthorized()
+        if not orgperm.can():
+            raise Unauthorized()
 
         quota_data = request.get_json()
 
@@ -172,12 +170,13 @@ class OrganizationQuota(ApiResource):
         return quota_view(quota)
 
     @nickname("deleteOrganizationQuota")
+    @require_scope(scopes.SUPERUSER)
+    @show_if(features.SUPER_USERS)
     def delete(self, orgname, quota_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
-        if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can():
-                raise Unauthorized()
+        if not orgperm.can():
+            raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
 
@@ -226,10 +225,7 @@ class OrganizationQuotaLimitList(ApiResource):
         orgperm = AdministerOrganizationPermission(orgname)
 
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if (
-                not orgperm.can()
-                or not config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
-            ):
+            if not orgperm.can() or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
                 raise Unauthorized()
 
         quota_limit_data = request.get_json()
@@ -300,9 +296,9 @@ class OrganizationQuotaLimit(ApiResource):
     def put(self, orgname, quota_id, limit_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
+        # Only superusers can update quota limit
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can():
-                raise Unauthorized()
+            raise Unauthorized()
 
         quota_limit_data = request.get_json()
 
@@ -324,9 +320,9 @@ class OrganizationQuotaLimit(ApiResource):
     def delete(self, orgname, quota_id, limit_id):
         orgperm = AdministerOrganizationPermission(orgname)
 
+        # Only superusers can delete quota limit
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can():
-                raise Unauthorized()
+            raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
         quota_limit = model.namespacequota.get_namespace_quota_limit(quota, limit_id)

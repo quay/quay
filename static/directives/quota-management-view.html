@@ -1,59 +1,68 @@
 <div class="quota-management-view-element">
+  <div ng-if="view == 'organization-view' && !showConfigPanel && !prevquotaEnabled">
+    <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="toggleOrgConfigView()">
+      <i class="fa margin-right-4"></i>
+      Add Storage Quota
+    </button>
+  </div>
+  <div ng-if="!(view == 'organization-view' && !showConfigPanel && !prevquotaEnabled) || view == 'super-user'">
   <form>
   <table class="co-list-table">
     <tr>
-      <td>
-        Quota Management:
+      <td class="row-alignment">
+        Set storage quota:
       </td>
       <td>
 	<table class="co-table">
 	  <td>
-            <input class="margin-2 form-control width-440" type="number" name="quota-limit" min="1" ng-model="currentQuotaConfig['quota']">
+            <input class="margin-2 form-control width-440" type="number" name="quota-limit"
+              ng-disabled="prevquotaEnabled && view == 'organization-view'"
+              ng-model="currentQuotaConfig['quota']">
 	  </td>
 	  <td>
             <select class="form-control"
-                    ng-model="currentQuotaConfig['byte_unit']"
-                    ng-options="val for val in quotaUnits">
+              ng-model="currentQuotaConfig['byte_unit']"
+              ng-options="val for val in quotaUnits"
+              ng-disabled="prevquotaEnabled && view == 'organization-view'"
+            >
             </select>
-	  </td>
-	  <td>
-	    <button class="margin-2 btn btn-primary save-quota-details margin-3"
-		    ng-disabled="disableSaveQuota()" ng-click="updateQuotaConfig()">Save Quota Details</button>
 	  </td>
 	</table>
       </td>
     </tr>
-    
-    <tr>
-      <td>
-        Limits:
+
+    <tr ng-show="prevQuotaConfig['quota']">
+      <td class="row-alignment">
+        Quota Policy:
       </td>
       <td>
-        <table class="co-table" ng-if="currentQuotaConfig">
+        <table class="co-table no-lines" ng-if="currentQuotaConfig">
 
           <thead>
             <td class="hidden-xs">
-              <span>Action</span>
+              <span class="text-capitalize">Action</span>
             </td>
             <td class="hidden-xs">
-              <span>Limit Percent</span>
+              <span class="text-capitalize">Quota Threshold</span>
             </td>
             <td class="hidden-xs">
               <span></span>
             </td>
           </thead>
-	  
+
 	  <!-- Update limits -->
           <tr ng-repeat="limit in currentQuotaConfig['limits']">
             <td>
               <select class="form-control" name="quotaLimitType" id="quotaLimitType"
-                      ng-options="type for type in quotaLimitTypes"
-                      ng-model="limit['type']">
+                ng-disabled="prevquotaEnabled && view == 'organization-view'"
+                ng-options="type for type in quotaLimitTypes"
+                ng-model="limit['type']">
               </select>
             </td>
             <td>
               <input class="form-control margin-2" type="number" name="limit-percent"
-		     min="1" max="100" placeholder="Limit Percent" ng-model="limit['limit_percent']"/>
+                ng-disabled="prevquotaEnabled && view == 'organization-view'"
+		        min="1" max="100" placeholder="Limit Percent" ng-model="limit['limit_percent']"/>
             </td>
             <td>
               <span class="margin-2">
@@ -63,40 +72,54 @@
                 </button>
               </span>
               <span class="margin-2">
-                <button class="margin-2 btn btn-danger" ng-click="deleteQuotaLimit(limit.id)">
+                <button class="margin-2 btn btn-danger" ng-click="deleteQuotaLimit(limit.id)" ng-disabled="disableDeleteQuota()">
                   <i class="fa fa-trash"></i>
                   Remove
                 </button>
               </span>
             </td>
           </tr>
-	  
+
 	  <!-- Add limit -->
           <tr>
             <td>
-              <select class="form-control" name="quotaLimitType" id="quotaLimitType"
-                      ng-options="type for type in quotaLimitTypes" ng-model="newLimitConfig['type']">
+              <select class="form-control" name="quotaLimitType" id="newQuotaLimitType"
+                ng-options="type for type in quotaLimitTypes" ng-model="newLimitConfig['type']">
               </select>
             </td>
             <td>
-              <input class="form-control margin-2" type="number" name="limit-percent"
-		     min="1" max="100" placeholder="Percent threshold" ng-model="newLimitConfig['limit_percent']"/>
+              <input class="form-control margin-2" type="number" name="limit-percent" id="newQuotaLimitPercent"
+                min="1" max="100" placeholder="Percent threshold" ng-model="newLimitConfig['limit_percent']"/>
             </td>
             <td>
               <span class="margin-2">
-		<button class="add-quota-limit btn btn-success hidden-xs" ng-click="addQuotaLimit()" ng-disabled="!prevQuotaConfig['quota']">
-		  <i class="fa fa-plus margin-right-4"></i>
-		  Add Quota Limit
+		<button class="add-quota-limit btn btn-success" ng-click="addQuotaLimit()" ng-disabled="disableAddQuotaLimit()">
+		  <i class="fa fa-plus"></i> Add Limit
 		</button>
               </span>
             </td>
           </tr>
-	  
+
         </table>
       </td>
     </tr>
-    
+
   </table>
-  <button class="btn btn-default" data-dismiss="modal">Close</button>
+      <div class="co-alert co-alert-danger" ng-if="errorMessage">
+          {{ errorMessage }}
+      </div>
+      <div class="co-help-text" ng-if="warningMessage">
+          {{ warningMessage }}
+      </div>
+      <div>
+          <button class="margin-2 btn btn-primary save-quota-details margin-3"
+          ng-disabled="disableSaveQuota()" ng-click="updateQuotaConfig()">Apply</button>
+          <button ng-show="prevquotaEnabled" class="margin-2 btn btn-danger" ng-disabled="!prevquotaEnabled || view == 'organization-view'" ng-click="deleteOrgQuota()">Remove</button>
+          <button ng-if="view == 'super-user'" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button ng-if="view == 'organization-view' && !prevquotaEnabled" class="margin-2 btn btn-primary" ng-click="toggleOrgConfigView()">
+            Cancel
+          </button>
+      </div>
   </form>
+</div>
 </div>

@@ -79,10 +79,10 @@ angular.module('quay').directive('repoListTable', function () {
       };
 
       $scope.quotaPercentConsumed = function(repository) {
-	if (repository.quota_report) {
-	  return (repository.quota_report.quota_bytes / repository.quota_report.configured_quota * 100).toFixed(2);
-	}
-	return 0;
+	      if (repository.quota_report) {
+	        return (repository.quota_report.quota_bytes / repository.quota_report.configured_quota * 100).toFixed(2);
+	      }
+	      return 0;
       };
 
       $scope.getAvatarData = function(namespace) {

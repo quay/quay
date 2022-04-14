@@ -1,7 +1,7 @@
 .row-alignment {
-    display: flex;
-    padding: 4px;
-    align-items: center
+    width: 150px !important;
+    font-weight: 100 !important;
+    padding-top: 5% !important;
 }
 
 .margin-2 {
@@ -16,10 +16,10 @@
     width: 100%;
 }
 
-width-350 {
-    width: 350%;
+.border-radius-50 {
+    border-radius: 50% !important;
 }
 
-width-440 {
-    width: 440%;
+.error-border {
+    border: 1px solid red !important;
 }

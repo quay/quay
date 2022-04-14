@@ -301,8 +301,8 @@ class SuperUserUserQuota(ApiResource):
             try:
                 if "limit_bytes" in quota_data:
                     limit_bytes = quota_data["limit_bytes"]
-                    model.namespacequota.update_namespace_quota_size(quota, limit_bytes)
-            except model.DataModelException as ex:
+                    namespacequota.update_namespace_quota_size(quota, limit_bytes)
+            except DataModelException as ex:
                 raise request_error(exception=ex)
 
             return quota_view(quota)

@@ -112,15 +112,15 @@
                   <a href="mailto:{{ current_org.email }}">{{ current_org.email }}</a>
                 </td>
                 <td ng-if="Features.QUOTA_MANAGEMENT">
-                  <span ng-if="current_org.quota_report.quota_bytes != '0'">
+                  <span ng-if="current_org.quota_report.quota_bytes">
                   {{
                     current_org.quota_report.percent_consumed ?
                     ( bytesToHumanReadableString(current_org.quota_report.quota_bytes) + "(" + current_org.quota_report.percent_consumed + "%)") :
                     bytesToHumanReadableString(current_org.quota_report.quota_bytes)
                   }}
                   </span>
-                  <span ng-if="current_org.quota_report.quota_bytes == '0'">--</span>
-                  <span ng-if="current_org.quota_report.configured_quota">
+                  <span ng-if="current_org.quota_report.configured_quota.length > 0 && !current_org.quota_report.quota_bytes">0</span>
+                  <span ng-if="current_org.quota_report.configured_quota.length > 0">
                   {{ " of " + bytesToHumanReadableString(current_org.quota_report.configured_quota) }}
                   </span>
                 </td>
@@ -159,9 +159,9 @@
               <div class="modal-content padding-2percent">
                 <div class="modal-header">
                   <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                  <h4 class="modal-title">Manage Quota Configuration</h4>
+                  <h4 class="modal-title">Manage Organization Quota for {{ current_org.name }}</h4>
                 </div>
-                  <quota-management-view organization="current_org" disabled="false"></quota-management-view>
+                  <quota-management-view organization="current_org" view="super-user"></quota-management-view>
               </div>
             </div>
           </div>
