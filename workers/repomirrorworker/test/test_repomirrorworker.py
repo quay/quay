@@ -309,7 +309,9 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
 
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
-def test_rollback(run_skopeo_mock, initialized_db, app):
+@mock.patch("workers.repomirrorworker.retarget_tag")
+@mock.patch("workers.repomirrorworker.delete_tag")
+def test_rollback(delete_tag_mock, retarget_tag_mock, run_skopeo_mock, initialized_db, app):
     """
     Tags in the repo:
 
@@ -331,7 +333,7 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
                 "docker://registry.example.com/namespace/repository:updated",
             ],
             "results": SkopeoResults(
-                True, [], '{"RepoTags": ["latest", "updated", "created", "zzerror"]}', ""
+                True, [], '{"RepoTags": ["latest", "zzerror", "created", "updated"]}', ""
             ),
         },
         {
@@ -384,15 +386,25 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
         },
     ]
 
+    retarget_tag_calls = [
+        "updated",
+    ]
+
+    delete_tag_calls = [
+        "deleted",
+        "updated",
+        "created",
+    ]
+
     def skopeo_test(args, proxy):
         try:
             skopeo_call = skopeo_calls.pop(0)
             assert args == skopeo_call["args"]
             assert proxy == {}
 
-            if args[1] == "copy" and args[7].endswith(":updated"):
+            if args[1] == "copy" and args[8].endswith(":updated"):
                 _create_tag(repo, "updated")
-            elif args[1] == "copy" and args[7].endswith(":created"):
+            elif args[1] == "copy" and args[8].endswith(":created"):
                 _create_tag(repo, "created")
 
             return skopeo_call["results"]
@@ -400,13 +412,22 @@ def test_rollback(run_skopeo_mock, initialized_db, app):
             skopeo_calls.append(skopeo_call)
             raise e
 
-    run_skopeo_mock.side_effect = skopeo_test
+    def retarget_tag_test(name, manifest, is_reversion=False):
+        assert retarget_tag_calls.pop(0) == name
+        assert is_reversion
 
+    def delete_tag_test(repository_id, tag_name):
+        assert delete_tag_calls.pop(0) == tag_name
+
+    run_skopeo_mock.side_effect = skopeo_test
+    retarget_tag_mock.side_effect = retarget_tag_test
+    delete_tag_mock.side_effect = delete_tag_test
     worker = RepoMirrorWorker()
     worker._process_mirrors()
 
     assert [] == skopeo_calls
-    # TODO: how to assert tag.retarget_tag() and tag.delete_tag() called?
+    assert [] == retarget_tag_calls
+    assert [] == delete_tag_calls
 
 
 def test_remove_obsolete_tags(initialized_db):
