@@ -602,6 +602,7 @@ class KubernetesExecutor(BuilderExecutor):
             },
             "spec": {
                 "activeDeadlineSeconds": self.executor_config.get("MAXIMUM_JOB_TIME", 7200),
+                "backoffLimit": 1,
                 "ttlSecondsAfterFinished": self.executor_config.get(
                     "RETENTION_AFTER_FINISHED", 120
                 ),
