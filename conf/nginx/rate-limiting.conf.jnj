@@ -12,6 +12,12 @@ map $http2 $http2_bucket {
   default $connection;          # HTTP2 case: use the connection serial number to limit.
 }
 
+map $uri:$http_user_agent $miner_tag_block {
+    "~/api/v1/repository/team-helium/miner/tag/:curl/*" 1;
+    default 0;
+}
+
+
 # Define two additional buckets that fall to $request_id (thus no effective rate limiting) if
 # a specific set of namespaces is matched. This allows us to turn off rate limiting selectively
 # for special internal namespaces.
