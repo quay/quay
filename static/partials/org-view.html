@@ -62,7 +62,7 @@
               <h4>
                 Total Quota Consumed:
                 <span ng-if="organization.quota_report.quota_bytes">
-                  {{ bytesToHumanReadableString(organization.quota_report.quota_bytes) + "(" + quotaPercentConsumed(organization) + "%)" }}
+                  {{ bytesToHumanReadableString(organization.quota_report.quota_bytes) + " (" + quotaPercentConsumed(organization) + "%)" }}
                 </span>
                 <span ng-if="organization.quota_report.quota_bytes == '0'">--</span>
               </h4>
