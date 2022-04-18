@@ -201,7 +201,7 @@ func GetTlsConfig(opts Options) (*tls.Config, error) {
 	}
 
 	for name, cert := range opts.Certificates {
-		if strings.HasPrefix(name, "extra_ca_certs/") {
+		if strings.HasPrefix(name, "extra_ca_certs/") || strings.HasPrefix(name, "extra_ca_cert_") {
 			if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
 				log.Warningf("Could not load extra ca cert file: %s. Skipping.", name)
 			}
