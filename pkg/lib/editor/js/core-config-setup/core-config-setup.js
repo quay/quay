@@ -91,6 +91,7 @@ angular.module("quay-config")
             {'name': 'azure_account_name', 'title': 'Azure Account Name', 'placeholder': 'accountnamehere', 'kind': 'text'},
             {'name': 'azure_account_key', 'title': 'Azure Account Key',  'placeholder': 'accountkeyhere', 'kind': 'text', 'optional': true},
             {'name': 'sas_token', 'title': 'Azure SAS Token',  'placeholder': 'sastokenhere', 'kind': 'text', 'optional': true},
+            {'name': 'endpoint_url', 'title': 'Azure Storage Endpoint URL',  'placeholder': 'Optional, must include http(s)://', 'kind': 'text', 'optional': true},
           ],
 
           'GoogleCloudStorage': [

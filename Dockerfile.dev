@@ -1,4 +1,4 @@
-FROM centos:8 as jsbuild
+FROM registry.access.redhat.com/ubi8/ubi:latest as jsbuild
 
 ENV GOROOT /usr/local/go
 ENV GOPATH /go

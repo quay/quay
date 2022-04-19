@@ -188,12 +188,17 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		accountKey := args.AzureAccountKey
 		containerName := args.AzureContainer
 		token = args.SASToken
+		if args.EndpointURL != "" {
+			endpoint = args.EndpointURL
+		} else {
+			endpoint = fmt.Sprintf("https://%s.blob.core.windows.net", accountName)
+		}
 
 		if len(errors) > 0 {
 			return false, errors
 		}
 
-		if ok, err := validateAzureGateway(opts, storageName, accountName, accountKey, containerName, token, fgName); !ok {
+		if ok, err := validateAzureGateway(opts, endpoint, storageName, accountName, accountKey, containerName, token, fgName); !ok {
 			errors = append(errors, err)
 		}
 
@@ -368,7 +373,7 @@ func validateMinioGateway(opts Options, storageName, endpoint, accessKey, secret
 
 }
 
-func validateAzureGateway(opts Options, storageName, accountName, accountKey, containerName, token, fgName string) (bool, ValidationError) {
+func validateAzureGateway(opts Options, endpointURL, storageName, accountName, accountKey, containerName, token, fgName string) (bool, ValidationError) {
 
 	credentials, err := azblob.NewSharedKeyCredential(accountName, accountKey)
 	if err != nil {
@@ -380,7 +385,7 @@ func validateAzureGateway(opts Options, storageName, accountName, accountKey, co
 	}
 
 	p := azblob.NewPipeline(credentials, azblob.PipelineOptions{})
-	u, err := url.Parse(fmt.Sprintf("https://%s.blob.core.windows.net", accountName))
+	u, err := url.Parse(endpointURL)
 
 	serviceURL := azblob.NewServiceURL(*u, p)
 	containerURL := serviceURL.NewContainerURL(containerName)
@@ -400,7 +405,6 @@ func validateAzureGateway(opts Options, storageName, accountName, accountKey, co
 	}
 
 	return true, ValidationError{}
-
 }
 
 func validateSwift(opts Options, storageName string, authVersion int, swiftUser, swiftPassword, containerName, authUrl string, osOptions map[string]interface{}, fgName string) (bool, ValidationError) {
