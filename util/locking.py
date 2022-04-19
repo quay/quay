@@ -1,7 +1,8 @@
+import functools
 import logging
 
-from redis import RedisError
-from redlock import RedLockFactory, RedLockError
+from redis import Redis, RedisError
+import redis_lock
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ class LockNotAcquiredException(Exception):
     """
 
 
-def _redlock_factory(config):
+def _redis_lock_factory(config):
     _redis_info = dict(config["USER_EVENTS_REDIS"])
     _redis_info.update(
         {
@@ -21,14 +22,12 @@ def _redlock_factory(config):
             "single_connection_client": True,
         }
     )
-    lock_factory = RedLockFactory(connection_details=[_redis_info])
-    return lock_factory
+
+    _conn = Redis(**_redis_info)
+
+    return functools.partial(redis_lock.Lock, _conn)
 
 
-# TODO(kleesc): GlobalLock should either renew the lock until the caller is done,
-# or signal that it is no longer valid to the caller. Currently, GlobalLock will
-# just silently expire the redis key, making the lock available again while any
-# ongoing job in a GlobalLock context will still be running
 class GlobalLock(object):
     """
     A lock object that blocks globally via Redis.
@@ -42,15 +41,16 @@ class GlobalLock(object):
     @classmethod
     def configure(cls, config):
         if cls.lock_factory is None:
-            cls.lock_factory = _redlock_factory(config)
+            cls.lock_factory = _redis_lock_factory(config)
 
-    def __init__(self, name, lock_ttl=600):
+    def __init__(self, name, lock_ttl=600, auto_renewal=False):
         if GlobalLock.lock_factory is None:
             raise LockNotAcquiredException("GlobalLock not configured")
 
         self._lock_name = name
         self._lock_ttl = lock_ttl
-        self._redlock = None
+        self._auto_renewal = auto_renewal
+        self._lock = None
 
     def __enter__(self):
         if not self.acquire():
@@ -62,35 +62,35 @@ class GlobalLock(object):
     def acquire(self):
         logger.debug("Acquiring global lock %s", self._lock_name)
         try:
-            self._redlock = GlobalLock.lock_factory.create_lock(
-                self._lock_name, ttl=self._lock_ttl * 1000
+            self._lock = GlobalLock.lock_factory(
+                self._lock_name, expire=self._lock_ttl, auto_renewal=self._auto_renewal
             )
 
-            acquired = self._redlock.acquire()
+            acquired = self._lock.acquire()
             if not acquired:
                 logger.debug("Was unable to not acquire lock %s", self._lock_name)
                 return False
 
             logger.debug("Acquired lock %s", self._lock_name)
             return True
-        except RedLockError:
-            logger.debug("Could not acquire lock %s", self._lock_name)
-            return False
         except RedisError as re:
             logger.debug("Could not connect to Redis for lock %s: %s", self._lock_name, re)
             return False
+        except:
+            logger.debug("Could not acquire lock %s", self._lock_name)
+            return False
 
     def release(self):
-        if self._redlock is not None:
+        if self._lock is not None:
             logger.debug("Releasing lock %s", self._lock_name)
             try:
-                self._redlock.release()
-            except RedLockError:
-                logger.debug("Could not release lock %s", self._lock_name)
+                self._lock.release()
             except RedisError as re:
                 logger.debug(
                     "Could not connect to Redis for releasing lock %s: %s", self._lock_name, re
                 )
+            except:
+                logger.debug("Could not release lock %s", self._lock_name)
 
             logger.debug("Released lock %s", self._lock_name)
-            self._redlock = None
+            self._lock = None
