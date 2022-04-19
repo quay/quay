@@ -9,6 +9,7 @@ from app import app
 from data.secscan_model import secscan_model
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
+from util.locking import GlobalLock
 from util.log import logfile_path
 from endpoints.v2 import v2_bp
 
