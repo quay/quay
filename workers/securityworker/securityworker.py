@@ -67,6 +67,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
+    GlobalLock.configure(app.config)
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     worker = SecurityWorker()
     worker.start()
