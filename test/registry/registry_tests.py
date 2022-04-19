@@ -29,7 +29,7 @@ from util.timedeltastring import convert_to_timedelta
 
 
 def test_basic_push_pull(pusher, puller, basic_images, liveserver_session, app_reloader):
-    """ Test: Basic push and pull of an image to a new repository. """
+    """Test: Basic push and pull of an image to a new repository."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -44,7 +44,7 @@ def test_basic_push_pull(pusher, puller, basic_images, liveserver_session, app_r
 
 
 def test_empty_layer(pusher, puller, images_with_empty_layer, liveserver_session, app_reloader):
-    """ Test: Push and pull of an image with an empty layer to a new repository. """
+    """Test: Push and pull of an image with an empty layer to a new repository."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -112,7 +112,7 @@ def test_empty_layer_push_again(
 def test_multi_layer_images_push_pull(
     pusher, puller, multi_layer_images, liveserver_session, app_reloader
 ):
-    """ Test: Basic push and pull of a multi-layered image to a new repository. """
+    """Test: Basic push and pull of a multi-layered image to a new repository."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -177,7 +177,7 @@ def test_overwrite_tag(
 def test_basic_push_pull_by_manifest(
     manifest_protocol, basic_images, liveserver_session, app_reloader
 ):
-    """ Test: Basic push and pull-by-manifest of an image to a new repository. """
+    """Test: Basic push and pull-by-manifest of an image to a new repository."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -204,7 +204,7 @@ def test_basic_push_pull_by_manifest(
 def test_basic_push_by_manifest_digest(
     manifest_protocol, basic_images, liveserver_session, app_reloader
 ):
-    """ Test: Basic push-by-manifest and pull-by-manifest of an image to a new repository. """
+    """Test: Basic push-by-manifest and pull-by-manifest of an image to a new repository."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -240,7 +240,7 @@ def test_basic_push_by_manifest_digest(
 def test_manifest_down_conversion(
     manifest_protocol, v21_protocol, basic_images, liveserver_session, app_reloader
 ):
-    """ Test: Push using a new protocol and ensure down-conversion. """
+    """Test: Push using a new protocol and ensure down-conversion."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -282,7 +282,7 @@ def test_empty_manifest(v22_protocol, liveserver_session, app_reloader):
 
 
 def test_push_invalid_credentials(pusher, basic_images, liveserver_session, app_reloader):
-    """ Test: Ensure we get auth errors when trying to push with invalid credentials. """
+    """Test: Ensure we get auth errors when trying to push with invalid credentials."""
     invalid_credentials = ("devtable", "notcorrectpassword")
 
     pusher.push(
@@ -297,7 +297,7 @@ def test_push_invalid_credentials(pusher, basic_images, liveserver_session, app_
 
 
 def test_pull_invalid_credentials(puller, basic_images, liveserver_session, app_reloader):
-    """ Test: Ensure we get auth errors when trying to pull with invalid credentials. """
+    """Test: Ensure we get auth errors when trying to pull with invalid credentials."""
     invalid_credentials = ("devtable", "notcorrectpassword")
 
     puller.pull(
@@ -338,7 +338,7 @@ def test_application_repo(
     registry_server_executor,
     liveserver,
 ):
-    """ Test: Attempting to push or pull from an *application* repository raises a 405. """
+    """Test: Attempting to push or pull from an *application* repository raises a 405."""
     credentials = ("devtable", "password")
     registry_server_executor.on(liveserver).create_app_repository("devtable", "someapprepo")
 
@@ -479,7 +479,7 @@ def test_push_pull_logging(
     app_reloader,
     registry_server_executor,
 ):
-    """ Test: Basic push and pull, ensuring that logs are added for each operation. """
+    """Test: Basic push and pull, ensuring that logs are added for each operation."""
 
     with FeatureFlagValue(
         "DISABLE_PULL_LOGS_FOR_FREE_NAMESPACES",
@@ -562,7 +562,7 @@ def test_push_pull_logging(
 def test_pull_publicrepo_anonymous(
     pusher, puller, basic_images, liveserver_session, app_reloader, api_caller, liveserver
 ):
-    """ Test: Pull a public repository anonymously. """
+    """Test: Pull a public repository anonymously."""
     # Add a new repository under the public user, so we have a repository to pull.
     pusher.push(
         liveserver_session,
@@ -613,7 +613,7 @@ def test_pull_publicrepo_no_anonymous_access(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Attempts to pull a public repository anonymously, with the feature flag disabled. """
+    """Test: Attempts to pull a public repository anonymously, with the feature flag disabled."""
     # Add a new repository under the public user, so we have a repository to pull.
     pusher.push(
         liveserver_session,
@@ -678,7 +678,7 @@ def test_pull_publicrepo_no_anonymous_access(
 
 
 def test_basic_organization_flow(pusher, puller, basic_images, liveserver_session, app_reloader):
-    """ Test: Basic push and pull of an image to a new repository by members of an organization. """
+    """Test: Basic push and pull of an image to a new repository by members of an organization."""
     # Add a new repository under the organization via the creator user.
     pusher.push(
         liveserver_session,
@@ -722,7 +722,7 @@ def test_basic_organization_flow(pusher, puller, basic_images, liveserver_sessio
 
 
 def test_library_support(pusher, puller, basic_images, liveserver_session, app_reloader):
-    """ Test: Pushing and pulling from the implicit library namespace. """
+    """Test: Pushing and pulling from the implicit library namespace."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -824,7 +824,7 @@ def test_image_replication(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Ensure that entries are created for replication of the images pushed. """
+    """Test: Ensure that entries are created for replication of the images pushed."""
     credentials = ("devtable", "password")
 
     with FeatureFlagValue("STORAGE_REPLICATION", True, registry_server_executor.on(liveserver)):
@@ -862,7 +862,7 @@ def test_image_replication_empty_layers(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Ensure that entries are created for replication of the images pushed. """
+    """Test: Ensure that entries are created for replication of the images pushed."""
     credentials = ("devtable", "password")
 
     with FeatureFlagValue("STORAGE_REPLICATION", True, registry_server_executor.on(liveserver)):
@@ -1053,7 +1053,7 @@ def test_v2_push_reponame(
 def test_tag_validaton(
     tag_name, expected_failure, pusher, basic_images, liveserver_session, app_reloader
 ):
-    """ Test: Various forms of tags and whether they succeed or fail as expected. """
+    """Test: Various forms of tags and whether they succeed or fail as expected."""
     credentials = ("devtable", "password")
 
     pusher.push(
@@ -1068,7 +1068,7 @@ def test_tag_validaton(
 
 
 def test_invalid_parent(legacy_pusher, liveserver_session, app_reloader):
-    """ Test: Attempt to push an image with an invalid/missing parent. """
+    """Test: Attempt to push an image with an invalid/missing parent."""
     images = [
         Image(
             id="childimage",
@@ -1092,7 +1092,7 @@ def test_invalid_parent(legacy_pusher, liveserver_session, app_reloader):
 
 
 def test_wrong_image_order(legacy_pusher, liveserver_session, app_reloader):
-    """ Test: Attempt to push an image with its layers in the wrong order. """
+    """Test: Attempt to push an image with its layers in the wrong order."""
     images = [
         Image(
             id="childimage",
@@ -1214,7 +1214,7 @@ def test_expiration_label(
 
 
 def test_invalid_blob_reference(manifest_protocol, basic_images, liveserver_session, app_reloader):
-    """ Test: Attempt to push a manifest with an invalid blob reference. """
+    """Test: Attempt to push a manifest with an invalid blob reference."""
     credentials = ("devtable", "password")
 
     options = ProtocolOptions()
@@ -1236,7 +1236,7 @@ def test_invalid_blob_reference(manifest_protocol, basic_images, liveserver_sess
 def test_delete_tag(
     pusher, puller, basic_images, different_images, liveserver_session, app_reloader
 ):
-    """ Test: Push a repository, delete a tag, and attempt to pull. """
+    """Test: Push a repository, delete a tag, and attempt to pull."""
     credentials = ("devtable", "password")
 
     # Push the tags.
@@ -1361,7 +1361,7 @@ def test_delete_manifest(
 
 
 def test_cancel_upload(manifest_protocol, basic_images, liveserver_session, app_reloader):
-    """ Test: Cancelation of blob uploads. """
+    """Test: Cancelation of blob uploads."""
     credentials = ("devtable", "password")
 
     options = ProtocolOptions()
@@ -1380,7 +1380,7 @@ def test_blob_caching(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Pulling of blobs after initially pulled will result in the blobs being cached. """
+    """Test: Pulling of blobs after initially pulled will result in the blobs being cached."""
     credentials = ("devtable", "password")
 
     # Push a tag.
@@ -1420,7 +1420,7 @@ def test_blob_caching(
 def test_chunked_blob_uploading(
     chunks, random_layer_data, v21_protocol, puller, liveserver_session, app_reloader
 ):
-    """ Test: Uploading of blobs as chunks. """
+    """Test: Uploading of blobs as chunks."""
     credentials = ("devtable", "password")
 
     adjusted_chunks = []
@@ -1454,7 +1454,7 @@ def test_chunked_blob_uploading(
 def test_chunked_uploading_mismatched_chunks(
     v21_protocol, random_layer_data, liveserver_session, app_reloader
 ):
-    """ Test: Attempt to upload chunks with data missing. """
+    """Test: Attempt to upload chunks with data missing."""
     credentials = ("devtable", "password")
 
     images = [
@@ -1480,7 +1480,7 @@ def test_chunked_uploading_mismatched_chunks(
 def test_chunked_uploading_missing_first_chunk(
     v2_protocol, random_layer_data, liveserver_session, app_reloader
 ):
-    """ Test: Attempt to upload a chunk with missing data.. """
+    """Test: Attempt to upload a chunk with missing data.."""
     credentials = ("devtable", "password")
 
     images = [
@@ -1512,7 +1512,7 @@ def test_pull_disabled_namespace(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Attempt to pull a repository from a disabled namespace results in an error. """
+    """Test: Attempt to pull a repository from a disabled namespace results in an error."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -1543,7 +1543,7 @@ def test_pull_disabled_namespace(
 def test_push_disabled_namespace(
     pusher, basic_images, liveserver_session, app_reloader, liveserver, registry_server_executor
 ):
-    """ Test: Attempt to push a repository from a disabled namespace results in an error. """
+    """Test: Attempt to push a repository from a disabled namespace results in an error."""
     credentials = ("devtable", "password")
 
     # Disable the namespace.
@@ -1616,7 +1616,7 @@ def test_catalog(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Retrieving results from the V2 catalog. """
+    """Test: Retrieving results from the V2 catalog."""
     with FeatureFlagValue(
         "PUBLIC_CATALOG", public_catalog, registry_server_executor.on(liveserver)
     ):
@@ -1642,7 +1642,7 @@ def test_catalog_caching(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Calling the catalog after initially pulled will result in the catalog being cached. """
+    """Test: Calling the catalog after initially pulled will result in the catalog being cached."""
     credentials = ("devtable", "password")
 
     # Conduct the initial catalog call to prime the cache.
@@ -1712,7 +1712,7 @@ def test_tags(
     liveserver,
     registry_server_executor,
 ):
-    """ Test: Retrieving results from the V2 catalog. """
+    """Test: Retrieving results from the V2 catalog."""
     credentials = (username, "password")
     results = v2_protocol.tags(
         liveserver_session,
@@ -1921,7 +1921,7 @@ def get_encrypted_password(api_caller):
 def test_login(
     username, password, expect_success, loginer, liveserver_session, api_caller, app_reloader
 ):
-    """ Test: Login flow. """
+    """Test: Login flow."""
     if not isinstance(password, str):
         password = password(api_caller)
 
@@ -2129,7 +2129,7 @@ def test_login_scopes(
     api_caller,
     app_reloader,
 ):
-    """ Test: Login via the V2 auth protocol reacts correctly to requested scopes. """
+    """Test: Login via the V2 auth protocol reacts correctly to requested scopes."""
     if not isinstance(password, str):
         robot_namespace, robot_username = username.split("+")
         password = password(api_caller, namespace=robot_namespace, username=robot_username)
@@ -2148,7 +2148,7 @@ def test_login_scopes(
 
 
 def test_push_pull_same_blobs(pusher, puller, liveserver_session, app_reloader):
-    """ Test: Push and pull of an image to a new repository where a blob is shared between layers. """
+    """Test: Push and pull of an image to a new repository where a blob is shared between layers."""
     credentials = ("devtable", "password")
 
     layer_bytes = layer_bytes_for_contents(b"some contents")
@@ -2184,7 +2184,7 @@ def test_push_pull_same_blobs(pusher, puller, liveserver_session, app_reloader):
 
 
 def test_push_tag_existing_image(v1_protocol, basic_images, liveserver_session, app_reloader):
-    """ Test: Push a new tag on an existing image. """
+    """Test: Push a new tag on an existing image."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2531,7 +2531,7 @@ def test_push_pull_manifest_list_duplicate_manifest(
 def test_verify_schema2(
     v22_protocol, basic_images, liveserver_session, liveserver, app_reloader, data_model
 ):
-    """ Test: Ensure that pushing of schema 2 manifests results in a pull of a schema2 manifest. """
+    """Test: Ensure that pushing of schema 2 manifests results in a pull of a schema2 manifest."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2556,7 +2556,7 @@ def test_geo_blocking(
     registry_server_executor,
     app_reloader,
 ):
-    """ Test: Attempt to pull an image from a geoblocked IP address. """
+    """Test: Attempt to pull an image from a geoblocked IP address."""
     credentials = ("devtable", "password")
     options = ProtocolOptions()
     options.skip_blob_push_checks = True  # Otherwise, cache gets established.
@@ -2655,7 +2655,7 @@ def test_pull_manifest_list_schema2_only(
 
 
 def test_push_pull_unicode(pusher, puller, unicode_images, liveserver_session, app_reloader):
-    """ Test: Push an image with unicode inside and then pull it. """
+    """Test: Push an image with unicode inside and then pull it."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2670,7 +2670,7 @@ def test_push_pull_unicode(pusher, puller, unicode_images, liveserver_session, a
 
 
 def test_push_pull_unicode_direct(pusher, puller, unicode_images, liveserver_session, app_reloader):
-    """ Test: Push an image with *unescaped* unicode inside and then pull it. """
+    """Test: Push an image with *unescaped* unicode inside and then pull it."""
     credentials = ("devtable", "password")
 
     # Turn off automatic unicode encoding when building the manifests.
@@ -2728,7 +2728,7 @@ def test_push_legacy_pull_not_allowed(
 def test_push_pull_emoji_unicode(
     pusher, puller, unicode_emoji_images, liveserver_session, app_reloader
 ):
-    """ Test: Push an image with unicode inside and then pull it. """
+    """Test: Push an image with unicode inside and then pull it."""
     credentials = ("devtable", "password")
 
     # Push a new repository.
@@ -2755,7 +2755,7 @@ def test_push_pull_emoji_unicode(
 def test_push_pull_emoji_unicode_direct(
     pusher, puller, unicode_emoji_images, liveserver_session, app_reloader
 ):
-    """ Test: Push an image with *unescaped* unicode inside and then pull it. """
+    """Test: Push an image with *unescaped* unicode inside and then pull it."""
     credentials = ("devtable", "password")
 
     # Turn off automatic unicode encoding when building the manifests.
@@ -2867,7 +2867,7 @@ def test_attempt_push_mismatched_manifest(
 def test_attempt_pull_by_manifest_digest_for_deleted_tag(
     delete_method, manifest_protocol, basic_images, liveserver_session, app_reloader, api_caller
 ):
-    """ Test: Attempt to pull a deleted tag's manifest by digest. """
+    """Test: Attempt to pull a deleted tag's manifest by digest."""
     credentials = ("devtable", "password")
 
     # Push a new repository.

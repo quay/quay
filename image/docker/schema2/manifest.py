@@ -325,7 +325,7 @@ class DockerSchema2Manifest(ManifestInterface):
 
     @property
     def is_empty_manifest(self):
-        """ Returns whether this manifest is empty. """
+        """Returns whether this manifest is empty."""
         return len(self._parsed[DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY]) == 0
 
     @property

@@ -33,7 +33,7 @@ def with_exponential_backoff(backoff_multiplier=10, max_backoff=3600, max_retrie
             backoff = 0
 
             while True:
-                next_backoff = 2 ** attempts * backoff_multiplier
+                next_backoff = 2**attempts * backoff_multiplier
                 backoff = min(next_backoff, max_backoff)
                 attempts += 1
 

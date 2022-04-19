@@ -97,7 +97,7 @@ def get_min_id():
 
 
 def get_repository_count():
-    """ Returns the count of repositories. """
+    """Returns the count of repositories."""
     return Repository.select().count()
 
 

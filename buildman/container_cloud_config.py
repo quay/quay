@@ -38,10 +38,10 @@ _SUPPORTED_CONTAINER_RUNTIMES = ("docker", "podman")
 
 
 class CloudConfigContext(object):
-    """ Context object for easy generating of cloud config. """
+    """Context object for easy generating of cloud config."""
 
     def populate_jinja_environment(self, env):
-        """ Populates the given jinja environment with the methods defined in this context. """
+        """Populates the given jinja environment with the methods defined in this context."""
         env.filters["registry"] = self.registry
         env.filters["dataurl"] = self.data_url
         env.filters["jsonify"] = json.dumps
@@ -111,7 +111,7 @@ class CloudConfigContext(object):
         )
 
     def data_url(self, content):
-        """ Encodes the content of an ignition file using RFC 2397. """
+        """Encodes the content of an ignition file using RFC 2397."""
         data = "," + urlquote(content)
         return "data:" + data
 

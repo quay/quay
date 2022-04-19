@@ -450,7 +450,7 @@ def _build_blob_map(
 
 
 def populate_legacy_images_for_testing(manifest, manifest_interface_instance, storage):
-    """ Populates the legacy image rows for the given manifest. """
+    """Populates the legacy image rows for the given manifest."""
     # NOTE: This method is only kept around for use by legacy tests that still require
     # legacy images. As a result, we make sure we're in testing mode before we run.
     assert os.getenv("TEST") == "true"
