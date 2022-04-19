@@ -62,7 +62,7 @@ environment=
 command={% if hotreload -%}
   gunicorn --timeout=600 -b 'unix:/tmp/chunkcleanupworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.chunkcleanupworker:create_gunicorn_worker()'
 {% else -%}
-  command=python -m workers.chunkcleanupworker
+  python -m workers.chunkcleanupworker
 {% endif -%}
 autostart = {{ config['chunkcleanupworker']['autostart'] }}
 stdout_events_enabled = true
