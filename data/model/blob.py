@@ -110,7 +110,7 @@ def temp_link_blob(repository_id, blob_digest, link_expiration_s):
 
 
 def _temp_link_blob(repository_id, storage, link_expiration_s):
-    """ Note: Should *always* be called by a parent under a transaction. """
+    """Note: Should *always* be called by a parent under a transaction."""
     try:
         repository = Repository.get(id=repository_id)
     except Repository.DoesNotExist:
@@ -127,7 +127,7 @@ def _temp_link_blob(repository_id, storage, link_expiration_s):
 
 
 def lookup_expired_uploaded_blobs(repository):
-    """ Looks up all expired uploaded blobs in a repository. """
+    """Looks up all expired uploaded blobs in a repository."""
     return UploadedBlob.select().where(
         UploadedBlob.repository == repository, UploadedBlob.expires_at <= datetime.utcnow()
     )

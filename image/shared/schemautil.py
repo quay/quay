@@ -55,7 +55,7 @@ def to_canonical_json(value, ensure_ascii=True, indent=None):
 
 
 class LazyManifestLoader(object):
-    """ Lazy loader for manifests referenced by another manifest list or index. """
+    """Lazy loader for manifests referenced by another manifest list or index."""
 
     def __init__(
         self,
