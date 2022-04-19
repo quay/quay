@@ -345,7 +345,7 @@ angular.module('quay').directive('quotaManagementView', function () {
 
       var validOrgQuota = function () {
         // Empty state - when no quota is set. Don't throw any errors.
-        if (!$scope.currentQuotaConfig['quota'] && !$scope.prevquotaEnabled) {
+        if ($scope.currentQuotaConfig['quota'] == null && !$scope.prevquotaEnabled) {
           $scope.errorMessage = '';
           return true;
         }
