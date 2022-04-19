@@ -30,7 +30,20 @@ class SecurityScannerInterface(object):
         """
 
     @abstractmethod
-    def perform_indexing(self, start_token=None):
+    def index_manifests(self, start_token=None):
+        """
+        Performs indexing of the next set of unindexed manifests/images AND a recent batch
+        of unindexed manifests. This allows for recent results to be indexed, while still serving
+        security results from the v2 model.
+
+        If start_token is given, the indexing should resume from that point. Returns a new start
+        index for the next iteration of indexing. The tokens returned and given are assumed to be
+        opaque outside of this implementation and should not be relied upon by the caller to conform
+        to any particular format.
+        """
+
+    @abstractmethod
+    def perform_indexing(self, start_token=None, batch_size=None):
         """
         Performs indexing of the next set of unindexed manifests/images.
 
