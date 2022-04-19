@@ -95,7 +95,6 @@ class OrganizationQuotaList(ApiResource):
         Create a new organization quota.
         """
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            # if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
             raise Unauthorized()
 
         quota_data = request.get_json()
@@ -152,6 +151,9 @@ class OrganizationQuota(ApiResource):
         quota_data = request.get_json()
         quota = get_quota(orgname, quota_id)
 
+        if not SuperUserPermission().can():
+            raise Unauthorized()
+
         try:
             if "limit_bytes" in quota_data:
                 limit_bytes = quota_data["limit_bytes"]
@@ -166,6 +168,9 @@ class OrganizationQuota(ApiResource):
     @show_if(features.SUPER_USERS)
     def delete(self, orgname, quota_id):
         quota = get_quota(orgname, quota_id)
+
+        if not SuperUserPermission().can():
+            raise Unauthorized()
 
         # Exceptions by`delete_instance` are unexpected and raised
         model.namespacequota.delete_namespace_quota(quota)
@@ -210,7 +215,6 @@ class OrganizationQuotaLimitList(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     def post(self, orgname, quota_id):
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            # if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
             raise Unauthorized()
 
         quota_limit_data = request.get_json()
