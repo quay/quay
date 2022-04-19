@@ -23,7 +23,7 @@ def fake_azure_storage(files=None):
     account_key = "somekey"
     storage_path = ""
 
-    service = BlobServiceClient(AZURE_STORAGE_URL_STRING.format("someaccount"))
+    service = BlobServiceClient(AZURE_STORAGE_URL_STRING["global"].format("someaccount"))
     endpoint = service.primary_hostname
     files = files if files is not None else {}
 
