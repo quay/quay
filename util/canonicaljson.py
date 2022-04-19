@@ -1,4 +1,5 @@
 import collections
+import collections.abc
 
 
 def canonicalize(json_obj, preserve_sequence_order=True):
@@ -12,7 +13,7 @@ def canonicalize(json_obj, preserve_sequence_order=True):
     Returns:
       object: json_obj now sorted to its canonical form.
     """
-    if isinstance(json_obj, collections.MutableMapping):
+    if isinstance(json_obj, collections.abc.MutableMapping):
         sorted_obj = sorted(
             {
                 key: canonicalize(val, preserve_sequence_order) for key, val in json_obj.items()
