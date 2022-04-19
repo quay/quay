@@ -1,8 +1,8 @@
 <div class="quota-management-view-element">
   <div ng-if="view == 'organization-view' && !showConfigPanel && !prevquotaEnabled">
-    <button class="margin-2 add-quota-limit btn btn-success hidden-xs" ng-click="toggleOrgConfigView()">
+    <button class="margin-2 add-quota-limit btn btn-primary hidden-xs" ng-disabled="true">
       <i class="fa margin-right-4"></i>
-      Add Storage Quota
+      No Quota Configured
     </button>
   </div>
   <div ng-if="!(view == 'organization-view' && !showConfigPanel && !prevquotaEnabled) || view == 'super-user'">
@@ -66,13 +66,13 @@
             </td>
             <td>
               <span class="margin-2">
-                <button class="margin-2 btn btn-primary" ng-click="updateQuotaLimit(limit.id)" ng-disabled="disableUpdateQuota(limit.id)">
+                <button class="margin-2 btn btn-primary" ng-click="updateQuotaLimit(limit.id)" ng-disabled="disableUpdateQuota(limit.id)" ng-if="view == 'super-user'">
                   <i class="fa fa-trash"></i>
                   Update
                 </button>
               </span>
               <span class="margin-2">
-                <button class="margin-2 btn btn-danger" ng-click="deleteQuotaLimit(limit.id)" ng-disabled="disableDeleteQuota()">
+                <button class="margin-2 btn btn-danger" ng-click="deleteQuotaLimit(limit.id)" ng-disabled="disableDeleteQuota()" ng-if="view == 'super-user'">
                   <i class="fa fa-trash"></i>
                   Remove
                 </button>
@@ -81,21 +81,23 @@
           </tr>
 
 	  <!-- Add limit -->
-          <tr>
+          <tr ng-if="view == 'super-user'">
             <td>
               <select class="form-control" name="quotaLimitType" id="newQuotaLimitType"
+                ng-disabled="view == 'organization-view'"
                 ng-options="type for type in quotaLimitTypes" ng-model="newLimitConfig['type']">
               </select>
             </td>
             <td>
               <input class="form-control margin-2" type="number" name="limit-percent" id="newQuotaLimitPercent"
-                min="1" max="100" placeholder="Percent threshold" ng-model="newLimitConfig['limit_percent']"/>
+                ng-disabled="view == 'organization-view'" min="1" max="100"
+                placeholder="Percent threshold" ng-model="newLimitConfig['limit_percent']"/>
             </td>
             <td>
               <span class="margin-2">
-		<button class="add-quota-limit btn btn-success" ng-click="addQuotaLimit()" ng-disabled="disableAddQuotaLimit()">
-		  <i class="fa fa-plus"></i> Add Limit
-		</button>
+		        <button class="add-quota-limit btn btn-success" ng-click="addQuotaLimit()" ng-disabled="view == 'organization-view' || disableAddQuotaLimit()">
+		          <i class="fa fa-plus"></i> Add Limit
+		        </button>
               </span>
             </td>
           </tr>
@@ -113,12 +115,9 @@
       </div>
       <div>
           <button class="margin-2 btn btn-primary save-quota-details margin-3"
-          ng-disabled="disableSaveQuota()" ng-click="updateQuotaConfig()">Apply</button>
-          <button ng-show="prevquotaEnabled" class="margin-2 btn btn-danger" ng-disabled="!prevquotaEnabled || view == 'organization-view'" ng-click="deleteOrgQuota()">Remove</button>
+          ng-disabled="disableSaveQuota()" ng-click="updateQuotaConfig()" ng-disabled="view == 'organization-view'" ng-if="view == 'super-user'">Apply</button>
+          <button ng-show="prevquotaEnabled" class="margin-2 btn btn-danger" ng-disabled="!prevquotaEnabled || view == 'organization-view'" ng-if="view == 'super-user'" ng-click="deleteOrgQuota()">Remove</button>
           <button ng-if="view == 'super-user'" class="btn btn-default" data-dismiss="modal">Close</button>
-          <button ng-if="view == 'organization-view' && !prevquotaEnabled" class="margin-2 btn btn-primary" ng-click="toggleOrgConfigView()">
-            Cancel
-          </button>
       </div>
   </form>
 </div>

@@ -94,11 +94,9 @@ class OrganizationQuotaList(ApiResource):
         """
         Create a new organization quota.
         """
-        orgperm = AdministerOrganizationPermission(orgname)
-
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can() or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
-                raise Unauthorized()
+            # if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+            raise Unauthorized()
 
         quota_data = request.get_json()
         limit_bytes = quota_data["limit_bytes"]
@@ -151,13 +149,7 @@ class OrganizationQuota(ApiResource):
     @show_if(features.SUPER_USERS)
     @validate_json_request("UpdateOrgQuota")
     def put(self, orgname, quota_id):
-        orgperm = AdministerOrganizationPermission(orgname)
-
-        if not orgperm.can():
-            raise Unauthorized()
-
         quota_data = request.get_json()
-
         quota = get_quota(orgname, quota_id)
 
         try:
@@ -173,11 +165,6 @@ class OrganizationQuota(ApiResource):
     @require_scope(scopes.SUPERUSER)
     @show_if(features.SUPER_USERS)
     def delete(self, orgname, quota_id):
-        orgperm = AdministerOrganizationPermission(orgname)
-
-        if not orgperm.can():
-            raise Unauthorized()
-
         quota = get_quota(orgname, quota_id)
 
         # Exceptions by`delete_instance` are unexpected and raised
@@ -222,11 +209,9 @@ class OrganizationQuotaLimitList(ApiResource):
     @nickname("createOrganizationQuotaLimit")
     @validate_json_request("NewOrgQuotaLimit")
     def post(self, orgname, quota_id):
-        orgperm = AdministerOrganizationPermission(orgname)
-
         if not features.SUPER_USERS or not SuperUserPermission().can():
-            if not orgperm.can() or config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
-                raise Unauthorized()
+            # if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+            raise Unauthorized()
 
         quota_limit_data = request.get_json()
         quota_type = quota_limit_data["type"]
@@ -294,8 +279,6 @@ class OrganizationQuotaLimit(ApiResource):
     @nickname("changeOrganizationQuotaLimit")
     @validate_json_request("UpdateOrgQuotaLimit")
     def put(self, orgname, quota_id, limit_id):
-        orgperm = AdministerOrganizationPermission(orgname)
-
         # Only superusers can update quota limit
         if not features.SUPER_USERS or not SuperUserPermission().can():
             raise Unauthorized()
@@ -318,8 +301,6 @@ class OrganizationQuotaLimit(ApiResource):
 
     @nickname("deleteOrganizationQuotaLimit")
     def delete(self, orgname, quota_id, limit_id):
-        orgperm = AdministerOrganizationPermission(orgname)
-
         # Only superusers can delete quota limit
         if not features.SUPER_USERS or not SuperUserPermission().can():
             raise Unauthorized()
