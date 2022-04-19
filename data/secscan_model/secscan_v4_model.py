@@ -73,7 +73,10 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
         return SecurityInformationLookupResult.for_request_error("security scanner misconfigured")
 
-    def perform_indexing(self, start_token=None):
+    def index_manifests(self, start_token=None):
+        return None
+
+    def perform_indexing(self, start_token=None, batch_size=None):
         return None
 
     def register_model_cleanup_callbacks(self, data_model_config):
