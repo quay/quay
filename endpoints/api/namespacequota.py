@@ -161,9 +161,6 @@ class OrganizationQuota(ApiResource):
 
         quota = get_quota(orgname, quota_id)
 
-        if not SuperUserPermission().can():
-            raise Unauthorized()
-
         try:
             if "limit_bytes" in quota_data:
                 limit_bytes = quota_data["limit_bytes"]
@@ -183,9 +180,6 @@ class OrganizationQuota(ApiResource):
             raise Unauthorized()
 
         quota = get_quota(orgname, quota_id)
-
-        if not SuperUserPermission().can():
-            raise Unauthorized()
 
         # Exceptions by`delete_instance` are unexpected and raised
         model.namespacequota.delete_namespace_quota(quota)
