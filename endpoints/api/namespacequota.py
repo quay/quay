@@ -90,6 +90,7 @@ class OrganizationQuotaList(ApiResource):
 
     @nickname("createOrganizationQuota")
     @validate_json_request("NewOrgQuota")
+    @require_scope(scopes.SUPERUSER)
     def post(self, orgname):
         """
         Create a new organization quota.
@@ -221,6 +222,7 @@ class OrganizationQuotaLimitList(ApiResource):
 
     @nickname("createOrganizationQuotaLimit")
     @validate_json_request("NewOrgQuotaLimit")
+    @require_scope(scopes.SUPERUSER)
     def post(self, orgname, quota_id):
         orgperm = AdministerOrganizationPermission(orgname)
 

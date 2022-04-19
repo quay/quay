@@ -463,10 +463,6 @@ angular.module('quay').directive('quotaManagementView', function () {
         }
       }
 
-      $scope.toggleOrgConfigView = function () {
-        $scope.showConfigPanel = !$scope.showConfigPanel;
-      }
-
       loadOrgQuota();
       /* loadQuotaLimits(true); */
       $scope.$watch('isEnabled', loadOrgQuota);
