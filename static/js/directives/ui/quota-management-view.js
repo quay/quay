@@ -39,6 +39,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         'setQuotaBeforeLimit': 'Please set quota before adding a quota Limit.',
         'singleRejectLimit': 'Error: A quota policy should only have a single reject threshold.',
         'identicalThresholds': 'Error: The quota policy contains two identical thresholds.',
+        'decimalEntryError': 'Error: Decimal entries are not supported. Please enter a positive integer.',
       };
       $scope.warningMessage = '';
       $scope.warningMessagesObj = {
@@ -258,9 +259,10 @@ angular.module('quay').directive('quotaManagementView', function () {
           return true;
         }
 
-        if (!validOrgQuota()) {
+        if ($scope.errorMessage != "" || !validOrgQuota()) {
           return true;
         }
+
         checkForWarnings();
         return $scope.prevQuotaConfig['quota'] === $scope.currentQuotaConfig['quota'] &&
           $scope.prevQuotaConfig['byte_unit'] === $scope.currentQuotaConfig['byte_unit'];
@@ -312,6 +314,16 @@ angular.module('quay').directive('quotaManagementView', function () {
           return true;
         }
 
+        if ($scope.newLimitConfig['limit_percent'] != null && isNaN(parseInt($scope.newLimitConfig['limit_percent']))) {
+          $scope.errorMessage = $scope.errorMessagesObj['quotaLimitNotInRange'];
+          return false;
+        }
+
+        if ($scope.newLimitConfig['limit_percent'] % 1 != 0) {
+          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
+          return true;
+        }
+
         let temp = {};
         temp['new'] = $scope.newLimitConfig;
         if (multipleRejectTypes({...$scope.prevQuotaConfig['limits'], ...temp})) {
@@ -339,6 +351,11 @@ angular.module('quay').directive('quotaManagementView', function () {
           return false;
         }
 
+        if (limit_percent % 1 != 0) {
+          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
+          return false;
+        }
+
         $scope.errorMessage = '';
         return true;
       }
@@ -357,6 +374,11 @@ angular.module('quay').directive('quotaManagementView', function () {
 
         if (parseInt($scope.currentQuotaConfig['quota']) <= 0) {
           $scope.errorMessage = $scope.errorMessagesObj['quotaLessThanZero'];
+          return false;
+        }
+
+        if ($scope.currentQuotaConfig['quota'] % 1 != 0) {
+          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
           return false;
         }
 
