@@ -308,6 +308,14 @@ angular.module('quay').directive('quotaManagementView', function () {
         return false
       }
 
+      var isOfTypeDecimal = function (value) {
+        if (value % 1 != 0) {
+          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
+          return true;
+        }
+        return false;
+      }
+
       $scope.disableAddQuotaLimit = function () {
         // Cannot add limits without configuring quota
         if (!$scope.currentQuotaConfig.id) {
@@ -319,8 +327,7 @@ angular.module('quay').directive('quotaManagementView', function () {
           return false;
         }
 
-        if ($scope.newLimitConfig['limit_percent'] % 1 != 0) {
-          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
+        if (isOfTypeDecimal($scope.newLimitConfig['limit_percent'])) {
           return true;
         }
 
@@ -346,13 +353,13 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       var validOrgQuotaLimit = function (limit_percent) {
+
         if (isNaN(parseInt(limit_percent))) {
           $scope.errorMessage = $scope.errorMessagesObj['quotaLimitNotInRange'];
           return false;
         }
 
-        if (limit_percent % 1 != 0) {
-          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
+        if (isOfTypeDecimal(limit_percent)) {
           return false;
         }
 
@@ -377,8 +384,7 @@ angular.module('quay').directive('quotaManagementView', function () {
           return false;
         }
 
-        if ($scope.currentQuotaConfig['quota'] % 1 != 0) {
-          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
+        if (isOfTypeDecimal($scope.currentQuotaConfig['quota'])) {
           return false;
         }
 
