@@ -792,7 +792,6 @@ class VerifyUser(ApiResource):
 
     schemas = {
         "VerifyUser": {
-            "id": "VerifyUser",
             "type": "object",
             "description": "Information required to verify the signed in user.",
             "required": [

@@ -215,7 +215,6 @@ class UserCard(ApiResource):
 
     schemas = {
         "UserCard": {
-            "id": "UserCard",
             "type": "object",
             "description": "Description of a user card",
             "required": [
@@ -265,7 +264,6 @@ class OrganizationCard(ApiResource):
 
     schemas = {
         "OrgCard": {
-            "id": "OrgCard",
             "type": "object",
             "description": "Description of a user card",
             "required": [
@@ -320,7 +318,6 @@ class UserPlan(ApiResource):
 
     schemas = {
         "UserSubscription": {
-            "id": "UserSubscription",
             "type": "object",
             "description": "Description of a user card",
             "required": [
@@ -391,7 +388,6 @@ class OrganizationPlan(ApiResource):
 
     schemas = {
         "OrgSubscription": {
-            "id": "OrgSubscription",
             "type": "object",
             "description": "Description of a user card",
             "required": [
@@ -514,7 +510,6 @@ class UserInvoiceFieldList(ApiResource):
 
     schemas = {
         "InvoiceField": {
-            "id": "InvoiceField",
             "type": "object",
             "description": "Description of an invoice field",
             "required": ["title", "value"],
@@ -596,7 +591,6 @@ class OrganizationInvoiceFieldList(ApiResource):
 
     schemas = {
         "InvoiceField": {
-            "id": "InvoiceField",
             "type": "object",
             "description": "Description of an invoice field",
             "required": ["title", "value"],
