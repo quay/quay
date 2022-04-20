@@ -247,7 +247,9 @@ class V4SecurityScanner(SecurityScannerInterface):
             logger.warning("Could not acquire global lock for recent manifest indexing. Skipping")
 
         try:
-            with GlobalLock("SECURITYWORKER_INDEX_TOKEN_", lock_ttl=300, auto_renewal=True):
+            with GlobalLock(
+                "SECURITYWORKER_INDEX_TOKEN_" + str(start_token), lock_ttl=300, auto_renewal=True
+            ):
                 return self.perform_indexing(start_token=start_token, batch_size=batch_size)
         except LockNotAcquiredException:
             logger.warning(
@@ -272,13 +274,13 @@ class V4SecurityScanner(SecurityScannerInterface):
             seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 86400)
         )
 
-        recent_max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
-        recent_min_id = max(recent_max_id - batch_size, 1)
+        end_index = Manifest.select(fn.Max(Manifest.id)).scalar()
+        start_index = max(end_index - batch_size, 1)
 
         iterator = self._get_manifest_iterator(
             indexer_state,
-            recent_min_id,
-            recent_max_id,
+            start_index,
+            end_index,
             batch_size=batch_size,
             reindex_threshold=reindex_threshold,
         )
@@ -298,7 +300,9 @@ class V4SecurityScanner(SecurityScannerInterface):
             seconds=self.app.config.get("SECURITY_SCANNER_V4_REINDEX_THRESHOLD", 86400)
         )
 
-        min_id = (
+        max_id = Manifest.select(fn.Max(Manifest.id)).scalar()
+
+        start_index = (
             start_token.min_id
             if start_token is not None
             else Manifest.select(fn.Min(Manifest.id)).scalar()
@@ -306,24 +310,22 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         # TODO(kleesc): Workaround to index recent manifests.
         # Revert to actual max id once backfill is done
-        max_id = (
-            min_id + batch_size if batch_size else Manifest.select(fn.Max(Manifest.id)).scalar()
-        )
+        end_index = start_index + batch_size if batch_size else max_id
 
-        if max_id is None or min_id is None or min_id > max_id:
+        if end_index is None or start_index is None or start_index > max_id:
             return None
 
         iterator = self._get_manifest_iterator(
             indexer_state,
-            min_id,
-            max_id,
+            start_index,
+            end_index,
             batch_size=batch_size,
             reindex_threshold=reindex_threshold,
         )
 
         self._index(iterator, reindex_threshold)
 
-        return ScanToken(max_id + 1)
+        return ScanToken(end_index + 1)
 
     def _index(self, iterator, reindex_threshold):
         def mark_manifest_unsupported(manifest):
@@ -434,7 +436,6 @@ class V4SecurityScanner(SecurityScannerInterface):
             )
 
         # FIXME(alecmerdler): Debugging tests failing in CI
-        print(notification_page_results)
         return PaginatedNotificationResult(
             PaginatedNotificationStatus.SUCCESS,
             notification_page_results["notifications"],
