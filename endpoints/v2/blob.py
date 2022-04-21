@@ -379,6 +379,12 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     if repository_ref is None:
         raise NameUnknown()
 
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+        quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
+        if quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            raise QuotaExceeded
+
     uploader = retrieve_blob_upload_manager(
         repository_ref, upload_uuid, storage, _upload_settings()
     )
