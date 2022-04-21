@@ -103,7 +103,6 @@ LOGS_PER_PAGE = 20
 
 
 @resource("/v1/superuser/logs")
-@internal_only
 @show_if(features.SUPER_USERS)
 class SuperUserLogs(ApiResource):
     """
@@ -220,7 +219,6 @@ class SuperUserOrganizationList(ApiResource):
     "/v1/superuser/users/<namespace>/quota/",
     "/v1/superuser/organization/<namespace>/quota/",
 )
-@internal_only
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
 class SuperUserUserQuotaList(ApiResource):
@@ -268,7 +266,6 @@ class SuperUserUserQuotaList(ApiResource):
     "/v1/superuser/users/<namespace>/quota/<quota_id>",
     "/v1/superuser/organization/<namespace>/quota/<quota_id>",
 )
-@internal_only
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
 class SuperUserUserQuota(ApiResource):
