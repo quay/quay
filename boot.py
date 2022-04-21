@@ -77,6 +77,7 @@ def setup_jwt_proxy():
         # Proxy is already setup. Make sure the service key is still valid.
         quay_key_id = _verify_service_key()
         if quay_key_id is not None:
+            logger.warning("Service key %s already set up. Nothing to do.", quay_key_id)
             return
 
     # Ensure we have an existing key if in read-only mode.
@@ -105,6 +106,8 @@ def setup_jwt_proxy():
                     encryption_algorithm=serialization.NoEncryption(),
                 )
             )
+
+        logger.warning("Generated new service key %s", quay_key_id)
 
     # Generate the JWT proxy configuration.
     audience = get_audience()
