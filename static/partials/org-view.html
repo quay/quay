@@ -59,11 +59,14 @@
                quota-management-enabled="quotaManagementEnabled">
             <h3>Repositories</h3>
             <span ng-show="Features.QUOTA_MANAGEMENT">
-              <h4>
+              <h4 ng-if="organization.quota_report.quota_bytes || organization.quota_report.configured_quota">
                 Total Quota Consumed:
                 <span ng-if="organization.quota_report.quota_bytes">
-                  {{ bytesToHumanReadableString(organization.quota_report.quota_bytes) + " (" + quotaPercentConsumed(organization) + "%)" }}
+                  {{ bytesToHumanReadableString(organization.quota_report.quota_bytes) }}
                 </span>
+                  <span ng-if="organization.quota_report.configured_quota">
+                    {{ " (" + quotaPercentConsumed(organization) + "%)" }}
+                  </span>
                 <span ng-if="organization.quota_report.configured_quota && !organization.quota_report.quota_bytes">0</span>
                 <span ng-if="organization.quota_report.configured_quota">
                   {{ " of " + bytesToHumanReadableString(organization.quota_report.configured_quota) }}

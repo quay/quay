@@ -62,7 +62,7 @@
     };
 
     $scope.quotaPercentConsumed = function(organization) {
-      if (organization.quota_report) {
+      if (organization.quota_report && organization.quota_report.configured_quota) {
 	return (organization.quota_report.quota_bytes / organization.quota_report.configured_quota * 100).toFixed(2);
       }
       return 0;
