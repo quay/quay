@@ -45,7 +45,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       $scope.warningMessagesObj = {
         'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
         'noRejectLimit': 'Note: This quota has no hard limit enforced via a rejection thresholds. Users will be able to exceed the storage quota set above.',
-        'usingDefaultQuota': 'Note: There is no quota policy defined for this organization. So, falling over to systems default quota',
+        'usingDefaultQuota': 'Note: No quota policy defined for this organization, using system default.',
       }
       $scope.showConfigPanel = false;
       $scope.using_default_config = false;
