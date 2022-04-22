@@ -289,10 +289,7 @@ def get_namespace_size(namespace_name):
 
 
 def fetch_system_default(quotas):
-    if (
-        not quotas
-        and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
-    ):
+    if not quotas and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
         return config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES")
 
     return None
