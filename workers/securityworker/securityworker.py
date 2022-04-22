@@ -9,7 +9,7 @@ from app import app
 from data.secscan_model import secscan_model
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
-from util.locking import GlobalLock
+from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from endpoints.v2 import v2_bp
 
@@ -28,9 +28,22 @@ class SecurityWorker(Worker):
 
         interval = app.config.get("SECURITY_SCANNER_INDEXING_INTERVAL", DEFAULT_INDEXING_INTERVAL)
         self.add_operation(self._index_in_scanner, interval)
+        self.add_operation(self._index_recent_manifests_in_scanner, interval)
 
     def _index_in_scanner(self):
-        self._next_token = self._model.index_manifests(self._next_token)
+        batch_size = self.app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
+        self._next_token = self._model.perform_indexing(self._next_token, batch_size)
+
+    def _index_recent_manifests_in_scanner(self):
+        batch_size = self.app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
+
+        try:
+            with GlobalLock(
+                "SECURITYWORKER_INDEX_RECENT_MANIFEST", lock_ttl=300, auto_renewal=True
+            ):
+                self._model.perform_indexing_recent_manifests(batch_size)
+        except LockNotAcquiredException:
+            logger.warning("Could not acquire global lock for recent manifest indexing. Skipping")
 
 
 def create_gunicorn_worker():
