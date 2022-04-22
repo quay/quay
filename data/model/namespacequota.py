@@ -306,7 +306,7 @@ def get_repo_quota_for_view(namespace_name, repo_name):
     quotas = get_namespace_quota_list(repository_ref.namespace_user.username)
 
     # Currently only one quota per namespace is supported
-    configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default()
+    configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default(quotas)
 
     repo_size = model.repository.get_repository_size_and_cache(repository_ref.id).get(
         "repository_size", 0
@@ -327,7 +327,7 @@ def get_quota_for_view(namespace_name):
     quotas = get_namespace_quota_list(namespace_user.username)
 
     # Currently only one quota per namespace is supported
-    configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default()
+    configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default(quotas)
 
     namespace_quota_consumed = get_namespace_size(namespace_name)
     namespace_quota_consumed = int(namespace_quota_consumed) if namespace_quota_consumed else 0
