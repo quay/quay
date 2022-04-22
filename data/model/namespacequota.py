@@ -66,6 +66,10 @@ def create_namespace_quota(namespace_user, limit_bytes):
         raise InvalidNamespaceQuota("Invalid quota size limit value: '%s'" % limit_bytes)
 
 
+def get_system_default_quota(namespace=None):
+    return UserOrganizationQuota(namespace=namespace, limit_bytes=config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES"))
+
+
 def update_namespace_quota_size(quota, limit_bytes):
     if limit_bytes > 0:
         quota.limit_bytes = limit_bytes
@@ -288,6 +292,8 @@ def get_repo_quota_for_view(namespace_name, repo_name):
 
     # Currently only one quota per namespace is supported
     configured_namespace_quota = quotas[0].limit_bytes if quotas else None
+    if not configured_namespace_quota and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+        configured_namespace_quota = config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES")
 
     repo_size = model.repository.get_repository_size_and_cache(repository_ref.id).get(
         "repository_size", 0
@@ -309,6 +315,8 @@ def get_quota_for_view(namespace_name):
 
     # Currently only one quota per namespace is supported
     configured_namespace_quota = quotas[0].limit_bytes if quotas else None
+    if not configured_namespace_quota and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+        configured_namespace_quota = config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES")
 
     namespace_quota_consumed = get_namespace_size(namespace_name)
     namespace_quota_consumed = int(namespace_quota_consumed) if namespace_quota_consumed else 0

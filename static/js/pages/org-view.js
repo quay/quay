@@ -52,7 +52,7 @@
 
       for (const key in units) {
         byte_unit = units[key];
-        result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+        result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
         if (bytes >= $scope.disk_size_units[byte_unit]) {
           return result.toString() + " " + byte_unit;
         }
