@@ -31,12 +31,15 @@ logger = logging.getLogger(__name__)
 
 
 def quota_view(quota, default_config=False):
-    quota_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+    quota_limits = []
 
-    # If no quota is defined for the org, return systems default quota if set
-    if not quota and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
-        quota = model.namespacequota.get_system_default_quota()
-        default_config = True
+    if quota:
+        quota_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+    else:
+        # If no quota is defined for the org, return systems default quota if set
+        if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+            quota = model.namespacequota.get_system_default_quota()
+            default_config = True
 
     return {
         "id": quota.id,
