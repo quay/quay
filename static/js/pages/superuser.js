@@ -64,11 +64,11 @@
         for (const key in units) {
             byte_unit = units[key];
             if (bytes >= $scope.disk_size_units[byte_unit]) {
-                result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+                result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
                 return result.toString() + " " + byte_unit;
             }
         }
-      return (bytes / $scope.disk_size_units["MB"]).toFixed(2).toString() + " MB";
+      return Math.round(bytes / $scope.disk_size_units["MB"]).toString() + " MB";
     };
 
     $scope.loadMessageOfTheDay = function () {

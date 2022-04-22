@@ -45,8 +45,10 @@ angular.module('quay').directive('quotaManagementView', function () {
       $scope.warningMessagesObj = {
         'noQuotaLimit': 'Note: No quota policy defined. Users will be able to exceed the storage quota set above.',
         'noRejectLimit': 'Note: This quota has no hard limit enforced via a rejection thresholds. Users will be able to exceed the storage quota set above.',
+        'usingDefaultQuota': 'Note: No quota policy defined for this organization, using system default.',
       }
       $scope.showConfigPanel = false;
+      $scope.using_default_config = false;
 
       var loadOrgQuota = function () {
         $scope.nameSpaceResource = ApiService.listOrganizationQuota(
@@ -68,6 +70,12 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.currentQuotaConfig['quota'] = result;
             $scope.prevQuotaConfig['byte_unit'] = byte_unit;
             $scope.currentQuotaConfig['byte_unit'] = byte_unit;
+            $scope.using_default_config = quota["default_config"];
+            $scope.warningMessage = "";
+
+            if (quota["default_config"]) {
+              $scope.warningMessage = $scope.warningMessagesObj["usingDefaultQuota"];
+            }
 
             if (quota["limit_bytes"] != null) {
               $scope.prevquotaEnabled = true;
@@ -91,12 +99,11 @@ angular.module('quay').directive('quotaManagementView', function () {
 
         for (const key in units) {
           byte_unit = units[key];
-          result = bytes / $scope.disk_size_units[byte_unit];
+          result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
           if (bytes >= $scope.disk_size_units[byte_unit]) {
             return {result, byte_unit};
           }
         }
-
         return {result, byte_unit};
       };
 
@@ -109,7 +116,7 @@ angular.module('quay').directive('quotaManagementView', function () {
           $scope.prevQuotaConfig['quota'] != $scope.currentQuotaConfig['quota'] ||
           $scope.prevQuotaConfig['byte_unit'] != $scope.currentQuotaConfig['byte_unit']) {
 
-          if ($scope.prevquotaEnabled) {
+          if ($scope.prevquotaEnabled && !$scope.using_default_config) {
 
             if ($scope.view == "super-user") {
               quotaMethod = ApiService.changeOrganizationQuotaSuperUser;
@@ -295,6 +302,10 @@ angular.module('quay').directive('quotaManagementView', function () {
         $scope.newLimitConfig = {"limit_percent": 100, "type": $scope.rejectLimitType};
       }
 
+      $scope.isObjectEmpty = function(obj){
+        return Object.keys(obj).length === 0;
+      }
+
       var multipleRejectTypes = function (obj) {
         let count = 0;
         for (var key in obj) {
@@ -398,6 +409,11 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       var checkForWarnings = function() {
+        // Do not over write existing warnings
+        if ($scope.warningMessage) {
+          return;
+        }
+
         if (Object.keys($scope.currentQuotaConfig['limits']).length == 0) {
           $scope.warningMessage = $scope.warningMessagesObj['noQuotaLimit'];
           return;

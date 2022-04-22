@@ -52,7 +52,7 @@
 
       for (const key in units) {
         byte_unit = units[key];
-        result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+        result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
         if (bytes >= $scope.disk_size_units[byte_unit]) {
           return result.toString() + " " + byte_unit;
         }
@@ -62,7 +62,7 @@
     };
 
     $scope.quotaPercentConsumed = function(organization) {
-      if (organization.quota_report) {
+      if (organization.quota_report && organization.quota_report.configured_quota) {
 	return (organization.quota_report.quota_bytes / organization.quota_report.configured_quota * 100).toFixed(2);
       }
       return 0;

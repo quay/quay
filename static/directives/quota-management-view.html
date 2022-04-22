@@ -30,8 +30,7 @@
 	</table>
       </td>
     </tr>
-
-    <tr ng-show="prevQuotaConfig['quota']">
+    <tr ng-show="prevQuotaConfig['quota'] && (view == 'super-user' || !isObjectEmpty(currentQuotaConfig['limits']))">
       <td class="row-alignment">
         Quota Policy:
       </td>

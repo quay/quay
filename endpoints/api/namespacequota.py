@@ -11,7 +11,6 @@ from auth.permissions import (
 )
 from auth.auth_context import get_authenticated_user
 from data import model
-from data.database import QuotaTypes
 from data.model import config
 from endpoints.api import (
     resource,
@@ -31,12 +30,21 @@ from auth import scopes
 logger = logging.getLogger(__name__)
 
 
-def quota_view(quota):
-    quota_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+def quota_view(quota, default_config=False):
+    quota_limits = []
+
+    if quota:
+        quota_limits = list(model.namespacequota.get_namespace_quota_limit_list(quota))
+    else:
+        # If no quota is defined for the org, return systems default quota if set
+        if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+            quota = model.namespacequota.get_system_default_quota()
+            default_config = True
 
     return {
         "id": quota.id,
         "limit_bytes": quota.limit_bytes,
+        "default_config": default_config,
         "limits": [limit_view(limit) for limit in quota_limits],
     }
 
@@ -84,9 +92,15 @@ class OrganizationQuotaList(ApiResource):
         except model.InvalidOrganizationException:
             raise NotFound()
 
+        default_config = False
         quotas = model.namespacequota.get_namespace_quota_list(orgname)
 
-        return [quota_view(quota) for quota in quotas]
+        # If no quota is defined for the org, return systems default quota
+        if not quotas and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+            quotas = [model.namespacequota.get_system_default_quota(orgname)]
+            default_config = True
+
+        return [quota_view(quota, default_config) for quota in quotas]
 
     @nickname("createOrganizationQuota")
     @validate_json_request("NewOrgQuota")

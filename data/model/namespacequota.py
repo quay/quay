@@ -66,6 +66,12 @@ def create_namespace_quota(namespace_user, limit_bytes):
         raise InvalidNamespaceQuota("Invalid quota size limit value: '%s'" % limit_bytes)
 
 
+def get_system_default_quota(namespace=None):
+    return UserOrganizationQuota(
+        namespace=namespace, limit_bytes=config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES")
+    )
+
+
 def update_namespace_quota_size(quota, limit_bytes):
     if limit_bytes > 0:
         quota.limit_bytes = limit_bytes
@@ -91,6 +97,9 @@ def _quota_type(type_name):
 
 
 def get_namespace_quota_limit_list(quota, quota_type=None, percent_of_limit=None):
+    if not quota:
+        return []
+
     if percent_of_limit and (not percent_of_limit > 0 or not percent_of_limit <= 100):
         raise InvalidNamespaceQuotaLimit("Quota limit threshold must be between 1 and 100")
 
@@ -279,6 +288,13 @@ def get_namespace_size(namespace_name):
     return namespace_size or 0
 
 
+def fetch_system_default(quotas):
+    if not quotas and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
+        return config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES")
+
+    return None
+
+
 def get_repo_quota_for_view(namespace_name, repo_name):
     repository_ref = model.repository.get_repository(namespace_name, repo_name)
     if not repository_ref:
@@ -287,7 +303,7 @@ def get_repo_quota_for_view(namespace_name, repo_name):
     quotas = get_namespace_quota_list(repository_ref.namespace_user.username)
 
     # Currently only one quota per namespace is supported
-    configured_namespace_quota = quotas[0].limit_bytes if quotas else None
+    configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default(quotas)
 
     repo_size = model.repository.get_repository_size_and_cache(repository_ref.id).get(
         "repository_size", 0
@@ -308,7 +324,7 @@ def get_quota_for_view(namespace_name):
     quotas = get_namespace_quota_list(namespace_user.username)
 
     # Currently only one quota per namespace is supported
-    configured_namespace_quota = quotas[0].limit_bytes if quotas else None
+    configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default(quotas)
 
     namespace_quota_consumed = get_namespace_size(namespace_name)
     namespace_quota_consumed = int(namespace_quota_consumed) if namespace_quota_consumed else 0
