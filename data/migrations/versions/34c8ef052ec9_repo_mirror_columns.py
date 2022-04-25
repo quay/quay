@@ -104,7 +104,9 @@ def upgrade(op, tables, tester):
                     has_additional = False
 
                     query = (
-                        RepoMirrorConfig.select().where(RepoMirrorConfig.id >= starting_id).limit(10)
+                        RepoMirrorConfig.select()
+                        .where(RepoMirrorConfig.id >= starting_id)
+                        .limit(10)
                     )
                     for row in query:
                         starting_id = max(starting_id, row.id + 1)
