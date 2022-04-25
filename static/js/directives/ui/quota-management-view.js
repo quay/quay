@@ -442,6 +442,12 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       $scope.deleteOrgQuota = function() {
+        if ($scope.using_default_config) {
+          bootbox.alert("The system default configuration cannot be removed.");
+          return;
+        }
+
+
         bootbox.confirm('Are you sure you want to delete quota for this organization? ' +
           'When you remove the quota storage, users can consume arbitrary amount of storage resources.',
         function(result) {
