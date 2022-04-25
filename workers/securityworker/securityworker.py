@@ -31,11 +31,11 @@ class SecurityWorker(Worker):
         self.add_operation(self._index_recent_manifests_in_scanner, interval)
 
     def _index_in_scanner(self):
-        batch_size = self.app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
+        batch_size = app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
         self._next_token = self._model.perform_indexing(self._next_token, batch_size)
 
     def _index_recent_manifests_in_scanner(self):
-        batch_size = self.app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
+        batch_size = app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
 
         try:
             with GlobalLock(
