@@ -51,6 +51,9 @@ class NoopV2SecurityScanner(SecurityScannerInterface):
     def perform_indexing(self, start_token=None, batch_size=None):
         return None
 
+    def perform_indexing_recent_manifests(self, batch_size=None):
+        return None
+
     def register_model_cleanup_callbacks(self, data_model_config):
         pass
 
@@ -158,6 +161,9 @@ class V2SecurityScanner(SecurityScannerInterface):
         Performs indexing of the next set of unindexed manifests/images.
         NOTE: Raises `NotImplementedError` because indexing for v2 is not supported.
         """
+        raise NotImplementedError("Unsupported for this security scanner version")
+
+    def perform_indexing_recent_manifests(self, batch_size=None):
         raise NotImplementedError("Unsupported for this security scanner version")
 
     def lookup_notification_page(self, notification_id, page_index=None):

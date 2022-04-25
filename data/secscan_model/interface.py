@@ -41,6 +41,12 @@ class SecurityScannerInterface(object):
         """
 
     @abstractmethod
+    def perform_indexing_recent_manifests(self, batch_size=None):
+        """
+        Performs indexing of a recent set of unindexed manifests/images.
+        """
+
+    @abstractmethod
     def register_model_cleanup_callbacks(self, data_model_config):
         """
         Registers any cleanup callbacks with the data model.
