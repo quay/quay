@@ -48,9 +48,6 @@ class NoopV2SecurityScanner(SecurityScannerInterface):
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
         return SecurityInformationLookupResult.for_request_error("not implemented (noop) scanner")
 
-    def index_manifests(self, start_token=None):
-        return None
-
     def perform_indexing(self, start_token=None, batch_size=None):
         return None
 
@@ -155,9 +152,6 @@ class V2SecurityScanner(SecurityScannerInterface):
             return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
         return SecurityInformationLookupResult.for_data(SecurityInformation.from_dict(data))
-
-    def index_manifests(self, start_token=None):
-        raise NotImplementedError("Unsupported for this security scanner version")
 
     def perform_indexing(self, start_token=None, batch_size=None):
         """

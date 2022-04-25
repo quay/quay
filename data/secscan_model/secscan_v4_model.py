@@ -27,7 +27,6 @@ from data.secscan_model.datatypes import (
 from data.readreplica import ReadOnlyModeException
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
-from util.locking import GlobalLock, LockNotAcquiredException
 from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
 from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure, InvalidContentSent
@@ -72,9 +71,6 @@ class NoopV4SecurityScanner(SecurityScannerInterface):
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
         return SecurityInformationLookupResult.for_request_error("security scanner misconfigured")
-
-    def index_manifests(self, start_token=None):
-        return None
 
     def perform_indexing(self, start_token=None, batch_size=None):
         return None
@@ -235,32 +231,6 @@ class V4SecurityScanner(SecurityScannerInterface):
 
         return iterator
 
-    def index_manifests(self, start_token=None):
-        batch_size = self.app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
-
-        try:
-            with GlobalLock(
-                "SECURITYWORKER_INDEX_RECENT_MANIFEST", lock_ttl=300, auto_renewal=True
-            ):
-                self.perform_indexing_recent_manifests(batch_size=batch_size)
-        except LockNotAcquiredException:
-            logger.warning("Could not acquire global lock for recent manifest indexing. Skipping")
-
-        try:
-            with GlobalLock(
-                "SECURITYWORKER_INDEX_TOKEN_" + str(start_token), lock_ttl=300, auto_renewal=True
-            ):
-                return self.perform_indexing(start_token=start_token, batch_size=batch_size)
-        except LockNotAcquiredException:
-            logger.warning(
-                "Could not acquire global lock for indexing (%s). Skipping" % str(start_token)
-            )
-            return (
-                ScanToken(start_token.min_id + batch_size + 1)
-                if start_token
-                else ScanToken(Manifest.select(fn.Min(Manifest.id)).scalar() + batch_size + 1)
-            )
-
     def perform_indexing_recent_manifests(self, batch_size=None):
         try:
             indexer_state = self._secscan_api.state()
@@ -308,24 +278,20 @@ class V4SecurityScanner(SecurityScannerInterface):
             else Manifest.select(fn.Min(Manifest.id)).scalar()
         )
 
-        # TODO(kleesc): Workaround to index recent manifests.
-        # Revert to actual max id once backfill is done
-        end_index = start_index + batch_size if batch_size else max_id
-
-        if end_index is None or start_index is None or start_index > max_id:
+        if max_id is None or start_index is None or start_index > max_id:
             return None
 
         iterator = self._get_manifest_iterator(
             indexer_state,
             start_index,
-            end_index,
+            max_id,
             batch_size=batch_size,
             reindex_threshold=reindex_threshold,
         )
 
         self._index(iterator, reindex_threshold)
 
-        return ScanToken(end_index + 1)
+        return ScanToken(max_id + 1)
 
     def _index(self, iterator, reindex_threshold):
         def mark_manifest_unsupported(manifest):
