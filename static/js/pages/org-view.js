@@ -46,13 +46,14 @@
     });
 
     $scope.bytesToHumanReadableString = function(bytes) {
+
       let units = Object.keys($scope.disk_size_units).reverse();
       let result = null;
       let byte_unit = null;
 
       for (const key in units) {
         byte_unit = units[key];
-        result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
+        result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
         if (bytes >= $scope.disk_size_units[byte_unit]) {
           return result.toString() + " " + byte_unit;
         }

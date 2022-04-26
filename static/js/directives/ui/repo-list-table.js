@@ -30,7 +30,7 @@ angular.module('quay').directive('repoListTable', function () {
         'page': 0
       };
       $scope.disk_size_units = {
-	'KB': 1024,
+	      'KB': 1024,
         'MB': 1024**2,
         'GB': 1024**3,
         'TB': 1024**4,

@@ -58,17 +58,19 @@
     };
 
     $scope.bytesToHumanReadableString = function(bytes) {
-        let units = Object.keys($scope.disk_size_units).reverse();
-        let result = null;
-        let byte_unit = null;
-        for (const key in units) {
-            byte_unit = units[key];
-            if (bytes >= $scope.disk_size_units[byte_unit]) {
-                result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
-                return result.toString() + " " + byte_unit;
-            }
+      let units = Object.keys($scope.disk_size_units).reverse();
+      let result = "";
+      let byte_unit = null;
+
+      for (const key in units) {
+        byte_unit = units[key];
+        result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+        if (bytes >= $scope.disk_size_units[byte_unit]) {
+          return result.toString() + " " + byte_unit;
         }
-      return Math.round(bytes / $scope.disk_size_units["MB"]).toString() + " MB";
+      }
+
+      return result.toString() + " " + byte_unit;
     };
 
     $scope.loadMessageOfTheDay = function () {
