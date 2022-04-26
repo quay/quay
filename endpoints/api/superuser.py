@@ -216,8 +216,8 @@ class SuperUserOrganizationList(ApiResource):
 
 
 @resource(
-    "/v1/superuser/users/<namespace>/quota/",
-    "/v1/superuser/organization/<namespace>/quota/",
+    "/v1/superuser/users/<namespace>/quota",
+    "/v1/superuser/organization/<namespace>/quota",
 )
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
