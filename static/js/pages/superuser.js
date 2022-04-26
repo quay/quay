@@ -59,7 +59,7 @@
 
     $scope.bytesToHumanReadableString = function(bytes) {
       let units = Object.keys($scope.disk_size_units).reverse();
-      let result = "";
+      let result = null;
       let byte_unit = null;
 
       for (const key in units) {
