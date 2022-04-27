@@ -1215,5 +1215,15 @@ CONFIG_SCHEMA = {
             "description": "Enables system default quota reject byte allowance for all organizations",
             "x-example": False,
         },
+        "FEATURE_EXPORT_COMPLIANCE": {
+            "type": "boolean",
+            "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
+            "x-example": False,
+        },
+        "EXPORT_COMPLIANCE_ENDPOINT": {
+            "type": "string",
+            "description": "The Red Hat Export Compliance Service Endpoint (only used in Quay.io)",
+            "x-example": "export-compliance.com",
+        },
     },
 }
