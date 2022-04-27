@@ -242,7 +242,9 @@ def start_blob_upload(namespace_name, repo_name):
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
         quota = namespacequota.verify_namespace_quota(repository_ref)
         if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            namespacequota.notify_organization_admins(
+                repository_ref, "quota_error", {"severity": "Reject"}
+            )
             raise QuotaExceeded
 
     # Check for mounting of a blob from another repository.
@@ -338,7 +340,9 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
         quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
         if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            namespacequota.notify_organization_admins(
+                repository_ref, "quota_error", {"severity": "Reject"}
+            )
             raise QuotaExceeded
 
     uploader = retrieve_blob_upload_manager(
@@ -382,7 +386,9 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
         quota = namespacequota.verify_namespace_quota_during_upload(repository_ref)
         if quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            namespacequota.notify_organization_admins(
+                repository_ref, "quota_error", {"severity": "Reject"}
+            )
             raise QuotaExceeded
 
     uploader = retrieve_blob_upload_manager(
