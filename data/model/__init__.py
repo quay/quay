@@ -132,6 +132,7 @@ class InvalidNamespaceQuotaLimit(DataModelException):
 class InvalidNamespaceQuotaType(DataModelException):
     pass
 
+
 class UnsupportedQuotaSize(DataModelException):
     pass
 
