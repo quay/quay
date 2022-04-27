@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -395,12 +394,10 @@ func validateAzureGateway(opts Options, endpointURL, storageName, accountName, a
 
 	_, err = containerURL.GetAccountInfo(ctx)
 	if err != nil {
-		re := regexp.MustCompile(`Code: (\w+)`)
-		message := re.FindStringSubmatch(err.Error())
 		return false, ValidationError{
 			FieldGroup: fgName,
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},
-			Message:    "Could not connect to Azure storage. Error: " + message[1],
+			Message:    "Could not connect to Azure storage. Error: " + err.Error(),
 		}
 	}
 
