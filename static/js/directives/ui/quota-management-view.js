@@ -49,6 +49,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
       $scope.showConfigPanel = false;
       $scope.using_default_config = false;
+      $scope.default_config_exists = false;
 
       var loadOrgQuota = function () {
         $scope.nameSpaceResource = ApiService.listOrganizationQuota(
@@ -71,6 +72,7 @@ angular.module('quay').directive('quotaManagementView', function () {
             $scope.prevQuotaConfig['byte_unit'] = byte_unit;
             $scope.currentQuotaConfig['byte_unit'] = byte_unit;
             $scope.using_default_config = quota["default_config"];
+            $scope.default_config_exists = quota["default_config_exists"];
             $scope.warningMessage = "";
 
             if (quota["default_config"]) {
@@ -447,9 +449,14 @@ angular.module('quay').directive('quotaManagementView', function () {
           return;
         }
 
+        let alert_msg = '';
+        if ($scope.default_config_exists) {
+          alert_msg = 'When you remove the quota storage, users will use system\'s default quota.'
+        } else {
+          alert_msg = 'When you remove the quota storage, users can consume arbitrary amount of storage resources.'
+        }
 
-        bootbox.confirm('Are you sure you want to delete quota for this organization? ' +
-          'When you remove the quota storage, users can consume arbitrary amount of storage resources.',
+        bootbox.confirm('Are you sure you want to delete quota for this organization? ' + alert_msg,
         function(result) {
           if (!result) {
             return;
