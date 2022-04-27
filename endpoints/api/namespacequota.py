@@ -46,7 +46,9 @@ def quota_view(quota, default_config=False):
         "limit_bytes": quota.limit_bytes,
         "default_config": default_config,
         "limits": [limit_view(limit) for limit in quota_limits],
-        "default_config_exists": True if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0 else False
+        "default_config_exists": True
+        if config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0
+        else False,
     }
 
 
