@@ -41,7 +41,7 @@ WORKDIR /build
 FROM build AS config-editor
 # This argument must be repeated, and should have the same default as
 # the other CONFIGTOOL_VERSION argument.
-ARG CONFIGTOOL_VERSION=v0.1.11
+ARG CONFIGTOOL_VERSION=v0.1.12
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=4 --exclude='*.go'
 RUN set -ex\
@@ -96,7 +96,7 @@ RUN set -ex\
 # Config-tool builds the go binary in the configtool.
 FROM registry.access.redhat.com/ubi8/go-toolset:1.16.12 as config-tool
 WORKDIR /opt/app-root/src
-ARG CONFIGTOOL_VERSION=v0.1.11
+ARG CONFIGTOOL_VERSION=v0.1.12
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
 COPY --from=config-editor /build/static/build  /opt/app-root/src/pkg/lib/editor/static/build
