@@ -30,7 +30,7 @@ angular.module('quay').directive('repoListTable', function () {
         'page': 0
       };
       $scope.disk_size_units = {
-	'KB': 1024,
+        'KB': 1024,
         'MB': 1024**2,
         'GB': 1024**3,
         'TB': 1024**4,
@@ -69,7 +69,7 @@ angular.module('quay').directive('repoListTable', function () {
         let byte_unit = null;
         for (const key in units) {
           byte_unit = units[key];
-          result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2);
+          result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
           if (bytes >= $scope.disk_size_units[byte_unit]) {
             return result.toString() + " " + byte_unit;
           }
@@ -80,7 +80,7 @@ angular.module('quay').directive('repoListTable', function () {
 
       $scope.quotaPercentConsumed = function(repository) {
 	      if (repository.quota_report && repository.quota_report.configured_quota) {
-	        return (repository.quota_report.quota_bytes / repository.quota_report.configured_quota * 100).toFixed(2);
+	        return Math.round(repository.quota_report.quota_bytes / repository.quota_report.configured_quota * 100);
 	      }
 	      return 0;
       };
