@@ -62,7 +62,7 @@ def create_namespace_quota(namespace_user, limit_bytes):
         try:
             return UserOrganizationQuota.create(namespace=namespace_user, limit_bytes=limit_bytes)
         except DataError:
-            raise UnsupportedQuotaSize("Unsupported quota size limit value: '%s'" % limit_bytes)
+            raise UnsupportedQuotaSize("Unsupported quota size limit.")
         except model.DataModelException as ex:
             return None
     else:
@@ -81,7 +81,7 @@ def update_namespace_quota_size(quota, limit_bytes):
             quota.limit_bytes = limit_bytes
             quota.save()
         except DataError:
-            raise UnsupportedQuotaSize("Unsupported quota size limit value: '%s'" % limit_bytes)
+            raise UnsupportedQuotaSize("Unsupported quota size limit.")
     else:
         raise InvalidNamespaceQuota("Invalid quota size limit value: '%s'" % limit_bytes)
 
