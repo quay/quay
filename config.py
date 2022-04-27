@@ -823,3 +823,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
+
+    # Feature Flag: Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)
+    FEATURE_EXPORT_COMPLIANCE = False
+
+    # Export Compliance Endpoint
+    EXPORT_COMPLIANCE_ENDPOINT = ""
