@@ -1,6 +1,6 @@
 import json
 
-from peewee import fn, JOIN
+from peewee import fn, JOIN, DataError
 
 from data.database import (
     Repository,
@@ -27,6 +27,7 @@ from data.model import (
     InvalidNamespaceQuota,
     InvalidNamespaceQuotaLimit,
     InvalidNamespaceQuotaType,
+    UnsupportedQuotaSize,
 )
 
 
@@ -60,6 +61,8 @@ def create_namespace_quota(namespace_user, limit_bytes):
     if limit_bytes > 0:
         try:
             return UserOrganizationQuota.create(namespace=namespace_user, limit_bytes=limit_bytes)
+        except DataError:
+            raise UnsupportedQuotaSize("Unsupported quota size limit value: '%s'" % limit_bytes)
         except model.DataModelException as ex:
             return None
     else:
@@ -74,8 +77,11 @@ def get_system_default_quota(namespace=None):
 
 def update_namespace_quota_size(quota, limit_bytes):
     if limit_bytes > 0:
-        quota.limit_bytes = limit_bytes
-        quota.save()
+        try:
+            quota.limit_bytes = limit_bytes
+            quota.save()
+        except DataError:
+            raise UnsupportedQuotaSize("Unsupported quota size limit value: '%s'" % limit_bytes)
     else:
         raise InvalidNamespaceQuota("Invalid quota size limit value: '%s'" % limit_bytes)
 
