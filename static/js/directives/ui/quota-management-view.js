@@ -527,9 +527,6 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       loadOrgQuota();
-      /* loadQuotaLimits(true); */
-      // $scope.$watch('isEnabled', loadOrgQuota);
-      // $scope.$watch('organization', loadOrgQuota);
     }
   }
   return directiveDefinitionObject;
