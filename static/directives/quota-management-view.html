@@ -15,7 +15,7 @@
       <td>
 	<table class="co-table">
 	  <td>
-            <input class="margin-2 form-control width-440" type="number" name="quota-limit"
+            <input class="margin-2 form-control width-440 white-background" name="quota-limit"
               ng-disabled="prevquotaEnabled && view == 'organization-view'"
               ng-model="currentQuotaConfig['quota']">
 	  </td>
@@ -59,7 +59,7 @@
               </select>
             </td>
             <td>
-              <input class="form-control margin-2" type="number" name="limit-percent"
+              <input class="form-control margin-2 white-background" type="number" name="limit-percent"
                 ng-disabled="prevquotaEnabled && view == 'organization-view'"
 		        min="1" max="100" placeholder="Limit Percent" ng-model="limit['limit_percent']"/>
             </td>
@@ -88,7 +88,7 @@
               </select>
             </td>
             <td>
-              <input class="form-control margin-2" type="number" name="limit-percent" id="newQuotaLimitPercent"
+              <input class="form-control margin-2 white-background" type="number" name="limit-percent" id="newQuotaLimitPercent"
                 ng-disabled="view == 'organization-view'" min="1" max="100"
                 placeholder="Percent threshold" ng-model="newLimitConfig['limit_percent']"/>
             </td>
