@@ -735,6 +735,7 @@ def request_authorization_code():
             redirect_uri=redirect_uri,
             scope=scope,
             csrf_token_val=generate_csrf_token(),
+            state=state,
         )
 
     if response_type == "token":
