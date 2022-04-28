@@ -286,11 +286,13 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
     manifest = registry_model.create_manifest_with_temp_tag(
         repository_ref, parsed, expiration_sec, storage
     )
+
     if manifest is None:
         image_pushes.labels("v2", 400, "").inc()
         raise ManifestInvalid()
 
     image_pushes.labels("v2", 201, manifest.media_type).inc()
+
     return Response(
         "OK",
         status=201,
@@ -397,14 +399,6 @@ def _write_manifest(
     if repository_ref is None:
         raise NameUnknown()
 
-    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-        quota = namespacequota.verify_namespace_quota_force_cache(repository_ref)
-        if quota["severity_level"] == "Warning":
-            namespacequota.notify_organization_admins(repository_ref, "quota_warning")
-        elif quota["severity_level"] == "Reject":
-            namespacequota.notify_organization_admins(repository_ref, "quota_error")
-            raise QuotaExceeded()
-
     # Create the manifest(s) and retarget the tag to point to it.
     try:
         manifest, tag = registry_model.create_manifest_and_retarget_tag(
@@ -417,6 +411,14 @@ def _write_manifest(
 
     if manifest is None:
         raise ManifestInvalid()
+
+    if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
+        quota = namespacequota.verify_namespace_quota_force_cache(repository_ref)
+        if quota["severity_level"] == "Warning":
+            namespacequota.notify_organization_admins(repository_ref, "quota_warning")
+        elif quota["severity_level"] == "Reject":
+            namespacequota.notify_organization_admins(repository_ref, "quota_error")
+            raise QuotaExceeded()
 
     return repository_ref, manifest, tag
 
