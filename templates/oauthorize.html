@@ -70,6 +70,7 @@
         <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
         <input type="hidden" name="scope" value="{{ scope }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token_val }}">
+        <input type="hidden" name="state" value="{{ state }}">
         <button type="submit" class="btn btn-success">Authorize Application</button>
       </form>
       {% endif %}
@@ -78,6 +79,7 @@
         <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
         <input type="hidden" name="scope" value="{{ scope }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token_val }}">
+        <input type="hidden" name="state" value="{{ state }}">
         <button type="submit" class="btn btn-default">Cancel</button>
       </form>
     </div>
