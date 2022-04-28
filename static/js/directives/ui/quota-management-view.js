@@ -50,6 +50,7 @@ angular.module('quay').directive('quotaManagementView', function () {
       $scope.showConfigPanel = false;
       $scope.using_default_config = false;
       $scope.default_config_exists = false;
+      $scope.quota_limit_error = false;
 
       var loadOrgQuota = function () {
         $scope.nameSpaceResource = ApiService.listOrganizationQuota(
@@ -268,7 +269,7 @@ angular.module('quay').directive('quotaManagementView', function () {
           return true;
         }
 
-        if ($scope.errorMessage != "" || !validOrgQuota()) {
+        if (($scope.quota_limit_error && $scope.errorMessage != "") || !validOrgQuota()) {
           return true;
         }
 
@@ -290,7 +291,7 @@ angular.module('quay').directive('quotaManagementView', function () {
           return true;
         }
 
-        if ($scope.errorMessage || !validOrgQuotaLimit($scope.currentQuotaConfig['limits'][limitId]['limit_percent'])) {
+        if (($scope.quota_limit_error && $scope.errorMessage != "") || !validOrgQuotaLimit($scope.currentQuotaConfig['limits'][limitId]['limit_percent'])) {
           return true;
         }
         return $scope.prevQuotaConfig['limits'][limitId]['type'] === $scope.currentQuotaConfig['limits'][limitId]['type'] &&
@@ -315,10 +316,10 @@ angular.module('quay').directive('quotaManagementView', function () {
             count++;
           }
           if (count > 1) {
-            return true
+            return true;
           }
         }
-        return false
+        return false;
       }
 
       var isOfTypeDecimal = function (value) {
@@ -335,9 +336,11 @@ angular.module('quay').directive('quotaManagementView', function () {
           return true;
         }
 
+        $scope.quota_limit_error = true;
+
         if ($scope.newLimitConfig['limit_percent'] != null && isNaN(parseInt($scope.newLimitConfig['limit_percent']))) {
           $scope.errorMessage = $scope.errorMessagesObj['quotaLimitNotInRange'];
-          return false;
+          return true;
         }
 
         if (isOfTypeDecimal($scope.newLimitConfig['limit_percent'])) {
@@ -362,6 +365,7 @@ angular.module('quay').directive('quotaManagementView', function () {
         }
 
         $scope.errorMessage = "";
+        $scope.quota_limit_error = false;
         return false;
       }
 
@@ -397,16 +401,18 @@ angular.module('quay').directive('quotaManagementView', function () {
           return false;
         }
 
-        if (isOfTypeDecimal($scope.currentQuotaConfig['quota'])) {
+        if (isOfTypeDecimal(parseFloat($scope.currentQuotaConfig['quota']))) {
+          $scope.errorMessage = $scope.errorMessagesObj['decimalEntryError'];
           return false;
         }
+
+        $scope.currentQuotaConfig['quota'] = parseInt($scope.currentQuotaConfig['quota']);
+        $scope.errorMessage = '';
 
         // Enable Apply button only if quota and the unit is selected
         if (!$scope.currentQuotaConfig['quota'] || !$scope.currentQuotaConfig['byte_unit']) {
           return false;
         }
-
-        $scope.errorMessage = '';
         return true;
       }
 
@@ -522,8 +528,8 @@ angular.module('quay').directive('quotaManagementView', function () {
 
       loadOrgQuota();
       /* loadQuotaLimits(true); */
-      $scope.$watch('isEnabled', loadOrgQuota);
-      $scope.$watch('organization', loadOrgQuota);
+      // $scope.$watch('isEnabled', loadOrgQuota);
+      // $scope.$watch('organization', loadOrgQuota);
     }
   }
   return directiveDefinitionObject;
