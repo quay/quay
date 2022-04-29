@@ -325,7 +325,6 @@ class OrganizationQuotaLimit(ApiResource):
 
 
 @resource("/v1/user/quota")
-@require_scope(scopes.SUPERUSER)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuotaList(ApiResource):
     @require_user_admin
@@ -338,7 +337,6 @@ class UserQuotaList(ApiResource):
 
 
 @resource("/v1/user/quota/<quota_id>")
-@require_scope(scopes.SUPERUSER)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuota(ApiResource):
     @require_user_admin
@@ -351,7 +349,6 @@ class UserQuota(ApiResource):
 
 
 @resource("/v1/user/quota/<quota_id>/limit")
-@require_scope(scopes.SUPERUSER)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuotaLimitList(ApiResource):
     @require_user_admin
@@ -367,7 +364,6 @@ class UserQuotaLimitList(ApiResource):
 
 
 @resource("/v1/user/quota/<quota_id>/limit/<limit_id>")
-@require_scope(scopes.SUPERUSER)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuotaLimit(ApiResource):
     @require_user_admin
