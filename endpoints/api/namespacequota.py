@@ -113,6 +113,9 @@ class OrganizationQuotaList(ApiResource):
         """
         Create a new organization quota.
         """
+        if not SuperUserPermission().can():
+            raise Unauthorized()
+
         quota_data = request.get_json()
         limit_bytes = quota_data["limit_bytes"]
 
@@ -164,6 +167,9 @@ class OrganizationQuota(ApiResource):
     @show_if(features.SUPER_USERS)
     @validate_json_request("UpdateOrgQuota")
     def put(self, orgname, quota_id):
+        if not SuperUserPermission().can():
+            raise Unauthorized()
+
         quota_data = request.get_json()
         quota = get_quota(orgname, quota_id)
 
@@ -180,6 +186,9 @@ class OrganizationQuota(ApiResource):
     @require_scope(scopes.SUPERUSER)
     @show_if(features.SUPER_USERS)
     def delete(self, orgname, quota_id):
+        if not SuperUserPermission().can():
+            raise Unauthorized()
+
         quota = get_quota(orgname, quota_id)
 
         # Exceptions by`delete_instance` are unexpected and raised
@@ -225,6 +234,9 @@ class OrganizationQuotaLimitList(ApiResource):
     @validate_json_request("NewOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def post(self, orgname, quota_id):
+        if not SuperUserPermission().can():
+            raise Unauthorized()
+
         quota_limit_data = request.get_json()
         quota_type = quota_limit_data["type"]
         quota_limit_threshold = quota_limit_data["threshold_percent"]
@@ -292,6 +304,9 @@ class OrganizationQuotaLimit(ApiResource):
     @validate_json_request("UpdateOrgQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def put(self, orgname, quota_id, limit_id):
+        if not SuperUserPermission().can():
+            raise Unauthorized()
+
         quota_limit_data = request.get_json()
 
         quota = get_quota(orgname, quota_id)
@@ -311,6 +326,9 @@ class OrganizationQuotaLimit(ApiResource):
     @nickname("deleteOrganizationQuotaLimit")
     @require_scope(scopes.SUPERUSER)
     def delete(self, orgname, quota_id, limit_id):
+        if not SuperUserPermission().can():
+            raise Unauthorized()
+
         quota = get_quota(orgname, quota_id)
         quota_limit = model.namespacequota.get_namespace_quota_limit(quota, limit_id)
         if quota_limit is None:
