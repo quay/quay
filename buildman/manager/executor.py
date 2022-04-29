@@ -603,9 +603,6 @@ class KubernetesExecutor(BuilderExecutor):
             "spec": {
                 "activeDeadlineSeconds": self.executor_config.get("MAXIMUM_JOB_TIME", 7200),
                 "backoffLimit": 1,
-                "ttlSecondsAfterFinished": self.executor_config.get(
-                    "RETENTION_AFTER_FINISHED", 120
-                ),
                 "template": {
                     "metadata": {
                         "labels": {
@@ -624,6 +621,12 @@ class KubernetesExecutor(BuilderExecutor):
                 },
             },
         }
+
+        # If DEBUG isn't enabled, add a TTL on the job
+        if not self.executor_config.get("DEBUG", False):
+            job_resource["spec"]["ttlSecondsAfterFinished"] = self.executor_config.get(
+                "RETENTION_AFTER_FINISHED", 120
+            )
 
         if self._is_openshift_kubernetes_distribution():
             # Setting `automountServiceAccountToken` to false will prevent automounting API credentials for a service account.
