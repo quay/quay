@@ -166,28 +166,6 @@ def get_blob_upload_by_uuid(upload_uuid):
         return None
 
 
-def get_blob_upload(namespace, repo_name, upload_uuid):
-    """
-    Load the upload which is already in progress.
-    """
-    try:
-        return (
-            BlobUpload.select(BlobUpload, ImageStorageLocation)
-            .join(ImageStorageLocation)
-            .switch(BlobUpload)
-            .join(Repository)
-            .join(Namespace, on=(Namespace.id == Repository.namespace_user))
-            .where(
-                Repository.name == repo_name,
-                Namespace.username == namespace,
-                BlobUpload.uuid == upload_uuid,
-            )
-            .get()
-        )
-    except BlobUpload.DoesNotExist:
-        raise InvalidBlobUpload()
-
-
 def initiate_upload(namespace, repo_name, uuid, location_name, storage_metadata):
     """
     Initiates a blob upload for the repository with the given namespace and name, in a specific
