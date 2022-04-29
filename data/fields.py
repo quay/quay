@@ -50,13 +50,11 @@ class _ResumableSHAField(TextField):
 
 
 class ResumableSHA256Field(_ResumableSHAField):
-    def _create_sha(self):
-        return rehash.sha256()
+    pass
 
 
 class ResumableSHA1Field(_ResumableSHAField):
-    def _create_sha(self):
-        return rehash.sha1()
+    pass
 
 
 class JSONField(TextField):

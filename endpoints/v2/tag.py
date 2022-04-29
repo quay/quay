@@ -23,7 +23,7 @@ from endpoints.v2.errors import NameUnknown
 def list_all_tags(namespace_name, repo_name, start_id, limit, pagination_callback):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
-        raise NameUnknown()
+        raise NameUnknown("repository not found")
 
     # NOTE: We add 1 to the limit because that's how pagination_callback knows if there are
     # additional tags.
