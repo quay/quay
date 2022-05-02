@@ -696,7 +696,7 @@ class KubernetesPodmanExecutor(KubernetesExecutor):
         super(KubernetesExecutor, self).__init__(*args, **kwargs)
         self.namespace = self.executor_config.get("BUILDER_NAMESPACE", "builder")
         self.image = self.executor_config.get(
-            "BUILDER_CONTAINER_IMAGE", "quay.io/quay/quay-builder-podman:stable"
+            "BUILDER_CONTAINER_IMAGE", "quay.io/projectquay/quay-builder:latest"
         )
 
     def _build_job_containers(self, token, build_uuid):
