@@ -52,6 +52,7 @@ services:
       - "8080:8080" 
       - "8443:8443"
     environment:
+      QUAY_VERSION: local-dev
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
 
