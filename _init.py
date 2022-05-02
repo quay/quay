@@ -34,6 +34,17 @@ config_provider = get_config_provider(
 )
 
 
+def _get_version_number():
+    # Try to get version from environment
+    version = os.getenv("QUAY_VERSION", "")
+
+    if not version:
+        # Fallback to getting version from changelog for standalone
+        version = _get_version_number_changelog()
+
+    return version
+
+
 def _get_version_number_changelog():
     try:
         with open(os.path.join(ROOT_DIR, "CHANGELOG.md")) as f:
@@ -56,5 +67,5 @@ def _get_git_sha():
     return "unknown"
 
 
-__version__ = _get_version_number_changelog()
+__version__ = _get_version_number()
 __gitrev__ = _get_git_sha()
