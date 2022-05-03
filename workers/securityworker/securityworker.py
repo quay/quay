@@ -35,15 +35,21 @@ class SecurityWorker(Worker):
         self._next_token = self._model.perform_indexing(self._next_token, batch_size)
 
     def _index_recent_manifests_in_scanner(self):
-        batch_size = app.config.get("SECURITY_SCANNER_V4_BATCH_SIZE", 0)
+        batch_size = app.config.get("SECURITY_SCANNER_V4_RECENT_MANIFEST_BATCH_SIZE", 1000)
 
-        try:
-            with GlobalLock(
-                "SECURITYWORKER_INDEX_RECENT_MANIFEST", lock_ttl=300, auto_renewal=True
-            ):
-                self._model.perform_indexing_recent_manifests(batch_size)
-        except LockNotAcquiredException:
-            logger.warning("Could not acquire global lock for recent manifest indexing. Skipping")
+        if not app.config.get("SECURITY_SCANNER_V4_SKIP_RECENT_MANIFEST_BATCH_LOCK", False):
+            try:
+                with GlobalLock(
+                    "SECURITYWORKER_INDEX_RECENT_MANIFEST", lock_ttl=300, auto_renewal=True
+                ):
+                    self._model.perform_indexing_recent_manifests(batch_size)
+            except LockNotAcquiredException:
+                logger.warning(
+                    "Could not acquire global lock for recent manifest indexing. Skipping"
+                )
+
+        else:
+            self._model.perform_indexing_recent_manifests(batch_size)
 
 
 def create_gunicorn_worker():
