@@ -254,7 +254,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             indexer_state,
             start_index,
             end_index,
-            batch_size=batch_size,
+            batch_size=max(batch_size // 20, 1),
             reindex_threshold=reindex_threshold,
         )
 
