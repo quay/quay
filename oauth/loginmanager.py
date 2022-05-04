@@ -1,5 +1,6 @@
 from oauth.services.github import GithubOAuthService
 from oauth.services.google import GoogleOAuthService
+from oauth.services.rhsso import RHSSOOAuthService
 from oauth.oidc import OIDCLoginService
 
 CUSTOM_LOGIN_SERVICES = {
@@ -30,8 +31,10 @@ class OAuthLoginManager(object):
                     prefix = key.rstrip("_LOGIN_CONFIG").lower()
                     if prefix in PREFIX_BLACKLIST:
                         raise Exception("Cannot use reserved config name %s" % key)
-
-                    self.services.append(OIDCLoginService(config, key, client=client))
+                    if prefix == "rhsso":
+                        self.services.append(RHSSOOAuthService(config, key, client=client))
+                    else:
+                        self.services.append(OIDCLoginService(config, key, client=client))
 
     def get_service(self, service_id):
         for service in self.services:

@@ -6,7 +6,6 @@ import os
 from collections import namedtuple
 from flask import request, redirect, url_for, Blueprint, abort, session
 from peewee import IntegrityError
-import requests
 
 
 import features
@@ -300,28 +299,6 @@ def _register_service(login_service):
         result = _attach_service(login_service, user_obj, lid, lusername)
         if result.error_message is not None:
             return _get_response(result)
-
-        # Conduct RedHat Export Compliance if enabled
-        if features.EXPORT_COMPLIANCE:
-            logger.debug("Attempting to hit export compliance service")
-            try:
-                result = requests.post(
-                    app.config.get("EXPORT_COMPLIANCE_ENDPOINT"),
-                    cert=(
-                        os.path.join(CONF_DIR, "export-compliance-client.crt"),
-                        os.path.join(CONF_DIR, "export-compliance-client.key"),
-                    ),
-                    verify=os.path.join(CONF_DIR, "export-compliance-ca.crt"),
-                    json={"user": {"login": lusername}, "account": {"primary": True}},
-                    timeout=5,
-                )
-                logger.debug("Got result from export compliance service: " + result.json())
-                if result.status_code != 200:
-                    return _render_ologin_error(
-                        login_service.service_id(), str(result.json()["errors"])
-                    )
-            except Exception as e:
-                return _render_ologin_error(login_service.service_name(), str(e))
 
         return redirect(
             url_for(
