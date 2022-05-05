@@ -351,7 +351,7 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
             track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
 
         if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-            namespacequota.force_cache_repo_size(repository_ref)
+            repository.force_cache_repo_size(repository_ref.id)
 
         return Response(status=202)
 
