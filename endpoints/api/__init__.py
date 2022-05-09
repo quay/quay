@@ -8,7 +8,6 @@ from functools import partial, wraps
 from flask import Blueprint, request, session
 from flask_restful import Resource, abort, Api, reqparse
 from flask_restful.utils import unpack
-from flask_restful.utils.cors import crossdomain
 from jsonschema import validate, ValidationError
 
 from app import app, authentication
@@ -41,7 +40,7 @@ from endpoints.decorators import check_anon_protection, require_xhr_from_browser
 from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
 from util.pagination import encrypt_page_token, decrypt_page_token
-from util.request import get_request_ip
+from util.request import get_request_ip, crossorigin
 from util.timedeltastring import convert_to_timedelta
 
 from .__init__models_pre_oci import pre_oci_model as model
@@ -51,12 +50,11 @@ logger = logging.getLogger(__name__)
 api_bp = timed_blueprint(Blueprint("api", __name__))
 
 
-CROSS_DOMAIN_HEADERS = ["Authorization", "Content-Type", "X-Requested-With"]
 FRESH_LOGIN_TIMEOUT = convert_to_timedelta(app.config.get("FRESH_LOGIN_TIMEOUT", "10m"))
 
 
 class ApiExceptionHandlingApi(Api):
-    @crossdomain(origin="*", headers=CROSS_DOMAIN_HEADERS)
+    @crossorigin()
     def handle_error(self, error):
         return super(ApiExceptionHandlingApi, self).handle_error(error)
 
@@ -65,7 +63,7 @@ api = ApiExceptionHandlingApi()
 api.init_app(api_bp)
 api.decorators = [
     csrf_protect(),
-    crossdomain(origin="*", headers=CROSS_DOMAIN_HEADERS),
+    crossorigin(),
     process_oauth,
     require_xhr_from_browser,
 ]

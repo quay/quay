@@ -21,9 +21,7 @@ from util.secscan import PRIORITY_LEVELS
 from util.timedeltastring import convert_to_timedelta
 from _init import __version__
 
-
 logger = logging.getLogger(__name__)
-
 
 JS_BUNDLE_NAME = "bundle"
 
@@ -77,6 +75,29 @@ def _list_files(path, extension, contains=""):
 FONT_AWESOME_5 = "use.fontawesome.com/releases/v5.0.4/css/all.css"
 
 
+def get_external_login_config():
+    login_config = []
+    for login_service in oauth_login.services:
+        login_config.append(
+            {
+                "id": login_service.service_id(),
+                "title": login_service.service_name(),
+                "config": login_service.get_public_config(),
+                "icon": login_service.get_icon(),
+            }
+        )
+
+    return login_config
+
+
+def get_oauth_config():
+    oauth_config = {}
+    for oauth_app in oauth_apps:
+        oauth_config[oauth_app.key_name] = oauth_app.get_public_config()
+
+    return oauth_config
+
+
 def render_page_template(name, route_data=None, **kwargs):
     """
     Renders the page template with the given name as the response and returns its contents.
@@ -93,27 +114,6 @@ def render_page_template(name, route_data=None, **kwargs):
     # Add Stripe checkout if billing is enabled.
     if features.BILLING:
         external_scripts.append("//checkout.stripe.com/checkout.js")
-
-    def get_external_login_config():
-        login_config = []
-        for login_service in oauth_login.services:
-            login_config.append(
-                {
-                    "id": login_service.service_id(),
-                    "title": login_service.service_name(),
-                    "config": login_service.get_public_config(),
-                    "icon": login_service.get_icon(),
-                }
-            )
-
-        return login_config
-
-    def get_oauth_config():
-        oauth_config = {}
-        for oauth_app in oauth_apps:
-            oauth_config[oauth_app.key_name] = oauth_app.get_public_config()
-
-        return oauth_config
 
     has_contact = len(app.config.get("CONTACT_INFO", [])) > 0
     contact_href = None
