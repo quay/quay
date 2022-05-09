@@ -17,6 +17,7 @@ from data.database import (
 from data.model import (
     oci,
     namespacequota,
+    repository,
     RepositoryDoesNotExist,
     ManifestDoesNotExist,
     TagDoesNotExist,
@@ -253,7 +254,7 @@ class ProxyModel(OCIModel):
 
     def _recalculate_repository_size(self, repo_ref: RepositoryReference) -> None:
         if features.QUOTA_MANAGEMENT:
-            namespacequota.force_cache_repo_size(repo_ref)
+            repository.force_cache_repo_size(repo_ref.id)
 
     def _enforce_repository_quota(self, repo_ref: RepositoryReference) -> None:
         if features.QUOTA_MANAGEMENT:

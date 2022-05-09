@@ -27,6 +27,7 @@ from data.model import (
     InvalidNamespaceQuota,
     InvalidNamespaceQuotaLimit,
     InvalidNamespaceQuotaType,
+    repository,
     UnsupportedQuotaSize,
 )
 
@@ -173,7 +174,7 @@ def verify_namespace_quota(repository_ref):
 
 
 def verify_namespace_quota_force_cache(repository_ref):
-    force_cache_repo_size(repository_ref)
+    repository.force_cache_repo_size(repository_ref.id)
     namespace_size = get_namespace_size(repository_ref.namespace_name)
     return check_limits(repository_ref.namespace_name, namespace_size)
 
@@ -236,10 +237,6 @@ def notify_organization_admins(repository_ref, notification_kind, metadata={}):
             namespace_user,
             metadata,
         )
-
-
-def force_cache_repo_size(repository_ref):
-    return model.repository.force_cache_repo_size(repository_ref._db_id)
 
 
 def cache_namespace_repository_sizes(namespace_name):

@@ -691,16 +691,16 @@ def get_repository_size(repo_id: int):
 
 
 def get_repository_size_and_cache(repo_id: int):
-    output = get_repository_size(repo_id)
+    repo_size_ref = get_repository_size(repo_id)
 
-    if output is None or output.size_bytes == 0:
+    if repo_size_ref is None or repo_size_ref.size_bytes == 0:
         force_cache_repo_size(repo_id)
-        output = get_repository_size(repo_id)
+        repo_size_ref = get_repository_size(repo_id)
 
     return {
-        "repository_name": output.repository.name,
-        "repository_id": output.repository.id,
-        "repository_size": output.size_bytes,
+        "repository_name": repo_size_ref.repository.name,
+        "repository_id": repo_size_ref.repository.id,
+        "repository_size": repo_size_ref.size_bytes,
     }
 
 
@@ -739,17 +739,24 @@ def force_cache_repo_size(repo_id: int):
     except Manifest.DoesNotExist:
         size = 0
 
-    repo = get_repository_size(repo_id)
-
     if size is None:
         size = 0
 
-    if repo is not None:
-        update = RepositorySize.update(size_bytes=size).where(
-            RepositorySize.repository_id == repo_id
-        )
-        update.execute()
-    else:
-        RepositorySize.create(repository_id=repo_id, size_bytes=size)
+    with db_transaction():
+        repo_size_ref = get_repository_size(repo_id)
+        try:
+            if repo_size_ref is not None:
+                update = RepositorySize.update(size_bytes=size).where(
+                    RepositorySize.repository_id == repo_id
+                )
+                update.execute()
+            else:
+                RepositorySize.create(repository_id=repo_id, size_bytes=size)
+        except IntegrityError:
+            # It it possible that this gets preempted by another worker.
+            # If that's the case, it should be safe to just ignore the IntegrityError,
+            # as the RepositorySize should have been created with the correct value.
+            logger.warning("RepositorySize for repo id %s already exists", repo_id)
+            return size
 
     return size
