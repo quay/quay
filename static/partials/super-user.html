@@ -70,7 +70,9 @@
         <cor-tab-pane id="organizations">
           <div class="resource-view" resource="organizationsResource"
                error-message="'Could not load organizations'">
-            <div class="manager-header" header-title="Organizations">
+            <div class="manager-header" header-title="Organizations
+              {{ Features.QUOTA_MANAGEMENT ? '(Total Quota Consumption: ' + bytesToHumanReadableString(registryQuota) + ')' : '' }}
+            ">
             </div>
 
             <div class="co-top-bar">
