@@ -615,7 +615,7 @@ class KubernetesExecutor(BuilderExecutor):
                     "spec": {
                         "imagePullSecrets": [{"name": image_pull_secret_name}],
                         "restartPolicy": "Never",
-                        "dnsPolicy": "Default",
+                        "dnsPolicy": self.executor_config.get("DNS_POLICY", "Default"),
                         "containers": [self._build_job_containers(token, build_uuid)],
                     },
                 },
