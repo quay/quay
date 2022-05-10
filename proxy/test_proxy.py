@@ -18,6 +18,7 @@ ANONYMOUS_TOKEN = "anonymous-token"
 USER_TOKEN = "user-token"
 TAG = "14"
 TAG_404 = "666"
+TAG_NO_DIGEST = "11"
 DIGEST = "sha256:2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6"
 DIGEST_404 = "sha256:3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
 
@@ -119,7 +120,11 @@ def docker_registry_manifest(url, request):
             }
         ],
     }
-    return response(200, content, request=request)
+    headers = {
+        "docker-content-digest": DIGEST,
+        "content-type": "application/vnd.docker.distribution.manifest.v2+json",
+    }
+    return response(200, content, headers, request=request)
 
 
 def docker_registry_manifest_404(url, request):
@@ -133,6 +138,10 @@ def docker_registry_manifest_404(url, request):
         ]
     }
     return response(404, content, request=request)
+
+
+def docker_registry_manifest_no_digest(url, request):
+    return response(200, "", request=request)
 
 
 def docker_registry_blob(url, request):
@@ -159,6 +168,9 @@ def docker_registry_mock(url, request):
 
         elif url.path == f"/v2/library/postgres/manifests/{TAG_404}":
             return docker_registry_manifest_404(url, request)
+
+        elif url.path == f"/v2/library/postgres/manifests/{TAG_NO_DIGEST}":
+            return docker_registry_manifest_no_digest(url, request)
 
         elif url.path == f"/v2/library/postgres/blobs/{DIGEST}":
             return docker_registry_blob(url, request)
@@ -312,6 +324,7 @@ class TestProxy(unittest.TestCase):
             proxy = Proxy(self.config, "library/postgres")
             digest = proxy.manifest_exists(image_ref=TAG)
         self.assertNotEqual(digest, "")
+        self.assertNotEqual(digest, None)
 
     def test_manifest_exists_404(self):
         with HTTMock(docker_registry_mock):
@@ -320,6 +333,12 @@ class TestProxy(unittest.TestCase):
                 proxy.manifest_exists(image_ref=TAG_404)
 
         self.assertIn("404", str(excinfo.value))
+
+    def test_manifest_exists_without_digest_header(self):
+        with HTTMock(docker_registry_mock):
+            proxy = Proxy(self.config, "library/postgres")
+            digest = proxy.manifest_exists(image_ref=TAG_NO_DIGEST)
+        self.assertIsNone(digest, None)
 
     def test_get_blob(self):
         with HTTMock(docker_registry_mock):
