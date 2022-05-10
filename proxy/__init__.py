@@ -79,8 +79,10 @@ class Proxy:
 
     def manifest_exists(self, image_ref: str, media_types: list[str] | None = None) -> str | None:
         """
-        Returns the manifest digest (docker-content-digest) if given by the
-        upstream registry.
+        Returns the manifest digest.
+
+        Looks for the digest in the docker-content-digest header. If not
+        present in the response, parses the manifest then calculate the digest.
 
         If the manifest does not exist or the upstream registry errors, raises
         an UpstreamRegistryError exception.
@@ -96,6 +98,9 @@ class Proxy:
         url = f"{self.base_url}/v2/{self._repo}/blobs/{digest}"
         resp = self.get(
             url,
+            headers={
+                "Accept-Encoding": "identity",
+            },
             allow_redirects=True,
             stream=True,
         )

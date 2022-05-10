@@ -315,14 +315,24 @@ class ProxyModel(OCIModel):
         freshly out of the database, and a boolean indicating whether the returned
         tag was newly created or not.
         """
+        upstream_manifest = None
         upstream_digest = self._proxy.manifest_exists(manifest_ref, ACCEPTED_MEDIA_TYPES)
         up_to_date = manifest.digest == upstream_digest
+
+        # manifest_exists will return an empty/None digest when the upstream
+        # registry omits the docker-content-digest header.
+        if not upstream_digest:
+            upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+            up_to_date = manifest.digest == upstream_manifest.digest
+
         placeholder = manifest.internal_manifest_bytes.as_unicode() == ""
         if up_to_date and not placeholder:
             return tag, False
 
+        if upstream_manifest is None:
+            upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+
         self._enforce_repository_quota(repo_ref)
-        upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
         if up_to_date and placeholder:
             with db_disallow_replica_use():
                 with db_transaction():
