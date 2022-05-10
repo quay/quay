@@ -48,6 +48,7 @@
       'TB': 1024**4,
     };
     $scope.quotaUnits = Object.keys($scope.disk_size_units);
+    $scope.registryQuota = null;
 
     $scope.showQuotaConfig = function (org) {
         if (StateService.inReadOnlyMode()) {
@@ -111,10 +112,22 @@
                                                            ['name', 'email'], []);
       };
 
+    var caclulateRegistryStorage = function () {
+      if (!Features.QUOTA_MANAGEMENT || !$scope.organizations) {
+        return;
+      }
+      let total = 0;
+      $scope.organizations.forEach(function (obj){
+        total += obj['quota_report']['quota_bytes'];
+      })
+      $scope.registryQuota = total;
+    }
+
     $scope.loadOrganizationsInternal = function() {
       $scope.organizationsResource = ApiService.listAllOrganizationsAsResource().get(function(resp) {
         $scope.organizations = resp['organizations'];
         sortOrgs();
+        caclulateRegistryStorage();
         return $scope.organizations;
       });
     };
