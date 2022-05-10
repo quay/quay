@@ -37,6 +37,11 @@ jobs:
         # The code-base needs to be cleaned up. There are too many Flake8
         # related warnings now. We can at least use it for visibility purposes.
         flake8 --exit-zero
+    
+    - name: Check Requirements are pinned
+      run: |
+        # Read each line of requirement.txt and flag if any line doesn't contain ==, @, newline, or #
+        sed '/^$/d' < requirements.txt | while read i; do if [[ ! $i =~ [==|@|^#] ]]; then echo $i is not pinned; fi; done
 
   unit:
     name: Unit Test
