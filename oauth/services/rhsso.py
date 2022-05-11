@@ -5,6 +5,7 @@ import features
 import logging
 import os
 from _init import CONF_DIR
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class RHSSOOAuthService(OIDCLoginService):
         if features.EXPORT_COMPLIANCE:
             logger.debug("Attempting to hit export compliance service")
             try:
-                result = http_client.post(
+                result = requests.post(
                     app_config.get("EXPORT_COMPLIANCE_ENDPOINT"),
                     cert=(
                         "/conf/stack/export-compliance-client.crt",
