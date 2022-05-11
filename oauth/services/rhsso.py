@@ -32,7 +32,9 @@ class RHSSOOAuthService(OIDCLoginService):
                 )
                 logger.debug("Got result from export compliance service: " + result.json())
                 if result.status_code != 200:
-                    raise OAuthLoginException(str(result.json()["errors"]))
+                    raise OAuthLoginException(str(result.json()))
+                if result.json()["result"] != "OK":
+                    raise OAuthLoginException(str(result.json()["description"]))
             except Exception as e:
                 raise OAuthLoginException(str(e))
 
