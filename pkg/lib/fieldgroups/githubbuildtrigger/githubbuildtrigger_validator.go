@@ -75,7 +75,7 @@ func (fg *GitHubBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	}
 
 	// If restricted orgs, make sure
-	if fg.GithubTriggerConfig.OrgRestrict == true && len(fg.GithubTriggerConfig.AllowedOrganizations) == 0 {
+	if fg.GithubTriggerConfig.OrgRestrict && len(fg.GithubTriggerConfig.AllowedOrganizations) == 0 {
 		newError := shared.ValidationError{
 			Tags:       []string{"GITHUB_TRIGGER_CONFIG.ORG_RESTRICT", "GITHUB_TRIGGER_CONFIG.ALLOWED_ORGANIZATIONS"},
 			FieldGroup: fgName,
@@ -87,7 +87,7 @@ func (fg *GitHubBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	// Check OAuth endpoint
 	var success bool
 	if opts.Mode != "testing" {
-		success = shared.ValidateGitHubOAuth(fg.GithubTriggerConfig.ClientId, fg.GithubTriggerConfig.ClientSecret)
+		success = shared.ValidateGitHubOAuth(fg.GithubTriggerConfig.ClientId, fg.GithubTriggerConfig.ClientSecret, fg.GithubTriggerConfig.GithubEndpoint)
 	} else {
 		success = (fg.GithubTriggerConfig.ClientId == "test_client_key") && (fg.GithubTriggerConfig.ClientSecret == "test_secret_key")
 	}

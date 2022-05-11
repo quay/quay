@@ -76,7 +76,7 @@ func (fg *GitLabBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	}
 
 	// Check OAuth endpoint
-	success := shared.ValidateGitLabOAuth(fg.GitlabTriggerConfig.ClientId, fg.GitlabTriggerConfig.ClientSecret)
+	success := shared.ValidateGitLabOAuth(fg.GitlabTriggerConfig.ClientId, fg.GitlabTriggerConfig.ClientSecret, fg.GitlabTriggerConfig.GitlabEndpoint)
 	if !success {
 		newError := shared.ValidationError{
 			Tags:       []string{"GITLAB_TRIGGER_CONFIG.CLIENT_ID", "GITLAB_TRIGGER_CONFIG.CLIENT_SECRET"},

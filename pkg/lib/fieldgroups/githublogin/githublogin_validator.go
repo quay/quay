@@ -14,7 +14,7 @@ func (fg *GitHubLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	errors := []shared.ValidationError{}
 
 	// If github trigger is off
-	if fg.FeatureGithubLogin == false {
+	if !fg.FeatureGithubLogin {
 		return errors
 	}
 
@@ -70,7 +70,7 @@ func (fg *GitHubLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	}
 
 	// If restricted orgs, make sure
-	if fg.GithubLoginConfig.OrgRestrict == true && len(fg.GithubLoginConfig.AllowedOrganizations) == 0 {
+	if fg.GithubLoginConfig.OrgRestrict && len(fg.GithubLoginConfig.AllowedOrganizations) == 0 {
 		newError := shared.ValidationError{
 			Tags:       []string{"GITHUB_LOGIN_CONFIG.ORG_RESTRICT", "GITHUB_LOGIN_CONFIG.ALLOWED_ORGANIZATIONS"},
 			FieldGroup: fgName,
@@ -82,7 +82,7 @@ func (fg *GitHubLoginFieldGroup) Validate(opts shared.Options) []shared.Validati
 	// Check OAuth endpoint
 	var success bool
 	if opts.Mode != "testing" {
-		success = shared.ValidateGitHubOAuth(fg.GithubLoginConfig.ClientId, fg.GithubLoginConfig.ClientSecret)
+		success = shared.ValidateGitHubOAuth(fg.GithubLoginConfig.ClientId, fg.GithubLoginConfig.ClientSecret, fg.GithubLoginConfig.ApiEndpoint)
 	} else {
 		success = (fg.GithubLoginConfig.ClientId == "test_client_key") && (fg.GithubLoginConfig.ClientSecret == "test_secret_key")
 	}

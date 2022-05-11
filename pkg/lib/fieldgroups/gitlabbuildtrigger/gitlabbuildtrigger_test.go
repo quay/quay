@@ -21,7 +21,7 @@ func TestValidateGitLabBuildTrigger(t *testing.T) {
 		{name: "Valid", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_ID":       "304c96b0015a469f6cdc907a22acbc5692d8ac2958b19a19a2585811e0c1019f",
 			"CLIENT_SECRET":   "45060b331c39c30bd532eb71c720739d177f1a22238da470eab6a5e19f26057a",
-			"GITLAB_ENDPOINT": "https://endpoint.com",
+			"GITLAB_ENDPOINT": "https://gitlab.com",
 		}}, want: "valid"},
 		{name: "BadCredentials", config: map[string]interface{}{"FEATURE_BUILD_SUPPORT": true, "FEATURE_GITLAB_BUILD": true, "GITLAB_TRIGGER_CONFIG": map[string]interface{}{
 			"CLIENT_ID":       "bad_client_id",
