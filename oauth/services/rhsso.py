@@ -23,10 +23,10 @@ class RHSSOOAuthService(OIDCLoginService):
                 result = http_client.post(
                     app_config.get("EXPORT_COMPLIANCE_ENDPOINT"),
                     cert=(
-                        os.path.join(CONF_DIR, "export-compliance-client.crt"),
-                        os.path.join(CONF_DIR, "export-compliance-client.key"),
+                        "/conf/stack/export-compliance-client.crt",
+                        "/conf/stack/export-compliance-client.key",
                     ),
-                    verify=os.path.join(CONF_DIR, "export-compliance-ca.crt"),
+                    verify="/conf/stack/export-compliance-ca.crt",
                     json={"user": {"login": lusername}, "account": {"primary": True}},
                     timeout=5,
                 )
