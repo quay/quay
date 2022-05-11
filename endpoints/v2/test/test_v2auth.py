@@ -286,6 +286,17 @@ def get_robot_password(username):
             "public",
             False,
         ),
+        # Push to existing user namespace
+        (
+            "repository:devtable/visibility:pull,push,*",
+            "devtable",
+            "password",
+            200,
+            ["devtable/visibility:push,pull,*"],
+            True,
+            "public",
+            True,
+        ),
         # Pushed namespace created
         (
             "repository:neworg/visibility:pull,push,*",
