@@ -190,13 +190,10 @@ def check_limits(namespace_name, size):
     quotas = get_namespace_quota_list(namespace_user.username)
     if not quotas:
         default_size = config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES")
-        if default_size != 0:
-            return {
-                "limit_bytes": default_size,
-                "severity_level": None if size < default_size else QuotaTypes.REJECT,
-            }
-        else:
-            return {"limit_bytes": 0, "severity_level": None}
+        return {
+            "limit_bytes": default_size,
+            "severity_level": None if (default_size == 0 or size < default_size) else QuotaTypes.REJECT,
+        }
 
     # Currently only one quota per namespace is supported
     quota = quotas[0]
