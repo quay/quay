@@ -28,7 +28,7 @@ class OAuthLoginManager(object):
                     if custom_service.login_enabled(config):
                         self.services.append(custom_service)
                 else:
-                    prefix = key.rstrip("_LOGIN_CONFIG").lower()
+                    prefix = key[: -len("_LOGIN_CONFIG")].lower()
                     if prefix in PREFIX_BLACKLIST:
                         raise Exception("Cannot use reserved config name %s" % key)
                     if prefix == "rhsso":
