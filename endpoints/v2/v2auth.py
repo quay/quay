@@ -261,20 +261,20 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                 else:
                     logger.debug("No permission to modify repository %s/%s", namespace, reponame)
             else:
-                if app.config.get("CREATE_NAMESPACE_ON_PUSH", False):
+                if (
+                    app.config.get("CREATE_NAMESPACE_ON_PUSH", False)
+                    and model.user.get_namespace_user(namespace) is None
+                ):
+                    logger.debug("Creating organization: %s/%s", namespace, reponame)
                     try:
-                        model.organization.get_organization(namespace)
-                    except model.InvalidOrganizationException:
-                        logger.debug("Creating organization: %s/%s", namespace, reponame)
-                        try:
-                            model.organization.create_organization(
-                                namespace,
-                                ("+" + namespace + "@").join(user.email.split("@")),
-                                user,
-                                email_required=features.MAILING,
-                            )
-                        except model.DataModelException as ex:
-                            raise Unsupported(message="Cannot create organization")
+                        model.organization.create_organization(
+                            namespace,
+                            ("+" + namespace + "@").join(user.email.split("@")),
+                            user,
+                            email_required=features.MAILING,
+                        )
+                    except model.DataModelException as ex:
+                        raise Unsupported(message="Cannot create organization")
                 if CreateRepositoryPermission(namespace).can() and user is not None:
                     logger.debug("Creating repository: %s/%s", namespace, reponame)
                     visibility = (
