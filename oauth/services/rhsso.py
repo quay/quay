@@ -27,7 +27,6 @@ class RHSSOOAuthService(OIDCLoginService):
                         "/conf/stack/export-compliance-client.crt",
                         "/conf/stack/export-compliance-client.key",
                     ),
-                    verify="/conf/stack/export-compliance-ca.crt",
                     json={"user": {"login": lusername}, "account": {"primary": True}},
                     timeout=5,
                 )
