@@ -31,10 +31,13 @@ class RHSSOOAuthService(OIDCLoginService):
                     timeout=5,
                 )
                 logger.debug("Got result from export compliance service: " + str(result.json()))
-                if result.status_code != 200:
+
+                # 200 => Endpoint was hit successfully and user was found
+                # 400 => Endpoint was hit successfully but no user was found
+                if result.status_code != 200 and result.status_code != 400:
                     raise OAuthLoginException(str(result.json()))
-                if result.json()["result"] != "OK":
-                    raise OAuthLoginException(str(result.json()["description"]))
+                if result.json().get("result", "") != "OK":
+                    raise OAuthLoginException(str(result.json().get("description", "")))
             except Exception as e:
                 raise OAuthLoginException(str(e))
 
