@@ -30,7 +30,7 @@ class RHSSOOAuthService(OIDCLoginService):
                     json={"user": {"login": lusername}, "account": {"primary": True}},
                     timeout=5,
                 )
-                logger.debug("Got result from export compliance service: " + result.json())
+                logger.debug("Got result from export compliance service: " + str(result.json()))
                 if result.status_code != 200:
                     raise OAuthLoginException(str(result.json()))
                 if result.json()["result"] != "OK":
