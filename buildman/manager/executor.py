@@ -283,7 +283,7 @@ class EC2Executor(BuilderExecutor):
 
         coreos_ami = self.executor_config.get("COREOS_AMI", None)
         if coreos_ami is None:
-            coreos_ami = self.get_coreos_ami(region, channel)
+            coreos_ami = self._get_coreos_ami(region, channel)
 
         user_data = self.generate_cloud_config(token, build_uuid, self.manager_hostname)
         logger.debug("Generated cloud config for build %s: %s", build_uuid, user_data)
