@@ -4,6 +4,7 @@ from oauth.oidc import OIDCLoginService
 import features
 import logging
 import os
+import re
 from _init import CONF_DIR
 import requests
 
@@ -34,8 +35,14 @@ class RHSSOOAuthService(OIDCLoginService):
 
                 # 200 => Endpoint was hit successfully and user was found
                 # 400 => Endpoint was hit successfully but no user was found
-                if result.status_code == 200 and result.json().get("result", "") == "ERROR_EXPORT_CONTROL":
-                    raise OAuthLoginException(str(result.json().get("description", "")))
+                if (
+                    result.status_code == 200
+                    and result.json().get("result", "") == "ERROR_EXPORT_CONTROL"
+                ):
+                    # Remove html anchor tags from string
+                    description = str(result.json().get("description", ""))
+                    clean = re.compile("<.*?>")
+                    raise OAuthLoginException(re.sub(clean, "", description))
 
             except Exception as e:
                 raise OAuthLoginException(str(e))
