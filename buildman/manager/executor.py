@@ -552,7 +552,7 @@ class KubernetesExecutor(BuilderExecutor):
 
         container = {
             "name": "builder",
-            "imagePullPolicy": "IfNotPresent",
+            "imagePullPolicy": self.executor_config.get("IMAGE_PULL_POLICY", "Always"),
             "image": self.image,
             "securityContext": {"privileged": True},
             "env": [
@@ -712,7 +712,7 @@ class KubernetesPodmanExecutor(KubernetesExecutor):
 
         container = {
             "name": "builder",
-            "imagePullPolicy": "Always",
+            "imagePullPolicy": self.executor_config.get("IMAGE_PULL_POLICY", "Always"),
             "image": self.image,
             "env": [
                 {"name": "TOKEN", "value": token},

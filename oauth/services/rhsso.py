@@ -34,7 +34,10 @@ class RHSSOOAuthService(OIDCLoginService):
 
                 # 200 => Endpoint was hit successfully and user was found
                 # 400 => Endpoint was hit successfully but no user was found
-                if result.status_code == 200 and result.json().get("result", "") == "ERROR_EXPORT_CONTROL":
+                if (
+                    result.status_code == 200
+                    and result.json().get("result", "") == "ERROR_EXPORT_CONTROL"
+                ):
                     raise OAuthLoginException(str(result.json().get("description", "")))
 
             except Exception as e:
