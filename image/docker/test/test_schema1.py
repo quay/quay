@@ -12,6 +12,7 @@ from image.docker.schema1 import (
     DockerSchema1ManifestBuilder,
 )
 from util.bytes import Bytes
+import re
 
 
 @pytest.mark.parametrize(
@@ -31,6 +32,9 @@ def test_malformed_manifests(json_data):
         DockerSchema1Manifest(Bytes.for_string_or_unicode(json_data))
 
 
+# Format of the key id expected in signed schema 1 manifests
+# https://docs.docker.com/registry/spec/auth/jwt/
+KID_FORMAT_REGEX = "([A-Z0-9]{4}:){11}[A-Z0-9]{4}"
 MANIFEST_BYTES = json.dumps(
     {
         "name": "hello-world",
@@ -180,6 +184,11 @@ def test_build_unencoded_unicode_manifest(with_key):
     )
 
     built = builder.build(with_key, ensure_ascii=False)
+    # Assert kid was created correctly
+    # https://docs.docker.com/registry/spec/auth/jwt/
+    if with_key is not None:
+        assert len(built.signatures) == 1
+        assert re.match(KID_FORMAT_REGEX, built.signatures[0]["header"]["jwk"]["kid"])
     built._validate()
 
 
