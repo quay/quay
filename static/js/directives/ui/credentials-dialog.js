@@ -137,6 +137,19 @@ angular.module('quay').directive('credentialsDialog', function () {
         return 'docker login -u="' + escape(credentials.username) + '" -p="' + credentials.password + '" ' + Config['SERVER_HOSTNAME'];
       };
 
+      $scope.getPodmanLogin = function(credentials) {
+        if (!credentials || !credentials.username) {
+          return '';
+        }
+
+        var escape = function(v) {
+          if (!v) { return v; }
+          return v.replace('$', '\\$');
+        };
+
+        return 'podman login -u="' + escape(credentials.username) + '" -p="' + credentials.password + '" ' + Config['SERVER_HOSTNAME'];
+      };
+
       $scope.getDockerFilename = function(credentials) {
         return $scope.getSuffixedFilename(credentials, 'auth.json')
       };

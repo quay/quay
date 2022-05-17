@@ -26,12 +26,23 @@ angular.module('quay').directive('fetchTagDialog', function () {
         $scope.formats = [];
 
         $scope.formats.push({
+          'title': 'Podman Pull (by tag)',
+          'icon': 'podman-icon',
+          'command': 'podman pull {hostname}/{namespace}/{name}:{tag}'
+        });
+
+        $scope.formats.push({
           'title': 'Docker Pull (by tag)',
           'icon': 'docker-icon',
           'command': 'docker pull {hostname}/{namespace}/{name}:{tag}'
         });
 
         if ($scope.currentTag && $scope.currentTag.manifest_digest) {          
+          $scope.formats.push({
+            'title': 'Podman Pull (by digest)',
+            'icon': 'podman-icon',
+            'command': 'podman pull {hostname}/{namespace}/{name}@{manifest_digest}'
+          });
           $scope.formats.push({
             'title': 'Docker Pull (by digest)',
             'icon': 'docker-icon',
