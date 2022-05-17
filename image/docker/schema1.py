@@ -19,6 +19,9 @@ from jwt.utils import base64url_encode, base64url_decode
 
 from authlib.jose import JsonWebKey, JsonWebSignature
 from authlib.jose.errors import BadSignatureError, UnsupportedAlgorithmError
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from hashlib import sha256
+import base64
 
 from digest import digest_tools
 from image.shared import ManifestException
@@ -808,6 +811,29 @@ class DockerSchema1ManifestBuilder(object):
             if comp in public_members
         }
         public_key["kty"] = json_web_key.kty
+
+        # Signed Docker schema 1 manifests require the kid to be in a specific format
+        # https://docs.docker.com/registry/spec/auth/jwt/
+        pub_key = json_web_key.get_public_key()
+        # Take the DER encoded public key which the JWT token was signed against
+        key_der = pub_key.public_bytes(
+            encoding=Encoding.DER, format=PublicFormat.SubjectPublicKeyInfo
+        )
+        # Create a SHA256 hash out of it and truncate to 240bits
+        hash256 = sha256()
+        hash256.update(key_der)
+        digest = hash256.digest()
+        digest_first_240_bits = digest[:30]
+        # Split the result into 12 base32 encoded groups with : as delimiter
+        base32 = base64.b32encode(digest_first_240_bits).decode("ascii")
+        kid = ""
+        i = 0
+        for i in range(0, int(len(base32) / 4) - 1):
+            start = i * 4
+            end = start + 4
+            kid += base32[start:end] + ":"
+        kid += base32[(i + 1) * 4 :]  # Add the last group without the delimiter
+        public_key["kid"] = kid
 
         signature_block = {
             DOCKER_SCHEMA1_HEADER_KEY: {"jwk": public_key, "alg": _JWS_SIGNING_ALGORITHM},
