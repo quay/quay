@@ -26,6 +26,7 @@ angular.module('quay').directive('repoPanelInfo', function () {
         var namespace = $scope.repository.namespace;
         var name = $scope.repository.name;
 
+        $scope.podmanPullCommand = 'podman pull ' + Config.getDomain() + '/' + namespace + '/' + name;
         $scope.pullCommand = 'docker pull ' + Config.getDomain() + '/' + namespace + '/' + name;
       });
 

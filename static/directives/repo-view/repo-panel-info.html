@@ -25,6 +25,8 @@
     <!-- Builds -->
     <div class="col-sm-7 builds-list" ng-if="!Features.BUILD_SUPPORT">
       <div class="right-pull-controls" style="width: 100%">
+        <div>Pull this container with the following Podman command:</div>
+        <div class="copy-box" value="podmanPullCommand"></div>
         <div>Pull this container with the following Docker command:</div>
         <div class="copy-box" value="pullCommand"></div>
       </div>
@@ -73,6 +75,8 @@
       </td>
       <td style="width: 400px;" class="hidden-xs hidden-sm" ng-if="Features.BUILD_SUPPORT">
         <div class="right-pull-controls">
+          <div>Pull this container with the following Podman command:</div>
+          <div class="copy-box" value="podmanPullCommand"></div>
           <div>Pull this container with the following Docker command:</div>
           <div class="copy-box" value="pullCommand"></div>
         </div>
