@@ -80,6 +80,10 @@
                           ng-if="user.username != current_user.username && !current_user.super_user">
                       <i class="fa fa-bolt"></i> Take Ownership
                     </span>
+                    <span class="cor-option" option-click="showQuotaConfig(current_user)"
+                        quay-show="Features.QUOTA_MANAGEMENT">
+                      <i class="fa fa-gear"></i> Configure Quota
+                    </span>
                   </span>
         </td>
       </tr>
@@ -233,4 +237,20 @@
       </div><!-- /.modal-content -->
     </div><!-- /.modal-dialog -->
   </div><!-- /.modal -->
+
+  <!-- Modal quota configuration -->
+  <div ng-repeat="current_user in orderedUsers.entries" class="org-row">
+      <div class="co-dialog modal fade" id="quotaConfigModal-{{ current_user.username }}">
+        <div class="modal-dialog">
+          <div class="modal-content padding-2percent">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+              <h4 class="modal-title">Manage Organization Quota for {{ current_user.username }}</h4>
+            </div>
+              <quota-management-view organization="null" user="current_user" view="super-user"></quota-management-view>
+          </div>
+        </div>
+      </div>
+  </div>
+
 </div>
