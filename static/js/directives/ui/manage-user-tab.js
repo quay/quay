@@ -30,6 +30,14 @@ angular.module('quay').directive('manageUserTab', function () {
         'page': 0
       };
 
+      $scope.showQuotaConfig = function (user) {
+        if (StateService.inReadOnlyMode()) {
+          return;
+        }
+
+        $('#quotaConfigModal-'+user.username).modal('show');
+      };
+
       $scope.showCreateUser = function () {
         if (StateService.inReadOnlyMode()) {
           return;
