@@ -180,15 +180,6 @@ class ProxyModel(OCIModel):
                     else None
                 )
                 oci.tag.set_tag_end_ms(db_tag, new_expiration)
-                # if the manifest is a child of a manifest list in this repo, renew
-                # the parent manifest list tag too.
-                parent = ManifestChild.select(ManifestChild.manifest_id).where(
-                    (ManifestChild.repository_id == repository_ref.id)
-                    & (ManifestChild.child_manifest_id == wrapped_manifest.id)
-                )
-                parent_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, parent)
-                if parent_tag is not None:
-                    oci.tag.set_tag_end_ms(parent_tag, new_expiration)
 
         return super().lookup_manifest_by_digest(
             repository_ref,

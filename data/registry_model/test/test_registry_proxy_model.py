@@ -612,58 +612,6 @@ class TestRegistryProxyModelLookupManifestByDigest:
         tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
         assert tag.lifetime_end_ms > first_tag.lifetime_end_ms
 
-    def test_renew_manifest_and_parent_tag_when_manifest_is_child_of_manifest_list(
-        self, create_repo, proxy_manifest_response
-    ):
-        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-        input_list = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_LATEST_MANIFEST_LIST),
-            DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
-            sparse_manifest_support=True,
-        )
-        with patch("data.registry_model.registry_proxy_model.Proxy", MagicMock()):
-            proxy_model = ProxyModel(
-                self.orgname,
-                self.upstream_repository,
-                self.user,
-            )
-            manifest_list, tag = proxy_model._create_manifest_and_retarget_tag(
-                repo_ref, input_list, "latest"
-            )
-
-        assert manifest_list is not None
-        child = (
-            ManifestChild.select(ManifestChild.child_manifest_id)
-            .join(Manifest, on=(ManifestChild.child_manifest_id == Manifest.id))
-            .where(
-                (ManifestChild.manifest_id == manifest_list.id)
-                & (Manifest.digest == UBI8_LATEST_DIGEST)
-            )
-        )
-        manifest_tag = Tag.select().where(Tag.manifest == child).get()
-        manifest_list_tag = tag
-
-        proxy_mock = proxy_manifest_response(
-            UBI8_LATEST_DIGEST, UBI8_LATEST_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
-        )
-        with patch(
-            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
-        ):
-            proxy_model = ProxyModel(
-                self.orgname,
-                self.upstream_repository,
-                self.user,
-            )
-            manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_LATEST_DIGEST)
-
-        updated_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
-        updated_list_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest_list.id)
-
-        assert updated_tag.id == manifest_tag.id
-        assert updated_list_tag.id == manifest_list_tag.id
-        assert updated_tag.lifetime_end_ms > manifest_tag.lifetime_end_ms
-        assert updated_list_tag.lifetime_end_ms > manifest_list_tag.lifetime_end_ms
-
     def test_update_relevant_manifest_fields_when_manifest_is_placeholder(
         self, create_repo, proxy_manifest_response
     ):
