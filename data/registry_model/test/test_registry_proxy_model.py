@@ -26,6 +26,7 @@ from data.model.oci.manifest import get_or_create_manifest
 from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
 from data.registry_model.datatypes import Manifest as ManifestType
+from data.registry_model.test import testdata
 from digest.digest_tools import sha256_digest
 from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
@@ -611,6 +612,71 @@ class TestRegistryProxyModelLookupManifestByDigest:
         assert manifest is not None
         tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
         assert tag.lifetime_end_ms > first_tag.lifetime_end_ms
+
+    def test_renew_manifest_and_parent_tags_when_manifest_has_multiple_parents(
+        self, create_repo, proxy_manifest_response
+    ):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy",
+            MagicMock(
+                return_value=proxy_manifest_response(
+                    "bullseye",
+                    testdata.PYTHON_BULLSEYE["manifest"],
+                    testdata.PYTHON_BULLSEYE["content-type"],
+                )
+            ),
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+            bullseye = proxy_model.get_repo_tag(repo_ref, "bullseye")
+        assert bullseye is not None
+
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy",
+            MagicMock(
+                return_value=proxy_manifest_response(
+                    "latest",
+                    testdata.PYTHON_LATEST["manifest"],
+                    testdata.PYTHON_LATEST["content-type"],
+                )
+            ),
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+            latest = proxy_model.get_repo_tag(repo_ref, "latest")
+        assert latest is not None
+
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy",
+            MagicMock(
+                return_value=proxy_manifest_response(
+                    testdata.PYTHON_ec43d7["digest"],
+                    testdata.PYTHON_ec43d7["manifest"],
+                    testdata.PYTHON_ec43d7["content-type"],
+                )
+            ),
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+            manifest = proxy_model.lookup_manifest_by_digest(
+                repo_ref, testdata.PYTHON_ec43d7["digest"]
+            )
+        assert manifest is not None
+
+        updated_bullseye = oci.tag.get_tag_by_manifest_id(repo_ref.id, bullseye.manifest.id)
+        updated_latest = oci.tag.get_tag_by_manifest_id(repo_ref.id, latest.manifest.id)
+        assert updated_bullseye.lifetime_end_ms > bullseye.lifetime_end_ms
+        assert updated_latest.lifetime_end_ms > latest.lifetime_end_ms
 
     def test_renew_manifest_and_parent_tag_when_manifest_is_child_of_manifest_list(
         self, create_repo, proxy_manifest_response
