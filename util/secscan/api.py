@@ -281,7 +281,7 @@ class ImplementedSecurityScannerAPI(SecurityScannerAPIInterface):
             timeout=timeout,
             verify=MITM_CERT_PATH,
             headers=DEFAULT_HTTP_HEADERS,
-            proxies={"https": "https://" + signer_proxy_url, "http": "http://" + signer_proxy_url},
+            proxies={"https": "http://" + signer_proxy_url, "http": "http://" + signer_proxy_url},
         )
         if resp.status_code // 100 != 2:
             raise Non200ResponseException(resp)
