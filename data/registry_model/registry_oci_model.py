@@ -515,7 +515,7 @@ class OCIModel(RegistryDataInterface):
                 # expected status codes once PreOCIModel is gone.
                 msg = "Invalid repository tag '%s' on repository" % tag_name
                 raise model.DataModelException(msg)
-            repo = self.lookup_repository(repository_ref.namespace_name(), repository_ref.name())
+
             repository.force_cache_repo_size(repository_ref.id)
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
