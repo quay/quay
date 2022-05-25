@@ -148,7 +148,7 @@ angular.module('quay').directive('quotaManagementView', function () {
             if ($scope.view == "super-user") {
               quotaMethod = ApiService.createOrganizationQuotaSuperUser;
             } else {
-              quotaMethod = ApiService.createOrganizationQuota;
+              quotaMethod = ApiService.createNamespaceQuota;
             }
 
           }

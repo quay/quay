@@ -5626,12 +5626,12 @@ SECURITY_TESTS: List[
         "devtable",
         202,
     ),
-    (OrganizationQuotaList, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
-    (OrganizationQuotaList, "GET", {"orgname": "buynlarge"}, None, "randomuser", 403),
-    (OrganizationQuotaList, "GET", {"orgname": "buynlarge"}, None, None, 401),
-    (OrganizationQuotaList, "POST", {"orgname": "buynlarge"}, {"limit_bytes": 200000}, None, 401),
+    (NamespaceQuotaList, "GET", {"orgname": "buynlarge"}, None, "devtable", 200),
+    (NamespaceQuotaList, "GET", {"orgname": "buynlarge"}, None, "randomuser", 403),
+    (NamespaceQuotaList, "GET", {"orgname": "buynlarge"}, None, None, 401),
+    (NamespaceQuotaList, "POST", {"orgname": "buynlarge"}, {"limit_bytes": 200000}, None, 401),
     (
-        OrganizationQuotaList,
+        NamespaceQuotaList,
         "POST",
         {"orgname": "buynlarge"},
         {"limit_bytes": 200000},
@@ -5639,7 +5639,7 @@ SECURITY_TESTS: List[
         400,
     ),  # Quota already exists in test db
     (
-        OrganizationQuotaList,
+        NamespaceQuotaList,
         "POST",
         {"orgname": "buynlarge"},
         {"limit_bytes": 200000},
@@ -5647,7 +5647,7 @@ SECURITY_TESTS: List[
         403,
     ),
     (
-        OrganizationQuotaList,
+        NamespaceQuotaList,
         "POST",
         {"orgname": "library"},
         {"limit_bytes": 200000},
