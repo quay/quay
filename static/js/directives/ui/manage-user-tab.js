@@ -29,6 +29,13 @@ angular.module('quay').directive('manageUserTab', function () {
         'filter': null,
         'page': 0
       };
+      $scope.disk_size_units = {
+        'KB': 1024,
+        'MB': 1024**2,
+        'GB': 1024**3,
+        'TB': 1024**4,
+      };
+      $scope.quotaUnits = Object.keys($scope.disk_size_units);
 
       $scope.showQuotaConfig = function (user) {
         if (StateService.inReadOnlyMode()) {
@@ -37,6 +44,23 @@ angular.module('quay').directive('manageUserTab', function () {
 
         $('#quotaConfigModal-'+user.username).modal('show');
       };
+
+      $scope.bytesToHumanReadableString = function(bytes) {
+        let units = Object.keys($scope.disk_size_units).reverse();
+        let result = null;
+        let byte_unit = null;
+
+        for (const key in units) {
+          byte_unit = units[key];
+          result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
+          if (bytes >= $scope.disk_size_units[byte_unit]) {
+            return result.toString() + " " + byte_unit;
+          }
+        }
+
+        return result.toString() + " " + byte_unit;
+      };
+
 
       $scope.showCreateUser = function () {
         if (StateService.inReadOnlyMode()) {

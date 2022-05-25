@@ -30,6 +30,10 @@
             ng-if="Features.MAILING">
           <a ng-click="orderBy('email')">E-mail address</a>
         </td>
+        <td ng-class="tablePredicateClass('quota', options.predicate, options.reverse)"
+            ng-if="Features.QUOTA_MANAGEMENT">
+          <a ng-click="orderBy('quota')">Quota Consumed</a>
+        </td>
         <td style="width: 24px;"></td>
       </thead>
 
@@ -53,6 +57,19 @@
         </td>
         <td ng-if="Features.MAILING">
           <a href="mailto:{{ current_user.email }}">{{ current_user.email }}</a>
+        </td>
+        <td ng-if="Features.QUOTA_MANAGEMENT">
+          <span ng-if="current_user.quota_report.quota_bytes">
+          {{
+            current_user.quota_report.percent_consumed ?
+            ( bytesToHumanReadableString(current_user.quota_report.quota_bytes) + " (" + current_user.quota_report.percent_consumed + "%)") :
+            bytesToHumanReadableString(current_user.quota_report.quota_bytes)
+          }}
+          </span>
+          <span ng-if="current_user.quota_report.configured_quota && !current_user.quota_report.quota_bytes">0</span>
+          <span ng-if="current_user.quota_report.configured_quota">
+          {{ " of " + bytesToHumanReadableString(current_user.quota_report.configured_quota) }}
+          </span>
         </td>
         <td style="text-align: center;">
                   <span class="cor-options-menu"
