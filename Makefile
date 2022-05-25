@@ -17,11 +17,6 @@ show-modified:
 
 all: clean test build
 
-QUAY_CONFIG ?= ../quay-config
-conf/stack/license: $(QUAY_CONFIG)/local/license
-	mkdir -p conf/stack
-	ln -s $(QUAY_CONFIG)/local/license conf/stack/license
-
 unit-test:
 	TEST=true PYTHONPATH="." py.test \
 	--cov="." --cov-report=html --cov-report=term-missing \
@@ -126,9 +121,6 @@ docker-build: build
 app-sre-docker-build:
 	$(BUILD_CMD) -t ${IMG} -f Dockerfile .
 
-run: license
-	goreman start
-
 
 clean:
 	find . -name "*.pyc" -exec rm -rf {} \;
@@ -168,14 +160,22 @@ black:
 # Local Development Environment #
 #################################
 
-.PHONY: quay-build-image
-quay-build-image:
-# docker-compose run does not build images, so let's build it if needed
+.PHONY: build-image-local-dev-frontend
+build-images:: build-image-local-dev-frontend
+build-image-local-dev-frontend:
+# docker-compose run does not build images, so we need to build them if needed
 	test -n "$$(docker images quay-build:latest -q)" || docker-compose build local-dev-frontend
+
+.PHONY: build-image-quay
+build-images:: build-image-quay
+build-image-quay: .build-image-quay-stamp
+.build-image-quay-stamp: Dockerfile requirements.txt
+	docker-compose build quay
+	touch $@
 
 node_modules: node_modules/.npm-install-stamp
 
-node_modules/.npm-install-stamp: package.json package-lock.json | quay-build-image
+node_modules/.npm-install-stamp: package.json package-lock.json | build-image-local-dev-frontend
 	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-frontend npm install --ignore-engines
 # if npm install fails for some reason, it may have already created
 # node_modules, so we cannot rely on the directory timestamps and should mark
@@ -198,7 +198,7 @@ local-dev-build-images:
 	docker-compose build
 
 .PHONY: local-dev-up
-local-dev-up: local-dev-clean node_modules | quay-build-image
+local-dev-up: local-dev-clean node_modules | build-image-quay
 	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose up -d --force-recreate local-dev-frontend
 	docker-compose up -d redis quay-db
 	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
