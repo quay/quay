@@ -7,7 +7,7 @@ from peewee import fn
 from data import database
 from data import model
 from data.cache import cache_key
-from data.model import oci, DataModelException
+from data.model import oci, DataModelException, repository
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.readreplica import ReadOnlyModeException
 from data.database import (
@@ -515,7 +515,8 @@ class OCIModel(RegistryDataInterface):
                 # expected status codes once PreOCIModel is gone.
                 msg = "Invalid repository tag '%s' on repository" % tag_name
                 raise model.DataModelException(msg)
-
+            repo = self.lookup_repository(repository_ref.namespace_name(), repository_ref.name())
+            repository.force_cache_repo_size(repository_ref.id)
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 
     def delete_tags_for_manifest(self, manifest):
