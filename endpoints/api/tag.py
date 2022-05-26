@@ -7,6 +7,7 @@ from flask import request, abort
 from app import storage, docker_v2_signing_key, app
 from auth.auth_context import get_authenticated_user
 from data.registry_model import registry_model
+from data.model import repository as repository_model
 from endpoints.api import (
     resource,
     deprecated,
@@ -230,7 +231,7 @@ class RepositoryTag(RepositoryParamResource):
         registry_model.delete_tag(repo_ref, tag)
 
         if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-            repository.force_cache_repo_size(repo_ref.id)
+            repository_model.force_cache_repo_size(repo_ref.id)
 
         username = get_authenticated_user().username
         log_action(
