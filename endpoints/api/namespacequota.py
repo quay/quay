@@ -92,7 +92,7 @@ class OrganizationQuotaList(ApiResource):
             raise Unauthorized()
 
         try:
-            model.user.get_user_or_org(orgname)
+            org = model.organization.get_organization(orgname)
         except model.InvalidOrganizationException:
             raise NotFound()
 
@@ -120,7 +120,7 @@ class OrganizationQuotaList(ApiResource):
         limit_bytes = quota_data["limit_bytes"]
 
         try:
-            org = model.user.get_user_or_org(orgname)
+            org = model.organization.get_organization(orgname)
         except model.InvalidOrganizationException:
             raise NotFound()
 
