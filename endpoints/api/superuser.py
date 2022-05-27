@@ -303,7 +303,6 @@ class SuperUserUserQuota(ApiResource):
         },
     }
 
-
     @require_fresh_login
     @verify_not_prod
     @nickname(["changeUserQuotaSuperUser", "changeOrganizationQuotaSuperUser"])
