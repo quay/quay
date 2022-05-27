@@ -250,7 +250,7 @@ class SuperUserUserQuotaList(ApiResource):
                 raise request_error(exception=ex)
 
             if not namespace_user:
-                return NotFound()
+                raise NotFound()
 
             quotas = namespacequota.get_namespace_quota_list(namespace_user.username)
             return [quota_view(quota) for quota in quotas]
