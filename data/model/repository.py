@@ -49,6 +49,8 @@ from data.database import (
     RepositorySize,
     ManifestBlob,
     BlobUpload,
+    Tag,
+    get_epoch_timestamp_ms,
 )
 from data.text import prefix_search
 from util.itertoolrecipes import take
@@ -729,10 +731,19 @@ def get_size_during_upload(repo_id: int):
 
 def force_cache_repo_size(repo_id: int):
     try:
+        now_ms = get_epoch_timestamp_ms()
+        subquery = (
+            Tag.select(Tag.repository_id)
+            .where(Tag.hidden == False)
+            .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
+            .group_by(Tag.repository_id)
+            .having(fn.Count(Tag.name) > 0)
+        )
+
         cache = (
-            Manifest.select(fn.Sum(Manifest.layers_compressed_size).alias("size_bytes")).where(
-                Manifest.repository == repo_id
-            )
+            Manifest.select(fn.Sum(Manifest.layers_compressed_size).alias("size_bytes"))
+            .join(subquery, on=(subquery.c.repository_id == Manifest.repository_id))
+            .where(Manifest.repository == repo_id)
         ).scalar()
 
         size = cache
