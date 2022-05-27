@@ -1189,6 +1189,7 @@ class UserRegion(BaseModel):
     indexes = ((("user", "location"), True),)
 
 
+@deprecated_model
 class Image(BaseModel):
     # This class is intentionally denormalized. Even though images are supposed
     # to be globally unique we can't treat them as such for permissions and
@@ -1939,6 +1940,7 @@ class ManifestBlob(BaseModel):
         indexes = ((("manifest", "blob"), True),)
 
 
+@deprecated_model
 class ManifestLegacyImage(BaseModel):
     """
     For V1-compatible manifests only, this table maps from the manifest to its associated Docker
