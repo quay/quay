@@ -67,12 +67,10 @@ def get_quota(namespace_name, quota_id):
     return quota
 
 
-@resource(
-    "/v1/namespace/<namespace>/quota",
-)
+@resource("/v1/organization/<orgname>/quota")
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
-class NamespaceQuotaList(ApiResource):
+class OrganizationQuotaList(ApiResource):
     schemas = {
         "NewOrgQuota": {
             "type": "object",
@@ -87,31 +85,31 @@ class NamespaceQuotaList(ApiResource):
         },
     }
 
-    @nickname("listNamespaceQuota")
-    def get(self, namespace):
-        orgperm = OrganizationMemberPermission(namespace)
+    @nickname("listOrganizationQuota")
+    def get(self, orgname):
+        orgperm = OrganizationMemberPermission(orgname)
         if not orgperm.can() and not SuperUserPermission().can():
             raise Unauthorized()
 
         try:
-            model.user.get_user_or_org(namespace)
+            model.user.get_user_or_org(orgname)
         except model.InvalidOrganizationException:
             raise NotFound()
 
         default_config = False
-        quotas = model.namespacequota.get_namespace_quota_list(namespace)
+        quotas = model.namespacequota.get_namespace_quota_list(orgname)
 
         # If no quota is defined for the org, return systems default quota
         if not quotas and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
-            quotas = [model.namespacequota.get_system_default_quota(namespace)]
+            quotas = [model.namespacequota.get_system_default_quota(orgname)]
             default_config = True
 
         return [quota_view(quota, default_config) for quota in quotas]
 
-    @nickname("createNamespaceQuota")
+    @nickname("createOrganizationQuota")
     @validate_json_request("NewOrgQuota")
     @require_scope(scopes.SUPERUSER)
-    def post(self, namespace):
+    def post(self, orgname):
         """
         Create a new organization quota.
         """
@@ -122,14 +120,14 @@ class NamespaceQuotaList(ApiResource):
         limit_bytes = quota_data["limit_bytes"]
 
         try:
-            org = model.user.get_user_or_org(namespace)
+            org = model.user.get_user_or_org(orgname)
         except model.InvalidOrganizationException:
             raise NotFound()
 
         # Currently only supporting one quota definition per namespace
-        quotas = model.namespacequota.get_namespace_quota_list(namespace)
+        quotas = model.namespacequota.get_namespace_quota_list(orgname)
         if quotas:
-            raise request_error(message="Organization quota for '%s' already exists" % namespace)
+            raise request_error(message="Organization quota for '%s' already exists" % orgname)
 
         try:
             model.namespacequota.create_namespace_quota(org, limit_bytes)

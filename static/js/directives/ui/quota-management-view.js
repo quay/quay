@@ -62,11 +62,26 @@ angular.module('quay').directive('quotaManagementView', function () {
           }
       }
 
+      let fetchParams = function () {
+        if ($scope.organization != null) {
+            return {"orgname": $scope.organization.name};
+          }
+          else {
+            return {"namespace": $scope.user.username};
+          }
+      }
+
       var loadOrgQuota = function () {
         let params = null;
-        params = {"namespace": fetchSuperUSerNamespace()};
+        let method = null;
+        if ($scope.organization != null){
+          method = ApiService.listOrganizationQuota;
+        } else {
+          method = ApiService.listUserQuotaSuperUser;
+        }
+        params = fetchParams();
 
-        $scope.nameSpaceResource = ApiService.listNamespaceQuota(
+        $scope.nameSpaceResource = method(
           null, params
         ).then((resp) => {
           if (resp.length > 0) {
