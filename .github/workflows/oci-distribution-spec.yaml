@@ -1,0 +1,60 @@
+name: OCI Distribution Spec
+on:
+  # See the documentation for more intricate event dispatch here:
+  # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#on
+  push:
+    branches:
+    - "!dependabot/*"
+    - "*"
+  pull_request:
+    branches:
+    - "*"
+jobs:
+  oci:
+    name: OCI Distribution Spec
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/checkout@v2
+      with:
+        repository: opencontainers/distribution-spec
+        path: dist-spec
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - name: Set up Go 1.18
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.18
+
+    - name: Install dependencies
+      run: |
+        # Quay
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        pip install -r requirements-dev.txt
+
+        # Conformance
+        cd dist-spec/conformance
+        CGO_ENABLED=0 go test -c -o conformance.test
+
+    - name: Run conformance tests
+      env:
+        TEST: 'true'
+        PYTHONPATH: '.'
+      run: pytest test/registry/conformance_tests.py -s -vv
+
+    - name: Copy report
+      run: mkdir -p .report/ && mv {report.html,junit.xml} .report/
+      if: always()
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v1
+      with:
+        name: oci-test-results-${{ github.sha }}
+        path: .report/
+      if: always()
