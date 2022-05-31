@@ -5819,6 +5819,10 @@ SECURITY_TESTS: List[
     (UserQuotaLimitList, "GET", {"quota_id": 2}, None, "randomuser", 200),
     (UserQuotaLimit, "GET", {"quota_id": 2, "limit_id": 2}, None, "devtable", 404),
     (UserQuotaLimit, "GET", {"quota_id": 2, "limit_id": 2}, None, "randomuser", 200),
+    (SuperUserUserQuotaList, "GET", {"namespace": "nonexistant"}, None, None, 401),
+    (SuperUserUserQuotaList, "GET", {"namespace": "nonexistant"}, None, "devtable", 404),
+    (SuperUserUserQuotaList, "GET", {"namespace": "randomuser"}, None, "randomuser", 403),
+    (SuperUserUserQuotaList, "GET", {"namespace": "randomuser"}, None, "devtable", 200),
     (SuperUserUserQuotaList, "POST", {"namespace": "randomuser"}, {"limit_bytes": 5000}, None, 401),
     (SuperUserUserQuotaList, "POST", {"namespace": "randomuser"}, None, None, 401),
     (
