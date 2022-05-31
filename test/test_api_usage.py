@@ -38,7 +38,7 @@ from data.database import RepositoryActionCount, Repository as RepositoryTable
 from data.logs_model import logs_model
 from data.registry_model import registry_model
 from test.helpers import assert_action_logged, check_transitive_modifications
-from util.secscan.fake import fake_security_scanner
+from util.secscan.v4.fake import fake_security_scanner
 
 from endpoints.api.team import (
     TeamMember,

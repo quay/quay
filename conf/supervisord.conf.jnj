@@ -264,12 +264,6 @@ autostart = {{ config['gunicorn-web']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
-[program:jwtproxy]
-command=/usr/local/bin/jwtproxy --config %(ENV_QUAYCONF)s/jwtproxy_conf.yaml
-autostart = {{ config['jwtproxy']['autostart'] }}
-stdout_events_enabled = true
-stderr_events_enabled = true
-
 [program:memcache]
 command=memcached -u memcached -m 64 -l 127.0.0.1 -p 18080
 autostart = {{ config['memcache']['autostart'] }}

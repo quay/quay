@@ -1,7 +1,7 @@
 import time
 
 # from boot import setup_jwt_proxy
-from util.secscan.api import SecurityScannerAPI
+from util.secscan.v4.api import ClairSecurityScannerAPI
 from util.config.validators import BaseValidator, ConfigValidationException
 
 
@@ -24,13 +24,11 @@ class SecurityScannerValidator(BaseValidator):
         if not feature_sec_scanner:
             return
 
-        api = SecurityScannerAPI(
-            config,
+        api = ClairSecurityScannerAPI(
+            config.get("SECURITY_SCANNER_V4_ENDPOINT"),
+            client,
             None,
-            server_hostname,
-            client=client,
-            skip_validation=True,
-            uri_creator=uri_creator,
+            jwt_psk=config.get("SECURITY_SCANNER_V4_PSK"),
         )
 
         # if not is_testing:
@@ -44,10 +42,8 @@ class SecurityScannerValidator(BaseValidator):
 
         while max_tries > 0:
             try:
-                response = api.ping()
+                response = api.state()
                 last_exception = None
-                if response.status_code == 200:
-                    return
             except Exception as ex:
                 last_exception = ex
 
@@ -57,6 +53,6 @@ class SecurityScannerValidator(BaseValidator):
         if last_exception is not None:
             message = str(last_exception)
             raise ConfigValidationException("Could not ping security scanner: %s" % message)
-        else:
-            message = "Expected 200 status code, got %s: %s" % (response.status_code, response.text)
+        elif not response.get("state"):
+            message = "Invalid indexer state" % (response.status_code, response.text)
             raise ConfigValidationException("Could not ping security scanner: %s" % message)

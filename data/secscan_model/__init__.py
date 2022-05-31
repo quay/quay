@@ -2,7 +2,6 @@ import os
 import logging
 from collections import namedtuple
 
-from data.secscan_model.secscan_v2_model import V2SecurityScanner, NoopV2SecurityScanner
 from data.secscan_model.secscan_v4_model import (
     V4SecurityScanner,
     NoopV4SecurityScanner,
@@ -24,13 +23,8 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
         except InvalidConfigurationException:
             self._model = NoopV4SecurityScanner()
 
-        try:
-            self._legacy_model = V2SecurityScanner(app, instance_keys, storage)
-        except InvalidConfigurationException:
-            self._legacy_model = NoopV2SecurityScanner()
-
         logger.info("===============================")
-        logger.info("Using split secscan model: `%s`", [self._legacy_model, self._model])
+        logger.info("Using split secscan model: `%s`", [self._model])
         logger.info("===============================")
 
         return self
@@ -52,15 +46,6 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
         if info.status != ScanLookupStatus.NOT_YET_INDEXED:
             return info
 
-        legacy_info = self._legacy_model.load_security_information(
-            manifest_or_legacy_image, include_vulnerabilities
-        )
-        if (
-            legacy_info.status != ScanLookupStatus.UNSUPPORTED_FOR_INDEXING
-            and legacy_info.status != ScanLookupStatus.COULD_NOT_LOAD
-        ):
-            return legacy_info
-
         return SecurityInformationLookupResult.with_status(ScanLookupStatus.NOT_YET_INDEXED)
 
     def register_model_cleanup_callbacks(self, data_model_config):
@@ -68,7 +53,7 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
 
     @property
     def legacy_api_handler(self):
-        return self._legacy_model.legacy_api_handler
+        raise NotImplementedError
 
     def lookup_notification_page(self, notification_id, page_index=None):
         return self._model.lookup_notification_page(notification_id, page_index)

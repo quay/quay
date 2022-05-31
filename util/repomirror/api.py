@@ -11,8 +11,6 @@ from _init import CONF_DIR
 
 TOKEN_VALIDITY_LIFETIME_S = 60  # Amount of time the repo mirror has to call the skopeo URL
 
-MITM_CERT_PATH = os.path.join(CONF_DIR, "mitm.cert")
-
 DEFAULT_HTTP_HEADERS = {"Connection": "close"}
 
 logger = logging.getLogger(__name__)

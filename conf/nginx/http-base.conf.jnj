@@ -52,15 +52,11 @@ map $http_x_forwarded_proto $proper_scheme {
 upstream web_app_server {
     server unix:/tmp/gunicorn_web.sock fail_timeout=0;
 }
-upstream jwtproxy_secscan {
-    server unix:/tmp/jwtproxy_secscan.sock fail_timeout=0;
-}
 upstream registry_app_server {
     server unix:/tmp/gunicorn_registry.sock fail_timeout=0;
 }
 
-# NOTE: Exposed for the _internal_ping *only*. All other secscan routes *MUST* go through
-# the jwtproxy.
+# NOTE: Exposed for the _internal_ping *only*.
 upstream secscan_app_server {
     server unix:/tmp/gunicorn_secscan.sock fail_timeout=0;
 }
