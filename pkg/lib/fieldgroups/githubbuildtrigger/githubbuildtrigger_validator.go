@@ -87,7 +87,7 @@ func (fg *GitHubBuildTriggerFieldGroup) Validate(opts shared.Options) []shared.V
 	// Check OAuth endpoint
 	var success bool
 	if opts.Mode != "testing" {
-		success = shared.ValidateGitHubOAuth(fg.GithubTriggerConfig.ClientId, fg.GithubTriggerConfig.ClientSecret, fg.GithubTriggerConfig.GithubEndpoint)
+		success = shared.ValidateGitHubOAuth(opts, fg.GithubTriggerConfig.ClientId, fg.GithubTriggerConfig.ClientSecret, fg.GithubTriggerConfig.GithubEndpoint)
 	} else {
 		success = (fg.GithubTriggerConfig.ClientId == "test_client_key") && (fg.GithubTriggerConfig.ClientSecret == "test_secret_key")
 	}

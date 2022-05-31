@@ -22,17 +22,16 @@ import (
 	"time"
 
 	goOIDC "github.com/coreos/go-oidc"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/go-ldap/ldap/v3"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jackc/pgx/v4"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
 // ValidateGitHubOAuth checks that the Bitbucker OAuth credentials are correct
-func ValidateGitHubOAuth(clientID, clientSecret, githubEndpoint string) bool {
+func ValidateGitHubOAuth(opts Options, clientID, clientSecret, githubEndpoint string) bool {
 
 	req, err := http.NewRequest("GET", githubEndpoint, nil)
 	if err != nil {
@@ -40,7 +39,15 @@ func ValidateGitHubOAuth(clientID, clientSecret, githubEndpoint string) bool {
 	}
 	req.SetBasicAuth(clientID, clientSecret)
 
-	resp, err := http.DefaultClient.Do(req)
+	tlsConfig, err := GetTlsConfig(opts)
+	if err != nil {
+		log.Warning(err)
+		return false
+	}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Warning(err)
 		return false
