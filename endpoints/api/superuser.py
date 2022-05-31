@@ -245,7 +245,7 @@ class SuperUserUserQuotaList(ApiResource):
         if SuperUserPermission().can():
 
             try:
-                namespace_user = user.get_user(namespace)
+                namespace_user = user.get_user_or_org(namespace)
             except DataModelException as ex:
                 raise request_error(exception=ex)
 
