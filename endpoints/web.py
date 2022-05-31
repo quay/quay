@@ -62,7 +62,7 @@ from endpoints.decorators import (
     parse_repository_name,
     param_required,
 )
-from health.healthcheck import get_healthchecker
+from health.healthcheck import get_healthchecker, get_healthservices
 from util.cache import no_cache
 from util.headers import parse_basic_auth
 from util.invoice import renderInvoiceToPdf
@@ -315,6 +315,36 @@ def endtoend_health():
     response = jsonify(dict(data=data, status_code=status_code))
     response.status_code = status_code
     return response
+
+
+def _register_healthservice(service):
+    """Register individual global health service endpoints."""
+
+    @process_auth_or_cookie
+    @no_cache
+    def service_health_func():
+        checker = get_healthchecker(app, config_provider, instance_keys)
+        (data, status_code) = checker.check_service(service)
+        response = jsonify(dict(data=data, status_code=status_code))
+        response.status_code = status_code
+        return response
+
+    web.add_url_rule(
+        "/status/%s" % service,
+        "%s_service_health" % service,
+        service_health_func,
+        methods=["GET"],
+    )
+    web.add_url_rule(
+        "/health/endtoend/%s" % service,
+        "%s_service_health" % service,
+        service_health_func,
+        methods=["GET"],
+    )
+
+
+for service in get_healthservices():
+    _register_healthservice(service)
 
 
 @web.route("/health/warning", methods=["GET"])

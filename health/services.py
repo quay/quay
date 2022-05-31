@@ -4,7 +4,7 @@ import tempfile
 
 import psutil
 
-from app import build_logs, storage, authentication, instance_keys
+from app import build_logs, storage, authentication, instance_keys, model_cache
 from health.models_pre_oci import pre_oci_model as model
 
 logger = logging.getLogger(__name__)
@@ -68,6 +68,13 @@ def _check_jwt_proxy(app):
     except Exception as ex:
         logger.exception("Exception when checking jwtproxy health: %s", registry_url)
         return (False, "Exception when checking jwtproxy health: %s" % registry_url)
+
+
+def _check_cache(app):
+    if model_cache.validate():
+        return (True, None)
+
+    return (False, "Failed to validate cache")
 
 
 def _check_database(app):
@@ -190,11 +197,26 @@ _GLOBAL_SERVICES = {
     "redis": _check_redis,
     "storage": _check_storage,
     "auth": _check_auth,
+    "cache": _check_cache,
 }
+
 
 _WARNING_SERVICES = {
     "disk_space_warning": _check_disk_space(for_warning=True),
 }
+
+
+def get_services(for_instance=False):
+    """
+    Returns a list containing the service name of all the services defined.
+    """
+    if for_instance:
+        services = _INSTANCE_SERVICES.keys()
+        services.extend(_GLOBAL_SERVICES.keys())
+    else:
+        services = _GLOBAL_SERVICES.keys()
+
+    return services
 
 
 def check_all_services(app, skip, for_instance=False):
@@ -215,6 +237,14 @@ def check_warning_services(app, skip):
     Returns a dictionary containing the status of all the warning services defined.
     """
     return _check_services(app, skip, _WARNING_SERVICES)
+
+
+def check_service(app, service):
+    """
+    Returns a dictionary containing the status of the specified global service.
+    """
+    assert service in _GLOBAL_SERVICES
+    return _check_services(app, [], {service: _GLOBAL_SERVICES[service]})
 
 
 def _check_services(app, skip, services):
