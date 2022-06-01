@@ -239,6 +239,26 @@ class SuperUserUserQuotaList(ApiResource):
 
     @require_fresh_login
     @verify_not_prod
+    @nickname(["listUserQuotaSuperUser", "listOrganizationQuotaSuperUser"])
+    @require_scope(scopes.SUPERUSER)
+    def get(self, namespace):
+        if SuperUserPermission().can():
+
+            try:
+                namespace_user = user.get_user_or_org(namespace)
+            except DataModelException as ex:
+                raise request_error(exception=ex)
+
+            if not namespace_user:
+                raise NotFound()
+
+            quotas = namespacequota.get_namespace_quota_list(namespace_user.username)
+            return [quota_view(quota) for quota in quotas]
+
+        raise Unauthorized()
+
+    @require_fresh_login
+    @verify_not_prod
     @nickname(["createUserQuotaSuperUser", "createOrganizationQuotaSuperUser"])
     @require_scope(scopes.SUPERUSER)
     @validate_json_request("NewNamespaceQuota")
