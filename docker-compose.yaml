@@ -54,7 +54,7 @@ services:
     container_name: quay-local-dev-frontend
     build:
       context: .
-      target: build-python
+      target: build-static
     image: quay-build:latest
     init: true
     volumes:

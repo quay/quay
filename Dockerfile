@@ -13,6 +13,7 @@ ENV QUAYPATH $QUAYDIR
 ENV PYTHONUSERBASE /app
 ENV PYTHONPATH $QUAYPATH
 RUN set -ex\
+	; dnf -y module enable nginx:1.20 \
 	; dnf -y -q --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install\
 		dnsmasq \
 		memcached \
@@ -25,21 +26,9 @@ RUN set -ex\
 		skopeo \
 	; dnf -y -q clean all
 
-# Build has all the build-only tools.
-FROM base AS build
-ENV PYTHONDONTWRITEBYTECODE 1
-RUN set -ex\
-	; dnf -y -q --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install\
-		gcc-c++\
-		git\
-		nodejs\
-		openldap-devel\
-		python38-devel\
-	; dnf -y -q clean all
-WORKDIR /build
-
 # Config-editor builds the javascript for the configtool.
-FROM build AS config-editor
+FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
+WORKDIR /opt/app-root/src
 # This argument must be repeated, and should have the same default as
 # the other CONFIGTOOL_VERSION argument.
 ARG CONFIGTOOL_VERSION=v0.1.12
@@ -51,7 +40,16 @@ RUN set -ex\
 	;
 
 # Build-python installs the requirements for the python code.
-FROM build AS build-python
+FROM base AS build-python
+ENV PYTHONDONTWRITEBYTECODE 1
+RUN set -ex\
+	; dnf -y -q --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install\
+		gcc-c++\
+		git\
+		openldap-devel\
+		python38-devel\
+	; dnf -y -q clean all
+WORKDIR /build
 COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
@@ -67,9 +65,10 @@ RUN set -ex\
 	;
 
 # Build-static downloads the static javascript.
-FROM build-python AS build-static
-COPY --chown=0:0 static/  ./static/
-COPY --chown=0:0 *.json *.js  ./
+FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
+WORKDIR /opt/app-root/src
+COPY --chown=1001:0 static/  ./static/
+COPY --chown=1001:0 *.json *.js  ./
 RUN set -ex\
 	; npm install --quiet --no-progress --ignore-engines\
 	; npm run --quiet build\
@@ -91,7 +90,7 @@ WORKDIR /opt/app-root/src
 ARG CONFIGTOOL_VERSION=v0.1.12
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=1 --exclude '*/pkg/lib/editor/static/build'
-COPY --from=config-editor /build/static/build  /opt/app-root/src/pkg/lib/editor/static/build
+COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install ./cmd/config-tool
 
 # Final is the end container, where all the work from the other
@@ -132,8 +131,8 @@ RUN mkdir ${QUAYDIR}/config_app
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
-COPY --from=config-editor /build ${QUAYDIR}/config_app
-COPY --from=build-static /build/static ${QUAYDIR}/static
+COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
+COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
 # Copy in source and update local copy of AWS IP Ranges.
 # This is a bad place to do the curl, but there's no good place to do
 # it except to have it checked in.
