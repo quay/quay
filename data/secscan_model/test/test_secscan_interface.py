@@ -18,15 +18,13 @@ from app import app, instance_keys, storage
 
 
 @pytest.mark.parametrize(
-    "indexed_v2, indexed_v4, expected_status",
+    "indexed_v4, expected_status",
     [
-        (False, False, ScanLookupStatus.NOT_YET_INDEXED),
-        (False, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
-        # (True, False, ScanLookupStatus.FAILED_TO_INDEX),
-        # (True, True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
+        (False, ScanLookupStatus.NOT_YET_INDEXED),
+        (True, ScanLookupStatus.UNSUPPORTED_FOR_INDEXING),
     ],
 )
-def test_load_security_information(indexed_v2, indexed_v4, expected_status, initialized_db):
+def test_load_security_information(indexed_v4, expected_status, initialized_db):
     secscan_model.configure(app, instance_keys, storage)
 
     repository_ref = registry_model.lookup_repository("devtable", "simple")
