@@ -17,6 +17,7 @@ RUN set -ex\
 		dnsmasq \
 		memcached \
 		nginx \
+		libpq-devel \
 		openldap \
 		openssl \
 		python38 \
