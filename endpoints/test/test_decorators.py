@@ -1,3 +1,4 @@
+import pytest
 from data import model
 from endpoints.api import api
 from endpoints.api.repository import Repository

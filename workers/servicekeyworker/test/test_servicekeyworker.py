@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from mock import patch
 
-from data import model
 from workers.servicekeyworker.servicekeyworker import ServiceKeyWorker
 from util.morecollections import AttrDict
 

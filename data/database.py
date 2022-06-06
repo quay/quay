@@ -988,6 +988,7 @@ class RepositorySearchScore(BaseModel):
 
 class RepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
+    repository_id: int
     size_bytes = BigIntegerField()
 
 
@@ -1519,6 +1520,7 @@ class UploadedBlob(BaseModel):
 
 class BlobUpload(BaseModel):
     repository = ForeignKeyField(Repository)
+    repository_id: int
     uuid = CharField(index=True, unique=True)
     byte_count = BigIntegerField(default=0)
     # TODO(kleesc): Verify that this is backward compatible with resumablehashlib
@@ -1798,6 +1800,7 @@ class Manifest(BaseModel):
     """
 
     repository = ForeignKeyField(Repository)
+    repository_id: int
     digest = CharField(index=True)
     media_type = EnumField(MediaType)
     manifest_bytes = TextField()
@@ -1830,6 +1833,7 @@ class Tag(BaseModel):
 
     name = CharField()
     repository = ForeignKeyField(Repository)
+    repository_id: int
     manifest = ForeignKeyField(Manifest, null=True)
     lifetime_start_ms = BigIntegerField(default=get_epoch_timestamp_ms)
     lifetime_end_ms = BigIntegerField(null=True, index=True)

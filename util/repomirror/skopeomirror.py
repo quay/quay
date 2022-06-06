@@ -13,7 +13,7 @@ SKOPEO_TIMEOUT_SECONDS = 300
 # tags: list of tags or empty list
 # stdout: stdout from skopeo subprocess
 # stderr: stderr from skopeo subprocess
-SkopeoResults = namedtuple("SkopeoCopyResults", "success tags stdout stderr")
+SkopeoResults = namedtuple("SkopeoResults", "success tags stdout stderr")
 
 
 class SkopeoMirror(object):

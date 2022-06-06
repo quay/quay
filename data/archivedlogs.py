@@ -1,9 +1,6 @@
 import logging
 
-from util.registry.gzipinputstream import GzipInputStream
-from flask import send_file, abort
-
-from data.userfiles import DelegateUserfiles, UserfilesHandlers
+from data.userfiles import DelegateUserfiles
 
 
 JSON_MIMETYPE = "application/json"

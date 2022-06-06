@@ -34,17 +34,22 @@ def make_custom_sort(orders):
     return process
 
 
-SCHEMA_HTML_FILE = "schema.html"
+def main():
+    SCHEMA_HTML_FILE = "schema.html"
 
-schema = json.dumps(CONFIG_SCHEMA, sort_keys=True)
-schema = json.loads(schema, object_pairs_hook=OrderedDict)
+    schema = json.dumps(CONFIG_SCHEMA, sort_keys=True)
+    schema = json.loads(schema, object_pairs_hook=OrderedDict)
 
-req = sorted(schema["required"])
-custom_sort = make_custom_sort([req])
-schema = custom_sort(schema)
+    req = sorted(schema["required"])
+    custom_sort = make_custom_sort([req])
+    schema = custom_sort(schema)
 
-parsed_items = docsmodel.DocsModel().parse(schema)[1:]
-output = html_output.HtmlOutput().generate_output(parsed_items)
+    parsed_items = docsmodel.DocsModel().parse(schema)[1:]
+    output = html_output.HtmlOutput().generate_output(parsed_items)
 
-with open(SCHEMA_HTML_FILE, "wt") as f:
-    f.write(output)
+    with open(SCHEMA_HTML_FILE, "wt") as f:
+        f.write(output)
+
+
+if __name__ == "__main__":
+    main()

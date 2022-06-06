@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+from datetime import datetime, timedelta
 from jsonschema import ValidationError
 
 from data.database import RepoMirrorConfig, RepoMirrorStatus, User
@@ -8,8 +10,12 @@ from data.model.repo_mirror import (
     create_mirroring_rule,
     get_eligible_mirrors,
     update_sync_status_to_cancel,
-    MAX_SYNC_RETRIES,
     release_mirror,
+)
+from data.model.user import (
+    create_robot,
+    create_user_noverify,
+    lookup_robot,
 )
 
 from test.fixtures import *

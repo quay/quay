@@ -3943,7 +3943,7 @@ class TestLogs(ApiTestCase):
         json = self.getJsonResponse(UserAggregateLogs)
         assert "aggregated" in json
 
-    def test_org_logs(self):
+    def test_org_aggregate_logs(self):
         self.login(ADMIN_ACCESS_USER)
 
         json = self.getJsonResponse(OrgAggregateLogs, params=dict(orgname=ORGANIZATION))

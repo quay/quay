@@ -2,6 +2,7 @@ import pytest
 import mock
 import json
 from functools import wraps
+from unittest.mock import patch
 
 from app import storage
 from data.registry_model.blobuploader import upload_blob, BlobUploadSettings

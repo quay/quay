@@ -1,7 +1,8 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
+from data import model
 from data.database import RepositoryActionCount, RepositorySearchScore
 from data.model.repository import create_repository, Repository
 from data.model.repositoryactioncount import update_repository_score, SEARCH_BUCKETS

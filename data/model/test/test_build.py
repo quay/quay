@@ -2,6 +2,7 @@ import pytest
 
 from mock import patch
 
+from data import model
 from data.database import BUILD_PHASE, RepositoryBuildTrigger, RepositoryBuild
 from data.model.build import (
     update_trigger_disable_status,

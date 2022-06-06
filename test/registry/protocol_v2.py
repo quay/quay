@@ -1,5 +1,6 @@
 import hashlib
 import json
+from typing import Dict
 
 from enum import Enum, unique
 
@@ -49,7 +50,7 @@ class V2ProtocolSteps(Enum):
 
 
 class V2Protocol(RegistryProtocol):
-    FAILURE_CODES = {
+    FAILURE_CODES: Dict[Enum, Dict[Failures, int]] = {
         V2ProtocolSteps.AUTH: {
             Failures.UNAUTHENTICATED: 401,
             Failures.INVALID_AUTHENTICATION: 401,

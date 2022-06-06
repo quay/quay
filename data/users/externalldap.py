@@ -87,7 +87,7 @@ class LDAPConnection(object):
 
 
 class LDAPUsers(FederatedUsers):
-    _LDAPResult = namedtuple("LDAPResult", ["dn", "attrs"])
+    _LDAPResult = namedtuple("_LDAPResult", ["dn", "attrs"])
 
     def __init__(
         self,

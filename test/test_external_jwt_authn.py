@@ -1,5 +1,6 @@
 import base64
 import unittest
+from typing import Optional
 
 from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
@@ -191,7 +192,7 @@ class JWTAuthTestMixin:
     Mixin defining all the JWT auth tests.
     """
 
-    maxDiff = None
+    maxDiff: Optional[int] = None
 
     @property
     def emails(self):

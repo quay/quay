@@ -1,3 +1,5 @@
+from typing import Dict
+
 class FeatureNameValue(object):
     def __init__(self, name: str, value: bool): ...
     def __str__(self) -> str: ...
@@ -184,3 +186,7 @@ USER_INITIALIZE: FeatureNameValue
 EXTENDED_REPOSITORY_NAMES: FeatureNameValue
 
 QUOTA_MANAGEMENT: FeatureNameValue
+
+HELM_OCI_SUPPORT: FeatureNameValue
+
+PROXY_CACHE: FeatureNameValue

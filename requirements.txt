@@ -4,7 +4,7 @@ APScheduler==3.6.3
 attrs==19.3.0
 Authlib==1.0.0a1
 aws-sam-translator==1.20.1
-azure-core==1.8.0
+azure-core==1.23.1
 azure-storage-blob==12.4.0
 Babel==2.9.1
 bcrypt==3.1.7
@@ -40,7 +40,7 @@ futures==3.1.1
 geoip2==3.0.0
 gevent==21.8.0
 greenlet==1.1.2
-grpcio==1.30.0
+grpcio==1.46.3
 gunicorn==20.1.0
 hashids==1.2.0
 html5lib==1.0.1

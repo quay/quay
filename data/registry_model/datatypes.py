@@ -15,7 +15,7 @@ from image.docker.schema1 import DOCKER_SCHEMA1_SIGNED_MANIFEST_CONTENT_TYPE
 from util.bytes import Bytes
 
 
-class RepositoryReference(datatype("Repository", [])):
+class RepositoryReference(datatype("Repository", [])):  # type: ignore[misc]
     """
     RepositoryReference is a reference to a repository, passed to registry interface methods.
     """
@@ -62,7 +62,7 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property  # type: ignore
     @optionalinput("kind")
-    def kind(self, kind):
+    def kind(self, kind):  # type: ignore[misc]
         """
         Returns the kind of the repository.
         """
@@ -70,7 +70,7 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property  # type: ignore
     @optionalinput("is_public")
-    def is_public(self, is_public):
+    def is_public(self, is_public):  # type: ignore[misc]
         """
         Returns whether the repository is public.
         """
@@ -99,7 +99,7 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property  # type: ignore
     @optionalinput("namespace_name")
-    def namespace_name(self, namespace_name=None):
+    def namespace_name(self, namespace_name=None):  # type: ignore[misc]
         """
         Returns the namespace name of this repository.
         """
@@ -114,7 +114,7 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property  # type: ignore
     @optionalinput("is_free_namespace")
-    def is_free_namespace(self, is_free_namespace=None):
+    def is_free_namespace(self, is_free_namespace=None):  # type: ignore[misc]
         """
         Returns whether the namespace of the repository is on a free plan.
         """
@@ -129,7 +129,7 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property  # type: ignore
     @optionalinput("repo_name")
-    def name(self, repo_name=None):
+    def name(self, repo_name=None):  # type: ignore[misc]
         """
         Returns the name of this repository.
         """
@@ -144,7 +144,7 @@ class RepositoryReference(datatype("Repository", [])):
 
     @property  # type: ignore
     @optionalinput("state")
-    def state(self, state=None):
+    def state(self, state=None):  # type: ignore[misc]
         """
         Return the state of the Repository.
         """
@@ -158,7 +158,7 @@ class RepositoryReference(datatype("Repository", [])):
         return repository.state
 
 
-class Label(datatype("Label", ["key", "value", "uuid", "source_type_name", "media_type_name"])):
+class Label(datatype("Label", ["key", "value", "uuid", "source_type_name", "media_type_name"])):  # type: ignore[misc]
     """
     Label represents a label on a manifest.
     """
@@ -178,7 +178,7 @@ class Label(datatype("Label", ["key", "value", "uuid", "source_type_name", "medi
         )
 
 
-class ShallowTag(datatype("ShallowTag", ["name"])):
+class ShallowTag(datatype("ShallowTag", ["name"])):  # type: ignore[misc]
     """
     ShallowTag represents a tag in a repository, but only contains basic information.
     """
@@ -199,7 +199,7 @@ class ShallowTag(datatype("ShallowTag", ["name"])):
 
 
 class Tag(
-    datatype(
+    datatype(  # type: ignore[misc]
         "Tag",
         [
             "name",
@@ -243,19 +243,19 @@ class Tag(
         now_ms = get_epoch_timestamp_ms()
         return self.lifetime_end_ms is not None and self.lifetime_end_ms <= now_ms
 
-    @property
+    @property  # type: ignore[misc]
     @requiresinput("manifest_row")
-    def _manifest_row(self, manifest_row):
+    def _manifest_row(self, manifest_row):  # type: ignore[misc]
         """
         Returns the database Manifest object for this tag.
         """
         return manifest_row
 
-    @property
+    @property  # type: ignore[misc]
     @requiresinput("manifest_row")
     @requiresinput("legacy_id_handler")
     @optionalinput("legacy_image_row")
-    def manifest(self, manifest_row, legacy_id_handler, legacy_image_row):
+    def manifest(self, manifest_row, legacy_id_handler, legacy_image_row):  # type: ignore[misc]
         """
         Returns the manifest for this tag.
         """
@@ -265,7 +265,7 @@ class Tag(
 
     @property  # type: ignore
     @requiresinput("repository")
-    def repository(self, repository):
+    def repository(self, repository):  # type: ignore[misc]
         """
         Returns the repository under which this tag lives.
         """
@@ -287,7 +287,7 @@ class Tag(
 
 
 class Manifest(
-    datatype(
+    datatype(  # type: ignore[misc]
         "Manifest",
         [
             "digest",
@@ -352,15 +352,15 @@ class Manifest(
 
     @property  # type: ignore
     @requiresinput("repository")
-    def repository(self, repository):
+    def repository(self, repository):  # type: ignore[misc]
         """
         Returns the repository under which this manifest lives.
         """
         return repository
 
-    @property
+    @property  # type: ignore[misc]
     @optionalinput("legacy_image_row")
-    def _legacy_image_row(self, legacy_image_row):
+    def _legacy_image_row(self, legacy_image_row):  # type: ignore[misc]
         return legacy_image_row
 
     @property
@@ -381,9 +381,9 @@ class Manifest(
         # Otherwise, return None.
         return None
 
-    @property
+    @property  # type: ignore[misc]
     @requiresinput("legacy_id_handler")
-    def legacy_image_root_id(self, legacy_id_handler):
+    def legacy_image_root_id(self, legacy_id_handler):  # type: ignore[misc]
         """
         Returns the legacy Docker V1-style image ID for this manifest. Note that an ID will
         be returned even if the manifest does not support a legacy image.
@@ -394,9 +394,9 @@ class Manifest(
         """Returns the manifest or legacy image as a manifest."""
         return self
 
-    @property
+    @property  # type: ignore[misc]
     @requiresinput("legacy_id_handler")
-    def _legacy_id_handler(self, legacy_id_handler):
+    def _legacy_id_handler(self, legacy_id_handler):  # type: ignore[misc]
         return legacy_id_handler
 
     def lookup_legacy_image(self, layer_index, retriever):
@@ -555,7 +555,7 @@ class ManifestLayer(namedtuple("ManifestLayer", ["layer_info", "blob"])):
 
 
 class Blob(
-    datatype("Blob", ["uuid", "digest", "compressed_size", "uncompressed_size", "uploading"])
+    datatype("Blob", ["uuid", "digest", "compressed_size", "uncompressed_size", "uploading"])  # type: ignore[misc]
 ):
     """
     Blob represents a content-addressable piece of storage.
@@ -578,7 +578,7 @@ class Blob(
 
     @property  # type: ignore
     @requiresinput("storage_path")
-    def storage_path(self, storage_path):
+    def storage_path(self, storage_path):  # type: ignore[misc]
         """
         Returns the path of this blob in storage.
         """
@@ -586,7 +586,7 @@ class Blob(
 
     @property  # type: ignore
     @requiresinput("placements")
-    def placements(self, placements):
+    def placements(self, placements):  # type: ignore[misc]
         """
         Returns all the storage placements at which the Blob can be found.
         """
@@ -594,7 +594,7 @@ class Blob(
 
 
 class BlobUpload(
-    datatype(
+    datatype(  # type: ignore[misc]
         "BlobUpload",
         [
             "upload_id",
@@ -629,7 +629,7 @@ class BlobUpload(
         )
 
 
-class LikelyVulnerableTag(datatype("LikelyVulnerableTag", ["layer_id", "name"])):
+class LikelyVulnerableTag(datatype("LikelyVulnerableTag", ["layer_id", "name"])):  # type: ignore[misc]
     """
     LikelyVulnerableTag represents a tag in a repository that is likely vulnerable to a notified
     vulnerability.
@@ -643,7 +643,7 @@ class LikelyVulnerableTag(datatype("LikelyVulnerableTag", ["layer_id", "name"]))
             db_id=tag.id, name=tag.name, layer_id=layer_id, inputs=dict(repository=repository)
         )
 
-    @property
+    @property  # type: ignore[misc]
     @requiresinput("repository")
-    def repository(self, repository):
+    def repository(self, repository):  # type: ignore[misc]
         return RepositoryReference.for_repo_obj(repository)

@@ -31,7 +31,7 @@ from util.metrics.prometheus import gc_table_rows_deleted, gc_storage_blobs_dele
 
 logger = logging.getLogger(__name__)
 
-_Location = namedtuple("location", ["id", "name"])
+_Location = namedtuple("_Location", ["id", "name"])
 
 EMPTY_LAYER_BLOB_DIGEST = "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
 SPECIAL_BLOB_DIGESTS = set([EMPTY_LAYER_BLOB_DIGEST])

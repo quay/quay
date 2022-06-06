@@ -6,7 +6,6 @@ import json
 from random import SystemRandom
 
 import bcrypt
-import rehash
 
 from peewee import TextField, CharField, SmallIntegerField
 from data.text import prefix_search

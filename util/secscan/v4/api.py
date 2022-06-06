@@ -6,6 +6,7 @@ import os
 import jwt
 import base64
 import time
+from typing import Dict, Callable
 
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -124,7 +125,7 @@ class SecurityScannerAPIInterface(object):
 
 Action = namedtuple("Action", ["name", "payload"])
 
-actions = {
+actions: Dict[str, Callable[..., Action]] = {
     "IndexState": lambda: Action("IndexState", ("GET", "/indexer/api/v1/index_state", None)),
     "Index": lambda manifest: Action("Index", ("POST", "/indexer/api/v1/index_report", manifest)),
     "GetIndexReport": lambda manifest_hash: Action(

@@ -54,7 +54,7 @@ def test_valid_oauth(app):
     assert result == ValidateResult(AuthKind.oauth, oauthtoken=oauth_token)
 
 
-def test_invalid_user(app):
+def test_invalid_password(app):
     result, kind = validate_credentials("devtable", "somepassword")
     assert kind == CredentialKind.user
     assert result == ValidateResult(

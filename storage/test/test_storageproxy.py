@@ -1,11 +1,7 @@
 import os
-
 import pytest
-import requests
 
-from flask import Flask
-from flask_testing import LiveServerTestCase
-
+from data.database import close_db_filter, configure
 from storage import Storage
 from util.security.instancekeys import InstanceKeys
 

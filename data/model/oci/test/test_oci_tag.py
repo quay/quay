@@ -1,15 +1,12 @@
+import pytest
 from calendar import timegm
 from datetime import timedelta, datetime
 
 from playhouse.test_utils import assert_query_count
 
+from data import model
 from data.database import (
     Tag,
-    ManifestLegacyImage,
-    TagToRepositoryTag,
-    TagManifestToManifest,
-    TagManifest,
-    Manifest,
     Repository,
 )
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing

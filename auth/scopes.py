@@ -2,7 +2,7 @@ from collections import namedtuple
 import features
 import re
 
-Scope = namedtuple("scope", ["scope", "icon", "dangerous", "title", "description"])
+Scope = namedtuple("Scope", ["scope", "icon", "dangerous", "title", "description"])
 
 
 READ_REPO = Scope(

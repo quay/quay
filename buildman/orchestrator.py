@@ -186,7 +186,7 @@ class Orchestrator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def shutdown():
+    def shutdown(self):
         """
         This function should shutdown any final resources allocated by the Orchestrator.
         """
