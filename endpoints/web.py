@@ -642,11 +642,27 @@ def authorize_application():
 
     provider = FlaskAuthorizationProvider()
     redirect_uri = request.form.get("redirect_uri", None)
+    response_type = request.form.get("response_type", "code")
     scope = request.form.get("scope", None)
     state = request.form.get("state", None)
 
     # Add the access token.
-    return provider.get_token_response("token", client_id, redirect_uri, scope=scope, state=state)
+    if response_type == "token":
+        return provider.get_token_response(
+            response_type,
+            client_id,
+            redirect_uri,
+            scope=scope,
+            state=state,
+        )
+    else:
+        return provider.get_authorization_code(
+            response_type,
+            client_id,
+            redirect_uri,
+            scope=scope,
+            state=state,
+        )
 
 
 @web.route(app.config["LOCAL_OAUTH_HANDLER"], methods=["GET"])
@@ -732,6 +748,7 @@ def request_authorization_code():
             has_dangerous_scopes=has_dangerous_scopes,
             application=oauth_app_view,
             enumerate=enumerate,
+            response_type=response_type,
             client_id=client_id,
             redirect_uri=redirect_uri,
             scope=scope,
@@ -741,11 +758,19 @@ def request_authorization_code():
 
     if response_type == "token":
         return provider.get_token_response(
-            response_type, client_id, redirect_uri, scope=scope, state=state
+            response_type,
+            client_id,
+            redirect_uri,
+            scope=scope,
+            state=state,
         )
     else:
         return provider.get_authorization_code(
-            response_type, client_id, redirect_uri, scope=scope, state=state
+            response_type,
+            client_id,
+            redirect_uri,
+            scope=scope,
+            state=state,
         )
 
 

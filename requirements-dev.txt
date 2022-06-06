@@ -13,6 +13,7 @@ ipython
 mock==3.0.5
 mypy==0.910
 moto==2.0.1
+parameterized==0.8.1
 pytest
 pytest-cov
 pytest-flask
