@@ -73,32 +73,37 @@
         </td>
         <td style="text-align: center;">
                   <span class="cor-options-menu"
-                        ng-if="user.username != current_user.username && !current_user.super_user && !inReadOnlyMode">
-                    <span class="cor-option" option-click="showChangeEmail(current_user)"
+                        ng-if="((current_user.super_user && user.username == current_user.username) ||
+                               !current_user.super_user) && !inReadOnlyMode">
+                    <span class="cor-option" option-click="showChangeEmail(current_user)" ng-if="!current_user.super_user"
                           quay-show="Config.AUTHENTICATION_TYPE == 'Database' || Config.AUTHENTICATION_TYPE == 'AppToken'">
                       <i class="fa fa-envelope-o"></i> Change E-mail Address
                     </span>
                     <span class="cor-option" option-click="showChangePassword(current_user)"
+                          ng-if="!current_user.super_user"
                           quay-show="Config.AUTHENTICATION_TYPE == 'Database'">
                       <i class="fa fa-key"></i> Change Password
                     </span>
                     <span class="cor-option" option-click="sendRecoveryEmail(current_user)"
+                          ng-if="!current_user.super_user && user.username == current_user.username"
                           quay-show="Features.MAILING && Config.AUTHENTICATION_TYPE == 'Database'">
                       <i class="fa fa-envelope"></i> Send Recovery E-mail
                     </span>
-                    <span class="cor-option" option-click="showDeleteUser(current_user)">
+                    <span class="cor-option" option-click="showDeleteUser(current_user)"
+                          ng-if="!current_user.super_user">
                       <i class="fa fa-times"></i> Delete User
                     </span>
-                    <span class="cor-option" option-click="askDisableUser(current_user)">
+                    <span class="cor-option" option-click="askDisableUser(current_user)"
+                          ng-if="!current_user.super_user">
                       <i class="fa" ng-class="current_user.enabled ? 'fa-circle-o' : 'fa-check-circle-o'"></i> <span
                         ng-if="current_user.enabled">Disable</span> <span ng-if="!current_user.enabled">Enable</span> User
                     </span>
                     <span class="cor-option" option-click="askTakeOwnership(current_user)"
-                          ng-if="user.username != current_user.username && !current_user.super_user">
+                          ng-if="!current_user.super_user">
                       <i class="fa fa-bolt"></i> Take Ownership
                     </span>
                     <span class="cor-option" option-click="showQuotaConfig(current_user)"
-                        quay-show="Features.QUOTA_MANAGEMENT">
+                        quay-show="Features.QUOTA_MANAGEMENT" ng-if="user.username == current_user.username">
                       <i class="fa fa-gear"></i> Configure Quota
                     </span>
                   </span>
