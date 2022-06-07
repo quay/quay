@@ -72,6 +72,10 @@ angular.module('quay').directive('quotaManagementView', function () {
       }
 
       var loadOrgQuota = function () {
+        if (!Features.QUOTA_MANAGEMENT) {
+          return;
+        }
+
         let params = null;
         let method = null;
         if ($scope.organization != null){
