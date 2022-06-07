@@ -216,22 +216,21 @@ class AuthorizationProvider(Provider):
             err = "unsupported_response_type"
             return self._make_redirect_error_response(redirect_uri, err)
 
+        # Check conditions
+        is_valid_client_id = self.validate_client_id(client_id)
+        if not is_valid_client_id:
+            err = "unauthorized_client"
+            return self._make_redirect_error_response(redirect_uri, err)
+
         # Check redirect URI
         is_valid_redirect_uri = self.validate_redirect_uri(client_id, redirect_uri)
         if not is_valid_redirect_uri:
             return self._invalid_redirect_uri_response()
 
-        # Check conditions
-        is_valid_client_id = self.validate_client_id(client_id)
         is_valid_access = self.validate_access()
         scope = params.get("scope", "")
         is_valid_scope = self.validate_scope(client_id, scope)
-
         # Return proper error responses on invalid conditions
-        if not is_valid_client_id:
-            err = "unauthorized_client"
-            return self._make_redirect_error_response(redirect_uri, err)
-
         if not is_valid_access:
             err = "access_denied"
             return self._make_redirect_error_response(redirect_uri, err)
