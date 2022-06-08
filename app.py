@@ -239,7 +239,7 @@ app.url_map.converters["apirepopath"] = APIRepositoryPathConverter
 app.url_map.converters["repopathredirect"] = RepositoryPathRedirectConverter
 app.url_map.converters["v1createrepopath"] = V1CreateRepositoryPathConverter
 
-Principal(app, use_sessions=False)
+#Principal(app, use_sessions=False)
 
 tf = app.config["DB_TRANSACTION_FACTORY"]
 
