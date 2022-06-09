@@ -1,5 +1,6 @@
-from app import get_app_url, avatar
 from data import model
+from singletons.avatar import avatar
+from singletons.config import get_app_url
 from util.names import parse_robot_username
 from jinja2 import Environment, FileSystemLoader
 

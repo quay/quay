@@ -4,8 +4,8 @@ import time
 
 from threading import Event, Lock
 
-from app import app
 from data.database import CloseForLongOperation
+from singletons.config import app_config
 from workers.worker import Worker
 
 
@@ -73,7 +73,7 @@ class QueueWorker(Worker):
         # Add the various operations.
         self.add_operation(self.poll_queue, self._poll_period_seconds)
         self.add_operation(
-            self.update_queue_metrics, app.config["QUEUE_WORKER_METRICS_REFRESH_SECONDS"]
+            self.update_queue_metrics, app_config["QUEUE_WORKER_METRICS_REFRESH_SECONDS"]
         )
         self.add_operation(self.run_watchdog, self._watchdog_period_seconds)
 
@@ -132,7 +132,7 @@ class QueueWorker(Worker):
             job_details = json.loads(current_queue_item.body)
 
             try:
-                with CloseForLongOperation(app.config):
+                with CloseForLongOperation(app_config):
                     self.process_queue_item(job_details)
 
                 self.mark_current_complete()

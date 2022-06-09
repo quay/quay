@@ -8,9 +8,11 @@ import requests
 from flask_mail import Message
 from urllib.parse import urlparse
 
-from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
 from data import model
-from util.config.validator import SSL_FILENAMES
+from singletons.app import app_context
+from singletons.config import app_config, OVERRIDE_CONFIG_DIRECTORY
+from singletons.mail import mail
+from util.ssl import SSL_FILENAMES
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
 from util.fips import login_fips_safe
 from workers.queueworker import JobException
@@ -18,10 +20,10 @@ import features
 
 logger = logging.getLogger(__name__)
 
-METHOD_TIMEOUT = app.config.get("NOTIFICATION_SEND_TIMEOUT", 10)  # Seconds
+METHOD_TIMEOUT = app_config.get("NOTIFICATION_SEND_TIMEOUT", 10)  # Seconds
 HOSTNAME_BLACKLIST = ["localhost", "127.0.0.1"]
-HOSTNAME_BLACKLIST.extend(app.config.get("WEBHOOK_HOSTNAME_BLACKLIST", []))
-MAIL_DEFAULT_SENDER = app.config.get("MAIL_DEFAULT_SENDER", "admin@example.com")
+HOSTNAME_BLACKLIST.extend(app_config.get("WEBHOOK_HOSTNAME_BLACKLIST", []))
+MAIL_DEFAULT_SENDER = app_config.get("MAIL_DEFAULT_SENDER", "admin@example.com")
 
 
 class InvalidNotificationMethodException(Exception):
@@ -37,7 +39,7 @@ class NotificationMethodPerformException(JobException):
 
 
 def _ssl_cert():
-    if app.config["PREFERRED_URL_SCHEME"] == "https":
+    if app_config["PREFERRED_URL_SCHEME"] == "https":
         cert_files = [OVERRIDE_CONFIG_DIRECTORY + f for f in SSL_FILENAMES]
         cert_exists = all([os.path.isfile(f) for f in cert_files])
         return cert_files if cert_exists else None
@@ -173,7 +175,7 @@ class EmailMethod(NotificationMethod):
         if not email:
             return
 
-        with app.app_context():
+        with app_context():
             msg = Message(
                 event_handler.get_summary(notification_data["event_data"], notification_data),
                 recipients=[email],
@@ -182,7 +184,7 @@ class EmailMethod(NotificationMethod):
 
             try:
                 if features.FIPS:
-                    assert app.config[
+                    assert app_config[
                         "MAIL_USE_TLS"
                     ], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
                     with mock.patch("smtplib.SMTP.login", login_fips_safe):
