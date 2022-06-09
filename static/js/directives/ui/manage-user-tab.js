@@ -15,7 +15,7 @@ angular.module('quay').directive('manageUserTab', function () {
                           TableService, Features, StateService) {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.Features = Features;
-      $scope.user = UserService.currentUser();
+      UserService.updateUserIn($scope);
       $scope.users = null;
       $scope.orderedUsers = [];
       $scope.usersPerPage = 10;
