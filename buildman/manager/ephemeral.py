@@ -329,6 +329,8 @@ class EphemeralBuilderManager(BuildStateInterface):
         # Build timeout. No retry restored
         if job_result == BuildJobResult.EXPIRED:
             self._queue.incomplete(build_job.job_item, restore_retry=False, retry_after=30)
+            if not build_job.has_retries_remaining():
+                build_job.send_notification("build_failure")
             logger.warning(
                 "Job %s completed with result %s. Requeuing build without restoring retry.",
                 job_id,
@@ -349,6 +351,10 @@ class EphemeralBuilderManager(BuildStateInterface):
             BuildJobResult.COMPLETE,
             BuildJobResult.CANCELLED,
         ):
+            if job_result == BuildJobResult.ERROR and not build_job.has_retries_remaining():
+                build_job.send_notification("build_failure")
+            if job_result == BuildJobResult.COMPLETE:
+                build_job.send_notification("build_success")
             logger.warning(
                 "Job %s completed with result %s. Marking build done in queue.", job_id, job_result
             )
