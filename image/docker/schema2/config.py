@@ -15,9 +15,9 @@ Example:
     "OpenStdin": false,
     "StdinOnce": false,
     "Env": [
-      "HTTP_PROXY=http:\/\/localhost:8080",
-      "http_proxy=http:\/\/localhost:8080",
-      "PATH=\/usr\/local\/sbin:\/usr\/local\/bin:\/usr\/sbin:\/usr\/bin:\/sbin:\/bin"
+      "HTTP_PROXY=http://localhost:8080",
+      "http_proxy=http://localhost:8080",
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     ],
     "Cmd": [
       "sh"
@@ -43,14 +43,14 @@ Example:
     "OpenStdin": true,
     "StdinOnce": true,
     "Env": [
-      "HTTP_PROXY=http:\/\/localhost:8080",
-      "http_proxy=http:\/\/localhost:8080",
-      "PATH=\/usr\/local\/sbin:\/usr\/local\/bin:\/usr\/sbin:\/usr\/bin:\/sbin:\/bin"
+      "HTTP_PROXY=http://localhost:8080",
+      "http_proxy=http://localhost:8080",
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     ],
     "Cmd": [
       "sh"
     ],
-    "Image": "somenamespace\/somerepo",
+    "Image": "somenamespace/somerepo",
     "Volumes": null,
     "WorkingDir": "",
     "Entrypoint": null,
@@ -64,11 +64,11 @@ Example:
   "history": [
     {
       "created": "2018-04-03T18:37:09.284840891Z",
-      "created_by": "\/bin\/sh -c #(nop) ADD file:9e4ca21cbd24dc05b454b6be21c7c639216ae66559b21ba24af0d665c62620dc in \/ "
+      "created_by": "/bin/sh -c #(nop) ADD file:9e4ca21cbd24dc05b454b6be21c7c639216ae66559b21ba24af0d665c62620dc in / "
     },
     {
       "created": "2018-04-03T18:37:09.613317719Z",
-      "created_by": "\/bin\/sh -c #(nop)  CMD [\"sh\"]",
+      "created_by": "/bin/sh -c #(nop)  CMD [\"sh\"]",
       "empty_layer": true
     },
     {
@@ -155,7 +155,7 @@ class DockerSchema2Config(object):
                         DOCKER_SCHEMA2_CONFIG_CREATED_BY_KEY: {
                             "type": "string",
                             "description": "The command used to create the layer",
-                            "x-example": "\/bin\/sh -c #(nop) ADD file:somesha in /",
+                            "x-example": "/bin/sh -c #(nop) ADD file:somesha in /",
                         },
                         DOCKER_SCHEMA2_CONFIG_COMMENT_KEY: {
                             "type": "string",

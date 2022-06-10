@@ -134,7 +134,7 @@ class ElasticsearchLogs(object):
             elif self._access_key and self._secret_key:
                 http_auth = (self._access_key, self._secret_key)
             else:
-                logger.warn("Connecting to Elasticsearch without HTTP auth")
+                logger.warning("Connecting to Elasticsearch without HTTP auth")
 
             self._client = connections.create_connection(
                 hosts=[{"host": self._host, "port": self._port}],

@@ -177,7 +177,7 @@ class OCIConfig(object):
                         CONFIG_CREATED_BY_KEY: {
                             "type": "string",
                             "description": "The command used to create the layer",
-                            "x-example": "\/bin\/sh -c #(nop) ADD file:somesha in /",
+                            "x-example": "/bin/sh -c #(nop) ADD file:somesha in /",
                         },
                         CONFIG_COMMENT_KEY: {
                             "type": "string",

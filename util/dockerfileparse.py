@@ -1,7 +1,7 @@
 import re
 
 LINE_CONTINUATION_REGEX = re.compile(r"(\s)*\\(\s)*\n")
-COMMAND_REGEX = re.compile("([A-Za-z]+)\s(.*)")
+COMMAND_REGEX = re.compile(r"([A-Za-z]+)\s(.*)")
 
 COMMENT_CHARACTER = "#"
 LATEST_TAG = "latest"
