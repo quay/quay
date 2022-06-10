@@ -645,7 +645,7 @@ class TestLDAP(unittest.TestCase):
         with mock_ldap(user_filter=some_user_filter) as ldap:
             search_flt = filter_format("(memberOf=%s,%s)", ("cn=AwesomeFolk", ldap._base_dn))
             search_flt = ldap._add_user_filter(search_flt)
-            self.assertEquals(
+            self.assertEqual(
                 search_flt, "(&(memberOf=cn=AwesomeFolk,dc=quay,dc=io)(filterField=somevalue))"
             )
 
@@ -653,7 +653,7 @@ class TestLDAP(unittest.TestCase):
         with mock_ldap(user_filter=some_other_user_filter) as ldap:
             search_flt = filter_format("(memberOf=%s,%s)", ("cn=AwesomeFolk", ldap._base_dn))
             search_flt = ldap._add_user_filter(search_flt)
-            self.assertEquals(
+            self.assertEqual(
                 search_flt,
                 "(&(memberOf=cn=AwesomeFolk,dc=quay,dc=io)(filterField=somevalue)(filterField2=someothervalue))",
             )
@@ -671,14 +671,14 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err)
 
             results = list(it)
-            self.assertEquals(0, len(results))
+            self.assertEqual(0, len(results))
 
     def test_ldap_user_filtering_valid_users(self):
         valid_user_filter = "(filterField=somevalue)"
         with mock_ldap(user_filter=valid_user_filter) as ldap:
             # Verify we can login.
             (response, _) = ldap.verify_and_link_user("someuser", "somepass")
-            self.assertEquals(response.username, "someuser")
+            self.assertEqual(response.username, "someuser")
 
             (it, err) = ldap.iterate_group_members(
                 {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
@@ -686,7 +686,7 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err)
 
             results = list(it)
-            self.assertEquals(2, len(results))
+            self.assertEqual(2, len(results))
 
     def test_at_least_one_user_exists_filtered(self):
         base_dn = ["dc=quay", "dc=io"]

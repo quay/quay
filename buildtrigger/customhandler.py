@@ -84,7 +84,7 @@ class CustomBuildTrigger(BuildTriggerHandler):
             "ref": {
                 "type": "string",
                 "description": "git reference for a git commit",
-                "pattern": "^refs\/(heads|tags|remotes)\/(.+)$",
+                "pattern": "^refs/(heads|tags|remotes)/(.+)$",
             },
             "default_branch": {
                 "type": "string",
