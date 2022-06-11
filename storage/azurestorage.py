@@ -11,6 +11,7 @@ import uuid
 import copy
 import time
 
+import concurrent.futures
 from datetime import datetime, timedelta
 
 from azure.core.exceptions import AzureError, ResourceNotFoundError
@@ -232,41 +233,38 @@ class AzureStorage(BaseStorage):
         total_bytes_written = 0
 
         while True:
-            current_length = length - total_bytes_written
-            max_length = (
-                min(current_length, self._max_block_size)
-                if length != READ_UNTIL_END
-                else self._max_block_size
-            )
+            # Deal with smaller blocks to avoid timeouts when staging larger blocks.
+            # Azure has a limit of 50000 blocks,
+            # which should be enough for most use cases (12800GB per blob).
+            max_length = min(self._max_block_size, 1024 * 1024 * 128)
+
             if max_length <= 0:
                 break
 
-            limited = LimitingStream(in_fp, max_length, seekable=False)
-
             # Note: Azure fails if a zero-length block is uploaded, so we read all the data here,
             # and, if there is none, terminate early.
-            block_data = b""
-            for chunk in iter(lambda: limited.read(31457280), b""):
-                block_data += chunk
+            bytes_written = 0
 
-            if len(block_data) == 0:
-                break
+            with io.BytesIO() as buf:
+                bytes_written += buf.write(in_fp.read(max_length))
+                buf.seek(0)
+                if bytes_written == 0:
+                    break
 
-            block_index = len(new_metadata[_BLOCKS_KEY])
-            block_id = format(block_index, "05")
-            new_metadata[_BLOCKS_KEY].append(block_id)
+                block_index = len(new_metadata[_BLOCKS_KEY])
+                block_id = format(block_index, "05")
+                new_metadata[_BLOCKS_KEY].append(block_id)
 
-            try:
-                self._blob(upload_blob_path).stage_block(
-                    block_id, block_data, validate_content=True
-                )
-            except AzureError as ae:
-                logger.exception(
-                    "Exception when trying to stream_upload_chunk block %s for %s", block_id, uuid
-                )
-                return total_bytes_written, new_metadata, ae
+                try:
+                    # TODO (kleesc): Look at doing this multithreaded
+                    self._blob(upload_blob_path).stage_block(block_id, buf, validate_content=True)
+                except AzureError as ae:
+                    raise IOError(
+                        "Exception when trying to stream_upload_chunk block %s for %s",
+                        block_id,
+                        uuid,
+                    )
 
-            bytes_written = len(block_data)
             total_bytes_written += bytes_written
             if bytes_written == 0 or bytes_written < max_length:
                 break
