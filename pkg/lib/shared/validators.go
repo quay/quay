@@ -695,6 +695,7 @@ func ValidateEmailServer(opts Options, mailServer string, mailPort int, useTLS b
 			}
 
 		}
+		return true, ValidationError{}
 	}
 
 	// If auth is enabled, try to authenticate
