@@ -1,9 +1,10 @@
-import base64
+import pytest
 
 from flask import url_for
 
 from app import instance_keys, app as original_app
-from data.model.user import regenerate_robot_token, get_robot_and_metadata, get_user
+from data import model
+from data.model.user import get_robot_and_metadata, get_user
 from endpoints.test.shared import conduct_call, gen_basic_auth
 from util.security.registry_jwt import decode_bearer_token, CLAIM_TUF_ROOTS
 

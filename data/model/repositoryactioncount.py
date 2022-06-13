@@ -17,7 +17,7 @@ from data.database import (
 
 logger = logging.getLogger(__name__)
 
-search_bucket = namedtuple("SearchBucket", ["delta", "days", "weight"])
+search_bucket = namedtuple("search_bucket", ["delta", "days", "weight"])
 
 # Defines the various buckets for search scoring. Each bucket is computed using the given time
 # delta from today *minus the previous bucket's time period*. Once all the actions over the

@@ -33,7 +33,7 @@ oauthlogin_csrf_protect = csrf_protect(
 
 
 OAuthResult = namedtuple(
-    "oauthresult",
+    "OAuthResult",
     ["user_obj", "service_name", "error_message", "register_redirect", "requires_verification"],
 )
 

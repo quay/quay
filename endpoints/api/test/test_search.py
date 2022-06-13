@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from playhouse.test_utils import assert_query_count

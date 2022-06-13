@@ -1,4 +1,5 @@
 import json
+from typing import Dict
 
 from io import BytesIO
 from enum import Enum, unique
@@ -29,7 +30,7 @@ class V1ProtocolSteps(Enum):
 
 
 class V1Protocol(RegistryProtocol):
-    FAILURE_CODES = {
+    FAILURE_CODES: Dict[Enum, Dict[Failures, int]] = {
         V1ProtocolSteps.PUT_IMAGES: {
             Failures.INVALID_AUTHENTICATION: 403,
             Failures.UNAUTHENTICATED: 401,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import os
+from typing import overload, Optional, Literal
 
 from collections import namedtuple
 
@@ -130,11 +131,29 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
         return None
 
 
+@overload
+def create_manifest(
+    repository_id: int,
+    manifest: ManifestInterface | ManifestListInterface,
+    raise_on_error: Literal[True] = ...,
+) -> Manifest:
+    ...
+
+
+@overload
+def create_manifest(
+    repository_id: int,
+    manifest: ManifestInterface | ManifestListInterface,
+    raise_on_error: Literal[False],
+) -> Optional[Manifest]:
+    ...
+
+
 def create_manifest(
     repository_id: int,
     manifest: ManifestInterface | ManifestListInterface,
     raise_on_error: bool = True,
-) -> Manifest:
+) -> Optional[Manifest]:
     """
     Creates a manifest in the database.
     Does not handle sub manifests in a manifest list/index.

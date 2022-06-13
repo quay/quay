@@ -461,14 +461,15 @@ class DefaultConfig(ImmutableConfig):
     AVATAR_KIND = "local"
 
     # Custom branding
+    BRANDING: Dict[str, Optional[str]]
     if os.environ.get("RED_HAT_QUAY", False):
-        BRANDING: Dict[str, Optional[str]] = {
+        BRANDING = {
             "logo": "/static/img/RH_Logo_Quay_Black_UX-horizontal.svg",
             "footer_img": "/static/img/RedHat.svg",
             "footer_url": "https://access.redhat.com/documentation/en-us/red_hat_quay/3/",
         }
     else:
-        BRANDING: Dict[str, Optional[str]] = {
+        BRANDING = {
             "logo": "/static/img/quay-horizontal-color.svg",
             "footer_img": None,
             "footer_url": None,
@@ -485,7 +486,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SECURITY_NOTIFICATIONS = False
 
     # The endpoint for the (deprecated) V2 security scanner.
-    SECURITY_SCANNER_ENDPOINT = None
+    SECURITY_SCANNER_ENDPOINT: Optional[str] = None
 
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT: Optional[str] = None

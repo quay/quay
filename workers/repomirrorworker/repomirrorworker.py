@@ -52,10 +52,11 @@ def create_gunicorn_worker():
 
 
 if __name__ == "__main__":
-    if os.getenv("PYDEV_DEBUG", None):
+    pydev_debug = os.getenv("PYDEV_DEBUG", None)
+    if pydev_debug:
         import pydevd_pycharm
 
-        host, port = os.getenv("PYDEV_DEBUG").split(":")
+        host, port = pydev_debug.split(":")
         pydevd_pycharm.settrace(
             host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False
         )

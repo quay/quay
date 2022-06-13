@@ -4,6 +4,7 @@ import pytest
 
 from mock import patch
 
+from data import model
 from data.database import EmailConfirmation, User, DeletedNamespace, FederatedLogin
 from data.model.organization import get_organization
 from data.model.notification import create_notification

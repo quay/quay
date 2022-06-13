@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+from typing import Optional
 
 import requests
 
@@ -289,7 +290,7 @@ def _create_app(requires_email=True):
 
 
 class KeystoneAuthTestsMixin:
-    maxDiff = None
+    maxDiff: Optional[int] = None
 
     @property
     def emails(self):

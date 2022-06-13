@@ -68,7 +68,7 @@ def handle_quota_error(error):
     return _format_error_response(QuotaExceeded())
 
 
-def _format_error_response(error: Exception) -> Response:
+def _format_error_response(error: V2RegistryException) -> Response:
     response = jsonify({"errors": [error.as_dict()]})
     response.status_code = error.http_status_code
     logger.debug("sending response: %s", response.get_data())

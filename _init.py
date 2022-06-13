@@ -7,7 +7,9 @@ try:
 except ModuleNotFoundError:
     # Stub out this call so that we can run the external_libraries script
     # without needing the entire codebase.
-    def get_config_provider(*args, **kwargs):
+    def get_config_provider(
+        config_volume, yaml_filename, py_filename, testing=False, kubernetes=False
+    ):
         return None
 
 

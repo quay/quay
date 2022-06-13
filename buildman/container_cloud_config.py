@@ -4,30 +4,11 @@ Provides helper methods and templates for generating cloud config for running co
 Originally from https://github.com/DevTable/container-cloud-config
 """
 
-from functools import partial
-
-import base64
 import json
 import os
-import requests
 import logging
 
-try:
-    # Python 3
-    from urllib.request import HTTPRedirectHandler, build_opener, install_opener, urlopen, Request
-    from urllib.error import HTTPError
-    from urllib.parse import quote as urlquote
-except ImportError:
-    # Python 2
-    from urllib2 import (
-        HTTPRedirectHandler,
-        build_opener,
-        install_opener,
-        urlopen,
-        Request,
-        HTTPError,
-    )
-    from urllib import quote as urlquote
+from urllib.parse import quote as urlquote
 
 from jinja2 import FileSystemLoader, Environment, StrictUndefined
 

@@ -1,9 +1,11 @@
+import pytest
 from playhouse.test_utils import assert_query_count
 
+from data.database import DEFAULT_PROXY_CACHE_EXPIRATION
 from data.model import InvalidOrganizationException
-from data.model.proxy_cache import *
 from data.model.organization import create_organization
-from data.database import ProxyCacheConfig, DEFAULT_PROXY_CACHE_EXPIRATION
+from data.model.proxy_cache import *
+from data.model.user import create_user_noverify
 from test.fixtures import *
 
 

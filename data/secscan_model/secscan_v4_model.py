@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 86400  # 1 day
 
 
-IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(
+IndexReportState = namedtuple("IndexReportState", ["Index_Finished", "Index_Error"])(  # type: ignore[call-arg]
     "IndexFinished", "IndexError"
 )
 

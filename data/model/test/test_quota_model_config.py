@@ -1,5 +1,6 @@
 from data.model import namespacequota
 from data.model.organization import create_organization
+from data.model.user import create_user_noverify
 from test.fixtures import *
 
 

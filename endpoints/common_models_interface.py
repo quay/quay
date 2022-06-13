@@ -17,7 +17,7 @@ USER_FIELDS: List[str] = [
 ]
 
 
-class User(namedtuple("User", USER_FIELDS)):
+class User(namedtuple("User", USER_FIELDS)):  # type: ignore[misc]
     """
     User represents a user.
     """

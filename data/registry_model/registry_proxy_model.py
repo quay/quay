@@ -498,7 +498,7 @@ class ProxyModel(OCIModel):
 
         return super().get_repo_blob_by_digest(repository_ref, blob_digest, include_placements)
 
-    def _download_blob(self, repo_ref: RepositoryReference, digest: str) -> int:
+    def _download_blob(self, repo_ref: RepositoryReference, digest: str) -> None:
         """
         Download blob from upstream registry and perform a monolitic upload to
         Quay's own storage.

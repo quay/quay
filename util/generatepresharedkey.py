@@ -34,6 +34,8 @@ def valid_date(s):
 
 
 if __name__ == "__main__":
+    from cryptography.hazmat.primitives import serialization
+
     parser = argparse.ArgumentParser(description="Generates a preshared key")
     parser.add_argument("service", help="The service name for which the key is being generated")
     parser.add_argument("name", help="The friendly name for the key")

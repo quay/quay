@@ -15,16 +15,16 @@ from data import model
 logger = logging.getLogger(__name__)
 
 
-_ResourceNeed = namedtuple("resource", ["type", "namespace", "name", "role"])
+_ResourceNeed = namedtuple("_ResourceNeed", ["type", "namespace", "name", "role"])
 _RepositoryNeed = partial(_ResourceNeed, "repository")
-_NamespaceWideNeed = namedtuple("namespacewide", ["type", "namespace", "role"])
+_NamespaceWideNeed = namedtuple("_NamespaceWideNeed", ["type", "namespace", "role"])
 _OrganizationNeed = partial(_NamespaceWideNeed, "organization")
 _OrganizationRepoNeed = partial(_NamespaceWideNeed, "organizationrepo")
-_TeamTypeNeed = namedtuple("teamwideneed", ["type", "orgname", "teamname", "role"])
+_TeamTypeNeed = namedtuple("_TeamTypeNeed", ["type", "orgname", "teamname", "role"])
 _TeamNeed = partial(_TeamTypeNeed, "orgteam")
-_UserTypeNeed = namedtuple("userspecificneed", ["type", "username", "role"])
+_UserTypeNeed = namedtuple("_UserTypeNeed", ["type", "username", "role"])
 _UserNeed = partial(_UserTypeNeed, "user")
-_SuperUserNeed = partial(namedtuple("superuserneed", ["type"]), "superuser")
+_SuperUserNeed = partial(namedtuple("_SuperUserNeed", ["type"]), "superuser")
 
 
 REPO_ROLES = [None, "read", "write", "admin"]

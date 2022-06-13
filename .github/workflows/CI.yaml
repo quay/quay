@@ -64,6 +64,27 @@ jobs:
     - name: tox
       run: tox -e py38-unit
 
+  types:
+    name: Types Test
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+        python -m pip install --upgrade pip
+        pip install -r ./requirements-dev.txt
+
+    - name: Check Types
+      run: make types-test
+
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest

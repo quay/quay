@@ -1,7 +1,7 @@
 import logging
 import base64
-import urllib.request, urllib.parse, urllib.error
 
+from flask import Flask
 from urllib.parse import urlparse
 from flask import abort, request
 from jsonschema import validate, ValidationError
@@ -61,7 +61,7 @@ class DownloadProxy(object):
     NGINX.
     """
 
-    def __init__(self, app, instance_keys):
+    def __init__(self, app: Flask, instance_keys):
         self.app = app
         self.instance_keys = instance_keys
 

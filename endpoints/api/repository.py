@@ -3,7 +3,6 @@ List, create and manage repositories.
 """
 
 import logging
-import datetime
 import features
 
 from collections import defaultdict

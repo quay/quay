@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 import stripe
 
 from datetime import datetime, timedelta
@@ -384,7 +384,7 @@ class FakeStripe(object):
             }
         )
 
-        ACTIVE_CUSTOMERS = {}
+        ACTIVE_CUSTOMERS: Dict[str, Any] = {}
 
         @property
         def card(self):

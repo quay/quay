@@ -1,5 +1,6 @@
 import json
 import tarfile
+from typing import Dict
 
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
@@ -104,7 +105,7 @@ class RegistryProtocol(object):
     Interface for protocols.
     """
 
-    FAILURE_CODES = {}
+    FAILURE_CODES: Dict[Enum, Dict[Failures, int]] = {}
 
     @abstractmethod
     def login(self, session, username, password, scopes, expect_success):
