@@ -154,7 +154,7 @@ generate-proto-py:
 
 
 black:
-	black --line-length=100 --target-version=py38 --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist)/" .
+	black --line-length=100 --target-version=py39 --exclude "/(\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|_build|buck-out|build|dist)/" .
 
 #################################
 # Local Development Environment #

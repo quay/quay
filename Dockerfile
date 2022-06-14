@@ -14,6 +14,7 @@ ENV PYTHONUSERBASE /app
 ENV PYTHONPATH $QUAYPATH
 RUN set -ex\
 	; dnf -y module enable nginx:1.20 \
+	; dnf -y module enable python39:3.9 \
 	; dnf -y -q --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install\
 		dnsmasq \
 		memcached \
@@ -21,7 +22,7 @@ RUN set -ex\
 		libpq-devel \
 		openldap \
 		openssl \
-		python38 \
+		python39 \
 		python3-gpg \
 		skopeo \
 	; dnf -y -q clean all
@@ -47,7 +48,7 @@ RUN set -ex\
 		gcc-c++\
 		git\
 		openldap-devel\
-		python38-devel\
+		python39-devel\
 	; dnf -y -q clean all
 WORKDIR /build
 COPY requirements.txt .

@@ -48,13 +48,13 @@ LABEL maintainer="support@redhat.com"
 LABEL io.openshift.tags="quay"
 ENV RED_HAT_QUAY=true
 
-ENV PYTHON_VERSION=3.8 \
-    PYTHON_ROOT=/usr/local/lib/python3.8 \
+ENV PYTHON_VERSION=3.9 \
+    PYTHON_ROOT=/usr/local/lib/python3.9 \
     PATH=$HOME/.local/bin/:$PATH \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=UTF-8 \
     LANG=en_US.utf8 \
-    PYTHONUSERBASE_SITE_PACKAGE=/usr/local/lib/python3.8/site-packages
+    PYTHONUSERBASE_SITE_PACKAGE=/usr/local/lib/python3.9/site-packages
 
 ENV QUAYDIR=/quay-registry \
     QUAYCONF=/quay-registry/conf \
@@ -76,7 +76,7 @@ COPY --from=build-gomod $REMOTE_SOURCE_DIR/app/source/pushgateway/pushgateway /u
 RUN rm -Rf node_modules config_app/node_modules
 
 RUN INSTALL_PKGS="\
-        python38 \
+        python39 \
         nginx \
         openldap \
         postgresql \
@@ -86,7 +86,7 @@ RUN INSTALL_PKGS="\
         memcached \
         openssl \
         skopeo \
-        python38-devel \
+        python39-devel \
         libffi-devel \
         openssl-devel \
         postgresql-devel \
@@ -111,7 +111,7 @@ RUN ln -s $QUAYCONF /conf && \
 RUN UNINSTALL_PKGS="\
         gcc-c++ git \
         openldap-devel \
-        python38-devel \
+        python39-devel \
         libffi-devel \
         openssl-devel \
         postgresql-devel \
@@ -140,8 +140,8 @@ RUN chgrp 0 /var/log/nginx && \
     chmod -R g=u /etc/pki/ca-trust/extracted && \
     chgrp -R 0 /etc/pki/ca-trust/source/anchors && \
     chmod -R g=u /etc/pki/ca-trust/source/anchors && \
-    chgrp -R 0 /usr/local/lib/python3.8/site-packages/certifi && \
-    chmod -R g=u /usr/local/lib/python3.8/site-packages/certifi
+    chgrp -R 0 /usr/local/lib/python3.9/site-packages/certifi && \
+    chmod -R g=u /usr/local/lib/python3.9/site-packages/certifi
 
 VOLUME ["/var/log", "/datastorage", "/tmp", "/conf/stack"]
 
