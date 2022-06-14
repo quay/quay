@@ -14,6 +14,7 @@ from auth.permissions import (
     ReadRepositoryPermission,
     CreateRepositoryPermission,
     AdministerRepositoryPermission,
+    OrganizationMemberPermission,
 )
 from data import model
 from data.database import RepositoryState
@@ -296,8 +297,13 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                     logger.debug("No permission to create repository %s/%s", namespace, reponame)
 
     if "pull" in requested_actions:
-        # Grant pull if the user can read the repo or it is public.
-        if ReadRepositoryPermission(namespace, reponame).can() or repo_is_public:
+        can_pullthru = False
+        if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
+            can_pullthru = (
+                OrganizationMemberPermission(namespace).can()
+                and get_authenticated_user() is not None
+            )
+        if ReadRepositoryPermission(namespace, reponame).can() or can_pullthru or repo_is_public:
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 

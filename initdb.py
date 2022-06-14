@@ -609,6 +609,10 @@ def populate_database(minimal=False):
     creatoruser.verified = True
     creatoruser.save()
 
+    memberuser = model.user.create_user("member", "password", "nod@thanks.com")
+    memberuser.verified = True
+    memberuser.save()
+
     outside_org = model.user.create_user("outsideorg", "password", "no2@thanks.com")
     outside_org.verified = True
     outside_org.save()
@@ -953,6 +957,7 @@ def populate_database(minimal=False):
     )
 
     creators = model.team.create_team("creators", org, "creator", "Creators of orgrepo.")
+    proxymembers = model.team.create_team("members", proxyorg, "member", "Members of proxyorg.")
 
     reader_team = model.team.create_team("readers", org, "member", "Readers of orgrepo.")
     model.team.add_or_invite_to_team(new_user_1, reader_team, outside_org)
@@ -965,6 +970,7 @@ def populate_database(minimal=False):
     model.team.add_user_to_team(ownerbot, owners)
     model.team.add_user_to_team(creatorbot, creators)
     model.team.add_user_to_team(creatoruser, creators)
+    model.team.add_user_to_team(memberuser, proxymembers)
 
     sell_owners = model.team.get_organization_team("sellnsmall", "owners")
     sell_owners.description = "Owners have unfettered access across the entire org."
