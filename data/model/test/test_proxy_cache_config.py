@@ -1,15 +1,43 @@
 from playhouse.test_utils import assert_query_count
+import pytest
 
-from data.model import InvalidOrganizationException
-from data.model.proxy_cache import *
+from data.model import InvalidOrganizationException, InvalidProxyCacheConfigException
+from data.model.proxy_cache import (
+    create_proxy_cache_config,
+    get_proxy_cache_config_for_org,
+    delete_proxy_cache_config,
+    has_proxy_cache_config,
+)
+from data.database import DEFAULT_PROXY_CACHE_EXPIRATION
 from data.model.organization import create_organization
-from data.database import ProxyCacheConfig, DEFAULT_PROXY_CACHE_EXPIRATION
-from test.fixtures import *
+from data.model.user import create_user_noverify
+from test.fixtures import *  # noqa: F401, F403
 
 
 def create_org(user_name, user_email, org_name, org_email):
     user_obj = create_user_noverify(user_name, user_email)
     return create_organization(org_name, org_email, user_obj)
+
+
+def test_has_proxy_cache_config_with_proxy_cache_org(initialized_db):
+    org = create_org(
+        user_name="test",
+        user_email="test@example.com",
+        org_name="foobar",
+        org_email="foo@example.com",
+    )
+    create_proxy_cache_config(org.username, "quay.io")
+    assert has_proxy_cache_config(org.username)
+
+
+def test_has_proxy_cache_config_with_regular_org(initialized_db):
+    org = create_org(
+        user_name="test",
+        user_email="test@example.com",
+        org_name="foobar",
+        org_email="foo@example.com",
+    )
+    assert not has_proxy_cache_config(org.username)
 
 
 def test_create_proxy_cache_config_with_defaults(initialized_db):
