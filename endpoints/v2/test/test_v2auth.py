@@ -253,6 +253,17 @@ def get_robot_password(username):
             "private",
             False,
         ),
+        # Proxy organization repository, org creator, repository does not exist
+        (
+            "repository:proxyorg/idonotexist:pull",
+            "member",
+            "password",
+            200,
+            ["proxyorg/idonotexist:pull"],
+            True,
+            "private",
+            False,
+        ),
         # Organization repository, freshuser
         (
             "repository:buynlarge/orgrepo:pull,push,*",

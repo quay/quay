@@ -1,6 +1,14 @@
 from data.database import ProxyCacheConfig, User, DEFAULT_PROXY_CACHE_EXPIRATION
-from data.model import InvalidProxyCacheConfigException, InvalidOrganizationException
+from data.model import InvalidProxyCacheConfigException
 from data.model.organization import get_organization
+
+
+def has_proxy_cache_config(org_name):
+    try:
+        get_proxy_cache_config_for_org(org_name)
+    except InvalidProxyCacheConfigException:
+        return False
+    return True
 
 
 def create_proxy_cache_config(
