@@ -12,7 +12,16 @@ def _status(d, code=200):
 
 
 def _shards(d, total=5, failed=0, successful=5):
-    d.update({"_shards": {"total": total, "failed": failed, "successful": successful}})
+    d.update(
+        {
+            "_shards": {
+                "total": total,
+                "failed": failed,
+                "successful": successful,
+                "skipped": 0,
+            }
+        }
+    )
     return d
 
 

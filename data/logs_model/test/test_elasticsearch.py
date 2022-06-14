@@ -183,7 +183,7 @@ def mock_elasticsearch():
     def scroll(url, req):
         if req.method == "DELETE":
             return mock.scroll_delete(json.loads(req.body))
-        elif req.method == "GET":
+        elif req.method == "POST":
             request_obj = json.loads(req.body)
             return mock.scroll_get(request_obj)
         raise NotImplementedError()
