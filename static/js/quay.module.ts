@@ -41,6 +41,7 @@ import { TriggerDescriptionComponent } from './directives/ui/trigger-description
 import { TimeAgoComponent } from './directives/ui/time-ago/time-ago.component';
 import { TimeDisplayComponent } from './directives/ui/time-display/time-display.component';
 import { AppSpecificTokenManagerComponent } from './directives/ui/app-specific-token-manager/app-specific-token-manager.component';
+import { CosignLinkComponent } from './directives/ui/cosign-link/cosign-link.component';
 import { ManifestLinkComponent } from './directives/ui/manifest-link/manifest-link.component';
 import { ManifestSecurityView } from './directives/ui/manifest-security-view/manifest-security-view.component';
 import { MarkdownModule } from './directives/ui/markdown/markdown.module';
@@ -89,6 +90,7 @@ import * as Clipboard from 'clipboard';
     TimeAgoComponent,
     TimeDisplayComponent,
     AppSpecificTokenManagerComponent,
+    CosignLinkComponent,
     ManifestLinkComponent,
     ManifestSecurityView,
     RepoStateComponent,
