@@ -77,8 +77,8 @@
         if (resp.has_additional) {
           loadPaginatedRepositoryTags(page + 1);
         } else {
-	  $scope.viewScope.tagsLoading = false;
-	}
+          $scope.viewScope.tagsLoading = false;
+        }
       });
     };
 
