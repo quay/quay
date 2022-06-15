@@ -327,7 +327,6 @@
 
         <!-- Cosign Signatures -->
         <div class="cosign-signature-row" ng-if="tag.cosign_signature_tag">
-          <!-- <cosign-signature-link repository="repository" manifest-digest="tag.cosign_signature_digest" tag-name="tag.cosign_signature_tag" signed-image-id="tag.image_id" signed-manifest-digest="tag.manifest_digest"></cosign-signature-link> -->
           <cosign-link repository="repository" image-id="tag.image_id" manifest-digest="tag.cosign_signature_manifest_digest" tag-name="tag.cosign_signature_tag" tag-name="tag.cosign_signature_tag" signed-image-id="tag.image_id" signed-manifest-digest="tag.manifest_digest"></cosign-link>
         </div>
 

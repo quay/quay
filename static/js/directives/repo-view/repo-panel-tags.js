@@ -48,7 +48,7 @@ angular.module('quay').directive('repoPanelTags', function () {
 
       $scope.manifestVulnerabilities = {};
       $scope.repoDelegationsInfo = null;
-      $scope.cosignedManifests = [];
+      $scope.cosignedManifests = {};
 
       var loadRepoSignatures = function() {
         if (!$scope.repository || !$scope.repository.trust_enabled) {
@@ -73,6 +73,7 @@ angular.module('quay').directive('repoPanelTags', function () {
         // matches cosign style tags and returns the match with a matching group containing the signed manifest digest
 
         var cosignNamingPattern = new RegExp('^sha256-([a-f0-9]{64})\.sig$');
+        tag = tag.trim()
         return tag.match(cosignNamingPattern);
       }
 
@@ -479,7 +480,7 @@ angular.module('quay').directive('repoPanelTags', function () {
         $scope.historyFilter = $scope.getTagNames(checked);
         $scope.setTab('history');
       };
-      
+
       $scope.toggleExpandedView = function() {
         $scope.expandedView = !$scope.expandedView;
       };
