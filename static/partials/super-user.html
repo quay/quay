@@ -117,7 +117,7 @@
                   <span ng-if="current_org.quota_report.quota_bytes">
                   {{
                     current_org.quota_report.percent_consumed ?
-                    ( bytesToHumanReadableString(current_org.quota_report.quota_bytes) + " (" + current_org.quota_report.percent_consumed + "%)") :
+                    ( bytesToHumanReadableString(current_org.quota_report.quota_bytes) + " (" + quotaPercentConsumed(current_org) + "%)") :
                     bytesToHumanReadableString(current_org.quota_report.quota_bytes)
                   }}
                   </span>

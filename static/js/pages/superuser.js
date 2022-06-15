@@ -74,6 +74,13 @@
       return result.toString() + " " + byte_unit;
     };
 
+    $scope.quotaPercentConsumed = function(repository) {
+      if (repository.quota_report && repository.quota_report.configured_quota) {
+        return Math.round(repository.quota_report.quota_bytes / repository.quota_report.configured_quota * 100);
+      }
+      return 0;
+    };
+
     $scope.loadMessageOfTheDay = function () {
       $scope.globalMessagesActive = true;
     };
