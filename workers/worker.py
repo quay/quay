@@ -2,7 +2,6 @@ import logging
 import signal
 import sys
 import socket
-import time
 
 from datetime import datetime, timedelta
 from functools import wraps
@@ -17,38 +16,6 @@ from data.database import UseThenDisconnect
 from util.log import logfile_path
 
 logger = logging.getLogger(__name__)
-
-
-def with_exponential_backoff(backoff_multiplier=10, max_backoff=3600, max_retries=10):
-    def inner(func):
-        """
-        Decorator to retry the operation with exponential backoff if it raised an exception.
-
-        Waits 2^attempts * `backoff_multiplier`, up to `max_backoff`, up to `max_retries` number of time,
-        then re-raise the exception.
-        """
-
-        def wrapper(*args, **kwargs):
-            attempts = 0
-            backoff = 0
-
-            while True:
-                next_backoff = 2**attempts * backoff_multiplier
-                backoff = min(next_backoff, max_backoff)
-                attempts += 1
-
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    if max_retries is not None and attempts == max_retries:
-                        raise e
-
-                logger.exception("Operation raised exception, retrying in %d seconds", backoff)
-                time.sleep(backoff)
-
-        return wrapper
-
-    return inner
 
 
 class Worker(object):

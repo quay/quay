@@ -143,12 +143,6 @@ class ManifestReference(ManifestInterface):
         """
         pass
 
-    def get_leaf_layer_v1_image_id(self, content_retriever):
-        """
-        Returns the Docker V1 image ID for the leaf (top) layer, if any, or None if not applicable.
-        """
-        pass
-
     def get_legacy_image_ids(self, content_retriever):
         """
         Returns the Docker V1 image IDs for the layers of this manifest or None if not applicable.
@@ -163,14 +157,6 @@ class ManifestReference(ManifestInterface):
 
         The blob digests are strings with prefixes. For manifests that reference config as a blob,
         the blob will be included here as the last entry.
-        """
-        pass
-
-    def get_blob_digests_for_translation(self):
-        """
-        Returns the blob digests for translation of this manifest into another manifest.
-
-        This method will ignore missing IDs in layers, unlike `blob_digests`.
         """
         pass
 
@@ -379,12 +365,6 @@ class SparseManifestList(ManifestListInterface):
         """
         pass
 
-    def get_leaf_layer_v1_image_id(self, content_retriever):
-        """
-        Returns the Docker V1 image ID for the leaf (top) layer, if any, or None if not applicable.
-        """
-        pass
-
     def get_legacy_image_ids(self, content_retriever):
         """
         Returns the Docker V1 image IDs for the layers of this manifest or None if not applicable.
@@ -399,14 +379,6 @@ class SparseManifestList(ManifestListInterface):
 
         The blob digests are strings with prefixes. For manifests that reference config as a blob,
         the blob will be included here as the last entry.
-        """
-        pass
-
-    def get_blob_digests_for_translation(self):
-        """
-        Returns the blob digests for translation of this manifest into another manifest.
-
-        This method will ignore missing IDs in layers, unlike `blob_digests`.
         """
         pass
 

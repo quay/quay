@@ -425,15 +425,6 @@ class DockerSchema1Manifest(ManifestInterface):
     def local_blob_digests(self):
         return self.blob_digests
 
-    def get_blob_digests_for_translation(self):
-        """
-        Returns the blob digests for translation of this manifest into another manifest.
-
-        This method will ignore missing IDs in layers, unlike `blob_digests`.
-        """
-        layers = self._generate_layers(allow_missing_ids=True)
-        return [str(layer.digest) for layer in layers]
-
     def child_manifests(self, content_retriever):
         return None
 
@@ -558,9 +549,6 @@ class DockerSchema1Manifest(ManifestInterface):
 
     @property
     def leaf_layer_v1_image_id(self):
-        return self.layers[-1].v1_metadata.image_id
-
-    def get_leaf_layer_v1_image_id(self, content_retriever):
         return self.layers[-1].v1_metadata.image_id
 
     def get_schema1_manifest(self, namespace_name, repo_name, tag_name, content_retriever):

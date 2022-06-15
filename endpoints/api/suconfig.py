@@ -20,16 +20,6 @@ import features
 logger = logging.getLogger(__name__)
 
 
-def database_is_valid():
-    """
-    Returns whether the database, as configured, is valid.
-    """
-    if app.config["TESTING"]:
-        return False
-
-    return model.is_valid()
-
-
 def database_has_users():
     """
     Returns whether the database has any users defined.

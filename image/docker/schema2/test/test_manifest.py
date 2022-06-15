@@ -202,7 +202,6 @@ def test_valid_remote_manifest():
     assert local_digests == (expected - {manifest.filesystem_layers[0].digest})
 
     assert manifest.has_remote_layer
-    assert manifest.get_leaf_layer_v1_image_id(None) is None
     assert manifest.get_legacy_image_ids(None) is None
 
     retriever = ContentRetrieverForTesting.for_config(
@@ -364,7 +363,6 @@ def test_remote_layer_manifest():
     manifest = builder.build()
 
     assert manifest.has_remote_layer
-    assert manifest.get_leaf_layer_v1_image_id(None) is None
     assert manifest.get_legacy_image_ids(None) is None
     assert not manifest.has_legacy_image
 

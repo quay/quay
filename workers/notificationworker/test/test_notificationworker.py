@@ -10,10 +10,8 @@ from notifications.notificationmethod import (
     FlowdockMethod,
     HipchatMethod,
     SlackMethod,
-    CannotValidateNotificationMethodException,
 )
 from notifications.notificationevent import RepoPushEvent
-from notifications.models_interface import Repository
 from workers.notificationworker.notificationworker import NotificationWorker
 
 from test.fixtures import *

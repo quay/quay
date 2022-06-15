@@ -10,7 +10,7 @@ from app import app  # This is required to initialize the database.
 from data import model, database
 from data.logs_model import logs_model
 from util.migrate.allocator import yield_random_entries
-from workers.worker import Worker, with_exponential_backoff
+from workers.worker import Worker
 from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)

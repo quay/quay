@@ -1,12 +1,9 @@
 import logging
 
-from functools import wraps
-
 from cnr.exception import Forbidden
 from flask import Blueprint
 
 from auth.permissions import (
-    AdministerRepositoryPermission,
     ReadRepositoryPermission,
     ModifyRepositoryPermission,
 )
@@ -38,13 +35,6 @@ require_app_repo_read = require_repo_permission(
 
 require_app_repo_write = require_repo_permission(
     ModifyRepositoryPermission,
-    scopes=["pull", "push"],
-    raise_method=_raise_method,
-    get_reponame_method=_get_reponame_kwargs,
-)
-
-require_app_repo_admin = require_repo_permission(
-    AdministerRepositoryPermission,
     scopes=["pull", "push"],
     raise_method=_raise_method,
     get_reponame_method=_get_reponame_kwargs,

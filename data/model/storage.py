@@ -8,7 +8,6 @@ from data.model import (
     config,
     db_transaction,
     InvalidImageException,
-    DataModelException,
     _basequery,
 )
 from data.database import (
@@ -16,11 +15,7 @@ from data.database import (
     Image,
     ImageStoragePlacement,
     ImageStorageLocation,
-    ImageStorageTransformation,
     ImageStorageSignature,
-    ImageStorageSignatureKind,
-    Repository,
-    Namespace,
     TorrentInfo,
     ApprBlob,
     ensure_under_transaction,
@@ -262,27 +257,6 @@ def create_v1_storage(location_name):
     return storage
 
 
-def find_or_create_storage_signature(storage, signature_kind_name):
-    found = lookup_storage_signature(storage, signature_kind_name)
-    if found is None:
-        kind = ImageStorageSignatureKind.get(name=signature_kind_name)
-        found = ImageStorageSignature.create(storage=storage, kind=kind)
-
-    return found
-
-
-def lookup_storage_signature(storage, signature_kind_name):
-    kind = ImageStorageSignatureKind.get(name=signature_kind_name)
-    try:
-        return (
-            ImageStorageSignature.select()
-            .where(ImageStorageSignature.storage == storage, ImageStorageSignature.kind == kind)
-            .get()
-        )
-    except ImageStorageSignature.DoesNotExist:
-        return None
-
-
 def _get_storage(query_modifier):
     query = (
         ImageStoragePlacement.select(ImageStoragePlacement, ImageStorage)
@@ -393,46 +367,6 @@ def _lookup_repo_storages_by_content_checksum(repo, checksums, model_class):
 
     assert queries
     return _basequery.reduce_as_tree(queries)
-
-
-def set_image_storage_metadata(
-    docker_image_id, namespace_name, repository_name, image_size, uncompressed_size
-):
-    """
-    Sets metadata that is specific to the binary storage of the data, irrespective of how it is used
-    in the layer tree.
-    """
-    if image_size is None:
-        raise DataModelException("Empty image size field")
-
-    try:
-        image = (
-            Image.select(Image, ImageStorage)
-            .join(Repository)
-            .join(Namespace, on=(Repository.namespace_user == Namespace.id))
-            .switch(Image)
-            .join(ImageStorage)
-            .where(
-                Repository.name == repository_name,
-                Namespace.username == namespace_name,
-                Image.docker_image_id == docker_image_id,
-            )
-            .get()
-        )
-    except ImageStorage.DoesNotExist:
-        raise InvalidImageException("No image with specified id and repository")
-
-    # We MUST do this here, it can't be done in the corresponding image call because the storage
-    # has not yet been pushed
-    image.aggregate_size = _basequery.calculate_image_aggregate_size(
-        image.ancestors, image_size, image.parent
-    )
-    image.save()
-
-    image.storage.image_size = image_size
-    image.storage.uncompressed_size = uncompressed_size
-    image.storage.save()
-    return image.storage
 
 
 def get_storage_locations(uuid):

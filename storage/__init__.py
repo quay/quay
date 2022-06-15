@@ -13,8 +13,6 @@ from storage.azurestorage import AzureStorage
 from storage.downloadproxy import DownloadProxy
 from util.ipresolver import NoopIPResolver
 
-TYPE_LOCAL_STORAGE = "LocalStorage"
-
 STORAGE_DRIVER_CLASSES = {
     "LocalStorage": LocalStorage,
     "S3Storage": S3Storage,

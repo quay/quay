@@ -18,8 +18,6 @@ from endpoints.api import (
     InvalidRequest,
 )
 from endpoints.exception import NotFound
-from notifications.models_interface import Repository
-from notifications.notificationevent import NotificationEvent
 from notifications.notificationmethod import (
     NotificationMethod,
     CannotValidateNotificationMethodException,

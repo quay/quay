@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-import logging
-
-from email.utils import parsedate_tz, mktime_tz
 from datetime import datetime
 
 from jsonschema import ValidationError
@@ -9,7 +6,6 @@ from flask import request
 
 import features
 
-from auth.auth_context import get_authenticated_user
 from data import model
 from data.database import RepoMirrorRuleType
 from data.encryption import DecryptionFailureException
@@ -22,7 +18,6 @@ from endpoints.api import (
     validate_json_request,
     define_json_response,
     show_if,
-    format_date,
 )
 from endpoints.exception import NotFound
 from util.audit import track_and_log, wrap_repository

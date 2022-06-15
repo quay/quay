@@ -1,5 +1,4 @@
 import json
-import io
 import logging
 import re
 
@@ -133,10 +132,6 @@ def matches_ref(ref, regex):
         return False
 
     return len(m.group(0)) == len(match_string)
-
-
-def raise_unsupported():
-    raise io.UnsupportedOperation
 
 
 def get_trigger_config(trigger):

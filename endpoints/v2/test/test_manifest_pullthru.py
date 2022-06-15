@@ -82,46 +82,6 @@ BUSYBOX_MANIFEST_JSON = r"""{
 }"""  # noqa: E501
 
 
-HELLO_WORLD_SCHEMA1_MANIFEST_JSON = r"""{
-   "schemaVersion": 1,
-   "name": "library/hello-world",
-   "tag": "latest",
-   "architecture": "amd64",
-   "fsLayers": [
-      {
-         "blobSum": "sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4"
-      },
-      {
-         "blobSum": "sha256:2db29710123e3e53a794f2694094b9b4338aa9ee5c40b930cb8063a1be392c54"
-      }
-   ],
-   "history": [
-      {
-         "v1Compatibility": "{\"architecture\":\"amd64\",\"config\":{\"Hostname\":\"\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"/hello\"],\"Image\":\"sha256:b9935d4e8431fb1a7f0989304ec86b3329a99a25f5efdc7f09f3f8c41434ca6d\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":null},\"container\":\"8746661ca3c2f215da94e6d3f7dfdcafaff5ec0b21c9aff6af3dc379a82fbc72\",\"container_config\":{\"Hostname\":\"8746661ca3c2\",\"Domainname\":\"\",\"User\":\"\",\"AttachStdin\":false,\"AttachStdout\":false,\"AttachStderr\":false,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop) \",\"CMD [\\\"/hello\\\"]\"],\"Image\":\"sha256:b9935d4e8431fb1a7f0989304ec86b3329a99a25f5efdc7f09f3f8c41434ca6d\",\"Volumes\":null,\"WorkingDir\":\"\",\"Entrypoint\":null,\"OnBuild\":null,\"Labels\":{}},\"created\":\"2021-09-23T23:47:57.442225064Z\",\"docker_version\":\"20.10.7\",\"id\":\"a1f125167a7f2cffa48b7851ff3f75e983824c16e8da61f20765eb55f7b3a594\",\"os\":\"linux\",\"parent\":\"cd13bf215b21e9bc78460fa5070860a498671e2ac282d86d15042cf0c26e6e8b\",\"throwaway\":true}"
-      },
-      {
-         "v1Compatibility": "{\"id\":\"cd13bf215b21e9bc78460fa5070860a498671e2ac282d86d15042cf0c26e6e8b\",\"created\":\"2021-09-23T23:47:57.098990892Z\",\"container_config\":{\"Cmd\":[\"/bin/sh -c #(nop) COPY file:50563a97010fd7ce1ceebd1fa4f4891ac3decdf428333fb2683696f4358af6c2 in / \"]}}"
-      }
-   ],
-   "signatures": [
-      {
-         "header": {
-            "jwk": {
-               "crv": "P-256",
-               "kid": "SDXO:UBRC:JIUZ:YE6I:7UX3:RUZY:YS3V:PLXC:RRHC:YPE5:OPJK:AZOW",
-               "kty": "EC",
-               "x": "rFgPWrZeIWtw2tXhsrpqJ_whMmlcHBvS8s8Lwkj4KtM",
-               "y": "ySCfm20HT11HYt9lsuX8W5tr5hJy6umSowlkzAftmSI"
-            },
-            "alg": "ES256"
-         },
-         "signature": "Z9IqzHbMxBBt1KJ7nEVLw2d6o4mugYdSrRKuLpvlbLNvNC19U-aTVsO1dS5czeFE9J9z16s5HDWZhRbLY8dYcQ",
-         "protected": "eyJmb3JtYXRMZW5ndGgiOjIxMDAsImZvcm1hdFRhaWwiOiJDbjAiLCJ0aW1lIjoiMjAyMi0wMi0xN1QxNTowNzoxOFoifQ"
-      }
-   ]
-}"""  # noqa: E501
-
-
 HELLO_WORLD_SCHEMA2_MANIFEST_JSON = r"""{
    "schemaVersion": 2,
    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
@@ -159,81 +119,6 @@ HELLO_WORLD_OCI_MANIFEST_JSON = r"""{
 
 
 HELLO_WORLD_MANIFEST_LIST_JSON = r"""{"manifests":[{"digest":"sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"linux"},"size":525},{"digest":"sha256:7b8b7289d0536a08eabdf71c20246e23f7116641db7e1d278592236ea4dcb30c","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v5"},"size":525},{"digest":"sha256:f130bd2d67e6e9280ac6d0a6c83857bfaf70234e8ef4236876eccfbd30973b1c","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm","os":"linux","variant":"v7"},"size":525},{"digest":"sha256:01433e86a06b752f228e3c17394169a5e21a0995f153268a9b36a16d4f2b2184","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"arm64","os":"linux","variant":"v8"},"size":525},{"digest":"sha256:251bb7a536c7cce3437758971aab3a31c6da52fb43ff0654cff5b167c4486409","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"386","os":"linux"},"size":525},{"digest":"sha256:c2f204d26b4ea353651385001bb6bc371d8c4edcd9daf61d00ad365d927e00c0","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"mips64le","os":"linux"},"size":525},{"digest":"sha256:b836bb24a270b9cc935962d8228517fde0f16990e88893d935efcb1b14c0017a","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"ppc64le","os":"linux"},"size":525},{"digest":"sha256:98c9722322be649df94780d3fbe594fce7996234b259f27eac9428b84050c849","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"riscv64","os":"linux"},"size":525},{"digest":"sha256:c7b6944911848ce39b44ed660d95fb54d69bbd531de724c7ce6fc9f743c0b861","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"s390x","os":"linux"},"size":525},{"digest":"sha256:b3dd41b5fbccbf0e39bee932466d389214cddcb53fa4ad5d02f29ee4172db8c7","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"windows","os.version":"10.0.20348.524"},"size":1125},{"digest":"sha256:fdea2bf76c9a47fc0b81958cb87aa65448012ef36ce051a72a09db398efdf7cc","mediaType":"application\/vnd.docker.distribution.manifest.v2+json","platform":{"architecture":"amd64","os":"windows","os.version":"10.0.17763.2565"},"size":1125}],"mediaType":"application\/vnd.docker.distribution.manifest.list.v2+json","schemaVersion":2}"""  # noqa: E501
-
-
-HELLO_WORLD_CONFIG_BLOB = """{
-  "architecture": "amd64",
-  "config": {
-    "Hostname": "",
-    "Domainname": "",
-    "User": "",
-    "AttachStdin": false,
-    "AttachStdout": false,
-    "AttachStderr": false,
-    "Tty": false,
-    "OpenStdin": false,
-    "StdinOnce": false,
-    "Env": [
-      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    ],
-    "Cmd": [
-      "/hello"
-    ],
-    "Image": "sha256:b9935d4e8431fb1a7f0989304ec86b3329a99a25f5efdc7f09f3f8c41434ca6d",
-    "Volumes": null,
-    "WorkingDir": "",
-    "Entrypoint": null,
-    "OnBuild": null,
-    "Labels": null
-  },
-  "container": "8746661ca3c2f215da94e6d3f7dfdcafaff5ec0b21c9aff6af3dc379a82fbc72",
-  "container_config": {
-    "Hostname": "8746661ca3c2",
-    "Domainname": "",
-    "User": "",
-    "AttachStdin": false,
-    "AttachStdout": false,
-    "AttachStderr": false,
-    "Tty": false,
-    "OpenStdin": false,
-    "StdinOnce": false,
-    "Env": [
-      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    ],
-    "Cmd": [
-      "/bin/sh",
-      "-c",
-      "#(nop) ",
-      "CMD [\"/hello\"]"
-    ],
-    "Image": "sha256:b9935d4e8431fb1a7f0989304ec86b3329a99a25f5efdc7f09f3f8c41434ca6d",
-    "Volumes": null,
-    "WorkingDir": "",
-    "Entrypoint": null,
-    "OnBuild": null,
-    "Labels": {}
-  },
-  "created": "2021-09-23T23:47:57.442225064Z",
-  "docker_version": "20.10.7",
-  "history": [
-    {
-      "created": "2021-09-23T23:47:57.098990892Z",
-      "created_by": "/bin/sh -c #(nop) COPY file:50563a97010fd7ce1ceebd1fa4f4891ac3decdf428333fb2683696f4358af6c2 in / "
-    },
-    {
-      "created": "2021-09-23T23:47:57.442225064Z",
-      "created_by": "/bin/sh -c #(nop)  CMD [\"/hello\"]",
-      "empty_layer": true
-    }
-  ],
-  "os": "linux",
-  "rootfs": {
-    "type": "layers",
-    "diff_ids": [
-      "sha256:e07ee1baac5fae6a26f30cabfe54a36d3402f96afda318fe0a96cec4ca393359"
-    ]
-  }
-}"""  # noqa: E501
 
 
 def _get_auth_headers(subject, context, repository):

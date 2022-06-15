@@ -8,14 +8,11 @@ from datetime import timedelta, datetime
 from peewee import Case, JOIN, fn, SQL, IntegrityError
 from cachetools.func import ttl_cache
 
-import data
 from data.model import (
     config,
     DataModelException,
     db_transaction,
-    storage,
     permission,
-    oci,
     _basequery,
 )
 from data.database import (
@@ -23,48 +20,27 @@ from data.database import (
     RepositoryState,
     DeletedRepository,
     Namespace,
-    RepositoryTag,
     Star,
-    Image,
-    ImageStorage,
     User,
     Visibility,
     RepositoryPermission,
     RepositoryActionCount,
     Role,
     RepositoryAuthorizedEmail,
-    Label,
-    db_for_update,
-    get_epoch_timestamp,
-    db_random_func,
-    db_concat_func,
     RepositorySearchScore,
     RepositoryKind,
-    ApprTag,
-    ManifestLegacyImage,
     Manifest,
-    ManifestChild,
     ExternalNotificationEvent,
     RepositoryNotification,
     RepositorySize,
-    ManifestBlob,
     BlobUpload,
     Tag,
     get_epoch_timestamp_ms,
 )
-from data.text import prefix_search
 from util.itertoolrecipes import take
 
 logger = logging.getLogger(__name__)
 SEARCH_FIELDS = Enum("SearchFields", ["name", "description"])
-
-
-class RepoStateConfigException(Exception):
-    """
-    Repository.state value requires further configuration to operate.
-    """
-
-    pass
 
 
 def lookup_secscan_notification_severities(repository_id):
@@ -619,19 +595,6 @@ def confirm_email_authorization_for_repo(code):
     found.save()
 
     return found
-
-
-def get_repository_state(namespace_name, repository_name):
-    """
-    Return the Repository State if the Repository exists.
-
-    Otherwise, returns None.
-    """
-    repo = get_repository(namespace_name, repository_name)
-    if repo:
-        return repo.state
-
-    return None
 
 
 def set_repository_state(repo, state):

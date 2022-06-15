@@ -5,7 +5,7 @@ import argparse
 
 import features
 
-from app import app, repo_mirror_api
+from app import app
 from workers.worker import Worker
 from workers.repomirrorworker import process_mirrors
 from util.repomirror.validator import RepoMirrorConfigValidator

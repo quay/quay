@@ -26,7 +26,6 @@ from test.fixtures import *
 from proxy.fixtures import *  # noqa: F401, F403
 
 
-HELLO_WORLD_DIGEST = "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"
 HELLO_WORLD_SCHEMA2_MANIFEST_JSON = r"""{
    "schemaVersion": 2,
    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",

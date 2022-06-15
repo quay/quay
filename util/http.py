@@ -36,15 +36,6 @@ def _abort(status_code, data_object, description, headers):
     raise new_exception
 
 
-def exact_abort(status_code, message=None):
-    data = {}
-
-    if message is not None:
-        data["error"] = message
-
-    _abort(status_code, data, message or None, {})
-
-
 def abort(status_code, message=None, issue=None, headers=None, **kwargs):
     message = str(message) % kwargs if message else DEFAULT_MESSAGE.get(status_code, "")
 

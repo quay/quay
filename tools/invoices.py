@@ -101,10 +101,6 @@ def format_refund(refund):
     )
 
 
-def _date_key(line_item):
-    return line_item.start, line_item.end
-
-
 def expand_invoice(invoice, total_amount):
     if invoice is None:
         yield total_amount, None, None, None

@@ -2,8 +2,6 @@ import logging
 import logging.config
 import os
 
-from urllib.parse import unquote
-
 from alembic import context, op as alembic_op
 from alembic.script.revision import ResolutionError
 from alembic.util import CommandError

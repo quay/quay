@@ -19,13 +19,6 @@ ADMIN_ACCESS_USER = "devtable"
 SIMPLE_REPO = "simple"
 
 
-def _get_legacy_image(namespace, repo, tag, include_storage=True):
-    repo_ref = registry_model.lookup_repository(namespace, repo)
-    repo_tag = registry_model.get_repo_tag(repo_ref, tag)
-    manifest = registry_model.get_manifest_for_tag(repo_tag)
-    return ManifestLegacyImage.get(manifest_id=manifest._db_id).image
-
-
 class TestSecurityScanner(unittest.TestCase):
     def setUp(self):
         # Enable direct download in fake storage.

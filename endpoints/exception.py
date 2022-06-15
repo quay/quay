@@ -103,11 +103,6 @@ class InvalidToken(ApiException):
         ApiException.__init__(self, ApiErrorType.invalid_token, 401, error_description, payload)
 
 
-class ExpiredToken(ApiException):
-    def __init__(self, error_description, payload=None):
-        ApiException.__init__(self, ApiErrorType.expired_token, 401, error_description, payload)
-
-
 class Unauthorized(ApiException):
     def __init__(self, payload=None):
         user = get_authenticated_user()

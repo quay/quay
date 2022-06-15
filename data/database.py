@@ -54,7 +54,6 @@ from util.metrics.prometheus import (
     db_connect_calls,
     db_close_calls,
 )
-from util.validation import validate_postgres_precondition
 
 
 logger = logging.getLogger(__name__)
@@ -103,12 +102,6 @@ SCHEME_ESTIMATOR_FUNCTION = {
     "sqlite": normal_row_count,
     "postgresql": normal_row_count,
     "postgresql+psycopg2": normal_row_count,
-}
-
-
-PRECONDITION_VALIDATION = {
-    "postgresql": validate_postgres_precondition,
-    "postgresql+psycopg2": validate_postgres_precondition,
 }
 
 
@@ -349,29 +342,6 @@ def validate_database_url(url, db_kwargs, connect_timeout=5):
             url, db_kwargs, connect_timeout=connect_timeout, allow_retry=False, allow_pooling=False
         )
         driver.connect()
-    finally:
-        try:
-            driver.close()
-        except:
-            pass
-
-
-def validate_database_precondition(url, db_kwargs, connect_timeout=5):
-    """
-    Validates that we can connect to the given database URL and the database meets our precondition.
-
-    Raises an exception if the validation fails.
-    """
-    db_kwargs = db_kwargs.copy()
-    try:
-        driver = _db_from_url(
-            url, db_kwargs, connect_timeout=connect_timeout, allow_retry=False, allow_pooling=False
-        )
-        driver.connect()
-        pre_condition_check = PRECONDITION_VALIDATION.get(make_url(url).drivername)
-        if pre_condition_check:
-            pre_condition_check(driver)
-
     finally:
         try:
             driver.close()
@@ -629,19 +599,6 @@ class EnumField(ForeignKeyField):
             return self.enum(value).name
         except ValueError:
             raise self.rel_model.DoesNotExist
-
-
-def deprecated_field(field, flag):
-    """
-    Marks a field as deprecated and removes it from the peewee model if the flag is not set.
-
-    A flag is defined in the active_migration module and will be associated with one or more
-    migration phases.
-    """
-    if ActiveDataMigration.has_flag(flag):
-        return field
-
-    return None
 
 
 class BaseModel(ReadReplicaSupportedModel):

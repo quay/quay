@@ -106,16 +106,5 @@ def is_json(value):
     return False
 
 
-def validate_postgres_precondition(driver):
-    cursor = driver.execute_sql("SELECT extname FROM pg_extension", ("public",))
-    if "pg_trgm" not in [extname for extname, in cursor.fetchall()]:
-        raise OperationalError(
-            """
-      "pg_trgm" extension does not exists in the database.
-      Please run `CREATE EXTENSION IF NOT EXISTS pg_trgm;` as superuser on this database.
-    """
-        )
-
-
 def validate_service_key_name(name):
     return name is None or bool(re.match(VALID_SERVICE_KEY_NAME_REGEX, name))

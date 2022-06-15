@@ -3,7 +3,7 @@ import logging
 from peewee import fn, IntegrityError
 from datetime import datetime
 
-from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag, blob
+from data.model import config, db_transaction, storage, tag as pre_oci_tag, blob
 from data.model.oci import tag as oci_tag
 from data.database import Repository, db_for_update
 from data.database import ApprTag

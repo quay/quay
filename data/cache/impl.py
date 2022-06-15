@@ -3,15 +3,13 @@ import json
 import os
 
 from abc import ABCMeta, abstractmethod
-from contextlib import contextmanager
 from datetime import datetime
 from pymemcache.client.base import PooledClient
 from prometheus_client import Counter
-from redis import StrictRedis, RedisError
+from redis import RedisError
 from six import add_metaclass
 
 from data.database import CloseForLongOperation
-from data.cache.redis_cache import redis_cache_from_config
 from util.expiresdict import ExpiresDict
 from util.timedeltastring import convert_to_timedelta
 from util.workers import get_worker_connections_count
@@ -25,10 +23,6 @@ cache_count = Counter(
 
 def is_not_none(value):
     return value is not None
-
-
-def lock_key_for(cache_key):
-    return "LOCK_" + cache_key
 
 
 @add_metaclass(ABCMeta)

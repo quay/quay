@@ -1,4 +1,3 @@
-import os
 import logging
 
 from abc import ABCMeta, abstractmethod
@@ -7,26 +6,11 @@ import requests
 from util.abchelpers import nooper
 from util.repomirror.validator import RepoMirrorConfigValidator
 
-from _init import CONF_DIR
-
 TOKEN_VALIDITY_LIFETIME_S = 60  # Amount of time the repo mirror has to call the skopeo URL
 
 DEFAULT_HTTP_HEADERS = {"Connection": "close"}
 
 logger = logging.getLogger(__name__)
-
-
-class RepoMirrorException(Exception):
-    """
-    Exception raised when a layer fails to analyze due to a request issue.
-    """
-
-
-class RepoMirrorRetryException(Exception):
-    """
-    Exception raised when a layer fails to analyze due to a request issue, and the request should be
-    retried.
-    """
 
 
 class APIRequestFailure(Exception):
@@ -45,7 +29,6 @@ class Non200ResponseException(Exception):
         self.response = response
 
 
-_API_METHOD_GET_REPOSITORY = "repository/%s"
 _API_METHOD_PING = "metrics"
 
 
@@ -88,25 +71,6 @@ class RepoMirrorAPIInterface(object):
         """
         pass
 
-    @abstractmethod
-    def repository_mirror(self, repository):
-        """
-        Posts the given repository to the repo mirror for processing, blocking until complete.
-
-        Returns the analysis version on success or raises an exception deriving from
-        RepoMirrorException on failure. Callers should handle all cases of RepoMirrorException.
-        """
-        pass
-
-    @abstractmethod
-    def get_repository_data(self, repository):
-        """
-        Returns the layer data for the specified layer.
-
-        On error, returns None.
-        """
-        pass
-
 
 @nooper
 class NoopRepoMirrorAPI(RepoMirrorAPIInterface):
@@ -126,34 +90,6 @@ class ImplementedRepoMirrorAPI(RepoMirrorAPIInterface):
         self._config = config
         self._instance_keys = instance_keys
         self._client = client
-        self._server_hostname = server_hostname
-
-    def repository_mirror(self, repository):
-        """
-        Posts the given repository and config information to the mirror endpoint, blocking until
-        complete.
-
-        Returns the results on success or raises an exception.
-        """
-
-        def _response_json(request, response):
-            try:
-                return response.json()
-            except ValueError:
-                logger.exception(
-                    "Failed to decode JSON when analyzing layer %s", request["Layer"]["Name"]
-                )
-                raise RepoMirrorException
-
-        return
-
-    def get_repository_data(self, repository):
-        """
-        Returns the layer data for the specified layer.
-
-        On error, returns None.
-        """
-        return None
 
     def ping(self):
         """

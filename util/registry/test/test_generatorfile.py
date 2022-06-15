@@ -1,4 +1,4 @@
-from _pyio import BufferedReader, TextIOWrapper
+from _pyio import BufferedReader
 
 import magic
 

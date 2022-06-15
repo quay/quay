@@ -1,5 +1,3 @@
-import json
-
 from peewee import fn, JOIN, DataError
 
 from data.database import (
@@ -20,10 +18,8 @@ from data.model import (
     organization,
     user,
     InvalidUsernameException,
-    InvalidOrganizationException,
     notification,
     config,
-    InvalidSystemQuotaConfig,
     InvalidNamespaceQuota,
     InvalidNamespaceQuotaLimit,
     InvalidNamespaceQuotaType,

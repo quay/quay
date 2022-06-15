@@ -87,15 +87,6 @@ def simple_checksum_handler(json_data):
     return h, fn
 
 
-def content_checksum_handler():
-    h = hashlib.sha256()
-
-    def fn(buf):
-        h.update(buf.encode("utf-8"))
-
-    return h, fn
-
-
 def compute_simple(fp, json_data):
     data = json_data + "\n"
     return "sha256:{0}".format(sha256_file(fp, data))

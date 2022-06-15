@@ -1,7 +1,6 @@
 import pytest
 from mock import Mock
 
-import util
 from data import model
 from endpoints.api.repoemail_models_interface import RepositoryAuthorizedEmail
 from endpoints.api.repoemail_models_pre_oci import pre_oci_model

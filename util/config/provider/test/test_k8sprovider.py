@@ -116,38 +116,3 @@ def test_basic_config(tmpdir_factory):
         assert provider.config_exists()
         assert provider.get_config() is not None
         assert provider.get_config()["FOO"] == "bar"
-
-
-@pytest.mark.parametrize(
-    "filepath",
-    [
-        "foo",
-        "foo/meh",
-        "foo/bar/baz",
-    ],
-)
-def test_remove_file(filepath, tmpdir_factory):
-    basic_files = {
-        filepath: "foo",
-    }
-
-    with fake_kubernetes_api(tmpdir_factory, files=basic_files) as provider:
-        normalized_path = normalize_path(filepath)
-        assert provider.volume_file_exists(normalized_path)
-        provider.remove_volume_file(normalized_path)
-        assert not provider.volume_file_exists(normalized_path)
-
-
-class TestFlaskFile(object):
-    def save(self, buf):
-        buf.write("hello world!")
-
-
-def test_save_file(tmpdir_factory):
-    basic_files = {}
-
-    with fake_kubernetes_api(tmpdir_factory, files=basic_files) as provider:
-        assert not provider.volume_file_exists("testfile")
-        flask_file = TestFlaskFile()
-        provider.save_volume_file(flask_file, "testfile")
-        assert provider.volume_file_exists("testfile")

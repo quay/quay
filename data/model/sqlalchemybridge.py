@@ -13,7 +13,6 @@ from sqlalchemy import (
     Date,
     BigInteger,
     Index,
-    text,
 )
 from peewee import (
     PrimaryKeyField,

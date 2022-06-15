@@ -14,7 +14,6 @@ from data.database import (
     Repository,
     ExternalNotificationMethod,
     Namespace,
-    db_for_update,
 )
 from data.model import InvalidNotificationException, db_transaction
 
@@ -39,10 +38,6 @@ def lookup_notification(user, uuid):
         return None
 
     return results[0]
-
-
-def lookup_notifications_by_path_prefix(prefix):
-    return list((Notification.select().where(Notification.lookup_path % prefix)))
 
 
 def list_notifications(
@@ -102,11 +97,6 @@ def list_notifications(
 
 def delete_all_notifications_by_path_prefix(prefix):
     (Notification.delete().where(Notification.lookup_path ** (prefix + "%")).execute())
-
-
-def delete_all_notifications_by_kind(kind_name):
-    kind_ref = NotificationKind.get(name=kind_name)
-    (Notification.delete().where(Notification.kind == kind_ref).execute())
 
 
 def delete_notifications_by_kind(target, kind_name):

@@ -38,16 +38,6 @@ class RetargetTagException(Exception):
     raising is requested."""
 
 
-def get_tag_by_id(tag_id):
-    """
-    Returns the tag with the given ID, joined with its manifest or None if none.
-    """
-    try:
-        return Tag.select(Tag, Manifest).join(Manifest).where(Tag.id == tag_id).get()
-    except Tag.DoesNotExist:
-        return None
-
-
 def get_tag_by_manifest_id(repository_id, manifest_id):
     """
     Gets the tag with greatest lifetime_end_ms for the manifest with the given id,
@@ -594,26 +584,6 @@ def set_tag_end_ms(tag, end_ms):
             pass
 
         return (tag.lifetime_end_ms, True)
-
-
-def tags_containing_legacy_image(image):
-    """
-    Yields all alive Tags containing the given image as a legacy image, somewhere in its legacy
-    image hierarchy.
-    """
-    ancestors_str = "%s%s/%%" % (image.ancestors, image.id)
-    tags = (
-        Tag.select()
-        .join(Repository)
-        .switch(Tag)
-        .join(Manifest)
-        .join(ManifestLegacyImage)
-        .join(Image)
-        .where(Tag.repository == image.repository_id)
-        .where(Image.repository == image.repository_id)
-        .where((Image.id == image.id) | (Image.ancestors**ancestors_str))
-    )
-    return filter_to_alive_tags(tags)
 
 
 def find_repository_with_garbage(limit_to_gc_policy_s):

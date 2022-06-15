@@ -34,7 +34,6 @@ from endpoints.api import (
 from endpoints.exception import Unauthorized, NotFound
 
 
-LOGS_PER_PAGE = 20
 SERVICE_LEVEL_LOG_KINDS = set(
     [
         "service_key_create",

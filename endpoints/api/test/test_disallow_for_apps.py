@@ -34,7 +34,6 @@ from endpoints.test.shared import client_with_identity
 from test.fixtures import *
 
 BUILD_ARGS = {"build_uuid": "1234"}
-IMAGE_ARGS = {"imageid": "1234", "image_id": 1234}
 MANIFEST_ARGS = {"manifestref": "sha256:abcd1234"}
 LABEL_ARGS = {"manifestref": "sha256:abcd1234", "labelid": "1234"}
 NOTIFICATION_ARGS = {"uuid": "1234"}

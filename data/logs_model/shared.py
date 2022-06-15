@@ -58,14 +58,3 @@ class SharedModel:
 
 def epoch_ms(dt):
     return (timegm(dt.timetuple()) * 1000) + (dt.microsecond // 1000)
-
-
-def get_kinds_filter(kinds):
-    """
-    Given a list of kinds, return the set of kinds not that are not part of that list.
-
-    i.e Returns the list of kinds to be filtered out.
-    """
-    kind_map = model.log.get_log_entry_kinds()
-    kind_map = {key: kind_map[key] for key in kind_map if not isinstance(key, int)}
-    return [kind_name for kind_name in kind_map if kind_name not in kinds]

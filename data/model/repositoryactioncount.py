@@ -11,7 +11,6 @@ from data.database import (
     LogEntry3,
     RepositoryActionCount,
     RepositorySearchScore,
-    db_random_func,
     fn,
 )
 

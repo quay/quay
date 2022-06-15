@@ -245,14 +245,6 @@ class Tag(
 
     @property  # type: ignore[misc]
     @requiresinput("manifest_row")
-    def _manifest_row(self, manifest_row):  # type: ignore[misc]
-        """
-        Returns the database Manifest object for this tag.
-        """
-        return manifest_row
-
-    @property  # type: ignore[misc]
-    @requiresinput("manifest_row")
     @requiresinput("legacy_id_handler")
     @optionalinput("legacy_image_row")
     def manifest(self, manifest_row, legacy_id_handler, legacy_image_row):  # type: ignore[misc]

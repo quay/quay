@@ -31,12 +31,6 @@ def get_manifest_query(digest, media_type, models_ref):
     )
 
 
-def get_manifest_with_blob(digest, media_type, models_ref):
-    Blob = models_ref.Blob
-    query = get_manifest_query(digest, media_type, models_ref)
-    return query.join(Blob).get()
-
-
 def get_or_create_manifest(manifest_json, media_type_name, models_ref):
     Manifest = models_ref.Manifest
     digest = _digest(manifest_json)

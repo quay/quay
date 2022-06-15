@@ -56,7 +56,6 @@ INDEX_VERSION_KEY = "schemaVersion"
 INDEX_MEDIATYPE_KEY = "mediaType"
 INDEX_SIZE_KEY = "size"
 INDEX_DIGEST_KEY = "digest"
-INDEX_URLS_KEY = "urls"
 INDEX_MANIFESTS_KEY = "manifests"
 INDEX_PLATFORM_KEY = "platform"
 INDEX_ARCHITECTURE_KEY = "architecture"
@@ -234,9 +233,6 @@ class OCIIndex(ManifestListInterface):
     def local_blob_digests(self):
         return self.blob_digests
 
-    def get_blob_digests_for_translation(self):
-        return self.blob_digests
-
     @property
     def layers_compressed_size(self):
         return None
@@ -285,9 +281,6 @@ class OCIIndex(ManifestListInterface):
         return [m[INDEX_DIGEST_KEY] for m in self._parsed[INDEX_MANIFESTS_KEY]]
 
     def get_manifest_labels(self, content_retriever):
-        return None
-
-    def get_leaf_layer_v1_image_id(self, content_retriever):
         return None
 
     def get_legacy_image_ids(self, content_retriever):

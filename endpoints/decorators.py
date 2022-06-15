@@ -2,11 +2,10 @@
 Various decorators for endpoint and API handlers.
 """
 
-import os
 import logging
 
 from functools import wraps
-from flask import abort, request, make_response
+from flask import abort, request
 
 import features
 
@@ -14,8 +13,8 @@ from app import app, ip_resolver, model_cache
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.database import RepositoryState
 from data.model import InvalidProxyCacheConfigException
-from data.model.repository import get_repository, get_repository_state
-from data.model.repo_mirror import get_mirroring_robot, get_mirror
+from data.model.repository import get_repository
+from data.model.repo_mirror import get_mirror
 from data.registry_model import registry_model
 from data.registry_model.registry_proxy_model import ProxyModel
 from data.readreplica import ReadOnlyModeException

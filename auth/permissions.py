@@ -358,11 +358,6 @@ class ViewTeamPermission(QuayPermission):
         super(ViewTeamPermission, self).__init__(team_admin, team_creator, team_member, admin_org)
 
 
-class AlwaysFailPermission(QuayPermission):
-    def can(self):
-        return False
-
-
 @identity_loaded.connect_via(app)
 def on_identity_loaded(sender, identity):
     logger.debug("Identity loaded: %s" % identity)

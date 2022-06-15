@@ -3,10 +3,9 @@
 import json as py_json
 import time
 import unittest
-import base64
 import zlib
 
-from parameterized import parameterized, parameterized_class
+from parameterized import parameterized
 
 from mock import patch
 from io import BytesIO
@@ -34,7 +33,6 @@ from endpoints.webhooks import webhooks as webhooks_bp
 from endpoints.test.shared import gen_basic_auth
 from initdb import setup_database_for_testing, finished_database_for_testing
 from test.helpers import assert_action_logged
-from util.security.token import encode_public_private_token
 from util.registry.gzipinputstream import WINDOW_BUFFER_SIZE
 
 try:

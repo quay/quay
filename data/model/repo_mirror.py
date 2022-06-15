@@ -1,5 +1,3 @@
-import re
-
 from datetime import datetime, timedelta
 
 from peewee import IntegrityError, fn, JOIN
@@ -144,31 +142,6 @@ def release_mirror(mirror, sync_status):
 
     # Unable to release Mirror. Has it been claimed by another process?
     return None
-
-
-def expire_mirror(mirror):
-    """
-    Set the mirror to synchronize ASAP and reset its failure count.
-    """
-
-    # Set the next-sync date to now
-    # TODO: Verify the `where` conditions would not expire a currently syncing mirror.
-    query = RepoMirrorConfig.update(
-        sync_transaction_id=uuid_generator(),
-        sync_expiration_date=datetime.utcnow(),
-        sync_retries_remaining=MAX_SYNC_RETRIES,
-    ).where(
-        RepoMirrorConfig.sync_transaction_id == mirror.sync_transaction_id,
-        RepoMirrorConfig.id == mirror.id,
-        RepoMirrorConfig.state != RepoMirrorStatus.SYNCING,
-    )
-
-    # Fetch and return the latest updates
-    if query.execute():
-        return RepoMirrorConfig.get_by_id(mirror.id)
-
-    # Unable to update expiration date. Perhaps another process has claimed it?
-    return None  # TODO: Raise some Exception?
 
 
 def create_mirroring_rule(repository, rule_value, rule_type=RepoMirrorRuleType.TAG_GLOB_CSV):
@@ -402,13 +375,6 @@ def disable_mirror(repository):
     return bool(update_with_transaction(mirror, is_enabled=False))
 
 
-def delete_mirror(repository):
-    """
-    Delete a Repository Mirroring configuration.
-    """
-    raise NotImplementedError("TODO: Not Implemented")
-
-
 def change_remote(repository, remote_repository):
     """
     Update the external repository for Repository Mirroring.
@@ -454,31 +420,6 @@ def change_sync_start_date(repository, dt):
     return bool(update_with_transaction(mirror, sync_start_date=dt))
 
 
-def change_root_rule(repository, rule):
-    """
-    Specify which rule should be used for repository mirroring.
-    """
-    assert rule.repository == repository
-    mirror = get_mirror(repository)
-    return bool(update_with_transaction(mirror, root_rule=rule))
-
-
-def change_sync_status(repository, sync_status):
-    """
-    Change Repository's mirroring status.
-    """
-    mirror = get_mirror(repository)
-    return update_with_transaction(mirror, sync_status=sync_status)
-
-
-def change_retries_remaining(repository, retries_remaining):
-    """
-    Change the number of retries remaining for mirroring a repository.
-    """
-    mirror = get_mirror(repository)
-    return update_with_transaction(mirror, sync_retries_remaining=retries_remaining)
-
-
 def change_external_registry_config(repository, config_updates):
     """
     Update the 'external_registry_config' with the passed in fields.
@@ -507,20 +448,6 @@ def change_external_registry_config(repository, config_updates):
                     external_registry_config["proxy"][key] = proxy_updates[key]
 
     return update_with_transaction(mirror, external_registry_config=external_registry_config)
-
-
-def get_mirroring_robot(repository):
-    """
-    Return the robot used for mirroring.
-
-    Returns None if the repository does not have an associated RepoMirrorConfig or the robot does
-    not exist.
-    """
-    mirror = get_mirror(repository)
-    if mirror:
-        return mirror.internal_robot
-
-    return None
 
 
 def set_mirroring_robot(repository, robot):
@@ -572,14 +499,6 @@ def create_rule(
     }
     rule = RepoMirrorRule.create(**rule_kwargs)
     return rule
-
-
-def list_rules(repository):
-    """
-    Returns all RepoMirrorRules associated with a Repository.
-    """
-    rules = RepoMirrorRule.select().where(RepoMirrorRule.repository == repository).all()
-    return rules
 
 
 def get_root_rule(repository):

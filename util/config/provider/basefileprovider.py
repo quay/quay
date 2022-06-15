@@ -4,8 +4,6 @@ import logging
 from util.config.provider.baseprovider import (
     BaseProvider,
     import_yaml,
-    export_yaml,
-    CannotWriteConfigException,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,27 +42,8 @@ class BaseFileProvider(BaseProvider):
     def config_exists(self):
         return self.volume_file_exists(self.yaml_filename)
 
-    def volume_exists(self):
-        return os.path.exists(self.config_volume)
-
     def volume_file_exists(self, relative_file_path):
         return os.path.exists(os.path.join(self.config_volume, relative_file_path))
 
     def get_volume_file(self, relative_file_path, mode="r"):
         return open(os.path.join(self.config_volume, relative_file_path), mode=mode)
-
-    def get_volume_path(self, directory, relative_file_path):
-        return os.path.join(directory, relative_file_path)
-
-    def list_volume_directory(self, path):
-        dirpath = os.path.join(self.config_volume, path)
-        if not os.path.exists(dirpath):
-            return None
-
-        if not os.path.isdir(dirpath):
-            return None
-
-        return os.listdir(dirpath)
-
-    def get_config_root(self):
-        return self.config_volume

@@ -363,17 +363,6 @@ def get_or_create_robot_metadata(robot):
     return metadata
 
 
-def update_robot_metadata(robot, description="", unstructured_json=None):
-    """
-    Updates the description and user-specified unstructured metadata associated with a robot account
-    to that specified.
-    """
-    metadata = get_or_create_robot_metadata(robot)
-    metadata.description = description
-    metadata.unstructured_json = unstructured_json or metadata.unstructured_json or {}
-    metadata.save()
-
-
 def retrieve_robot_token(robot):
     """
     Returns the decrypted token for the given robot.
@@ -808,13 +797,6 @@ def get_user_or_org(username):
         return None
 
 
-def get_user_by_id(user_db_id):
-    try:
-        return User.get(User.id == user_db_id, User.organization == False)
-    except User.DoesNotExist:
-        return None
-
-
 def get_user_map_by_ids(namespace_ids):
     id_user = {namespace_id: None for namespace_id in namespace_ids}
     users = User.select().where(User.id << namespace_ids, User.organization == False)
@@ -827,13 +809,6 @@ def get_user_map_by_ids(namespace_ids):
 def get_namespace_user_by_user_id(namespace_user_db_id):
     try:
         return User.get(User.id == namespace_user_db_id, User.robot == False)
-    except User.DoesNotExist:
-        raise InvalidUsernameException("User with id does not exist: %s" % namespace_user_db_id)
-
-
-def get_namespace_by_user_id(namespace_user_db_id):
-    try:
-        return User.get(User.id == namespace_user_db_id, User.robot == False).username
     except User.DoesNotExist:
         raise InvalidUsernameException("User with id does not exist: %s" % namespace_user_db_id)
 

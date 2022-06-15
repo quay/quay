@@ -72,9 +72,6 @@ from util.request import get_request_ip
 from _init import ROOT_DIR
 
 
-PGP_KEY_MIMETYPE = "application/pgp-keys"
-
-
 @lru_cache(maxsize=1)
 def _get_route_data():
     return swagger_route_data(include_internal=True, compact=True)

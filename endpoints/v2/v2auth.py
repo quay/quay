@@ -20,7 +20,6 @@ from data import model
 from data.database import RepositoryState
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from data.model.repo_mirror import get_mirroring_robot
 from endpoints.decorators import anon_protect
 from endpoints.v2 import v2_bp
 from endpoints.v2.errors import (

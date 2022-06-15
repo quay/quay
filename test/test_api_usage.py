@@ -156,10 +156,6 @@ BASE_QUERY_COUNT = 0
 # The number of queries we run for logged in users on API calls.
 BASE_LOGGEDIN_QUERY_COUNT = BASE_QUERY_COUNT + 1
 
-# The number of queries we run for logged in users on API calls that check
-# access permissions.
-BASE_PERM_ACCESS_QUERY_COUNT = BASE_LOGGEDIN_QUERY_COUNT + 2
-
 NO_ACCESS_USER = "freshuser"
 READ_ACCESS_USER = "reader"
 ADMIN_ACCESS_USER = "devtable"

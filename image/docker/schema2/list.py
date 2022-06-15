@@ -229,9 +229,6 @@ class DockerSchema2ManifestList(ManifestListInterface):
     def local_blob_digests(self):
         return self.blob_digests
 
-    def get_blob_digests_for_translation(self):
-        return self.blob_digests
-
     @property
     def layers_compressed_size(self):
         return None
@@ -311,9 +308,6 @@ class DockerSchema2ManifestList(ManifestListInterface):
         ]
 
     def get_manifest_labels(self, content_retriever):
-        return None
-
-    def get_leaf_layer_v1_image_id(self, content_retriever):
         return None
 
     def get_legacy_image_ids(self, content_retriever):

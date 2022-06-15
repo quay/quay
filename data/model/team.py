@@ -26,7 +26,6 @@ from data.model import (
     _basequery,
 )
 from data.text import prefix_search
-from util.validation import validate_username
 from util.morecollections import AttrDict
 
 

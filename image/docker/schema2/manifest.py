@@ -250,9 +250,6 @@ class DockerSchema2Manifest(ManifestInterface):
             str(self.config.digest)
         ]
 
-    def get_blob_digests_for_translation(self):
-        return self.blob_digests
-
     def get_manifest_labels(self, content_retriever):
         return self._get_built_config(content_retriever).labels
 
@@ -345,14 +342,6 @@ class DockerSchema2Manifest(ManifestInterface):
         v1_builder = DockerSchema1ManifestBuilder("", "", "")
         self._populate_schema1_builder(v1_builder, content_retriever)
         return v1_builder.build().generate_legacy_layers(images_map, content_retriever)
-
-    def get_leaf_layer_v1_image_id(self, content_retriever):
-        # NOTE: If there exists a layer with remote content, then we consider this manifest
-        # to not support legacy images.
-        if self.has_remote_layer:
-            return None
-
-        return self.get_legacy_image_ids(content_retriever)[-1].v1_id
 
     def get_legacy_image_ids(self, content_retriever):
         if self.has_remote_layer:

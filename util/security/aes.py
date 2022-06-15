@@ -1,5 +1,4 @@
 import base64
-import hashlib
 import os
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes

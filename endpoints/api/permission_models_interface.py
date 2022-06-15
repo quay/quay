@@ -49,26 +49,6 @@ class UserPermission(
         return perm_dict
 
 
-class RobotPermission(
-    namedtuple(
-        "RobotPermission",
-        [
-            "role_name",
-            "username",
-            "is_robot",
-            "is_org_member",
-        ],
-    )
-):
-    def to_dict(self, user=None, team=None, org_members=None):
-        return {
-            "role": self.role_name,
-            "name": self.username,
-            "is_robot": True,
-            "is_org_member": self.is_org_member,
-        }
-
-
 class TeamPermission(
     namedtuple(
         "TeamPermission",

@@ -24,13 +24,3 @@ def get_media_types():
         media_type_map[kind.name] = kind.id
 
     return media_type_map
-
-
-def _get_label_source_type_id(name):
-    kinds = get_label_source_types()
-    return kinds[name]
-
-
-def _get_media_type_id(name):
-    kinds = get_media_types()
-    return kinds[name]

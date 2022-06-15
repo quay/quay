@@ -4,7 +4,6 @@ Superuser API.
 import logging
 import os
 import string
-import socket
 
 from datetime import datetime
 from random import SystemRandom
@@ -21,7 +20,7 @@ from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
 from data.database import ServiceKeyApprovalType
 from data.logs_model import logs_model
-from data.model import user, namespacequota, InvalidNamespaceQuota, DataModelException
+from data.model import user, namespacequota, DataModelException
 from endpoints.api import (
     ApiResource,
     nickname,
@@ -45,7 +44,7 @@ from endpoints.api import (
 )
 from endpoints.api import request_error
 from endpoints.api.build import get_logs_or_log_url
-from endpoints.api.namespacequota import quota_view, limit_view, get_quota
+from endpoints.api.namespacequota import quota_view, get_quota
 from endpoints.api.superuser_models_pre_oci import (
     pre_oci_model,
     ServiceKeyDoesNotExist,
@@ -60,16 +59,6 @@ from util.validation import validate_service_key_name
 from _init import ROOT_DIR
 
 logger = logging.getLogger(__name__)
-
-
-def get_immediate_subdirectories(directory):
-    return [name for name in os.listdir(directory) if os.path.isdir(os.path.join(directory, name))]
-
-
-def get_services():
-    services = set(get_immediate_subdirectories(app.config["SYSTEM_SERVICES_PATH"]))
-    services = services - set(app.config["SYSTEM_SERVICE_BLACKLIST"])
-    return services
 
 
 @resource("/v1/superuser/aggregatelogs")
@@ -97,9 +86,6 @@ class SuperUserAggregateLogs(ApiResource):
             return {"aggregated": [log.to_dict() for log in aggregated_logs]}
 
         raise Unauthorized()
-
-
-LOGS_PER_PAGE = 20
 
 
 @resource("/v1/superuser/logs")
@@ -681,20 +667,6 @@ class SuperUserOrganizationManagement(ApiResource):
             return org.to_dict()
 
         raise Unauthorized()
-
-
-def key_view(key):
-    return {
-        "name": key.name,
-        "kid": key.kid,
-        "service": key.service,
-        "jwk": key.jwk,
-        "metadata": key.metadata,
-        "created_date": key.created_date,
-        "expiration_date": key.expiration_date,
-        "rotation_duration": key.rotation_duration,
-        "approval": approval_view(key.approval) if key.approval is not None else None,
-    }
 
 
 def approval_view(approval):

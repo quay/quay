@@ -1,16 +1,13 @@
 import logging
 
-from peewee import JOIN
-
 from data.database import (
     AccessToken,
     AccessTokenKind,
     Repository,
     Namespace,
     Role,
-    RepositoryBuildTrigger,
 )
-from data.model import DataModelException, _basequery, InvalidTokenException
+from data.model import _basequery, InvalidTokenException
 
 
 logger = logging.getLogger(__name__)

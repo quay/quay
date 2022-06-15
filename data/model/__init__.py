@@ -17,10 +17,6 @@ class BlobDoesNotExist(DataModelException):
     pass
 
 
-class InvalidBlobUpload(DataModelException):
-    pass
-
-
 class InvalidEmailAddressException(DataModelException):
     pass
 
@@ -81,10 +77,6 @@ class InvalidTeamMemberException(DataModelException):
     pass
 
 
-class InvalidManifestException(DataModelException):
-    pass
-
-
 class ManifestDoesNotExist(DataModelException):
     pass
 
@@ -106,14 +98,6 @@ class TagDoesNotExist(DataModelException):
 
 
 class TagAlreadyCreatedException(DataModelException):
-    pass
-
-
-class StaleTagException(DataModelException):
-    pass
-
-
-class InvalidSystemQuotaConfig(Exception):
     pass
 
 

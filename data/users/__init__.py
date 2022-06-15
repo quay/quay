@@ -17,26 +17,6 @@ from util.security.secret import convert_secret_key
 
 logger = logging.getLogger(__name__)
 
-
-def get_federated_service_name(authentication_type):
-    if authentication_type == "LDAP":
-        return "ldap"
-
-    if authentication_type == "JWT":
-        return "jwtauthn"
-
-    if authentication_type == "Keystone":
-        return "keystone"
-
-    if authentication_type == "AppToken":
-        return None
-
-    if authentication_type == "Database":
-        return None
-
-    raise Exception("Unknown auth type: %s" % authentication_type)
-
-
 LDAP_CERT_FILENAME = "ldap.crt"
 
 

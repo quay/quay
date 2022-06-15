@@ -23,17 +23,6 @@ def url_query_params(url):
     return dict(urllib.parse.parse_qsl(urllib.parse.urlparse(url).query, True))
 
 
-def url_dequery(url):
-    """Return a URL with the query component removed.
-
-    :param url: URL to dequery.
-    :type url: str
-    :rtype: str
-    """
-    url = urllib.parse.urlparse(url)
-    return urllib.parse.urlunparse((url.scheme, url.netloc, url.path, url.params, "", url.fragment))
-
-
 def build_url(base, additional_params=None):
     """Construct a URL based off of base containing all parameters in
     the query portion of base plus any additional parameters.

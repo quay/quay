@@ -6,12 +6,7 @@ from jwt import PyJWT
 from jwt.exceptions import (
     InvalidTokenError,
     DecodeError,
-    InvalidAudienceError,
-    ExpiredSignatureError,
-    ImmatureSignatureError,
     InvalidIssuedAtError,
-    InvalidIssuerError,
-    MissingRequiredClaimError,
     InvalidAlgorithmError,
 )
 
