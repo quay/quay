@@ -78,9 +78,9 @@ angular.module('quay').directive('repoListTable', function () {
         return result.toString() + " " + byte_unit;
       };
 
-      $scope.quotaPercentConsumed = function(organization) {
-	      if (organization.quota_report && organization.quota_report.configured_quota) {
-	        return Math.round(organization.quota_report.quota_bytes / organization.quota_report.configured_quota * 100);
+      $scope.quotaPercentConsumed = function(repository) {
+	      if (repository.quota_report && repository.quota_report.configured_quota) {
+	        return Math.round(repository.quota_report.quota_bytes / repository.quota_report.configured_quota * 100);
 	      }
 	      return 0;
       };
