@@ -70,9 +70,9 @@ angular.module('quay').directive('repoPanelTags', function () {
       };
 
       var matchCosignSignature = function(tag) {
-        // matches cosign style tags and returns the match
+        // matches cosign style tags and returns the match with a matching group containing the signed manifest digest
 
-        var cosignNamingPattern = new RegExp('^sha256-[0-9a-f]{64}\.sig$');
+        var cosignNamingPattern = new RegExp('^sha256-([a-f0-9]{64})\.sig$');
         return tag.match(cosignNamingPattern);
       }
 
