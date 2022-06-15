@@ -171,6 +171,10 @@
     color: #888;
 }
 
+.repo-panel-tags-element .signing-valid .tooltip-inner {
+  max-width: 250px;
+}
+
 .repo-panel-tags-element .cosign-signature-row {
   margin-top: 10px;
   margin-bottom: 6px;
