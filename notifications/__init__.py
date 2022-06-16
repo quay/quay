@@ -2,9 +2,10 @@ import json
 
 from contextlib import contextmanager
 
-from app import app, notification_queue
 from data import model
 from auth.auth_context import get_authenticated_user, get_validated_oauth_token
+from singletons.config import app_config
+from singletons.workqueues import notification_queue
 
 DEFAULT_BATCH_SIZE = 1000
 
@@ -18,8 +19,8 @@ def build_repository_event_data(namespace_name, repo_name, extra_data=None, subp
     """
     repo_string = "%s/%s" % (namespace_name, repo_name)
     homepage = "%s://%s/repository/%s" % (
-        app.config["PREFERRED_URL_SCHEME"],
-        app.config["SERVER_HOSTNAME"],
+        app_config["PREFERRED_URL_SCHEME"],
+        app_config["SERVER_HOSTNAME"],
         repo_string,
     )
 
@@ -33,7 +34,7 @@ def build_repository_event_data(namespace_name, repo_name, extra_data=None, subp
         "repository": repo_string,
         "namespace": namespace_name,
         "name": repo_name,
-        "docker_url": "%s/%s" % (app.config["SERVER_HOSTNAME"], repo_string),
+        "docker_url": "%s/%s" % (app_config["SERVER_HOSTNAME"], repo_string),
         "homepage": homepage,
     }
 
