@@ -244,10 +244,10 @@ def cache_namespace_repository_sizes(namespace_name):
     now_ms = get_epoch_timestamp_ms()
 
     subquery = (
-        Tag.select(Tag.repository_id)
+        Tag.select(Tag.manifest)
         .where(Tag.hidden == False)
         .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
-        .group_by(Tag.repository_id)
+        .group_by(Tag.manifest)
         .having(fn.Count(Tag.name) > 0)
     )
 
@@ -258,7 +258,7 @@ def cache_namespace_repository_sizes(namespace_name):
             fn.sum(Manifest.layers_compressed_size).alias("repository_size"),
         )
         .join(Repository)
-        .join(subquery, on=(subquery.c.repository_id == Repository.id))
+        .join(subquery, on=(subquery.c.manifest_id == Manifest.id))
         .where(Repository.namespace_user == namespace.id)
         .group_by(Repository.id)
     )
@@ -280,17 +280,17 @@ def get_namespace_size(namespace_name):
     now_ms = get_epoch_timestamp_ms()
 
     subquery = (
-        Tag.select(Tag.repository_id)
+        Tag.select(Tag.manifest)
         .where(Tag.hidden == False)
         .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
-        .group_by(Tag.repository_id)
+        .group_by(Tag.manifest)
         .having(fn.Count(Tag.name) > 0)
     )
 
     namespace_size = (
         Manifest.select(fn.sum(Manifest.layers_compressed_size))
         .join(Repository)
-        .join(subquery, on=(subquery.c.repository_id == Repository.id))
+        .join(subquery, on=(subquery.c.manifest_id == Manifest.id))
         .where(Repository.namespace_user == namespace.id)
     ).scalar()
 
