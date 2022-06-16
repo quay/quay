@@ -19,7 +19,7 @@ def get_channel_releases(repo, channel, models_ref):
             Channel.repository == repo,
             Channel.name == channel_name,
             Channel.tag_kind == tag_kind_id,
-            Channel.lifetime_end != None,
+            Channel.lifetime_end.is_null(False),
         )
         .order_by(Tag.lifetime_end)
     )
