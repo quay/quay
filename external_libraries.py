@@ -1,5 +1,7 @@
 import logging
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
+import urllib.parse
 import re
 import os
 import hashlib

@@ -2,6 +2,7 @@ from smtplib import SMTPException
 from smtplib import SMTPAuthenticationError
 from smtplib import SMTPNotSupportedError
 
+
 # This method is the same as smtplib.SMTP.login except that CRAM_MD5 has been removed from preferred auths since MD5 is not FIPS compliant.
 def login_fips_safe(self, user, password, *, initial_response_ok=True):
     """Log in on an SMTP server that requires authentication.

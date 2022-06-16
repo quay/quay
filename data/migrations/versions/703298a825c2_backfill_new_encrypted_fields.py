@@ -292,16 +292,16 @@ def upgrade(op, tables, tester):
 
         # OAuthApplication
         logger.info("Backfilling secret for OAuth applications")
-        for app in _iterate(OAuthApplication, OAuthApplication.fully_migrated == False):
-            logger.info("Backfilling secret for OAuth application %s", app.id)
-            client_secret = app.client_secret or str(uuid.uuid4())
+        for oapp in _iterate(OAuthApplication, OAuthApplication.fully_migrated == False):
+            logger.info("Backfilling secret for OAuth application %s", oapp.id)
+            client_secret = oapp.client_secret or str(uuid.uuid4())
             secure_client_secret = _decrypted(client_secret)
 
             (
                 OAuthApplication.update(
                     secure_client_secret=secure_client_secret, fully_migrated=True
                 )
-                .where(OAuthApplication.id == app.id, OAuthApplication.fully_migrated == False)
+                .where(OAuthApplication.id == oapp.id, OAuthApplication.fully_migrated == False)
                 .execute()
             )
 

@@ -945,7 +945,7 @@ def _get_matching_users(
             self.robot = args[3]
 
             if organization:
-                self.is_org_member = args[3] != None
+                self.is_org_member = args[3] is not None
             else:
                 self.is_org_member = None
 

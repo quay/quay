@@ -58,7 +58,6 @@ common_properties = {
     },
     "root_rule": {
         "type": "object",
-        "description": "Tag mirror rule",
         "required": ["rule_kind", "rule_value"],
         "properties": {
             "rule_kind": {

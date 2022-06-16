@@ -54,5 +54,5 @@ class SecurityScannerValidator(BaseValidator):
             message = str(last_exception)
             raise ConfigValidationException("Could not ping security scanner: %s" % message)
         elif not response.get("state"):
-            message = "Invalid indexer state" % (response.status_code, response.text)
+            message = "Invalid indexer state"
             raise ConfigValidationException("Could not ping security scanner: %s" % message)

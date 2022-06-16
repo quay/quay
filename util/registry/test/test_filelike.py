@@ -111,7 +111,7 @@ def test_none_read():
             return None
 
     stream = StreamSlice(NoneReader(), 0)
-    assert stream.read(-1) == None
+    assert stream.read(-1) is None
     assert stream.tell() == 0
 
 

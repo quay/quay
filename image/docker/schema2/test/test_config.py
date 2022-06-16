@@ -1,3 +1,4 @@
+import hashlib
 import json
 import pytest
 
@@ -36,9 +37,9 @@ CONFIG_BYTES = json.dumps(
             "OpenStdin": False,
             "StdinOnce": False,
             "Env": [
-                "HTTP_PROXY=http:\/\/localhost:8080",
-                "http_proxy=http:\/\/localhost:8080",
-                "PATH=\/usr\/local\/sbin:\/usr\/local\/bin:\/usr\/sbin:\/usr\/bin:\/sbin:\/bin",
+                "HTTP_PROXY=http://localhost:8080",
+                "http_proxy=http://localhost:8080",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ],
             "Cmd": ["sh"],
             "Image": "",
@@ -60,12 +61,12 @@ CONFIG_BYTES = json.dumps(
             "OpenStdin": True,
             "StdinOnce": True,
             "Env": [
-                "HTTP_PROXY=http:\/\/localhost:8080",
-                "http_proxy=http:\/\/localhost:8080",
-                "PATH=\/usr\/local\/sbin:\/usr\/local\/bin:\/usr\/sbin:\/usr\/bin:\/sbin:\/bin",
+                "HTTP_PROXY=http://localhost:8080",
+                "http_proxy=http://localhost:8080",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             ],
             "Cmd": ["sh"],
-            "Image": "jschorr\/somerepo",
+            "Image": "jschorr/somerepo",
             "Volumes": None,
             "WorkingDir": "",
             "Entrypoint": None,
@@ -77,7 +78,7 @@ CONFIG_BYTES = json.dumps(
         "history": [
             {
                 "created": "2018-04-03T18:37:09.284840891Z",
-                "created_by": "\/bin\/sh -c #(nop) ADD file:9e4ca21cbd24dc05b454b6be21c7c639216ae66559b21ba24af0d665c62620dc in \/ ",
+                "created_by": "/bin/sh -c #(nop) ADD file:9e4ca21cbd24dc05b454b6be21c7c639216ae66559b21ba24af0d665c62620dc in / ",
             },
             {
                 "created": "2018-04-03T18:37:09.613317719Z",
@@ -97,7 +98,9 @@ CONFIG_BYTES = json.dumps(
             ],
         },
     }
-)
+).encode("utf-8")
+CONFIG_SIZE = len(CONFIG_BYTES)
+CONFIG_DIGEST = "sha256:" + hashlib.sha256(CONFIG_BYTES).hexdigest()
 
 
 def test_valid_config():
