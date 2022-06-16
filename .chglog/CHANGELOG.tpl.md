@@ -1,5 +1,6 @@
 ## Red Hat Quay Release Notes
-(Red Hat Customer Portal)[https://access.redhat.com/documentation/en-us/red_hat_quay/3.5/html/red_hat_quay_release_notes/index]
+
+[Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 {{ if .Versions -}}
 
@@ -8,8 +9,6 @@
 ### {{ .Title }}
 {{ range .Commits -}}
 - [{{.Hash.Short}}]({{ $.Info.RepositoryURL  }}/commit/{{ .Hash.Long }}): {{ .Subject }}
-{{ if .Refs -}}{{ range .Refs }} -{{if .Action}}{{ .Action }} {{ end }} [#{{ .Ref }}]({{ $.Info.RepositoryURL  }}/issues/{{ .Ref }}){{ end -}}
-{{ end -}}
 {{ end -}}
 {{ end -}}
 {{ end -}}
@@ -21,8 +20,6 @@
 ### {{ .Title }}
 {{ range .Commits -}}
 - [{{.Hash.Short}}]({{ $.Info.RepositoryURL  }}/commit/{{ .Hash.Long }}): {{ .Subject }}
-{{ if .Refs -}}{{ range .Refs }} - {{if .Action}}{{ .Action }}{{ end }} [#{{ .Ref }}]({{ $.Info.RepositoryURL  }}/issues/{{ .Ref }}){{ end -}}
-{{ end -}}
 {{ end -}}
 {{ end -}}
 
