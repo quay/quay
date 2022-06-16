@@ -38,7 +38,7 @@ class RepoMirrorWorker(Worker):
                 break
 
 
-def create_gunicorn_worker():
+def create_gunicorn_worker() -> GunicornWorker:
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -47,7 +47,7 @@ def create_gunicorn_worker():
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, app, RepoMirrorWorker(), features.REPO_MIRROR)
+    worker = GunicornWorker(__name__, RepoMirrorWorker(), features.REPO_MIRROR)
     return worker
 
 

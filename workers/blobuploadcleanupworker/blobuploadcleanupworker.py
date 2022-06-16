@@ -93,7 +93,7 @@ class BlobUploadCleanupWorker(Worker):
             logger.debug("Removed stale blob upload %s", stale_upload.uuid)
 
 
-def create_gunicorn_worker():
+def create_gunicorn_worker() -> GunicornWorker:
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -102,7 +102,7 @@ def create_gunicorn_worker():
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, app, BlobUploadCleanupWorker(), True)
+    worker = GunicornWorker(__name__, BlobUploadCleanupWorker(), True)
     return worker
 
 

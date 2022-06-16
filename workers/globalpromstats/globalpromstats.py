@@ -65,7 +65,7 @@ class GlobalPrometheusStatsWorker(Worker):
             robot_rows.set(get_robot_count())
 
 
-def create_gunicorn_worker():
+def create_gunicorn_worker() -> GunicornWorker:
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -75,7 +75,7 @@ def create_gunicorn_worker():
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     feature_flag = app.config.get("PROMETHEUS_PUSHGATEWAY_URL") is not None
-    worker = GunicornWorker(__name__, app, GlobalPrometheusStatsWorker(), feature_flag)
+    worker = GunicornWorker(__name__, GlobalPrometheusStatsWorker(), feature_flag)
     return worker
 
 

@@ -131,7 +131,7 @@ def _write_logs(filename, logs, log_archive):
         log_archive.store_file(tempfile, JSON_MIMETYPE, content_encoding="gzip", file_id=filename)
 
 
-def create_gunicorn_worker():
+def create_gunicorn_worker() -> GunicornWorker:
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -141,7 +141,7 @@ def create_gunicorn_worker():
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     feature_flag = (features.ACTION_LOG_ROTATION) or (not None in [SAVE_PATH, SAVE_LOCATION])
-    worker = GunicornWorker(__name__, app, LogRotateWorker(), feature_flag)
+    worker = GunicornWorker(__name__, LogRotateWorker(), feature_flag)
     return worker
 
 

@@ -105,7 +105,7 @@ class RepositoryActionCountWorker(Worker):
         return True
 
 
-def create_gunicorn_worker():
+def create_gunicorn_worker() -> GunicornWorker:
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -115,7 +115,7 @@ def create_gunicorn_worker():
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     worker = GunicornWorker(
-        __name__, app, RepositoryActionCountWorker(), features.REPOSITORY_ACTION_COUNTER
+        __name__, RepositoryActionCountWorker(), features.REPOSITORY_ACTION_COUNTER
     )
     return worker
 
