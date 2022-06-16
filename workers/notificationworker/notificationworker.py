@@ -1,6 +1,7 @@
 import logging
 import time
 
+from data import database
 from notifications.notificationmethod import NotificationMethod, InvalidNotificationMethodException
 from notifications.notificationevent import NotificationEvent, InvalidNotificationEventException
 from singletons.config import app_config
@@ -51,6 +52,7 @@ def create_gunicorn_worker():
     """
     from flask import Flask
 
+    database.configure(app_config)
     note_worker = NotificationWorker(
         notification_queue, poll_period_seconds=10, reservation_seconds=30, retry_after_seconds=30
     )
@@ -65,6 +67,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
+    database.configure(app_config)
     worker = NotificationWorker(
         notification_queue, poll_period_seconds=10, reservation_seconds=30, retry_after_seconds=30
     )
