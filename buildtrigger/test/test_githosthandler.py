@@ -7,6 +7,7 @@ from buildtrigger.test.bitbucketmock import get_bitbucket_trigger
 from buildtrigger.test.githubmock import get_github_trigger, GithubBuildTrigger
 from endpoints.building import PreparedBuild
 
+
 # Note: This test suite executes a common set of tests against all the trigger types specified
 # in this fixture. Each trigger's mock is expected to return the same data for all of these calls.
 @pytest.fixture(params=[get_github_trigger(), get_bitbucket_trigger()])

@@ -220,8 +220,8 @@ def test_get_metadata_exception(connection_error, response_code, exception):
     client.request.side_effect = exception
     tuf_api = api.TUFMetadataAPI(app, app.config, client=client)
     tags, expiration = tuf_api.get_default_tags_with_expiration("quay", "quay")
-    assert tags == None
-    assert expiration == None
+    assert tags is None
+    assert expiration is None
 
 
 @pytest.mark.parametrize(

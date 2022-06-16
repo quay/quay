@@ -5,7 +5,9 @@ import sys
 import threading
 import time
 from collections import namedtuple
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
+import urllib.parse
 
 from cachetools.func import lru_cache
 

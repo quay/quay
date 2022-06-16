@@ -2,8 +2,9 @@ import copy
 import logging
 import requests
 import time
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
 import urllib.parse
+import urllib.error
 
 from abc import ABCMeta, abstractmethod
 from six import add_metaclass

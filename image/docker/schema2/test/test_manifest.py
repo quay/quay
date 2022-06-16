@@ -17,7 +17,7 @@ from image.docker.schema2.manifest import (
     EMPTY_LAYER_BLOB_DIGEST,
 )
 from image.docker.schema2.config import DockerSchema2Config
-from image.docker.schema2.test.test_config import CONFIG_BYTES
+from image.docker.schema2.test.test_config import CONFIG_BYTES, CONFIG_SIZE, CONFIG_DIGEST
 from image.shared.schemautil import ContentRetrieverForTesting
 from util.bytes import Bytes
 
@@ -45,8 +45,8 @@ MANIFEST_BYTES = json.dumps(
         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
         "config": {
             "mediaType": "application/vnd.docker.container.image.v1+json",
-            "size": 1885,
-            "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+            "size": CONFIG_SIZE,
+            "digest": CONFIG_DIGEST,
         },
         "layers": [
             {
@@ -79,8 +79,8 @@ REMOTE_MANIFEST_BYTES = json.dumps(
         "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
         "config": {
             "mediaType": "application/vnd.docker.container.image.v1+json",
-            "size": 1885,
-            "digest": "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+            "size": CONFIG_SIZE,
+            "digest": CONFIG_DIGEST,
         },
         "layers": [
             {
@@ -111,11 +111,8 @@ REMOTE_MANIFEST_BYTES = json.dumps(
 
 def test_valid_manifest():
     manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(MANIFEST_BYTES))
-    assert manifest.config.size == 1885
-    assert (
-        str(manifest.config.digest)
-        == "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
-    )
+    assert manifest.config.size == CONFIG_SIZE
+    assert str(manifest.config.digest) == CONFIG_DIGEST
     assert manifest.media_type == "application/vnd.docker.distribution.manifest.v2+json"
     assert not manifest.has_remote_layer
     assert manifest.has_legacy_image
@@ -135,8 +132,8 @@ def test_valid_manifest():
                 {"created": "2018-04-12T18:37:09.284840891Z", "created_by": "bar"},
             ],
         },
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
-        1885,
+        CONFIG_DIGEST,
+        CONFIG_SIZE,
     )
 
     assert len(manifest.filesystem_layers) == 4
@@ -168,11 +165,8 @@ def test_valid_manifest():
 
 def test_valid_remote_manifest():
     manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(REMOTE_MANIFEST_BYTES))
-    assert manifest.config.size == 1885
-    assert (
-        str(manifest.config.digest)
-        == "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7"
-    )
+    assert manifest.config.size == CONFIG_SIZE
+    assert str(manifest.config.digest) == CONFIG_DIGEST
     assert manifest.media_type == "application/vnd.docker.distribution.manifest.v2+json"
     assert manifest.has_remote_layer
     assert manifest.config_media_type == "application/vnd.docker.container.image.v1+json"
@@ -218,8 +212,8 @@ def test_valid_remote_manifest():
                 {"created": "2018-04-12T18:37:09.284840891Z", "created_by": "bar"},
             ],
         },
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
-        1885,
+        CONFIG_DIGEST,
+        CONFIG_SIZE,
     )
 
     manifest_image_layers = list(manifest.get_layers(retriever))
@@ -254,8 +248,8 @@ def test_get_manifest_labels():
             "rootfs": {"type": "layers", "diff_ids": []},
             "history": [],
         },
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
-        1885,
+        CONFIG_DIGEST,
+        CONFIG_SIZE,
     )
 
     manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(MANIFEST_BYTES))
@@ -268,7 +262,7 @@ def test_build_schema1():
 
     retriever = ContentRetrieverForTesting(
         {
-            "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7": CONFIG_BYTES,
+            CONFIG_DIGEST: CONFIG_BYTES,
         }
     )
 
@@ -293,8 +287,8 @@ def test_get_schema1_manifest():
                 {"created": "2018-04-12T18:37:09.284840891Z", "created_by": "bar"},
             ],
         },
-        "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
-        1885,
+        CONFIG_DIGEST,
+        CONFIG_SIZE,
     )
 
     manifest = DockerSchema2Manifest(Bytes.for_string_or_unicode(MANIFEST_BYTES))

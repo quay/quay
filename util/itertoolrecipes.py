@@ -1,5 +1,6 @@
 from itertools import islice
 
+
 # From: https://docs.python.org/2/library/itertools.html
 def take(n, iterable):
     """
