@@ -22,7 +22,6 @@ from _init import (
 from buildman.manager.buildcanceller import BuildCanceller
 from data import database
 from data import model
-from data import logs_model
 from data.archivedlogs import LogArchive
 from data.billing import Billing
 from data.buildlogs import BuildLogs
@@ -253,15 +252,11 @@ else:
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
     raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
 
-database.configure(app.config)
-
 model.config.app_config = app.config
 model.config.store = storage
 model.config.register_repo_cleanup_callback(tuf_metadata_api.delete_metadata)
 
 secscan_model.configure(app, instance_keys, storage)
-
-logs_model.configure(app.config)
 
 # NOTE: We re-use the page token key here as this is just to obfuscate IDs for V1, and
 # does not need to actually be secure.
