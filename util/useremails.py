@@ -6,10 +6,9 @@ from unittest import mock
 
 from flask_mail import Message
 
-import features
-
 from _init import ROOT_DIR
-from app import mail, app, get_app_url
+from singletons.config import app_config, get_app_url
+from singletons.mail import mail
 from util.jinjautil import get_template_env
 from util.html import html2text
 from util.fips import login_fips_safe
@@ -59,7 +58,7 @@ class GmailAction(object):
 
 
 def send_email(recipient, subject, template_file, parameters, action=None):
-    app_title = app.config["REGISTRY_TITLE_SHORT"]
+    app_title = app_config["REGISTRY_TITLE_SHORT"]
     app_url = get_app_url()
     html, plain = render_email(
         app_title, app_url, recipient, subject, template_file, parameters, action=None
@@ -70,7 +69,7 @@ def send_email(recipient, subject, template_file, parameters, action=None):
 
     try:
         if features.FIPS:
-            assert app.config[
+            assert app_config[
                 "MAIL_USE_TLS"
             ], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
             with mock.patch("smtplib.SMTP.login", login_fips_safe):
@@ -78,7 +77,7 @@ def send_email(recipient, subject, template_file, parameters, action=None):
         else:
             mail.send(msg)
 
-        if app.config["TESTING"]:
+        if app_config["TESTING"]:
             logger.debug("Quay is configured for testing. Email not sent: '%s'", msg.subject)
         else:
             logger.debug("Sent email: '%s'", msg.subject)
@@ -91,7 +90,7 @@ def render_email(app_title, app_url, recipient, subject, template_file, paramete
     def app_link_handler(url=None):
         return app_url + "/" + url if url else app_url
 
-    app_logo = app.config.get("ENTERPRISE_LOGO_URL", "https://quay.io/static/img/quay-logo.png")
+    app_logo = app_config.get("ENTERPRISE_LOGO_URL", "https://quay.io/static/img/quay-logo.png")
 
     parameters.update(
         {
@@ -213,7 +212,7 @@ def send_invoice_email(email, contents):
     msg = Message("Quay payment received - Thank you!", recipients=[email])
     msg.html = contents
     if features.FIPS:
-        assert app.config["MAIL_USE_TLS"], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
+        assert app_config["MAIL_USE_TLS"], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
         with mock.patch("smtplib.SMTP.login", login_fips_safe):
             mail.send(msg)
     else:
@@ -254,7 +253,7 @@ def send_subscription_change(change_description, customer_id, customer_email, qu
         change_description, customer_id, customer_email, quay_username
     )
     if features.FIPS:
-        assert app.config["MAIL_USE_TLS"], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
+        assert app_config["MAIL_USE_TLS"], "MAIL_USE_TLS must be enabled to use SMTP in FIPS mode."
         with mock.patch("smtplib.SMTP.login", login_fips_safe):
             mail.send(msg)
     else:

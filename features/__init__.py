@@ -1,3 +1,5 @@
+from singletons.config import app_config
+
 _FEATURES = {}
 
 
@@ -33,3 +35,7 @@ class FeatureNameValue(object):
             return self.value.lower() == "true"
 
         return bool(self.value)
+
+
+# Load features from config.
+import_features(app_config)
