@@ -117,7 +117,8 @@ def liveserver_app(flask_app, port):
 
     def _spawn_live_server():
         worker = lambda app, port: app.run(port=port, use_reloader=False)
-        shared["process"] = multiprocessing.Process(target=worker, args=(flask_app, port))
+        ctx = multiprocessing.get_context("fork")
+        shared["process"] = ctx.Process(target=worker, args=(flask_app, port))
         shared["process"].start()
 
         start_time = time.time()
