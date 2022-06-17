@@ -37,7 +37,7 @@ class ExpiredAppSpecificTokenWorker(Worker):
         return True
 
 
-def create_gunicorn_worker():
+def create_gunicorn_worker() -> GunicornWorker:
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -49,7 +49,7 @@ def create_gunicorn_worker():
     feature_flag = (features.APP_SPECIFIC_TOKENS) or (
         app.config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is not None
     )
-    worker = GunicornWorker(__name__, app, ExpiredAppSpecificTokenWorker(), feature_flag)
+    worker = GunicornWorker(__name__, ExpiredAppSpecificTokenWorker(), feature_flag)
     return worker
 
 

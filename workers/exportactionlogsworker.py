@@ -290,7 +290,7 @@ def _parse_time(specified_time):
         return None
 
 
-def create_gunicorn_worker():
+def create_gunicorn_worker() -> GunicornWorker:
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -302,7 +302,7 @@ def create_gunicorn_worker():
     log_worker = ExportActionLogsWorker(
         export_action_logs_queue, poll_period_seconds=POLL_PERIOD_SECONDS
     )
-    worker = GunicornWorker(__name__, app, log_worker, features.LOG_EXPORT)
+    worker = GunicornWorker(__name__, log_worker, features.LOG_EXPORT)
     return worker
 
 
