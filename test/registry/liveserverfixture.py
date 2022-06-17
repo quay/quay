@@ -68,7 +68,8 @@ class liveFlaskServer(object):
             if started:
                 break
 
-            self._process = multiprocessing.Process(target=worker, args=(self.app, 0))
+            ctx = multiprocessing.get_context("fork")
+            self._process = ctx.Process(target=worker, args=(self.app, 0))
             self._process.start()
 
             # We must wait for the server to start listening, but give up
