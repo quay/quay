@@ -47,6 +47,7 @@ from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
 from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig, disallow_replica_use
 from data.estimate import mysql_estimate_row_count, normal_row_count
+from singletons.config import app_config
 from util.names import urn_generator
 from util.metrics.prometheus import (
     db_pooled_connections_in_use,
@@ -2149,3 +2150,5 @@ transition_classes = set([TagManifestToManifest, TagManifestLabelMap, TagToRepos
 
 is_model = lambda x: inspect.isclass(x) and issubclass(x, BaseModel) and x is not BaseModel
 all_models = [model[1] for model in inspect.getmembers(sys.modules[__name__], is_model)]
+
+configure(app_config)
