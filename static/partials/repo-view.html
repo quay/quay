@@ -19,6 +19,12 @@
           <a class="back-link" href="/repository">
             Repositories
           </a>
+          <a class="level-up-link" href="/user/{{ namespace }}" ng-if="!isOrganization(namespace)">
+            Account
+          </a>
+          <a class="level-up-link" href="/organization/{{ namespace }}" ng-if="isOrganization(namespace)">
+            Organization
+          </a>
         </span>
         <span class="cor-title-content">
           <span class="repo-circle no-background hidden-xs" repo="viewScope.repository"></span>
