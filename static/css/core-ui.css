@@ -920,6 +920,21 @@ a:focus {
   font-family: FontAwesome;
 }
 
+.cor-title-link a.level-up-link  {
+  margin-right: 6px;
+  margin-left: 12px;
+}
+
+.cor-title-link a.level-up-link:before  {
+  content: "\f148";
+  color: white;
+  display: inline-block;
+  margin-right: 10px;
+  vertical-align: middle;
+  font-family: FontAwesome;
+  font-size: 22px;
+}
+
 .co-table {
   width: 100%;
 }
