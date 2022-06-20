@@ -17,10 +17,10 @@ jobs:
 
     - uses: actions/checkout@v2
 
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Install dependencies
       run: |
@@ -30,7 +30,7 @@ jobs:
 
     - name: Check Formatting (Black)
       run: |
-        black --line-length=100 --target-version=py38 --check --diff .
+        black --line-length=100 --target-version=py39 --check --diff .
 
     - name: Check Formatting (Flake8)
       run: |
@@ -51,10 +51,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Install dependencies
       run: |
@@ -64,7 +64,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py38-unit
+      run: tox -e py39-unit
 
   types:
     name: Types Test
@@ -72,10 +72,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Install dependencies
       run: |
@@ -93,10 +93,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Install dependencies
       run: |
@@ -106,7 +106,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py38-e2e
+      run: tox -e py39-e2e
 
   registry:
     name: E2E Registry Tests
@@ -114,10 +114,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Install dependencies
       run: |
@@ -127,7 +127,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py38-registry
+      run: tox -e py39-registry
 
   docker:
     name: Docker Build
@@ -145,10 +145,10 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-    - name: Set up Python 3.8
+    - name: Set up Python 3.9
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Install dependencies
       run: |
@@ -161,7 +161,7 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py38-mysql
+      run: tox -e py39-mysql
 
   psql:
     name: E2E Postgres Test
@@ -172,7 +172,7 @@ jobs:
     - name: Set up Python 3.6
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.9
 
     - name: Install dependencies
       run: |
@@ -185,4 +185,4 @@ jobs:
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
-      run: tox -e py38-psql
+      run: tox -e py39-psql

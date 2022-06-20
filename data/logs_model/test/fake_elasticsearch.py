@@ -14,7 +14,7 @@ FAKE_ES_HOST = "fakees"
 
 EMPTY_RESULT = {
     "hits": {"hits": [], "total": 0},
-    "_shards": {"successful": 1, "total": 1},
+    "_shards": {"successful": 1, "total": 1, "skipped": 0},
 }
 
 
@@ -186,7 +186,7 @@ def fake_elasticsearch(allow_wildcard=True):
 
         return found, found_index or (index_name_or_pattern.find("*") >= 0)
 
-    @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)/_count$", method="GET")
+    @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)/_count$", method="POST")
     def count_docs(url, request):
         request = json.loads(request.body)
         index_name_or_pattern, _ = url.path[1:].split("/")
@@ -205,7 +205,7 @@ def fake_elasticsearch(allow_wildcard=True):
             "content": json.dumps({"count": len(found)}),
         }
 
-    @urlmatch(netloc=FAKE_ES_HOST, path=r"/_search/scroll$", method="GET")
+    @urlmatch(netloc=FAKE_ES_HOST, path=r"/_search/scroll$", method="POST")
     def lookup_scroll(url, request):
         request_obj = json.loads(request.body)
         scroll_id = request_obj["scroll_id"]
@@ -232,7 +232,7 @@ def fake_elasticsearch(allow_wildcard=True):
             "status_code": 404,
         }
 
-    @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)/_search$", method="GET")
+    @urlmatch(netloc=FAKE_ES_HOST, path=r"/([^/]+)/_search$", method="POST")
     def lookup_docs(url, request):
         query_params = parse_query(url.query)
 
@@ -367,6 +367,7 @@ def fake_elasticsearch(allow_wildcard=True):
             "_shards": {
                 "successful": 1,
                 "total": 1,
+                "skipped": 0,
             },
             "aggregations": _aggregate(request, found),
         }

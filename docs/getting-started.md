@@ -26,13 +26,13 @@ This environment can quickly setup Quay and Clair for developing and testing cha
 When utilizing the local development environment changes to your source code are automatically hot-reloaded, taking effect in real time.
 
 Beyond Docker and docker-compose, to develop Quay you will also need Python and the full set of requirements in order to successfully run the test suite.
-Python 3.8 and earlier are currently supported.
+Python 3.9 and earlier are currently supported.
 
 ## Requirements
 
  - Docker
  - docker-compose
- - Python 3.8
+ - Python 3.9
  - Node 16.12.0
  - libmagic
 
