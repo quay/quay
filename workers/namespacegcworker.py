@@ -3,13 +3,14 @@ import time
 
 import features
 
-from app import app, namespace_gc_queue, all_queues
 from data import model
-from workers.queueworker import QueueWorker, WorkerSleepException
+from singletons.config import app_config
+from singletons.workqueues import namespace_gc_queue, all_queues
 from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.metrics.prometheus import gc_namespaces_purged
 from workers.gunicorn_worker import GunicornWorker
+from workers.queueworker import QueueWorker, WorkerSleepException
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ def create_gunicorn_worker() -> GunicornWorker:
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)
@@ -74,7 +75,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    GlobalLock.configure(app.config)
+    GlobalLock.configure(app_config)
     logger.debug("Starting namespace GC worker")
     worker = NamespaceGCWorker(
         namespace_gc_queue,

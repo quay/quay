@@ -4,7 +4,7 @@ import json
 from contextlib import contextmanager
 from data import model
 
-from app import image_replication_queue
+from singletons.workqueues import image_replication_queue
 
 DEFAULT_BATCH_SIZE = 1000
 
