@@ -1,4 +1,6 @@
 SHELL := /bin/bash
+DOCKER ?= docker
+DOCKER_COMPOSE ?= $(DOCKER)-compose
 
 export PATH := ./venv/bin:$(PATH)
 
@@ -74,15 +76,15 @@ test_postgres : TEST_ENV := SKIP_DB_SCHEMA=true TEST=true \
 	TEST_DATABASE_URI=$(PG_HOST) PYTHONPATH=.
 
 test_postgres:
-	docker rm -f postgres-testrunner-postgres || true
-	docker run --name postgres-testrunner-postgres \
+	$(DOCKER) rm -f postgres-testrunner-postgres || true
+	$(DOCKER) run --name postgres-testrunner-postgres \
 		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=${PG_USER} \
 		-p 5432:5432 -d postgres:9.2
 	until pg_isready -d $(PG_HOST); do sleep 1; echo "Waiting for postgres"; done
 	$(TEST_ENV) alembic upgrade head
 	$(TEST_ENV) py.test --timeout=7200 --verbose --show-count ./ --color=no \
 		--ignore=endpoints/appr/test/ -x
-	docker rm -f postgres-testrunner-postgres || true
+	$(DOCKER) rm -f postgres-testrunner-postgres || true
 
 WEBPACK := node_modules/.bin/webpack
 $(WEBPACK): package.json
@@ -114,7 +116,7 @@ docker-build: build
 	NAME = $(shell git rev-parse --abbrev-ref HEAD)
 	# checkout commit so .git/HEAD points to full sha (used in Dockerfile)
 	git checkout $(SHA)
-	docker build -t $(TAG) .
+	$(DOCKER) build -t $(TAG) .
 	git checkout $(NAME)
 	echo $(TAG)
 
@@ -163,20 +165,20 @@ black:
 .PHONY: build-image-local-dev-frontend
 build-images:: build-image-local-dev-frontend
 build-image-local-dev-frontend:
-# docker-compose run does not build images, so we need to build them if needed
-	test -n "$$(docker images quay-build:latest -q)" || docker-compose build local-dev-frontend
+# $(DOCKER)-compose run does not build images, so we need to build them if needed
+	test -n "$$($(DOCKER) images localhost/quay-build:latest -q)" || $(DOCKER_COMPOSE) build local-dev-frontend
 
 .PHONY: build-image-quay
 build-images:: build-image-quay
 build-image-quay: .build-image-quay-stamp
 .build-image-quay-stamp: Dockerfile requirements.txt
-	docker-compose build quay
+	$(DOCKER_COMPOSE) build quay
 	touch $@
 
 node_modules: node_modules/.npm-install-stamp
 
 node_modules/.npm-install-stamp: package.json package-lock.json | build-image-local-dev-frontend
-	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-frontend npm install --ignore-engines
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-frontend npm install --ignore-engines
 # if npm install fails for some reason, it may have already created
 # node_modules, so we cannot rely on the directory timestamps and should mark
 # successfull runs of npm install with a stamp file.
@@ -190,36 +192,36 @@ local-dev-clean:
 .PHONY: local-dev-build-frontend
 local-dev-build:: local-dev-build-frontend
 local-dev-build-frontend: node_modules
-	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose run --rm --name quay-local-dev-frontend-build --entrypoint="" local-dev-frontend npm run build
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-build --entrypoint="" local-dev-frontend npm run build
 
 .PHONY: local-dev-build-images
 local-dev-build:: local-dev-build-images
 local-dev-build-images:
-	docker-compose build
+	$(DOCKER_COMPOSE) build
 
 .PHONY: local-dev-up
 local-dev-up: local-dev-clean node_modules | build-image-quay
-	DOCKER_USER="$$(id -u):$$(id -g)" docker-compose up -d --force-recreate local-dev-frontend
-	docker-compose up -d redis quay-db
-	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	DOCKER_USER="$$(id -u):0" docker-compose up -d quay
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-frontend
+	$(DOCKER_COMPOSE) up -d redis quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
 	# Waiting until the frontend is built...
-	# Use 'docker-compose logs -f local-dev-frontend' to see the progress
+	# Use '$(DOCKER_COMPOSE) logs -f local-dev-frontend' to see the progress
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
 	@echo "You can now access the frontend at http://localhost:8080"
 
 local-docker-rebuild:
-	docker-compose up -d --build redis
-	docker-compose up -d --build quay-db
-	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	DOCKER_USER="$$(id -u):0" docker-compose up -d --build quay
-	docker-compose restart quay
+	$(DOCKER_COMPOSE) up -d --build redis
+	$(DOCKER_COMPOSE) up -d --build quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d --build quay
+	$(DOCKER_COMPOSE) restart quay
 
 ifeq ($(CLAIR),true)
-	docker-compose up -d --build clair-db
-	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d --build clair
-	docker-compose restart clair
+	$(DOCKER_COMPOSE) up -d --build clair-db
+	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	$(DOCKER_COMPOSE) up -d --build clair
+	$(DOCKER_COMPOSE) restart clair
 else
 	@echo "Skipping Clair"
 endif
@@ -229,15 +231,15 @@ endif
 local-dev-up-with-clair:
 	make local-dev-clean
 	make local-dev-build-frontend
-	docker-compose up -d redis
-	docker-compose up -d quay-db
-	docker exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	DOCKER_USER="$$(id -u):0" docker-compose up -d quay
-	docker-compose up -d clair-db
-	docker exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	docker-compose up -d clair
+	$(DOCKER_COMPOSE) up -d redis
+	$(DOCKER_COMPOSE) up -d quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+	$(DOCKER_COMPOSE) up -d clair-db
+	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	$(DOCKER_COMPOSE) up -d clair
 
 .PHONY: local-dev-down
 local-dev-down:
-	docker-compose down
+	$(DOCKER_COMPOSE) down
 	$(MAKE) local-dev-clean

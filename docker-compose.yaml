@@ -7,7 +7,7 @@ services:
   quay-db:
     user: postgres
     container_name: quay-db
-    image: postgres:12.1
+    image: docker.io/library/postgres:12.1
     environment:
       POSTGRES_USER: "quay"
       POSTGRES_PASSWORD: "quay"
@@ -27,7 +27,7 @@ services:
   clair-db:
     user: postgres
     container_name: clair-db
-    image: postgres:12.1
+    image: docker.io/library/postgres:12.1
     environment:
       POSTGRES_USER: "clair"
       POSTGRES_DB: "clair"
@@ -45,7 +45,7 @@ services:
   redis:
     user: nobody
     container_name: quay-redis
-    image: redis:latest
+    image: docker.io/library/redis:latest
     ports:
       - "6379:6379"
 
@@ -55,7 +55,7 @@ services:
     build:
       context: .
       target: build-static
-    image: quay-build:latest
+    image: localhost/quay-build:latest
     init: true
     volumes:
       - ".:/quay-registry"
@@ -73,7 +73,7 @@ services:
     build:
       context: .
       target: final
-    image: quay-local:latest
+    image: localhost/quay-local:latest
     volumes:
       - ".:/quay-registry"
       - "./local-dev/stack:/quay-registry/conf/stack"
