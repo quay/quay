@@ -69,7 +69,6 @@ case "$QUAYENTRY" in
         fi
         export OPERATOR_ENDPOINT="${OPERATOR_ENDPOINT}"
 
-        "${QUAYPATH}/conf/init/certs_create.sh" || exit
         "${QUAYPATH}/conf/init/certs_install.sh" || exit
         "${QUAYPATH}/conf/init/supervisord_conf_create.sh" config || exit
         exec supervisord -c "${QUAYCONF}/supervisord.conf" 2>&1
