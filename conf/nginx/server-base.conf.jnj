@@ -139,6 +139,7 @@ location ~ /v2/([^/]+)(/[^/]+)+/blobs/ {
     proxy_buffering off;
     proxy_request_buffering off;
     proxy_read_timeout 2000;
+    proxy_send_timeout 2000;
     proxy_temp_path /tmp 1 2;
 
     client_max_body_size {{ maximum_layer_size }};
