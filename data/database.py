@@ -45,7 +45,7 @@ from data.fields import (
 from data.decorators import deprecated_model
 from data.text import match_mysql, match_like
 from data.encryption import FieldEncrypter
-from data.readreplica import ReadReplicaSupportedModel, ReadOnlyConfig, disallow_replica_use
+from data.readreplica import QuayDatabaseModel, ReadOnlyConfig, disallow_replica_use
 from data.estimate import mysql_estimate_row_count, normal_row_count
 from singletons.config import app_config
 from util.names import urn_generator
@@ -77,6 +77,7 @@ _SCHEME_DRIVERS = {
     "sqlite": schemedriver(SqliteDatabase, PooledSqliteDatabase),
     "postgresql": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
     "postgresql+psycopg2": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
+    "cockroachdb": schemedriver(PostgresqlDatabase, PooledPostgresqlDatabase),
 }
 
 
@@ -86,6 +87,7 @@ SCHEME_MATCH_FUNCTION = {
     "sqlite": match_like,
     "postgresql": match_like,
     "postgresql+psycopg2": match_like,
+    "cockroachdb": match_like,
 }
 
 
@@ -95,6 +97,7 @@ SCHEME_RANDOM_FUNCTION = {
     "sqlite": fn.Random,
     "postgresql": fn.Random,
     "postgresql+psycopg2": fn.Random,
+    "cockroachdb": fn.Random,
 }
 
 
@@ -104,12 +107,14 @@ SCHEME_ESTIMATOR_FUNCTION = {
     "sqlite": normal_row_count,
     "postgresql": normal_row_count,
     "postgresql+psycopg2": normal_row_count,
+    "cockroachdb": normal_row_count,
 }
 
 
 PRECONDITION_VALIDATION = {
     "postgresql": validate_postgres_precondition,
     "postgresql+psycopg2": validate_postgres_precondition,
+    "cockroachdb": validate_postgres_precondition,
 }
 
 
@@ -326,6 +331,7 @@ class TupleSelector(object):
 
 db = Proxy()
 read_only_config = Proxy()
+double_write_config = Proxy()
 db_random_func = CallableProxy()
 db_match_func = CallableProxy()
 db_for_update = CallableProxy()
@@ -507,6 +513,7 @@ def configure(config_object, testing=False):
 
     read_replicas = config_object.get("DB_READ_REPLICAS", None)
     is_read_only = config_object.get("REGISTRY_STATE", "normal") == "readonly"
+    secondary_write_db_uri = config_object.get("SECONDARY_WRITE_DB_URI", None)
 
     read_replica_dbs = []
     if read_replicas:
@@ -520,6 +527,9 @@ def configure(config_object, testing=False):
         ]
 
     read_only_config.initialize(ReadOnlyConfig(is_read_only, read_replica_dbs))
+
+    if secondary_write_db_uri is not None:
+        double_write_config.initialize(_db_from_url(secondary_write_db_uri, db_kwargs))
 
     def _db_transaction():
         return config_object["DB_TRANSACTION_FACTORY"](db)
@@ -645,11 +655,12 @@ def deprecated_field(field, flag):
     return None
 
 
-class BaseModel(ReadReplicaSupportedModel):
+class BaseModel(QuayDatabaseModel):
     class Meta:
         database = db
         encrypter = db_encrypter
         read_only_config = read_only_config
+        double_write_database = double_write_config
 
     def __getattribute__(self, name):
         """

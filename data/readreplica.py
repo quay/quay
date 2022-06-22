@@ -71,7 +71,32 @@ class AutomaticFailoverWrapper(object):
                     raise
 
 
-class ReadReplicaSupportedModel(Model):
+class DoubleWriteWrapper(AutomaticFailoverWrapper):
+    def __init__(self, primary_db, fallback_db, secondary_write_db=None):
+        super().__init__(primary_db, fallback_db)
+        self._secondary_write_db = secondary_write_db
+
+    def __getattr__(self, attribute):
+        return super().__getattr__(attribute)
+
+    def execute(self, query, commit=SENTINEL, **context_options):
+        ctx = self.get_sql_context(**context_options)
+        sql, params = ctx.sql(query).query()
+        return self.execute_sql(sql, params, commit=commit)
+
+    def execute_sql(self, sql, params=None, commit=SENTINEL):
+        result = super().execute_sql(sql, params, commit)
+        # TODO: remove try when we tie primary and secondary together under transaction
+        if self._secondary_write_db is not None:
+            try:
+                self._secondary_write_db.execute_sql(sql, params, commit)
+            except:
+                pass
+
+        return result
+
+
+class QuayDatabaseModel(Model):
     """
     Base model for peewee data models that support using a read replica for SELECT requests not
     under transactions, and automatic failover to the master if the read replica fails.
@@ -109,27 +134,34 @@ class ReadReplicaSupportedModel(Model):
 
         Otherwise, selects the master database.
         """
+        database = cls._meta.database
+        if cls._meta.double_write_database is not None:
+            database = DoubleWriteWrapper(cls._meta.database, None, cls._meta.double_write_database)
+
         # Select the master DB if read replica support is not enabled.
         read_only_config = cls._read_only_config()
         if not read_only_config.read_replicas:
-            return cls._meta.database
+            return database
 
         # Select the master DB if we're ever under a transaction.
         if cls._meta.database.transaction_depth() > 0:
-            return cls._meta.database
+            return database
 
         # Select if forced.
         if getattr(cls._meta.database._state, _FORCE_MASTER_COUNTER_ATTRIBUTE, 0) > 0:
-            return cls._meta.database
+            return database
 
         # Otherwise, return a read replica database with auto-retry onto the main database.
         replicas = read_only_config.read_replicas
         selected_read_replica = replicas[random.randrange(len(replicas))]
-        return AutomaticFailoverWrapper(selected_read_replica, cls._meta.database)
+
+        return DoubleWriteWrapper(
+            cls._meta.database, selected_read_replica, cls._meta.double_write_database
+        )
 
     @classmethod
     def select(cls, *args, **kwargs):
-        query = super(ReadReplicaSupportedModel, cls).select(*args, **kwargs)
+        query = super(QuayDatabaseModel, cls).select(*args, **kwargs)
         query._database = cls._select_database()
         return query
 
@@ -138,28 +170,36 @@ class ReadReplicaSupportedModel(Model):
         if is_deprecated_model(cls):
             raise Exception("Attempt to write to deprecated model %s" % cls)
 
-        query = super(ReadReplicaSupportedModel, cls).insert(*args, **kwargs)
+        query = super(QuayDatabaseModel, cls).insert(*args, **kwargs)
         if cls._in_readonly_mode():
             raise ReadOnlyModeException()
+        query._database = cls._select_database()
+        return query
+
+    @classmethod
+    def insert_many(cls, *args, **kwargs):
+        query = super(QuayDatabaseModel, cls).insert_many(*args, **kwargs)
+        query._database = cls._select_database()
         return query
 
     @classmethod
     def update(cls, *args, **kwargs):
-        query = super(ReadReplicaSupportedModel, cls).update(*args, **kwargs)
+        query = super(QuayDatabaseModel, cls).update(*args, **kwargs)
         if cls._in_readonly_mode():
             raise ReadOnlyModeException()
+        query._database = cls._select_database()
         return query
 
     @classmethod
     def delete(cls, *args, **kwargs):
-        query = super(ReadReplicaSupportedModel, cls).delete(*args, **kwargs)
+        query = super(QuayDatabaseModel, cls).delete(*args, **kwargs)
         if cls._in_readonly_mode():
             raise ReadOnlyModeException()
         return query
 
     @classmethod
     def raw(cls, *args, **kwargs):
-        query = super(ReadReplicaSupportedModel, cls).raw(*args, **kwargs)
+        query = super(QuayDatabaseModel, cls).raw(*args, **kwargs)
         if query._sql.lower().startswith("select "):
             query._database = cls._select_database()
         elif cls._in_readonly_mode():
@@ -168,4 +208,34 @@ class ReadReplicaSupportedModel(Model):
             if is_deprecated_model(cls):
                 raise Exception("Attempt to write to deprecated model %s" % cls)
 
+        return query
+
+    @classmethod
+    def insert_from(cls, *args, **kwargs):
+        query = super().insert_from(*args, **kwargs)
+        query._database = cls._select_database()
+        return query
+
+    @classmethod
+    def replace(cls, *args, **kwargs):
+        query = super().replace(*args, **kwargs)
+        query._database = cls._select_database()
+        return query
+
+    @classmethod
+    def replace_many(cls, *args, **kwargs):
+        query = super().replace_many(*args, **kwargs)
+        query._database = cls._select_database()
+        return query
+
+    @classmethod
+    def set_by_id(cls, *args, **kwargs):
+        query = super().set_by_id(*args, **kwargs)
+        query._database = cls._select_database()
+        return query
+
+    @classmethod
+    def delete_by_id(cls, pk):
+        query = super().delete_by_id(pk)
+        query._database = cls._select_database()
         return query
