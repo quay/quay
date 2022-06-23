@@ -1,7 +1,8 @@
-from typing import Union, List
 import os
 import os.path
 import sys
+from typing import Dict, Optional, TypedDict
+
 import jinja2
 
 QUAYPATH = os.getenv("QUAYPATH", ".")
@@ -12,11 +13,18 @@ QUAYRUN_DIR = os.getenv("QUAYRUN", QUAYCONF_DIR)
 QUAY_LOGGING = os.getenv("QUAY_LOGGING", "stdout")  # or "syslog"
 QUAY_HOTRELOAD: bool = os.getenv("QUAY_HOTRELOAD", "false") == "true"
 
-QUAY_SERVICES: Union[List, str] = os.getenv("QUAY_SERVICES", [])
-QUAY_OVERRIDE_SERVICES: Union[List, str] = os.getenv("QUAY_OVERRIDE_SERVICES", [])
+QUAY_SERVICES: Optional[str] = os.getenv("QUAY_SERVICES")
+QUAY_OVERRIDE_SERVICES: Optional[str] = os.getenv("QUAY_OVERRIDE_SERVICES")
 
 
-def registry_services():
+class ServiceConfig(TypedDict):
+    autostart: str
+
+
+Config = Dict[str, ServiceConfig]
+
+
+def registry_services() -> Config:
     return {
         "blobuploadcleanupworker": {"autostart": "true"},
         "buildlogsarchiver": {"autostart": "true"},
@@ -51,7 +59,7 @@ def registry_services():
     }
 
 
-def config_services():
+def config_services() -> Config:
     return {
         "blobuploadcleanupworker": {"autostart": "false"},
         "buildlogsarchiver": {"autostart": "false"},
@@ -86,7 +94,9 @@ def config_services():
     }
 
 
-def generate_supervisord_config(filename, config, logdriver, hotreload):
+def generate_supervisord_config(
+    filename: str, config: Config, logdriver: str, hotreload: bool
+) -> None:
     with open(filename + ".jnj") as f:
         template = jinja2.Template(f.read())
     rendered = template.render(config=config, logdriver=logdriver, hotreload=hotreload)
@@ -95,8 +105,8 @@ def generate_supervisord_config(filename, config, logdriver, hotreload):
         f.write(rendered)
 
 
-def limit_services(config, enabled_services):
-    if enabled_services == []:
+def limit_services(config: Config, enabled_services: Optional[str]) -> None:
+    if enabled_services is None:
         return
 
     for service in list(config.keys()):
@@ -106,8 +116,8 @@ def limit_services(config, enabled_services):
             config[service]["autostart"] = "false"
 
 
-def override_services(config, override_services):
-    if override_services == []:
+def override_services(config: Config, override_services: Optional[str]) -> None:
+    if override_services is None:
         return
 
     for service in list(config.keys()):
