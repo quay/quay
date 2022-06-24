@@ -1,5 +1,4 @@
 import logging
-import time
 
 from contextlib import contextmanager
 
@@ -81,21 +80,11 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, GarbageCollectionWorker(), features.GARBAGE_COLLECTION)
+    worker = GunicornWorker(__name__, GarbageCollectionWorker())
     return worker
 
 
 if __name__ == "__main__":
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.GARBAGE_COLLECTION:
-        logger.debug("Garbage collection is disabled; skipping")
-        while True:
-            time.sleep(100000)
-
     GlobalLock.configure(app_config)
     worker = GarbageCollectionWorker()
     worker.start()

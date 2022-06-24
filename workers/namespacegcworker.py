@@ -1,7 +1,4 @@
 import logging
-import time
-
-import features
 
 from data import model
 from singletons.config import app_config
@@ -58,22 +55,12 @@ def create_gunicorn_worker() -> GunicornWorker:
         poll_period_seconds=POLL_PERIOD_SECONDS,
         reservation_seconds=NAMESPACE_GC_TIMEOUT,
     )
-    worker = GunicornWorker(__name__, gc_worker, features.NAMESPACE_GARBAGE_COLLECTION)
+    worker = GunicornWorker(__name__, gc_worker)
     return worker
 
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.NAMESPACE_GARBAGE_COLLECTION:
-        logger.debug("Namespace garbage collection is disabled; skipping")
-        while True:
-            time.sleep(100000)
 
     GlobalLock.configure(app_config)
     logger.debug("Starting namespace GC worker")

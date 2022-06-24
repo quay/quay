@@ -1,9 +1,7 @@
 import logging
-import time
+import logging.config
 
-import features
-
-from app import app, storage, secscan_notification_queue, secscan_model, registry_model
+from app import secscan_notification_queue, secscan_model, registry_model
 from data.secscan_model.datatypes import PaginatedNotificationStatus
 from notifications import notification_batch
 from workers.queueworker import QueueWorker, JobException
@@ -12,7 +10,6 @@ from util.secscan import PRIORITY_LEVELS
 from workers.gunicorn_worker import GunicornWorker
 
 logger = logging.getLogger(__name__)
-
 
 _POLL_PERIOD_SECONDS = 60
 _PROCESSING_SECONDS_EXPIRATION = 60 * 60  # 1 hour
@@ -141,31 +138,15 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    feature_flag = features.SECURITY_SCANNER and features.SECURITY_NOTIFICATIONS
     note_worker = SecurityScanningNotificationWorker(
         secscan_notification_queue, poll_period_seconds=_POLL_PERIOD_SECONDS
     )
-    worker = GunicornWorker(__name__, note_worker, feature_flag)
+    worker = GunicornWorker(__name__, note_worker)
     return worker
 
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.SECURITY_SCANNER:
-        logger.debug("Security scanner disabled; sleeping")
-        while True:
-            time.sleep(10000)
-
-    if not features.SECURITY_NOTIFICATIONS:
-        logger.debug("Security scanner notifications disabled; sleeping")
-        while True:
-            time.sleep(10000)
 
     logger.debug("Starting security scanning notification worker")
     worker = SecurityScanningNotificationWorker(

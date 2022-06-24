@@ -1,7 +1,5 @@
 import logging
-import time
-
-import features
+import logging.config
 
 from data import model, database
 from singletons.config import app_config
@@ -12,7 +10,6 @@ from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import QueueWorker, WorkerSleepException
 
 logger = logging.getLogger(__name__)
-
 
 POLL_PERIOD_SECONDS = 60
 REPOSITORY_GC_TIMEOUT = 3 * 60 * 60  # 3h
@@ -64,22 +61,12 @@ def create_gunicorn_worker() -> GunicornWorker:
         reservation_seconds=REPOSITORY_GC_TIMEOUT,
     )
 
-    worker = GunicornWorker(__name__, gc_worker, features.REPOSITORY_GARBAGE_COLLECTION)
+    worker = GunicornWorker(__name__, gc_worker)
     return worker
 
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.REPOSITORY_GARBAGE_COLLECTION:
-        logger.info("Repository garbage collection is disabled; skipping")
-        while True:
-            time.sleep(100000)
 
     GlobalLock.configure(app_config)
     logger.debug("Starting repository GC worker")

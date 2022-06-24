@@ -29,7 +29,6 @@ from data.cache import get_model_cache
 from data.model.user import LoginWrappedDBUser
 from data.userevent import UserEventsBuilderModule
 from data.userfiles import Userfiles
-from data.users import UserAuthentication
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
 from image.oci import register_artifact_type
@@ -63,6 +62,7 @@ from singletons.config import config_provider, get_app_url  # also initialize ap
 from singletons.workqueues import *  # noqa: F401, F403
 
 # Initialize app
+from singletons.authentication import authentication
 from singletons.avatar import avatar
 from singletons.mail import mail
 
@@ -210,7 +210,6 @@ analytics = Analytics(app)
 billing = Billing(app)
 sentry = Sentry(app)
 build_logs = BuildLogs(app)
-authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY)
 userevents = UserEventsBuilderModule(app)
 superusers = SuperUserManager(app)
 instance_keys = InstanceKeys(app)

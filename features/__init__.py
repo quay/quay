@@ -1,3 +1,5 @@
+import os
+
 from singletons.config import app_config
 
 _FEATURES = {}
@@ -10,6 +12,10 @@ def import_features(config_dict):
             _FEATURES[feature_name] = globals()[feature_name] = FeatureNameValue(
                 feature_name, feature_val
             )
+    for key, val in os.environ.items():
+        if key.startswith("QUAY_FEATURE_"):
+            feature_name = key[len("QUAY_FEATURE_") :]
+            _FEATURES[feature_name] = globals()[feature_name] = FeatureNameValue(feature_name, val)
 
 
 def get_features():

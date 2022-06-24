@@ -1,5 +1,4 @@
 import logging
-import time
 
 from datetime import date, timedelta
 from math import log10
@@ -8,7 +7,6 @@ import features
 
 from data import model, database
 from data.logs_model import logs_model
-from singletons.config import app_config
 from util.migrate.allocator import yield_random_entries
 from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
@@ -114,22 +112,10 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(
-        __name__, RepositoryActionCountWorker(), features.REPOSITORY_ACTION_COUNTER
-    )
+    worker = GunicornWorker(__name__, RepositoryActionCountWorker())
     return worker
 
 
 if __name__ == "__main__":
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.REPOSITORY_ACTION_COUNTER:
-        logger.info("Repository action count is disabled; skipping")
-        while True:
-            time.sleep(100000)
-
     worker = RepositoryActionCountWorker()
     worker.start()
