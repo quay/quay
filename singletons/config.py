@@ -5,7 +5,7 @@ from functools import partial
 
 from _init import OVERRIDE_CONFIG_DIRECTORY, IS_TESTING, IS_KUBERNETES
 from singletons.app import _app as app
-from util import get_app_url
+from util import get_app_url as util_get_app_url
 from util.config.configutil import generate_secret_key
 from util.config.provider import get_config_provider
 
@@ -59,6 +59,6 @@ if app.config["PREFERRED_URL_SCHEME"] == "https" and not app.config.get(
 
 logger.debug("Loaded config", extra={"config": app.config})
 
-get_app_url = partial(get_app_url, app.config)
+get_app_url = partial(util_get_app_url, app.config)
 
 app_config = app.config

@@ -13,28 +13,28 @@ from endpoints.api.appspecifictokens import *
 from endpoints.api.billing import *
 from endpoints.api.build import *
 from endpoints.api.discovery import *
-from endpoints.api.globalmessages import *
-from endpoints.api.logs import *
-from endpoints.api.manifest import *
+from endpoints.api.globalmessages import *  # type: ignore[no-redef]
+from endpoints.api.logs import *  # type: ignore[no-redef]
+from endpoints.api.manifest import *  # type: ignore[no-redef]
 from endpoints.api.organization import *
-from endpoints.api.permission import *
+from endpoints.api.permission import *  # type: ignore[no-redef]
 from endpoints.api.prototype import *
-from endpoints.api.repoemail import *
-from endpoints.api.repository import *
-from endpoints.api.repositorynotification import *
+from endpoints.api.repoemail import *  # type: ignore[no-redef]
+from endpoints.api.repository import *  # type: ignore[no-redef]
+from endpoints.api.repositorynotification import *  # type: ignore
 from endpoints.api.repotoken import *
-from endpoints.api.robot import *
-from endpoints.api.search import *
+from endpoints.api.robot import *  # type: ignore[no-redef]
+from endpoints.api.search import *  # type: ignore
 from endpoints.api.secscan import *
-from endpoints.api.signing import *
-from endpoints.api.subscribe import *
-from endpoints.api.suconfig import *
-from endpoints.api.superuser import *
-from endpoints.api.tag import *
+from endpoints.api.signing import *  # type: ignore[no-redef]
+from endpoints.api.subscribe import *  # type: ignore[no-redef]
+from endpoints.api.suconfig import *  # type: ignore[no-redef]
+from endpoints.api.superuser import *  # type: ignore
+from endpoints.api.tag import *  # type: ignore[no-redef]
 from endpoints.api.team import *
 from endpoints.api.trigger import *
 from endpoints.api.user import *
-from endpoints.api.mirror import *
+from endpoints.api.mirror import *  # type: ignore[no-redef]
 from endpoints.api.namespacequota import *
 
 from endpoints.api.repository import Repository

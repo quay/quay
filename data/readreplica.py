@@ -1,12 +1,17 @@
+from __future__ import annotations
 import random
+from typing import Type, TypeVar
 
 from collections import namedtuple
 from contextlib import contextmanager
 
-from peewee import Model, SENTINEL, OperationalError, Proxy
+from peewee import Model, SENTINEL, OperationalError, Proxy, ModelSelect
 
 from data.decorators import is_deprecated_model
 
+TReadReplicaSupportedModel = TypeVar(
+    "TReadReplicaSupportedModel", bound="ReadReplicaSupportedModel"
+)
 
 ReadOnlyConfig = namedtuple("ReadOnlyConfig", ["is_readonly", "read_replicas"])
 
@@ -128,7 +133,9 @@ class ReadReplicaSupportedModel(Model):
         return AutomaticFailoverWrapper(selected_read_replica, cls._meta.database)
 
     @classmethod
-    def select(cls, *args, **kwargs):
+    def select(
+        cls: Type[TReadReplicaSupportedModel], *args, **kwargs
+    ) -> ModelSelect[TReadReplicaSupportedModel]:
         query = super(ReadReplicaSupportedModel, cls).select(*args, **kwargs)
         query._database = cls._select_database()
         return query
