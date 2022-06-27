@@ -132,6 +132,12 @@ class FederatedUsers(object):
         """
         return (None, "Not supported")
 
+    def is_superuser(self, username):
+        raise NotImplementedError()
+
+    def has_superusers(self):
+        raise NotImplementedError()
+
     def _get_and_link_federated_user_info(self, username, email, internal_create=False):
         db_user = model.user.verify_federated_login(self._federated_service, username)
         if not db_user:

@@ -351,3 +351,6 @@ class KeystoneV3Users(FederatedUsers):
                 self.federated_service,
                 str(cle) or "Invalid admin username or password",
             )
+
+    def is_superuser(self, username):
+        raise NotImplementedError()

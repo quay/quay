@@ -6,11 +6,13 @@ import uuid
 import features
 
 from data import model
+from data.users.apptoken import AppTokenInternalAuth
 from data.users.database import DatabaseUsers
 from data.users.externalldap import LDAPUsers
 from data.users.externaljwt import ExternalJWTAuthN
+from data.users.federated import FederatedUsers
 from data.users.keystone import get_keystone_users
-from data.users.apptoken import AppTokenInternalAuth
+from util.config.superusermanager import SuperUserManager as ConfigSuperUserManager
 from util.security.aes import AESCipher
 from util.security.secret import convert_secret_key
 
@@ -61,6 +63,7 @@ def get_users_handler(config, _, override_config_dir):
         timeout = config.get("LDAP_TIMEOUT")
         network_timeout = config.get("LDAP_NETWORK_TIMEOUT")
         ldap_user_filter = config.get("LDAP_USER_FILTER", None)
+        ldap_superuser_filter = config.get("LDAP_SUPERUSER_FILTER", None)
 
         allow_tls_fallback = config.get("LDAP_ALLOW_INSECURE_FALLBACK", False)
         return LDAPUsers(
@@ -77,6 +80,7 @@ def get_users_handler(config, _, override_config_dir):
             timeout=timeout,
             network_timeout=network_timeout,
             ldap_user_filter=ldap_user_filter,
+            ldap_superuser_filter=ldap_superuser_filter,
         )
 
     if authentication_type == "JWT":
@@ -325,5 +329,49 @@ class UserAuthentication(object):
 
         return (result, err_msg)
 
+    def is_superuser(username):
+        return self.state.is_superuser(username)
+
     def __getattr__(self, name):
         return getattr(self.state, name, None)
+
+
+class SuperUserManager(object):
+    def __init__(self, app, authentication):
+        self.authentication = authentication
+        self.state = self.init_app(app, authentication)
+
+    def init_app(self, app, authentication):
+        manager = None
+        if authentication.federated_service:
+            manager = FederetedSuperUserManager(app, authentication)
+        else:
+            manager = ConfigSuperUserManager(app)
+
+        return manager
+
+    def __getattr__(self, name):
+        return getattr(self.state, name, None)
+
+
+class FederatedSuperUserManager(ConfigSuperUserManager):
+    """
+    Helper class to access superusers defined in the backed federated provider.
+    Falls back to the in-memory helper if not available in the federated service.
+    """
+
+    def __init__(self, app, authentication):
+        self.federated_users = authentication
+        super().__init__(self, app)
+
+    def is_superuser(self, username):
+        """
+        Returns if the given username represents a super user.
+        """
+        return self.federated_users.is_superuser(username) or super().is_superuser(username)
+
+    def has_superusers(self):
+        """
+        Returns whether there are any superusers defined.
+        """
+        return super().has_superusers(self) or self.authentication.has_superusers()
