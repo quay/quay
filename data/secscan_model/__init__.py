@@ -1,6 +1,4 @@
-import os
 import logging
-from collections import namedtuple
 
 from data.secscan_model.secscan_v4_model import (
     V4SecurityScanner,
@@ -9,8 +7,9 @@ from data.secscan_model.secscan_v4_model import (
 )
 from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.secscan_model.datatypes import SecurityInformationLookupResult, ScanLookupStatus
-from data.database import Manifest
-from data.registry_model.datatypes import Manifest as ManifestDataType
+from singletons.app import _app as app
+from singletons.instance_keys import instance_keys
+from singletons.storage import storage
 
 
 logger = logging.getLogger(__name__)
@@ -66,3 +65,4 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
 
 
 secscan_model = SecurityScannerModelProxy()
+secscan_model.configure(app, instance_keys, storage)
