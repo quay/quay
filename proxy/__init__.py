@@ -55,15 +55,32 @@ class Proxy:
             config.upstream_registry_hostname,
             config.upstream_registry_hostname,
         )
-        url = f"https://{hostname}"
-        if config.insecure:
-            url = f"http://{hostname}"
 
-        self.base_url = url
         self._session = requests.Session()
+
+        self.base_url = self._get_valid_upstream_registry(hostname)
         self._repo = repository
         self._authorize(self._credentials(), force_renewal=self._validation)
-        # flag used for validating Proxy cache config before saving to db
+        # flag used for validating Proxy cache config before saving to db    
+
+    def _get_valid_upstream_registry(self, hostname: str) -> str :
+        url = f"https://{hostname}"
+        if self._config.insecure:
+            # ignore verifying the SSL certificate
+            self._session.verify = False
+        try:
+            resp = self._safe_request(self._session.get, f"{url}/v2")
+            if resp.ok or resp.status_code == 401:
+                return url
+        except requests.exceptions.SSLError:
+            raise UpstreamRegistryError(f"SSL certificate verification failed for upstream registry")
+        
+        # https + insecure failed, so fallback to http
+        url = f"http://{hostname}"
+        resp = self._safe_request(self._session.get, f"{url}/v2")
+        if not resp.ok and (resp.status_code == 404 or resp.status_code == 429):
+            raise UpstreamRegistryError(f"Connection to upstream registry failed with status code {resp.status_code}")
+        return url
 
     def get_manifest(
         self, image_ref: str, media_types: list[str] | None = None
