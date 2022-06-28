@@ -3925,6 +3925,10 @@ i.mesos-icon {
   color: black;
 }
 
+.onprem .cor-title-link a.level-up-link:before {
+  color: black;
+}
+
 .onprem .co-fx-text-shadow span {
     text-shadow:none;
     color: black;
