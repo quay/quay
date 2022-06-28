@@ -2,6 +2,9 @@
 
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
+
+<a name="v3.7.3"></a>
+## [v3.7.3] - 2022-06-27
 ### Builders
 - [d11d45f2](https://github.com/quay/quay/commit/d11d45f208bc3c78f852bab0cb7686aa6f125c62): Send notifications on build completion (PROJQUAY-3614) ([#1346](https://github.com/quay/quay/issues/1346))
 - [1d2e55b6](https://github.com/quay/quay/commit/1d2e55b63d906d949de792fd5b9481a6dd42568b): Set imagePullPolicy to always (PROJQUAY-3507) ([#1330](https://github.com/quay/quay/issues/1330))
@@ -11,6 +14,8 @@
 ### Bump
 - [b21400b9](https://github.com/quay/quay/commit/b21400b90d46ff1d6a989c2b3008769420bbd608): Bump to redeploy Quay pods to reflect new endpoint (PROJQUAY-2056) ([#1327](https://github.com/quay/quay/issues/1327))
 ### Chore
+- [8e1fba48](https://github.com/quay/quay/commit/8e1fba48420087eadaf57ed6892780e44a767cdf): Fix startup script ([#1402](https://github.com/quay/quay/issues/1402))
+- [cf52f5e3](https://github.com/quay/quay/commit/cf52f5e3716009e87d251d71a7057343b81d33e6): Use Python 3.9 ([#1382](https://github.com/quay/quay/issues/1382))
 - [5eaf0584](https://github.com/quay/quay/commit/5eaf0584dbc87d7eeb135de63bbea4c7d40a1fa0): Run mypy as CI job ([#1363](https://github.com/quay/quay/issues/1363))
 - [13f8e0c4](https://github.com/quay/quay/commit/13f8e0c4b3ac6b48503cadb8c191832f499e61c0): Rebuild quay image if requirements.txt is changed ([#1342](https://github.com/quay/quay/issues/1342))
 ### Chore: V3.7.0 Changelog Bump (Https
@@ -37,6 +42,7 @@
 - [f90e5e3d](https://github.com/quay/quay/commit/f90e5e3dcef4bb312e31aaf5a4ce536e81e3e424): Configuring Quota for user panel(PROJQUAY-3767) ([#1334](https://github.com/quay/quay/issues/1334))
 - [1e4871ec](https://github.com/quay/quay/commit/1e4871eca27ea1878937a49fb2974401c5963512): Add Cache To Tag Delete (PROJQUAY-3828) ([#1345](https://github.com/quay/quay/issues/1345))
 ### Quota
+- [a0df8950](https://github.com/quay/quay/commit/a0df895005bcd3e53847046f69f6a7add87c88fd): Fix calculating org size (PROJQUAY-3889) ([#1391](https://github.com/quay/quay/issues/1391))
 - [f28b35cc](https://github.com/quay/quay/commit/f28b35cc311dae94671cc6bce4b11abc9a68e917): Fix join on caching repo size (PROJQUAY-3889) ([#1378](https://github.com/quay/quay/issues/1378))
 - [9d8ff6b1](https://github.com/quay/quay/commit/9d8ff6b1c109fdc285298d32ec2a83069bd90556): address possible integrity exception if computing size concurrently (PROJQUAY-3752) ([#1303](https://github.com/quay/quay/issues/1303))
 ### Quota Management
@@ -60,6 +66,8 @@
 - [0826ac0e](https://github.com/quay/quay/commit/0826ac0e4e6da68dab99a9746e09c5181b2e516b): Use requests client in screening call (PROJQUAY-2056) ([#1321](https://github.com/quay/quay/issues/1321))
 - [4e739d30](https://github.com/quay/quay/commit/4e739d30bf6be74b5094012ab5aae91865a59ef7): Update mount path for export compliance certificate (PROJQUAY-2056) ([#1320](https://github.com/quay/quay/issues/1320))
 - [2c3e26a3](https://github.com/quay/quay/commit/2c3e26a322501aef73d887fc2346ef7e1610fdff): Add test for RHSSO OAuth service (PROJQUAY-2056) ([#1317](https://github.com/quay/quay/issues/1317))
+### Storage
+- [56b16b70](https://github.com/quay/quay/commit/56b16b70cca1ff0f5f51dd2fb47852027d66eef6): optimize large azure chunked upload (PROJQUAY-3753) ([#1387](https://github.com/quay/quay/issues/1387))
 ### UI
 - [ba2aa54d](https://github.com/quay/quay/commit/ba2aa54d3fc081c052d65c899b49f67dd6ca3ada): Superuser user panel settings icon permissions fix (PROJQUAY-3905) ([#1364](https://github.com/quay/quay/issues/1364))
 - [c93661e9](https://github.com/quay/quay/commit/c93661e9d51a645b43760db83b20f8b9c8041d3c): Show settings icon for super user under Superuser Users Panel (PROJQUAY-3905) ([#1358](https://github.com/quay/quay/issues/1358))
@@ -67,6 +75,42 @@
 - [d9dbbd88](https://github.com/quay/quay/commit/d9dbbd88dbb9a1da95ef46195bcfb5458db6a7b8): basic support for cosign in the UI (PROJQUAY-3965) ([#1380](https://github.com/quay/quay/issues/1380))
 ### V2auth
 - [fd9a6b2e](https://github.com/quay/quay/commit/fd9a6b2e606db6d20bb079f4c3a942e176f83a0c): Check for user before creating org (PROJQUAY-3766) ([#1315](https://github.com/quay/quay/issues/1315))
+
+<a name="v3.7.2"></a>
+## [v3.7.2] - 2022-06-22
+### Builders
+- [ec8da07c](https://github.com/quay/quay/commit/ec8da07c2eee80a78deef94db23e60e734b2195a): Send notifications on build completion (PROJQUAY-3614) ([#1367](https://github.com/quay/quay/issues/1367))
+### Chore: V3.7.1 Changelog Bump (Https
+- [ece9d54f](https://github.com/quay/quay/commit/ece9d54f41bd30d6a43d6b1ec33426ed41e02494): //issues.redhat.com/browse/PROJQUAY-3836) ([#1373](https://github.com/quay/quay/issues/1373))
+### Chore: V3.7.2 Changelog Bump (Https
+- [78814ef2](https://github.com/quay/quay/commit/78814ef22fd5828dc0e105c9fb3c06734557e2b4): //issues.redhat.com/browse/PROJQUAY-3932) ([#1406](https://github.com/quay/quay/issues/1406))
+### Fix
+- [6090bd05](https://github.com/quay/quay/commit/6090bd05a7368a7cbf8afbfd4818f78d7fab43bf): enable non-admins to cache images via pull-thru (PROJQUAY-3806) ([#1366](https://github.com/quay/quay/issues/1366)) ([#1379](https://github.com/quay/quay/issues/1379))
+### GUI
+- [5487b269](https://github.com/quay/quay/commit/5487b269f2d4c02f2a2e0188db9ff2e464b012f0): Show how to pull an image using podman pull ([#1377](https://github.com/quay/quay/issues/1377))
+### Quota
+- [af28e832](https://github.com/quay/quay/commit/af28e832d82cecc88be7482ac045c5145397d115): Fix calculating org size (PROJQUAY-3889) ([#1393](https://github.com/quay/quay/issues/1393))
+- [058b9d34](https://github.com/quay/quay/commit/058b9d34ceaa1014bced26e2a18d6a3af44490e0): Fix join on caching repo size (PROJQUAY-3889) ([#1381](https://github.com/quay/quay/issues/1381))
+### Requirements.Txt
+- [c0cdee4e](https://github.com/quay/quay/commit/c0cdee4e6c5583fcad833372dfb06094aaa6ea81): bump flask-restful from 0.3.7 to 0.3.9 ([#1376](https://github.com/quay/quay/issues/1376))
+### UI
+- [abbbe4ad](https://github.com/quay/quay/commit/abbbe4addc42aec757cf2d7d52790c0ab8fab9c3): Superuser user panel settings icon permissions fix (PROJQUAY-3905) ([#1368](https://github.com/quay/quay/issues/1368))
+### [Redhat-3.7] Quota UI
+- [179a7dbf](https://github.com/quay/quay/commit/179a7dbfb09834ab39802f75886b2add032a352f): Show quota consumption in whole numbers on super user organizations panel (PROJQUAY-3974) ([#1386](https://github.com/quay/quay/issues/1386))
+
+<a name="v3.7.1"></a>
+## [v3.7.1] - 2022-06-06
+### Init
+- [e37960f2](https://github.com/quay/quay/commit/e37960f258638266c55c7c1d6659da7f818c3d1f): fix bash path before appending certs (PROJQUAY-3881) ([#1360](https://github.com/quay/quay/issues/1360))
+- [cba35f91](https://github.com/quay/quay/commit/cba35f91be47eee17c4715620e239a3934b9ba82): ensure a newline is present before appending certs (PROJQUAY-3881) ([#1357](https://github.com/quay/quay/issues/1357))
+- [c1227410](https://github.com/quay/quay/commit/c122741063bdf4fac9d7e1d7deecc9c076ba23b1): ensure a newline is present before appending certs (PROJQUAY-3881) ([#1354](https://github.com/quay/quay/issues/1354))
+### Pull-Thru
+- [a7ffd5c7](https://github.com/quay/quay/commit/a7ffd5c7ec4179cc6aba7fbf8ac3690ed43ab0a2): bump expiration of all parent manifest lists on pull (PROJQUAY-3818) ([#1343](https://github.com/quay/quay/issues/1343))
+### [Redhat-3.7] Quota
+- [abe1528d](https://github.com/quay/quay/commit/abe1528da8fed94fd4ecaa950f0bc567400b58b3): Configuring Quota for user panel(PROJQUAY-3767) ([#1353](https://github.com/quay/quay/issues/1353))
+- [0cafea97](https://github.com/quay/quay/commit/0cafea97d869fb953ffa28df18c60b3fcb2abb3d): Add Cache To Tag Delete (PROJQUAY-3828) ([#1347](https://github.com/quay/quay/issues/1347))
+### [Redhat-3.7] UI
+- [5de7b6ce](https://github.com/quay/quay/commit/5de7b6ce4cfe703fc7f259dee837dc6ea22341a7): Show settings icon for super user under Superuser Users Panel (PROJQUAY-3905) ([#1361](https://github.com/quay/quay/issues/1361))
 
 <a name="v3.7.0"></a>
 ## [v3.7.0] - 2022-05-23
@@ -412,29 +456,19 @@
 
 <a name="v3.6.2"></a>
 ## [v3.6.2] - 2021-12-02
+### Api
+- [6470248b](https://github.com/quay/quay/commit/6470248be1ca55ab3ea6f2a364bc02547976186d): /v1/user/initialize to create first user (PROJQUAY-1926) ([#771](https://github.com/quay/quay/issues/771))
 ### Backport
 - [0520aa7c](https://github.com/quay/quay/commit/0520aa7c49032b37e99077932566aea0e3cc75ca): Quayio nvd data UI improvements  ([#957](https://github.com/quay/quay/issues/957))
 ### Build
 - [1ae91bcc](https://github.com/quay/quay/commit/1ae91bcc8ba95ae38cadf401ce55044da9aaec36): Add required setup.cfg for downstream build (PROJQUAY-2713) ([#946](https://github.com/quay/quay/issues/946)) ([#994](https://github.com/quay/quay/issues/994))
-### Build(Deps)
-- [98c008e6](https://github.com/quay/quay/commit/98c008e63fbb59f5c58da4f4c7bb96a74a4ff66e): bump pillow from 8.3.1 to 8.3.2 ([#882](https://github.com/quay/quay/issues/882)) ([#958](https://github.com/quay/quay/issues/958))
-### Dockerfile
-- [61d256fd](https://github.com/quay/quay/commit/61d256fdb25d11a83ad9ac4ec1a874ead1a7be4e): Update symlink in upstream dockerfile (PROJQUAY-2550) ([#889](https://github.com/quay/quay/issues/889)) ([#981](https://github.com/quay/quay/issues/981))
-### Static
-- [3488e785](https://github.com/quay/quay/commit/3488e7855a391ec4b446982810c8eed9f28935c3): vendor webfonts dir ([#1017](https://github.com/quay/quay/issues/1017))
-- [d93d85fa](https://github.com/quay/quay/commit/d93d85fa6647b7ed57c654e33c5c20bb48a11e39): vendor external libraries ([#1015](https://github.com/quay/quay/issues/1015))
-
-<a name="v3.6.1"></a>
-## [v3.6.1] - 2021-10-29
-### Api
-- [6470248b](https://github.com/quay/quay/commit/6470248be1ca55ab3ea6f2a364bc02547976186d): /v1/user/initialize to create first user (PROJQUAY-1926) ([#771](https://github.com/quay/quay/issues/771))
-### Build
 - [4c09559c](https://github.com/quay/quay/commit/4c09559cee9b68493483c6c7b8486afde64c6702): add full python build dependencies (PROJQUAY-2216) ([#822](https://github.com/quay/quay/issues/822))
 - [1d63cfa2](https://github.com/quay/quay/commit/1d63cfa255d32c9eece8041452f13d78daab6e1a): update package-lock.json (PROJQUAY-1749) ([#821](https://github.com/quay/quay/issues/821))
 - [9c8e3f1f](https://github.com/quay/quay/commit/9c8e3f1f486840513a65197dccdb77585f42c815): remove unused node modules (PROJQUAY-1667) ([#805](https://github.com/quay/quay/issues/805))
 - [62e3bd9c](https://github.com/quay/quay/commit/62e3bd9cc7ca743ac472e6ae7f8099ba28a91fd5): update python pillow version (PROJQUAY-1520) ([#809](https://github.com/quay/quay/issues/809))
 - [653dc021](https://github.com/quay/quay/commit/653dc021fea6358f8a56c344ade4e775605df15d): update node url-parse to 1.4.3 (PROJQUAY-1749) ([#797](https://github.com/quay/quay/issues/797))
 ### Build(Deps)
+- [98c008e6](https://github.com/quay/quay/commit/98c008e63fbb59f5c58da4f4c7bb96a74a4ff66e): bump pillow from 8.3.1 to 8.3.2 ([#882](https://github.com/quay/quay/issues/882)) ([#958](https://github.com/quay/quay/issues/958))
 - [c5488aa3](https://github.com/quay/quay/commit/c5488aa3b52cab1c9e1391e50e0e9732f464d780): bump ssri from 6.0.1 to 6.0.2 ([#818](https://github.com/quay/quay/issues/818))
 - [3c355223](https://github.com/quay/quay/commit/3c355223f17833dc5c0a8d95c1db6556b3ef9b44): bump flask-cors from 3.0.8 to 3.0.9 ([#783](https://github.com/quay/quay/issues/783))
 ### Buildman
@@ -466,6 +500,7 @@
 ### Doc
 - [7a70a98b](https://github.com/quay/quay/commit/7a70a98b1ea616f79cdd3f691e4d2c55c4be6a7c): Fix broken links in the CHANGELOG (PROJQUAY-2298) ([#858](https://github.com/quay/quay/issues/858))
 ### Dockerfile
+- [61d256fd](https://github.com/quay/quay/commit/61d256fdb25d11a83ad9ac4ec1a874ead1a7be4e): Update symlink in upstream dockerfile (PROJQUAY-2550) ([#889](https://github.com/quay/quay/issues/889)) ([#981](https://github.com/quay/quay/issues/981))
 - [1f7d128c](https://github.com/quay/quay/commit/1f7d128c8d38db7de7b909a8229102ae982198b1): Fix downstream python site-packages location (PROJQUAY-2258) ([#842](https://github.com/quay/quay/issues/842))
 - [6e809033](https://github.com/quay/quay/commit/6e809033736d5d0d5855457675b91eec794fcdaa): Fix QUAYCONF symlink and config-tool build in refactored Dockerfile (PROJQUAY-2254) ([#837](https://github.com/quay/quay/issues/837))
 - [86d150a2](https://github.com/quay/quay/commit/86d150a2044a1eb24140b0940ba6f830b05c842b): refactor dockerfile (PROJQUAY-1997) ([#787](https://github.com/quay/quay/issues/787))
@@ -508,6 +543,9 @@
 - [65ec47ab](https://github.com/quay/quay/commit/65ec47ab4b67fcd84fb9a7aa0b4f9f31c5b4d902): handle remote layer url when sending request to Clair (PROJQUAY-2269) ([#841](https://github.com/quay/quay/issues/841))
 ### Secscan
 - [fa0e8618](https://github.com/quay/quay/commit/fa0e8618494138dc78c8496c0d9d6d83b66335ca): clair v4 enrichment (PROJQUAY-2102) ([#840](https://github.com/quay/quay/issues/840))
+### Static
+- [3488e785](https://github.com/quay/quay/commit/3488e7855a391ec4b446982810c8eed9f28935c3): vendor webfonts dir ([#1017](https://github.com/quay/quay/issues/1017))
+- [d93d85fa](https://github.com/quay/quay/commit/d93d85fa6647b7ed57c654e33c5c20bb48a11e39): vendor external libraries ([#1015](https://github.com/quay/quay/issues/1015))
 ### Templates
 - [1c157e2a](https://github.com/quay/quay/commit/1c157e2a5b3ad4d091bc9480761b850d8856a15a): escape templated script value (PROJQUAY-970) ([#828](https://github.com/quay/quay/issues/828))
 ### Ui
@@ -573,10 +611,12 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.7.0...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.7.3...HEAD
+[v3.7.3]: https://github.com/quay/quay/compare/v3.7.2...v3.7.3
+[v3.7.2]: https://github.com/quay/quay/compare/v3.7.1...v3.7.2
+[v3.7.1]: https://github.com/quay/quay/compare/v3.7.0...v3.7.1
 [v3.7.0]: https://github.com/quay/quay/compare/v3.6.2...v3.7.0
-[v3.6.2]: https://github.com/quay/quay/compare/v3.6.1...v3.6.2
-[v3.6.1]: https://github.com/quay/quay/compare/v3.6.0-alpha.9...v3.6.1
+[v3.6.2]: https://github.com/quay/quay/compare/v3.6.0-alpha.9...v3.6.2
 [v3.6.0-alpha.9]: https://github.com/quay/quay/compare/v3.6.0-alpha.8...v3.6.0-alpha.9
 [v3.6.0-alpha.8]: https://github.com/quay/quay/compare/v3.6.0-alpha.7...v3.6.0-alpha.8
 [v3.6.0-alpha.7]: https://github.com/quay/quay/compare/v3.6.0-alpha.6...v3.6.0-alpha.7
