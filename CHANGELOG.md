@@ -3,8 +3,8 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.6.8"></a>
-## [v3.6.8] - 2022-06-27
+<a name="v3.7.3"></a>
+## [v3.7.3] - 2022-06-28
 ### Builders
 - [d11d45f2](https://github.com/quay/quay/commit/d11d45f208bc3c78f852bab0cb7686aa6f125c62): Send notifications on build completion (PROJQUAY-3614) ([#1346](https://github.com/quay/quay/issues/1346))
 - [1d2e55b6](https://github.com/quay/quay/commit/1d2e55b63d906d949de792fd5b9481a6dd42568b): Set imagePullPolicy to always (PROJQUAY-3507) ([#1330](https://github.com/quay/quay/issues/1330))
@@ -18,6 +18,8 @@
 - [cf52f5e3](https://github.com/quay/quay/commit/cf52f5e3716009e87d251d71a7057343b81d33e6): Use Python 3.9 ([#1382](https://github.com/quay/quay/issues/1382))
 - [5eaf0584](https://github.com/quay/quay/commit/5eaf0584dbc87d7eeb135de63bbea4c7d40a1fa0): Run mypy as CI job ([#1363](https://github.com/quay/quay/issues/1363))
 - [13f8e0c4](https://github.com/quay/quay/commit/13f8e0c4b3ac6b48503cadb8c191832f499e61c0): Rebuild quay image if requirements.txt is changed ([#1342](https://github.com/quay/quay/issues/1342))
+### Chore: V3.6.8 Changelog Bump (Https
+- [f69b1309](https://github.com/quay/quay/commit/f69b1309a01d3e4d73dddc2d829e7e188b6bb04e): //issues.redhat.com/browse/PROJQUAY-3990) ([#1419](https://github.com/quay/quay/issues/1419))
 ### Chore: V3.7.0 Changelog Bump (Https
 - [e85372d0](https://github.com/quay/quay/commit/e85372d00586217dd8ec1f4b808c6d2534dea28e): //issues.redhat.com/browse/PROJQUAY-2411) ([#1337](https://github.com/quay/quay/issues/1337))
 ### Chore: V3.7.1 Changelog Bump (Https
@@ -611,8 +613,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.6.8...HEAD
-[v3.6.8]: https://github.com/quay/quay/compare/v3.7.2...v3.6.8
+[Unreleased]: https://github.com/quay/quay/compare/v3.7.3...HEAD
+[v3.7.3]: https://github.com/quay/quay/compare/v3.7.2...v3.7.3
 [v3.7.2]: https://github.com/quay/quay/compare/v3.7.1...v3.7.2
 [v3.7.1]: https://github.com/quay/quay/compare/v3.7.0...v3.7.1
 [v3.7.0]: https://github.com/quay/quay/compare/v3.6.2...v3.7.0
