@@ -43,10 +43,12 @@ angular.module('quay').directive('repoPanelTags', function () {
       $scope.tagsPerPage = 25;
 
       $scope.expandedView = false;
+      $scope.showCosignSignatures = false;
       $scope.labelCache = {};
 
       $scope.manifestVulnerabilities = {};
       $scope.repoDelegationsInfo = null;
+      $scope.cosignedManifests = {};
 
       var loadRepoSignatures = function() {
         if (!$scope.repository || !$scope.repository.trust_enabled) {
@@ -67,6 +69,35 @@ angular.module('quay').directive('repoPanelTags', function () {
         });
       };
 
+      var matchCosignSignature = function(tag) {
+        // matches cosign style tags and returns the match with a matching group containing the signed manifest digest
+
+        var cosignNamingPattern = new RegExp('^sha256-([a-f0-9]{64})\.sig$');
+        tag = tag.trim()
+        return tag.match(cosignNamingPattern);
+      }
+
+      var getCosignSignatures = function() {
+        if (!$scope.repositoryTags || !$scope.selectedTags) { return; }
+
+        // Build a list of all digests which are signed by cosign
+        $scope.cosignedManifests = [];
+
+        for (var tag in $scope.repositoryTags) {
+          if (!$scope.repositoryTags.hasOwnProperty(tag)) { continue; }
+
+          var cosignSignatureTag = matchCosignSignature(tag);
+
+          if (cosignSignatureTag) { 
+            signedManifestDigest = cosignSignatureTag[1]; // cosign signature tags contain the signature of the signed manifest
+            $scope.cosignedManifests["sha256:" + signedManifestDigest] = { // map signed manifests to their cosign signature artifact
+              'signatureTagName': tag,
+              'signatureManifestDigest':  $scope.repositoryTags[tag].manifest_digest
+            };
+          }
+        }
+      }
+
       var setTagState = function() {
         if (!$scope.repositoryTags || !$scope.selectedTags) { return; }
 
@@ -75,11 +106,15 @@ angular.module('quay').directive('repoPanelTags', function () {
         for (var tag in $scope.repositoryTags) {
           if (!$scope.repositoryTags.hasOwnProperty(tag)) { continue; }
 
+          if (matchCosignSignature(tag) && !$scope.showCosignSignatures) { continue; }
+
           var tagData = $scope.repositoryTags[tag];
           var tagInfo = $.extend(tagData, {
             'name': tag,
             'last_modified_datetime': TableService.getReversedTimestamp(tagData.last_modified),
             'expiration_date': tagData.expiration ? TableService.getReversedTimestamp(tagData.expiration) : null,
+            'cosign_signature_tag': $scope.cosignedManifests.hasOwnProperty(tagData.manifest_digest) ? $scope.cosignedManifests[tagData.manifest_digest].signatureTagName : null,
+            'cosign_signature_manifest_digest': $scope.cosignedManifests.hasOwnProperty(tagData.manifest_digest) ? $scope.cosignedManifests[tagData.manifest_digest].signatureManifestDigest : null,
           });
 
           allTags.push(tagInfo);
@@ -230,6 +265,7 @@ angular.module('quay').directive('repoPanelTags', function () {
       $scope.$watch('options.predicate', setTagState);
       $scope.$watch('options.reverse', setTagState);
       $scope.$watch('options.filter', setTagState);
+      $scope.$watch('showCosignSignatures', setTagState);
 
       $scope.$watch('options.page', function(page) {
         if (page != null && $scope.checkedTags) {
@@ -247,6 +283,7 @@ angular.module('quay').directive('repoPanelTags', function () {
 
       $scope.$watch('repository', function(updatedRepoObject, previousRepoObject) {
         // Process each of the tags.
+        getCosignSignatures();
         setTagState();
         loadRepoSignatures();
       });
@@ -254,6 +291,7 @@ angular.module('quay').directive('repoPanelTags', function () {
       $scope.$watch('repositoryTags', function(newTags, oldTags) {
         if (newTags === oldTags) { return; }
         // Process each of the tags.
+        getCosignSignatures();
         setTagState();
         loadRepoSignatures();
       }, true);
@@ -399,6 +437,19 @@ angular.module('quay').directive('repoPanelTags', function () {
         return tag.name.match(r);
       };
 
+      $scope.cosignTagFilter = function(tag) {
+        var r = new RegExp('^sha256-[A-Fa-f0-9]{64}\.sig$');
+        return tag.name.match(r);
+      };
+
+      $scope.signedTagFilter = function(tag) {
+        return tag.hasOwnProperty("cosign_signature_manifest_digest") && tag.cosign_signature_manifest_digest != null;
+      };
+
+      $scope.unsignedTagFilter = function(tag) {
+        return tag.hasOwnProperty("cosign_signature_manifest_digest") && tag.cosign_signature_manifest_digest == null;
+      };
+
       $scope.allTagFilter = function(tag) {
         return true;
       };
@@ -436,6 +487,10 @@ angular.module('quay').directive('repoPanelTags', function () {
 
       $scope.setExpanded = function(expanded) {
         $scope.expandedView = expanded;
+      };
+
+      $scope.toggleCosignSignatureDisplay = function() {
+        $scope.showCosignSignatures = !$scope.showCosignSignatures;
       };
 
       $scope.getTagNames = function(checked) {

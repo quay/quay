@@ -10,6 +10,13 @@
         Expanded
       </button>
     </div>
+
+    <div class="btn-group btn-group-sm">
+      <button class="btn" ng-class="!showCosignSignatures ? 'btn-default' : 'btn-primary active'"
+          ng-click="toggleCosignSignatureDisplay()">
+        {{ !showCosignSignatures ? 'Show Signatures' : 'Hide Signatures' }}
+      </button>
+    </div>
   </div>
 
  <h3 class="tab-header"><span class="hidden-xs">Repository </span>Tags</h3>
@@ -22,8 +29,17 @@
      <div class="cor-checkable-menu-item" item-filter="noTagFilter(item)">
       <i class="fa fa-square-o"></i>No Tags
      </div>
+     <div class="cor-checkable-menu-item" item-filter="signedTagFilter(item)">
+      <i class="fa fa-shield"></i>Signed Tags
+     </div>
+     <div class="cor-checkable-menu-item" item-filter="unsignedTagFilter(item)">
+      <i class="fa ci-shield-invalid-outline"></i>Unsigned Tags
+     </div>
      <div class="cor-checkable-menu-item" item-filter="commitTagFilter(item)">
       <i class="fa fa-git"></i>Commit SHAs
+     </div>
+     <div class="cor-checkable-menu-item" item-filter="cosignTagFilter(item)">
+      <i class="fa fa-pencil-square"></i>Cosign Signatures
      </div>
 
      <div class="cor-checkable-menu-item" item-filter="manifestDigestFilter(mt.manifest_digest, item)"
@@ -132,7 +148,12 @@
     <tr ng-class="expandedView ? 'expanded-view': ''">
       <td><span class="cor-checkable-item" controller="checkedTags" item="tag"></span></td>
       <td class="co-flowing-col">
-        <span class="tag-span"><span bo-text="tag.name"></span></span>
+        <span class="tag-span">
+          <span bo-text="tag.name"></span>
+          <span class="signing-valid" ng-if="::tag.cosign_signature_tag">
+            <i class="fa shield-icon ci-shield-check-full" data-title="This tag has been signed via cosign." bs-tooltip></i>
+          </span>
+        </span>
         <span class="manifest-list-icons" bo-if="tag.is_manifest_list">
           <i class="manifest-list-manifest-icon fa fa-{{ manifest.os }}"
              ng-repeat="manifest in manifestsOf(tag)"
@@ -303,6 +324,11 @@
         <!-- Labels -->
         <div class="manifest-label-list" repository="repository"
              manifest-digest="tag.manifest_digest" cache="labelCache"></div>
+
+        <!-- Cosign Signatures -->
+        <div class="cosign-signature-row" ng-if="tag.cosign_signature_tag">
+          <cosign-link repository="repository" image-id="tag.image_id" manifest-digest="tag.cosign_signature_manifest_digest" tag-name="tag.cosign_signature_tag" tag-name="tag.cosign_signature_tag" signed-image-id="tag.image_id" signed-manifest-digest="tag.manifest_digest"></cosign-link>
+        </div>
 
         <!-- Delegations -->
         <div class="signing-delegations-list" ng-if="repository.trust_enabled">

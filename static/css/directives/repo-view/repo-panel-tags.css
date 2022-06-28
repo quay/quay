@@ -171,6 +171,27 @@
     color: #888;
 }
 
+.repo-panel-tags-element .signing-valid .tooltip-inner {
+  max-width: 250px;
+}
+
+.repo-panel-tags-element .cosign-signature-row {
+  margin-top: 10px;
+  margin-bottom: 6px;
+  padding-left: 6px;
+  position: relative;
+}
+
+.repo-panel-tags-element .cosign-signature-row:before {
+    content: "\f040";
+    font-family: FontAwesome;
+    position: absolute;
+    left: -22px;
+    top: 0px;
+    font-size: 15px;
+    color: #888;
+}
+
 .repo-panel-tags-element .labels-col {
   padding-top: 0px;
 }
