@@ -2,8 +2,10 @@ import os
 import json
 import logging
 import subprocess
+
 from pipes import quote
 from collections import namedtuple
+from tempfile import SpooledTemporaryFile
 
 logger = logging.getLogger(__name__)
 
@@ -117,23 +119,29 @@ class SkopeoMirror(object):
         return env
 
     def run_skopeo(self, args, proxy):
-        job = subprocess.Popen(
-            args,
-            shell=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=self.setup_env(proxy),
-            close_fds=True,
-        )
+        # Using a tempfile makes sure that if --debug is set, the stdout and stderr output
+        # doesn't get truncated by the system's pipe limit.
+        with SpooledTemporaryFile() as stdoutpipe, SpooledTemporaryFile() as stderrpipe:
+            job = subprocess.Popen(
+                args,
+                shell=False,
+                stdout=stdoutpipe,
+                stderr=stderrpipe,
+                env=self.setup_env(proxy),
+            )
 
-        try:
-            (stdout, stderr) = job.communicate(timeout=SKOPEO_TIMEOUT_SECONDS)
-        except subprocess.TimeoutExpired:
-            job.kill()
-            (stdout, stderr) = job.communicate()
-        stdout = stdout.decode("utf-8")
-        stderr = stderr.decode("utf-8")
-        logger.debug("Skopeo [STDERR]: %s" % stderr)
-        logger.debug("Skopeo [STDOUT]: %s" % stdout)
+            try:
+                job.wait(timeout=SKOPEO_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired:
+                job.kill()
+            finally:
+                stdoutpipe.seek(0)
+                stderrpipe.seek(0)
+                stdout = stdoutpipe.read().decode("utf-8")
+                stderr = stderrpipe.read().decode("utf-8")
 
-        return SkopeoResults(job.returncode == 0, [], stdout, stderr)
+                if job.returncode != 0:
+                    logger.debug("Skopeo [STDERR]: %s" % stderr)
+                    logger.debug("Skopeo [STDOUT]: %s" % stdout)
+
+                return SkopeoResults(job.returncode == 0, [], stdout, stderr)
