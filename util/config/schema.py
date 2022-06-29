@@ -1223,5 +1223,10 @@ CONFIG_SCHEMA = {
             "description": "The Red Hat Export Compliance Service Endpoint (only used in Quay.io)",
             "x-example": "export-compliance.com",
         },
+        "CORS_ORIGIN": {
+            "type": "string",
+            "description": "Cross-Origin domain to allow requests from",
+            "x-example": "localhost:9000",
+        },
     },
 }

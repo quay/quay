@@ -1,12 +1,12 @@
 import logging
 
 from flask import make_response, jsonify
-from flask_restful.utils.cors import crossdomain
 
 from app import app
 from data import model
 from data.readreplica import ReadOnlyModeException
 from util.config.provider.baseprovider import CannotWriteConfigException
+from util.request import crossorigin
 from util.useremails import CannotSendEmailException
 
 
@@ -42,7 +42,7 @@ def handle_configexception(ex):
 
 
 @app.errorhandler(model.TooManyLoginAttemptsException)
-@crossdomain(origin="*", headers=["Authorization", "Content-Type"])
+@crossorigin()
 def handle_too_many_login_attempts(error):
     msg = "Too many login attempts. \nPlease reset your Quay password and try again."
     response = make_response(msg, 429)
