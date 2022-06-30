@@ -1,8 +1,10 @@
+import fnmatch
+import logging
+import logging.config
 import os
 import re
 import traceback
-import fnmatch
-import logging.config
+from typing import Optional
 
 from prometheus_client import Gauge
 
@@ -15,13 +17,12 @@ from data.model.repo_mirror import claim_mirror, release_mirror
 from data.model.user import retrieve_robot_token
 from data.logs_model import logs_model
 from data.registry_model import registry_model
-from data.database import RepoMirrorStatus
+from data.database import RepoMirrorConfig, RepoMirrorStatus
 from data.model.oci.tag import delete_tag, retarget_tag, lookup_alive_tags_shallow
 from notifications import spawn_notification
 from util.audit import wrap_repository
-
+from util.repomirror.skopeomirror import SkopeoMirror, SkopeoResults
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
-
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ def process_mirrors(skopeo, token=None):
     return next_token
 
 
-def perform_mirror(skopeo, mirror):
+def perform_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig):
     """
     Run mirror on all matching tags of remote repository.
     """
@@ -304,12 +305,12 @@ def perform_mirror(skopeo, mirror):
     return overall_status
 
 
-def tags_to_mirror(skopeo, mirror):
+def tags_to_mirror(skopeo: SkopeoMirror, mirror: RepoMirrorConfig) -> list[str]:
     all_tags = get_all_tags(skopeo, mirror)
     if all_tags == []:
         return []
 
-    matching_tags = []
+    matching_tags: list[str] = []
     for pattern in mirror.root_rule.rule_value:
         matching_tags = matching_tags + [tag for tag in all_tags if fnmatch.fnmatch(tag, pattern)]
     matching_tags = list(set(matching_tags))
@@ -317,7 +318,7 @@ def tags_to_mirror(skopeo, mirror):
     return matching_tags
 
 
-def get_all_tags(skopeo, mirror):
+def get_all_tags(skopeo: SkopeoMirror, mirror: RepoMirrorConfig) -> list[str]:
     verbose_logs = os.getenv("DEBUGLOG", "false").lower() == "true"
 
     username = (
@@ -347,7 +348,7 @@ def get_all_tags(skopeo, mirror):
     return result.tags
 
 
-def _skopeo_inspect_failure(result):
+def _skopeo_inspect_failure(result: SkopeoResults) -> str:
     """
     Custom processing of skopeo error messages for user friendly description.
 
@@ -358,7 +359,9 @@ def _skopeo_inspect_failure(result):
     return "See output"
 
 
-def rollback(mirror, since_ms, tag_names=None):
+def rollback(
+    mirror: RepoMirrorConfig, since_ms: int, tag_names: Optional[list[str]] = None
+) -> None:
     """
     :param mirror: Mirror to perform rollback on
     :param start_time: Time mirror was started; all changes after will be undone
