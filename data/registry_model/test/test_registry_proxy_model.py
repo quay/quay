@@ -40,7 +40,6 @@ from test.fixtures import *  # noqa: F401,F403
 from proxy.fixtures import proxy_manifest_response  # noqa: F401,F403
 from util.bytes import Bytes
 
-
 UBI8_LATEST_MANIFEST_LIST_DIGEST = (
     "sha256:bd5b5d4f108773d02b2f3aa930feaa08067091e96ecf45f10e98e76383ff7af9"  # noqa: E501
 )
@@ -145,7 +144,6 @@ UBI8_LATEST_MANIFEST_LIST = r"""{
   "schemaVersion": 2
 }"""
 
-
 UBI8_LATEST_DIGEST = "sha256:b69959407d21e8a062e0416bf13405bb2b71ed7a84dde4158ebafacfa06f5578"
 UBI8_LATEST_MANIFEST_SCHEMA2 = r"""{
    "schemaVersion": 2,
@@ -163,7 +161,6 @@ UBI8_LATEST_MANIFEST_SCHEMA2 = r"""{
       }
    ]
 }"""
-
 
 UBI8_8_5_DIGEST = "sha256:8ee9d7bbcfc19d383f9044316a5c5fbcbe2df6be3c97f6c7a5422527b29bdede"
 UBI8_8_5_MANIFEST_SCHEMA2 = r"""{
@@ -187,7 +184,6 @@ UBI8_8_5_MANIFEST_SCHEMA2 = r"""{
       }
    ]
 }"""
-
 
 UBI8_8_4_DIGEST = "sha256:5e334d76fc059f7b44ee8fc2da6a2e8b240582d0214364c8c88596d20b33d7f1"
 UBI8_8_4_MANIFEST_SCHEMA2 = r"""{
@@ -242,6 +238,49 @@ def test_registry_proxy_model_init_only_query_db_once(initialized_db):
             "app-sre/ubi8-ubi",
             user,
         )
+
+
+class TestLookUpRepositoryWithRepoCreationVisibilityFlag:
+    orgname = "quayio-cache"
+    upstream_repository = "app-sre/ubi8-ubi"
+    upstream_registry = "quay.io"
+    tag = "8.4"
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app):
+        self.user = get_user("devtable")
+        org = create_organization(self.orgname, "{self.orgname}@devtable.com", self.user)
+        org.save()
+        self.config = create_proxy_cache_config(
+            org_name=self.orgname,
+            upstream_registry=self.upstream_registry,
+            expiration_s=3600,
+        )
+        self.proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_lookup_repository_creates_private_repo_when_enabled(self):
+        with patch("data.registry_model.registry_proxy_model.app", MagicMock()) as app_mock:
+            app_mock.config = {"CREATE_PRIVATE_REPO_ON_PUSH": True}
+            repo_ref = self.proxy_model.lookup_repository(
+                self.orgname, self.upstream_repository, manifest_ref=self.tag
+            )
+            assert repo_ref is not None
+            assert repo_ref.is_public is False
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_lookup_repository_creates_public_repo_when_disabled(self):
+        with patch("data.registry_model.registry_proxy_model.app", MagicMock()) as app_mock:
+            app_mock.config = {"CREATE_PRIVATE_REPO_ON_PUSH": False}
+            repo_ref = self.proxy_model.lookup_repository(
+                self.orgname, self.upstream_repository, manifest_ref=self.tag
+            )
+            assert repo_ref is not None
+            assert repo_ref.is_public is True
 
 
 class TestRegistryProxyModelGetSchema1ParsedManifest:
