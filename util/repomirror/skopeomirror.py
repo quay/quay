@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import subprocess
+from typing import Optional
 
 from pipes import quote
 from collections import namedtuple
@@ -60,13 +61,12 @@ class SkopeoMirror(object):
 
     def tags(
         self,
-        repository,
-        rule_value,
-        username=None,
-        password=None,
-        verify_tls=True,
-        proxy=None,
-        verbose_logs=False,
+        repository: str,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        verify_tls: bool = True,
+        proxy: Optional[dict[str, str]] = None,
+        verbose_logs: bool = False,
     ):
         """
         Unless a specific tag is known, 'skopeo inspect' won't work.
@@ -78,24 +78,18 @@ class SkopeoMirror(object):
         args = ["/usr/bin/skopeo"]
         if verbose_logs:
             args = args + ["--debug"]
-        args = args + ["inspect", "--tls-verify=%s" % verify_tls]
+        args = args + ["list-tags", "--tls-verify=%s" % verify_tls]
         args = args + self.external_registry_credentials("--creds", username, password)
-
-        if not rule_value:
-            rule_value = []
+        args = args + [repository]
 
         all_tags = []
-        for tag in rule_value + ["latest"]:
-            result = self.run_skopeo(args + [quote("%s:%s" % (repository, tag))], proxy)
-
-            if result.success:
-                all_tags = json.loads(result.stdout)["RepoTags"]
-                if all_tags is not []:
-                    break
+        result = self.run_skopeo(args, proxy)
+        if result.success:
+            all_tags = json.loads(result.stdout)["Tags"]
 
         return SkopeoResults(result.success, all_tags, result.stdout, result.stderr)
 
-    def external_registry_credentials(self, arg, username, password):
+    def external_registry_credentials(self, arg: str, username: Optional[str], password: Optional[str]) -> list[str]:
         credentials = []
         if username is not None and username != "":
             if password is not None and password != "":

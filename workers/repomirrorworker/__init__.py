@@ -330,7 +330,6 @@ def get_all_tags(skopeo, mirror):
     with database.CloseForLongOperation(app.config):
         result = skopeo.tags(
             "docker://%s" % (mirror.external_reference),
-            mirror.root_rule.rule_value,
             username=username,
             password=password,
             verbose_logs=verbose_logs,
@@ -340,7 +339,7 @@ def get_all_tags(skopeo, mirror):
 
     if not result.success:
         raise RepoMirrorSkopeoException(
-            "skopeo inspect failed: %s" % _skopeo_inspect_failure(result),
+            "skopeo list-tags failed: %s" % _skopeo_inspect_failure(result),
             result.stdout,
             result.stderr,
         )
@@ -355,11 +354,6 @@ def _skopeo_inspect_failure(result):
     :param result: SkopeoResults object
     :return: Message to display
     """
-
-    lines = result.stderr.split("\n")
-    for line in lines:
-        if re.match(".*Error reading manifest.*", line):
-            return "No matching tags, including 'latest', to inspect for tags list"
 
     return "See output"
 
