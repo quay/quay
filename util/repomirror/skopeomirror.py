@@ -67,7 +67,7 @@ class SkopeoMirror(object):
         verify_tls: bool = True,
         proxy: Optional[dict[str, str]] = None,
         verbose_logs: bool = False,
-    ):
+    ) -> SkopeoResults:
         """
         Unless a specific tag is known, 'skopeo inspect' won't work.
 
@@ -89,7 +89,9 @@ class SkopeoMirror(object):
 
         return SkopeoResults(result.success, all_tags, result.stdout, result.stderr)
 
-    def external_registry_credentials(self, arg: str, username: Optional[str], password: Optional[str]) -> list[str]:
+    def external_registry_credentials(
+        self, arg: str, username: Optional[str], password: Optional[str]
+    ) -> list[str]:
         credentials = []
         if username is not None and username != "":
             if password is not None and password != "":
