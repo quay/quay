@@ -49,6 +49,7 @@ RUN set -ex\
 		git\
 		openldap-devel\
 		python39-devel\
+		libffi-devel\
 	; dnf -y -q clean all
 WORKDIR /build
 COPY requirements.txt .
