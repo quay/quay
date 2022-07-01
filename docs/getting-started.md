@@ -38,6 +38,14 @@ Python 3.9 and earlier are currently supported.
 
 :exclamation: Be mindful that overriding your operating system's default Python version is not a good idea. Check out [this guide](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_basic_system_settings/assembly_installing-and-using-python_configuring-basic-system-settings) for instructions on installing Python 3 on RHEL 8, or alternatively use [pyenv](https://github.com/pyenv/pyenv#readme).
 
+Add the pre-commit hook into your `.git/hooks` directory before commiting anything. The pre-commit hook ensures that the code is correctly formatted. It uses `black` for formatting. Make sure you have it installed.
+
+```
+$ pip install black # if not already installed
+
+$ cp scripts/pre-commit .git/hooks/pre-commit
+```
+
 ## Building and Running with Docker Compose
 
 The below commands rely on Docker and Docker Compose to be installed. You can also run Quay with podman - refer to the project's [`docker-compose.yml`](https://github.com/quay/quay/blob/c507eeff2eae61efe1a18a4b0e6addce4d37bc5a/docker-compose.yaml) file to understand and reproduce the setup.

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=$(git hash-object -t tree /dev/null)
+fi
+
+FILES=$(git diff-index --name-only $against | grep ".*.py" | xargs)
+
+if [ -z "$FILES" ]; then
+    # No python files, skip
+    exit 0
+fi
+
+if black --line-length=100 --target-version=py38  $FILES; then
+    git add  $FILES
+    exit 0
+fi
+
+exit 1
+
+
