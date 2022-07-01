@@ -56,8 +56,8 @@ COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
 RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off\
-		--user --requirement requirements.txt --no-cache\
+	; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' ./requirements.txt) \
+	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements.txt \
 	;
 RUN set -ex\
 # Doing this is explicitly against the purpose and use of certifi.
