@@ -147,7 +147,7 @@ Cython==3.0a9
 flit_core==3.7.1
 toml==0.10.2
 jsonpickle==1.2
-pip==21.1
+pip==21.3
 setuptools==50.3.0
 setuptools-scm[toml]==4.1.2
 typing-extensions==4.0.1
