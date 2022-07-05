@@ -819,3 +819,6 @@ class DefaultConfig(ImmutableConfig):
 
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""
+
+    # Origin to allow for CORS requests
+    CORS_ORIGIN = "*"
