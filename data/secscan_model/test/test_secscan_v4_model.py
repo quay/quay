@@ -106,7 +106,8 @@ def test_load_security_information_api_request_failure(initialized_db, set_secsc
     secscan._secscan_api.vulnerability_report.side_effect = APIRequestFailure()
 
     assert secscan.load_security_information(manifest).status == ScanLookupStatus.COULD_NOT_LOAD
-    assert not ManifestSecurityStatus.select().where(ManifestSecurityStatus.id == mss.id).exists()
+    # Assert that the ManifestSecurityStatus entry is not deleted.
+    assert ManifestSecurityStatus.select().where(ManifestSecurityStatus.id == mss.id).exists()
 
 
 def test_load_security_information_success(initialized_db, set_secscan_config):
