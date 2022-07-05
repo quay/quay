@@ -81,28 +81,36 @@ def get_min_id_for_repo_mirror_config():
 
 def claim_mirror(mirror):
     """
-    Attempt to create an exclusive lock on the RepoMirrorConfig and return it.
-
-    If unable to create the lock, `None` will be returned.
+    Claim a mirror by updating its status and setting a new expiration time.
+    Will only "lock" the mirror if its status is not already syncing, or the expiration time has passed.
+    If the mirror is not SYNCING, while still having a valid expiration, expire_mirror will be called on the it.
+    If unable to create the "lock", `None` will be returned.
     """
 
-    # Attempt to update the RepoMirrorConfig to mark it as "claimed"
-    now = datetime.utcnow()
-    expiration_date = now + timedelta(seconds=MAX_SYNC_DURATION)
-    query = RepoMirrorConfig.update(
-        sync_status=RepoMirrorStatus.SYNCING,
-        sync_expiration_date=expiration_date,
-        sync_transaction_id=uuid_generator(),
-    ).where(
-        RepoMirrorConfig.id == mirror.id,
-        RepoMirrorConfig.sync_transaction_id == mirror.sync_transaction_id,
-    )
+    with db_transaction():
+        # Attempt to update the RepoMirrorConfig to mark it as "claimed"
+        now = datetime.utcnow()
+        expiration_date = now + timedelta(seconds=MAX_SYNC_DURATION)
 
-    # If the update was successful, then it was claimed. Return the updated instance.
-    if query.execute():
-        return RepoMirrorConfig.get_by_id(mirror.id)
+        if mirror.sync_status == RepoMirrorStatus.SYNCING:
+            return None
 
-    return None  # Another process must have claimed the mirror faster.
+        if mirror.sync_expiration_date and now > mirror.sync_expiration_date:
+            expire_mirror(mirror)
+            return None
+
+        query = RepoMirrorConfig.update(
+            sync_status=RepoMirrorStatus.SYNCING,
+            sync_expiration_date=expiration_date,
+            sync_transaction_id=uuid_generator(),
+        ).where(
+            RepoMirrorConfig.id == mirror.id,
+            RepoMirrorConfig.sync_transaction_id == mirror.sync_transaction_id,
+        )
+
+        updated = query.execute()
+
+    return RepoMirrorConfig.get_by_id(mirror.id) if updated else None
 
 
 def release_mirror(mirror, sync_status):
