@@ -83,7 +83,9 @@ def fake_azure_storage(files=None):
                     "status_code": 201,
                     "content": "{}",
                     "headers": {
-                        "Content-MD5": base64.b64encode(md5(files[filename][block_id]).digest()).decode("ascii"),
+                        "Content-MD5": base64.b64encode(
+                            md5(files[filename][block_id]).digest()
+                        ).decode("ascii"),
                         "ETag": "foo",
                         "x-ms-request-server-encrypted": "false",
                         "last-modified": "Wed, 21 Oct 2015 07:28:00 GMT",
