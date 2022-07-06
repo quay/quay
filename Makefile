@@ -68,6 +68,9 @@ ensure-test-db:
 	  exit 1; \
 	fi
 
+install-pre-commit-hook:
+	cp scripts/pre-commit .git/hooks/pre-commit
+
 PG_PASSWORD := quay
 PG_USER := quay
 PG_HOST := postgresql://$(PG_USER):$(PG_PASSWORD)@localhost/quay
