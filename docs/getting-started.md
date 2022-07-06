@@ -43,7 +43,7 @@ Add the pre-commit hook into your `.git/hooks` directory before commiting anythi
 ```
 $ pip install black # if not already installed
 
-$ cp scripts/pre-commit .git/hooks/pre-commit
+$ make install-pre-commit-hook
 ```
 
 ## Building and Running with Docker Compose
