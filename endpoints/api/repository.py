@@ -10,7 +10,8 @@ from datetime import timedelta, datetime
 
 from flask import request, abort
 
-from app import dockerfile_build_queue, tuf_metadata_api, repository_gc_queue
+from app import tuf_metadata_api
+from singletons.workqueues import dockerfile_build_queue, repository_gc_queue
 from data.database import RepositoryState
 from endpoints.api import (
     format_date,
