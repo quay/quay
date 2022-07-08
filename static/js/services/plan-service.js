@@ -69,7 +69,8 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
         if (planService.isOrgCompatible(plan)) {
           $location.path('/organizations/new').search('plan', planId);
         } else {
-          $location.path('/user').search('plan', planId);
+          const username = UserService.currentUser().username;
+          $location.path(`/user/${username}/billing`);
         }
       });
     });
