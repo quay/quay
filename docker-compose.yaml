@@ -49,12 +49,12 @@ services:
     ports:
       - "6379:6379"
 
-  local-dev-frontend:
+  local-dev-legacy-ui:
     user: ${DOCKER_USER:-root}
-    container_name: quay-local-dev-frontend
+    container_name: quay-local-dev-legacy-ui
     build:
       context: .
-      target: build-static
+      target: build-legacy-ui
     image: localhost/quay-build:latest
     init: true
     volumes:
@@ -78,7 +78,7 @@ services:
       - ".:/quay-registry"
       - "./local-dev/stack:/quay-registry/conf/stack"
     ports:
-      - "8080:8080" 
+      - "8080:8080"
       - "8443:8443"
     environment:
       QUAY_VERSION: local-dev

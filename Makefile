@@ -169,7 +169,7 @@ black:
 build-images:: build-image-local-dev-frontend
 build-image-local-dev-frontend:
 # $(DOCKER)-compose run does not build images, so we need to build them if needed
-	test -n "$$($(DOCKER) images localhost/quay-build:latest -q)" || $(DOCKER_COMPOSE) build local-dev-frontend
+	test -n "$$($(DOCKER) images localhost/quay-build:latest -q)" || $(DOCKER_COMPOSE) build local-dev-legacy-ui
 
 .PHONY: build-image-quay
 build-images:: build-image-quay
@@ -181,7 +181,7 @@ build-image-quay: .build-image-quay-stamp
 node_modules: node_modules/.npm-install-stamp
 
 node_modules/.npm-install-stamp: package.json package-lock.json | build-image-local-dev-frontend
-	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-frontend npm install --ignore-engines
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-install --entrypoint="" local-dev-legacy-ui npm install --ignore-engines
 # if npm install fails for some reason, it may have already created
 # node_modules, so we cannot rely on the directory timestamps and should mark
 # successfull runs of npm install with a stamp file.
@@ -195,7 +195,7 @@ local-dev-clean:
 .PHONY: local-dev-build-frontend
 local-dev-build:: local-dev-build-frontend
 local-dev-build-frontend: node_modules
-	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-build --entrypoint="" local-dev-frontend npm run build
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) run --rm --name quay-local-dev-frontend-build --entrypoint="" local-dev-legacy-ui npm run build
 
 .PHONY: local-dev-build-images
 local-dev-build:: local-dev-build-images
@@ -204,14 +204,14 @@ local-dev-build-images:
 
 .PHONY: local-dev-up
 local-dev-up: local-dev-clean node_modules | build-image-quay
-	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-frontend
+	DOCKER_USER="$$(id -u):$$(id -g)" $(DOCKER_COMPOSE) up -d --force-recreate local-dev-legacy-ui
 	$(DOCKER_COMPOSE) up -d redis quay-db
 	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
 	# Waiting until the frontend is built...
 	# Use '$(DOCKER_COMPOSE) logs -f local-dev-frontend' to see the progress
 	while ! test -e ./static/build/main-quay-frontend.bundle.js; do sleep 2; done
-	@echo "You can now access the frontend at http://localhost:8080"
+	@echo "You can now access the frontend at http://localhost:8080 and http://localhost:9000"
 
 local-docker-rebuild:
 	$(DOCKER_COMPOSE) up -d --build redis

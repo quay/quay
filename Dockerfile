@@ -7,6 +7,7 @@ ENV PATH=/app/bin/:$PATH \
 	LC_ALL=C.UTF-8 \
 	LANG=C.UTF-8
 ENV QUAYDIR /quay-registry
+ENV QUAYUIDIR /quay-ui
 ENV QUAYCONF /quay-registry/conf
 ENV QUAYRUN /quay-registry/conf
 ENV QUAYPATH $QUAYDIR
@@ -66,15 +67,17 @@ RUN set -ex\
 	; do chgrp -R 0 "$dir" && chmod -R g=u "$dir" ; done\
 	;
 
-# Build-static downloads the static javascript.
-FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
+# Build-static downloads the legacy Quay UI.
+FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-legacy-ui
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 static/  ./static/
 COPY --chown=1001:0 *.json *.js  ./
-RUN set -ex\
-	; npm install --quiet --no-progress --ignore-engines\
-	; npm run --quiet build\
-	;
+RUN set -ex &&\
+	npm install --quiet --no-progress --ignore-engines &&\
+	npm run --quiet build
+
+# Download static assets of the current Quay UI.
+FROM quay.io/projectquay/quay-ui:latest as build-ui
 
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
@@ -98,7 +101,7 @@ RUN go install ./cmd/config-tool
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
-LABEL maintainer "thomasmckay@redhat.com"
+LABEL maintainer "quay-devel@redhat.com"
 
 # All of these chgrp+chmod commands are an Openshift-ism.
 #
@@ -134,7 +137,9 @@ COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
-COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
+COPY --from=build-legacy-ui /opt/app-root/src/static ${QUAYDIR}/static
+COPY --from=build-ui /opt/app-root/dist ${QUAYUIDIR}/dist
+
 # Copy in source and update local copy of AWS IP Ranges.
 # This is a bad place to do the curl, but there's no good place to do
 # it except to have it checked in.
@@ -146,7 +151,7 @@ RUN set -ex\
 
 RUN rm -Rf node_modules config_app/node_modules
 
-EXPOSE 8080 8443 7443 9091 55443
+EXPOSE 8080 8443 7443 9000 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
 # correctly above.
 # It's probably unwise to mount /tmp as a volume but if someone must,

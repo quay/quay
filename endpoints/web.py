@@ -1033,7 +1033,7 @@ def config():
     return response
 
 
-@web.route("/csrf_token", methods=["GET"])
+@web.route("/csrf_token", methods=["GET", "OPTIONS"])
 @crossorigin(anonymous=False)
 def csrf_token():
     token = generate_csrf_token()
