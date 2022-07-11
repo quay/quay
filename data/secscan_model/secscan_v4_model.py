@@ -154,11 +154,6 @@ class V4SecurityScanner(SecurityScannerInterface):
         try:
             report = self._secscan_api.vulnerability_report(manifest_or_legacy_image.digest)
         except APIRequestFailure as arf:
-            try:
-                status.delete_instance()
-            except ReadOnlyModeException:
-                pass
-
             return SecurityInformationLookupResult.for_request_error(str(arf))
 
         if report is None:
