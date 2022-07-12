@@ -24,6 +24,8 @@ def get_request_ip():
 
 
 def crossorigin(anonymous=True):
+    cors_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE"]
+
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -42,7 +44,9 @@ def crossorigin(anonymous=True):
                 # for single origin requests, allow cookies
                 credentials = True
 
-            decorator = crossdomain(origin=cors_origin, headers=headers, credentials=credentials)
+            decorator = crossdomain(
+                origin=cors_origin, methods=cors_methods, headers=headers, credentials=credentials
+            )
             return decorator(func)(*args, **kwargs)
 
         return wrapper
