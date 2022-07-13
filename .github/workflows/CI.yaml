@@ -60,7 +60,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
         cat requirements-dev.txt | grep tox | xargs pip install
 
     - name: tox
@@ -72,16 +71,40 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
+
     - name: Set up Python 3.9
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          requirements-dev.txt
 
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        python -m pip install --upgrade pip
+
+    - name: Check requirements.txt
+      run: |
+        pip install wheel  # allow pip to use wheel instead of legacy 'setup.py install'
+        pip install -r ./requirements.txt
+
+        TMP_REQUIREMENTS=$(mktemp "${TMPDIR:-/tmp/}requirements-txt.XXXXXXXX")
+        TMP_PIP_FREEZE=$(mktemp "${TMPDIR:-/tmp/}pip-freeze.XXXXXXXX")
+        trap 'rc=$?; rm -f "$TMP_REQUIREMENTS" "$TMP_PIP_FREEZE"; exit $rc' EXIT
+
+        sed -n 's/ *#.*//; s/\[[^]]*\]//g; s/^pip==.*/pip/; /./p' ./requirements.txt | sort >"$TMP_REQUIREMENTS"
+        pip freeze --all | sed 's/^pip==.*/pip/' | sort >"$TMP_PIP_FREEZE"
+
+        if ! diff -u "$TMP_REQUIREMENTS" "$TMP_PIP_FREEZE"; then
+          echo >&2 "requirements.txt doesn't have all dependencies pinned. Please check output above to see what should be added."
+          exit 1
+        fi
+
+    - name: Install dev dependencies
+      run: |
         pip install -r ./requirements-dev.txt
 
     - name: Check Types
