@@ -83,7 +83,7 @@ if not is_testing:
 
 # Fix remote address handling for Flask.
 if app.config.get("PROXY_COUNT", 1):
-    app.wsgi_app = ProxyFix(app.wsgi_app, num_proxies=app.config.get("PROXY_COUNT", 1))
+    app.wsgi_app = ProxyFix(app.wsgi_app)
 
 # Register additional experimental artifact types.
 # TODO: extract this into a real, dynamic registration system.
