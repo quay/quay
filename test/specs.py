@@ -543,7 +543,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            400,
+            404,
         ).set_method("DELETE"),
         IndexV1TestSpec(
             url_for("v1.delete_tag", repository=ORG_REPO, tag=FAKE_TAG_NAME),
@@ -552,7 +552,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            400,
+            404,
         ).set_method("DELETE"),
         IndexV1TestSpec(
             url_for("v1.delete_tag", repository=ANOTHER_ORG_REPO, tag=FAKE_TAG_NAME),
@@ -561,7 +561,7 @@ def build_v1_index_specs():
             403,
             403,
             403,
-            400,
+            404,
         ).set_method("DELETE"),
     ]
 

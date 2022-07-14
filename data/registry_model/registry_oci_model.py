@@ -511,10 +511,7 @@ class OCIModel(RegistryDataInterface):
         with db_disallow_replica_use():
             deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name)
             if deleted_tag is None:
-                # TODO: This is only needed because preoci raises an exception. Remove and fix
-                # expected status codes once PreOCIModel is gone.
-                msg = "Invalid repository tag '%s' on repository" % tag_name
-                raise model.DataModelException(msg)
+                return None
 
             return Tag.for_tag(deleted_tag, self._legacy_image_id_handler)
 

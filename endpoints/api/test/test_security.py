@@ -3813,7 +3813,7 @@ SECURITY_TESTS: List[
         {"tag": "HP8R", "repository": "devtable/shared"},
         None,
         "devtable",
-        400,
+        404,
     ),
     (
         RepositoryTag,
@@ -3870,7 +3870,7 @@ SECURITY_TESTS: List[
         {"tag": "HP8R", "repository": "buynlarge/orgrepo"},
         None,
         "devtable",
-        400,
+        404,
     ),
     (
         RepositoryTag,
