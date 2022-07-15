@@ -228,7 +228,9 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        registry_model.delete_tag(repo_ref, tag)
+        tag_ref = registry_model.delete_tag(repo_ref, tag)
+        if tag_ref is None:
+            raise NotFound()
 
         if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
             repository_model.force_cache_repo_size(repo_ref.id)
