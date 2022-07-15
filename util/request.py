@@ -40,7 +40,7 @@ def crossorigin(anonymous=True):
 
             credentials = False
             if cors_origin != "*":
-                headers.extend(SINGLE_ORIGIN_CROSS_DOMAIN_HEADERS)
+                headers = BASE_CROSS_DOMAIN_HEADERS + SINGLE_ORIGIN_CROSS_DOMAIN_HEADERS
                 # for single origin requests, allow cookies
                 credentials = True
 
