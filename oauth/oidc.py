@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 OIDC_WELLKNOWN = ".well-known/openid-configuration"
 PUBLIC_KEY_CACHE_TTL = 3600  # 1 hour
-ALLOWED_ALGORITHMS = ["RS256"]
+ALLOWED_ALGORITHMS = ["RS256", "RS384"]
 JWT_CLOCK_SKEW_SECONDS = 30
 
 
