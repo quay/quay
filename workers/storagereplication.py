@@ -1,7 +1,6 @@
 import logging
+import logging.config
 import time
-
-import features
 
 from app import app, storage as app_storage, image_replication_queue
 from data.database import CloseForLongOperation
@@ -180,14 +179,16 @@ def create_gunicorn_worker() -> GunicornWorker:
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     has_local_storage = False
+    for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
+        if storage_type == "LocalStorage":
+            has_local_storage = True
+            break
 
-    if features.STORAGE_REPLICATION:
-        for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
-            if storage_type == "LocalStorage":
-                has_local_storage = True
-                break
+    feature_flag = True
+    if has_local_storage:
+        logger.error("Storage replication can't be used with local storage")
+        feature_flag = False
 
-    feature_flag = (features.STORAGE_REPLICATION) and (not has_local_storage)
     repl_worker = StorageReplicationWorker(
         image_replication_queue,
         poll_period_seconds=POLL_PERIOD_SECONDS,
@@ -201,23 +202,13 @@ if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
     has_local_storage = False
+    for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
+        if storage_type == "LocalStorage":
+            has_local_storage = True
+            break
 
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if features.STORAGE_REPLICATION:
-        for storage_type, _ in list(app.config.get("DISTRIBUTED_STORAGE_CONFIG", {}).values()):
-            if storage_type == "LocalStorage":
-                has_local_storage = True
-                break
-
-    if not features.STORAGE_REPLICATION or has_local_storage:
-        if has_local_storage:
-            logger.error("Storage replication can't be used with local storage")
-        else:
-            logger.debug("Full storage replication disabled; skipping")
+    if has_local_storage:
+        logger.error("Storage replication can't be used with local storage")
         while True:
             time.sleep(10000)
 

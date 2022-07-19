@@ -20,7 +20,7 @@ class GunicornWorker:
     """
 
     def __init__(
-        self, name: str, worker: "Worker", feature_flag: Union[bool, "FeatureNameValue"]
+        self, name: str, worker: "Worker", feature_flag: Union[bool, "FeatureNameValue"] = True
     ) -> None:
         logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 

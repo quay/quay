@@ -83,6 +83,7 @@ services:
     environment:
       QUAY_VERSION: local-dev
       QUAY_HOTRELOAD: "true"
+      QUAY_FEATURE_SECURITY_SCANNER: ${QUAY_FEATURE_SECURITY_SCANNER:-true}
       DEBUGLOG: "true"
       IGNORE_VALIDATION: "true"
       QUAYRUN: /tmp

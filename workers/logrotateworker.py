@@ -1,12 +1,11 @@
 import logging
+import logging.config
 import json
-import time
 
 from datetime import datetime
 from gzip import GzipFile
 from tempfile import SpooledTemporaryFile
 
-import features
 from app import app, storage
 from data.logs_model import logs_model
 from data.userfiles import DelegateUserfiles
@@ -140,23 +139,12 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    feature_flag = (features.ACTION_LOG_ROTATION) or (not None in [SAVE_PATH, SAVE_LOCATION])
-    worker = GunicornWorker(__name__, LogRotateWorker(), feature_flag)
+    worker = GunicornWorker(__name__, LogRotateWorker())
     return worker
 
 
 def main():
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.ACTION_LOG_ROTATION or None in [SAVE_PATH, SAVE_LOCATION]:
-        logger.debug("Action log rotation worker not enabled; skipping")
-        while True:
-            time.sleep(100000)
 
     GlobalLock.configure(app.config)
     worker = LogRotateWorker()

@@ -1,7 +1,4 @@
 import logging
-import time
-
-import features
 
 from data import model
 from singletons.config import app_config
@@ -11,7 +8,6 @@ from workers.gunicorn_worker import GunicornWorker
 from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
-
 
 POLL_PERIOD_SECONDS = 60 * 60  # 1 hour
 
@@ -46,30 +42,12 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    feature_flag = (features.APP_SPECIFIC_TOKENS) or (
-        app_config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is not None
-    )
-    worker = GunicornWorker(__name__, ExpiredAppSpecificTokenWorker(), feature_flag)
+    worker = GunicornWorker(__name__, ExpiredAppSpecificTokenWorker())
     return worker
 
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.APP_SPECIFIC_TOKENS:
-        logger.debug("App specific tokens disabled; skipping")
-        while True:
-            time.sleep(100000)
-
-    if app_config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is None:
-        logger.debug("GC of App specific tokens is disabled; skipping")
-        while True:
-            time.sleep(100000)
 
     logger.debug("Starting expired app specific token GC worker")
     worker = ExpiredAppSpecificTokenWorker()

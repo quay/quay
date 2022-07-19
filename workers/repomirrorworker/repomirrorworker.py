@@ -1,11 +1,9 @@
 import os
+import logging
 import logging.config
-import time
 import argparse
 
-import features
-
-from app import app, repo_mirror_api
+from app import app
 from workers.worker import Worker
 from workers.repomirrorworker import process_mirrors
 from util.repomirror.validator import RepoMirrorConfigValidator
@@ -47,7 +45,7 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, RepoMirrorWorker(), features.REPO_MIRROR)
+    worker = GunicornWorker(__name__, RepoMirrorWorker())
     return worker
 
 
@@ -68,16 +66,6 @@ if __name__ == "__main__":
         "mode", metavar="MODE", type=str, nargs="?", default="", choices=["mirror", ""]
     )
     args = parser.parse_args()
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.REPO_MIRROR:
-        logger.debug("Repository mirror disabled; skipping RepoMirrorWorker")
-        while True:
-            time.sleep(100000)
 
     worker = RepoMirrorWorker()
     worker.start()

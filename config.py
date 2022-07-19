@@ -731,6 +731,9 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_NAMESPACE_GARBAGE_COLLECTION = True
     FEATURE_REPOSITORY_GARBAGE_COLLECTION = True
 
+    # Whether the worker for deleting blob uploads is enabled.
+    FEATURE_BLOB_UPLOAD_CLEANUP = True
+
     # When enabled, sets a tracing callback to report greenlet metrics.
     GREENLET_TRACING = True
 

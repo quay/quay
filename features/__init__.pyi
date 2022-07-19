@@ -167,6 +167,9 @@ GARBAGE_COLLECTION: FeatureNameValue
 NAMESPACE_GARBAGE_COLLECTION: FeatureNameValue
 REPOSITORY_GARBAGE_COLLECTION: FeatureNameValue
 
+# Whether the worker for deleting blob uploads is enabled.
+BLOB_UPLOAD_CLEANUP: FeatureNameValue
+
 # Feature Flag: Whether to clear expired RepositoryActionCount entries.
 CLEAR_EXPIRED_RAC_ENTRIES: FeatureNameValue
 

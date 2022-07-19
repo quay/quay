@@ -1,15 +1,13 @@
 import logging
+import logging.config
 import os.path
 import json
-import time
 import uuid
 
 from datetime import datetime, timedelta
 from io import BytesIO
 
 from enum import Enum, unique
-
-import features
 
 from app import app, export_action_logs_queue, storage as app_storage, get_app_url, avatar
 from endpoints.api import format_date
@@ -20,9 +18,7 @@ from util.log import logfile_path
 from util.useremails import send_logs_exported_email
 from workers.gunicorn_worker import GunicornWorker
 
-
 logger = logging.getLogger(__name__)
-
 
 POLL_PERIOD_SECONDS = app.config.get("EXPORT_ACTION_LOGS_WORKER_POLL_PERIOD", 60)
 
@@ -302,17 +298,12 @@ def create_gunicorn_worker() -> GunicornWorker:
     log_worker = ExportActionLogsWorker(
         export_action_logs_queue, poll_period_seconds=POLL_PERIOD_SECONDS
     )
-    worker = GunicornWorker(__name__, log_worker, features.LOG_EXPORT)
+    worker = GunicornWorker(__name__, log_worker)
     return worker
 
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if not features.LOG_EXPORT:
-        logger.debug("Log export not enabled; skipping")
-        while True:
-            time.sleep(100000)
 
     logger.debug("Starting export action logs worker")
     worker = ExportActionLogsWorker(

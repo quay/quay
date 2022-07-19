@@ -1,9 +1,6 @@
+import logging
 import logging.config
 import os
-import time
-
-import features
-import threading
 
 from app import app
 from data.secscan_model import secscan_model
@@ -13,9 +10,7 @@ from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from endpoints.v2 import v2_bp
 
-
 logger = logging.getLogger(__name__)
-
 
 DEFAULT_INDEXING_INTERVAL = 30
 
@@ -62,7 +57,7 @@ def create_gunicorn_worker() -> GunicornWorker:
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     app.register_blueprint(v2_bp, url_prefix="/v2")
-    worker = GunicornWorker(__name__, SecurityWorker(), features.SECURITY_SCANNER)
+    worker = GunicornWorker(__name__, SecurityWorker())
     return worker
 
 
@@ -77,16 +72,6 @@ if __name__ == "__main__":
         )
 
     app.register_blueprint(v2_bp, url_prefix="/v2")
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.SECURITY_SCANNER:
-        logger.debug("Security scanner disabled; skipping SecurityWorker")
-        while True:
-            time.sleep(100000)
 
     GlobalLock.configure(app.config)
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)

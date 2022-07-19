@@ -1,20 +1,18 @@
 import logging
-import time
+import logging.config
 
-import features
-
-from app import app, authentication
 from data.users.teamsync import sync_teams_to_groups
-from workers.worker import Worker
-from util.timedeltastring import convert_to_timedelta
+from singletons.authentication import authentication
+from singletons.config import app_config
 from util.log import logfile_path
+from util.timedeltastring import convert_to_timedelta
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 
-
-WORKER_FREQUENCY = app.config.get("TEAM_SYNC_WORKER_FREQUENCY", 60)
-STALE_CUTOFF = convert_to_timedelta(app.config.get("TEAM_RESYNC_STALE_TIME", "30m"))
+WORKER_FREQUENCY = app_config.get("TEAM_SYNC_WORKER_FREQUENCY", 60)
+STALE_CUTOFF = convert_to_timedelta(app_config.get("TEAM_RESYNC_STALE_TIME", "30m"))
 
 
 class TeamSynchronizationWorker(Worker):
@@ -39,23 +37,12 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    feature_flag = (features.TEAM_SYNCING) and (authentication.federated_service)
-    worker = GunicornWorker(__name__, TeamSynchronizationWorker(), feature_flag)
+    worker = GunicornWorker(__name__, TeamSynchronizationWorker())
     return worker
 
 
 def main():
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
-
-    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
-        logger.debug("Quay running in account recovery mode")
-        while True:
-            time.sleep(100000)
-
-    if not features.TEAM_SYNCING or not authentication.federated_service:
-        logger.debug("Team syncing is disabled; sleeping")
-        while True:
-            time.sleep(100000)
 
     worker = TeamSynchronizationWorker()
     worker.start()
