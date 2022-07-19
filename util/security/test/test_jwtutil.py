@@ -52,6 +52,7 @@ def _token_data(audience, subject, iss, iat=None, exp=None, nbf=None):
     }
 
 
+@pytest.mark.parametrize("algorithm", [pytest.param("RS256"), pytest.param("RS384")])
 @pytest.mark.parametrize(
     "aud, iss, nbf, iat, exp, expected_exception",
     [
@@ -133,9 +134,17 @@ def _token_data(audience, subject, iss, iat=None, exp=None, nbf=None):
     ],
 )
 def test_decode_jwt_validation(
-    aud, iss, nbf, iat, exp, expected_exception, private_key_pem, public_key
+    aud,
+    iss,
+    nbf,
+    iat,
+    exp,
+    expected_exception,
+    private_key_pem,
+    public_key,
+    algorithm,
 ):
-    token = jwt.encode(_token_data(aud, "subject", iss, iat, exp, nbf), private_key_pem, "RS256")
+    token = jwt.encode(_token_data(aud, "subject", iss, iat, exp, nbf), private_key_pem, algorithm)
 
     if expected_exception is not None:
         with pytest.raises(InvalidTokenError) as ite:
@@ -143,7 +152,7 @@ def test_decode_jwt_validation(
             decode(
                 token,
                 public_key,
-                algorithms=["RS256"],
+                algorithms=[algorithm],
                 audience="someaudience",
                 issuer="someissuer",
                 options=max_exp,
@@ -155,7 +164,7 @@ def test_decode_jwt_validation(
         decode(
             token,
             public_key,
-            algorithms=["RS256"],
+            algorithms=[algorithm],
             audience="someaudience",
             issuer="someissuer",
             options=max_exp,
@@ -163,9 +172,10 @@ def test_decode_jwt_validation(
         )
 
 
-def test_decode_jwt_invalid_key(private_key_pem):
+@pytest.mark.parametrize("algorithm", [pytest.param("RS256"), pytest.param("RS384")])
+def test_decode_jwt_invalid_key(private_key_pem, algorithm):
     # Encode with the test private key.
-    token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, "RS256")
+    token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, algorithm)
 
     # Try to decode with a different public key.
     another_public_key = (
@@ -184,7 +194,7 @@ def test_decode_jwt_invalid_key(private_key_pem):
         decode(
             token,
             another_public_key,
-            algorithms=["RS256"],
+            algorithms=[algorithm],
             audience="aud",
             issuer="someissuer",
             options=max_exp,
@@ -193,9 +203,10 @@ def test_decode_jwt_invalid_key(private_key_pem):
     assert ite.match("Signature verification failed")
 
 
-def test_decode_jwt_invalid_algorithm(private_key_pem, public_key):
+@pytest.mark.parametrize("algorithm", [pytest.param("RS256"), pytest.param("RS384")])
+def test_decode_jwt_invalid_algorithm(private_key_pem, public_key, algorithm):
     # Encode with the test private key.
-    token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, "RS256")
+    token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, algorithm)
 
     # Attempt to decode but only with a different algorithm than that used.
     with pytest.raises(InvalidAlgorithmError) as ite:
@@ -212,7 +223,8 @@ def test_decode_jwt_invalid_algorithm(private_key_pem, public_key):
     assert ite.match("are not whitelisted")
 
 
-def test_jwk_dict_to_public_key(private_key, private_key_pem):
+@pytest.mark.parametrize("algorithm", [pytest.param("RS256"), pytest.param("RS384")])
+def test_jwk_dict_to_public_key(private_key, private_key_pem, algorithm):
     public_key = private_key.public_key()
     key_dict = jwk.dumps(
         public_key.public_bytes(
@@ -223,14 +235,14 @@ def test_jwk_dict_to_public_key(private_key, private_key_pem):
     converted = jwk_dict_to_public_key(key_dict)
 
     # Encode with the test private key.
-    token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, "RS256")
+    token = jwt.encode(_token_data("aud", "subject", "someissuer"), private_key_pem, algorithm)
 
     # Decode with the converted key.
     max_exp = exp_max_s_option(3600)
     decode(
         token,
         converted,
-        algorithms=["RS256"],
+        algorithms=[algorithm],
         audience="aud",
         issuer="someissuer",
         options=max_exp,
