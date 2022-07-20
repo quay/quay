@@ -811,6 +811,15 @@ CONFIG_SCHEMA = {
             "type": ["string", "null"],
             "description": "If recaptcha is enabled, the secret key for the Recaptcha service",
         },
+        # Pass through recaptcha for whitelisted users to support org/user creation via API
+        "RECAPTCHA_WHITELISTED_USERS": {
+            "type": "array",
+            "description": "Quay usernames of those users allowed to create org/user via API bypassing recaptcha security check",
+            "uniqueItems": True,
+            "items": {
+                "type": "string",
+            },
+        },
         # External application tokens.
         "FEATURE_APP_SPECIFIC_TOKENS": {
             "type": "boolean",

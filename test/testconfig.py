@@ -90,6 +90,7 @@ class TestConfig(DefaultConfig):
 
     RECAPTCHA_SITE_KEY = "somekey"
     RECAPTCHA_SECRET_KEY = "somesecretkey"
+    RECAPTCHA_WHITELISTED_USERS: List[str] = []
 
     FEATURE_APP_REGISTRY = True
     FEATURE_TEAM_SYNCING = True

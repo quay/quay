@@ -592,6 +592,9 @@ class DefaultConfig(ImmutableConfig):
     RECAPTCHA_SITE_KEY: Optional[str] = None
     RECAPTCHA_SECRET_KEY: Optional[str] = None
 
+    # List of users allowed to pass through recaptcha security check to enable org/user creation via API
+    RECAPTCHA_WHITELISTED_USERS: List[str] = []
+
     # Server where TUF metadata can be found
     TUF_SERVER = None
 
