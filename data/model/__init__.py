@@ -188,5 +188,6 @@ from data.model import (
     team,
     token,
     user,
+    proxy_cache,
     namespacequota,
 )

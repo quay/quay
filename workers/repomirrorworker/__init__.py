@@ -78,7 +78,7 @@ def process_mirrors(skopeo, token=None):
                 )
                 abt.set()
             except Exception as e:  # TODO: define exceptions
-                logger.exception("Repository Mirror service unavailable")
+                logger.exception("Repository Mirror service unavailable: %s" % e)
                 return None
 
             unmirrored_repositories.set(num_remaining)
@@ -177,11 +177,6 @@ def perform_mirror(skopeo, mirror):
         )
 
         for tag in tags:
-            reclaimed_mirror = claim_mirror(mirror)
-            if not reclaimed_mirror:
-                raise PreemptedException
-            mirror = reclaimed_mirror
-
             src_image = "docker://%s:%s" % (mirror.external_reference, tag)
             dest_image = "docker://%s/%s/%s:%s" % (
                 dest_server,
@@ -230,10 +225,6 @@ def perform_mirror(skopeo, mirror):
                 )
                 logger.info("Source '%s' successful sync." % src_image)
 
-        reclaimed_mirror = claim_mirror(mirror)
-        if not reclaimed_mirror:
-            raise PreemptedException
-        mirror = reclaimed_mirror
         delete_obsolete_tags(mirror, tags)
 
     except PreemptedException as e:
