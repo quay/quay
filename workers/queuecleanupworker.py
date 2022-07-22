@@ -3,9 +3,9 @@ import time
 
 from datetime import timedelta, datetime
 
+from app import app
 from data.database import UseThenDisconnect
 from data.queue import delete_expired
-from singletons.config import app_config
 from workers.worker import Worker
 from workers.gunicorn_worker import GunicornWorker
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 DELETION_DATE_THRESHOLD = timedelta(days=1)
 DELETION_COUNT_THRESHOLD = 50
 BATCH_SIZE = 500
-QUEUE_CLEANUP_FREQUENCY = app_config.get("QUEUE_CLEANUP_FREQUENCY", 60 * 60 * 24)
+QUEUE_CLEANUP_FREQUENCY = app.config.get("QUEUE_CLEANUP_FREQUENCY", 60 * 60 * 24)
 
 
 class QueueCleanupWorker(Worker):
@@ -27,7 +27,7 @@ class QueueCleanupWorker(Worker):
         """
         Performs garbage collection on the queueitem table.
         """
-        with UseThenDisconnect(app_config):
+        with UseThenDisconnect(app.config):
             while True:
                 # Find all queue items older than the threshold (typically a week) and delete them.
                 expiration_threshold = datetime.now() - DELETION_DATE_THRESHOLD
@@ -52,7 +52,7 @@ def create_gunicorn_worker() -> GunicornWorker:
 
 
 if __name__ == "__main__":
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)

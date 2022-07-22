@@ -2,8 +2,10 @@ import argparse
 
 from dateutil.parser import parse as parse_date
 
+from app import app
 from data import model
 from data.database import ServiceKeyApprovalType
+from data.logs_model import logs_model
 
 
 def generate_key(service, name, expiration_date=None, notes=None):

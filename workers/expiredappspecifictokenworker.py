@@ -3,12 +3,12 @@ import time
 
 import features
 
+from app import app  # This is required to initialize the database.
 from data import model
-from singletons.config import app_config
+from workers.worker import Worker
 from util.log import logfile_path
 from util.timedeltastring import convert_to_timedelta
 from workers.gunicorn_worker import GunicornWorker
-from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class ExpiredAppSpecificTokenWorker(Worker):
     def __init__(self):
         super(ExpiredAppSpecificTokenWorker, self).__init__()
 
-        expiration_window = app_config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC", "1d")
+        expiration_window = app.config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC", "1d")
         self.expiration_window = convert_to_timedelta(expiration_window)
 
         logger.debug("Found expiration window: %s", expiration_window)
@@ -47,7 +47,7 @@ def create_gunicorn_worker() -> GunicornWorker:
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     feature_flag = (features.APP_SPECIFIC_TOKENS) or (
-        app_config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is not None
+        app.config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is not None
     )
     worker = GunicornWorker(__name__, ExpiredAppSpecificTokenWorker(), feature_flag)
     return worker
@@ -56,7 +56,7 @@ def create_gunicorn_worker() -> GunicornWorker:
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    if app_config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is None:
+    if app.config.get("EXPIRED_APP_SPECIFIC_TOKEN_GC") is None:
         logger.debug("GC of App specific tokens is disabled; skipping")
         while True:
             time.sleep(100000)

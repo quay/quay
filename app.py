@@ -86,6 +86,9 @@ if not is_testing:
 if app.config.get("PROXY_COUNT", 1):
     app.wsgi_app = ProxyFix(app.wsgi_app)
 
+# Load features from config.
+features.import_features(app.config)
+
 # Register additional experimental artifact types.
 # TODO: extract this into a real, dynamic registration system.
 if features.GENERAL_OCI_SUPPORT:

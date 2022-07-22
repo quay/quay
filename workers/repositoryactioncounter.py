@@ -6,12 +6,12 @@ from math import log10
 
 import features
 
+from app import app  # This is required to initialize the database.
 from data import model, database
 from data.logs_model import logs_model
-from singletons.config import app_config
 from util.migrate.allocator import yield_random_entries
+from workers.worker import Worker, with_exponential_backoff
 from workers.gunicorn_worker import GunicornWorker
-from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ def create_gunicorn_worker() -> GunicornWorker:
 
 
 if __name__ == "__main__":
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)
