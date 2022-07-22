@@ -8,6 +8,7 @@ from prometheus_client import Gauge
 
 import features
 
+from app import app
 from data import database
 from data.encryption import DecryptionFailureException
 from data.model.repo_mirror import claim_mirror, release_mirror
@@ -17,7 +18,6 @@ from data.registry_model import registry_model
 from data.database import RepoMirrorStatus
 from data.model.oci.tag import delete_tag, retarget_tag, lookup_alive_tags_shallow
 from notifications import spawn_notification
-from singletons.config import app_config
 from util.audit import wrap_repository
 
 from workers.repomirrorworker.repo_mirror_model import repo_mirror_model as model
@@ -32,7 +32,7 @@ unmirrored_repositories = Gauge(
 )
 
 # Used only for testing - should not be set in production
-TAG_ROLLBACK_PAGE_SIZE = app_config.get("REPO_MIRROR_TAG_ROLLBACK_PAGE_SIZE", 100)
+TAG_ROLLBACK_PAGE_SIZE = app.config.get("REPO_MIRROR_TAG_ROLLBACK_PAGE_SIZE", 100)
 
 
 class PreemptedException(Exception):
@@ -68,7 +68,7 @@ def process_mirrors(skopeo, token=None):
         logger.debug("Found no additional repositories to mirror")
         return next_token
 
-    with database.UseThenDisconnect(app_config):
+    with database.UseThenDisconnect(app.config):
         for mirror, abt, num_remaining in iterator:
             try:
                 perform_mirror(skopeo, mirror)
@@ -173,7 +173,7 @@ def perform_mirror(skopeo, mirror):
             raise
 
         dest_server = (
-            app_config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app_config["SERVER_HOSTNAME"]
+            app.config.get("REPO_MIRROR_SERVER_HOSTNAME", None) or app.config["SERVER_HOSTNAME"]
         )
 
         for tag in tags:
@@ -184,12 +184,12 @@ def perform_mirror(skopeo, mirror):
                 mirror.repository.name,
                 tag,
             )
-            with database.CloseForLongOperation(app_config):
+            with database.CloseForLongOperation(app.config):
                 result = skopeo.copy(
                     src_image,
                     dest_image,
                     src_tls_verify=mirror.external_registry_config.get("verify_tls", True),
-                    dest_tls_verify=app_config.get(
+                    dest_tls_verify=app.config.get(
                         "REPO_MIRROR_TLS_VERIFY", True
                     ),  # TODO: is this a config choice or something else?
                     src_username=username,
@@ -302,7 +302,7 @@ def get_all_tags(skopeo, mirror):
         mirror.external_registry_password.decrypt() if mirror.external_registry_password else None
     )
 
-    with database.CloseForLongOperation(app_config):
+    with database.CloseForLongOperation(app.config):
         result = skopeo.tags(
             "docker://%s" % (mirror.external_reference),
             mirror.root_rule.rule_value,

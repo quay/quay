@@ -34,7 +34,7 @@ class ChunkCleanupWorker(QueueWorker):
             raise JobException()
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -49,6 +49,7 @@ def create_gunicorn_worker() -> GunicornWorker:
     feature_flag = "SwiftStorage" in engines
     worker = GunicornWorker(
         __name__,
+        app,
         ChunkCleanupWorker(chunk_cleanup_queue, poll_period_seconds=POLL_PERIOD_SECONDS),
         feature_flag,
     )

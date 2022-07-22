@@ -3,9 +3,9 @@ import time
 
 from prometheus_client import Gauge
 
+from app import app
 from data import model
 from data.database import UseThenDisconnect
-from singletons.config import app_config
 from util.locking import GlobalLock, LockNotAcquiredException
 from util.log import logfile_path
 from workers.worker import Worker
@@ -19,7 +19,7 @@ org_rows = Gauge("quay_org_rows", "number of organizations in the database")
 robot_rows = Gauge("quay_robot_rows", "number of robot accounts in the database")
 
 
-WORKER_FREQUENCY = app_config.get("GLOBAL_PROMETHEUS_STATS_FREQUENCY", 60 * 60)
+WORKER_FREQUENCY = app.config.get("GLOBAL_PROMETHEUS_STATS_FREQUENCY", 60 * 60)
 
 
 def get_repository_count():
@@ -58,14 +58,14 @@ class GlobalPrometheusStatsWorker(Worker):
 
     def _report_stats(self):
         logger.debug("Reporting global stats")
-        with UseThenDisconnect(app_config):
+        with UseThenDisconnect(app.config):
             repository_rows.set(get_repository_count())
             user_rows.set(get_active_user_count())
             org_rows.set(get_active_org_count())
             robot_rows.set(get_robot_count())
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -74,25 +74,25 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    feature_flag = app_config.get("PROMETHEUS_PUSHGATEWAY_URL") is not None
-    worker = GunicornWorker(__name__, GlobalPrometheusStatsWorker(), feature_flag)
+    feature_flag = app.config.get("PROMETHEUS_PUSHGATEWAY_URL") is not None
+    worker = GunicornWorker(__name__, app, GlobalPrometheusStatsWorker(), feature_flag)
     return worker
 
 
 def main():
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)
 
-    if not app_config.get("PROMETHEUS_PUSHGATEWAY_URL"):
+    if not app.config.get("PROMETHEUS_PUSHGATEWAY_URL"):
         logger.debug("Prometheus not enabled; skipping global stats reporting")
         while True:
             time.sleep(100000)
 
-    GlobalLock.configure(app_config)
+    GlobalLock.configure(app.config)
     worker = GlobalPrometheusStatsWorker()
     worker.start()
 

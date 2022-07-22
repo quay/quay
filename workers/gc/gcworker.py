@@ -5,11 +5,11 @@ from contextlib import contextmanager
 
 import features
 
-from data.database import UseThenDisconnect, Repository
+from app import app
+from data.database import UseThenDisconnect, Repository, RepositoryState
 from data.registry_model import registry_model
 from data.model.repository import get_random_gc_policy
 from data.model.gc import garbage_collect_repo
-from singletons.config import app_config
 from workers.worker import Worker
 from util.locking import GlobalLock, LockNotAcquiredException
 from workers.gunicorn_worker import GunicornWorker
@@ -30,14 +30,14 @@ class GarbageCollectionWorker(Worker):
     def __init__(self):
         super(GarbageCollectionWorker, self).__init__()
         self.add_operation(
-            self._garbage_collection_repos, app_config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
+            self._garbage_collection_repos, app.config.get("GARBAGE_COLLECTION_FREQUENCY", 30)
         )
 
     def _garbage_collection_repos(self, skip_lock_for_testing=False):
         """
         Performs garbage collection on repositories.
         """
-        with UseThenDisconnect(app_config):
+        with UseThenDisconnect(app.config):
             policy = get_random_gc_policy()
             if policy is None:
                 logger.debug("No GC policies found")
@@ -72,7 +72,7 @@ class GarbageCollectionWorker(Worker):
                 logger.debug("Could not acquire repo lock for garbage collection")
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -81,12 +81,12 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, GarbageCollectionWorker(), features.GARBAGE_COLLECTION)
+    worker = GunicornWorker(__name__, app, GarbageCollectionWorker(), features.GARBAGE_COLLECTION)
     return worker
 
 
 if __name__ == "__main__":
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)
@@ -96,6 +96,6 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    GlobalLock.configure(app_config)
+    GlobalLock.configure(app.config)
     worker = GarbageCollectionWorker()
     worker.start()

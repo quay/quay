@@ -1,6 +1,7 @@
 from util.config.validators import BaseValidator, ConfigValidationException
 from util.security.ssl import load_certificate, CertInvalidException, KeyInvalidException
-from util.ssl import SSL_FILENAMES
+
+SSL_FILENAMES = ["ssl.cert", "ssl.key"]
 
 
 class SSLValidator(BaseValidator):

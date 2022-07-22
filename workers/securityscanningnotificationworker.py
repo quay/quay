@@ -132,7 +132,7 @@ class SecurityScanningNotificationWorker(QueueWorker):
             self.extend_processing(_PROCESSING_SECONDS_EXPIRATION, job_details)
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -145,7 +145,7 @@ def create_gunicorn_worker() -> GunicornWorker:
     note_worker = SecurityScanningNotificationWorker(
         secscan_notification_queue, poll_period_seconds=_POLL_PERIOD_SECONDS
     )
-    worker = GunicornWorker(__name__, note_worker, feature_flag)
+    worker = GunicornWorker(__name__, app, note_worker, feature_flag)
     return worker
 
 

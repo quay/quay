@@ -3,13 +3,12 @@ import time
 
 import features
 
+from app import repository_gc_queue, all_queues, app
 from data import model, database
-from singletons.config import app_config
-from singletons.workqueues import repository_gc_queue
+from workers.queueworker import QueueWorker, WorkerSleepException
 from util.log import logfile_path
 from util.locking import GlobalLock, LockNotAcquiredException
 from workers.gunicorn_worker import GunicornWorker
-from workers.queueworker import QueueWorker, WorkerSleepException
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class RepositoryGCWorker(QueueWorker):
             raise Exception("GC interrupted; will retry")
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -64,14 +63,14 @@ def create_gunicorn_worker() -> GunicornWorker:
         reservation_seconds=REPOSITORY_GC_TIMEOUT,
     )
 
-    worker = GunicornWorker(__name__, gc_worker, features.REPOSITORY_GARBAGE_COLLECTION)
+    worker = GunicornWorker(__name__, app, gc_worker, features.REPOSITORY_GARBAGE_COLLECTION)
     return worker
 
 
 if __name__ == "__main__":
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)
@@ -81,7 +80,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    GlobalLock.configure(app_config)
+    GlobalLock.configure(app.config)
     logger.debug("Starting repository GC worker")
     worker = RepositoryGCWorker(
         repository_gc_queue,

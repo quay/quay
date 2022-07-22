@@ -1,7 +1,4 @@
 from data.database import db, db_transaction
-from singletons.config import app_config
-from singletons.storage import storage as store
-from singletons.tuf_metadata_api import tuf_metadata_api
 
 
 class DataModelException(Exception):
@@ -147,9 +144,9 @@ class TooManyLoginAttemptsException(Exception):
 
 
 class Config(object):
-    def __init__(self, app_config, store):
-        self.app_config = app_config
-        self.store = store
+    def __init__(self):
+        self.app_config = None
+        self.store = None
         self.image_cleanup_callbacks = []
         self.repo_cleanup_callbacks = []
 
@@ -162,8 +159,7 @@ class Config(object):
         return lambda: self.repo_cleanup_callbacks.remove(callback)
 
 
-config = Config(app_config, store)
-config.register_repo_cleanup_callback(tuf_metadata_api.delete_metadata)
+config = Config()
 
 
 # There MUST NOT be any circular dependencies between these subsections. If there are fix it by

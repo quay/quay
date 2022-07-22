@@ -5,18 +5,18 @@ from peewee import fn
 
 import features
 
+from app import app
 from data.database import Manifest
 from image.shared.schemas import parse_manifest_from_bytes, ManifestException
-from singletons.config import app_config
+from workers.worker import Worker
 from util.migrate.allocator import yield_random_entries
 from util.bytes import Bytes
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
-from workers.worker import Worker
 
 logger = logging.getLogger(__name__)
 
-WORKER_FREQUENCY = app_config.get("MANIFEST_BACKFILL_WORKER_FREQUENCY", 60 * 60)
+WORKER_FREQUENCY = app.config.get("MANIFEST_BACKFILL_WORKER_FREQUENCY", 60 * 60)
 
 
 class ManifestBackfillWorker(Worker):
@@ -86,7 +86,7 @@ class ManifestBackfillWorker(Worker):
         return True
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -95,14 +95,16 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, ManifestBackfillWorker(), features.MANIFEST_SIZE_BACKFILL)
+    worker = GunicornWorker(
+        __name__, app, ManifestBackfillWorker(), features.MANIFEST_SIZE_BACKFILL
+    )
     return worker
 
 
 def main():
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)

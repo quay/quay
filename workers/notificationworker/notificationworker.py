@@ -1,10 +1,9 @@
 import logging
 import time
 
+from app import app, notification_queue
 from notifications.notificationmethod import NotificationMethod, InvalidNotificationMethodException
 from notifications.notificationevent import NotificationEvent, InvalidNotificationEventException
-from singletons.config import app_config
-from singletons.workqueues import notification_queue
 from workers.notificationworker.models_pre_oci import pre_oci_model as model
 from workers.queueworker import QueueWorker, JobException
 from workers.gunicorn_worker import GunicornWorker
@@ -40,7 +39,7 @@ class NotificationWorker(QueueWorker):
                 raise exc
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -52,12 +51,12 @@ def create_gunicorn_worker() -> GunicornWorker:
     note_worker = NotificationWorker(
         notification_queue, poll_period_seconds=10, reservation_seconds=30, retry_after_seconds=30
     )
-    worker = GunicornWorker(__name__, note_worker, True)
+    worker = GunicornWorker(__name__, app, note_worker, True)
     return worker
 
 
 if __name__ == "__main__":
-    if app_config.get("ACCOUNT_RECOVERY_MODE", False):
+    if app.config.get("ACCOUNT_RECOVERY_MODE", False):
         logger.debug("Quay running in account recovery mode")
         while True:
             time.sleep(100000)
