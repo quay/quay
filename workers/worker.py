@@ -11,8 +11,9 @@ from threading import Event
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from raven import Client
+
+from app import app
 from data.database import UseThenDisconnect
-from singletons.config import app_config
 from util.log import logfile_path
 
 logger = logging.getLogger(__name__)
@@ -62,9 +63,9 @@ class Worker(object):
         self._terminated = Event()
         self._raven_client = None
 
-        if app_config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
+        if app.config.get("EXCEPTION_LOG_TYPE", "FakeSentry") == "Sentry":
             worker_name = "%s:worker-%s" % (socket.gethostname(), self.__class__.__name__)
-            self._raven_client = Client(app_config.get("SENTRY_DSN", ""), name=worker_name)
+            self._raven_client = Client(app.config.get("SENTRY_DSN", ""), name=worker_name)
 
     def is_healthy(self):
         return not self._stop.is_set()
@@ -82,7 +83,7 @@ class Worker(object):
         @wraps(operation_func)
         def _operation_func():
             try:
-                with UseThenDisconnect(app_config):
+                with UseThenDisconnect(app.config):
                     return operation_func()
             except Exception:
                 logger.exception("Operation raised exception")
@@ -102,12 +103,12 @@ class Worker(object):
     def start(self):
         logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
 
-        if not app_config.get("SETUP_COMPLETE", False):
+        if not app.config.get("SETUP_COMPLETE", False):
             logger.info("Product setup is not yet complete; skipping worker startup")
             self._setup_and_wait_for_shutdown()
             return
 
-        if app_config.get("REGISTRY_STATE", "normal") == "readonly":
+        if app.config.get("REGISTRY_STATE", "normal") == "readonly":
             logger.info("Product is in read-only mode; skipping worker startup")
             self._setup_and_wait_for_shutdown()
             return
@@ -117,7 +118,7 @@ class Worker(object):
         self._sched.start()
         for operation_func, operation_sec in self._operations:
             start_date = datetime.now() + timedelta(seconds=0.001)
-            if app_config.get("STAGGER_WORKERS"):
+            if app.config.get("STAGGER_WORKERS"):
                 start_date += timedelta(seconds=randint(1, operation_sec))
             logger.debug("First run scheduled for %s", start_date)
             self._sched.add_job(
