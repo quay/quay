@@ -21,6 +21,7 @@ from _init import (
 
 from buildman.manager.buildcanceller import BuildCanceller
 from data import database
+from data import model
 from data.archivedlogs import LogArchive
 from data.billing import Billing
 from data.buildlogs import BuildLogs
@@ -42,7 +43,9 @@ from path_converters import (
 from oauth.services.github import GithubOAuthService
 from oauth.services.gitlab import GitLabOAuthService
 from oauth.loginmanager import OAuthLoginManager
+from storage import Storage
 from util.log import filter_logs
+from util.ipresolver import IPResolver
 from util.saas.analytics import Analytics
 from util.saas.exceptionlog import Sentry
 from util.names import urn_generator
@@ -51,6 +54,8 @@ from util.config.superusermanager import SuperUserManager
 from util.label_validator import LabelValidator
 from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
+from util.tufmetadata.api import TUFMetadataAPI
+from util.security.instancekeys import InstanceKeys
 from util.greenlet_tracing import enable_tracing
 
 from singletons.app import _app as app
@@ -59,11 +64,7 @@ from singletons.workqueues import *  # noqa: F401, F403
 
 # Initialize app
 from singletons.avatar import avatar
-from singletons.instance_keys import instance_keys
-from singletons.ip_resolver import ip_resolver
 from singletons.mail import mail
-from singletons.storage import storage
-from singletons.tuf_metadata_api import tuf_metadata_api
 
 OVERRIDE_CONFIG_YAML_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.yaml")
 OVERRIDE_CONFIG_PY_FILENAME = os.path.join(OVERRIDE_CONFIG_DIRECTORY, "config.py")
@@ -200,6 +201,9 @@ tf = app.config["DB_TRANSACTION_FACTORY"]
 model_cache = get_model_cache(app.config)
 login_manager = LoginManager(app)
 prometheus = PrometheusPlugin(app)
+instance_keys = InstanceKeys(app)
+ip_resolver = IPResolver(app)
+storage = Storage(app, chunk_cleanup_queue, instance_keys, config_provider, ip_resolver)
 userfiles = Userfiles(app, storage)
 log_archive = LogArchive(app, storage)
 analytics = Analytics(app)
@@ -209,6 +213,7 @@ build_logs = BuildLogs(app)
 authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY)
 userevents = UserEventsBuilderModule(app)
 superusers = SuperUserManager(app)
+instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
 
@@ -230,6 +235,8 @@ repo_mirror_api = RepoMirrorAPI(
     instance_keys=instance_keys,
 )
 
+tuf_metadata_api = TUFMetadataAPI(app, app.config)
+
 # Check for a key in config. If none found, generate a new signing key for Docker V2 manifests.
 _v2_key_path = os.path.join(OVERRIDE_CONFIG_DIRECTORY, DOCKER_V2_SIGNINGKEY_FILENAME)
 if os.path.exists(_v2_key_path):
@@ -241,6 +248,16 @@ else:
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
     raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
+
+model.config.app_config = app.config
+model.config.store = storage
+model.config.register_repo_cleanup_callback(tuf_metadata_api.delete_metadata)
+
+secscan_model.configure(app, instance_keys, storage)
+
+# NOTE: We re-use the page token key here as this is just to obfuscate IDs for V1, and
+# does not need to actually be secure.
+registry_model.set_id_hash_salt(app.config.get("PAGE_TOKEN_KEY"))
 
 
 @login_manager.user_loader
