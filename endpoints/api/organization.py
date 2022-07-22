@@ -173,13 +173,14 @@ class OrganizationList(ApiResource):
 
         # If recaptcha is enabled, then verify the user is a human.
         if features.RECAPTCHA:
-            recaptcha_response = org_data.get("recaptcha_response", "")
-            result = recaptcha2.verify(
-                app.config["RECAPTCHA_SECRET_KEY"], recaptcha_response, get_request_ip()
-            )
-
-            if not result["success"]:
-                return {"message": "Are you a bot? If not, please revalidate the captcha."}, 400
+            # check if the user is whitelisted to bypass recaptcha security check
+            if user.username not in app.config["RECAPTCHA_WHITELISTED_USERS"]:
+                recaptcha_response = org_data.get("recaptcha_response", "")
+                result = recaptcha2.verify(
+                    app.config["RECAPTCHA_SECRET_KEY"], recaptcha_response, get_request_ip()
+                )
+                if not result["success"]:
+                    return {"message": "Are you a bot? If not, please revalidate the captcha."}, 400
 
         is_possible_abuser = ip_resolver.is_ip_possible_threat(get_request_ip())
         try:
