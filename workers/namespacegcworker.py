@@ -43,7 +43,7 @@ class NamespaceGCWorker(QueueWorker):
         gc_namespaces_purged.inc()
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -57,7 +57,7 @@ def create_gunicorn_worker() -> GunicornWorker:
         poll_period_seconds=POLL_PERIOD_SECONDS,
         reservation_seconds=NAMESPACE_GC_TIMEOUT,
     )
-    worker = GunicornWorker(__name__, gc_worker, features.NAMESPACE_GARBAGE_COLLECTION)
+    worker = GunicornWorker(__name__, app, gc_worker, features.NAMESPACE_GARBAGE_COLLECTION)
     return worker
 
 

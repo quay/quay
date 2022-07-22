@@ -48,7 +48,7 @@ class RepositoryGCWorker(QueueWorker):
             raise Exception("GC interrupted; will retry")
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -63,7 +63,7 @@ def create_gunicorn_worker() -> GunicornWorker:
         reservation_seconds=REPOSITORY_GC_TIMEOUT,
     )
 
-    worker = GunicornWorker(__name__, gc_worker, features.REPOSITORY_GARBAGE_COLLECTION)
+    worker = GunicornWorker(__name__, app, gc_worker, features.REPOSITORY_GARBAGE_COLLECTION)
     return worker
 
 

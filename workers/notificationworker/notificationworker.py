@@ -40,7 +40,7 @@ class NotificationWorker(QueueWorker):
                 raise exc
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -49,10 +49,13 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
+    from flask import Flask
+
     note_worker = NotificationWorker(
         notification_queue, poll_period_seconds=10, reservation_seconds=30, retry_after_seconds=30
     )
-    worker = GunicornWorker(__name__, note_worker, True)
+    app = Flask(__name__)
+    worker = GunicornWorker(__name__, app, note_worker, True)
     return worker
 
 

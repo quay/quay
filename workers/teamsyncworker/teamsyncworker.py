@@ -30,7 +30,7 @@ class TeamSynchronizationWorker(Worker):
         sync_teams_to_groups(authentication, STALE_CUTOFF)
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -40,7 +40,7 @@ def create_gunicorn_worker() -> GunicornWorker:
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     feature_flag = (features.TEAM_SYNCING) and (authentication.federated_service)
-    worker = GunicornWorker(__name__, TeamSynchronizationWorker(), feature_flag)
+    worker = GunicornWorker(__name__, app, TeamSynchronizationWorker(), feature_flag)
     return worker
 
 

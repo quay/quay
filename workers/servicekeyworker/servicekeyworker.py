@@ -56,7 +56,7 @@ class ServiceKeyWorker(Worker):
         instance_key_renewal_self.labels(True).inc()
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -65,7 +65,7 @@ def create_gunicorn_worker() -> GunicornWorker:
 
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
-    worker = GunicornWorker(__name__, ServiceKeyWorker(), True)
+    worker = GunicornWorker(__name__, app, ServiceKeyWorker(), True)
     return worker
 
 

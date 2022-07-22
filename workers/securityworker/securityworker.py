@@ -52,7 +52,7 @@ class SecurityWorker(Worker):
             self._model.perform_indexing_recent_manifests(batch_size)
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -62,7 +62,7 @@ def create_gunicorn_worker() -> GunicornWorker:
     utilizing this method will enforce a 1:1 quay worker to gunicorn worker ratio.
     """
     app.register_blueprint(v2_bp, url_prefix="/v2")
-    worker = GunicornWorker(__name__, SecurityWorker(), features.SECURITY_SCANNER)
+    worker = GunicornWorker(__name__, app, SecurityWorker(), features.SECURITY_SCANNER)
     return worker
 
 

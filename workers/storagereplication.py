@@ -170,7 +170,7 @@ class StorageReplicationWorker(QueueWorker):
         )
 
 
-def create_gunicorn_worker() -> GunicornWorker:
+def create_gunicorn_worker():
     """
     follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread.
@@ -193,7 +193,7 @@ def create_gunicorn_worker() -> GunicornWorker:
         poll_period_seconds=POLL_PERIOD_SECONDS,
         reservation_seconds=RESERVATION_SECONDS,
     )
-    worker = GunicornWorker(__name__, repl_worker, feature_flag)
+    worker = GunicornWorker(__name__, app, repl_worker, feature_flag)
     return worker
 
 
