@@ -3,7 +3,6 @@ import logging
 from data.logs_model.table_logs_model import TableLogsModel
 from data.logs_model.document_logs_model import DocumentLogsModel
 from data.logs_model.combined_model import CombinedLogsModel
-from singletons.config import app_config
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +63,3 @@ def configure(app_config):
 
     model_config["should_skip_logging"] = should_skip_logging
     logs_model.initialize(_LOG_MODELS[model_name](**model_config))
-
-
-configure(app_config)
