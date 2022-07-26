@@ -3,11 +3,14 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.7.4"></a>
-## [v3.7.4] - 2022-07-15
+<a name="v3.7.5"></a>
+## [v3.7.5] - 2022-07-25
 ### Api
+- [d37dd766](https://github.com/quay/quay/commit/d37dd766accdaa8c2af5c465af2fd6f2948ed990): fix CORS headers, use concat instead of extend (PROJQUAY-4163) ([#1445](https://github.com/quay/quay/issues/1445))
 - [871c43ea](https://github.com/quay/quay/commit/871c43eaf37ea44da13308e06b2e2f9c543fc5dd): handle missing tag on DELETE tag api ([#1444](https://github.com/quay/quay/issues/1444))
 - [bf99e718](https://github.com/quay/quay/commit/bf99e718513b41e67ee2963e220d93e59e4acac5): Update werkzeug to 1.0.0 and add valid CORS methods (PROJQUAY-4163) ([#1443](https://github.com/quay/quay/issues/1443))
+### Auth
+- [6ed0bcde](https://github.com/quay/quay/commit/6ed0bcdedc9a0cb4a84197006602ba39c7f965ec): allow rs384 in jwt (PROJQUAY-4148) ([#1449](https://github.com/quay/quay/issues/1449))
 ### Build(Deps)
 - [0f2ebdaf](https://github.com/quay/quay/commit/0f2ebdafc58867af6fac9168ed6348178ac63d45): bump moment from 2.29.2 to 2.29.4 ([#1442](https://github.com/quay/quay/issues/1442))
 ### Builders
@@ -32,6 +35,8 @@
 - [e76db133](https://github.com/quay/quay/commit/e76db133fcd62b07f6c99c420410ef9eca12dd73): //issues.redhat.com/browse/PROJQUAY-3836) ([#1372](https://github.com/quay/quay/issues/1372))
 ### Chore: V3.7.3 Changelog Bump (Https
 - [a55c63e7](https://github.com/quay/quay/commit/a55c63e7117438c483c78cd17c60e0491ab498cd): //issues.redhat.com/browse/PROJQUAY-3989) ([#1420](https://github.com/quay/quay/issues/1420))
+### Chore: V3.7.4 Changelog Bump (Https
+- [a5279983](https://github.com/quay/quay/commit/a52799830235ae67162e35e8cc6ddcca999343a2): //issues.redhat.com/browse/PROJQUAY-4050) ([#1446](https://github.com/quay/quay/issues/1446))
 ### Ci
 - [07c8a75f](https://github.com/quay/quay/commit/07c8a75fa18ab4da5abad2ede24347419656c793): Check arm64 builds in CI (PROJQUAY-4038) ([#1431](https://github.com/quay/quay/issues/1431))
 ### Dev
@@ -93,10 +98,18 @@
 - [ba2aa54d](https://github.com/quay/quay/commit/ba2aa54d3fc081c052d65c899b49f67dd6ca3ada): Superuser user panel settings icon permissions fix (PROJQUAY-3905) ([#1364](https://github.com/quay/quay/issues/1364))
 - [c93661e9](https://github.com/quay/quay/commit/c93661e9d51a645b43760db83b20f8b9c8041d3c): Show settings icon for super user under Superuser Users Panel (PROJQUAY-3905) ([#1358](https://github.com/quay/quay/issues/1358))
 ### Ui
+- [7cbf0ffd](https://github.com/quay/quay/commit/7cbf0ffd7d3bf3c6de1943af2f638f4eb90b038c): Remove trial from larger plans for quay.io (PROJQUAY-4197) ([#1455](https://github.com/quay/quay/issues/1455))
 - [1a016efc](https://github.com/quay/quay/commit/1a016efc80220c7c62b723ce62a4044d7d8b9a24): Add CSRF and token endpoint and public config endpoint (PROJQUAY-3865) ([#1323](https://github.com/quay/quay/issues/1323))
 - [d9dbbd88](https://github.com/quay/quay/commit/d9dbbd88dbb9a1da95ef46195bcfb5458db6a7b8): basic support for cosign in the UI (PROJQUAY-3965) ([#1380](https://github.com/quay/quay/issues/1380))
 ### V2auth
 - [fd9a6b2e](https://github.com/quay/quay/commit/fd9a6b2e606db6d20bb079f4c3a942e176f83a0c): Check for user before creating org (PROJQUAY-3766) ([#1315](https://github.com/quay/quay/issues/1315))
+
+<a name="v3.7.4"></a>
+## [v3.7.4] - 2022-07-07
+### Builders
+- [92d694aa](https://github.com/quay/quay/commit/92d694aa216317a16a81bae4fe56c29242ab1cf6): Add cacert's to build agent (PROJQUAY-3819) ([#1398](https://github.com/quay/quay/issues/1398)) ([#1436](https://github.com/quay/quay/issues/1436))
+### Mirror
+- [c5354154](https://github.com/quay/quay/commit/c53541544d6fd18c4c52f524eb3ed1bad3c776ce): Pass command output to a tempfile instead of pipe (PROJQUAY-3145) ([#1437](https://github.com/quay/quay/issues/1437))
 
 <a name="v3.7.3"></a>
 ## [v3.7.3] - 2022-06-28
@@ -642,7 +655,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.7.4...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.7.5...HEAD
+[v3.7.5]: https://github.com/quay/quay/compare/v3.7.4...v3.7.5
 [v3.7.4]: https://github.com/quay/quay/compare/v3.7.3...v3.7.4
 [v3.7.3]: https://github.com/quay/quay/compare/v3.7.2...v3.7.3
 [v3.7.2]: https://github.com/quay/quay/compare/v3.7.1...v3.7.2
