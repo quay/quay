@@ -325,7 +325,7 @@ PLANS = [
     {
         "title": "XXXXXL",
         "price": 2170000,
-        "privateRepos": 150000,
+        "privateRepos": 15000,
         "stripeId": "price_1LRztA2OoNF1TIf0SvSrz106",
         "audience": "For the SaaS savvy very big enterprise",
         "bus_features": True,
