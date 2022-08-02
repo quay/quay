@@ -106,7 +106,7 @@ class DownloadProxy(object):
 
         # The proxy path is of the form:
         # http(s)://registry_server/_storage_proxy/{token}/{scheme}/{hostname}/rest/of/path/here
-        encoded_token = base64.urlsafe_b64encode(token)
+        encoded_token = base64.urlsafe_b64encode(bytes(token, "utf-8"))
         proxy_url = "%s://%s/_storage_proxy/%s/%s/%s/%s" % (
             url_scheme,
             server_hostname,

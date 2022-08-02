@@ -7,7 +7,6 @@ import uuid
 import dateutil.parser
 from datetime import datetime, timedelta
 
-import jwt
 from prometheus_client import Counter, Histogram
 
 from app import app

@@ -177,7 +177,7 @@ class OAuthLoginTestCase(EndpointTestCase):
         @urlmatch(netloc=r"fakeoidc", path="/token")
         def token_handler(_, request):
             if request.body.find("code=somecode") >= 0:
-                content = {"access_token": "someaccesstoken", "id_token": id_token.decode("ascii")}
+                content = {"access_token": "someaccesstoken", "id_token": id_token}
                 return py_json.dumps(content)
             else:
                 return {"status_code": 400, "content": '{"message": "Invalid code"}'}
