@@ -139,7 +139,7 @@ def generate_registry_jwt(auth_result):
     token = generate_bearer_token(
         audience_param, subject, context, access, TOKEN_VALIDITY_LIFETIME_S, instance_keys
     )
-    return jsonify({"token": token.decode("ascii")})
+    return jsonify({"token": token})
 
 
 @lru_cache(maxsize=1)

@@ -253,7 +253,7 @@ def _get_auth_headers(subject, context, repository):
         instance_keys,
     )
     return {
-        "Authorization": "Bearer %s" % token.decode("ascii"),
+        "Authorization": "Bearer %s" % token,
     }
 
 
@@ -939,7 +939,7 @@ class TestManifestPullThroughProxyDockerHub(unittest.TestCase):
             instance_keys,
         )
         return {
-            "Authorization": "Bearer %s" % token.decode("ascii"),
+            "Authorization": "Bearer %s" % token,
         }
 
     def test_pull_proxy_whole_dockerhub(self):
@@ -1135,7 +1135,7 @@ class TestManifestPullThroughProxy(unittest.TestCase):
             instance_keys,
         )
         return {
-            "Authorization": "Bearer %s" % token.decode("ascii"),
+            "Authorization": "Bearer %s" % token,
         }
 
     def test_pull_proxy_whole_registry(self):

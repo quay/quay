@@ -688,7 +688,7 @@ class KeyServerTestCase(EndpointTestCase):
             service="sample service",
             kid="kid420",
             headers={
-                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Authorization": "Bearer %s" % token,
                 "Content-Type": "application/json",
             },
             data=jwk.as_dict(),
@@ -702,7 +702,7 @@ class KeyServerTestCase(EndpointTestCase):
                 service="sample_service",
                 kid="kid420",
                 headers={
-                    "Authorization": "Bearer %s" % token.decode("ascii"),
+                    "Authorization": "Bearer %s" % token,
                     "Content-Type": "application/json",
                 },
                 data=jwk.as_dict(),
@@ -721,7 +721,7 @@ class KeyServerTestCase(EndpointTestCase):
             service="sample_service",
             kid="kid6969",
             headers={
-                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Authorization": "Bearer %s" % token,
                 "Content-Type": "application/json",
             },
             data=jwk.as_dict(),
@@ -741,7 +741,7 @@ class KeyServerTestCase(EndpointTestCase):
                 service="sample_service",
                 kid="kid6969",
                 headers={
-                    "Authorization": "Bearer %s" % token.decode("ascii"),
+                    "Authorization": "Bearer %s" % token,
                     "Content-Type": "application/json",
                 },
                 data=jwk.as_dict(),
@@ -762,7 +762,7 @@ class KeyServerTestCase(EndpointTestCase):
             service="sample_service",
             kid="kid6969",
             headers={
-                "Authorization": "Bearer %s" % token.decode("ascii"),
+                "Authorization": "Bearer %s" % token,
                 "Content-Type": "application/json",
             },
             data=jwk.as_dict(),
@@ -790,7 +790,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our key, attempt to delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
+            headers={"Authorization": "Bearer %s" % token},
             expected_code=400,
             service="sample_service",
             kid="first",
@@ -824,7 +824,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our second key, attempt to delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
+            headers={"Authorization": "Bearer %s" % token},
             expected_code=403,
             service="sample_service",
             kid="second",
@@ -836,7 +836,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
+                headers={"Authorization": "Bearer %s" % token},
                 expected_code=204,
                 service="sample_service",
                 kid="second",
@@ -869,7 +869,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
+                headers={"Authorization": "Bearer %s" % token},
                 expected_code=204,
                 service="sample_service",
                 kid="unapprovedkeyhere",
@@ -902,7 +902,7 @@ class KeyServerTestCase(EndpointTestCase):
         # Using the credentials of our second key, attempt tp delete our unapproved key
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % token.decode("ascii")},
+            headers={"Authorization": "Bearer %s" % token},
             expected_code=403,
             service="sample_service",
             kid="kid321",
@@ -917,7 +917,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
+                headers={"Authorization": "Bearer %s" % token},
                 expected_code=204,
                 service="sample_service",
                 kid="kid321",
@@ -936,7 +936,7 @@ class KeyServerTestCase(EndpointTestCase):
         )
         self.deleteResponse(
             "key_server.delete_service_key",
-            headers={"Authorization": "Bearer %s" % bad_token.decode("ascii")},
+            headers={"Authorization": "Bearer %s" % bad_token},
             expected_code=403,
             service="sample_service",
             kid="kid123",
@@ -946,7 +946,7 @@ class KeyServerTestCase(EndpointTestCase):
         with assert_action_logged("service_key_delete"):
             self.deleteEmptyResponse(
                 "key_server.delete_service_key",
-                headers={"Authorization": "Bearer %s" % token.decode("ascii")},
+                headers={"Authorization": "Bearer %s" % token},
                 expected_code=204,
                 service="sample_service",
                 kid="kid123",
