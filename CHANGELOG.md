@@ -3,15 +3,20 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.7.5"></a>
-## [v3.7.5] - 2022-07-25
+<a name="v3.6.9"></a>
+## [v3.6.9] - 2022-08-01
 ### Api
 - [d37dd766](https://github.com/quay/quay/commit/d37dd766accdaa8c2af5c465af2fd6f2948ed990): fix CORS headers, use concat instead of extend (PROJQUAY-4163) ([#1445](https://github.com/quay/quay/issues/1445))
 - [871c43ea](https://github.com/quay/quay/commit/871c43eaf37ea44da13308e06b2e2f9c543fc5dd): handle missing tag on DELETE tag api ([#1444](https://github.com/quay/quay/issues/1444))
 - [bf99e718](https://github.com/quay/quay/commit/bf99e718513b41e67ee2963e220d93e59e4acac5): Update werkzeug to 1.0.0 and add valid CORS methods (PROJQUAY-4163) ([#1443](https://github.com/quay/quay/issues/1443))
 ### Auth
 - [6ed0bcde](https://github.com/quay/quay/commit/6ed0bcdedc9a0cb4a84197006602ba39c7f965ec): allow rs384 in jwt (PROJQUAY-4148) ([#1449](https://github.com/quay/quay/issues/1449))
+### Billing
+- [78896aa0](https://github.com/quay/quay/commit/78896aa0ceaa244e41988f5991c677a29e4ce263): fix new private repo count (PROJQUAY-4208) ([#1463](https://github.com/quay/quay/issues/1463))
+- [17778979](https://github.com/quay/quay/commit/177789798139779d6e46032f595ddc2adfcbaf0f): add new larger stripe plan (PROJQUAY-4208) ([#1462](https://github.com/quay/quay/issues/1462))
 ### Build(Deps)
+- [9a1de19f](https://github.com/quay/quay/commit/9a1de19f975800e2a4bbe384d87b8ceab416aa7e): bump angular and [@types](https://github.com/types)/angular ([#1451](https://github.com/quay/quay/issues/1451))
+- [0c62c0ee](https://github.com/quay/quay/commit/0c62c0ee02920408fc8fa57b3580fef48a9d4ccf): bump terser from 4.3.4 to 4.8.1 ([#1452](https://github.com/quay/quay/issues/1452))
 - [0f2ebdaf](https://github.com/quay/quay/commit/0f2ebdafc58867af6fac9168ed6348178ac63d45): bump moment from 2.29.2 to 2.29.4 ([#1442](https://github.com/quay/quay/issues/1442))
 ### Builders
 - [b8d3e174](https://github.com/quay/quay/commit/b8d3e17406c546ca60789ce41c11f12e49dea9cb): Add cacert's to build agent (PROJQUAY-3819) ([#1398](https://github.com/quay/quay/issues/1398))
@@ -37,6 +42,8 @@
 - [a55c63e7](https://github.com/quay/quay/commit/a55c63e7117438c483c78cd17c60e0491ab498cd): //issues.redhat.com/browse/PROJQUAY-3989) ([#1420](https://github.com/quay/quay/issues/1420))
 ### Chore: V3.7.4 Changelog Bump (Https
 - [a5279983](https://github.com/quay/quay/commit/a52799830235ae67162e35e8cc6ddcca999343a2): //issues.redhat.com/browse/PROJQUAY-4050) ([#1446](https://github.com/quay/quay/issues/1446))
+### Chore: V3.7.5 Changelog Bump (Https
+- [cc26275d](https://github.com/quay/quay/commit/cc26275d999ebac469c1cc80211ea3f3fd3c7652): //issues.redhat.com/browse/PROJQUAY-4172) ([#1458](https://github.com/quay/quay/issues/1458))
 ### Ci
 - [07c8a75f](https://github.com/quay/quay/commit/07c8a75fa18ab4da5abad2ede24347419656c793): Check arm64 builds in CI (PROJQUAY-4038) ([#1431](https://github.com/quay/quay/issues/1431))
 ### Dev
@@ -56,9 +63,12 @@
 ### Mirroring
 - [26a334f5](https://github.com/quay/quay/commit/26a334f5d8bc82ebfcae12081818979865b45409): fix mirror claims for multiple processes (PROJQUAY-3982) ([#1433](https://github.com/quay/quay/issues/1433))
 ### Oauth
+- [5f49ffc2](https://github.com/quay/quay/commit/5f49ffc2d0658a70d1784b7bac7cb98dfcf77166): fix oauth token generation when using dangerous scopes (PROJQUAY-4042) ([#1457](https://github.com/quay/quay/issues/1457))
 - [922a82a3](https://github.com/quay/quay/commit/922a82a3d945002dd2d259d2d7950614249ef382): Add the code param to the oauthrize.html template (PROJQUAY-3648) ([#1362](https://github.com/quay/quay/issues/1362))
 ### PROJQUAY-3750
 - [ac6a8d2f](https://github.com/quay/quay/commit/ac6a8d2f8b93bcff032d3b2dfc57e07432a96709): support registries that do not return a digest header ([#1310](https://github.com/quay/quay/issues/1310))
+### Proxy Cache
+- [342a50eb](https://github.com/quay/quay/commit/342a50eb1f9c7a12a2afdeff6762939069c82def): respect CREATE_PRIVATE_REPO_ON_PUSH flag (PROJQUAY-3743) ([#1426](https://github.com/quay/quay/issues/1426))
 ### Pull-Thru
 - [d029a465](https://github.com/quay/quay/commit/d029a4652deb763105af0db9ffa05cbf2b6b2343): bump expiration of all parent manifest lists on pull ([#1336](https://github.com/quay/quay/issues/1336))
 ### Quayio
@@ -103,6 +113,17 @@
 - [d9dbbd88](https://github.com/quay/quay/commit/d9dbbd88dbb9a1da95ef46195bcfb5458db6a7b8): basic support for cosign in the UI (PROJQUAY-3965) ([#1380](https://github.com/quay/quay/issues/1380))
 ### V2auth
 - [fd9a6b2e](https://github.com/quay/quay/commit/fd9a6b2e606db6d20bb079f4c3a942e176f83a0c): Check for user before creating org (PROJQUAY-3766) ([#1315](https://github.com/quay/quay/issues/1315))
+
+<a name="v3.7.5"></a>
+## [v3.7.5] - 2022-07-26
+### Auth
+- [f435b9e6](https://github.com/quay/quay/commit/f435b9e6d4c7a84e7853aeebdbc06d5eda4a3bee): allow rs384 in jwt (PROJQUAY-4148) ([#1450](https://github.com/quay/quay/issues/1450))
+### Chore: V3.7.4 Changelog Bump (Https
+- [10edbe6d](https://github.com/quay/quay/commit/10edbe6df195edfb2b6cbb096ceb71501bf26c93): //issues.redhat.com/browse/PROJQUAY-4050) ([#1446](https://github.com/quay/quay/issues/1446)) ([#1447](https://github.com/quay/quay/issues/1447))
+### Chore: V3.7.5 Changelog Bump (Https
+- [564f3f0c](https://github.com/quay/quay/commit/564f3f0cf1d9a1c058293e27259c955a8489cd6a): //issues.redhat.com/browse/PROJQUAY-4172) ([#1460](https://github.com/quay/quay/issues/1460))
+### Mirroring
+- [eb20c961](https://github.com/quay/quay/commit/eb20c9610339611ddeb93f80d958521a1c761073): fix mirror claims for multiple processes (PROJQUAY-3982) ([#1453](https://github.com/quay/quay/issues/1453))
 
 <a name="v3.7.4"></a>
 ## [v3.7.4] - 2022-07-07
@@ -655,7 +676,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.7.5...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.6.9...HEAD
+[v3.6.9]: https://github.com/quay/quay/compare/v3.7.5...v3.6.9
 [v3.7.5]: https://github.com/quay/quay/compare/v3.7.4...v3.7.5
 [v3.7.4]: https://github.com/quay/quay/compare/v3.7.3...v3.7.4
 [v3.7.3]: https://github.com/quay/quay/compare/v3.7.2...v3.7.3
