@@ -2,84 +2,29 @@ import json
 
 import pytest
 
+from image.oci.test.testdata import OCI_IMAGE_INDEX_MANIFEST, OCI_IMAGE_INDEX_MANIFEST_WITHOUT_AMD
 from image.oci.index import OCIIndex, MalformedIndex
 from util.bytes import Bytes
 
-SAMPLE_INDEX = """{
-  "schemaVersion": 2,
-  "manifests": [
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "size": 7143,
-      "digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
-      "platform": {
-        "architecture": "ppc64le",
-        "os": "linux"
-      }
-    },
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "size": 7682,
-      "digest": "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270",
-      "platform": {
-        "architecture": "amd64",
-        "os": "linux"
-      }
-    }
-  ],
-  "annotations": {
-    "com.example.key1": "value1",
-    "com.example.key2": "value2"
-  }
-}"""
-
-
-SAMPLE_INDEX_NO_AMD = """{
-  "schemaVersion": 2,
-  "manifests": [
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "size": 7143,
-      "digest": "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
-      "platform": {
-        "architecture": "ppc64le",
-        "os": "linux"
-      }
-    },
-    {
-      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-      "size": 7682,
-      "digest": "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270",
-      "platform": {
-        "architecture": "intel386",
-        "os": "linux"
-      }
-    }
-  ],
-  "annotations": {
-    "com.example.key1": "value1",
-    "com.example.key2": "value2"
-  }
-}"""
-
 
 def test_parse_basic_index():
-    index = OCIIndex(Bytes.for_string_or_unicode(SAMPLE_INDEX))
+    index = OCIIndex(Bytes.for_string_or_unicode(OCI_IMAGE_INDEX_MANIFEST))
     assert index.is_manifest_list
-    assert index.digest == "sha256:b1a216e8ed6a267bd3f0234d0d096c04658b28cb08b2b16bf812cf72694d7d04"
+    assert index.digest == "sha256:6416299892584b515393076863b75f192ca6cf98583d83b8e583ec3b6f2a8a5e"
     assert index.local_blob_digests == []
     assert index.child_manifest_digests() == [
-        "sha256:e692418e4cbaf90ca69d05a66403747baa33ee08806650b51fab815ad7fc331f",
-        "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270",
+        "sha256:31dd947a0acb5d8b840dc0de40a74f336e08cb0e17ba951c2faaea6374c1a0f3",
+        "sha256:4eca3b97fcd88a47c6454d0cb9ff59aeb4baeca332387e87421b2302bfc724e6",
+        "sha256:dacec655f2712b6f5eabc007b154959bba7add6aafdcab883e314f16e491f9d3",
     ]
     assert (
         index.amd64_linux_manifest_digest
-        == "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270"
+        == "sha256:31dd947a0acb5d8b840dc0de40a74f336e08cb0e17ba951c2faaea6374c1a0f3"
     )
 
 
 def test_config_missing_required():
-    valid_index = json.loads(SAMPLE_INDEX)
+    valid_index = json.loads(OCI_IMAGE_INDEX_MANIFEST)
     valid_index.pop("schemaVersion")
 
     with pytest.raises(MalformedIndex):
@@ -92,7 +37,7 @@ def test_invalid_index():
 
 
 def test_index_without_amd():
-    index = OCIIndex(Bytes.for_string_or_unicode(SAMPLE_INDEX_NO_AMD))
+    index = OCIIndex(Bytes.for_string_or_unicode(OCI_IMAGE_INDEX_MANIFEST_WITHOUT_AMD))
     assert index.is_manifest_list
     assert index.digest == "sha256:a0ed0f2b3949bc731063320667062307faf4245f6872dc5bc98ee6ea5443f169"
     assert index.local_blob_digests == []

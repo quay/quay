@@ -2,6 +2,7 @@ import json
 from collections import namedtuple
 
 from digest import digest_tools
+from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE
 from image.shared import ManifestException
 from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from util.bytes import Bytes
@@ -257,9 +258,10 @@ class SparseManifestList(ManifestListInterface):
     expected to exist in Quay.
     """
 
-    def __init__(self, manifest_bytes: Bytes, validate=False):
+    def __init__(self, manifest_bytes: Bytes, media_type, validate=False):
         assert isinstance(manifest_bytes, Bytes)
         self._payload = manifest_bytes
+        self._media_type = media_type
         try:
             self._parsed = json.loads(self._payload.as_unicode())
         except ValueError as e:
@@ -284,7 +286,7 @@ class SparseManifestList(ManifestListInterface):
         """
         The media type of the schema.
         """
-        return self._parsed["mediaType"]
+        return self._media_type
 
     @property
     def is_manifest_list(self):
@@ -346,7 +348,7 @@ class SparseManifestList(ManifestListInterface):
         Returns the config of this manifest or None if this manifest does not
         support a configuration type.
         """
-        pass
+        return None
 
     @property
     def config_media_type(self):
