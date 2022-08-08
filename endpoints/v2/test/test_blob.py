@@ -76,7 +76,7 @@ class TestBlobPullThroughStorage:
             realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
         )
         self.headers = {
-            "Authorization": f"Bearer {token.decode('ascii')}",
+            "Authorization": f"Bearer {token}",
         }
 
         if self.org is None:
@@ -219,7 +219,7 @@ class TestBlobPullThroughProxy(unittest.TestCase):
             realapp.config["SERVER_HOSTNAME"], subject, context, access, 600, instance_keys
         )
         self.headers = {
-            "Authorization": f"Bearer {token.decode('ascii')}",
+            "Authorization": f"Bearer {token}",
         }
 
         try:
@@ -343,7 +343,7 @@ def test_blob_caching(method, endpoint, client, app):
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token.decode("ascii"),
+        "Authorization": "Bearer %s" % token,
     }
 
     # Run without caching to make sure the request works. This also preloads some of
@@ -441,7 +441,7 @@ def test_blob_mounting(
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token.decode("ascii"),
+        "Authorization": "Bearer %s" % token,
     }
 
     conduct_call(
@@ -479,7 +479,7 @@ def test_blob_upload_offset(client, app):
     )
 
     headers = {
-        "Authorization": "Bearer %s" % token.decode("ascii"),
+        "Authorization": "Bearer %s" % token,
     }
 
     # Create a blob upload request.
@@ -499,7 +499,7 @@ def test_blob_upload_offset(client, app):
     }
 
     headers = {
-        "Authorization": "Bearer %s" % token.decode("ascii"),
+        "Authorization": "Bearer %s" % token,
         "Content-Range": "13-50",
     }
 

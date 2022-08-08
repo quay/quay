@@ -59,7 +59,7 @@ def build_token(aud, token_type, build_id, job_id, expiration, instance_keys):
     }
 
     token = generate_bearer_token(aud, ANONYMOUS_SUB, token_data, {}, expiration, instance_keys)
-    return token.decode("utf-8")
+    return token
 
 
 def verify_build_token(token, aud, token_type, instance_keys):
