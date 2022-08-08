@@ -32,7 +32,7 @@ def parse_manifest_from_bytes(
     assert isinstance(manifest_bytes, Bytes)
 
     if is_manifest_list_type(media_type) and sparse_manifest_support:
-        return SparseManifestList(manifest_bytes)
+        return SparseManifestList(manifest_bytes, media_type)
 
     if media_type == DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE:
         return DockerSchema2Manifest(manifest_bytes)
