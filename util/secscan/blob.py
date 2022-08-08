@@ -72,4 +72,4 @@ class BlobURLRetriever(object):
             audience, subject, context, access, timeout, self._instance_keys
         )
 
-        return {"Authorization": ["Bearer " + auth_token.decode("ascii")]}
+        return {"Authorization": ["Bearer " + auth_token]}

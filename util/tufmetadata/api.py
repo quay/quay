@@ -284,7 +284,7 @@ class ImplementedTUFMetadataAPI(TUFMetadataAPIInterface):
             TOKEN_VALIDITY_LIFETIME_S,
             self._instance_keys,
         )
-        return {"Authorization": "Bearer %s" % token.decode("ascii")}
+        return {"Authorization": "Bearer %s" % token}
 
     def _get(self, gun, metadata_file):
         return self._call(

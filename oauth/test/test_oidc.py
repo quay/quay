@@ -210,7 +210,7 @@ def token_handler(oidc_service, id_token, valid_code):
 
         content = {
             "access_token": "sometoken",
-            "id_token": id_token.decode("ascii"),
+            "id_token": id_token,
         }
         return {"status_code": 200, "content": json.dumps(content)}
 

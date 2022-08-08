@@ -129,7 +129,7 @@ def _create_app(emails=True):
         }
 
         encoded = jwt.encode(token_data, private_key_data, "RS256")
-        return jsonify({"token": encoded.decode("ascii")})
+        return jsonify({"token": encoded})
 
     @jwt_app.route("/user/get", methods=["GET"])
     def get_user():
@@ -151,7 +151,7 @@ def _create_app(emails=True):
                 }
 
                 encoded = jwt.encode(token_data, private_key_data, "RS256")
-                return jsonify({"token": encoded.decode("ascii")})
+                return jsonify({"token": encoded})
 
         return make_response("Invalid username or password", 404)
 
@@ -178,7 +178,7 @@ def _create_app(emails=True):
                 }
 
                 encoded = jwt.encode(token_data, private_key_data, "RS256")
-                return jsonify({"token": encoded.decode("ascii")})
+                return jsonify({"token": encoded})
 
         return make_response("Invalid username or password", 404)
 
