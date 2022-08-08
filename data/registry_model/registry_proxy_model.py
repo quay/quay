@@ -114,7 +114,9 @@ class ProxyModel(OCIModel):
                 raise RepositoryDoesNotExist(str(e))
             return None
 
-        repo = create_repository(namespace_name, repo_name, self._user)
+        visibility = "private" if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", True) else "public"
+
+        repo = create_repository(namespace_name, repo_name, self._user, visibility=visibility)
         return RepositoryReference.for_repo_obj(
             repo,
             namespace_name,
