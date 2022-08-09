@@ -329,7 +329,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             "iss": "quay",
             "exp": datetime.utcnow() + timedelta(minutes=5),
         }
-        token = jwt.encode(payload, self.jwt_psk, algorithm="HS256").decode("utf-8")
+        token = jwt.encode(payload, self.jwt_psk, algorithm="HS256")
 
         return token
 
