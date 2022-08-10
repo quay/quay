@@ -1017,7 +1017,7 @@ def user_initialize():
         return response
 
 
-@web.route("/config", methods=["GET"])
+@web.route("/config", methods=["GET", "OPTIONS"])
 @crossorigin(anonymous=False)
 def config():
     response = jsonify(
