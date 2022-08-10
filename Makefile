@@ -74,20 +74,22 @@ install-pre-commit-hook:
 PG_PASSWORD := quay
 PG_USER := quay
 PG_HOST := postgresql://$(PG_USER):$(PG_PASSWORD)@localhost/quay
+CONTAINER := postgres-testrunner
+TESTS ?= ./
 
 test_postgres : TEST_ENV := SKIP_DB_SCHEMA=true TEST=true \
 	TEST_DATABASE_URI=$(PG_HOST) PYTHONPATH=.
 
 test_postgres:
-	$(DOCKER) rm -f postgres-testrunner-postgres || true
-	$(DOCKER) run --name postgres-testrunner-postgres \
-		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=${PG_USER} \
-		-p 5432:5432 -d postgres:9.2
-	until pg_isready -d $(PG_HOST); do sleep 1; echo "Waiting for postgres"; done
+	$(DOCKER) rm -f $(CONTAINER) || true
+	$(DOCKER) run --name $(CONTAINER) \
+		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=$(PG_USER) \
+		-p 5432:5432 -d postgres:12.1
+	$(DOCKER) exec -it $(CONTAINER) bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	$(DOCKER) exec -it $(CONTAINER) bash -c "psql -U $(PG_USER) -d quay -c 'CREATE EXTENSION pg_trgm;'"
 	$(TEST_ENV) alembic upgrade head
-	$(TEST_ENV) py.test --timeout=7200 --verbose --show-count ./ --color=no \
-		--ignore=endpoints/appr/test/ -x
-	$(DOCKER) rm -f postgres-testrunner-postgres || true
+	$(TEST_ENV) py.test --timeout=7200 --verbose --ignore=endpoints/appr/test/ -x $(TESTS)
+	$(DOCKER) rm -f $(CONTAINER) || true
 
 WEBPACK := node_modules/.bin/webpack
 $(WEBPACK): package.json
