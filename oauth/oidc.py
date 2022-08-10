@@ -295,7 +295,7 @@ class OIDCLoginService(OAuthService):
                 audience=self.client_id(),
                 issuer=self._issuer,
                 leeway=JWT_CLOCK_SKEW_SECONDS,
-                options=dict(require_nbf=False),
+                options=dict(require=["iat", "exp"]),
             )
         except InvalidTokenError as ite:
             logger.warning(
@@ -314,7 +314,7 @@ class OIDCLoginService(OAuthService):
                     audience=self.client_id(),
                     issuer=self._issuer,
                     leeway=JWT_CLOCK_SKEW_SECONDS,
-                    options=dict(require_nbf=False),
+                    options=dict(require=["iat", "exp"]),
                 )
             except InvalidTokenError as ite:
                 logger.warning(
@@ -324,7 +324,7 @@ class OIDCLoginService(OAuthService):
                     ite,
                 )
 
-                # Decode again with verify=False, and log the decoded token to allow for easier debugging.
+                # Decode again with verify_signature=False, and log the decoded token to allow for easier debugging.
                 nonverified = decode(
                     token,
                     self._get_public_key(kid, force_refresh=True),
@@ -332,7 +332,7 @@ class OIDCLoginService(OAuthService):
                     audience=self.client_id(),
                     issuer=self._issuer,
                     leeway=JWT_CLOCK_SKEW_SECONDS,
-                    options=dict(require_nbf=False, verify=False),
+                    options=dict(require=["iat", "exp"], verify_signature=False),
                 )
                 logger.debug("Got an error when trying to verify OIDC JWT: %s", nonverified)
                 raise ite
