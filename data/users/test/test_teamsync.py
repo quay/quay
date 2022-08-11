@@ -315,6 +315,7 @@ def test_teamsync_end_to_end(
         msg = "Auth system: %s" % auth.federated_service
         sync_team_info = model.team.get_team_sync_information("buynlarge", "synced2")
         team_members = list(model.team.list_team_users(sync_team_info.team))
+        number_of_members = len(team_members)
         assert len(team_members) > 1, msg
 
         it, _ = auth.iterate_group_members(config)
@@ -328,7 +329,7 @@ def test_teamsync_end_to_end(
         model.team.remove_user_from_team("buynlarge", "synced2", first_member.username, "devtable")
 
         team_members2 = list(model.team.list_team_users(sync_team_info.team))
-        assert len(team_members2) == 1, msg
+        assert len(team_members2) == number_of_members - 1, msg
         assert sync_team(auth, sync_team_info)
 
         team_members3 = list(model.team.list_team_users(sync_team_info.team))

@@ -149,3 +149,9 @@ class ExternalJWTAuthN(FederatedUsers):
         except jwtutil.InvalidTokenError:
             logger.exception("Exception when decoding returned JWT for url %s", url)
             return (None, "Exception when decoding returned JWT")
+
+    def is_superuser(self, username):
+        raise NotImplementedError()
+
+    def has_superusers(self):
+        raise NotImplementedError()

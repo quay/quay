@@ -12,7 +12,7 @@ from mock import patch
 from contextlib import contextmanager
 
 
-def _create_ldap(requires_email=True, user_filter=None):
+def _create_ldap(requires_email=True, user_filter=None, superuser_filter=None):
     base_dn = ["dc=quay", "dc=io"]
     admin_dn = "uid=testy,ou=employees,dc=quay,dc=io"
     admin_passwd = "password"
@@ -32,12 +32,13 @@ def _create_ldap(requires_email=True, user_filter=None):
         secondary_user_rdns=secondary_user_rdns,
         requires_email=requires_email,
         ldap_user_filter=user_filter,
+        ldap_superuser_filter=superuser_filter,
     )
     return ldap
 
 
 @contextmanager
-def mock_ldap(requires_email=True, user_filter=None):
+def mock_ldap(requires_email=True, user_filter=None, superuser_filter=None):
     mock_data = {
         "dc=quay,dc=io": {"dc": ["quay", "io"]},
         "ou=employees,dc=quay,dc=io": {"dc": ["quay", "io"], "ou": "employees"},
@@ -152,6 +153,16 @@ def mock_ldap(requires_email=True, user_filter=None):
             "userPassword": ["somepass"],
             "mail": ["foo@notblacklisted.com"],
             "filterField": ["somevalue"],
+            "objectClass": "user",
+        },
+        "uid=somesuperuser,ou=employees,dc=quay,dc=io": {
+            "dc": ["quay", "io"],
+            "ou": "employees",
+            "uid": ["somesuperuser"],
+            "userPassword": ["somesuperpass"],
+            "mail": ["superfoo@bar.com"],
+            "memberOf": ["cn=AwesomeFolk,dc=quay,dc=io", "cn=*Guys,dc=quay,dc=io"],
+            "filterField": ["somevalue", "superuser"],
             "objectClass": "user",
         },
     }
@@ -281,7 +292,11 @@ def mock_ldap(requires_email=True, user_filter=None):
     mockldap.start()
     try:
         with patch("ldap.initialize", new=initializer):
-            yield _create_ldap(requires_email=requires_email, user_filter=user_filter)
+            yield _create_ldap(
+                requires_email=requires_email,
+                user_filter=user_filter,
+                superuser_filter=superuser_filter,
+            )
     finally:
         mockldap.stop()
 
@@ -530,23 +545,32 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err)
 
             results = list(it)
-            self.assertEqual(2, len(results))
+            self.assertEqual(3, len(results))
 
             first = results[0][0]
             second = results[1][0]
+            third = results[2][0]
 
-            if first.id == "testy":
-                testy, someuser = first, second
-            else:
-                testy, someuser = second, first
+            assert all(
+                x in [u[0].id for u in results] for x in ["testy", "someuser", "somesuperuser"]
+            )
 
-            self.assertEqual("testy", testy.id)
-            self.assertEqual("testy", testy.username)
-            self.assertEqual("bar@baz.com", testy.email)
+            for i in results:
+                u = i[0]
+                if u.id == "testy":
+                    self.assertEqual("testy", u.id)
+                    self.assertEqual("testy", u.username)
+                    self.assertEqual("bar@baz.com", u.email)
 
-            self.assertEqual("someuser", someuser.id)
-            self.assertEqual("someuser", someuser.username)
-            self.assertEqual("foo@bar.com", someuser.email)
+                if u.id == "someuser":
+                    self.assertEqual("someuser", u.id)
+                    self.assertEqual("someuser", u.username)
+                    self.assertEqual("foo@bar.com", u.email)
+
+                if u.id == "somesuperuser":
+                    self.assertEqual("somesuperuser", u.id)
+                    self.assertEqual("somesuperuser", u.username)
+                    self.assertEqual("superfoo@bar.com", u.email)
 
     def test_iterate_group_members_with_pagination(self):
         with mock_ldap() as ldap:
@@ -658,6 +682,17 @@ class TestLDAP(unittest.TestCase):
                 "(&(memberOf=cn=AwesomeFolk,dc=quay,dc=io)(filterField=somevalue)(filterField2=someothervalue))",
             )
 
+        some_superuser_filter = "(filterField=somesuperuser)"
+        with mock_ldap(
+            user_filter=some_user_filter, superuser_filter=some_superuser_filter
+        ) as ldap:
+            search_flt = filter_format("(memberOf=%s,%s)", ("cn=AwesomeFolk", ldap._base_dn))
+            search_flt = ldap._add_superuser_filter(search_flt)
+            self.assertEqual(
+                search_flt,
+                "(&(&(memberOf=cn=AwesomeFolk,dc=quay,dc=io)(filterField=somevalue))(filterField=somesuperuser))",
+            )
+
     def test_ldap_user_filtering_no_users(self):
         no_user_filter = "(filterField=anothervalue)"
         with mock_ldap(user_filter=no_user_filter) as ldap:
@@ -686,7 +721,30 @@ class TestLDAP(unittest.TestCase):
             self.assertIsNone(err)
 
             results = list(it)
-            self.assertEqual(2, len(results))
+            self.assertEqual(3, len(results))
+
+    def test_ldap_superuser_filtering_valid_superusers(self):
+        valid_user_filter = "(filterField=somevalue)"
+        valid_superuser_filter = "&(filterField=somevalue)(filterField=superuser)"
+        with mock_ldap(user_filter=valid_user_filter) as ldap:
+            # Verify we can login.
+            (response, _) = ldap.verify_and_link_user("someuser", "somepass")
+            self.assertEqual(response.username, "someuser")
+
+        # TODO(kleesc): supersuper_filter
+        with mock_ldap(user_filter=valid_superuser_filter) as ldap:
+            (it, err) = ldap.iterate_group_members(
+                {"group_dn": "cn=AwesomeFolk"}, disable_pagination=True
+            )
+            self.assertIsNone(err)
+
+            results = list(it)
+            self.assertEqual(1, len(results))
+
+            somesuperuser = results[0][0]
+            self.assertEqual("somesuperuser", somesuperuser.id)
+            self.assertEqual("somesuperuser", somesuperuser.username)
+            self.assertEqual("superfoo@bar.com", somesuperuser.email)
 
     def test_at_least_one_user_exists_filtered(self):
         base_dn = ["dc=quay", "dc=io"]

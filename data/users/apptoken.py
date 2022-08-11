@@ -70,3 +70,9 @@ class AppTokenInternalAuth(object):
         If the DB is broken, other checks will handle it.
         """
         return (True, None)
+
+    def is_superuser(self, username):
+        raise NotImplementedError()
+
+    def has_superusers(self):
+        raise NotImplementedError()
