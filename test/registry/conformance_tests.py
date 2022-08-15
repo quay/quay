@@ -27,7 +27,7 @@ def test_run_conformance(liveserver_session, app_reloader, registry_server_execu
     # the expected pagination parameter for next page.
     env["OCI_TEST_CONTENT_DISCOVERY"] = "1"
     # TODO: The Content Mangement API allows for deletion, etc
-    # env["OCI_TEST_CONTENT_MANAGEMENT"] = "1"
+    env["OCI_TEST_CONTENT_MANAGEMENT"] = "1"
 
     assert server_url.startswith("http://")
 
