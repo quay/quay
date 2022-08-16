@@ -40,127 +40,6 @@ from test.fixtures import *  # noqa: F401,F403
 from proxy.fixtures import proxy_manifest_response  # noqa: F401,F403
 from util.bytes import Bytes
 
-UBI8_LATEST_MANIFEST_LIST_DIGEST = (
-    "sha256:bd5b5d4f108773d02b2f3aa930feaa08067091e96ecf45f10e98e76383ff7af9"  # noqa: E501
-)
-UBI8_LATEST_MANIFEST_LIST = r"""{
-  "manifests": [
-    {
-      "digest": "sha256:b69959407d21e8a062e0416bf13405bb2b71ed7a84dde4158ebafacfa06f5578",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "amd64",
-        "os": "linux"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:ce06da2e3e24e4ac99f6da067bcab57e3dcc2ea4582da16e5d97003c32a6fa8c",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "arm",
-        "os": "linux",
-        "variant": "v5"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:4bcaeca137ff437584eb96c41b425b4010167a0156f0a9f7bbc26f9a36d536df",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "arm",
-        "os": "linux",
-        "variant": "v6"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:5ca5e3117f6f9bdb803ea67af89203b7e62a28c7456c098809f712a7294ceaaa",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "arm",
-        "os": "linux",
-        "variant": "v7"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:2a64d8b2861154867e526a189eddfc7afaf12c13c9b67a56b7adcd56895818ae",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "arm64",
-        "os": "linux",
-        "variant": "v8"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:2d06e13d26ccd313d3029e44f48d69ad4c98d0bf934692befb288dc6404a3ad9",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "386",
-        "os": "linux"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:5ff091cdd7eadbe140ac122d166a8f20f346a72d7eea9ababbd0546e0ca73049",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "mips64le",
-        "os": "linux"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:3f6c90002d9d31b871ee132953db48422b3dea4815d662d9e54ca389d2366800",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "ppc64le",
-        "os": "linux"
-      },
-      "size": 528
-    },
-    {
-      "digest": "sha256:bb2a26ee650f0f3f49a2676bc50bcc4f44d9f1f6c7c12b7b4acc17beda338af4",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "riscv64",
-        "os": "linux"
-      },
-      "size": 527
-    },
-    {
-      "digest": "sha256:02cdeb6ebe57001c73da6adf199eb94a94b6d8c5ef7a92432928d1b3861ff53c",
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "platform": {
-        "architecture": "s390x",
-        "os": "linux"
-      },
-      "size": 528
-    }
-  ],
-  "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
-  "schemaVersion": 2
-}"""
-
-UBI8_LATEST_DIGEST = "sha256:b69959407d21e8a062e0416bf13405bb2b71ed7a84dde4158ebafacfa06f5578"
-UBI8_LATEST_MANIFEST_SCHEMA2 = r"""{
-   "schemaVersion": 2,
-   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-   "config": {
-      "mediaType": "application/vnd.docker.container.image.v1+json",
-      "size": 1456,
-      "digest": "sha256:ec3f0931a6e6b6855d76b2d7b0be30e81860baccd891b2e243280bf1cd8ad710"
-   },
-   "layers": [
-      {
-         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
-         "size": 772795,
-         "digest": "sha256:009932687766e1520a47aa9de3bfe97ffdb1b6cad0b08d5078bad60329f13f19"
-      }
-   ]
-}"""
 
 UBI8_8_5_DIGEST = "sha256:8ee9d7bbcfc19d383f9044316a5c5fbcbe2df6be3c97f6c7a5422527b29bdede"
 UBI8_8_5_MANIFEST_SCHEMA2 = r"""{
@@ -305,8 +184,8 @@ class TestRegistryProxyModelGetSchema1ParsedManifest:
     @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
     def test_raises_exception_with_manifest_list(self):
         manifest = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_LATEST_MANIFEST_LIST),
-            DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
         )
         proxy_model = ProxyModel(
             self.orgname,
@@ -492,8 +371,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
     def test_create_sub_manifests_for_manifest_list(self, create_repo):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_LATEST_MANIFEST_LIST),
-            DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
             sparse_manifest_support=True,
         )
         proxy_model = ProxyModel(
@@ -513,8 +392,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
     def test_create_temp_tags_for_newly_created_sub_manifests_on_manifest_list(self, create_repo):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_LATEST_MANIFEST_LIST),
-            DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
             sparse_manifest_support=True,
         )
         proxy_model = ProxyModel(
@@ -541,8 +420,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
     def test_connect_existing_manifest_to_manifest_list(self, create_repo):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_manifest = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_LATEST_MANIFEST_SCHEMA2),
-            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+            Bytes.for_string_or_unicode(testdata.UBI8_LINUX_AMD64["manifest"]),
+            testdata.UBI8_LINUX_AMD64["content-type"],
         )
         proxy_model = ProxyModel(
             self.orgname,
@@ -553,8 +432,8 @@ class TestRegistryProxyModelCreateManifestAndRetargetTag:
         assert manifest is not None
 
         input_list = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_LATEST_MANIFEST_LIST),
-            DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
             sparse_manifest_support=True,
         )
         manifest_list, _ = proxy_model._create_manifest_and_retarget_tag(
@@ -696,9 +575,9 @@ class TestRegistryProxyModelLookupManifestByDigest:
             "data.registry_model.registry_proxy_model.Proxy",
             MagicMock(
                 return_value=proxy_manifest_response(
-                    testdata.PYTHON_ec43d7["digest"],
-                    testdata.PYTHON_ec43d7["manifest"],
-                    testdata.PYTHON_ec43d7["content-type"],
+                    testdata.PYTHON_LINUX_AMD64["digest"],
+                    testdata.PYTHON_LINUX_AMD64["manifest"],
+                    testdata.PYTHON_LINUX_AMD64["content-type"],
                 )
             ),
         ):
@@ -708,7 +587,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
                 self.user,
             )
             manifest = proxy_model.lookup_manifest_by_digest(
-                repo_ref, testdata.PYTHON_ec43d7["digest"]
+                repo_ref, testdata.PYTHON_LINUX_AMD64["digest"]
             )
         assert manifest is not None
 
@@ -722,34 +601,14 @@ class TestRegistryProxyModelLookupManifestByDigest:
     ):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         input_list = parse_manifest_from_bytes(
-            Bytes.for_string_or_unicode(UBI8_LATEST_MANIFEST_LIST),
-            DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+            Bytes.for_string_or_unicode(testdata.UBI8_LATEST["manifest"]),
+            testdata.UBI8_LATEST["content-type"],
             sparse_manifest_support=True,
         )
-        with patch("data.registry_model.registry_proxy_model.Proxy", MagicMock()):
-            proxy_model = ProxyModel(
-                self.orgname,
-                self.upstream_repository,
-                self.user,
-            )
-            manifest_list, tag = proxy_model._create_manifest_and_retarget_tag(
-                repo_ref, input_list, "latest"
-            )
-
-        assert manifest_list is not None
-        child = (
-            ManifestChild.select(ManifestChild.child_manifest_id)
-            .join(Manifest, on=(ManifestChild.child_manifest_id == Manifest.id))
-            .where(
-                (ManifestChild.manifest_id == manifest_list.id)
-                & (Manifest.digest == UBI8_LATEST_DIGEST)
-            )
-        )
-        manifest_tag = Tag.select().where(Tag.manifest == child).get()
-        manifest_list_tag = tag
-
         proxy_mock = proxy_manifest_response(
-            UBI8_LATEST_DIGEST, UBI8_LATEST_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+            "latest",
+            testdata.UBI8_LATEST["manifest"],
+            testdata.UBI8_LATEST["content-type"],
         )
         with patch(
             "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
@@ -759,7 +618,39 @@ class TestRegistryProxyModelLookupManifestByDigest:
                 self.upstream_repository,
                 self.user,
             )
-            manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_LATEST_DIGEST)
+            tag = proxy_model.get_repo_tag(repo_ref, "latest")
+
+        assert tag is not None
+        manifest_list = tag.manifest
+        assert manifest_list is not None
+
+        child = (
+            ManifestChild.select(ManifestChild.child_manifest_id)
+            .join(Manifest, on=(ManifestChild.child_manifest_id == Manifest.id))
+            .where(
+                (ManifestChild.manifest_id == manifest_list.id)
+                & (Manifest.digest == testdata.UBI8_LINUX_AMD64["digest"])
+            )
+        )
+        manifest_tag = Tag.select().where(Tag.manifest == child).get()
+        manifest_list_tag = tag
+
+        proxy_mock = proxy_manifest_response(
+            testdata.UBI8_LINUX_AMD64["digest"],
+            testdata.UBI8_LINUX_AMD64["manifest"],
+            testdata.UBI8_LINUX_AMD64["content-type"],
+        )
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+            manifest = proxy_model.lookup_manifest_by_digest(
+                repo_ref, testdata.UBI8_LINUX_AMD64["digest"]
+            )
 
         updated_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
         updated_list_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest_list.id)
@@ -769,12 +660,76 @@ class TestRegistryProxyModelLookupManifestByDigest:
         assert updated_tag.lifetime_end_ms > manifest_tag.lifetime_end_ms
         assert updated_list_tag.lifetime_end_ms > manifest_list_tag.lifetime_end_ms
 
+    def test_renew_manifest_list_tag_when_upstream_manifest_changed(
+        self, create_repo, proxy_manifest_response
+    ):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+
+        def create_image(tag: str, manifest_info: dict):
+            proxy_mock = proxy_manifest_response(
+                tag, manifest_info["manifest"], manifest_info["content-type"]
+            )
+            with patch(
+                "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+            ):
+                proxy_model = ProxyModel(
+                    self.orgname,
+                    self.upstream_repository,
+                    self.user,
+                )
+                tag = proxy_model.get_repo_tag(repo_ref, tag)
+            return tag
+
+        def pull_manifest_by_digest(manifest_info: dict):
+            proxy_mock = proxy_manifest_response(
+                manifest_info["digest"], manifest_info["manifest"], manifest_info["content-type"]
+            )
+            with patch(
+                "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+            ):
+                proxy_model = ProxyModel(
+                    self.orgname,
+                    self.upstream_repository,
+                    self.user,
+                )
+                manifest = proxy_model.lookup_manifest_by_digest(repo_ref, manifest_info["digest"])
+            return manifest
+
+        # start off with latest pointing to 1.22
+        _1_22 = create_image("1.22", testdata.NGINX_1_22)
+        latest = create_image("latest", testdata.NGINX_1_22)
+        assert _1_22 is not None
+        assert latest is not None
+        assert latest.manifest.digest == _1_22.manifest.digest
+
+        manifest = pull_manifest_by_digest(testdata.NGINX_1_22_LINUX_AMD64)
+        assert manifest is not None
+
+        # now update latest to point to 1.23.1
+        _1_23_1 = create_image("1.23.1", testdata.NGINX_1_23_1)
+        new_latest = create_image("latest", testdata.NGINX_1_23_1)
+        assert _1_23_1 is not None
+        assert new_latest is not None
+        assert new_latest.manifest.digest == _1_23_1.manifest.digest
+
+        manifest = pull_manifest_by_digest(testdata.NGINX_1_23_1_LINUX_AMD64)
+        assert manifest is not None
+
+        # now switch back to 1.22
+        latest = create_image("latest", testdata.NGINX_1_22)
+        assert _1_22 is not None
+        assert latest is not None
+        assert latest.manifest.digest == _1_22.manifest.digest
+
+        manifest = pull_manifest_by_digest(testdata.NGINX_1_22_LINUX_AMD64)
+        assert manifest is not None
+
     def test_update_relevant_manifest_fields_when_manifest_is_placeholder(
         self, create_repo, proxy_manifest_response
     ):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         proxy_mock = proxy_manifest_response(
-            "latest", UBI8_LATEST_MANIFEST_LIST, DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+            "latest", testdata.UBI8_LATEST["manifest"], testdata.UBI8_LATEST["content-type"]
         )
         with patch(
             "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
@@ -786,11 +741,13 @@ class TestRegistryProxyModelLookupManifestByDigest:
             )
             tag = proxy_model.get_repo_tag(repo_ref, "latest")
         assert tag is not None
-        assert tag.manifest.digest == UBI8_LATEST_MANIFEST_LIST_DIGEST
+        assert tag.manifest.digest == testdata.UBI8_LATEST["digest"]
         assert tag.manifest.is_manifest_list
 
         proxy_mock = proxy_manifest_response(
-            UBI8_LATEST_DIGEST, UBI8_LATEST_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+            testdata.UBI8_LINUX_AMD64["digest"],
+            testdata.UBI8_LINUX_AMD64["manifest"],
+            testdata.UBI8_LINUX_AMD64["content-type"],
         )
         with patch(
             "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
@@ -800,10 +757,12 @@ class TestRegistryProxyModelLookupManifestByDigest:
                 self.upstream_repository,
                 self.user,
             )
-            manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_LATEST_DIGEST)
+            manifest = proxy_model.lookup_manifest_by_digest(
+                repo_ref, testdata.UBI8_LINUX_AMD64["digest"]
+            )
         mbytes = manifest.internal_manifest_bytes.as_unicode()
         assert mbytes != ""
-        assert manifest.digest == UBI8_LATEST_DIGEST
+        assert manifest.digest == testdata.UBI8_LINUX_AMD64["digest"]
         assert manifest.layers_compressed_size == 772795
 
     def test_renew_tag_when_cache_is_expired_and_manifest_is_up_to_date_with_upstream(
@@ -886,7 +845,7 @@ class TestRegistryProxyModelLookupManifestByDigest:
     ):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
         proxy_mock = proxy_manifest_response(
-            "latest", UBI8_LATEST_MANIFEST_LIST, DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
+            "latest", testdata.UBI8_LATEST["manifest"], DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE
         )
         with patch(
             "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
@@ -909,7 +868,9 @@ class TestRegistryProxyModelLookupManifestByDigest:
                 self.upstream_repository,
                 self.user,
             )
-            manifest = proxy_model.lookup_manifest_by_digest(repo_ref, UBI8_LATEST_DIGEST)
+            manifest = proxy_model.lookup_manifest_by_digest(
+                repo_ref, testdata.UBI8_LINUX_AMD64["digest"]
+            )
         assert manifest is None
 
     def test_returns_cached_manifest_when_upstream_errors_and_cache_is_not_expired(

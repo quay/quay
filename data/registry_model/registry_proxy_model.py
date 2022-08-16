@@ -1,10 +1,13 @@
 from __future__ import annotations
+import logging
 
 from typing import Callable
+from peewee import Select, fn
 
 import features
 from app import app, storage
 from data.database import (
+    db,
     get_epoch_timestamp_ms,
     db_disallow_replica_use,
     db_transaction,
@@ -52,6 +55,9 @@ from image.docker.schema1 import (
 )
 from proxy import Proxy, UpstreamRegistryError
 from util.bytes import Bytes
+
+
+logger = logging.getLogger(__name__)
 
 
 ACCEPTED_MEDIA_TYPES = [
@@ -185,13 +191,21 @@ class ProxyModel(OCIModel):
                 oci.tag.set_tag_end_ms(db_tag, new_expiration)
                 # if the manifest is a child of a manifest list in this repo, renew
                 # the parent(s) manifest list tag too.
-                links = ManifestChild.select(ManifestChild.manifest_id).where(
-                    (ManifestChild.repository_id == repository_ref.id)
-                    & (ManifestChild.child_manifest_id == wrapped_manifest.id)
+                # select tag ids by most recent lifetime_end_ms uniquely by name,
+                # based on the link between sub-manifest and parent manifest in the
+                # manifest link.
+                q = (
+                    TagTable.select(fn.MAX(TagTable.id).alias("id"))
+                    .join(ManifestChild, on=(TagTable.manifest_id == ManifestChild.manifest_id))
+                    .where(
+                        (ManifestChild.repository_id == repository_ref.id)
+                        & (ManifestChild.child_manifest_id == wrapped_manifest.id)
+                    )
+                    .group_by(TagTable.name)
                 )
-                parent_ids = [link.manifest_id for link in links]
+                tag_ids = [item for item in q]
                 TagTable.update(lifetime_end_ms=new_expiration).where(
-                    TagTable.manifest_id.in_(parent_ids)
+                    TagTable.id.in_(tag_ids)
                 ).execute()
 
         return super().lookup_manifest_by_digest(
@@ -321,13 +335,15 @@ class ProxyModel(OCIModel):
         """
         upstream_manifest = None
         upstream_digest = self._proxy.manifest_exists(manifest_ref, ACCEPTED_MEDIA_TYPES)
-        up_to_date = manifest.digest == upstream_digest
 
         # manifest_exists will return an empty/None digest when the upstream
         # registry omits the docker-content-digest header.
         if not upstream_digest:
             upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
-            up_to_date = manifest.digest == upstream_manifest.digest
+            upstream_digest = upstream_manifest.digest
+
+        logger.debug(f"Found upstream manifest with digest {upstream_digest}, {manifest_ref=}")
+        up_to_date = manifest.digest == upstream_digest
 
         placeholder = manifest.internal_manifest_bytes.as_unicode() == ""
         if up_to_date and not placeholder:
