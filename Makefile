@@ -73,7 +73,8 @@ install-pre-commit-hook:
 
 PG_PASSWORD := quay
 PG_USER := quay
-PG_HOST := postgresql://$(PG_USER):$(PG_PASSWORD)@localhost/quay
+PG_PORT := 5433
+PG_HOST := postgresql://$(PG_USER):$(PG_PASSWORD)@localhost:$(PG_PORT)/quay
 CONTAINER := postgres-testrunner
 TESTS ?= ./
 
@@ -84,7 +85,7 @@ test_postgres:
 	$(DOCKER) rm -f $(CONTAINER) || true
 	$(DOCKER) run --name $(CONTAINER) \
 		-e POSTGRES_PASSWORD=$(PG_PASSWORD) -e POSTGRES_USER=$(PG_USER) \
-		-p 5432:5432 -d postgres:12.1
+		-p $(PG_PORT):5432 -d postgres:12.1
 	$(DOCKER) exec -it $(CONTAINER) bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	$(DOCKER) exec -it $(CONTAINER) bash -c "psql -U $(PG_USER) -d quay -c 'CREATE EXTENSION pg_trgm;'"
 	$(TEST_ENV) alembic upgrade head
