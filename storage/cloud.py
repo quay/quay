@@ -21,6 +21,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from prometheus_client import Counter
 
+from auth.auth_context import get_authenticated_user
 from util.registry import filelike
 from storage.basestorage import BaseStorageV2
 
@@ -1030,6 +1031,10 @@ class CloudFrontedS3Storage(S3Storage):
             )
 
         url = "https://%s/%s" % (self.cloudfront_distribution_domain, path)
+        user = get_authenticated_user()
+        if user and user.username:
+            url += "?user=%s" % user.username
+
         expire_date = datetime.now() + timedelta(seconds=expires_in)
         signer = self._get_cloudfront_signer()
         signed_url = signer.generate_presigned_url(url, date_less_than=expire_date)
