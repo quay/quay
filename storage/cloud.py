@@ -230,7 +230,7 @@ class _CloudStorage(BaseStorageV2):
         return True
 
     def get_direct_download_url(
-        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, user=None
     ):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -856,7 +856,7 @@ class GoogleCloudStorage(_CloudStorage):
         )
 
     def get_direct_download_url(
-        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, user=None
     ):
         return (
             super(GoogleCloudStorage, self)
@@ -948,7 +948,7 @@ class RadosGWStorage(_CloudStorage):
 
     # TODO remove when radosgw supports cors: http://tracker.ceph.com/issues/8718#change-38624
     def get_direct_download_url(
-        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, user=None
     ):
         if requires_cors:
             return None
@@ -1010,12 +1010,12 @@ class CloudFrontedS3Storage(S3Storage):
         self.cloudfront_privatekey = self._load_private_key(cloudfront_privatekey_filename)
 
     def get_direct_download_url(
-        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, user=None
     ):
         # If CloudFront could not be loaded, fall back to normal S3.
         if self.cloudfront_privatekey is None or request_ip is None:
             return super(CloudFrontedS3Storage, self).get_direct_download_url(
-                path, request_ip, expires_in, requires_cors, head
+                path, request_ip, expires_in, requires_cors, head, user
             )
 
         resolved_ip_info = None
@@ -1027,11 +1027,10 @@ class CloudFrontedS3Storage(S3Storage):
         logger.debug("Resolved IP information for IP %s: %s", request_ip, resolved_ip_info)
         if resolved_ip_info and resolved_ip_info.provider == "aws":
             return super(CloudFrontedS3Storage, self).get_direct_download_url(
-                path, request_ip, expires_in, requires_cors, head
+                path, request_ip, expires_in, requires_cors, head, user
             )
 
         url = "https://%s/%s" % (self.cloudfront_distribution_domain, path)
-        user = get_authenticated_user()
         if user and user.username:
             url += "?user=%s" % user.username
 
