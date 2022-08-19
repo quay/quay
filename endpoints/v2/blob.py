@@ -118,7 +118,7 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
     user = get_authenticated_user()
     username = user.username if user else None
     direct_download_url = storage.get_direct_download_url(
-        blob.placements, path, get_request_ip(), username
+        blob.placements, path, get_request_ip(), username=username
     )
     if direct_download_url:
         logger.debug("Returning direct download URL")

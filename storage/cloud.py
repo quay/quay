@@ -22,7 +22,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from prometheus_client import Counter
 
-from auth.auth_context import get_authenticated_user
 from util.registry import filelike
 from storage.basestorage import BaseStorageV2
 
