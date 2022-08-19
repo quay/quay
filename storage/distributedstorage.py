@@ -88,7 +88,7 @@ class DistributedStorage(StoragePaths):
         **kwargs,
     ):
         download_url = self._get_direct_download_url(
-            locations, path, request_ip, expires_in, requires_cors, head, user
+            locations, path, request_ip, expires_in, requires_cors, head, **kwargs
         )
         if download_url is None:
             return None
