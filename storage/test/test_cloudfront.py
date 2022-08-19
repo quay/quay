@@ -137,6 +137,5 @@ def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_
     )
     engine.put_content(_TEST_PATH, _TEST_CONTENT)
     assert engine.exists(_TEST_PATH)
-    url = engine.get_direct_download_url(_TEST_PATH, username=_TEST_USER)
-    assert "s3.amazonaws.com" in url
+    url = engine.get_direct_download_url(_TEST_PATH, request_ip="1.2.3.4", username=_TEST_USER)
     assert f"username={_TEST_USER}" in url
