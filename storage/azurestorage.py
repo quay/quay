@@ -112,7 +112,7 @@ class AzureStorage(BaseStorage):
         expires_in=60,
         requires_cors=False,
         head=False,
-        user=None,
+        **kwargs,
     ):
         blob_name = self._blob_name_from_path(object_path)
 

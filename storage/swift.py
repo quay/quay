@@ -201,7 +201,7 @@ class SwiftStorage(BaseStorage):
         expires_in=60,
         requires_cors=False,
         head=False,
-        user=None,
+        **kwargs,
     ):
         if requires_cors:
             return None
