@@ -111,6 +111,10 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
     # Short-circuit by redirecting if the storage supports it.
     path = blob.storage_path
     logger.debug("Looking up the direct download URL for path: %s", path)
+
+    # TODO (syahmed): the call below invokes a DB call to get the user
+    # optimize so we don't have to go to the DB but read from the
+    # token instead
     user = get_authenticated_user()
     username = user.username if user else None
     direct_download_url = storage.get_direct_download_url(

@@ -361,7 +361,8 @@ def test_blob_caching(method, endpoint, client, app):
     # the blob.
     with patch("endpoints.decorators.features.PROXY_CACHE", False):
         # Subsequent requests should use the cached blob.
-        with assert_query_count(0):
+        # one query for the get_authenticated_user()
+        with assert_query_count(1):
             conduct_call(
                 client,
                 "v2." + endpoint,
