@@ -154,6 +154,7 @@ def perform_mirror(skopeo, mirror):
     # Sync tags
     now_ms = database.get_epoch_timestamp_ms()
     overall_status = RepoMirrorStatus.SUCCESS
+    failed_tags = []
     try:
         try:
             username = (
@@ -203,6 +204,7 @@ def perform_mirror(skopeo, mirror):
 
             if not result.success:
                 overall_status = RepoMirrorStatus.FAIL
+                failed_tags.append(tag)
                 emit_log(
                     mirror,
                     "repo_mirror_sync_tag_failed",
@@ -257,14 +259,33 @@ def perform_mirror(skopeo, mirror):
         return
     finally:
         if overall_status == RepoMirrorStatus.FAIL:
+            log_tags = []
+            log_message = "'%s' with tag pattern '%s'"
+
+            # Handle the case where not all tags were synced and state will not be rolled back
+            if (
+                len(failed_tags) != len(tags)
+                and len(failed_tags) > 0
+                and not app.config.get("REPO_MIRROR_ROLLBACK", False)
+            ):
+                log_message = "'%s' with tag pattern '%s': PARTIAL SYNC"
+                for tag in tags:
+                    if tag in failed_tags:
+                        tag = tag + "(FAILED)"
+                    log_tags.append(tag)
+
             emit_log(
                 mirror,
                 "repo_mirror_sync_failed",
                 "lost",
-                "'%s' with tag pattern '%s'"
-                % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
+                log_message % (mirror.external_reference, ",".join(mirror.root_rule.rule_value)),
+                tags=", ".join(log_tags),
+                stdout="Not applicable",
+                stderr="Not applicable",
             )
-            rollback(mirror, now_ms)
+
+            if app.config.get("REPO_MIRROR_ROLLBACK", False):
+                rollback(mirror, now_ms)
         else:
             emit_log(
                 mirror,
