@@ -14,7 +14,7 @@ import (
 	"net/smtp"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -109,7 +109,7 @@ func ValidateAtLeastOneOfBool(inputs []bool, fields []string, fgName string) (bo
 
 	// Iterate through options
 	for _, val := range inputs {
-		if val == true {
+		if val {
 			atLeastOne = true
 			break
 		}
@@ -415,6 +415,14 @@ func ValidateCertPairWithHostname(cert, key []byte, hostname string, fgName stri
 	}
 
 	certificate, err := x509.ParseCertificate(certChain.Certificate[0])
+	if err != nil {
+		newError := ValidationError{
+			Tags:       []string{"Certificates"},
+			FieldGroup: fgName,
+			Message:    err.Error(),
+		}
+		return false, newError
+	}
 
 	// Make sure port is removed
 	cleanHost, _, err := net.SplitHostPort(hostname)
@@ -464,11 +472,7 @@ func ValidateBitbucketOAuth(clientID, clientSecret string) bool {
 	_ = json.Unmarshal(respBody, &responseJSON)
 
 	// If the error isnt unauthorized
-	if responseJSON["error_description"] == "The specified code is not valid." {
-		return true
-	}
-
-	return false
+	return responseJSON["error_description"] == "The specified code is not valid."
 
 }
 
@@ -510,14 +514,17 @@ func ValidateDatabaseConnection(opts Options, rawURI, caCert string, threadlocal
 		// Check if CA cert is used
 		if caCert != "" {
 			log.Debug("CA Cert provided")
-			certKey := path.Base(caCert)
-			certBytes, ok := opts.Certificates[certKey]
+			relativePath, err := filepath.Rel("conf/stack", caCert)
+			if err != nil {
+				return err
+			}
+			certBytes, ok := opts.Certificates[relativePath]
 			if !ok {
-				return errors.New("Could not find database.pem in config bundle")
+				return errors.New("could not find " + relativePath + " in config bundle")
 			}
 			caCertPool := x509.NewCertPool()
 			if ok := caCertPool.AppendCertsFromPEM(certBytes); !ok {
-				return errors.New("Could not add CA cert to pool")
+				return errors.New("could not add CA cert to pool")
 			}
 			tlsConfig := &tls.Config{
 				InsecureSkipVerify: true,
@@ -742,11 +749,7 @@ func ValidateGitLabOAuth(clientID, clientSecret, gitlabEndpoint string) bool {
 	_ = json.Unmarshal(respBody, &responseJSON)
 
 	// If the error isnt unauthorized
-	if responseJSON["error"] == "invalid_grant" {
-		return true
-	}
-
-	return false
+	return responseJSON["error"] == "invalid_grant"
 
 }
 
@@ -773,11 +776,7 @@ func ValidateGoogleOAuth(clientID, clientSecret string) bool {
 	_ = json.Unmarshal(respBody, &responseJSON)
 
 	// If the error isnt unauthorized
-	if responseJSON["error"] == "invalid_grant" {
-		return true
-	}
-
-	return false
+	return responseJSON["error"] == "invalid_grant"
 
 }
 
