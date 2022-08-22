@@ -195,7 +195,13 @@ class SwiftStorage(BaseStorage):
         return storage_url
 
     def get_direct_download_url(
-        self, object_path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self,
+        object_path,
+        request_ip=None,
+        expires_in=60,
+        requires_cors=False,
+        head=False,
+        **kwargs,
     ):
         if requires_cors:
             return None

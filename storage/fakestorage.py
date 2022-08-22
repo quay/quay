@@ -21,7 +21,7 @@ class FakeStorage(BaseStorageV2):
         return path
 
     def get_direct_download_url(
-        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         try:
             if self.get_content("supports_direct_download") == b"true":
