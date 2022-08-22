@@ -30,7 +30,7 @@ if [ -d $CERTDIR ]; then
 		echo >> $PYTHONUSERBASE_SITE_PACKAGE/certifi/cacert.pem
 	    fi
 
-	    cat $CERTDIR/$f >> $PYTHONUSERBASE_SITE_PACKAGE/certifi/cacert.pem
+	    cat $f >> $PYTHONUSERBASE_SITE_PACKAGE/certifi/cacert.pem
 	done
     fi
 fi
