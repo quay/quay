@@ -310,14 +310,14 @@ class TestBlobPullThroughProxy(unittest.TestCase):
 
 
 @pytest.mark.parametrize(
-    "method, endpoint",
+    "method, endpoint, expected_count",
     [
-        ("GET", "download_blob"),
-        ("HEAD", "check_blob_exists"),
+        ("GET", "download_blob", 1),
+        ("HEAD", "check_blob_exists", 0),
     ],
 )
 @patch("endpoints.v2.blob.model_cache", InMemoryDataModelCache(TEST_CACHE_CONFIG))
-def test_blob_caching(method, endpoint, client, app):
+def test_blob_caching(method, endpoint, expected_count, client, app):
     digest = "sha256:" + hashlib.sha256(b"a").hexdigest()
     location = ImageStorageLocation.get(name="local_us")
     model.blob.store_blob_record_and_temp_link("devtable", "simple", digest, location, 1, 10000000)
@@ -361,7 +361,8 @@ def test_blob_caching(method, endpoint, client, app):
     # the blob.
     with patch("endpoints.decorators.features.PROXY_CACHE", False):
         # Subsequent requests should use the cached blob.
-        with assert_query_count(0):
+        # one query for the get_authenticated_user()
+        with assert_query_count(expected_count):
             conduct_call(
                 client,
                 "v2." + endpoint,

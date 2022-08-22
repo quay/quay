@@ -115,3 +115,27 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
     engine.put_content(_TEST_PATH, _TEST_CONTENT)
     assert engine.exists(_TEST_PATH)
     assert "s3.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH)
+
+
+@mock_s3
+def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_populated, app):
+    ipresolver = IPResolver(app)
+    context = StorageContext("nyc", None, config_provider, ipresolver)
+
+    # Create a test bucket and put some test content.
+    boto3.client("s3").create_bucket(Bucket=_TEST_BUCKET)
+
+    engine = CloudFrontedS3Storage(
+        context,
+        "cloudfrontdomain",
+        "keyid",
+        "test/data/test.pem",
+        "some/path",
+        _TEST_BUCKET,
+        _TEST_USER,
+        _TEST_PASSWORD,
+    )
+    engine.put_content(_TEST_PATH, _TEST_CONTENT)
+    assert engine.exists(_TEST_PATH)
+    url = engine.get_direct_download_url(_TEST_PATH, request_ip="1.2.3.4", username=_TEST_USER)
+    assert f"username={_TEST_USER}" in url

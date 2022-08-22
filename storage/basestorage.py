@@ -56,7 +56,7 @@ class BaseStorage(StoragePaths):
             raise Exception("Could not find verification file")
 
     def get_direct_download_url(
-        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         return None
 

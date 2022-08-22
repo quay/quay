@@ -103,6 +103,14 @@ location /cnr {
 }
 
 location /api/ {
+    if ($http_patternfly = "xxx") {
+        add_header Set-Cookie "patternfly=active; path=/; SameSite=Lax; HttpOnly;" always;
+    }
+
+    if ($http_patternfly = "yyy") {
+        add_header Set-Cookie "patternfly=deleted; path=/; Expires=Thu, Jan 01 1970 00:00:00 UTC";
+    }
+    
     proxy_pass   http://web_app_server;
 
     {% if enable_rate_limits %}

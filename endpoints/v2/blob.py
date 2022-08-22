@@ -4,6 +4,7 @@ import re
 from flask import url_for, request, redirect, Response, abort as flask_abort
 
 from app import storage, app, get_app_url, model_cache
+from auth.auth_context import get_authenticated_user
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from auth.permissions import ReadRepositoryPermission
 from data import database
@@ -110,7 +111,15 @@ def download_blob(namespace_name, repo_name, digest, registry_model):
     # Short-circuit by redirecting if the storage supports it.
     path = blob.storage_path
     logger.debug("Looking up the direct download URL for path: %s", path)
-    direct_download_url = storage.get_direct_download_url(blob.placements, path, get_request_ip())
+
+    # TODO (syahmed): the call below invokes a DB call to get the user
+    # optimize so we don't have to go to the DB but read from the
+    # token instead
+    user = get_authenticated_user()
+    username = user.username if user else None
+    direct_download_url = storage.get_direct_download_url(
+        blob.placements, path, get_request_ip(), username=username
+    )
     if direct_download_url:
         logger.debug("Returning direct download URL")
         resp = redirect(direct_download_url)

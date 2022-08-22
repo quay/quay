@@ -106,7 +106,13 @@ class AzureStorage(BaseStorage):
         return self._blob_service_client.get_container_client(self._azure_container)
 
     def get_direct_download_url(
-        self, object_path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self,
+        object_path,
+        request_ip=None,
+        expires_in=60,
+        requires_cors=False,
+        head=False,
+        **kwargs,
     ):
         blob_name = self._blob_name_from_path(object_path)
 
