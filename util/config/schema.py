@@ -1014,6 +1014,11 @@ CONFIG_SCHEMA = {
             "description": "Replaces the SERVER_HOSTNAME as the destination for mirroring. Defaults to unset",
             "x-example": "openshift-quay-service",
         },
+        "REPO_MIRROR_ROLLBACK": {
+            "type": ["boolean", "null"],
+            "description": "Enables rolling repository back to previous state in the event the mirror fails. Defaults to false",
+            "x-example": "true",
+        },
         # Feature Flag: V1 push restriction.
         "V1_PUSH_WHITELIST": {
             "type": "array",
