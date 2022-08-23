@@ -307,11 +307,29 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
     assert [] == skopeo_calls
 
 
+@pytest.mark.parametrize(
+    "rollback_enabled, expected_delete_calls, expected_retarget_tag_calls",
+    [
+        (True, ["deleted", "updated", "created"], ["updated"]),
+        (False, ["deleted"], []),
+    ],
+)
 @disable_existing_mirrors
 @mock.patch("util.repomirror.skopeomirror.SkopeoMirror.run_skopeo")
 @mock.patch("workers.repomirrorworker.retarget_tag")
 @mock.patch("workers.repomirrorworker.delete_tag")
-def test_rollback(delete_tag_mock, retarget_tag_mock, run_skopeo_mock, initialized_db, app):
+@mock.patch("workers.repomirrorworker.app")
+def test_rollback(
+    mock_app,
+    delete_tag_mock,
+    retarget_tag_mock,
+    run_skopeo_mock,
+    expected_retarget_tag_calls,
+    expected_delete_calls,
+    rollback_enabled,
+    initialized_db,
+    app,
+):
     """
     Tags in the repo:
 
@@ -319,6 +337,12 @@ def test_rollback(delete_tag_mock, retarget_tag_mock, run_skopeo_mock, initializ
     "removed" - this tag will be removed during the mirror
     "created" - this tag will be created during the mirror
     """
+    mock_app.config = {
+        "REPO_MIRROR_ROLLBACK": rollback_enabled,
+        "REPO_MIRROR": True,
+        "REPO_MIRROR_SERVER_HOSTNAME": "localhost:5000",
+        "TESTING": True,
+    }
 
     mirror, repo = create_mirror_repo_robot(["updated", "created", "zzerror"])
     _create_tag(repo, "updated")
@@ -386,16 +410,6 @@ def test_rollback(delete_tag_mock, retarget_tag_mock, run_skopeo_mock, initializ
         },
     ]
 
-    retarget_tag_calls = [
-        "updated",
-    ]
-
-    delete_tag_calls = [
-        "deleted",
-        "updated",
-        "created",
-    ]
-
     def skopeo_test(args, proxy):
         try:
             skopeo_call = skopeo_calls.pop(0)
@@ -413,11 +427,11 @@ def test_rollback(delete_tag_mock, retarget_tag_mock, run_skopeo_mock, initializ
             raise e
 
     def retarget_tag_test(name, manifest, is_reversion=False):
-        assert retarget_tag_calls.pop(0) == name
+        assert expected_retarget_tag_calls.pop(0) == name
         assert is_reversion
 
     def delete_tag_test(repository_id, tag_name):
-        assert delete_tag_calls.pop(0) == tag_name
+        assert expected_delete_calls.pop(0) == tag_name
 
     run_skopeo_mock.side_effect = skopeo_test
     retarget_tag_mock.side_effect = retarget_tag_test
@@ -426,8 +440,8 @@ def test_rollback(delete_tag_mock, retarget_tag_mock, run_skopeo_mock, initializ
     worker._process_mirrors()
 
     assert [] == skopeo_calls
-    assert [] == retarget_tag_calls
-    assert [] == delete_tag_calls
+    assert [] == expected_retarget_tag_calls
+    assert [] == expected_delete_calls
 
 
 def test_remove_obsolete_tags(initialized_db):
