@@ -68,7 +68,7 @@ class BuildTriggerList(RepositoryParamResource):
     Resource for listing repository build triggers.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @nickname("listBuildTriggers")
     def get(self, namespace_name, repo_name):
@@ -103,7 +103,7 @@ class BuildTrigger(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @nickname("getBuildTrigger")
     def get(self, namespace_name, repo_name, trigger_uuid):
@@ -112,7 +112,7 @@ class BuildTrigger(RepositoryParamResource):
         """
         return trigger_view(get_trigger(trigger_uuid), can_admin=True)
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("updateBuildTrigger")
@@ -143,7 +143,7 @@ class BuildTrigger(RepositoryParamResource):
 
         return trigger_view(trigger)
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("deleteBuildTrigger")
@@ -192,7 +192,7 @@ class BuildTriggerSubdirs(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("listBuildTriggerSubdirs")
@@ -259,7 +259,7 @@ class BuildTriggerActivate(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("activateBuildTrigger")
@@ -370,7 +370,7 @@ class BuildTriggerAnalyze(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("analyzeBuildTrigger")
@@ -440,7 +440,7 @@ class ActivateBuildTrigger(RepositoryParamResource):
         }
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("manuallyStartBuildTrigger")
@@ -489,7 +489,7 @@ class TriggerBuildList(RepositoryParamResource):
     Resource to represent builds that were activated from the specified trigger.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @parse_args()
     @query_param("limit", "The maximum number of builds to return", type=int, default=5)
@@ -513,7 +513,7 @@ class BuildTriggerFieldValues(RepositoryParamResource):
     Custom verb to fetch a values list for a particular field name.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("listTriggerFieldValues")
@@ -558,7 +558,7 @@ class BuildTriggerSources(RepositoryParamResource):
         }
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("listTriggerBuildSources")
@@ -594,7 +594,7 @@ class BuildTriggerSourceNamespaces(RepositoryParamResource):
     Custom verb to fetch the list of namespaces (orgs, projects, etc) for the trigger config.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @disallow_for_app_repositories
     @nickname("listTriggerBuildSourceNamespaces")
     def get(self, namespace_name, repo_name, trigger_uuid):

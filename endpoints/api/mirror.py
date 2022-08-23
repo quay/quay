@@ -121,7 +121,7 @@ class RepoMirrorSyncNowResource(RepositoryParamResource):
     A resource for managing RepoMirrorConfig.sync_status.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("syncNow")
     def post(self, namespace_name, repository_name):
         """
@@ -155,7 +155,7 @@ class RepoMirrorSyncCancelResource(RepositoryParamResource):
     A resource for managing RepoMirrorConfig.sync_status.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("syncCancel")
     def post(self, namespace_name, repository_name):
         """
@@ -222,7 +222,7 @@ class RepoMirrorResource(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @define_json_response("ViewMirrorConfig")
     @nickname("getRepoMirrorConfig")
     def get(self, namespace_name, repository_name):
@@ -269,7 +269,7 @@ class RepoMirrorResource(RepositoryParamResource):
             "robot_username": robot,
         }
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("createRepoMirrorConfig")
     @validate_json_request("CreateMirrorConfig")
     def post(self, namespace_name, repository_name):
@@ -321,7 +321,7 @@ class RepoMirrorResource(RepositoryParamResource):
             # TODO: Determine appropriate Response
             return {"detail": "RepoMirrorConfig already exists for this repository."}, 409
 
-    @require_repo_admin
+    @require_repo_admin()
     @validate_json_request("UpdateMirrorConfig")
     @nickname("changeRepoMirrorConfig")
     def put(self, namespace_name, repository_name):

@@ -230,7 +230,7 @@ class UserCard(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("getUserCard")
     def get(self):
         """
@@ -239,7 +239,7 @@ class UserCard(ApiResource):
         user = get_authenticated_user()
         return get_card(user)
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("setUserCard")
     @validate_json_request("UserCard")
     def post(self):
@@ -339,7 +339,7 @@ class UserPlan(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("updateUserSubscription")
     @validate_json_request("UserSubscription")
     def put(self):
@@ -352,7 +352,7 @@ class UserPlan(ApiResource):
         user = get_authenticated_user()
         return subscribe(user, plan, token, False)  # Business features not required
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("getUserSubscription")
     def get(self):
         """
@@ -465,7 +465,7 @@ class UserInvoiceList(ApiResource):
     Resource for listing a user's invoices.
     """
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("listUserInvoices")
     def get(self):
         """
@@ -531,7 +531,7 @@ class UserInvoiceFieldList(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("listUserInvoiceFields")
     def get(self):
         """
@@ -543,7 +543,7 @@ class UserInvoiceFieldList(ApiResource):
 
         return {"fields": get_invoice_fields(user)[0]}
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("createUserInvoiceField")
     @validate_json_request("InvoiceField")
     def post(self):
@@ -567,7 +567,7 @@ class UserInvoiceField(ApiResource):
     Resource for deleting a user's custom invoice fields.
     """
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("deleteUserInvoiceField")
     def delete(self, field_uuid):
         """

@@ -62,6 +62,7 @@ from util.saas.exceptionlog import Sentry
 from util.names import urn_generator
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
+from util.config.superusermanager import RestrictedUserManager
 from util.label_validator import LabelValidator
 from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
@@ -260,6 +261,7 @@ build_logs = BuildLogs(app)
 authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY)
 userevents = UserEventsBuilderModule(app)
 superusers = SuperUserManager(app, authentication)
+restricted_users = RestrictedUserManager(app)
 instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)

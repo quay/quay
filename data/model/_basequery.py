@@ -90,7 +90,13 @@ def _lookup_team_roles():
 
 
 def filter_to_repos_for_user(
-    query, user_id=None, namespace=None, repo_kind="image", include_public=True, start_id=None
+    query,
+    user_id=None,
+    namespace=None,
+    repo_kind="image",
+    include_public=True,
+    start_id=None,
+    is_superuser=False,
 ):
     if not include_public and not user_id:
         return Repository.select().where(Repository.id == "-1")
@@ -117,7 +123,12 @@ def filter_to_repos_for_user(
     if include_public:
         queries.append(query.where(Repository.visibility == get_public_repo_visibility()))
 
-    if user_id is not None:
+    # If use is a superuser and a namespace was given return the given query,
+    # else filter repositories to those the user has permissions in.
+    # We do not want to return all repositories due to performance impact
+    if user_id is not None and is_superuser and namespace:
+        queries.append(query)
+    elif user_id is not None:
         AdminTeam = Team.alias()
         AdminTeamMember = TeamMember.alias()
 

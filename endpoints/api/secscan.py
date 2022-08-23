@@ -86,7 +86,7 @@ class RepositoryManifestSecurity(RepositoryParamResource):
 
     @process_basic_auth_no_pass
     @anon_allowed
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoManifestSecurity")
     @disallow_for_app_repositories
     @parse_args()

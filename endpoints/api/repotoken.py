@@ -39,7 +39,7 @@ class RepositoryTokenList(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("listRepoTokens")
     def get(self, namespace_name, repo_name):
         """
@@ -49,7 +49,7 @@ class RepositoryTokenList(RepositoryParamResource):
             "message": "Handling of access tokens is no longer supported",
         }, 410
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("createToken")
     @validate_json_request("NewToken")
     def post(self, namespace_name, repo_name):
@@ -90,7 +90,7 @@ class RepositoryToken(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("getTokens")
     def get(self, namespace_name, repo_name, code):
         """
@@ -100,7 +100,7 @@ class RepositoryToken(RepositoryParamResource):
             "message": "Handling of access tokens is no longer supported",
         }, 410
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("changeToken")
     @validate_json_request("TokenPermission")
     def put(self, namespace_name, repo_name, code):
@@ -111,7 +111,7 @@ class RepositoryToken(RepositoryParamResource):
             "message": "Handling of access tokens is no longer supported",
         }, 410
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("deleteToken")
     def delete(self, namespace_name, repo_name, code):
         """

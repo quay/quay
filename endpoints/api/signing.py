@@ -29,7 +29,7 @@ class RepositorySignatures(RepositoryParamResource):
     Operations for managing the signatures in a repository image.
     """
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoSignatures")
     @disallow_for_app_repositories
     def get(self, namespace, repository):

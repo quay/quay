@@ -347,7 +347,7 @@ class OrganizationQuotaLimit(ApiResource):
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuotaList(ApiResource):
-    @require_user_admin
+    @require_user_admin()
     @nickname("listUserQuota")
     def get(self):
         parent = get_authenticated_user()
@@ -360,7 +360,7 @@ class UserQuotaList(ApiResource):
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuota(ApiResource):
-    @require_user_admin
+    @require_user_admin()
     @nickname("getUserQuota")
     def get(self, quota_id):
         parent = get_authenticated_user()
@@ -373,7 +373,7 @@ class UserQuota(ApiResource):
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuotaLimitList(ApiResource):
-    @require_user_admin
+    @require_user_admin()
     @nickname("listUserQuotaLimit")
     def get(self, quota_id):
         parent = get_authenticated_user()
@@ -389,7 +389,7 @@ class UserQuotaLimitList(ApiResource):
 @show_if(features.SUPER_USERS)
 @show_if(features.QUOTA_MANAGEMENT)
 class UserQuotaLimit(ApiResource):
-    @require_user_admin
+    @require_user_admin()
     @nickname("getUserQuotaLimit")
     def get(self, quota_id, limit_id):
         parent = get_authenticated_user()

@@ -291,6 +291,7 @@ class RepositoryDataInterface(object):
         page_token,
         last_modified,
         popularity,
+        is_superuser,
     ):
         """
         Returns a RepositoryBaseElement.

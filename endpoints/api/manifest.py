@@ -101,7 +101,7 @@ class RepositoryManifest(RepositoryParamResource):
     Resource for retrieving a specific repository manifest.
     """
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoManifest")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, manifestref):
@@ -155,7 +155,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
         },
     }
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("listManifestLabels")
     @disallow_for_app_repositories
     @parse_args()
@@ -180,7 +180,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
 
         return {"labels": [_label_dict(label) for label in labels]}
 
-    @require_repo_write
+    @require_repo_write()
     @nickname("addManifestLabel")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
@@ -257,7 +257,7 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
     Resource for managing the labels on a specific repository manifest.
     """
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getManifestLabel")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, manifestref, labelid):
@@ -278,7 +278,7 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
 
         return _label_dict(label)
 
-    @require_repo_write
+    @require_repo_write()
     @nickname("deleteManifestLabel")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
