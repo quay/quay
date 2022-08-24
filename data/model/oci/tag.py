@@ -19,7 +19,7 @@ from data.database import (
     Namespace,
     db_random_func,
 )
-from data.model import config
+from data.model import config, user
 from image.docker.schema1 import (
     DOCKER_SCHEMA1_CONTENT_TYPES,
     DockerSchema1Manifest,
@@ -249,6 +249,24 @@ def get_most_recent_tag_lifetime_start(repository_ids):
     tuples = filter_to_alive_tags(query).tuples()
 
     return {repo_id: timestamp for repo_id, timestamp in tuples}
+
+
+def get_tag_with_least_lifetime_end_for_ns(namespace_name):
+    """
+    Returns tags that have the least lifetime end in the specified namespace or None if none.
+    """
+    namespace = user.get_user_or_org(namespace_name)
+    try:
+        return (
+            Tag.select()
+            .join(Repository)
+            .where(Tag.hidden == False)
+            .where(Repository.namespace_user == namespace.id)
+            .where(Tag.lifetime_end_ms > get_epoch_timestamp_ms())
+            .order_by(Tag.lifetime_end_ms)
+        )
+    except Tag.DoesNotExist:
+        return None
 
 
 def get_most_recent_tag(repository_id):
