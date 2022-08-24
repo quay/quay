@@ -76,6 +76,17 @@ RUN set -ex\
 	; npm run --quiet build\
 	;
 
+FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
+
+WORKDIR /opt/app-root
+RUN git clone https://github.com/quay/quay-ui.git
+RUN cd quay-ui &&\
+	set -ex &&\
+	npm install --quiet --no-progress --ignore-engines &&\
+	npm run --quiet build
+
+RUN chown -R 1001:0 quay-ui/dist 
+
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
 ENV OS=linux ARCH=amd64
@@ -98,7 +109,7 @@ RUN go install ./cmd/config-tool
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
-LABEL maintainer "thomasmckay@redhat.com"
+LABEL maintainer "quay-devel@redhat.com"
 
 # All of these chgrp+chmod commands are an Openshift-ism.
 #
@@ -135,6 +146,8 @@ COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
 COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
+COPY --from=build-ui /opt/app-root/quay-ui/dist ${QUAYDIR}/static/patternfly
+
 # Copy in source and update local copy of AWS IP Ranges.
 # This is a bad place to do the curl, but there's no good place to do
 # it except to have it checked in.

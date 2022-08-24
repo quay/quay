@@ -234,16 +234,20 @@ endif
 
 
 .PHONY: local-dev-up-with-clair
-local-dev-up-with-clair:
-	make local-dev-clean
-	make local-dev-build-frontend
-	$(DOCKER_COMPOSE) up -d redis
-	$(DOCKER_COMPOSE) up -d quay-db
-	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d quay
+local-dev-up-with-clair: local-dev-up
 	$(DOCKER_COMPOSE) up -d clair-db
 	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
 	$(DOCKER_COMPOSE) up -d clair
+
+.PHONY: local-dev-up-static
+local-dev-up-static: local-dev-clean
+	$(DOCKER_COMPOSE) -f docker-compose.static up -d redis quay-db
+	$(DOCKER) exec -it quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) -f docker-compose.static up -d --build quay
+	@echo "You can now access the frontend at http://localhost:8080"
+	$(DOCKER_COMPOSE) -f docker-compose.static up -d clair-db
+	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+	$(DOCKER_COMPOSE) -f docker-compose.static up -d clair
 
 .PHONY: local-dev-down
 local-dev-down:

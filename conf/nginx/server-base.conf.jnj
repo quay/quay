@@ -18,7 +18,42 @@ proxy_redirect off;
 
 proxy_set_header Transfer-Encoding $http_transfer_encoding;
 
+location /angular {
+    # Expire cookie and switch to old UI
+    add_header Set-Cookie "patternfly=deleted; path=/; Expires=Thu, Jan 01 1970 00:00:00 UTC";
+    return 302 /;
+}
+
+location /react {
+    # Set cookie and witch to new UI
+    add_header Set-Cookie "patternfly=true; path=/; SameSite=Lax; HttpOnly;" always;
+    return 302 /;
+}
+
 location / {
+    # Only show old UI
+    if ($host ~* "quay.io") {
+        proxy_pass   http://web_app_server;
+        break;
+    }
+
+    root {{static_dir}}/patternfly/;
+    index index.html;
+
+    # Show new UI if patternfly cookie is set
+    if ($cookie_patternfly) {
+        # catch new static paths and direct to /index.html
+        # TODO: figure out how to match on $uri
+        rewrite ^(/organizations|/repositories|/signin) /index.html break; 
+    }
+
+    # Show old UI if patternfly cookie is not set
+    if ($cookie_patternfly = "") {
+        proxy_pass   http://web_app_server;
+    }
+}
+
+location ~* (/csrf_token|/config)$ {
     proxy_pass   http://web_app_server;
 }
 
