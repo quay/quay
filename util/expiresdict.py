@@ -50,7 +50,7 @@ class ExpiresDict(object):
         # Otherwise the key has expired or was not found. Rebuild the cache and check it again.
         items = self._rebuild()
         found_item = items.get(key)
-        if found_item is None:
+        if found_item is None or found_item.expired:
             return default_value
 
         return found_item.value
