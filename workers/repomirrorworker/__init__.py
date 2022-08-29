@@ -284,8 +284,12 @@ def perform_mirror(skopeo, mirror):
                 stderr="Not applicable",
             )
 
+            # Rollback the state of repo if feature is enabled,
+            # otherwise only rollback those that failed
             if app.config.get("REPO_MIRROR_ROLLBACK", False):
                 rollback(mirror, now_ms)
+            else:
+                rollback(mirror, now_ms, failed_tags)
         else:
             emit_log(
                 mirror,
@@ -360,7 +364,7 @@ def _skopeo_inspect_failure(result):
     return "See output"
 
 
-def rollback(mirror, since_ms):
+def rollback(mirror, since_ms, tag_names=None):
     """
     :param mirror: Mirror to perform rollback on
     :param start_time: Time mirror was started; all changes after will be undone
@@ -380,6 +384,9 @@ def rollback(mirror, since_ms):
         )
         tags.extend(tags_page)
         index = index + 1
+
+    if tag_names is not None:
+        tags = [tag for tag in tags if tag.name in tag_names]
 
     for tag in tags:
         logger.debug("Repo mirroring rollback tag '%s'" % tag)

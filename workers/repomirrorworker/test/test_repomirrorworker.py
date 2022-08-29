@@ -311,8 +311,8 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
 @pytest.mark.parametrize(
     "rollback_enabled, expected_delete_calls, expected_retarget_tag_calls",
     [
-        (True, ["deleted", "updated", "created"], ["updated"]),
-        (False, ["deleted"], []),
+        (True, ["deleted", "zzerror", "updated", "created"], ["updated"]),
+        (False, ["deleted", "zzerror"], []),
     ],
 )
 @disable_existing_mirrors
@@ -421,6 +421,8 @@ def test_rollback(
                 _create_tag(repo, "updated")
             elif args[1] == "copy" and args[8].endswith(":created"):
                 _create_tag(repo, "created")
+            elif args[1] == "copy" and args[8].endswith(":zzerror"):
+                _create_tag(repo, "zzerror")
 
             return skopeo_call["results"]
         except Exception as e:
