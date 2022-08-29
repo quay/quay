@@ -1,5 +1,8 @@
 # vim: ft=nginx
 
+# Speed up location regex https://nginx.org/en/docs/ngx_core_module.html#pcre_jit
+pcre_jit on;
+
 include root-base.conf;
 
 {% if use_https %}
