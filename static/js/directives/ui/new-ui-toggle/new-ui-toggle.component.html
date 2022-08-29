@@ -1,8 +1,14 @@
 <span class="new-ui-toggle-element">
-  <div>
-    <span>Current UI</span>
+  <div class="row display-flex">
+    <div class="col-md-5 right-padding-0 align-items-center">
+      <span>Current UI</span>
+    </div>
+    <div class="col-md-3 right-padding-0 align-items-center">
       <i class="fa fa-toggle-on" ng-class="$ctrl.newUIIsActive ? 'active':'fa-rotate-180 inactive'" ng-click="$ctrl.handleToogleClick($event)" />
-    <span>New UI</span>&nbsp
+    </div>
+    <div class="col-md-4 right-padding-0 align-items-center">
+      <span>New UI</span>&nbsp
+    </div>
   </div>
 
   <div class="co-dialog modal fade" id="newBetaUIModal">

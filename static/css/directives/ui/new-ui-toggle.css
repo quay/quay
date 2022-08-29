@@ -47,3 +47,16 @@ i.inactive {
     justify-content: center;
     align-items: center;
 }
+
+.new-ui-toggle {
+    margin-right: 9%;
+    width: 230px;
+}
+
+.right-padding-0 {
+    padding-right: 0%;
+}
+
+.display-flex {
+    display: flex;
+}
