@@ -1,0 +1,47 @@
+.active, .inactive {
+    font-size: 30px;
+    cursor: pointer;
+}
+
+.modal-border {
+    border-bottom: none !important;
+}
+
+i.active {
+    color: #438fda;
+}
+
+i.inactive {
+    color: #777;
+}
+
+.beta-ui-info {
+    font-size: 60px;
+    color: #2a9af3;
+}
+
+.center-align {
+    display: block;
+    text-align: center;
+}
+
+.width-25 {
+    width: 25%;
+}
+
+.confirm-btn {
+    background-color: #438fda;
+    border: 1px solid #438fda;
+    color: white;
+}
+
+.cancel-btn {
+    background-color: white;
+    border: none;
+    box-shadow: none;
+    color: #438fda;
+}
+
+.align-items-center {
+    text-align: -webkit-center;
+}

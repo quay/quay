@@ -45,6 +45,9 @@
         <!-- Normal -->
         <ul class="nav navbar-nav navbar-right hidden-xs" ng-switch on="user.anonymous">
           <li>
+              <new-ui-toggle></new-ui-toggle>
+          </li>
+          <li>
             <span class="navbar-left user-tools"
                   ng-class="{'navbar-anon': user.anonymous, 'navbar-signedin': !user.anonymous}">
               <search-box ng-if="searchingAllowed"></search-box>
