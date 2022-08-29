@@ -318,6 +318,14 @@ if os.path.exists(_v2_key_path):
 else:
     docker_v2_signing_key = JsonWebKey.generate_key("RSA", 2048, is_private=True)
 
+# Check if georeplication is turned on and whether env. variables exist:
+if os.environ.get("QUAY_DISTRIBUTED_STORAGE_PREFERENCE") is None and app.config.get(
+    "FEATURE_STORAGE_REPLICATION", False
+):
+    raise Exception(
+        "Missing storage preference, did you perhaps forget to define QUAY_DISTRIBUTED_STORAGE_PREFERENCE variable?"
+    )
+
 # Configure the database.
 if app.config.get("DATABASE_SECRET_KEY") is None and app.config.get("SETUP_COMPLETE", False):
     raise Exception("Missing DATABASE_SECRET_KEY in config; did you perhaps forget to add it?")
