@@ -43,5 +43,7 @@ i.inactive {
 }
 
 .align-items-center {
-    text-align: -webkit-center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
