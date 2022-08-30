@@ -77,12 +77,17 @@ RUN set -ex\
 	;
 
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
-
 WORKDIR /opt/app-root
+
+# Invalidate quay-ui cache if quay-ui main has changed
+ADD https://api.github.com/repos/quay/quay-ui/git/ref/heads/main version.json
 RUN git clone https://github.com/quay/quay-ui.git
+
 RUN cd quay-ui &&\
 	set -ex &&\
-	npm install --quiet --no-progress --ignore-engines &&\
+	npm install --quiet --no-progress --ignore-engines
+
+RUN	cd quay-ui &&\
 	npm run --quiet build
 
 RUN chown -R 1001:0 quay-ui/dist 
