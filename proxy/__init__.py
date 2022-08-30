@@ -177,7 +177,7 @@ class Proxy:
         service = www_auth.get("service")
         realm = www_auth.get("realm")
 
-        if scheme == "Basic" and auth is not None:
+        if str(scheme).lower() == "basic" and auth is not None:
             # attach basic auth header to session
             requests.auth.HTTPBasicAuth(auth[0], auth[1])(self._session)
             return
