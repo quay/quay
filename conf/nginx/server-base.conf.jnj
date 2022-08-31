@@ -18,6 +18,11 @@ proxy_redirect off;
 
 proxy_set_header Transfer-Encoding $http_transfer_encoding;
 
+# Temporarily force signin for old and new UI to route to web app
+location /signin {
+    proxy_pass   http://web_app_server/;
+}
+
 location /angular {
     # Expire cookie and switch to old UI
     add_header Set-Cookie "patternfly=deleted; path=/; Expires=Thu, Jan 01 1970 00:00:00 UTC";
@@ -44,7 +49,7 @@ location / {
     if ($cookie_patternfly) {
         # catch new static paths and direct to /index.html
         # TODO: figure out how to match on $uri
-        rewrite ^(/organizations|/repositories|/signin) /index.html break; 
+        rewrite ^(/organizations|/repositories) /index.html break; 
     }
 
     # Show old UI if patternfly cookie is not set
