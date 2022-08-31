@@ -47,6 +47,7 @@ import { ManifestSecurityView } from './directives/ui/manifest-security-view/man
 import { MarkdownModule } from './directives/ui/markdown/markdown.module';
 import { RepoStateComponent } from './directives/ui/repo-state/repo-state.component';
 import * as Clipboard from 'clipboard';
+import { NewUiToggleComponent } from './directives/ui/new-ui-toggle/new-ui-toggle.component';
 
 
 /**
@@ -94,6 +95,7 @@ import * as Clipboard from 'clipboard';
     ManifestLinkComponent,
     ManifestSecurityView,
     RepoStateComponent,
+    NewUiToggleComponent
   ],
   providers: [
     ViewArrayImpl,

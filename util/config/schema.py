@@ -1232,6 +1232,11 @@ CONFIG_SCHEMA = {
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
             "x-example": False,
         },
+        "FEATURE_UI_V2": {
+            "type": "boolean",
+            "description": "Enables user to try the beta UI Environment",
+            "x-example": False,
+        },
         "EXPORT_COMPLIANCE_ENDPOINT": {
             "type": "string",
             "description": "The Red Hat Export Compliance Service Endpoint (only used in Quay.io)",

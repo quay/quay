@@ -820,6 +820,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)
     FEATURE_EXPORT_COMPLIANCE = False
 
+    # Feature Flag: Enables user to try the beta UI Environment
+    FEATURE_UI_V2 = False
+
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""
 
