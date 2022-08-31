@@ -11,7 +11,9 @@ def check_health(app_config):
     # making a normal connect which will just hang (thus breaking the health
     # check).
     try:
-        validate_database_url(app_config["DB_URI"], {}, connect_timeout=3)
+        validate_database_url(
+            app_config["DB_URI"], app_config["DB_CONNECTION_ARGS"], connect_timeout=3
+        )
     except Exception as ex:
         return (False, "Could not connect to the database: %s" % str(ex))
 
