@@ -202,6 +202,7 @@ class OIDCLoginService(OAuthService):
         else:
             email_address = user_info.get("email") if user_info.get("email_verified") else None
 
+        logger.debug("Printing out decoded token: `%s`", user_info)
         logger.debug("Found e-mail address `%s` for sub `%s`", email_address, user_info["sub"])
         if self._mailing:
             if email_address is None:
