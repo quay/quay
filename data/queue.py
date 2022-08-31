@@ -73,13 +73,13 @@ class WorkQueue(object):
     @classmethod
     def _running_jobs(cls, now, name_match_query):
         return cls._running_jobs_where(QueueItem.select(QueueItem.queue_name), now).where(
-            QueueItem.queue_name**name_match_query
+            QueueItem.queue_name ** name_match_query
         )
 
     @classmethod
     def _available_jobs(cls, now, name_match_query):
         return cls._available_jobs_where(QueueItem.select(), now).where(
-            QueueItem.queue_name**name_match_query
+            QueueItem.queue_name ** name_match_query
         )
 
     @staticmethod
@@ -113,7 +113,7 @@ class WorkQueue(object):
 
         return (
             QueueItem.select()
-            .where(QueueItem.queue_name**canonical_name_query)
+            .where(QueueItem.queue_name ** canonical_name_query)
             .where(QueueItem.retries_remaining > 0)
             .count()
         )
@@ -190,7 +190,7 @@ class WorkQueue(object):
 
         subpath_query = "%s/" % subpath if subpath else ""
         queue_prefix = "%s/%s/%s%%" % (self._queue_name, namespace, subpath_query)
-        return QueueItem.delete().where(QueueItem.queue_name**queue_prefix).execute()
+        return QueueItem.delete().where(QueueItem.queue_name ** queue_prefix).execute()
 
     def alive(self, canonical_name_list):
         """
