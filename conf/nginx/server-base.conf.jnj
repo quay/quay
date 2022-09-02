@@ -17,6 +17,7 @@ proxy_set_header Host $host;
 proxy_redirect off;
 
 proxy_set_header Transfer-Encoding $http_transfer_encoding;
+absolute_redirect off;
 
 # Temporarily force signin for old and new UI to route to web app
 location /signin {
