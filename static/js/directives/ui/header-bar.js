@@ -145,6 +145,14 @@ angular.module('quay').directive('headerBar', function () {
           'namespace': namespace
         };
       };
+
+      $scope.checkElementByID = function(elementID) {
+        var result = false;
+        if (document.getElementById(elementID)) {
+          result = true;
+        }
+        return result;
+      }
     }
   };
   return directiveDefinitionObject;
