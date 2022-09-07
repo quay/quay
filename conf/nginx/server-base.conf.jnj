@@ -27,13 +27,13 @@ location /signin {
 location /angular {
     # Expire cookie and switch to old UI
     add_header Set-Cookie "patternfly=deleted; path=/; Expires=Thu, Jan 01 1970 00:00:00 UTC";
-    return 302 /;
+    return 302 /?$args;
 }
 
 location /react {
     # Set cookie and witch to new UI
     add_header Set-Cookie "patternfly=true; path=/; SameSite=Lax; HttpOnly;" always;
-    return 302 /;
+    return 302 /?$args;
 }
 
 location / {
