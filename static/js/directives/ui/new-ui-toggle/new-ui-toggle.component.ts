@@ -20,7 +20,11 @@ export class NewUiToggleComponent {
   private useNewUI($event): void {
     let protocol = window.location.protocol;
     let host = window.location.host;
-    window.location.replace(`${protocol}//${host}/react`);
+    let path = 'react';
+
+    // Add a random arg so nginx redirect to / doesn't get cached by browser
+    let randomArg = '?_=' + new Date().getTime();
+    window.location.replace(`${protocol}//${host}/${path}/${randomArg}`);
     $('#newBetaUIModal').modal('hide');
   }
 }
