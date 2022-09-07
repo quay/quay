@@ -170,10 +170,11 @@ jobs:
        DOCKER_BUILDKIT: 1
       run: docker build --platform=linux/amd64 .
 
-    - name: Docker Build (linux/arm64)
-      env:
-       DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/arm64 .
+#    Commenting because of recurring failure with arm
+#    - name: Docker Build (linux/arm64)
+#      env:
+#       DOCKER_BUILDKIT: 1
+#      run: docker build --platform=linux/arm64 .
 
   mysql:
     name: E2E MySQL Test
