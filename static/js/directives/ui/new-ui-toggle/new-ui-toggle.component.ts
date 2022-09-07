@@ -13,11 +13,11 @@ export class NewUiToggleComponent {
   }
 
   private handleToogleClick($event): void {
-    this.newUIIsActive = !this.newUIIsActive;
     $('#newBetaUIModal').modal('show');
   }
 
   private useNewUI($event): void {
+    this.newUIIsActive = !this.newUIIsActive;
     let protocol = window.location.protocol;
     let host = window.location.host;
     window.location.replace(`${protocol}//${host}/react`);
