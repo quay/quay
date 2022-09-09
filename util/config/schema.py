@@ -1247,5 +1247,10 @@ CONFIG_SCHEMA = {
             "description": "Cross-Origin domain to allow requests from",
             "x-example": "localhost:9000",
         },
+        "FEATURE_LISTEN_IP_VERSION": {
+            "type": "string",
+            "description": "Enables IPv4, IPv6 or dual-stack networking. Defaults to `IPv4`.",
+            "x-example": "IPv4",
+        },
     },
 }

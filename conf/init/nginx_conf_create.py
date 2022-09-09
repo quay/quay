@@ -75,6 +75,11 @@ def generate_nginx_config(config):
     ssl_protocols = config.get("SSL_PROTOCOLS", SSL_PROTOCOL_DEFAULTS)
     ssl_ciphers = config.get("SSL_CIPHERS", SSL_CIPHER_DEFAULTS)
 
+    # Enable IPv4 and/or IPv6. Valid values are IPv4, IPv6 or dual-stack.
+    ip_version = config.get("FEATURE_LISTEN_IP_VERSION", "IPv4")
+    use_ipv4 = True if ip_version.lower() != "ipv6" else False
+    use_ipv6 = True if ip_version.lower() in ["ipv6", "dual-stack"] else False
+
     write_config(
         os.path.join(QUAYCONF_DIR, "nginx/nginx.conf"),
         use_https=use_https,
@@ -82,6 +87,8 @@ def generate_nginx_config(config):
         v1_only_domain=v1_only_domain,
         ssl_protocols=ssl_protocols,
         ssl_ciphers=":".join(ssl_ciphers),
+        use_ipv4=use_ipv4,
+        use_ipv6=use_ipv6,
     )
 
 
