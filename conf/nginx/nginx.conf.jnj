@@ -32,8 +32,12 @@ http {
 
         include server-base.conf;
 
+        {% if use_ipv4 %}
         listen 8443 ssl http2 default;
+        {% endif %}
+        {% if use_ipv6 %}
         listen [::]:8443 ssl http2 default;
+        {% endif %}
 
         ssl on;
 
@@ -57,8 +61,12 @@ http {
 
         include server-base.conf;
 
+        {% if use_ipv4 %}
         listen 7443 ssl http2 default proxy_protocol;
+        {% endif %}
+        {% if use_ipv6 %}
         listen [::]:7443 ssl http2 default proxy_protocol;
+        {% endif %}
         
         ssl on;
 
@@ -80,8 +88,12 @@ http {
         ssl_certificate ../stack/ssl.cert;
         ssl_certificate_key ../stack/ssl.key;
 
+        {% if use_ipv4 %}
         listen 55443 ssl http2 default;
+        {% endif %}
+        {% if use_ipv6 %}
         listen [::]:55443 ssl http2 default;
+        {% endif %}
         ssl on;
 
         # Required for gRPC streaming of long running builds
@@ -114,8 +126,12 @@ http {
         ssl_certificate ../stack/ssl.cert;
         ssl_certificate_key ../stack/ssl.key;
 
+        {% if use_ipv4 %}
         listen 8443 ssl;
+        {% endif %}
+        {% if use_ipv6 %}
         listen [::]:8443 ssl;
+        {% endif %}
 
         ssl on;
 
@@ -133,8 +149,12 @@ http {
 
         include server-base.conf;
 
+        {% if use_ipv4 %}
         listen 7443 ssl proxy_protocol;
+        {% endif %}
+        {% if use_ipv6 %}
         listen [::]:7443 ssl proxy_protocol;
+        {% endif %}
         ssl on;
 
         # This header must be set only for HTTPS
@@ -159,8 +179,12 @@ http {
     server {
         include server-base.conf;
 
+        {% if use_ipv4 %}
         listen 8080 default;
+        {% endif %}
+        {% if use_ipv6 %}
         listen [::]:8080 default;
+        {% endif %}
 
         access_log /var/log/nginx/access.log lb_logs;
     }
