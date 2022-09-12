@@ -49,6 +49,8 @@ jobs:
   release:
     name: Release
     runs-on: 'ubuntu-latest'
+    permissions:
+      contents: write
     if: github.event_name == 'push'
     needs: [release-archive]
     outputs:
@@ -64,14 +66,12 @@ jobs:
         with:
           name: release
       - name: Create Release
-        uses: actions/create-release@latest
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ncipollo/release-action@v1.10.0
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ env.VERSION }} Release
-          body_path: ${{steps.download.outputs.download-path}}/changelog
+          token: ${{ secrets.GITHUB_TOKEN }}
+          bodyFile: ${{steps.download.outputs.download-path}}/changelog
+          tag: ${{ github.ref }}
+          name: ${{ env.VERSION }} Release
           prerelease: ${{ contains(env.VERSION, 'alpha') || contains(env.VERSION, 'beta') || contains(env.VERSION, 'rc') }}
       - name: Publish Release Archive
         uses: actions/upload-release-asset@v1
