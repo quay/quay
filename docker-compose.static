@@ -41,6 +41,7 @@ services:
       timeout: 9s
       retries: 3
       start_period: 10s
+    cpus: 2
 
   redis:
     user: nobody
@@ -77,13 +78,14 @@ services:
   clair:
     user: nobody
     container_name: quay-clair
-    image: quay.io/projectquay/clair:4.3.0
+    image: quay.io/projectquay/clair:4.4.0
     volumes:
       - "./local-dev/clair:/src/clair/"
     environment:
       CLAIR_CONF: "/src/clair/config.yaml"
       CLAIR_MODE: "combo"
     network_mode: "service:quay"
+    cpus: 2
     command:
       ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
     depends_on:
