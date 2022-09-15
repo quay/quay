@@ -344,7 +344,7 @@ class SuperUserManager(object):
     def init_app(self, app, authentication):
         manager = None
         if authentication.federated_service:
-            manager = FederetedSuperUserManager(app, authentication)
+            manager = FederatedSuperUserManager(app, authentication)
         else:
             manager = ConfigSuperUserManager(app)
 
