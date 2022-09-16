@@ -362,7 +362,7 @@ class FederatedSuperUserManager(ConfigSuperUserManager):
 
     def __init__(self, app, authentication):
         self.federated_users = authentication
-        super().__init__(self, app)
+        super().__init__(app)
 
     def is_superuser(self, username):
         """
