@@ -175,6 +175,11 @@ jobs:
        DOCKER_BUILDKIT: 1
       run: docker build --platform=linux/arm64 .
 
+    - name: Docker Build (linux/ppc64le)
+      env:
+       DOCKER_BUILDKIT: 1
+      run: docker build --platform=linux/ppc64le .
+
   mysql:
     name: E2E MySQL Test
     runs-on: ubuntu-latest
