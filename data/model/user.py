@@ -1372,6 +1372,16 @@ def get_minimum_user_id():
     return User.select(fn.Min(User.id)).tuples().get()[0]
 
 
+def get_quay_user_from_federated_login_name(username):
+    results = FederatedLogin.select().where(FederatedLogin.metadata_json.contains(username))
+    user_id = None
+    for result in results:
+        if json.loads(result.metadata_json).get("service_username") == username:
+            user_id = result.user_id
+
+    return get_namespace_user_by_user_id(user_id) if user_id else None
+
+
 class LoginWrappedDBUser(UserMixin):
     def __init__(self, user_uuid, db_user=None):
         self._uuid = user_uuid
