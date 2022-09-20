@@ -63,6 +63,7 @@ from data.database import (
     UserOrganizationQuota,
     RepositorySize,
     ProxyCacheConfig,
+    FederatedLogin,
 )
 from data import model
 from data.decorators import is_deprecated_model
@@ -1277,6 +1278,30 @@ def populate_database(minimal=False):
     for to_count in Repository.select():
         model.repositoryactioncount.count_repository_actions(to_count, datetime.utcnow())
         model.repositoryactioncount.update_repository_score(to_count)
+
+    # Case 1: Where RH SSO username is same as quay.io username
+    FederatedLogin.create(
+        user=new_user_1,  # quay.io username
+        service=LoginService.get(name="quayrobot"),
+        service_ident="fake-id1",
+        metadata_json=json.dumps(
+            {
+                "service_username": new_user_1.username,  # login service username
+            }
+        ),
+    )
+
+    # Case 2: Where RH SSO username and quay.io username are different
+    FederatedLogin.create(
+        user=new_user_2,  # quay.io username
+        service=LoginService.get(name="quayrobot"),
+        service_ident="fake-id2",
+        metadata_json=json.dumps(
+            {
+                "service_username": new_user_3.username,  # login service username
+            }
+        ),
+    )
 
 
 WHITELISTED_EMPTY_MODELS = [
