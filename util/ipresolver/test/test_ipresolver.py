@@ -26,6 +26,16 @@ def aws_ip_range_data():
                 "region": "GLOBAL",
                 "service": "EC2",
             },
+            {
+                "ip_prefix": "5.0.0.0/8",
+                "region": "af-south-1",
+                "service": "AMAZON",
+            },
+            {
+                "ip_prefix": "4.0.0.0/8",
+                "region": "us-east-1",
+                "service": "EC2",
+            },
         ],
     }
     return fake_range_doc
@@ -45,23 +55,48 @@ def test_ip_range_cache(aws_ip_range_data):
 def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
     ipresolver = IPResolver(app)
     ipresolver.amazon_ranges = test_ip_range_cache["all_amazon"]
+
     ipresolver.sync_token = test_ip_range_cache["sync_token"]
 
     assert ipresolver.resolve_ip(test_aws_ip) == ResolvedLocation(
-        provider="aws", service=None, sync_token=123456789, country_iso_code=None
+        provider="aws",
+        service=None,
+        sync_token=123456789,
+        country_iso_code=None,
+        aws_region="GLOBAL",
     )
     assert ipresolver.resolve_ip("10.0.0.2") == ResolvedLocation(
-        provider="aws", service=None, sync_token=123456789, country_iso_code=None
+        provider="aws",
+        service=None,
+        sync_token=123456789,
+        country_iso_code=None,
+        aws_region="GLOBAL",
     )
     assert ipresolver.resolve_ip("6.0.0.2") == ResolvedLocation(
-        provider="aws", service=None, sync_token=123456789, country_iso_code="US"  # DoD assigned
+        provider="aws",
+        service=None,
+        sync_token=123456789,
+        country_iso_code="US",
+        aws_region="GLOBAL",  # DoD assigned
+    )
+    assert ipresolver.resolve_ip("4.0.0.2") == ResolvedLocation(
+        provider="aws",
+        service=None,
+        sync_token=123456789,
+        country_iso_code="US",
+        aws_region="us-east-1",
     )
     assert ipresolver.resolve_ip("56.0.0.2") == ResolvedLocation(
         provider="internet",
         service="US",
         sync_token=123456789,
         country_iso_code="US",  # USPS assigned
+        aws_region=None,
     )
     assert ipresolver.resolve_ip("127.0.0.1") == ResolvedLocation(
-        provider="internet", service=None, sync_token=123456789, country_iso_code=None
+        provider="internet",
+        service=None,
+        sync_token=123456789,
+        country_iso_code=None,
+        aws_region=None,
     )

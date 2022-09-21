@@ -22,6 +22,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from prometheus_client import Counter
 
+from util.ipresolver import ResolvedLocation
 from util.registry import filelike
 from storage.basestorage import BaseStorageV2
 
@@ -998,6 +999,7 @@ class CloudFrontedS3Storage(S3Storage):
         cloudfront_privatekey_filename,
         storage_path,
         s3_bucket,
+        s3_region,
         *args,
         **kwargs,
     ):
@@ -1005,6 +1007,7 @@ class CloudFrontedS3Storage(S3Storage):
             context, storage_path, s3_bucket, *args, **kwargs
         )
 
+        self.s3_region = s3_region
         self.cloudfront_distribution_domain = cloudfront_distribution_domain
         self.cloudfront_key_id = cloudfront_key_id
         self.cloudfront_privatekey = self._load_private_key(cloudfront_privatekey_filename)
@@ -1023,9 +1026,15 @@ class CloudFrontedS3Storage(S3Storage):
 
         # Lookup the IP address in our resolution table and determine whether it is under AWS.
         # If it is, then return an S3 signed URL, since we are in-network.
-        resolved_ip_info = self._context.ip_resolver.resolve_ip(request_ip)
+        # We only allow requests within the same region as cross region over AWS can incur
+        # additional traffic cost
+        resolved_ip_info: ResolvedLocation = self._context.ip_resolver.resolve_ip(request_ip)
         logger.debug("Resolved IP information for IP %s: %s", request_ip, resolved_ip_info)
-        if resolved_ip_info and resolved_ip_info.provider == "aws":
+        if (
+            resolved_ip_info
+            and resolved_ip_info.provider == "aws"
+            and resolved_ip_info.aws_region == self.s3_region
+        ):
             return super(CloudFrontedS3Storage, self).get_direct_download_url(
                 path, request_ip, expires_in, requires_cors, head, **kwargs
             )
