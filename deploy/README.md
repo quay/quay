@@ -4,5 +4,5 @@ OpenShift deployments should be using the Quay Setup Operator.  Manifests are pr
 
 Instructions for Deploying on OpenShift
 
-<https://access.redhat.com/documentation/en-us/red_hat_quay/3/html/deploy_red_hat_quay_on_openshift/set-up-red-hat-quay-services>
+[(https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html-single/deploy_red_hat_quay_on_openshift_with_the_quay_operator/index)](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html-single/deploy_red_hat_quay_on_openshift_with_the_quay_operator/index)
 
