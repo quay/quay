@@ -59,6 +59,11 @@ location / {
     }
 }
 
+# Capture oauth callbacks from external provider
+location ~ /oauth2/*/callback {
+    proxy_pass   http://web_app_server;
+}
+
 location ~* (/csrf_token|/config)$ {
     proxy_pass   http://web_app_server;
 }
