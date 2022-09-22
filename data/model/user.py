@@ -1078,6 +1078,18 @@ def get_private_repo_count(username):
     )
 
 
+def get_public_repo_count(username):
+    return (
+        Repository.select()
+        .join(Visibility)
+        .switch(Repository)
+        .join(Namespace, on=(Repository.namespace_user == Namespace.id))
+        .where(Namespace.username == username, Visibility.name == "public")
+        .where(Repository.state != RepositoryState.MARKED_FOR_DELETION)
+        .count()
+    )
+
+
 def get_active_users(disabled=True, deleted=False):
     query = User.select().where(User.organization == False, User.robot == False)
 
