@@ -256,7 +256,7 @@ def test_get_quay_user_from_federated_login_name(initialized_db):
 
 def test_get_public_repo_count(initialized_db):
     username = "non-existant-user"
-    assert get_public_repo_count(username) is 0
+    assert get_public_repo_count(username) == 0
 
     public_username = "public"
-    assert get_public_repo_count(public_username) is 1
+    assert get_public_repo_count(public_username) == 1
