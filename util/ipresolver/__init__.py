@@ -14,11 +14,12 @@ from netaddr import IPNetwork, IPAddress, IPSet, AddrFormatError
 import geoip2.database
 import geoip2.errors
 import requests
+from typing import Dict
 
 from util.abchelpers import nooper
 
 ResolvedLocation = namedtuple(
-    "ResolvedLocation", ["provider", "service", "sync_token", "country_iso_code"]
+    "ResolvedLocation", ["provider", "service", "sync_token", "country_iso_code", "aws_region"]
 )
 
 AWS_SERVICES = {"EC2", "CODEBUILD"}
@@ -87,7 +88,7 @@ class IPResolver(IPResolverInterface):
         file_path = os.path.join(path, "GeoLite2-Country.mmdb")
         self.geoip_db = geoip2.database.Reader(file_path)
 
-        self.amazon_ranges = None
+        self.amazon_ranges: Dict[str, IPSet] = None
         self.sync_token = None
 
         logger.info("Loading AWS IP ranges from disk")
@@ -144,7 +145,7 @@ class IPResolver(IPResolverInterface):
         try:
             parsed_ip = IPAddress(ip_address)
         except AddrFormatError:
-            return ResolvedLocation("invalid_ip", None, self.sync_token, None)
+            return ResolvedLocation("invalid_ip", None, self.sync_token, None, None)
 
         # Try geoip classification
         try:
@@ -152,26 +153,46 @@ class IPResolver(IPResolverInterface):
         except geoip2.errors.AddressNotFoundError:
             geoinfo = None
 
-        if self.amazon_ranges is None or parsed_ip not in self.amazon_ranges:
+        aws_region = self.get_aws_ip_region(parsed_ip)
+
+        # Not an AWS IP
+        if not aws_region:
             if geoinfo:
                 return ResolvedLocation(
                     "internet",
                     geoinfo.country.iso_code,
                     self.sync_token,
                     geoinfo.country.iso_code,
+                    None,
                 )
 
-            return ResolvedLocation("internet", None, self.sync_token, None)
+            return ResolvedLocation("internet", None, self.sync_token, None, None)
 
         return ResolvedLocation(
-            "aws", None, self.sync_token, geoinfo.country.iso_code if geoinfo else None
+            "aws", None, self.sync_token, geoinfo.country.iso_code if geoinfo else None, aws_region
         )
+
+    def get_aws_ip_region(self, ip_address: IPAddress):
+        if not self.amazon_ranges:
+            return None
+
+        for region in self.amazon_ranges:
+            ipset = self.amazon_ranges[region]
+            if ip_address in ipset:
+                return region
+        return None
 
     @staticmethod
     def _parse_amazon_ranges(ranges):
-        all_amazon = IPSet()
+        all_amazon = {}
         for service_description in ranges["prefixes"]:
-            if service_description["service"] in AWS_SERVICES:
-                all_amazon.add(IPNetwork(service_description["ip_prefix"]))
+            region = service_description["region"]
+            service = service_description["service"]
+
+            if region not in all_amazon:
+                all_amazon[region] = IPSet()
+
+            if service in AWS_SERVICES:
+                all_amazon[region].add(IPNetwork(service_description["ip_prefix"]))
 
         return all_amazon
