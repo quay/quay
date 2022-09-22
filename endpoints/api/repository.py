@@ -246,7 +246,6 @@ class RepositoryList(ApiResource):
             page_token,
             last_modified,
             popularity,
-            False,
         )
 
         return {"repositories": [repo.to_dict() for repo in repos]}, next_page_token

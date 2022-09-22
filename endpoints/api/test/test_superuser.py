@@ -1,6 +1,6 @@
 import pytest
 
-from endpoints.api.superuser import SuperUserList, SuperUserManagement, SuperUserRepositoryList
+from endpoints.api.superuser import SuperUserList, SuperUserManagement
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -30,9 +30,3 @@ def test_change_install_user(client):
         result = conduct_api_call(cl, SuperUserManagement, "PUT", params, body, 200).json
 
         assert result["email"] == body["email"]
-
-
-def test_list_repositories(client):
-    with client_with_identity("devtable", client) as cl:
-        params = {"namespace": "devtable"}
-        conduct_api_call(cl, SuperUserRepositoryList, "GET", params, None, 200)

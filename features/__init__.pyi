@@ -193,3 +193,5 @@ QUOTA_MANAGEMENT: FeatureNameValue
 HELM_OCI_SUPPORT: FeatureNameValue
 
 PROXY_CACHE: FeatureNameValue
+
+RESTRICTED_USERS: FeatureNameValue

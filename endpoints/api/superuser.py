@@ -43,7 +43,6 @@ from endpoints.api import (
     Unauthorized,
     InvalidResponse,
 )
-from endpoints.api.repository_models_pre_oci import pre_oci_model as model
 from endpoints.api import request_error
 from endpoints.api.build import get_logs_or_log_url
 from endpoints.api.namespacequota import quota_view, limit_view, get_quota
@@ -212,66 +211,6 @@ class SuperUserOrganizationList(ApiResource):
         """
         if SuperUserPermission().can():
             return {"organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]}
-
-        raise Unauthorized()
-
-
-@resource("/v1/superuser/repositories/")
-@internal_only
-@show_if(features.SUPER_USERS)
-class SuperUserRepositoryList(ApiResource):
-    """
-    Resource for listing repositories in the system.
-    """
-
-    @verify_not_prod
-    @require_scope(scopes.SUPERUSER)
-    @parse_args()
-    @query_param("namespace", "Filters the repositories returned to this namespace", type=str)
-    @query_param(
-        "last_modified",
-        "Whether to include when the repository was last modified.",
-        type=truthy_bool,
-        default=False,
-    )
-    @query_param(
-        "popularity",
-        "Whether to include the repository's popularity metric.",
-        type=truthy_bool,
-        default=False,
-    )
-    @query_param("repo_kind", "The kind of repositories to return", type=str, default="image")
-    @page_support()
-    def get(self, page_token, parsed_args):
-        """
-        Returns a list of all repositories in the system.
-        """
-        if SuperUserPermission().can():
-
-            # We currently only support filtering by namespace due to performance impact,
-            # This may change in the future
-            if not parsed_args["namespace"]:
-                raise InvalidRequest("namespace is required for this API call")
-
-            current_user = get_authenticated_user()
-            username = current_user.username if current_user else None
-            last_modified = parsed_args["last_modified"]
-            popularity = parsed_args["popularity"]
-
-            repos, next_page_token = model.get_repo_list(
-                False,
-                current_user,
-                parsed_args["repo_kind"],
-                parsed_args["namespace"],
-                username,
-                True,
-                page_token,
-                last_modified,
-                popularity,
-                True,
-            )
-
-            return {"repositories": [repo.to_dict() for repo in repos]}, next_page_token
 
         raise Unauthorized()
 
