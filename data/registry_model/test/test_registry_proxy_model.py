@@ -15,7 +15,7 @@ from data.database import (
     Tag,
     get_epoch_timestamp_ms,
 )
-from data.model import oci, TagDoesNotExist
+from data.model import oci, TagDoesNotExist, QuotaExceededException, namespacequota, user
 from data.model.blob import store_blob_record_and_temp_link
 from data.model.organization import create_organization
 from data.model.proxy_cache import create_proxy_cache_config
@@ -39,7 +39,6 @@ from image.docker.schema2.manifest import DockerSchema2ManifestBuilder
 from test.fixtures import *  # noqa: F401,F403
 from proxy.fixtures import proxy_manifest_response  # noqa: F401,F403
 from util.bytes import Bytes
-
 
 UBI8_8_5_DIGEST = "sha256:8ee9d7bbcfc19d383f9044316a5c5fbcbe2df6be3c97f6c7a5422527b29bdede"
 UBI8_8_5_MANIFEST_SCHEMA2 = r"""{
@@ -1213,3 +1212,112 @@ class TestRegistryProxyModelGetRepoTag:
             tag = proxy_model.get_repo_tag(repo_ref, self.tag)
         assert tag is not None
         assert tag.lifetime_end_ms == first_tag.lifetime_end_ms
+
+
+class TestPruningLRUProxiedImagesToAllowBlobUpload:
+    upstream_registry = "docker.io"
+    upstream_repository = "library/busybox"
+    orgname = "proxy-cache"
+    repository = f"{orgname}/{upstream_repository}"
+    tag = "1.35.0"
+
+    @pytest.fixture(autouse=True)
+    def setup(self, app):
+        self.user = get_user("devtable")
+        self.org = create_organization(self.orgname, "{self.orgname}@devtable.com", self.user)
+        self.org.save()
+        self.config = create_proxy_cache_config(
+            org_name=self.orgname,
+            upstream_registry=self.upstream_registry,
+            expiration_s=3600,
+        )
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_auto_pruning_skipped_if_no_quota_set(self, create_repo):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(UBI8_8_4_MANIFEST_SCHEMA2),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+        try:
+            proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest)
+        except QuotaExceededException:
+            assert False, "No exception should be raised here"
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_auto_pruning_skipped_for_manifest_list(self, create_repo, initialized_db):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.PYTHON_LATEST["manifest"]),
+            DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+        try:
+            proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest)
+        except QuotaExceededException:
+            assert False, "No exception should be raised here"
+        # verify ns size did not change
+        assert namespacequota.get_namespace_size(self.orgname) == 0
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_raises_quota_exceed_when_blob_is_bigger_than_max_quota(self, create_repo):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.PYTHON_LINUX_AMD64["manifest"]),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        proxy_model = ProxyModel(
+            self.orgname,
+            self.upstream_repository,
+            self.user,
+        )
+        limit_bytes = 2048
+        namespace = user.get_user_or_org(self.orgname)
+        namespacequota.create_namespace_quota(namespace, limit_bytes)
+        with pytest.raises(QuotaExceededException):
+            proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest)
+
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_auto_pruning_when_quota_limit_reached(
+        self, create_repo, proxy_manifest_response, initialized_db
+    ):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        limit_bytes = 83370727
+        namespace = user.get_user_or_org(self.orgname)
+        namespacequota.create_namespace_quota(namespace, limit_bytes)
+
+        proxy_mock = proxy_manifest_response(
+            "8.4", UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        )
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+            first_manifest = proxy_model.get_repo_tag(repo_ref, "8.4")
+        assert first_manifest is not None
+        first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
+        assert first_tag is not None
+        assert namespacequota.get_namespace_size(self.orgname) == 83370727
+
+        # pull a different tag when the quota limit is reached and verify
+        # that the previous tag was removed
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.UBI8_LINUX_AMD64["manifest"]),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        assert proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest) is None
+        first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
+        assert first_tag is None
