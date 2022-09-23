@@ -59,8 +59,8 @@ location / {
     }
 }
 
-# Capture oauth callbacks from external provider
-location ~ /oauth2/*/callback {
+# Capture traffic that needs to go to web_app, see /web.py
+location ~* (/oauth1|/oauth2|/webhooks|/keys|/.well-known) {
     proxy_pass   http://web_app_server;
 }
 
