@@ -59,7 +59,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read
+@require_repo_read(allow_for_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_model):
@@ -128,7 +128,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read
+@require_repo_read(allow_for_superuser=True)
 @anon_protect
 @inject_registry_model()
 def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_model):
@@ -248,7 +248,9 @@ def _doesnt_accept_schema_v1():
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write
+@require_repo_write(
+    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
+)
 @anon_protect
 @check_readonly
 def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
@@ -261,7 +263,9 @@ def write_manifest_by_tagname(namespace_name, repo_name, manifest_ref):
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write
+@require_repo_write(
+    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
+)
 @anon_protect
 @check_readonly
 def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
@@ -324,7 +328,9 @@ def _parse_manifest(content_type, request_data):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write
+@require_repo_write(
+    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
+)
 @anon_protect
 @check_readonly
 def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):

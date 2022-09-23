@@ -13,6 +13,7 @@ from flask import request, abort
 from app import dockerfile_build_queue, tuf_metadata_api, repository_gc_queue
 from data.database import RepositoryState
 from endpoints.api import (
+    allow_if_superuser,
     format_date,
     nickname,
     log_action,
@@ -136,7 +137,7 @@ class RepositoryList(ApiResource):
         namespace_name = req["namespace"] if "namespace" in req else owner.username
 
         permission = CreateRepositoryPermission(namespace_name)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             repository_name = req["repository"]
             visibility = req["visibility"]
 
@@ -280,7 +281,7 @@ class Repository(RepositoryParamResource):
     @query_param(
         "includeTags", "Whether to include repository tags", type=truthy_bool, default=True
     )
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getRepo")
     def get(self, namespace, repository, parsed_args):
         """
@@ -325,7 +326,7 @@ class Repository(RepositoryParamResource):
             repo_data["stats"] = stats
         return repo_data
 
-    @require_repo_write
+    @require_repo_write(allow_for_superuser=True)
     @nickname("updateRepo")
     @validate_json_request("RepoUpdate")
     def put(self, namespace, repository):
@@ -346,7 +347,7 @@ class Repository(RepositoryParamResource):
         )
         return {"success": True}
 
-    @require_repo_admin
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("deleteRepository")
     def delete(self, namespace, repository):
         """
@@ -392,7 +393,7 @@ class RepositoryVisibility(RepositoryParamResource):
         }
     }
 
-    @require_repo_admin
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("changeRepoVisibility")
     @validate_json_request("ChangeVisibility")
     def post(self, namespace, repository):
@@ -439,7 +440,7 @@ class RepositoryTrust(RepositoryParamResource):
     }
 
     @show_if(features.SIGNING)
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("changeRepoTrust")
     @validate_json_request("ChangeRepoTrust")
     def post(self, namespace, repository):
@@ -489,7 +490,7 @@ class RepositoryStateResource(RepositoryParamResource):
         }
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("changeRepoState")
     @validate_json_request("ChangeRepoState")
     def put(self, namespace, repository):

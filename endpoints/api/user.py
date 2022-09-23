@@ -62,7 +62,11 @@ from endpoints.exception import NotFound, InvalidToken, InvalidRequest, Downstre
 from endpoints.api.subscribe import subscribe
 from endpoints.common import common_login
 from endpoints.csrf import generate_csrf_token, OAUTH_CSRF_TOKEN_NAME
-from endpoints.decorators import anon_allowed, readonly_call_allowed
+from endpoints.decorators import (
+    anon_allowed,
+    readonly_call_allowed,
+    restricted_user_readonly_call_allowed,
+)
 from oauth.oidc import DiscoveryFailureException
 from util.useremails import (
     send_confirmation_email,
@@ -381,7 +385,7 @@ class User(ApiResource):
 
         return user_view(user)
 
-    @require_user_admin
+    @require_user_admin()
     @require_fresh_login
     @nickname("changeUserDetails")
     @internal_only
@@ -554,7 +558,7 @@ class User(ApiResource):
         except model.user.DataModelException as ex:
             raise request_error(exception=ex)
 
-    @require_user_admin
+    @require_user_admin()
     @require_fresh_login
     @nickname("deleteCurrentUser")
     @internal_only
@@ -579,7 +583,7 @@ class PrivateRepositories(ApiResource):
     Operations dealing with the available count of private repositories.
     """
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("getUserPrivateAllowed")
     def get(self):
         """
@@ -622,7 +626,7 @@ class ClientKey(ApiResource):
         }
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("generateUserClientKey")
     @validate_json_request("GenerateClientKey")
     def post(self):
@@ -702,7 +706,7 @@ class ConvertToOrganization(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("convertUserToOrganization")
     @validate_json_request("ConvertUser")
     def post(self):
@@ -772,6 +776,7 @@ class Signin(ApiResource):
     @validate_json_request("SigninUser")
     @anon_allowed
     @readonly_call_allowed
+    @restricted_user_readonly_call_allowed
     def post(self):
         """
         Sign in the user with the specified credentials.
@@ -810,10 +815,11 @@ class VerifyUser(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("verifyUser")
     @validate_json_request("VerifyUser")
     @readonly_call_allowed
+    @restricted_user_readonly_call_allowed
     def post(self):
         """
         Verifies the signed in the user with the specified credentials.
@@ -846,6 +852,8 @@ class Signout(ApiResource):
     """
 
     @nickname("logout")
+    @readonly_call_allowed
+    @restricted_user_readonly_call_allowed
     def post(self):
         """
         Request that the current user be signed out.
@@ -889,6 +897,7 @@ class ExternalLoginInformation(ApiResource):
     @nickname("retrieveExternalLoginAuthorizationUrl")
     @anon_allowed
     @readonly_call_allowed
+    @restricted_user_readonly_call_allowed
     @validate_json_request("GetLogin")
     def post(self, service_id):
         """
@@ -921,7 +930,7 @@ class DetachExternal(ApiResource):
     Resource for detaching an external login.
     """
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("detachExternalLogin")
     def post(self, service_id):
         """
@@ -1015,7 +1024,7 @@ class Recovery(ApiResource):
 @resource("/v1/user/notifications")
 @internal_only
 class UserNotificationList(ApiResource):
-    @require_user_admin
+    @require_user_admin()
     @parse_args()
     @query_param("page", "Offset page number. (int)", type=int, default=0)
     @query_param("limit", "Limit on the number of results (int)", type=int, default=5)
@@ -1058,7 +1067,7 @@ class UserNotification(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("getUserNotification")
     def get(self, uuid):
         note = model.notification.lookup_notification(get_authenticated_user(), uuid)
@@ -1067,7 +1076,7 @@ class UserNotification(ApiResource):
 
         return notification_view(note)
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("updateUserNotification")
     @validate_json_request("UpdateNotification")
     def put(self, uuid):
@@ -1103,7 +1112,7 @@ def authorization_view(access_token):
 @resource("/v1/user/authorizations")
 @internal_only
 class UserAuthorizationList(ApiResource):
-    @require_user_admin
+    @require_user_admin()
     @nickname("listUserAuthorizations")
     def get(self):
         access_tokens = model.oauth.list_access_tokens_for_user(get_authenticated_user())
@@ -1115,7 +1124,7 @@ class UserAuthorizationList(ApiResource):
 @path_param("access_token_uuid", "The uuid of the access token")
 @internal_only
 class UserAuthorization(ApiResource):
-    @require_user_admin
+    @require_user_admin()
     @nickname("getUserAuthorization")
     def get(self, access_token_uuid):
         access_token = model.oauth.lookup_access_token_for_user(
@@ -1126,7 +1135,7 @@ class UserAuthorization(ApiResource):
 
         return authorization_view(access_token)
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("deleteUserAuthorization")
     def delete(self, access_token_uuid):
         access_token = model.oauth.lookup_access_token_for_user(
@@ -1164,7 +1173,7 @@ class StarredRepositoryList(ApiResource):
 
     @nickname("listStarredRepos")
     @parse_args()
-    @require_user_admin
+    @require_user_admin()
     @page_support()
     def get(self, page_token, parsed_args):
         """
@@ -1189,7 +1198,7 @@ class StarredRepositoryList(ApiResource):
     @require_scope(scopes.READ_REPO)
     @nickname("createStar")
     @validate_json_request("NewStarredRepository")
-    @require_user_admin
+    @require_user_admin()
     def post(self):
         """
         Star a repository.
@@ -1220,7 +1229,7 @@ class StarredRepository(RepositoryParamResource):
     """
 
     @nickname("deleteStar")
-    @require_user_admin
+    @require_user_admin()
     def delete(self, namespace, repository):
         """
         Removes a star from a repository.

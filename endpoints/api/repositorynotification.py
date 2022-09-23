@@ -71,7 +71,7 @@ class RepositoryNotificationList(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("createRepoNotification")
     @disallow_for_app_repositories
     @validate_json_request("NotificationCreateRequest")
@@ -108,7 +108,7 @@ class RepositoryNotificationList(RepositoryParamResource):
         )
         return new_notification.to_dict(), 201
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("listRepoNotifications")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name):
@@ -127,7 +127,7 @@ class RepositoryNotification(RepositoryParamResource):
     Resource for dealing with specific notifications.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("getRepoNotification")
     @disallow_for_app_repositories
     def get(self, namespace_name, repository_name, uuid):
@@ -139,7 +139,7 @@ class RepositoryNotification(RepositoryParamResource):
             raise NotFound()
         return found.to_dict()
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("deleteRepoNotification")
     @disallow_for_app_repositories
     def delete(self, namespace_name, repository_name, uuid):
@@ -168,7 +168,7 @@ class RepositoryNotification(RepositoryParamResource):
 
         return "No Content", 204
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("resetRepositoryNotificationFailures")
     @disallow_for_app_repositories
     def post(self, namespace_name, repository_name, uuid):
@@ -206,7 +206,7 @@ class TestRepositoryNotification(RepositoryParamResource):
     Resource for queuing a test of a notification.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("testRepoNotification")
     @disallow_for_app_repositories
     def post(self, namespace_name, repository_name, uuid):

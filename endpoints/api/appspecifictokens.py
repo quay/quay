@@ -80,7 +80,7 @@ class AppTokens(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("listAppTokens")
     @parse_args()
     @query_param("expiring", "If true, only returns those tokens expiring soon", type=truthy_bool)
@@ -103,7 +103,7 @@ class AppTokens(ApiResource):
             "only_expiring": expiring,
         }
 
-    @require_user_admin
+    @require_user_admin()
     @require_fresh_login
     @nickname("createAppToken")
     @validate_json_request("NewToken")
@@ -133,7 +133,7 @@ class AppToken(ApiResource):
     Provides operations on an app specific token.
     """
 
-    @require_user_admin
+    @require_user_admin()
     @require_fresh_login
     @nickname("getAppToken")
     def get(self, token_uuid):
@@ -148,7 +148,7 @@ class AppToken(ApiResource):
             "token": token_view(token, include_code=True),
         }
 
-    @require_user_admin
+    @require_user_admin()
     @require_fresh_login
     @nickname("revokeAppToken")
     def delete(self, token_uuid):

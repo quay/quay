@@ -235,7 +235,7 @@ class RepositoryBuildList(RepositoryParamResource):
         },
     }
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @parse_args()
     @query_param("limit", "The maximum number of builds to return", type=int, default=5)
     @query_param(
@@ -256,7 +256,7 @@ class RepositoryBuildList(RepositoryParamResource):
         builds = model.build.list_repository_builds(namespace, repository, limit, since=since)
         return {"builds": [build_status_view(build) for build in builds]}
 
-    @require_repo_write
+    @require_repo_write()
     @nickname("requestRepoBuild")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
@@ -391,7 +391,7 @@ class RepositoryBuildResource(RepositoryParamResource):
     Resource for dealing with repository builds.
     """
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoBuild")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
@@ -411,7 +411,7 @@ class RepositoryBuildResource(RepositoryParamResource):
 
         return build_status_view(build)
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("cancelRepoBuild")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
@@ -444,7 +444,7 @@ class RepositoryBuildStatus(RepositoryParamResource):
     Resource for dealing with repository build status.
     """
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoBuildStatus")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):
@@ -495,7 +495,7 @@ class RepositoryBuildLogs(RepositoryParamResource):
     Resource for loading repository build logs.
     """
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @nickname("getRepoBuildLogs")
     @disallow_for_app_repositories
     def get(self, namespace, repository, build_uuid):

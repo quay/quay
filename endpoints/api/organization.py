@@ -19,6 +19,7 @@ from app import (
     app,
 )
 from endpoints.api import (
+    allow_if_superuser,
     resource,
     nickname,
     ApiResource,
@@ -40,6 +41,7 @@ from auth.permissions import (
     OrganizationMemberPermission,
     CreateRepositoryPermission,
     ViewTeamPermission,
+    SuperUserPermission,
 )
 from auth.auth_context import get_authenticated_user
 from auth import scopes
@@ -145,13 +147,16 @@ class OrganizationList(ApiResource):
         },
     }
 
-    @require_user_admin
+    @require_user_admin(disallow_for_restricted_users=features.RESTRICTED_USERS)
     @nickname("createOrganization")
     @validate_json_request("NewOrg")
     def post(self):
         """
         Create a new organization.
         """
+        if features.SUPERUSERS_ORG_CREATION_ONLY and not SuperUserPermission().can():
+            raise Unauthorized()
+
         user = get_authenticated_user()
         org_data = request.get_json()
         existing = None
@@ -417,7 +422,7 @@ class OrganizationMemberList(ApiResource):
         List the human members of the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:

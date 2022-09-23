@@ -304,7 +304,13 @@ def get_stars(repository_ids):
 
 
 def get_visible_repositories(
-    username, namespace=None, kind_filter="image", include_public=False, start_id=None, limit=None
+    username,
+    namespace=None,
+    kind_filter="image",
+    include_public=False,
+    start_id=None,
+    limit=None,
+    is_superuser=False,
 ):
     """
     Returns the repositories visible to the given user (if any).
@@ -340,7 +346,13 @@ def get_visible_repositories(
         user_id = found_namespace.id
 
     query = _basequery.filter_to_repos_for_user(
-        query, user_id, namespace, kind_filter, include_public, start_id=start_id
+        query,
+        user_id,
+        namespace,
+        kind_filter,
+        include_public,
+        start_id=start_id,
+        is_superuser=is_superuser,
     )
 
     if limit is not None:

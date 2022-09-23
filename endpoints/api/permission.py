@@ -30,7 +30,7 @@ class RepositoryTeamPermissionList(RepositoryParamResource):
     Resource for repository team permissions.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("listRepoTeamPermissions")
     def get(self, namespace_name, repository_name):
         """
@@ -50,7 +50,7 @@ class RepositoryUserPermissionList(RepositoryParamResource):
     Resource for repository user permissions.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("listRepoUserPermissions")
     def get(self, namespace_name, repository_name):
         """
@@ -69,7 +69,7 @@ class RepositoryUserTransitivePermission(RepositoryParamResource):
     team.
     """
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("getUserTransitivePermission")
     def get(self, namespace_name, repository_name, username):
         """
@@ -113,7 +113,7 @@ class RepositoryUserPermission(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("getUserPermissions")
     def get(self, namespace_name, repository_name, username):
         """
@@ -125,7 +125,7 @@ class RepositoryUserPermission(RepositoryParamResource):
         perm = model.get_repo_permission_for_user(username, namespace_name, repository_name)
         return perm.to_dict()
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("changeUserPermissions")
     @validate_json_request("UserPermission")
     def put(self, namespace_name, repository_name, username):  # Also needs to respond to post
@@ -158,7 +158,7 @@ class RepositoryUserPermission(RepositoryParamResource):
 
         return resp, 200
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("deleteUserPermissions")
     def delete(self, namespace_name, repository_name, username):
         """
@@ -208,7 +208,7 @@ class RepositoryTeamPermission(RepositoryParamResource):
         },
     }
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("getTeamPermissions")
     def get(self, namespace_name, repository_name, teamname):
         """
@@ -220,7 +220,7 @@ class RepositoryTeamPermission(RepositoryParamResource):
         role = model.get_repo_role_for_team(teamname, namespace_name, repository_name)
         return role.to_dict()
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("changeTeamPermissions")
     @validate_json_request("TeamPermission")
     def put(self, namespace_name, repository_name, teamname):
@@ -247,7 +247,7 @@ class RepositoryTeamPermission(RepositoryParamResource):
         )
         return resp, 200
 
-    @require_repo_admin
+    @require_repo_admin()
     @nickname("deleteTeamPermissions")
     def delete(self, namespace_name, repository_name, teamname):
         """

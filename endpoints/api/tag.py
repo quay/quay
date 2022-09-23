@@ -63,7 +63,7 @@ class ListRepositoryTags(RepositoryParamResource):
     Resource for listing full repository tag history, alive *and dead*.
     """
 
-    @require_repo_read
+    @require_repo_read(allow_for_superuser=True)
     @disallow_for_app_repositories
     @parse_args()
     @query_param("specificTag", "Filters the tags to the specific tag.", type=str, default="")
@@ -122,7 +122,7 @@ class RepositoryTag(RepositoryParamResource):
         },
     }
 
-    @require_repo_write
+    @require_repo_write()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("changeTag")
@@ -216,7 +216,7 @@ class RepositoryTag(RepositoryParamResource):
 
         return "Updated", 201
 
-    @require_repo_write
+    @require_repo_write(allow_for_superuser=True)
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("deleteFullTag")
@@ -267,7 +267,7 @@ class RestoreTag(RepositoryParamResource):
         },
     }
 
-    @require_repo_write
+    @require_repo_write()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @nickname("restoreTag")

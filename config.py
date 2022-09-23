@@ -828,3 +828,11 @@ class DefaultConfig(ImmutableConfig):
 
     # Origin to allow for CORS requests
     CORS_ORIGIN = "*"
+
+    FEATURE_SUPERUSERS_FULL_ACCESS = False
+    FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False
+
+    FEATURE_RESTRICTED_USERS = False
+    RESTRICTED_USERS_WHITELIST: List[str] = []
+    RESTRICTED_USER_INCLUDE_ROBOTS = True
+    RESTRICTED_USER_READ_ONLY = False

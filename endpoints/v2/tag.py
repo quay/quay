@@ -17,7 +17,7 @@ from endpoints.v2.errors import NameUnknown
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_read
+@require_repo_read(allow_for_superuser=True)
 @anon_protect
 @paginate()
 def list_all_tags(namespace_name, repo_name, start_id, limit, pagination_callback):

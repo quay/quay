@@ -591,7 +591,7 @@ class TeamMemberInvite(ApiResource):
     Resource for managing invites to join a team.
     """
 
-    @require_user_admin
+    @require_user_admin()
     @nickname("acceptOrganizationTeamInvite")
     def put(self, code):
         """
@@ -606,7 +606,7 @@ class TeamMemberInvite(ApiResource):
         return {"org": orgname, "team": team.name}
 
     @nickname("declineOrganizationTeamInvite")
-    @require_user_admin
+    @require_user_admin()
     def delete(self, code):
         """
         Delete an existing invitation to join a team.
