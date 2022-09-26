@@ -329,7 +329,7 @@ class UserAuthentication(object):
 
         return (result, err_msg)
 
-    def is_superuser(username):
+    def is_superuser(self, username):
         return self.state.is_superuser(username)
 
     def __getattr__(self, name):

@@ -447,12 +447,14 @@ class LDAPUsers(FederatedUsers):
         page_size = page_size or _DEFAULT_PAGE_SIZE
         return (self._iterate_members(group_dn, page_size, disable_pagination), None)
 
-    def is_superuser(username_or_email):
+    def is_superuser(self, username_or_email):
         if not username_or_email:
             return (None, "Empty username/email")
 
         logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
-        (found_user, err_msg) = self._ldap_single_user_search(username_or_email, superuser_filter)
+        (found_user, err_msg) = self._ldap_single_user_search(
+            username_or_email, self._ldap_superuser_filter
+        )
         if found_user is None:
             return (False, err_msg)
 
