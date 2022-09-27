@@ -591,10 +591,12 @@ class _CloudStorage(BaseStorageV2):
                 return action(*args, **kwargs)
                 break
             except botocore.exceptions.ClientError as s3re:
+                # sometimes HTTPStatusCode isn't set for some reason, so we need
+                # to protect ourselves against a KeyError.
                 if (
                     remaining_retries
-                    and s3re.response["Error"]["HTTPStatusCode"] == 200
-                    and s3re.response["Error"]["Code"] == "InternalError"
+                    and s3re.response["Error"].get("HTTPStatusCode", 0) == 200
+                    and s3re.response["Error"].get("Code", "") == "InternalError"
                 ):
                     # Weird internal error case. Retry.
                     continue
