@@ -126,7 +126,7 @@ def hide_if(value):
 
 def format_date(date):
     """
-    Output an RFC822 date format.
+    Output an RFC 2822 date format.
     """
     if date is None:
         return None
