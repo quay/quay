@@ -3,6 +3,7 @@ import mock
 import pytest
 import os
 import json
+import logging
 
 from datetime import datetime, timedelta
 
@@ -494,6 +495,37 @@ def test_features_for():
     generated = SecurityInformation(
         Layer(
             "sha256:b05ac1eeec8635442fa5d3e55d6ef4ad287b9c66055a552c2fd309c334563b0a",
+            "",
+            "",
+            4,
+            features_for(vuln_report),
+        )
+    ).to_dict()
+
+    # Sort the Features' list so that the following assertion holds even if they are out of order
+    # (Ordering of the dicts' key iteration is different from Python 2 to 3)
+    expected["Layer"]["Features"].sort(key=lambda d: d["Name"])
+    generated["Layer"]["Features"].sort(key=lambda d: d["Name"])
+
+    assert generated == expected
+
+
+def test_features_for_duplicates():
+    vuln_report_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "vulnerabilityreport_duplicates.json"
+    )
+    security_info_filename = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "securityinformation_deduped.json"
+    )
+    with open(vuln_report_filename) as vuln_report_file:
+        vuln_report = json.load(vuln_report_file)
+
+    with open(security_info_filename) as security_info_file:
+        expected = json.load(security_info_file)
+
+    generated = SecurityInformation(
+        Layer(
+            vuln_report["manifest_hash"],
             "",
             "",
             4,

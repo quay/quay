@@ -450,12 +450,24 @@ def features_for(report):
     Quay Security scanner response.
     """
     features = []
+    dedupe_vulns = {}
     for pkg_id, pkg in report["packages"].items():
         pkg_env = report["environments"][pkg_id][0]
-        pkg_vulns = [
-            report["vulnerabilities"][vuln_id]
-            for vuln_id in report["package_vulnerabilities"].get(pkg_id, [])
-        ]
+        pkg_vulns = []
+        # Quay doesn't care about vulnerabilities reported from different
+        # repos so dedupe them. Key = package_name + package_version + vuln_name.
+        for vuln_id in report["package_vulnerabilities"].get(pkg_id, []):
+            vuln_key = (
+                pkg["name"]
+                + "_"
+                + pkg["version"]
+                + "_"
+                + report["vulnerabilities"][vuln_id].get("name", "")
+            )
+            if not dedupe_vulns.get(vuln_key, False):
+                pkg_vulns.append(report["vulnerabilities"][vuln_id])
+            dedupe_vulns[vuln_key] = True
+
         enrichments = (
             {
                 key: sorted(val, key=lambda x: x["baseScore"], reverse=True)[0]
