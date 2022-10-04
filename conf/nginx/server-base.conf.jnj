@@ -64,7 +64,7 @@ location ~* (/oauth1|/oauth2|/webhooks|/keys|/.well-known) {
     proxy_pass   http://web_app_server;
 }
 
-location ~* (/csrf_token|/config)$ {
+location ~* ^(/csrf_token|/config)$ {
     proxy_pass   http://web_app_server;
 }
 
