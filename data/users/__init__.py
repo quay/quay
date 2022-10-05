@@ -3,6 +3,8 @@ import itertools
 import json
 import uuid
 
+from typing import Union
+
 import features
 
 from data import model
@@ -12,7 +14,7 @@ from data.users.externalldap import LDAPUsers
 from data.users.externaljwt import ExternalJWTAuthN
 from data.users.federated import FederatedUsers
 from data.users.keystone import get_keystone_users
-from util.config.superusermanager import SuperUserManager as ConfigSuperUserManager
+from util.config.superusermanager import ConfigUserManager
 from util.security.aes import AESCipher
 from util.security.secret import convert_secret_key
 
@@ -64,6 +66,7 @@ def get_users_handler(config, _, override_config_dir):
         network_timeout = config.get("LDAP_NETWORK_TIMEOUT")
         ldap_user_filter = config.get("LDAP_USER_FILTER", None)
         ldap_superuser_filter = config.get("LDAP_SUPERUSER_FILTER", None)
+        ldap_restricted_user_filter = config.get("LDAP_RESTRICTED_USER_FILTER", None)
 
         allow_tls_fallback = config.get("LDAP_ALLOW_INSECURE_FALLBACK", False)
         return LDAPUsers(
@@ -81,6 +84,7 @@ def get_users_handler(config, _, override_config_dir):
             network_timeout=network_timeout,
             ldap_user_filter=ldap_user_filter,
             ldap_superuser_filter=ldap_superuser_filter,
+            ldap_restricted_user_filter=ldap_restricted_user_filter,
         )
 
     if authentication_type == "JWT":
@@ -332,21 +336,30 @@ class UserAuthentication(object):
     def is_superuser(self, username):
         return self.state.is_superuser(username)
 
+    def has_superusers(self):
+        return self.state.has_superusers()
+
+    def is_restricted_user(self, username):
+        return self.state.is_restricted_user(username)
+
+    def has_restricted_users(self):
+        return self.state.has_restricted_users()
+
     def __getattr__(self, name):
         return getattr(self.state, name, None)
 
 
-class SuperUserManager(object):
-    def __init__(self, app, authentication):
+class UserManager(object):
+    def __init__(self, app, authentication: UserAuthentication):
         self.authentication = authentication
         self.state = self.init_app(app, authentication)
 
-    def init_app(self, app, authentication):
-        manager = None
+    def init_app(self, app, authentication: UserAuthentication):
+        manager = None  # type: Union[FederatedUserManager, ConfigUserManager, None]
         if authentication.federated_service:
-            manager = FederatedSuperUserManager(app, authentication)
+            manager = FederatedUserManager(app, authentication)
         else:
-            manager = ConfigSuperUserManager(app)
+            manager = ConfigUserManager(app)
 
         return manager
 
@@ -354,24 +367,41 @@ class SuperUserManager(object):
         return getattr(self.state, name, None)
 
 
-class FederatedSuperUserManager(ConfigSuperUserManager):
+class FederatedUserManager(ConfigUserManager):
     """
     Helper class to access superusers defined in the backed federated provider.
     Falls back to the in-memory helper if not available in the federated service.
     """
 
-    def __init__(self, app, authentication):
+    def __init__(self, app, authentication: UserAuthentication):
         self.federated_users = authentication
         super().__init__(app)
 
-    def is_superuser(self, username):
+    def is_superuser(self, username: str) -> bool:
         """
         Returns if the given username represents a super user.
         """
         return self.federated_users.is_superuser(username) or super().is_superuser(username)
 
-    def has_superusers(self):
+    def has_superusers(self) -> bool:
         """
         Returns whether there are any superusers defined.
         """
-        return super().has_superusers(self) or self.authentication.has_superusers()
+        return self.federated_users.has_superusers() or super().has_superusers()
+
+    def is_restricted_user(self, username: str, include_robots: bool = True) -> bool:
+        """
+        Returns if the given username represents a restricted user.
+        """
+        if include_robots:
+            username = username.split("+", 1)[0]
+
+        return self.federated_users.is_restricted_user(username) or super().is_restricted_user(
+            username
+        )
+
+    def has_restricted_users(self) -> bool:
+        return self.federated_users.has_restricted_users() or super().has_superusers()
+
+    def is_global_readonly_superuser(self, username: str) -> bool:
+        return super().is_global_readonly_superuser(username)

@@ -16,7 +16,7 @@ class UserManager(object):
         self._array.value = usernames_str.encode("utf8")
 
 
-class SuperUserManager(UserManager):
+class ConfigUserManager(UserManager):
     """
     In-memory helper class for quickly accessing (and updating) the valid set of super users.
 
@@ -24,44 +24,87 @@ class SuperUserManager(UserManager):
     """
 
     def __init__(self, app):
-        super().__init__(app, SUPER_USERS_CONFIG)
+        super_usernames = app.config.get(SUPER_USERS_CONFIG, [])
+        super_usernames_str = ",".join(super_usernames)
 
-    def is_superuser(self, username):
+        self._super_max_length = len(super_usernames_str) + MAX_USERNAME_LENGTH + 1
+        self._superusers_array = Array("c", self._super_max_length, lock=True)
+        self._superusers_array.value = super_usernames_str.encode("utf8")
+
+        restricted_usernames_whitelist = app.config.get(RESTRICTED_USERS_WHITELIST_CONFIG, [])
+        restricted_usernames_whitelist_str = ",".join(restricted_usernames_whitelist)
+
+        self._restricted_max_length = (
+            len(restricted_usernames_whitelist_str) + MAX_USERNAME_LENGTH + 1
+        )
+        self._restricted_users_array = Array("c", self._restricted_max_length, lock=True)
+        self._restricted_users_array.value = restricted_usernames_whitelist_str.encode("utf8")
+
+        global_readonly_usernames = app.config.get("GLOBAL_READONLY_SUPER_USERS", [])
+        global_readonly_usernames_str = ",".join(global_readonly_usernames)
+
+        self._global_readonly_max_length = (
+            len(global_readonly_usernames_str) + MAX_USERNAME_LENGTH + 1
+        )
+        self._global_readonly_array = Array("c", self._global_readonly_max_length, lock=True)
+        self._global_readonly_array.value = global_readonly_usernames_str.encode("utf8")
+
+    def is_superuser(self, username: str) -> bool:
         """
         Returns if the given username represents a super user.
         """
-        usernames = self._array.value.decode("utf8").split(",")
+        usernames = self._superusers_array.value.decode("utf8").split(",")
         return username in usernames
 
-    def register_superuser(self, username):
+    def register_superuser(self, username: str) -> None:
         """
         Registers a new username as a super user for the duration of the container.
 
         Note that this does *not* change any underlying config files.
         """
-        usernames = self._array.value.decode("utf8").split(",")
+        usernames = self._superusers_array.value.decode("utf8").split(",")
         usernames.append(username)
         new_string = ",".join(usernames)
 
         if len(new_string) <= self._max_length:
-            self._array.value = new_string.encode("utf8")
+            self._superusers_array.value = new_string.encode("utf8")
         else:
             raise Exception("Maximum superuser count reached. Please report this to support.")
 
-    def has_superusers(self):
+    def has_superusers(self) -> bool:
         """
         Returns whether there are any superusers defined.
         """
-        return bool(self._array.value)
+        return bool(self._superusers_array.value)
 
+    def is_restricted_user(self, username: str, include_robots: bool = True) -> bool:
+        if not self._restricted_users_array.value:
+            return False
 
-class RestrictedUserManager(UserManager):
-    def __init__(self, app):
-        super().__init__(app, RESTRICTED_USERS_WHITELIST_CONFIG)
-
-    def is_restricted(self, username, include_robots=True):
         if include_robots:
-            username = username.split("+", 1)[0]
+            username = username.split("+")[0]
 
-        usernames = self._array.value.decode("utf8").split(",")
+        usernames = self._restricted_users_array.value.decode("utf8").split(",")
         return not (username in usernames)
+
+    def has_restricted_users(self) -> bool:
+        """
+        Returns whether there are any restricted users defined.
+        """
+        if not self._restricted_users_array.value:
+            return False
+
+        return bool(self._restricted_users_array.value)
+
+    def is_global_readonly_superuser(self, username: str) -> bool:
+        """
+        Returns if the given username represents a super user.
+        """
+        usernames = self._global_readonly_array.value.decode("utf8").split(",")
+        return username in usernames
+
+    def has_global_readonly_superusers(self) -> bool:
+        """
+        Returns if the given username represents a super user.
+        """
+        return bool(self._global_readonly_array.value)

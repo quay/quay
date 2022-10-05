@@ -10,10 +10,9 @@ from datetime import timedelta, datetime
 
 from flask import request, abort
 
-from app import dockerfile_build_queue, tuf_metadata_api, repository_gc_queue
+from app import dockerfile_build_queue, tuf_metadata_api, repository_gc_queue, usermanager
 from data.database import RepositoryState
 from endpoints.api import (
-    allow_if_superuser,
     format_date,
     nickname,
     log_action,
@@ -137,7 +136,12 @@ class RepositoryList(ApiResource):
         namespace_name = req["namespace"] if "namespace" in req else owner.username
 
         permission = CreateRepositoryPermission(namespace_name)
-        if permission.can() or allow_if_superuser():
+        if permission.can() and not (
+            features.RESTRICTED_USERS
+            and usermanager.is_restricted_user(owner.username)
+            and owner.username == namespace_name
+        ):
+
             repository_name = req["repository"]
             visibility = req["visibility"]
 

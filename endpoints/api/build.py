@@ -42,6 +42,7 @@ from endpoints.api import (
     abort,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
+    disallow_for_user_namespace,
 )
 from endpoints.building import (
     start_build,
@@ -260,6 +261,7 @@ class RepositoryBuildList(RepositoryParamResource):
     @nickname("requestRepoBuild")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @validate_json_request("RepositoryBuildRequest")
     def post(self, namespace, repository):
         """
@@ -415,6 +417,7 @@ class RepositoryBuildResource(RepositoryParamResource):
     @nickname("cancelRepoBuild")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     def delete(self, namespace, repository, build_uuid):
         """
         Cancels a repository build.

@@ -91,3 +91,9 @@ class DatabaseUsers(object):
 
     def has_superusers(self):
         raise NotImplementedError()
+
+    def is_restricted_user(self, username):
+        raise NotImplementedError()
+
+    def has_restricted_users(self):
+        raise NotImplementedError()

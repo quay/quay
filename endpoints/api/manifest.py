@@ -28,6 +28,7 @@ from endpoints.api import (
     disallow_for_app_repositories,
     format_date,
     disallow_for_non_normal_repositories,
+    disallow_for_user_namespace,
 )
 from endpoints.exception import NotFound
 from util.validation import VALID_LABEL_KEY_REGEX
@@ -184,6 +185,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
     @nickname("addManifestLabel")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @validate_json_request("AddLabel")
     def post(self, namespace_name, repository_name, manifestref):
         """
@@ -282,6 +284,7 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
     @nickname("deleteManifestLabel")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     def delete(self, namespace_name, repository_name, manifestref, labelid):
         """
         Deletes an existing label from a manifest.

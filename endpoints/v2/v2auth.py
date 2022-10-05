@@ -6,7 +6,7 @@ from cachetools.func import lru_cache
 from flask import request, jsonify
 
 import features
-from app import app, userevents, instance_keys
+from app import app, userevents, instance_keys, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.decorators import process_basic_auth
 from auth.permissions import (
@@ -297,13 +297,24 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                     logger.debug("No permission to create repository %s/%s", namespace, reponame)
 
     if "pull" in requested_actions:
+        user = None
+        if (features.PROXY_CACHE or features.SUPER_USERS) and has_valid_auth_context:
+            user = get_authenticated_user()
+
         can_pullthru = False
         if features.PROXY_CACHE and model.proxy_cache.has_proxy_cache_config(namespace):
-            can_pullthru = (
-                OrganizationMemberPermission(namespace).can()
-                and get_authenticated_user() is not None
-            )
-        if ReadRepositoryPermission(namespace, reponame).can() or can_pullthru or repo_is_public:
+            can_pullthru = OrganizationMemberPermission(namespace).can() and user is not None
+
+        global_readonly_superuser = False
+        if features.SUPER_USERS and user is not None:
+            global_readonly_superuser = usermanager.is_global_readonly_superuser(user.username)
+
+        if (
+            ReadRepositoryPermission(namespace, reponame).can()
+            or can_pullthru
+            or repo_is_public
+            or global_readonly_superuser
+        ):
             if repository_ref is not None and repository_ref.kind != "image":
                 raise Unsupported(message=invalid_repo_message)
 
