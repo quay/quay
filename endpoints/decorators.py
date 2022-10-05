@@ -10,7 +10,7 @@ from flask import abort, request, make_response
 
 import features
 
-from app import app, ip_resolver, model_cache, restricted_users
+from app import app, ip_resolver, model_cache, usermanager
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from data.database import RepositoryState
 from data.model import InvalidProxyCacheConfigException
@@ -195,35 +195,6 @@ def check_readonly(func):
         raise ReadOnlyModeException()
 
     return wrapper
-
-
-def check_restricted_user_readonly(error_class=None):
-    def __check_restricted_user_readonly(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if request.method == "GET":
-                return func(*args, **kwargs)
-
-            if features.RESTRICTED_USERS and app.config.get("RESTRICTED_USER_READ_ONLY"):
-                if hasattr(func, "__restricted_user_readonly_call_allowed"):
-                    return func(*args, **kwargs)
-
-                user = get_authenticated_user()
-                # Subsequent auth checks should handle anon after this one if user not set
-                if user is None:
-                    return func(*args, **kwargs)
-
-                if restricted_users.is_restricted(user.username):
-                    if error_class:
-                        raise error_class()
-
-                    abort(403, message="Restricted user: %s" % user.username)
-
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return __check_restricted_user_readonly
 
 
 def route_show_if(value):

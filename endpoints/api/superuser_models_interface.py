@@ -8,7 +8,7 @@ from six import add_metaclass
 from tzlocal import get_localzone
 
 import features
-from app import avatar, superusers
+from app import avatar, usermanager
 from buildtrigger.basehandler import BuildTriggerHandler
 from data import model
 from endpoints.api import format_date
@@ -242,7 +242,7 @@ class User(namedtuple("User", ["username", "email", "verified", "enabled", "robo
             "email": self.email,
             "verified": self.verified,
             "avatar": avatar.get_data_for_user(self),
-            "super_user": superusers.is_superuser(self.username),
+            "super_user": usermanager.is_superuser(self.username),
             "enabled": self.enabled,
         }
         if features.QUOTA_MANAGEMENT and self.quotas is not None:

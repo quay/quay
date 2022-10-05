@@ -239,9 +239,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write(
-    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
-)
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 def start_blob_upload(namespace_name, repo_name):
@@ -312,9 +310,7 @@ def start_blob_upload(namespace_name, repo_name):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
-@require_repo_write(
-    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
-)
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
@@ -342,9 +338,7 @@ def fetch_existing_upload(namespace_name, repo_name, upload_uuid):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write(
-    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
-)
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 def upload_chunk(namespace_name, repo_name, upload_uuid):
@@ -384,9 +378,7 @@ def upload_chunk(namespace_name, repo_name, upload_uuid):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write(
-    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
-)
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
@@ -435,9 +427,7 @@ def monolithic_upload_or_last_chunk(namespace_name, repo_name, upload_uuid):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write(
-    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
-)
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 def cancel_upload(namespace_name, repo_name, upload_uuid):
@@ -459,9 +449,7 @@ def cancel_upload(namespace_name, repo_name, upload_uuid):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
-@require_repo_write(
-    allow_for_superuser=True, disallow_for_restricted_users=app.config["RESTRICTED_USER_READ_ONLY"]
-)
+@require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
 def delete_digest(namespace_name, repo_name, digest):

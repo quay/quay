@@ -106,6 +106,7 @@ class LDAPUsers(FederatedUsers):
         force_no_pagination=False,
         ldap_user_filter=None,
         ldap_superuser_filter=None,
+        ldap_restricted_user_filter=None,
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
@@ -120,6 +121,7 @@ class LDAPUsers(FederatedUsers):
         self._force_no_pagination = force_no_pagination
         self._ldap_user_filter = ldap_user_filter
         self._ldap_superuser_filter = ldap_superuser_filter
+        self._ldap_restricted_user_filter = ldap_restricted_user_filter
 
         # Note: user_rdn is a list of RDN pieces (for historical reasons), and secondary_user_rds
         # is a list of RDN strings.
@@ -172,26 +174,39 @@ class LDAPUsers(FederatedUsers):
         return self._add_filter(query, self._ldap_user_filter)
 
     def _add_superuser_filter(self, query):
-        if not self._ldap_superuser_filter:
-            return query
+        assert self._ldap_superuser_filter
+        return self._add_filter(query, self._ldap_superuser_filter)
 
-        superuser_filter = self._ldap_superuser_filter
-
-        user_filtered_query = self._add_user_filter(query)
-
-        return self._add_filter(user_filtered_query, superuser_filter)
+    def _add_restricted_user_filter(self, query):
+        assert self._ldap_restricted_user_filter
+        return self._add_filter(query, self._ldap_restricted_user_filter)
 
     def _ldap_user_search_with_rdn(
-        self, conn, username_or_email, user_search_dn, suffix="", filter_superusers=False
+        self,
+        conn,
+        username_or_email,
+        user_search_dn,
+        suffix="",
+        filter_superusers=False,
+        filter_restricted_users=False,
     ):
         query = "(|({0}={2}{3})({1}={2}{3}))".format(
             self._uid_attr, self._email_attr, escape_filter_chars(username_or_email), suffix
         )
-        query = (
-            self._add_user_filter(query)
-            if not filter_superusers
-            else self._add_superuser_filter(query)
-        )
+
+        query = self._add_user_filter(query)
+
+        if filter_restricted_users:
+            if not self._ldap_restricted_user_filter:
+                return (None, "Username not found")
+
+            query = self._add_restricted_user_filter(query)
+
+        elif filter_superusers:
+            if not self._ldap_superuser_filter:
+                return (None, "Username not found")
+
+            query = self._add_superuser_filter(query)
 
         logger.debug("Conducting user search: %s under %s", query, user_search_dn)
         try:
@@ -213,7 +228,14 @@ class LDAPUsers(FederatedUsers):
             logger.debug("LDAP search exception")
             return (None, "Username not found")
 
-    def _ldap_user_search(self, username_or_email, limit=20, suffix="", filter_superusers=False):
+    def _ldap_user_search(
+        self,
+        username_or_email,
+        limit=20,
+        suffix="",
+        filter_superusers=False,
+        filter_restricted_users=False,
+    ):
         if not username_or_email:
             return (None, "Empty username/email")
 
@@ -235,6 +257,7 @@ class LDAPUsers(FederatedUsers):
                     user_search_dn,
                     suffix=suffix,
                     filter_superusers=filter_superusers,
+                    filter_restricted_users=filter_restricted_users,
                 )
                 if pairs is not None and len(pairs) > 0:
                     break
@@ -251,9 +274,13 @@ class LDAPUsers(FederatedUsers):
             with_dns = [result for result in results if result.dn]
             return (with_dns, None)
 
-    def _ldap_single_user_search(self, username_or_email, filter_superusers=False):
+    def _ldap_single_user_search(
+        self, username_or_email, filter_superusers=False, filter_restricted_users=False
+    ):
         with_dns, err_msg = self._ldap_user_search(
-            username_or_email, filter_superusers=filter_superusers
+            username_or_email,
+            filter_superusers=filter_superusers,
+            filter_restricted_users=filter_restricted_users,
         )
         if err_msg is not None:
             return (None, err_msg)
@@ -301,7 +328,7 @@ class LDAPUsers(FederatedUsers):
 
         return (True, None)
 
-    def at_least_one_user_exists(self, filter_superusers=False):
+    def at_least_one_user_exists(self, filter_superusers=False, filter_restricted_users=False):
         logger.debug("Checking if any users exist in LDAP")
         try:
             with self._ldap.get_connection():
@@ -314,10 +341,18 @@ class LDAPUsers(FederatedUsers):
             for user_search_dn in self._user_dns:
                 search_flt = "(objectClass=*)"
 
-                if not filter_superusers:
-                    search_flt = self._add_user_filter(search_flt)
-                else:
-                    search_flt = self._add_superuser_filter(search_flt)
+                search_flt = self._add_user_filter(search_flt)
+
+                if filter_restricted_users:
+                    if self._ldap_restricted_user_filter:
+                        search_flt = self._add_restricted_user_filter(search_flt)
+                    else:
+                        return (False, "Superuser filter not set")
+                elif filter_superusers:
+                    if self._ldap_superuser_filter:
+                        search_flt = self._add_superuser_filter(search_flt)
+                    else:
+                        return (False, "Restricted user filter not set")
 
                 lc = ldap.controls.libldap.SimplePagedResultsControl(
                     criticality=True, size=1, cookie=""
@@ -447,23 +482,44 @@ class LDAPUsers(FederatedUsers):
         page_size = page_size or _DEFAULT_PAGE_SIZE
         return (self._iterate_members(group_dn, page_size, disable_pagination), None)
 
-    def is_superuser(self, username_or_email):
+    def is_superuser(self, username_or_email: str) -> bool:
         if not username_or_email:
-            return (None, "Empty username/email")
+            return False
 
         logger.debug("Looking up LDAP superuser username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
-            username_or_email, self._ldap_superuser_filter
+            username_or_email, filter_superusers=True
         )
         if found_user is None:
-            return (False, err_msg)
+            logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
+            return False
 
         logger.debug("Found superuser for LDAP username or email %s", username_or_email)
-        return (True, None)
+        return True
 
-    def has_superusers(self):
+    def has_superusers(self) -> bool:
         has_superusers, _ = self.at_least_one_user_exists(filter_superusers=True)
         return has_superusers
+
+    def is_restricted_user(self, username_or_email: str) -> bool:
+        if not username_or_email:
+            return False
+
+        logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
+        (found_user, err_msg) = self._ldap_single_user_search(
+            username_or_email,
+            filter_restricted_users=True,
+        )
+        if found_user is None:
+            logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
+            return False
+
+        logger.debug("Found restricted user for LDAP username or email %s", username_or_email)
+        return True
+
+    def has_restricted_users(self) -> bool:
+        has_restricted_users, _ = self.at_least_one_user_exists(filter_restricted_users=True)
+        return has_restricted_users
 
     def _iterate_members(self, group_dn, page_size, disable_pagination):
         has_pagination = not (self._force_no_pagination or disable_pagination)

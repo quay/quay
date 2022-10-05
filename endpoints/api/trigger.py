@@ -34,6 +34,7 @@ from endpoints.api import (
     abort,
     disallow_for_app_repositories,
     disallow_for_non_normal_repositories,
+    disallow_for_user_namespace,
 )
 from endpoints.api.build import build_status_view, trigger_view, RepositoryBuildStatus
 from endpoints.api.trigger_analyzer import TriggerAnalyzer
@@ -115,6 +116,7 @@ class BuildTrigger(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("updateBuildTrigger")
     @validate_json_request("UpdateTrigger")
     def put(self, namespace_name, repo_name, trigger_uuid):
@@ -146,6 +148,7 @@ class BuildTrigger(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("deleteBuildTrigger")
     def delete(self, namespace_name, repo_name, trigger_uuid):
         """
@@ -195,6 +198,7 @@ class BuildTriggerSubdirs(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("listBuildTriggerSubdirs")
     @validate_json_request("BuildTriggerSubdirRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
@@ -262,6 +266,7 @@ class BuildTriggerActivate(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("activateBuildTrigger")
     @validate_json_request("BuildTriggerActivateRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
@@ -373,6 +378,7 @@ class BuildTriggerAnalyze(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("analyzeBuildTrigger")
     @validate_json_request("BuildTriggerAnalyzeRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):
@@ -443,6 +449,7 @@ class ActivateBuildTrigger(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("manuallyStartBuildTrigger")
     @validate_json_request("RunParameters")
     def post(self, namespace_name, repo_name, trigger_uuid):
@@ -516,6 +523,7 @@ class BuildTriggerFieldValues(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("listTriggerFieldValues")
     def post(self, namespace_name, repo_name, trigger_uuid, field_name):
         """
@@ -561,6 +569,7 @@ class BuildTriggerSources(RepositoryParamResource):
     @require_repo_admin()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("listTriggerBuildSources")
     @validate_json_request("BuildTriggerSourcesRequest")
     def post(self, namespace_name, repo_name, trigger_uuid):

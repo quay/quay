@@ -17,6 +17,7 @@ from app import (
     namespace_gc_queue,
     ip_resolver,
     app,
+    usermanager,
 )
 from endpoints.api import (
     allow_if_superuser,
@@ -160,6 +161,9 @@ class OrganizationList(ApiResource):
         user = get_authenticated_user()
         org_data = request.get_json()
         existing = None
+
+        if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
+            raise Unauthorized()
 
         try:
             existing = model.organization.get_organization(org_data["name"])
