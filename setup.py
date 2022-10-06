@@ -80,6 +80,7 @@ setup(
         "util.metrics",
         "image",
         "image.docker",
+        "image.oci",
         "image.docker.schema2",
         "image.shared",
         "digest",
