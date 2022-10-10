@@ -64,11 +64,11 @@ COPY requirements.txt .
 # flag.
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
-    GE_LATEST=$(curl -s https://api.github.com/repos/IBM/oss-ecosystem-gevent/releases/latest | grep tag_name | cut -d '"' -f4); \
+    GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
 	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
 	tar xvf manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
 	python3 -m pip install --no-cache-dir --user wheelhouse/gevent-${GE_LATEST}-cp39-cp39-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
-    GRPC_LATEST=$(curl -s https://api.github.com/repos/IBM/oss-ecosystem-grpc/releases/latest | grep tag_name | cut -d '"' -f4); \
+    GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
 	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
 	python3 -m pip install --no-cache-dir --user grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
 	fi
