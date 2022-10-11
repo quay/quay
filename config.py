@@ -768,6 +768,7 @@ class DefaultConfig(ImmutableConfig):
             "application/vnd.cyclonedx",
             "application/vnd.cyclonedx+xml",
             "application/vnd.cyclonedx+json",
+            "application/vnd.in-toto+json",
         ],
         "application/vnd.cncf.helm.config.v1+json": [
             "application/tar+gzip",
