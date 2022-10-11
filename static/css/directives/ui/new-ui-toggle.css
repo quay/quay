@@ -1,4 +1,4 @@
-.active, .inactive {
+.new-ui-active, .new-ui-inactive {
     font-size: 30px;
     cursor: pointer;
 }
@@ -7,11 +7,11 @@
     border-bottom: none !important;
 }
 
-i.active {
+i.new-ui-active {
     color: #438fda;
 }
 
-i.inactive {
+i.new-ui-inactive {
     color: #777;
 }
 
