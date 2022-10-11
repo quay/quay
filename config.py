@@ -763,6 +763,11 @@ class DefaultConfig(ImmutableConfig):
             "application/vnd.dsse.envelope.v1+json",
             "text/spdx",
             "application/vnd.cyclonedx",
+            "application/vnd.syft+json",
+            "application/vnd.cyclonedx+xml",
+            "application/vnd.cyclonedx+json",
+            "text/spdx+xml",
+            "text/spdx+json",
         ],
         "application/vnd.cncf.helm.config.v1+json": [
             "application/tar+gzip",
@@ -770,6 +775,10 @@ class DefaultConfig(ImmutableConfig):
         ],
         "application/vnd.oci.source.image.config.v1+json": [
             "application/vnd.oci.image.layer.v1.tar+gzip"
+        ],
+        "application/vnd.cncf.openpolicyagent.config.v1+json": [
+            "application/vnd.cncf.openpolicyagent.policy.layer.v1+rego",
+            "application/vnd.cncf.openpolicyagent.data.layer.v1+json",
         ],
     }
 
