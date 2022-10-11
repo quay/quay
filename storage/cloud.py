@@ -967,6 +967,7 @@ class RadosGWStorage(_CloudStorage):
 
         return super(RadosGWStorage, self).get_direct_upload_url(path, mime_type, requires_cors)
 
+
 class RHOCSStorage(RadosGWStorage):
     """
     RHOCSStorage implements storage explicitly via RHOCS.
