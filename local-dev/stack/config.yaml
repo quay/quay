@@ -72,3 +72,14 @@ FEATURE_QUOTA_MANAGEMENT: True
 BROWSER_API_CALLS_XHR_ONLY: False
 CORS_ORIGIN: "http://localhost:9000"
 FEATURE_UI_V2: True
+LDAP_ADMIN_DN: cn=admin,dc=example,dc=org
+LDAP_ADMIN_PASSWD: adminpassword
+LDAP_ALLOW_INSECURE_FALLBACK: false
+LDAP_BASE_DN:
+    - dc=example
+    - dc=org
+LDAP_EMAIL_ATTR: mail
+LDAP_UID_ATTR: uid
+LDAP_URI: ldap://openldap:1389
+LDAP_USER_RDN:
+    - ou=users
