@@ -50,13 +50,30 @@ RUN set -ex\
 		openldap-devel\
 		python39-devel\
 		libffi-devel\
+        openssl-devel \
+        diffutils \
+        file \
+        make \
+        libjpeg-turbo \
+        libjpeg-turbo-devel \
+		wget\
 	; dnf -y -q clean all
 WORKDIR /build
 COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
+RUN ARCH=$(uname -m) ; echo $ARCH; \
+    if [ "$ARCH" == "ppc64le" ] ; then \
+    GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
+	wget https://github.com/IBM/oss-ecosystem-gevent/releases/download/${GE_LATEST}/manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
+	tar xvf manylinux_ppc64le_wheels_${GE_LATEST}.tar.gz; \
+	python3 -m pip install --no-cache-dir --user wheelhouse/gevent-${GE_LATEST}-cp39-cp39-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl; \
+    GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
+	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
+	python3 -m pip install --no-cache-dir --user grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
+	fi
 RUN set -ex\
-	; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' ./requirements.txt) \
+    ; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
 	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements.txt \
 	;
 RUN set -ex\
@@ -94,9 +111,11 @@ RUN chown -R 1001:0 quay-ui/dist
 
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
-ENV OS=linux ARCH=amd64
+ENV OS=linux 
 ARG PUSHGATEWAY_VERSION=1.0.0
 RUN set -ex\
+	; ARCH=$(uname -m) ; echo $ARCH \
+	; if [ "$ARCH" == "x86_64" ] ; then ARCH="amd64" ; elif [ "$ARCH" == "arm_64" ] ; then ARCH="arm64" ; fi \
 	; curl -fsSL "https://github.com/prometheus/pushgateway/releases/download/v${PUSHGATEWAY_VERSION}/pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}.tar.gz"\
 	| tar xz "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway"\
 	; install "pushgateway-${PUSHGATEWAY_VERSION}.${OS}-${ARCH}/pushgateway" /usr/local/bin/pushgateway\
