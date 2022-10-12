@@ -88,11 +88,11 @@ def test_successful_mirror(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=False",
-                "docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository",
             ],
-            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
         {
             "args": [
@@ -146,11 +146,11 @@ def test_mirror_unsigned_images(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=False",
-                "docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository",
             ],
-            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
         {
             "args": [
@@ -206,11 +206,11 @@ def test_successful_disabled_sync_now(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository",
             ],
-            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
         {
             "args": [
@@ -263,11 +263,11 @@ def test_successful_mirror_verbose_logs(run_skopeo_mock, initialized_db, app, mo
             "args": [
                 "/usr/bin/skopeo",
                 "--debug",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository",
             ],
-            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
         {
             "args": [
@@ -353,12 +353,12 @@ def test_rollback(
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:updated",
+                "docker://registry.example.com/namespace/repository",
             ],
             "results": SkopeoResults(
-                True, [], '{"RepoTags": ["latest", "zzerror", "created", "updated"]}', ""
+                True, [], '{"Tags": ["latest", "zzerror", "created", "updated"]}', ""
             ),
         },
         {
@@ -479,11 +479,11 @@ def test_mirror_config_server_hostname(run_skopeo_mock, initialized_db, app, mon
             "args": [
                 "/usr/bin/skopeo",
                 "--debug",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:latest",
+                "docker://registry.example.com/namespace/repository",
             ],
-            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
         {
             "args": [
@@ -543,13 +543,13 @@ def test_quote_params(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
                 "--creds",
                 "`rm -rf /`",
-                "'docker://& rm -rf /;/namespace/repository:latest'",
+                "docker://& rm -rf /;/namespace/repository",
             ],
-            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
         {
             "args": [
@@ -607,13 +607,13 @@ def test_quote_params_password(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
                 "--creds",
                 '`rm -rf /`:""$PATH\\"',
-                "'docker://& rm -rf /;/namespace/repository:latest'",
+                "docker://& rm -rf /;/namespace/repository",
             ],
-            "results": SkopeoResults(True, [], '{"RepoTags": ["latest"]}', ""),
+            "results": SkopeoResults(True, [], '{"Tags": ["latest"]}', ""),
         },
         {
             "args": [
@@ -685,29 +685,15 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository",
             ],
             "results": SkopeoResults(
                 False,
                 [],
                 "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest 7.1 in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
-            ),
-        },
-        {
-            "args": [
-                "/usr/bin/skopeo",
-                "inspect",
-                "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:latest",
-            ],
-            "results": SkopeoResults(
-                False,
-                [],
-                "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest latest in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
+                'time="2019-09-18T13:29:40Z" level=fatal msg="Error listing repository tags: fetching tags list: invalid status code from registry 404 (Not Found)"',
             ),
         },
     ]
@@ -721,29 +707,15 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository",
             ],
             "results": SkopeoResults(
                 False,
                 [],
                 "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest 7.1 in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
-            ),
-        },
-        {
-            "args": [
-                "/usr/bin/skopeo",
-                "inspect",
-                "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:latest",
-            ],
-            "results": SkopeoResults(
-                False,
-                [],
-                "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest latest in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
+                'time="2019-09-18T13:29:40Z" level=fatal msg="Error listing repository tags: fetching tags list: invalid status code from registry 404 (Not Found)"',
             ),
         },
     ]
@@ -757,29 +729,15 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository",
             ],
             "results": SkopeoResults(
                 False,
                 [],
                 "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest 7.1 in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
-            ),
-        },
-        {
-            "args": [
-                "/usr/bin/skopeo",
-                "inspect",
-                "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:latest",
-            ],
-            "results": SkopeoResults(
-                False,
-                [],
-                "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest latest in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
+                'time="2019-09-18T13:29:40Z" level=fatal msg="Error listing repository tags: fetching tags list: invalid status code from registry 404 (Not Found)"',
             ),
         },
     ]
@@ -793,33 +751,19 @@ def test_inspect_error_mirror(run_skopeo_mock, initialized_db, app):
         {
             "args": [
                 "/usr/bin/skopeo",
-                "inspect",
+                "list-tags",
                 "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:7.1",
+                "docker://registry.example.com/namespace/repository",
             ],
             "results": SkopeoResults(
                 False,
                 [],
                 "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest 7.1 in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
-            ),
-        },
-        {
-            "args": [
-                "/usr/bin/skopeo",
-                "inspect",
-                "--tls-verify=True",
-                "docker://registry.example.com/namespace/repository:latest",
-            ],
-            "results": SkopeoResults(
-                False,
-                [],
-                "",
-                'time="2019-09-18T13:29:40Z" level=fatal msg="Error reading manifest latest in registry.example.com/namespace/repository: manifest unknown: manifest unknown"',
+                'time="2019-09-18T13:29:40Z" level=fatal msg="Error listing repository tags: fetching tags list: invalid status code from registry 404 (Not Found)"',
             ),
         },
     ]
     worker._process_mirrors()
     mirror = RepoMirrorConfig.get_by_id(mirror.id)
-    assert 2 == len(skopeo_calls)
+    assert 1 == len(skopeo_calls)
     assert 3 == mirror.sync_retries_remaining
