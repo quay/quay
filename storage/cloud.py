@@ -967,15 +967,6 @@ class RadosGWStorage(_CloudStorage):
 
         return super(RadosGWStorage, self).get_direct_upload_url(path, mime_type, requires_cors)
 
-    def complete_chunked_upload(self, uuid, final_path, storage_metadata):
-        self._initialize_cloud_conn()
-
-        # RadosGW does not support multipart copying from keys, so we are forced to join
-        # it all locally and then reupload.
-        # See https://github.com/ceph/ceph/pull/5139
-        chunk_list = self._chunk_list_from_metadata(storage_metadata)
-        self._client_side_chunk_join(final_path, chunk_list)
-
 
 class RHOCSStorage(RadosGWStorage):
     """
