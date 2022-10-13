@@ -17,6 +17,8 @@ angular.module('quay').directive('manageUserTab', function () {
       $scope.Features = Features;
       UserService.updateUserIn($scope);
       $scope.users = null;
+      $scope.totalUsers = null;
+      $scope.nextPage = null;
       $scope.orderedUsers = [];
       $scope.usersPerPage = 10;
 
@@ -78,13 +80,14 @@ angular.module('quay').directive('manageUserTab', function () {
       };
 
       var loadUsersInternal = function () {
-        ApiService.listAllUsers().then(function (resp) {
+        ApiService.listAllUsersAsResource().withPagination('users').getCurrentPage(function(resp) {
           $scope.users = resp['users'];
+          $scope.totalUsers = resp['total_users'];
+          $scope.nextPage = resp['next_page']
           sortUsers();
           $scope.showInterface = true;
-        }, function (resp) {
-          $scope.users = [];
           $scope.usersError = ApiService.getErrorMessage(resp);
+          return resp;
         });
       };
       $scope.tablePredicateClass = function(name, predicate, reverse) {

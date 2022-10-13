@@ -241,9 +241,16 @@ class PreOCIModel(SuperuserDataInterface):
 
         return return_user, ""
 
-    def get_active_users(self, disabled=True):
-        users = model.user.get_active_users(disabled=disabled)
-        return [_create_user(user) for user in users]
+    def get_active_users(self, disabled=True, page_token=None):
+        next_page_token = None
+        start_id = model.modelutil.pagination_start(page_token)
+
+        user_query = model.user.get_active_users(disabled=disabled, start_id=start_id)
+        total_users = model.user.get_active_user_count()
+        users, next_page_token = model.modelutil.paginate_query(
+            user_query, limit=10, sort_field_name="id"
+        )
+        return [_create_user(user) for user in users], total_users, next_page_token
 
     def get_organizations(self):
         return [

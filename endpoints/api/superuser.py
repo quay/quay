@@ -372,13 +372,17 @@ class SuperUserList(ApiResource):
         "disabled", "If false, only enabled users will be returned.", type=truthy_bool, default=True
     )
     @require_scope(scopes.SUPERUSER)
-    def get(self, parsed_args):
+    @page_support()
+    def get(self, page_token, parsed_args):
         """
         Returns a list of all users in the system.
         """
         if SuperUserPermission().can():
-            users = pre_oci_model.get_active_users(disabled=parsed_args["disabled"])
-            return {"users": [user.to_dict() for user in users]}
+            users, total_users, next_page_token = pre_oci_model.get_active_users(
+                disabled=parsed_args["disabled"], page_token=page_token
+            )
+            val = {"users": [user.to_dict() for user in users], "total_users": total_users}
+            return val, next_page_token
 
         raise Unauthorized()
 
