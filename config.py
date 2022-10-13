@@ -761,6 +761,14 @@ class DefaultConfig(ImmutableConfig):
         "application/vnd.oci.image.config.v1+json": [
             "application/vnd.dev.cosign.simplesigning.v1+json",
             "application/vnd.dsse.envelope.v1+json",
+            "text/spdx",
+            "text/spdx+xml",
+            "text/spdx+json",
+            "application/vnd.syft+json",
+            "application/vnd.cyclonedx",
+            "application/vnd.cyclonedx+xml",
+            "application/vnd.cyclonedx+json",
+            "application/vnd.in-toto+json",
         ],
         "application/vnd.cncf.helm.config.v1+json": [
             "application/tar+gzip",
