@@ -1,3 +1,4 @@
+from storage.cloudflarestorage import CloudFlareS3Storage
 from storage.local import LocalStorage
 from storage.cloud import (
     S3Storage,
@@ -24,6 +25,7 @@ STORAGE_DRIVER_CLASSES = {
     "CloudFrontedS3Storage": CloudFrontedS3Storage,
     "AzureStorage": AzureStorage,
     "RHOCSStorage": RHOCSStorage,
+    "CloudFlareStorage": CloudFlareS3Storage,
 }
 
 
