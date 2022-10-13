@@ -1,3 +1,4 @@
+from html.parser import HTMLParser
 import logging
 import os.path
 import re
@@ -10,7 +11,6 @@ from urllib.parse import urlparse
 
 from app import mail, app, OVERRIDE_CONFIG_DIRECTORY
 from data import model
-from util.config.validator import SSL_FILENAMES
 from util.jsontemplate import JSONTemplate, JSONTemplateParseException
 from util.fips import login_fips_safe
 from workers.queueworker import JobException
@@ -22,6 +22,7 @@ METHOD_TIMEOUT = app.config.get("NOTIFICATION_SEND_TIMEOUT", 10)  # Seconds
 HOSTNAME_BLACKLIST = ["localhost", "127.0.0.1"]
 HOSTNAME_BLACKLIST.extend(app.config.get("WEBHOOK_HOSTNAME_BLACKLIST", []))
 MAIL_DEFAULT_SENDER = app.config.get("MAIL_DEFAULT_SENDER", "admin@example.com")
+SSL_FILENAMES = ["ssl.cert", "ssl.key"]
 
 
 class InvalidNotificationMethodException(Exception):
@@ -395,9 +396,6 @@ class HipchatMethod(NotificationMethod):
         except requests.exceptions.RequestException as ex:
             logger.exception("Hipchat method was unable to be sent")
             raise NotificationMethodPerformException(str(ex))
-
-
-from html.parser import HTMLParser
 
 
 class SlackAdjuster(HTMLParser):
