@@ -1,5 +1,4 @@
 import logging
-from util.config.validators import ConfigValidationException
 
 logger = logging.getLogger(__name__)
 
@@ -14,5 +13,5 @@ class RepoMirrorConfigValidator(object):
 
     def valid(self):
         if not self._feature_repo_mirror:
-            raise ConfigValidationException("REPO_MIRROR feature not enabled")
+            raise Exception("REPO_MIRROR feature not enabled")
         return True
