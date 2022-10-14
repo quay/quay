@@ -777,6 +777,10 @@ class DefaultConfig(ImmutableConfig):
         "application/vnd.oci.source.image.config.v1+json": [
             "application/vnd.oci.image.layer.v1.tar+gzip"
         ],
+        "application/vnd.unknown.config.v1+json": [
+            "application/vnd.cncf.openpolicyagent.policy.layer.v1+rego",
+            "application/vnd.cncf.openpolicyagent.data.layer.v1+json ",
+        ],
     }
 
     # Feature Flag: Whether to allow Helm OCI content types.
