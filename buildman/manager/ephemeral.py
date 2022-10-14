@@ -59,6 +59,11 @@ build_ack_duration = Histogram(
     "seconds taken for the builder to acknowledge a queued build",
     labelnames=["executor"],
 )
+build_queue_duration = Histogram(
+    "quay_build_queue_duration_seconds",
+    "seconds taken for a build job to be scheduled from the queue",
+    labelnames=["schedule_success"],
+)
 build_duration = Histogram(
     "quay_build_duration_seconds",
     "seconds taken for a build's execution",
@@ -224,6 +229,7 @@ class EphemeralBuilderManager(BuildStateInterface):
         max_expiration = datetime.utcnow() + timedelta(seconds=self.machine_max_expiration)
         build_metadata["max_expiration"] = calendar.timegm(max_expiration.timetuple())
         build_metadata["last_heartbeat"] = None
+        build_metadata["created_at"] = time.time()
 
         job_key = self._job_key(build_id)
         try:
@@ -927,6 +933,12 @@ class EphemeralBuilderManager(BuildStateInterface):
                 )
                 self.job_unschedulable(job_id)
                 self._queue.incomplete(job_item, restore_retry=True, retry_after=retry_timeout)
+
+            # record time spent in queue
+            job_data = self._orchestrator.get_key(job_id)
+            job_data_json = json.loads(job_data)
+            created_at = job_data_json["created_at"]
+            build_queue_duration.labels(schedule_success).observe(time.time() - created_at)
 
 
 def _extract_current_step(current_status_string):
