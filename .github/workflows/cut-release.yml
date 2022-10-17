@@ -66,7 +66,8 @@ jobs:
         with:
           name: release
       - name: Create Release
-        uses: ncipollo/release-action@v1.10.0
+        uses: ncipollo/release-action@v1.11.1
+        id: create_release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           bodyFile: ${{steps.download.outputs.download-path}}/changelog
