@@ -7,8 +7,9 @@ set -exv
 CURRENT_DIR=$(dirname $0)
 
 BASE_IMG="quay-py3"
-QUAY_IMAGE="quay.io/app-sre/${BASE_IMG}"
 IMG="${BASE_IMG}:latest"
+BACKUP_BASE_IMG="quayio-py3-backup"
+BACKUP_IMAGE="${BACKUP_URL}/${BACKUP_BASE_IMG}"
 
 GIT_HASH=`git rev-parse --short=7 HEAD`
 
@@ -18,12 +19,11 @@ BUILD_CMD="docker build" IMG="$IMG" make app-sre-docker-build
 # save the image as a tar archive
 docker save ${IMG} -o ${BASE_IMG}
 
-# push the image
-skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
+# push image to backup repository
+skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
     "docker-archive:${BASE_IMG}" \
-    "docker://${QUAY_IMAGE}:latest"
+    "docker://${BACKUP_IMAGE}:latest"
 
-skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
+skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
     "docker-archive:${BASE_IMG}" \
-    "docker://${QUAY_IMAGE}:${GIT_HASH}"
-
+    "docker://${BACKUP_IMAGE}:${GIT_HASH}"
