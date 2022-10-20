@@ -754,8 +754,7 @@ class User(BaseModel):
                     UploadedBlob,
                     RepositorySize,
                     UserOrganizationQuota,
-                    QuotaLimits,
-                    CdnConfig
+                    QuotaLimits
                 }
                 | appr_classes
                 | v22_classes
