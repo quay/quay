@@ -64,6 +64,8 @@ from data.database import (
     RepositorySize,
     ProxyCacheConfig,
     FederatedLogin,
+    CdnConfig,
+    CdnProvider
 )
 from data import model
 from data.decorators import is_deprecated_model

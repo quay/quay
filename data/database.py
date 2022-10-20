@@ -663,6 +663,14 @@ class BaseModel(ReadReplicaSupportedModel):
         return super(BaseModel, self).__getattribute__(name)
 
 
+class CdnProvider(BaseModel):
+    provider_name = CharField()
+
+
+class CdnConfig(BaseModel):
+    cdn_provider_id = ForeignKeyField(CdnProvider)
+    cdn_domain = CharField()
+
 class User(BaseModel):
     uuid = CharField(default=uuid_generator, max_length=36, null=True, index=True)
     username = CharField(unique=True, index=True)
@@ -687,6 +695,7 @@ class User(BaseModel):
     maximum_queued_builds_count = IntegerField(null=True)
     creation_date = DateTimeField(default=datetime.utcnow, null=True)
     last_accessed = DateTimeField(null=True, index=True)
+    cdn_config_id = ForeignKeyField(CdnConfig)
 
     def delete_instance(self, recursive=False, delete_nullable=False):
         # If we are deleting a robot account, only execute the subset of queries necessary.
@@ -746,6 +755,7 @@ class User(BaseModel):
                     RepositorySize,
                     UserOrganizationQuota,
                     QuotaLimits,
+                    CdnConfig
                 }
                 | appr_classes
                 | v22_classes

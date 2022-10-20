@@ -162,7 +162,7 @@ def upgrade(op, tables, tester):
         while True:
             has_row = False
             query = (
-                User.select()
+                User.select(User.id, User.robot)
                 .join(RobotAccountToken, JOIN.LEFT_OUTER)
                 .where(User.robot == True, RobotAccountToken.id >> None)
                 .limit(BATCH_SIZE)

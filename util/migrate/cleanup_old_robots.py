@@ -22,7 +22,7 @@ def cleanup_old_robots(page_size=50, force=False):
 
     while True:
         found_bots = False
-        for robot in list(User.select().where(User.robot == True).paginate(page_number, page_size)):
+        for robot in list(User.select(User.username).where(User.robot == True).paginate(page_number, page_size)):
             found_bots = True
             logger.info("Checking robot %s (page %s)", robot.username, page_number)
             parsed = parse_robot_username(robot.username)
