@@ -21,7 +21,7 @@ def upgrade(op, tables, tester):
     op.create_table(
         "cdnprovider",
         sa.Column("id", sa.Integer, nullable=False),
-        sa.Column("provider_name", sa.String(length=128), nullable=False),
+        sa.Column("provider_name", sa.String(length=256), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_cdn_providers"))
     )
     op.bulk_insert(tables.cdnprovider, [{"provider_name": "CloudFront"}])
@@ -30,7 +30,7 @@ def upgrade(op, tables, tester):
         "cdnconfig",
         sa.Column("id", sa.Integer, nullable=False),
         sa.Column("cdn_provider_id", sa.Integer, nullable=False),
-        sa.Column("cdn_domain", sa.BigInteger, nullable=False),
+        sa.Column("cdn_domain", sa.String(length=256), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_cdn_config")),
         sa.ForeignKeyConstraint(
             ["cdn_provider_id"], ["cdnprovider.id"], name=op.f("fk_cdn_providers_id")
