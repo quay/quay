@@ -870,6 +870,8 @@ def populate_database(minimal=False):
     org.stripe_id = TEST_STRIPE_ID
     org.save()
 
+    CdnConfig.create(cdn_provider_id=1, cdn_domain="cdn*.quay.io")
+
     QuotaType.create(name="Warning")
     QuotaType.create(name="Reject")
 
