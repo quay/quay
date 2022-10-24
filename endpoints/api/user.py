@@ -166,7 +166,9 @@ def user_view(user, previous_username=None):
     }
 
     user_admin = UserAdminPermission(previous_username if previous_username else user.username)
-    if user_admin.can():
+
+    is_admin = user_admin.can()
+    if is_admin:
         user_response.update(
             {
                 "can_create_repo": True,
@@ -198,7 +200,7 @@ def user_view(user, previous_username=None):
         user_response.update(
             {
                 "organizations": [
-                    org_view(o, user_admin=user_admin.can()) for o in list(organizations.values())
+                    org_view(o, user_admin=is_admin) for o in list(organizations.values())
                 ],
             }
         )
