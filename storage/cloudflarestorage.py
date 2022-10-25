@@ -34,7 +34,7 @@ class CloudFlareS3Storage(S3Storage):
         self.cloudflare_privatekey = self._load_private_key(cloudflare_privatekey_filename)
 
     def get_direct_download_url(
-        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         # If CloudFront could not be loaded, fall back to normal S3.
         s3_presigned_url = super(CloudFlareS3Storage, self).get_direct_download_url(
