@@ -14,6 +14,7 @@ mock==3.0.5
 mypy==0.950
 moto==2.0.1
 parameterized==0.8.1
+pre-commit==2.20.0
 pytest
 pytest-cov
 pytest-flask
