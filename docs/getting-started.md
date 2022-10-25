@@ -38,20 +38,18 @@ Python 3.9 and earlier are currently supported.
 
 :exclamation: Be mindful that overriding your operating system's default Python version is not a good idea. Check out [this guide](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_basic_system_settings/assembly_installing-and-using-python_configuring-basic-system-settings) for instructions on installing Python 3 on RHEL 8, or alternatively use [pyenv](https://github.com/pyenv/pyenv#readme).
 
-Add the pre-commit hook into your `.git/hooks` directory before commiting anything. The pre-commit hook ensures that the code is correctly formatted. It uses `black` for formatting. Make sure you have it installed.
-
-```
-$ pip install black # if not already installed
-
-$ make install-pre-commit-hook
-```
-
-Run the following in the quay directory where the repository is forked. It installs the pre-commit checks required for git.
+Run either of the following in the quay directory where the repository is forked. It installs the pre-commit checks like trailing-whitespace, new line at EOF, secret leaks and black required before pushing to git.
 
 ```
 pip install pre-commit==2.20.0
 
 pre-commit install
+```
+
+or you can run:
+
+```
+make install-pre-commit-hook
 ```
 
 ## Building and Running with Docker Compose

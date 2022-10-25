@@ -69,7 +69,8 @@ ensure-test-db:
 	fi
 
 install-pre-commit-hook:
-	cp scripts/pre-commit .git/hooks/pre-commit
+	pip install pre-commit==2.20.0
+	pre-commit install
 
 PG_PASSWORD := quay
 PG_USER := quay
