@@ -3,8 +3,8 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.7.9"></a>
-## [v3.7.9] - 2022-10-14
+<a name="v3.7.10"></a>
+## [v3.7.10] - 2022-10-25
 ### Api
 - [2b3c3cc5](https://github.com/quay/quay/commit/2b3c3cc58482b94e83ad4b5483a5a4de7bdee6b4): feature to limit org creation to superusers (PROJQUAY-1245) ([#1516](https://github.com/quay/quay/issues/1516))
 - [aefddd36](https://github.com/quay/quay/commit/aefddd36dd0540709f391a86485a8afb2a57e85a): add OPTIONS method to /config request (PROJQUAY-4276) ([#1476](https://github.com/quay/quay/issues/1476))
@@ -63,14 +63,18 @@
 - [fcdd0e12](https://github.com/quay/quay/commit/fcdd0e12bf299bcf362799d1ffe8051ceb90ce71): //issues.redhat.com/browse/PROJQUAY-4286) ([#1508](https://github.com/quay/quay/issues/1508))
 ### Chore: V3.7.8 Changelog Bump (Https
 - [292d33f2](https://github.com/quay/quay/commit/292d33f2922df5e3cdae72d839a537c3d7fa5df6): //issues.redhat.com/browse/PROJQUAY-4385) ([#1517](https://github.com/quay/quay/issues/1517))
+### Chore: V3.7.9 Changelog Bump (Https
+- [2ec6405a](https://github.com/quay/quay/commit/2ec6405a15f6d2b8f3a827ca511ae8195e38942e): //issues.redhat.com/browse/PROJQUAY-4478) ([#1568](https://github.com/quay/quay/issues/1568))
 ### Ci
 - [07c8a75f](https://github.com/quay/quay/commit/07c8a75fa18ab4da5abad2ede24347419656c793): Check arm64 builds in CI (PROJQUAY-4038) ([#1431](https://github.com/quay/quay/issues/1431))
+### Cleanup
+- [304087f9](https://github.com/quay/quay/commit/304087f9c911071b083d87fce798b12d52f9ed0d): Remove old validation code (PROJQUAY-4606) ([#1562](https://github.com/quay/quay/issues/1562))
 ### Conf/Nginx
 - [f45c68eb](https://github.com/quay/quay/commit/f45c68ebf2635eeadbaeaf11ce5df9e215ae62d1): mark beginning of string in oauth location match ([#1550](https://github.com/quay/quay/issues/1550))
 ### Config
-- [4ebad4dc](https://github.com/quay/quay/commit/4ebad4dcd8b4d7562171e5c7f56ee133305cb932): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1554](https://github.com/quay/quay/issues/1554))
-### Config
 - [ff8043dd](https://github.com/quay/quay/commit/ff8043dd85732aa96ac7d90218a4ef416ef56cea): Add conftest mediatypes to default Quay configuration (PROJQUAY-4614) ([#1567](https://github.com/quay/quay/issues/1567))
+### Config
+- [4ebad4dc](https://github.com/quay/quay/commit/4ebad4dcd8b4d7562171e5c7f56ee133305cb932): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1554](https://github.com/quay/quay/issues/1554))
 ### Dev
 - [d3cc640f](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
@@ -116,12 +120,12 @@
 ### Quayio
 - [b49fd45e](https://github.com/quay/quay/commit/b49fd45ee646d53c0789d79c60c87a7fb5ae8ec8): Redirect user to billing page when starting free trial (PROJQUAY-4130) ([#1439](https://github.com/quay/quay/issues/1439))
 ### Quota
+- [f90e5e3d](https://github.com/quay/quay/commit/f90e5e3dcef4bb312e31aaf5a4ce536e81e3e424): Configuring Quota for user panel(PROJQUAY-3767) ([#1334](https://github.com/quay/quay/issues/1334))
+- [1e4871ec](https://github.com/quay/quay/commit/1e4871eca27ea1878937a49fb2974401c5963512): Add Cache To Tag Delete (PROJQUAY-3828) ([#1345](https://github.com/quay/quay/issues/1345))
+### Quota
 - [a0df8950](https://github.com/quay/quay/commit/a0df895005bcd3e53847046f69f6a7add87c88fd): Fix calculating org size (PROJQUAY-3889) ([#1391](https://github.com/quay/quay/issues/1391))
 - [f28b35cc](https://github.com/quay/quay/commit/f28b35cc311dae94671cc6bce4b11abc9a68e917): Fix join on caching repo size (PROJQUAY-3889) ([#1378](https://github.com/quay/quay/issues/1378))
 - [9d8ff6b1](https://github.com/quay/quay/commit/9d8ff6b1c109fdc285298d32ec2a83069bd90556): address possible integrity exception if computing size concurrently (PROJQUAY-3752) ([#1303](https://github.com/quay/quay/issues/1303))
-### Quota
-- [f90e5e3d](https://github.com/quay/quay/commit/f90e5e3dcef4bb312e31aaf5a4ce536e81e3e424): Configuring Quota for user panel(PROJQUAY-3767) ([#1334](https://github.com/quay/quay/issues/1334))
-- [1e4871ec](https://github.com/quay/quay/commit/1e4871eca27ea1878937a49fb2974401c5963512): Add Cache To Tag Delete (PROJQUAY-3828) ([#1345](https://github.com/quay/quay/issues/1345))
 ### Quota Management
 - [59d586c4](https://github.com/quay/quay/commit/59d586c4c6294ceceb214d2fa1a8fb7e164081c8): Adding default quota check for image push (PROJQUAY-3789) ([#1316](https://github.com/quay/quay/issues/1316))
 ### Quota UI
@@ -138,6 +142,7 @@
 ### Schema1
 - [b2dbdcd7](https://github.com/quay/quay/commit/b2dbdcd79813bbe2b1c205c8f6a6a5616851cba9): Generate kid in the correct format (PROJQUAY-3486) ([#1208](https://github.com/quay/quay/issues/1208))
 ### Secscan
+- [98801bfd](https://github.com/quay/quay/commit/98801bfd3e8cb0b81f83cbbcac0346302eef7b8c): Generate key to reduce vulnerabilities (PROJQUAY-4562) ([#1547](https://github.com/quay/quay/issues/1547))
 - [5291daf8](https://github.com/quay/quay/commit/5291daf8fe22218995eb37e4ef6f8b3a481bdd2b): Don't delete manifest security status on error (PROJQUAY-4060) ([#1434](https://github.com/quay/quay/issues/1434))
 - [5471d3cb](https://github.com/quay/quay/commit/5471d3cbcb4d4f923d1b1007677f20118eec8f6f): deprecate support for Clair V2 (PROJQUAY-2837) ([#951](https://github.com/quay/quay/issues/951))
 - [776dbd90](https://github.com/quay/quay/commit/776dbd90d5d898776dff1a9a87d933bdfbc9a7b2): update https proxy scheme ([#1340](https://github.com/quay/quay/issues/1340))
@@ -171,8 +176,18 @@
 ### Users
 - [14e87bd4](https://github.com/quay/quay/commit/14e87bd41e393032576fd23daf4801ea5f7def22): fix missing references in ldap for superusers ([#1542](https://github.com/quay/quay/issues/1542))
 - [070f464b](https://github.com/quay/quay/commit/070f464b149695b79d837fd781bd72aadde5753e): superuser group in federated identity provider (PROJQUAY-3924) ([#1464](https://github.com/quay/quay/issues/1464))
+### Util
+- [3035f46f](https://github.com/quay/quay/commit/3035f46f569bc46cd59ec1c7b63fe2cba35d0e04): Clean up and adding make target to install pre-commit hooks(PROJQUAY-000) ([#1587](https://github.com/quay/quay/issues/1587))
+- [e8e5d5d9](https://github.com/quay/quay/commit/e8e5d5d90461cca38a4367be603ecdbb2fce956c): Adding git pre-commit checks (PROJQUAY-4658) ([#1585](https://github.com/quay/quay/issues/1585))
 ### V2auth
 - [fd9a6b2e](https://github.com/quay/quay/commit/fd9a6b2e606db6d20bb079f4c3a942e176f83a0c): Check for user before creating org (PROJQUAY-3766) ([#1315](https://github.com/quay/quay/issues/1315))
+
+<a name="v3.7.9"></a>
+## [v3.7.9] - 2022-10-17
+### Chore: V3.7.9 Changelog Bump (Https
+- [f65a235e](https://github.com/quay/quay/commit/f65a235e541b44566b3e013977ae9e1bc610ff74): //issues.redhat.com/browse/PROJQUAY-4478) ([#1569](https://github.com/quay/quay/issues/1569))
+### Storage
+- [4d44be98](https://github.com/quay/quay/commit/4d44be98c62b5511a4e2c4f40bad5dde2baa65e1): handle KeyError we sometimes get from aws ([#1544](https://github.com/quay/quay/issues/1544))
 
 <a name="v3.7.8"></a>
 ## [v3.7.8] - 2022-09-12
@@ -767,7 +782,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.7.9...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.7.10...HEAD
+[v3.7.10]: https://github.com/quay/quay/compare/v3.7.9...v3.7.10
 [v3.7.9]: https://github.com/quay/quay/compare/v3.7.8...v3.7.9
 [v3.7.8]: https://github.com/quay/quay/compare/v3.7.7...v3.7.8
 [v3.7.7]: https://github.com/quay/quay/compare/v3.7.6...v3.7.7
