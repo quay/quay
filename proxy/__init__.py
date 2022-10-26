@@ -197,6 +197,10 @@ class Proxy:
 
         resp_json = resp.json()
         token = resp_json.get("token")
+        if token is None:
+            # For OAuth2.0 compatability, "access_token" can also used and is equivalent to "token" "
+            # https://docs.docker.com/registry/spec/auth/token/#token-response-fields
+            token = resp_json.get("access_token")
 
         # our cached token will expire a few seconds (TOKEN_RENEWAL_THRESHOLD)
         # before the actual token expiration.
