@@ -779,7 +779,7 @@ class DefaultConfig(ImmutableConfig):
         ],
         "application/vnd.unknown.config.v1+json": [
             "application/vnd.cncf.openpolicyagent.policy.layer.v1+rego",
-            "application/vnd.cncf.openpolicyagent.data.layer.v1+json ",
+            "application/vnd.cncf.openpolicyagent.data.layer.v1+json",
         ],
     }
 
