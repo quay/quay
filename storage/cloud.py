@@ -988,6 +988,7 @@ class CloudFrontedS3Storage(S3Storage):
         self,
         context,
         cloudfront_distribution_domain,
+        cloudfront_distribution_org_overrides,
         cloudfront_key_id,
         cloudfront_privatekey_filename,
         storage_path,
@@ -1000,6 +1001,7 @@ class CloudFrontedS3Storage(S3Storage):
             context, storage_path, s3_bucket, *args, **kwargs
         )
 
+        self.cloudfront_distribution_org_overrides = cloudfront_distribution_org_overrides
         self.s3_region = s3_region
         self.cloudfront_distribution_domain = cloudfront_distribution_domain
         self.cloudfront_key_id = cloudfront_key_id
@@ -1032,6 +1034,13 @@ class CloudFrontedS3Storage(S3Storage):
                 path, request_ip, expires_in, requires_cors, head, **kwargs
             )
 
+        if kwargs:
+            namespace = kwargs.get('namespace')
+            if namespace is not None:
+                for key in self.cloudfront_distribution_org_overrides:
+                    if key == namespace:
+                        self.cloudfront_distribution_domain = self.cloudfront_distribution_org_overrides.get(namespace)
+
         url = "https://%s/%s" % (self.cloudfront_distribution_domain, path)
         if kwargs:
             url += f"?{urllib.parse.urlencode(kwargs)}"
@@ -1045,6 +1054,7 @@ class CloudFrontedS3Storage(S3Storage):
             resolved_ip_info,
             signed_url,
         )
+        print(signed_url)
         return signed_url
 
     @lru_cache(maxsize=1)
