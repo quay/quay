@@ -1054,7 +1054,6 @@ class CloudFrontedS3Storage(S3Storage):
             resolved_ip_info,
             signed_url,
         )
-        print(signed_url)
         return signed_url
 
     @lru_cache(maxsize=1)
