@@ -293,6 +293,11 @@ class DefaultConfig(ImmutableConfig):
     # Super user config. Note: This MUST BE an empty list for the default config.
     SUPER_USERS: List[str] = []
 
+    # Global readonly user.
+    # WARNING: THIS WILL GIVE USERS OF THIS LIST READ ACCESS TO ALL REPOS,
+    # REGARDLESS OF WHETHER THEY ARE PUBLIC OR NOT
+    GLOBAL_READONLY_SUPER_USERS: List[str] = []
+
     # Feature Flag: Whether sessions are permanent.
     FEATURE_PERMANENT_SESSIONS = True
 
@@ -846,5 +851,3 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_RESTRICTED_USERS = False
     RESTRICTED_USERS_WHITELIST: List[str] = []
-    RESTRICTED_USER_INCLUDE_ROBOTS = True
-    RESTRICTED_USER_READ_ONLY = False

@@ -217,7 +217,7 @@ class OrgRobot(ApiResource):
         Returns the organization's robot with the specified name.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             robot = model.get_org_robot(robot_shortname, orgname)
             return robot.to_dict(include_metadata=True, include_token=True)
 
@@ -232,7 +232,7 @@ class OrgRobot(ApiResource):
         Create a new robot in the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             create_data = request.get_json() or {}
             robot = model.create_org_robot(
                 robot_shortname,
@@ -260,7 +260,7 @@ class OrgRobot(ApiResource):
         Delete an existing organization robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             robot_username = format_robot_username(orgname, robot_shortname)
             if not model.robot_has_mirror(robot_username):
                 model.delete_robot(robot_username)
@@ -360,7 +360,7 @@ class RegenerateOrgRobot(ApiResource):
         Regenerates the token for an organization robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             robot = model.regenerate_org_robot_token(robot_shortname, orgname)
             log_action("regenerate_robot_token", orgname, {"robot": robot_shortname})
             return robot.to_dict(include_token=True)

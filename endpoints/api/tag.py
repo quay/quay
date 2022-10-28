@@ -23,6 +23,7 @@ from endpoints.api import (
     disallow_for_app_repositories,
     format_date,
     disallow_for_non_normal_repositories,
+    disallow_for_user_namespace,
 )
 from endpoints.exception import NotFound, InvalidRequest
 from util.names import TAG_ERROR, TAG_REGEX
@@ -125,6 +126,7 @@ class RepositoryTag(RepositoryParamResource):
     @require_repo_write()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("changeTag")
     @validate_json_request("ChangeTag")
     def put(self, namespace, repository, tag):
@@ -219,6 +221,7 @@ class RepositoryTag(RepositoryParamResource):
     @require_repo_write(allow_for_superuser=True)
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("deleteFullTag")
     def delete(self, namespace, repository, tag):
         """
@@ -270,6 +273,7 @@ class RestoreTag(RepositoryParamResource):
     @require_repo_write()
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
+    @disallow_for_user_namespace
     @nickname("restoreTag")
     @validate_json_request("RestoreTag")
     def post(self, namespace, repository, tag):
