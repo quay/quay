@@ -5944,7 +5944,7 @@ def test_team_sync_security(is_superuser, allow_nonsuperuser, method, expected, 
     def is_superuser_method(_):
         return is_superuser
 
-    with patch("auth.permissions.superusers.is_superuser", is_superuser_method):
+    with patch("auth.permissions.usermanager.is_superuser", is_superuser_method):
         with toggle_feature("NONSUPERUSER_TEAM_SYNCING_SETUP", allow_nonsuperuser):
             with client_with_identity("devtable", client) as cl:
                 expect_success = is_superuser or allow_nonsuperuser

@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives import serialization
 
 import features
 
-from app import app, avatar, superusers, authentication, config_provider
+from app import app, avatar, usermanager, authentication, config_provider
 from auth import scopes
 from auth.auth_context import get_authenticated_user
 from auth.permissions import SuperUserPermission
@@ -158,7 +158,7 @@ def user_view(user, password=None):
         "email": user.email,
         "verified": user.verified,
         "avatar": avatar.get_data_for_user(user),
-        "super_user": superusers.is_superuser(user.username),
+        "super_user": usermanager.is_superuser(user.username),
         "enabled": user.enabled,
     }
 
@@ -449,7 +449,7 @@ class SuperUserSendRecoveryEmail(ApiResource):
             if user is None:
                 raise NotFound()
 
-            if superusers.is_superuser(username):
+            if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot send a recovery email for a superuser")
 
             code = pre_oci_model.create_reset_password_email_code(user.email)
@@ -517,7 +517,7 @@ class SuperUserManagement(ApiResource):
             if user is None:
                 raise NotFound()
 
-            if superusers.is_superuser(username):
+            if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot delete a superuser")
 
             pre_oci_model.mark_user_for_deletion(username)
@@ -539,7 +539,7 @@ class SuperUserManagement(ApiResource):
             if user is None:
                 raise NotFound()
 
-            if superusers.is_superuser(username):
+            if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot update a superuser")
 
             user_data = request.get_json()
@@ -606,7 +606,7 @@ class SuperUserTakeOwnership(ApiResource):
         """
         if SuperUserPermission().can():
             # Disallow for superusers.
-            if superusers.is_superuser(namespace):
+            if usermanager.is_superuser(namespace):
                 raise InvalidRequest("Cannot take ownership of a superuser")
 
             authed_user = get_authenticated_user()

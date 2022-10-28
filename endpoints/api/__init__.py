@@ -12,7 +12,7 @@ from jsonschema import validate, ValidationError
 
 import features
 
-from app import app, authentication, restricted_users
+from app import app, authentication, usermanager
 from auth.permissions import (
     ReadRepositoryPermission,
     ModifyRepositoryPermission,
@@ -20,6 +20,7 @@ from auth.permissions import (
     UserReadPermission,
     UserAdminPermission,
     SuperUserPermission,
+    GlobalReadOnlySuperUserPermission,
 )
 from auth import scopes
 from auth.auth_context import (
@@ -43,8 +44,6 @@ from endpoints.decorators import (
     check_anon_protection,
     require_xhr_from_browser,
     check_readonly,
-    check_restricted_user_readonly,
-    check_restricted_user_readonly,
 )
 from util.metrics.prometheus import timed_blueprint
 from util.names import parse_namespace_repository
@@ -254,7 +253,6 @@ class ApiResource(Resource):
     registered = False
     method_decorators = [
         check_anon_protection,
-        check_restricted_user_readonly(error_class=Unauthorized),
         check_readonly,
     ]
 
@@ -266,9 +264,24 @@ class RepositoryParamResource(ApiResource):
     method_decorators = [
         check_anon_protection,
         parse_repository_name,
-        check_restricted_user_readonly(error_class=Unauthorized),
         check_readonly,
     ]
+
+
+def disallow_for_user_namespace(func):
+    def wrapped(self, namespace_name, repository_name, *args, **kwargs):
+        if features.RESTRICTED_USERS:
+            user = get_authenticated_user()
+            if (
+                user is not None
+                and user.username == namespace_name
+                and usermanager.is_restricted_user(user.username)
+            ):
+                abort(403, message="Operation not allowed on restricted user owned namespace")
+
+        return func(self, namespace_name, repository_name, *args, **kwargs)
+
+    return wrapped
 
 
 def disallow_for_app_repositories(func):
@@ -313,7 +326,7 @@ def require_repo_permission(permission_class, scope, allow_public=False):
 
                 if features.RESTRICTED_USERS and disallow_for_restricted_user:
                     if (
-                        restricted_users.is_restricted(user.username)
+                        usermanager.is_restricted_user(user.username)
                         and not SuperUserPermission().can()
                         and not (allow_public and model.repository_is_public(namespace, repository))
                     ):
@@ -321,7 +334,9 @@ def require_repo_permission(permission_class, scope, allow_public=False):
 
                 permission = permission_class(namespace, repository)
                 if permission.can() or (
-                    allow_public and model.repository_is_public(namespace, repository)
+                    allow_public
+                    and model.repository_is_public(namespace, repository)
+                    or (allow_public and GlobalReadOnlySuperUserPermission().can())
                 ):
                     return func(self, namespace, repository, *args, **kwargs)
 
@@ -346,7 +361,7 @@ require_repo_admin = require_repo_permission(AdministerRepositoryPermission, sco
 
 
 def require_user_permission(permission_class, scope=None):
-    def _require_permission(disallow_for_restricted_users=False):
+    def _require_permission(allow_for_superuser=False, disallow_for_restricted_users=False):
         def wrapper(func):
             @add_method_metadata("oauth2_scope", scope)
             @wraps(func)
@@ -357,7 +372,7 @@ def require_user_permission(permission_class, scope=None):
 
                 if features.RESTRICTED_USERS and disallow_for_restricted_users:
                     if (
-                        restricted_users.is_restricted(user.username)
+                        usermanager.is_restricted_user(user.username)
                         and not SuperUserPermission().can()
                     ):
                         raise Unauthorized()
@@ -366,6 +381,11 @@ def require_user_permission(permission_class, scope=None):
                 permission = permission_class(user.username)
                 if permission.can():
                     return func(self, *args, **kwargs)
+
+                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
+                    if SuperUserPermission().can():
+                        return func(self, *args, **kwargs)
+
                 raise Unauthorized()
 
             return wrapped

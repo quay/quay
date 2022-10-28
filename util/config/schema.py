@@ -1252,6 +1252,14 @@ CONFIG_SCHEMA = {
             "description": "Enables IPv4, IPv6 or dual-stack networking. Defaults to `IPv4`.",
             "x-example": "IPv4",
         },
+        "GLOBAL_READONLY_SUPER_USERS": {
+            "type": "array",
+            "description": "Quay usernames of those super users to be granted global readonly privileges",
+            "uniqueItems": True,
+            "items": {
+                "type": "string",
+            },
+        },
         "FEATURE_SUPERUSERS_FULL_ACCESS": {
             "type": "boolean",
             "description": "Grant superusers full access to repositories, registry-wide",
@@ -1269,18 +1277,8 @@ CONFIG_SCHEMA = {
         },
         "RESTRICTED_USERS_WHITELIST": {
             "type": "array",
-            "description": "Whitelisted users to exclude when FEATURE_RESTRICTED_READ_ONLY_USERS is enabled",
+            "description": "Whitelisted users to exclude when FEATURE_RESTRICTED_USERS is enabled",
             "x-example": ["devtable"],
-        },
-        "RESTRICTED_USER_INCLUDE_ROBOTS": {
-            "type": "boolean",
-            "description": "Whether to include restrict namespace robots when restricting users",
-            "x-example": True,
-        },
-        "RESTRICTED_USER_READ_ONLY": {
-            "type": "boolean",
-            "description": "Whether to restrict restricted users to read-only operations when FEATURE_RESTRICTED_USERS is enabled",
-            "x-example": False,
         },
     },
 }

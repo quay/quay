@@ -38,7 +38,7 @@ from data.model.user import LoginWrappedDBUser
 from data.queue import WorkQueue
 from data.userevent import UserEventsBuilderModule
 from data.userfiles import Userfiles
-from data.users import UserAuthentication, SuperUserManager
+from data.users import UserAuthentication, UserManager
 from data.registry_model import registry_model
 from data.secscan_model import secscan_model
 from image.oci import register_artifact_type
@@ -62,7 +62,6 @@ from util.saas.exceptionlog import Sentry
 from util.names import urn_generator
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
-from util.config.superusermanager import RestrictedUserManager
 from util.label_validator import LabelValidator
 from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
@@ -260,8 +259,7 @@ sentry = Sentry(app)
 build_logs = BuildLogs(app)
 authentication = UserAuthentication(app, config_provider, OVERRIDE_CONFIG_DIRECTORY)
 userevents = UserEventsBuilderModule(app)
-superusers = SuperUserManager(app, authentication)
-restricted_users = RestrictedUserManager(app)
+usermanager = UserManager(app, authentication)
 instance_keys = InstanceKeys(app)
 label_validator = LabelValidator(app)
 build_canceller = BuildCanceller(app)
