@@ -73,6 +73,7 @@ def test_direct_download(
         engine = CloudFrontedS3Storage(
             context,
             "cloudfrontdomain",
+            {},
             "keyid",
             "test/data/test.pem",
             "some/path",
