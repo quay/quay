@@ -111,6 +111,7 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
     engine = CloudFrontedS3Storage(
         context,
         "cloudfrontdomain",
+        {},
         "keyid",
         "test/data/test.pem",
         "some/path",
@@ -135,6 +136,7 @@ def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_
     engine = CloudFrontedS3Storage(
         context,
         "cloudfrontdomain",
+        {},
         "keyid",
         "test/data/test.pem",
         "some/path",

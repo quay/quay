@@ -1035,11 +1035,13 @@ class CloudFrontedS3Storage(S3Storage):
             )
 
         if kwargs:
-            namespace = kwargs.get('namespace')
+            namespace = kwargs.get("namespace")
             if namespace is not None:
                 for key in self.cloudfront_distribution_org_overrides:
                     if key == namespace:
-                        self.cloudfront_distribution_domain = self.cloudfront_distribution_org_overrides.get(namespace)
+                        self.cloudfront_distribution_domain = (
+                            self.cloudfront_distribution_org_overrides.get(namespace)
+                        )
 
         url = "https://%s/%s" % (self.cloudfront_distribution_domain, path)
         if kwargs:
