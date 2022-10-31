@@ -385,6 +385,10 @@ class ProxyModel(OCIModel):
 
         placeholder = manifest.internal_manifest_bytes.as_unicode() == ""
         if up_to_date and not placeholder:
+            if tag.expired:
+                if upstream_manifest is None:
+                    upstream_manifest = self._pull_upstream_manifest(repo_ref.name, manifest_ref)
+                self._check_image_upload_possible_or_prune(repo_ref, upstream_manifest)
             return tag, False
 
         if upstream_manifest is None:
