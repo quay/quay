@@ -103,3 +103,22 @@ $ config-tool editor -c <path-to-config-dir> -p <editor-password> -e <operator-e
 ```
 
 This command will bring up an interactive UI in which a user can modify, validate, and download a config. In addition, Swagger documentation can be reached by going to `{{host}}/swagger/index.html`
+
+### Using HTTPS
+
+You can deploy the config editor using TLS certificates by passing environment variables to the runtime. The public and private keys must contain valid SANs for the route that you wish to deploy the editor on.
+
+The paths can be specifed using `CONFIG_TOOL_PRIVATE_KEY` and `CONFIG_TOOL_PUBLIC_KEY`.
+
+NOTE: If running from a container, the `CONFIG_TOOL_PRIVATE_KEY` and `CONFIG_TOOL_PUBLIC_KEY` values are the locations of the certs INSIDE the container. This might look something like the following:
+
+```
+$ docker run -p 7070:8080 \
+
+-v ${PRIVATE_KEY_PATH}:/tls/localhost.key \
+-v ${PUBLIC_KEY_PATH}:/tls/localhost.crt \
+-e CONFIG_TOOL_PRIVATE_KEY=/tls/localhost.key \
+-e CONFIG_TOOL_PUBLIC_KEY=/tls/localhost.crt \
+-e DEBUGLOG=true \
+-ti config-app:dev
+```
