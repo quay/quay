@@ -4,6 +4,7 @@ Registries following the distribution spec are supported.
 """
 from __future__ import annotations
 import re
+from urllib.parse import urlencode
 
 import requests
 from requests.exceptions import RequestException
@@ -11,7 +12,6 @@ from requests.exceptions import RequestException
 from app import model_cache
 from data.cache import cache_key
 from data.database import ProxyCacheConfig
-
 
 WWW_AUTHENTICATE_REGEX = re.compile(r'(\w+)[=] ?"?([^",]+)"?')
 TOKEN_VALIDITY_LIFETIME_S = 60 * 60  # 1 hour, in seconds - Quay's default
@@ -47,7 +47,10 @@ def parse_www_auth(value: str) -> dict[str, str]:
 
 
 class Proxy:
-    def __init__(self, config: ProxyCacheConfig, repository: str, validation: bool = False):
+    # TODO: replace self._repo with a parameter on each public method instead
+    def __init__(
+        self, config: ProxyCacheConfig, repository: str | None = None, validation: bool = False
+    ):
         self._config = config
         self._validation = validation
 
@@ -182,8 +185,16 @@ class Proxy:
             requests.auth.HTTPBasicAuth(auth[0], auth[1])(self._session)
             return
 
-        scope = f"repository:{self._repo}:pull"
-        auth_url = f"{realm}?service={service}&scope={scope}"
+        params = {}
+        if service is not None:
+            params["service"] = service
+        if self._repo is not None:
+            params["scope"] = f"repository:{self._repo}:pull"
+        query_string = urlencode(params)
+
+        auth_url = f"{realm}"
+        if query_string != "":
+            auth_url = f"{auth_url}?{query_string}"
 
         basic_auth = None
         if auth is not None:
