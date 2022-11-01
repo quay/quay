@@ -300,7 +300,7 @@ parameters:
     value: "9091"
     displayName: clusterip metrics target port
   - name: QUAY_APP_COMPONENT_LABEL_KEY
-    value: "quay-py3-cloudflare-component"
+    value: "quay-py3-component"
     displayName: quay app selector label
   - name: QUAY_APP_COMPONENT_LABEL_VALUE
     value: "app-py3-cloudflare"
