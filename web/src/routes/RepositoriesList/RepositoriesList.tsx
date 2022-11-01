@@ -14,7 +14,7 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
-import {useRecoilState} from 'recoil';
+import {useRecoilState, useRecoilValue} from 'recoil';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {ReactElement, useState} from 'react';
 import {Link, useLocation} from 'react-router-dom';
@@ -68,8 +68,8 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [makePublicModalOpen, setmakePublicModal] = useState(false);
   const [makePrivateModalOpen, setmakePrivateModal] = useState(false);
+  const search = useRecoilValue(searchRepoState);
   const [err, setErr] = useState<string[]>();
-  const location = useLocation();
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
@@ -79,18 +79,16 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     error,
     setPerPage,
     setPage,
-    search,
-    setSearch,
     page,
     perPage,
     totalResults,
-  } = useRepositories(currentOrg);
+  } = useRepositories();
 
-  repos?.sort((r1, r2) => {
+  repos.sort((r1, r2) => {
     return r1.last_modified > r2.last_modified ? -1 : 1;
   });
 
-  const repositoryList: RepoListTableItem[] = repos?.map((repo) => {
+  const repositoryList: RepoListTableItem[] = repos.map((repo) => {
     return {
       namespace: repo.namespace,
       name: repo.name,

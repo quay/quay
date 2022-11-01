@@ -20,6 +20,7 @@ import {addDisplayError} from 'src/resources/ErrorHandling';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import {useCreateRepository} from 'src/hooks/UseCreateRepository';
+import {useRepositories} from 'src/hooks/UseRepositories';
 
 enum visibilityType {
   PUBLIC = 'PUBLIC',
@@ -93,13 +94,19 @@ export default function CreateRepositoryModalTemplate(
     if (!validateInput()) {
       return;
     }
-    await createRepository({
-      namespace: currentOrganization.name,
-      repository: newRepository.name,
-      visibility: repoVisibility.toLowerCase(),
-      description: newRepository.description,
-      repo_kind: 'image',
-    });
+    try {
+      await createRepository({
+        namespace: currentOrganization.name,
+        repository: newRepository.name,
+        visibility: repoVisibility.toLowerCase(),
+        description: newRepository.description,
+        repo_kind: 'image',
+      });
+      props.handleModalToggle();
+    } catch (error) {
+      console.error(error);
+      setErr(addDisplayError('Unable to create repository', error));
+    }
   };
 
   const handleNamespaceSelection = (e, value) => {
