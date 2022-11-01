@@ -7,11 +7,11 @@ import {
   TextInput,
 } from '@patternfly/react-core';
 import './css/Organizations.scss';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 import {isValidEmail} from 'src/libs/utils';
 import {useState} from 'react';
 import FormError from 'src/components/errors/FormError';
 import {addDisplayError} from 'src/resources/ErrorHandling';
-import {useCreateOrganization} from 'src/hooks/UseCreateOrganization';
 
 interface Validation {
   message: string;
@@ -76,7 +76,13 @@ export const CreateOrganizationModal = (
   };
 
   const createOrganizationHandler = async () => {
-    await createOrganization(organizationName, organizationEmail);
+    try {
+      await createOrganization(organizationName, organizationEmail);
+      props.handleModalToggle();
+    } catch (err) {
+      console.error(err);
+      setErr(addDisplayError('Unable to create organization', err));
+    }
   };
 
   const onInputBlur = () => {
