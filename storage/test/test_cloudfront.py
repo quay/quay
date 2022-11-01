@@ -110,24 +110,32 @@ def test_direct_download(
             _TEST_REGION,
             _TEST_USER,
             _TEST_PASSWORD,
-            namespace="testnamespace",
         )
+
         engine.put_content(_TEST_PATH, _TEST_CONTENT)
         assert engine.exists(_TEST_PATH)
 
         # Request a direct download URL for a request from a known AWS IP but not in the same region, returned CloudFront URL.
-        assert "cloudfrontdomain" in engine.get_direct_download_url(_TEST_PATH, test_aws_ip)
+        assert "cloudfrontdomain" in engine.get_direct_download_url(
+            _TEST_PATH, test_aws_ip, namespace="testnamespace"
+        )
 
         # Request a direct download URL for a request from a known AWS IP and in the same region, returned S3 URL.
-        assert "s3.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH, "4.0.0.2")
+        assert "s3.amazonaws.com" in engine.get_direct_download_url(
+            _TEST_PATH, "4.0.0.2", namespace="testnamespace"
+        )
 
         if ipranges_populated:
             # Request a direct download URL for a request from a non-AWS IP, and ensure we are returned a CloudFront URL.
-            assert "cloudfrontdomain" in engine.get_direct_download_url(_TEST_PATH, "1.2.3.4")
+            assert "cloudfrontdomain" in engine.get_direct_download_url(
+                _TEST_PATH, "1.2.3.4", namespace="testnamespace"
+            )
         else:
             # Request a direct download URL for a request from a non-AWS IP, but since IP Ranges isn't populated, we still
             # get back an S3 URL.
-            assert "s3.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH, "1.2.3.4")
+            assert "s3.amazonaws.com" in engine.get_direct_download_url(
+                _TEST_PATH, "1.2.3.4", namespace="testnamespace"
+            )
 
 
 @mock_s3
