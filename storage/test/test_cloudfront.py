@@ -73,6 +73,7 @@ def test_direct_download(
         engine = CloudFrontedS3Storage(
             context,
             "cloudfrontdomain",
+            {},
             "keyid",
             "test/data/test.pem",
             "some/path",
@@ -98,6 +99,48 @@ def test_direct_download(
             # get back an S3 URL.
             assert "s3.amazonaws.com" in engine.get_direct_download_url(_TEST_PATH, "1.2.3.4")
 
+        engine = CloudFrontedS3Storage(
+            context,
+            "defaultdomain",
+            {"testnamespace": "overridedomain"},
+            "keyid",
+            "test/data/test.pem",
+            "some/path",
+            _TEST_BUCKET,
+            _TEST_REGION,
+            _TEST_USER,
+            _TEST_PASSWORD,
+        )
+
+        engine.put_content(_TEST_PATH, _TEST_CONTENT)
+        assert engine.exists(_TEST_PATH)
+
+        # Request a direct download URL for a request from a known AWS IP but not in the same region, returned CloudFront URL.
+        assert "overridedomain" in engine.get_direct_download_url(
+            _TEST_PATH, test_aws_ip, namespace="testnamespace"
+        )
+
+        assert "defaultdomain" in engine.get_direct_download_url(
+            _TEST_PATH, test_aws_ip, namespace="defaultnamespace"
+        )
+
+        # Request a direct download URL for a request from a known AWS IP and in the same region, returned S3 URL.
+        assert "s3.amazonaws.com" in engine.get_direct_download_url(
+            _TEST_PATH, "4.0.0.2", namespace="testnamespace"
+        )
+
+        if ipranges_populated:
+            # Request a direct download URL for a request from a non-AWS IP, and ensure we are returned a CloudFront URL.
+            assert "overridedomain" in engine.get_direct_download_url(
+                _TEST_PATH, "1.2.3.4", namespace="testnamespace"
+            )
+        else:
+            # Request a direct download URL for a request from a non-AWS IP, but since IP Ranges isn't populated, we still
+            # get back an S3 URL.
+            assert "s3.amazonaws.com" in engine.get_direct_download_url(
+                _TEST_PATH, "1.2.3.4", namespace="testnamespace"
+            )
+
 
 @mock_s3
 def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populated, app):
@@ -110,6 +153,7 @@ def test_direct_download_no_ip(test_aws_ip, aws_ip_range_data, ipranges_populate
     engine = CloudFrontedS3Storage(
         context,
         "cloudfrontdomain",
+        {},
         "keyid",
         "test/data/test.pem",
         "some/path",
@@ -134,6 +178,7 @@ def test_direct_download_with_username(test_aws_ip, aws_ip_range_data, ipranges_
     engine = CloudFrontedS3Storage(
         context,
         "cloudfrontdomain",
+        {},
         "keyid",
         "test/data/test.pem",
         "some/path",

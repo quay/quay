@@ -144,7 +144,11 @@ def get_image_layer(namespace, repository, image_id, headers):
             user = get_authenticated_user()
             username = user.username if user else None
             direct_download_url = store.get_direct_download_url(
-                legacy_image.blob.placements, path, get_request_ip(), username=username
+                legacy_image.blob.placements,
+                path,
+                get_request_ip(),
+                username=username,
+                namespace=namespace,
             )
             if direct_download_url:
                 logger.debug("Returning direct download URL")
