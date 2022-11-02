@@ -101,8 +101,8 @@ def test_direct_download(
 
         engine = CloudFrontedS3Storage(
             context,
-            "failure",
-            {"testnamespace": "cloudfrontdomain"},
+            "defaultdomain",
+            {"testnamespace": "overridedomain"},
             "keyid",
             "test/data/test.pem",
             "some/path",
@@ -116,8 +116,12 @@ def test_direct_download(
         assert engine.exists(_TEST_PATH)
 
         # Request a direct download URL for a request from a known AWS IP but not in the same region, returned CloudFront URL.
-        assert "cloudfrontdomain" in engine.get_direct_download_url(
+        assert "overridedomain" in engine.get_direct_download_url(
             _TEST_PATH, test_aws_ip, namespace="testnamespace"
+        )
+
+        assert "defaultdomain" in engine.get_direct_download_url(
+            _TEST_PATH, test_aws_ip, namespace="defaultnamespace"
         )
 
         # Request a direct download URL for a request from a known AWS IP and in the same region, returned S3 URL.
@@ -127,7 +131,7 @@ def test_direct_download(
 
         if ipranges_populated:
             # Request a direct download URL for a request from a non-AWS IP, and ensure we are returned a CloudFront URL.
-            assert "cloudfrontdomain" in engine.get_direct_download_url(
+            assert "overridedomain" in engine.get_direct_download_url(
                 _TEST_PATH, "1.2.3.4", namespace="testnamespace"
             )
         else:
