@@ -578,7 +578,7 @@ class QuayUserField(ForeignKeyField):
         super(QuayUserField, self).__init__(*args, **kwargs)
 
 
-@lru_cache(maxsize=16)
+@lru_cache(maxsize=32)
 def _get_enum_field_values(enum_field):
     values = []
     for row in enum_field.rel_model.select():

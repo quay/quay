@@ -1,6 +1,6 @@
 import json
 
-from peewee import SQL
+from peewee import SQL, JOIN
 
 from data.database import (
     Notification,
@@ -29,7 +29,7 @@ def create_notification(kind_name, target, metadata={}, lookup_path=None):
 
 def create_unique_notification(kind_name, target, metadata={}):
     with db_transaction():
-        if list_notifications(target, kind_name).count() == 0:
+        if not has_notification(target, kind_name):
             create_notification(kind_name, target, metadata)
 
 
@@ -45,24 +45,42 @@ def lookup_notifications_by_path_prefix(prefix):
     return list((Notification.select().where(Notification.lookup_path % prefix)))
 
 
+def has_notifications(user):
+    notification_ids = _lookup_notification_ids(user, limit=1)
+    return len(notification_ids) > 0
+
+
+def has_notification(user, kind_name):
+    notification_ids = _lookup_notification_ids(user, kind_name, limit=1)
+    return len(notification_ids) > 0
+
+
 def list_notifications(
     user, kind_name=None, id_filter=None, include_dismissed=False, page=None, limit=None
 ):
+    notification_ids = _lookup_notification_ids(
+        user, kind_name, id_filter, include_dismissed, page, limit
+    )
+    if not notification_ids:
+        return []
 
-    base_query = Notification.select(
-        Notification.id,
-        Notification.uuid,
-        Notification.kind,
-        Notification.metadata_json,
-        Notification.dismissed,
-        Notification.lookup_path,
-        Notification.created,
-        Notification.created.alias("cd"),
-        Notification.target,
-    ).join(NotificationKind)
+    return (
+        Notification.select(Notification, User, NotificationKind)
+        .join(User)
+        .switch(Notification)
+        .join(NotificationKind)
+        .where(Notification.id << notification_ids)
+        .order_by(Notification.created.desc())
+    )
+
+
+def _lookup_notification_ids(
+    user, kind_name=None, id_filter=None, include_dismissed=False, page=None, limit=None
+):
+    base_query = Notification.select(Notification.id, Notification.created.alias("cd"))
 
     if kind_name is not None:
-        base_query = base_query.where(NotificationKind.name == kind_name)
+        base_query = base_query.join(NotificationKind).where(NotificationKind.name == kind_name)
 
     if id_filter is not None:
         base_query = base_query.where(Notification.uuid == id_filter)
@@ -97,7 +115,7 @@ def list_notifications(
     elif limit:
         query = query.limit(limit)
 
-    return query.order_by(SQL("cd desc"))
+    return [n.id for n in query.order_by(SQL("cd desc"))]
 
 
 def delete_all_notifications_by_path_prefix(prefix):
@@ -249,14 +267,12 @@ def list_repo_notifications(namespace_name, repository_name, event_name=None):
         RepositoryNotification.select(RepositoryNotification, Repository, Namespace)
         .join(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
+        .switch(RepositoryNotification)
+        .join(ExternalNotificationEvent)
         .where(Namespace.username == namespace_name, Repository.name == repository_name)
     )
 
     if event_name:
-        query = (
-            query.switch(RepositoryNotification)
-            .join(ExternalNotificationEvent)
-            .where(ExternalNotificationEvent.name == event_name)
-        )
+        query = query.where(ExternalNotificationEvent.name == event_name)
 
     return query

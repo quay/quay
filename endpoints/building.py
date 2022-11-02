@@ -38,7 +38,7 @@ class BuildTriggerDisabledException(Exception):
 
 def start_build(repository, prepared_build, pull_robot_name=None):
     # Ensure that builds are only run in image repositories.
-    if repository.kind.name != "image":
+    if model.repository.get_repo_kind_name(repository) != "image":
         raise Exception("Attempt to start a build for application repository %s" % repository.id)
 
     # Ensure the repository isn't in mirror or read-only mode.

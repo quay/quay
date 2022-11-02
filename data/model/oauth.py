@@ -332,7 +332,12 @@ def reset_client_secret(application):
 
 def lookup_application(org, client_id):
     try:
-        return OAuthApplication.get(organization=org, client_id=client_id)
+        return (
+            OAuthApplication.select(OAuthApplication, User)
+            .join(User)
+            .where(OAuthApplication.organization == org, OAuthApplication.client_id == client_id)
+            .get()
+        )
     except OAuthApplication.DoesNotExist:
         return None
 
@@ -369,9 +374,8 @@ def lookup_access_token_for_user(user_obj, token_uuid):
 
 def list_access_tokens_for_user(user_obj):
     query = (
-        OAuthAccessToken.select()
+        OAuthAccessToken.select(OAuthAccessToken, OAuthApplication, User)
         .join(OAuthApplication)
-        .switch(OAuthAccessToken)
         .join(User)
         .where(OAuthAccessToken.authorized_user == user_obj)
     )
@@ -380,8 +384,11 @@ def list_access_tokens_for_user(user_obj):
 
 
 def list_applications_for_org(org):
-    query = OAuthApplication.select().join(User).where(OAuthApplication.organization == org)
-
+    query = (
+        OAuthApplication.select(OAuthApplication, User)
+        .join(User)
+        .where(OAuthApplication.organization == org)
+    )
     return query
 
 

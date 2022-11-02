@@ -22,12 +22,22 @@ def test_start_build_disabled_trigger(app, client):
     }
 
     conduct_call(
-        client,
-        "webhooks.build_trigger_webhook",
-        url_for,
-        "POST",
-        params,
-        None,
-        400,
-        headers=headers,
+        client, "webhooks.build_trigger_webhook", url_for, "POST", params, {}, 403, headers=headers,
+    )
+
+
+def test_start_build_normal_trigger(app, client):
+    trigger = model.build.list_build_triggers("devtable", "building")[0]
+    trigger.save()
+
+    params = {
+        "trigger_uuid": trigger.uuid,
+    }
+
+    headers = {
+        "Authorization": gen_basic_auth("devtable", "password"),
+    }
+
+    conduct_call(
+        client, "webhooks.build_trigger_webhook", url_for, "POST", params, {}, 400, headers=headers,
     )

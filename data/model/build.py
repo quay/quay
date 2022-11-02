@@ -12,6 +12,7 @@ from data.database import (
     User,
     RepositoryBuild,
     BUILD_PHASE,
+    DisableReason,
     db_random_func,
     UseThenDisconnect,
     TRIGGER_DISABLE_REASON,
@@ -67,7 +68,7 @@ def get_build_trigger(trigger_uuid):
     try:
         return (
             RepositoryBuildTrigger.select(
-                RepositoryBuildTrigger, BuildTriggerService, Repository, Namespace
+                RepositoryBuildTrigger, BuildTriggerService, Repository, Namespace, DisableReason
             )
             .join(BuildTriggerService)
             .switch(RepositoryBuildTrigger)
@@ -75,6 +76,8 @@ def get_build_trigger(trigger_uuid):
             .join(Namespace, on=(Repository.namespace_user == Namespace.id))
             .switch(RepositoryBuildTrigger)
             .join(User, on=(RepositoryBuildTrigger.connected_user == User.id))
+            .switch(RepositoryBuildTrigger)
+            .join(DisableReason, JOIN.LEFT_OUTER)
             .where(RepositoryBuildTrigger.uuid == trigger_uuid)
             .get()
         )
@@ -85,11 +88,15 @@ def get_build_trigger(trigger_uuid):
 
 def list_build_triggers(namespace_name, repository_name):
     return (
-        RepositoryBuildTrigger.select(RepositoryBuildTrigger, BuildTriggerService, Repository)
+        RepositoryBuildTrigger.select(
+            RepositoryBuildTrigger, BuildTriggerService, Repository, DisableReason
+        )
         .join(BuildTriggerService)
         .switch(RepositoryBuildTrigger)
         .join(Repository)
         .join(Namespace, on=(Repository.namespace_user == Namespace.id))
+        .switch(RepositoryBuildTrigger)
+        .join(DisableReason, JOIN.LEFT_OUTER)
         .where(Namespace.username == namespace_name, Repository.name == repository_name)
     )
 

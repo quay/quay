@@ -2,6 +2,7 @@ import json
 
 from app import notification_queue
 from data import model
+from data.database import RepositoryNotification as RepositoryNotificationRow
 from data.model import InvalidNotificationException
 from endpoints.api.repositorynotification_models_interface import (
     RepoNotificationInterface,
@@ -91,8 +92,8 @@ class RepoNotificationPreOCIModel(RepoNotificationInterface):
         return RepositoryNotification(
             uuid=notification.uuid,
             title=notification.title,
-            event_name=notification.event.name,
-            method_name=notification.method.name,
+            event_name=RepositoryNotificationRow.event.get_name(notification.event_id),
+            method_name=RepositoryNotificationRow.method.get_name(notification.method_id),
             config_json=notification.config_json,
             event_config_json=notification.event_config_json,
             number_of_failures=notification.number_of_failures,

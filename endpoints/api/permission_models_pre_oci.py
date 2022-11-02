@@ -30,9 +30,9 @@ class PreOCIModel(PermissionDataInterface):
         repo_perms = model.user.get_all_repo_users(namespace_name, repository_name)
 
         if org:
-            users_filter = {perm.user for perm in repo_perms}
+            user_ids_filter = {perm.user_id for perm in repo_perms}
             org_members = model.organization.get_organization_member_set(
-                org, users_filter=users_filter
+                org, user_ids_filter=user_ids_filter
             )
 
         def is_org_member(user):
@@ -65,7 +65,7 @@ class PreOCIModel(PermissionDataInterface):
         try:
             org = model.organization.get_organization(namespace_name)
             org_members = model.organization.get_organization_member_set(
-                org, users_filter={perm.user}
+                org, user_ids_filter={perm.user_id}
             )
             is_org_member = perm.user.robot or perm.user.username in org_members
         except model.InvalidOrganizationException:
@@ -83,7 +83,7 @@ class PreOCIModel(PermissionDataInterface):
             try:
                 org = model.organization.get_organization(namespace_name)
                 org_members = model.organization.get_organization_member_set(
-                    org, users_filter={perm.user}
+                    org, user_ids_filter={perm.user_id}
                 )
                 is_org_member = perm.user.robot or perm.user.username in org_members
             except model.InvalidOrganizationException:

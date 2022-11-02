@@ -59,7 +59,7 @@ class PreOCIModel(NotificationWorkerDataInterface):
 
     def user_has_local_notifications(self, target_username):
         user = model.user.get_namespace_user(target_username)
-        return bool(list(model.notification.list_notifications(user)))
+        return model.notification.has_notifications(user)
 
 
 pre_oci_model = PreOCIModel()
