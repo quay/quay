@@ -1010,6 +1010,7 @@ class CloudFrontedS3Storage(S3Storage):
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
+        domain = self.cloudfront_distribution_domain
         # If CloudFront could not be loaded, fall back to normal S3.
         if self.cloudfront_privatekey is None or request_ip is None:
             return super(CloudFrontedS3Storage, self).get_direct_download_url(
@@ -1036,13 +1037,10 @@ class CloudFrontedS3Storage(S3Storage):
 
         if kwargs:
             namespace = kwargs.get("namespace")
-            if namespace is not None:
-                if namespace in self.cloudfront_distribution_org_overrides:
-                    self.cloudfront_distribution_domain = (
-                        self.cloudfront_distribution_org_overrides.get(namespace)
-                    )
+            if namespace in self.cloudfront_distribution_org_overrides:
+                domain = self.cloudfront_distribution_org_overrides.get(namespace)
 
-        url = "https://%s/%s" % (self.cloudfront_distribution_domain, path)
+        url = "https://%s/%s" % (domain, path)
         if kwargs:
             url += f"?{urllib.parse.urlencode(kwargs)}"
 
