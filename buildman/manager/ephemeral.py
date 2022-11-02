@@ -922,11 +922,11 @@ class EphemeralBuilderManager(BuildStateInterface):
                 logger.debug("Build job %s scheduled.", job_id)
             else:
                 logger.warning(
-                    "Unsuccessful schedule. Build ID: %s. Retry restored.",
+                    "Unsuccessful schedule. Build ID: %s. Check build executor service.",
                     build_job.repo_build.uuid,
                 )
                 self.job_unschedulable(job_id)
-                self._queue.incomplete(job_item, restore_retry=True, retry_after=retry_timeout)
+                self._queue.incomplete(job_item, restore_retry=False, retry_after=retry_timeout)
 
 
 def _extract_current_step(current_status_string):
