@@ -269,6 +269,7 @@ class RepositoryParamResource(ApiResource):
 
 
 def disallow_for_user_namespace(func):
+    @wraps(func)
     def wrapped(self, namespace_name, repository_name, *args, **kwargs):
         if features.RESTRICTED_USERS:
             user = get_authenticated_user()
