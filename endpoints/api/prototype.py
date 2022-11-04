@@ -5,6 +5,7 @@ Manage default permissions added to repositories.
 from flask import request
 
 from endpoints.api import (
+    allow_if_superuser,
     resource,
     nickname,
     ApiResource,
@@ -170,7 +171,7 @@ class PermissionPrototypeList(ApiResource):
         Create a new permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -230,7 +231,7 @@ class PermissionPrototypeList(ApiResource):
 @path_param("prototypeid", "The ID of the prototype")
 class PermissionPrototype(ApiResource):
     """
-    Resource for managingin individual permission prototypes.
+    Resource for managinging individual permission prototypes.
     """
 
     schemas = {
@@ -261,7 +262,7 @@ class PermissionPrototype(ApiResource):
         Delete an existing permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -285,7 +286,7 @@ class PermissionPrototype(ApiResource):
         Update the role of an existing permission prototype.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
