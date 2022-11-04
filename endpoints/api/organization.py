@@ -648,7 +648,7 @@ class OrganizationApplications(ApiResource):
         List the applications for the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -667,7 +667,7 @@ class OrganizationApplications(ApiResource):
         Creates a new application under this organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -738,7 +738,7 @@ class OrganizationApplicationResource(ApiResource):
         Retrieves the application with the specified client_id under the specified organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -760,7 +760,7 @@ class OrganizationApplicationResource(ApiResource):
         Updates an application under this organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -794,7 +794,7 @@ class OrganizationApplicationResource(ApiResource):
         Deletes the application under this organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -829,7 +829,7 @@ class OrganizationApplicationResetClientSecret(ApiResource):
         Resets the client secret of the application.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             try:
                 org = model.organization.get_organization(orgname)
             except model.InvalidOrganizationException:
@@ -886,7 +886,7 @@ class OrganizationProxyCacheConfig(ApiResource):
         Retrieves the proxy cache configuration of the organization.
         """
         permission = OrganizationMemberPermission(orgname)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         try:
@@ -903,7 +903,7 @@ class OrganizationProxyCacheConfig(ApiResource):
         Creates proxy cache configuration for the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         try:
@@ -931,7 +931,7 @@ class OrganizationProxyCacheConfig(ApiResource):
         Delete proxy cache configuration for the organization.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         try:
@@ -973,7 +973,7 @@ class ProxyCacheConfigValidation(ApiResource):
     @validate_json_request("NewProxyCacheConfig")
     def post(self, orgname):
         permission = AdministerOrganizationPermission(orgname)
-        if not permission.can():
+        if not permission.can() and not allow_if_superuser():
             raise Unauthorized()
 
         try:

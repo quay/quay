@@ -312,7 +312,7 @@ class OrgRobotPermissions(ApiResource):
         Returns the list of repository permissions for the org's robot.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             robot = model.get_org_robot(robot_shortname, orgname)
             permissions = model.list_robot_permissions(robot.name)
 
