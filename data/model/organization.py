@@ -12,12 +12,14 @@ from data.database import (
 from data.model import (
     user,
     team,
+    permission,
     DataModelException,
     InvalidOrganizationException,
     InvalidUsernameException,
     db_transaction,
     _basequery,
 )
+from endpoints.exception import NotFound
 
 
 def create_organization(name, email, creating_user, email_required=True, is_possible_abuser=False):
@@ -75,6 +77,65 @@ def convert_user_to_organization(user_obj, admin_user):
 
 def get_user_organizations(username):
     return _basequery.get_user_organizations(username)
+
+
+# TODO: Simplify this?
+def org_view(
+    org,
+    public_namespaces,
+    org_admin_perms,
+    create_repo_perms,
+    allow_if_superuser,
+    avatar,
+    user_admin=True,
+):
+    admin_org = org_admin_perms(org.username)
+    org_response = {
+        "name": org.username,
+        "avatar": avatar.get_data_for_org(org),
+        "can_create_repo": create_repo_perms(org.username).can(),
+        "public": org.username in public_namespaces,
+        "members": fetch_members_of_org(
+            org, org_admin_perms, allow_if_superuser, avatar
+        ),  # Fetch members of the organization
+    }
+
+    if user_admin:
+        org_response["is_org_admin"] = admin_org.can()
+        org_response["preferred_namespace"] = not (org.stripe_id is None)
+    return org_response
+
+
+def get_paginated_user_organizations(
+    username: str,
+    page_number: int,
+    items_per_page: int,
+    public_namespaces: list,
+    is_admin: bool,
+    org_admin_perms,
+    create_repo_perms,
+    allow_if_superuser,
+    avatar,
+):
+    organizations = {
+        o.username: o
+        for o in _basequery.get_paginated_user_organizations(username, page_number, items_per_page)
+    }
+
+    if public_namespaces:
+        organizations.update({ns: user.get_namespace_user(ns) for ns in public_namespaces})
+    return [
+        org_view(
+            o,
+            public_namespaces,
+            org_admin_perms,
+            create_repo_perms,
+            allow_if_superuser,
+            avatar,
+            user_admin=is_admin,
+        )
+        for o in list(organizations.values())
+    ]
 
 
 def get_organization_team_members(teamid):
@@ -194,3 +255,48 @@ def add_user_as_admin(user_obj, org_obj):
         team.add_user_to_team(user_obj, admin_team)
     except team.UserAlreadyInTeam:
         pass
+
+
+def fetch_org_member_data(member, avatar):
+    # move this check to query!
+    if member.user.robot:
+        return
+
+    return {
+        "name": member.user.username,
+        "kind": "user",
+        "avatar": avatar.get_data_for_user(member.user),
+        "teams": [],
+        "repositories": [],
+    }
+
+
+def fetch_members_of_org(orgname, org_admin_perms, allow_if_superuser, avatar):
+    org_admin = org_admin_perms(orgname)
+    if org_admin.can() or allow_if_superuser():
+        try:
+            get_organization(orgname)
+        except InvalidOrganizationException:
+            raise NotFound()
+
+    members_dict = {}
+    members = team.list_distinct_organization_members_by_teams(orgname)
+    for member in members:
+        username = member.user.username
+        if username not in members_dict:
+            members_dict[username] = fetch_org_member_data(member, avatar)
+        members_dict[username]["teams"].append(
+            {
+                "name": member.team.name,
+                "avatar": avatar.get_data_for_team(member.team),
+            }
+        )
+
+    # Loop to add direct repository permissions.
+    for org_perms in permission.list_organization_member_permissions(orgname):
+        if username not in members_dict:
+            continue
+        username = org_perms.user.username
+        members_dict[username]["repositories"].append(org_perms.repository.name)
+
+    return list(members_dict.values())

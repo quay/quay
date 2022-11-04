@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import bcrypt
+import features
 from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
@@ -1392,6 +1393,73 @@ def get_quay_user_from_federated_login_name(username):
             user_id = result.user_id
 
     return get_namespace_user_by_user_id(user_id) if user_id else None
+
+
+# TODO@sunanda: Might need to look at this call
+def quota_view(quota):
+    quota_limits = list(namespacequota.get_namespace_quota_limit_list(quota))
+
+    return {
+        "id": quota.id,
+        "limit_bytes": quota.limit_bytes,
+        "limits": [
+            {
+                "id": limit.id,
+                "type": limit.quota_type.name,
+                "limit_percent": limit.percent_of_limit,
+            }
+            for limit in quota_limits
+        ],
+    }
+
+
+def login_view(login):
+    try:
+        metadata = json.loads(login.metadata_json)
+    except:
+        metadata = {}
+
+    return {
+        "service": login.service.name,
+        "service_identifier": login.service_ident,
+        "metadata": metadata,
+    }
+
+
+def get_admin_user_response(user, authentication):
+    return {
+        "can_create_repo": True,
+        "is_me": True,
+        "verified": user.verified,
+        "email": user.email,
+        "logins": [login_view(login) for login in list_federated_logins(user)],
+        "invoice_email": user.invoice_email,
+        "invoice_email_address": user.invoice_email_address,
+        "preferred_namespace": not (user.stripe_id is None),
+        "tag_expiration_s": user.removed_tag_expiration_s,
+        "prompts": get_user_prompts(user),
+        "company": user.company,
+        "family_name": user.family_name,
+        "given_name": user.given_name,
+        "location": user.location,
+        "is_free_account": user.stripe_id is None,
+        "has_password_set": authentication.has_password_set(user.username),
+    }
+
+
+# TODO@sunanda: Look for optimizing below lines
+def feature_data(user, SuperUserPermission):
+    response = {}
+    # Fetch quotas based on list of orgs!
+    if features.QUOTA_MANAGEMENT:
+        quotas = namespacequota.get_namespace_quota_list(user.username)
+        response["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
+        response["quota_report"] = namespacequota.get_quota_for_view(user.username)
+
+    if features.SUPER_USERS and SuperUserPermission().can():
+        response["super_user"] = user and SuperUserPermission().can()
+
+    return response
 
 
 class LoginWrappedDBUser(UserMixin):

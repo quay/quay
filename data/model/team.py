@@ -303,6 +303,18 @@ def list_organization_members_by_teams(organization):
     return query
 
 
+def list_distinct_organization_members_by_teams(organization):
+    query = (
+        TeamMember.select(Team, User)
+        .distinct()
+        .join(Team)
+        .switch(TeamMember)
+        .join(User)
+        .where(Team.organization == organization)
+    )
+    return query
+
+
 def get_organization_team_member_invites(teamid):
     joined = TeamMemberInvite.select().join(Team).join(User)
     query = joined.where(Team.id == teamid)
