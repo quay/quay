@@ -992,7 +992,7 @@ class ProxyCacheConfigValidation(ApiResource):
             existing = model.organization.get_organization(orgname)
             config.organization = existing
 
-            proxy = Proxy(config, "something-totally-fake", True)
+            proxy = Proxy(config, validation=True)
             response = proxy.get(f"{proxy.base_url}/v2/")
             if response.status_code == 200:
                 return "Valid", 202
