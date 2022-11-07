@@ -401,7 +401,7 @@ class FederatedUserManager(ConfigUserManager):
         )
 
     def has_restricted_users(self) -> bool:
-        return self.federated_users.has_restricted_users() or super().has_superusers()
+        return self.federated_users.has_restricted_users() or super().has_restricted_users()
 
     def is_global_readonly_superuser(self, username: str) -> bool:
         return super().is_global_readonly_superuser(username)
