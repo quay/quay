@@ -12,6 +12,7 @@ from auth.auth_context import get_authenticated_user
 from endpoints.decorators import anon_allowed
 from endpoints.exception import InvalidToken
 from endpoints.api import query_param, parse_args
+from data.database import User
 from util.parsing import truthy_bool
 from data import model
 from auth import scopes
@@ -46,8 +47,14 @@ class OrganizationResource(ApiResource):
         default=10,
     )
     @query_param(
-        "sort",  # ?sort=name,sort_type=asc/desc
+        "sort_by",
         "Field to sort the response",
+        type=str,
+        default=User.creation_date,  # By default sort by org creation_date TODO: Build a str to field map for supported fields
+    )
+    @query_param(
+        "sort_type",
+        "Sort type - asc/desc",
         type=str,
         default=None,
     )
@@ -63,26 +70,38 @@ class OrganizationResource(ApiResource):
         if user is None or user.organization or not UserReadPermission(user.username).can():
             raise InvalidToken("Requires authentication", payload={"session_required": False})
 
-        user_response = {
-            "anonymous": False,
-            "username": user.username,
-            "avatar": avatar.get_data_for_user(user),
-        }
+        username = user.username
+        user_response = model.user.get_default_user_response(user, avatar)
 
-        user_admin = UserAdminPermission(user.username)
-        is_admin = user_admin.can()
+        # User perms
+        is_admin = UserAdminPermission(username).can()
+        user_read = UserReadPermission(username)
 
         if is_admin:
             user_response.update(model.user.get_admin_user_response(user, authentication))
 
-        user_view_perm = UserReadPermission(user.username)
-        if user_view_perm.can():
+        org_query = model.organization.get_user_organizations_base_query(username)
+        query_obj = model.querybuilder.QueryBuilder(
+            query=org_query
+        )  # provides a cursor, does not execute the query
+
+        if user_read.can():
             # Retrieve the organizations only if user has read permissions
             public_namespaces = app.config.get("PUBLIC_NAMESPACES", [])
+
+            query_cursor = (
+                query_obj.sort(
+                    field=parsed_args.get("sort_by"), sort_type=parsed_args.get("sort_type", None)
+                )
+                .paginate(
+                    page_number=parsed_args.get("page_number", 1),
+                    items_per_page=parsed_args.get("per_page", 10),
+                )
+                .execute()
+            )
+
             user_response["organizations"] = model.organization.get_paginated_user_organizations(
-                user.username,
-                parsed_args.get("page_number", 1),
-                parsed_args.get("per_page", 1),
+                query_cursor,
                 public_namespaces,
                 is_admin,
                 AdministerOrganizationPermission,
@@ -90,6 +109,9 @@ class OrganizationResource(ApiResource):
                 allow_if_superuser,
                 avatar,
             )
+
+        # Do we check for user_view_perms here?
+        user_response["orgs_count"] = query_obj.count()
 
         # Update response based on feature flags
         user_response.update(model.user.feature_data(user, SuperUserPermission))

@@ -106,10 +106,12 @@ def org_view(
     return org_response
 
 
+def get_user_organizations_base_query(username: str):
+    return _basequery.get_user_organizations(username)
+
+
 def get_paginated_user_organizations(
-    username: str,
-    page_number: int,
-    items_per_page: int,
+    query_cursor,
     public_namespaces: list,
     is_admin: bool,
     org_admin_perms,
@@ -117,10 +119,7 @@ def get_paginated_user_organizations(
     allow_if_superuser,
     avatar,
 ):
-    organizations = {
-        o.username: o
-        for o in _basequery.get_paginated_user_organizations(username, page_number, items_per_page)
-    }
+    organizations = {o.username: o for o in query_cursor}
 
     if public_namespaces:
         organizations.update({ns: user.get_namespace_user(ns) for ns in public_namespaces})

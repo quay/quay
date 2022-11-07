@@ -1413,6 +1413,14 @@ def quota_view(quota):
     }
 
 
+def get_default_user_response(user, avatar):
+    return {
+        "anonymous": False,
+        "username": user.username,
+        "avatar": avatar.get_data_for_user(user),
+    }
+
+
 def login_view(login):
     try:
         metadata = json.loads(login.metadata_json)
