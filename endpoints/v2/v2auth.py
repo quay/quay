@@ -261,12 +261,21 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                         )
                 else:
                     logger.debug("No permission to modify repository %s/%s", namespace, reponame)
+
+            elif (
+                features.RESTRICTED_USERS
+                and user is not None
+                and usermanager.is_restricted_user(user.username)
+                and user.username == namespace
+            ):
+                logger.debug("Restricted users cannot create repository %s/%s", namespace, reponame)
+
             else:
                 if (
                     app.config.get("CREATE_NAMESPACE_ON_PUSH", False)
                     and model.user.get_namespace_user(namespace) is None
                 ):
-                    logger.debug("Creating organization: %s/%s", namespace, reponame)
+                    logger.debug("Creating organization for: %s/%s", namespace, reponame)
                     try:
                         model.organization.create_organization(
                             namespace,
