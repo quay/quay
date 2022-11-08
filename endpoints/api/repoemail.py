@@ -38,7 +38,7 @@ class RepositoryAuthorizedEmail(RepositoryParamResource):
     Resource for checking and authorizing e-mail addresses to receive repo notifications.
     """
 
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("checkRepoEmailAuthorized")
     def get(self, namespace, repository, email):
         """
@@ -52,7 +52,7 @@ class RepositoryAuthorizedEmail(RepositoryParamResource):
         del response["code"]
         return response
 
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("sendAuthorizeRepoEmail")
     def post(self, namespace, repository, email):
         """
