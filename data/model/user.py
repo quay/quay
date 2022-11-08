@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import bcrypt
 import features
+from enum import Enum
 from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
@@ -1490,3 +1491,9 @@ class LoginWrappedDBUser(UserMixin):
 
     def get_id(self):
         return str(self._uuid)
+
+
+class UserFieldMapping(Enum):
+    username = User.username
+    email = User.email
+    creation_date = User.creation_date

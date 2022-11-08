@@ -46,12 +46,7 @@ class OrganizationResource(ApiResource):
         type=int,
         default=10,
     )
-    @query_param(
-        "sort_by",
-        "Field to sort the response",
-        type=str,
-        default=User.creation_date,  # By default sort by org creation_date TODO: Build a str to field map for supported fields
-    )
+    @query_param("sort_by", "Field to sort the response", type=str, default="creation_date")
     @query_param(
         "sort_type",
         "Sort type - asc/desc",
@@ -73,10 +68,10 @@ class OrganizationResource(ApiResource):
     @anon_allowed
     def get(self, parsed_args):
         user = get_authenticated_user()
-        if user is None or user.organization or not UserReadPermission(user.username).can():
+        username = user.username
+        if user is None or user.organization or not UserReadPermission(username).can():
             raise InvalidToken("Requires authentication", payload={"session_required": False})
 
-        username = user.username
         user_response = model.user.get_default_user_response(user, avatar)
 
         # User perms
@@ -98,11 +93,9 @@ class OrganizationResource(ApiResource):
         if user_read.can():
             # Retrieve the organizations only if user has read permissions
             public_namespaces = app.config.get("PUBLIC_NAMESPACES", [])
-
+            sort_by = model.user.UserFieldMapping[parsed_args.get("sort_by")].value
             query_cursor = (
-                query_obj.sort(
-                    field=parsed_args.get("sort_by"), sort_type=parsed_args.get("sort_type", None)
-                )
+                query_obj.sort(field=sort_by, sort_type=parsed_args.get("sort_type", None))
                 .paginate(
                     page_number=parsed_args.get("page_number", 1),
                     items_per_page=parsed_args.get("per_page", 10),

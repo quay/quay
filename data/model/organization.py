@@ -109,16 +109,11 @@ def org_view(
 def get_user_organizations_base_query(username: str, search_key: str, search_value: str):
     UserAlias = User.alias()
 
-    # TODO: Do we have a better way to include multiple where conditions
-    whereclause = (User.organization == True, UserAlias.username == username)
-    if search_key and search_value and search_key.lower() == "name":
-        whereclause = (
-            User.organization == True,
-            UserAlias.username == username,
-            User.username.contains(search_value),
-        )
+    whereclause = [User.organization == True, UserAlias.username == username]
+    if search_key and search_value and search_key.lower() == "username":
+        whereclause.append(User.username.contains(search_value))
 
-    return _basequery.filter_user_organizations(whereclause, UserAlias)
+    return _basequery.filter_user_organizations(tuple(whereclause), UserAlias)
 
 
 def get_paginated_user_organizations(
