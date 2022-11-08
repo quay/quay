@@ -122,7 +122,7 @@ class RepositoryLogs(RepositoryParamResource):
     Resource for fetching logs for the specific repository.
     """
 
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("listRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
@@ -222,7 +222,7 @@ class RepositoryAggregateLogs(RepositoryParamResource):
     Resource for fetching aggregated logs for the specific repository.
     """
 
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("getAggregateRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)
@@ -357,7 +357,7 @@ class ExportRepositoryLogs(RepositoryParamResource):
 
     schemas = {"ExportLogs": EXPORT_LOGS_SCHEMA}
 
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("exportRepoLogs")
     @parse_args()
     @query_param("starttime", 'Earliest time for logs. Format: "%m/%d/%Y" in UTC.', type=str)

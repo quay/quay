@@ -444,7 +444,7 @@ class RepositoryTrust(RepositoryParamResource):
     }
 
     @show_if(features.SIGNING)
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("changeRepoTrust")
     @validate_json_request("ChangeRepoTrust")
     def post(self, namespace, repository):
@@ -494,7 +494,7 @@ class RepositoryStateResource(RepositoryParamResource):
         }
     }
 
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("changeRepoState")
     @validate_json_request("ChangeRepoState")
     def put(self, namespace, repository):

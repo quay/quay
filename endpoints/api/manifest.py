@@ -181,7 +181,7 @@ class RepositoryManifestLabels(RepositoryParamResource):
 
         return {"labels": [_label_dict(label) for label in labels]}
 
-    @require_repo_write()
+    @require_repo_write(allow_for_superuser=True)
     @nickname("addManifestLabel")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
@@ -280,7 +280,7 @@ class ManageRepositoryManifestLabel(RepositoryParamResource):
 
         return _label_dict(label)
 
-    @require_repo_write()
+    @require_repo_write(allow_for_superuser=True)
     @nickname("deleteManifestLabel")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories

@@ -257,7 +257,7 @@ class RepositoryBuildList(RepositoryParamResource):
         builds = model.build.list_repository_builds(namespace, repository, limit, since=since)
         return {"builds": [build_status_view(build) for build in builds]}
 
-    @require_repo_write()
+    @require_repo_write(allow_for_superuser=True)
     @nickname("requestRepoBuild")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
@@ -413,7 +413,7 @@ class RepositoryBuildResource(RepositoryParamResource):
 
         return build_status_view(build)
 
-    @require_repo_admin()
+    @require_repo_admin(allow_for_superuser=True)
     @nickname("cancelRepoBuild")
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
