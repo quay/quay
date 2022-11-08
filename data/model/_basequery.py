@@ -169,17 +169,14 @@ def get_user_organizations(username):
     )
 
 
-def get_paginated_user_organizations(username: str, page_number: int, items_per_page: int):
-    UserAlias = User.alias()
-    # order by - default
+def filter_user_organizations(whereclause: tuple, UserAlias):
     return (
         User.select()
         .distinct()
         .join(Team)
         .join(TeamMember)
         .join(UserAlias, on=(UserAlias.id == TeamMember.user))
-        .where(User.organization == True, UserAlias.username == username)
-        .paginate(page_number, items_per_page)
+        .where(*whereclause)
     )
 
 

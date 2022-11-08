@@ -59,8 +59,14 @@ class OrganizationResource(ApiResource):
         default=None,
     )
     @query_param(
-        "filter",  # ?search_key=name,search_value=org1
-        "Field(s) to filter response",
+        "search_key",
+        "Field key to filter response",
+        type=str,
+        default=None,
+    )
+    @query_param(
+        "search_value",
+        "Field value to filter response",
         type=str,
         default=None,
     )
@@ -80,7 +86,11 @@ class OrganizationResource(ApiResource):
         if is_admin:
             user_response.update(model.user.get_admin_user_response(user, authentication))
 
-        org_query = model.organization.get_user_organizations_base_query(username)
+        org_query = model.organization.get_user_organizations_base_query(
+            username,
+            search_key=parsed_args.get("search_key", None),
+            search_value=parsed_args.get("search_value", None),
+        )
         query_obj = model.querybuilder.QueryBuilder(
             query=org_query
         )  # provides a cursor, does not execute the query
