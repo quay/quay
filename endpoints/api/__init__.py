@@ -383,9 +383,12 @@ def require_user_permission(permission_class, scope=None):
                 if permission.can():
                     return func(self, *args, **kwargs)
 
-                if features.SUPERUSERS_FULL_ACCESS and allow_for_superuser:
-                    if SuperUserPermission().can():
-                        return func(self, *args, **kwargs)
+                if (
+                    features.SUPERUSERS_FULL_ACCESS
+                    and allow_for_superuser
+                    and SuperUserPermission().can()
+                ):
+                    return func(self, *args, **kwargs)
 
                 raise Unauthorized()
 

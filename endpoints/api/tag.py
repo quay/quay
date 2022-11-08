@@ -123,7 +123,7 @@ class RepositoryTag(RepositoryParamResource):
         },
     }
 
-    @require_repo_write()
+    @require_repo_write(allow_for_superuser=True)
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
@@ -270,7 +270,7 @@ class RestoreTag(RepositoryParamResource):
         },
     }
 
-    @require_repo_write()
+    @require_repo_write(allow_for_superuser=True)
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
