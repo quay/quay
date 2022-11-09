@@ -19,10 +19,10 @@
           <a class="back-link" href="/repository">
             Repositories
           </a>
-          <a class="level-up-link" href="/user/{{ namespace }}" ng-if="!isOrganization(namespace)">
+          <a class="level-up-link" href="/user/{{ namespace }}" ng-if="!viewScope.repository.is_organization">
             Account
           </a>
-          <a class="level-up-link" href="/organization/{{ namespace }}" ng-if="isOrganization(namespace)">
+          <a class="level-up-link" href="/organization/{{ namespace }}" ng-if="viewScope.repository.is_organization">
             Organization
           </a>
         </span>
@@ -137,5 +137,5 @@
       </cor-tab-panel>
     </div>
   </div>
-  
+
 </div>
