@@ -78,9 +78,6 @@ class ConfigUserManager(UserManager):
         return bool(self._superusers_array.value)
 
     def is_restricted_user(self, username: str, include_robots: bool = True) -> bool:
-        if not self._restricted_users_array.value:
-            return False
-
         if include_robots:
             username = username.split("+")[0]
 
@@ -90,9 +87,12 @@ class ConfigUserManager(UserManager):
     def has_restricted_users(self) -> bool:
         """
         Returns whether there are any restricted users defined.
+        If whitelist not set, assumes all users are restricted.
+        Assumes at least one user always exists. i.e If whitelist not set and no users exist,
+        returns True.
         """
         if not self._restricted_users_array.value:
-            return False
+            return True
 
         return bool(self._restricted_users_array.value)
 

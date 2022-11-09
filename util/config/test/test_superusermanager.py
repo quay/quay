@@ -8,7 +8,7 @@ from test.fixtures import *
 @pytest.mark.parametrize(
     "config, username, expected",
     [
-        ({"RESTRICTED_USERS_WHITELIST": []}, "devtable", False),
+        ({"RESTRICTED_USERS_WHITELIST": []}, "devtable", True),
         ({"RESTRICTED_USERS_WHITELIST": ["devtable"]}, "devtable", False),
         ({"RESTRICTED_USERS_WHITELIST": ["someotheruser"]}, "devtable", True),
     ],
