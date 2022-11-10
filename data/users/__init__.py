@@ -366,6 +366,12 @@ class UserManager(object):
     def __getattr__(self, name):
         return getattr(self.state, name, None)
 
+    def is_restricted_user(self, username):
+        if not features.RESTRICTED_USERS:
+            return False
+
+        return self.state.is_restricted_user(username)
+
 
 class FederatedUserManager(ConfigUserManager):
     """

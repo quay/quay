@@ -275,33 +275,45 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                     app.config.get("CREATE_NAMESPACE_ON_PUSH", False)
                     and model.user.get_namespace_user(namespace) is None
                 ):
-                    logger.debug("Creating organization for: %s/%s", namespace, reponame)
-                    try:
-                        model.organization.create_organization(
-                            namespace,
-                            ("+" + namespace + "@").join(user.email.split("@")),
-                            user,
-                            email_required=features.MAILING,
+                    if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
+                        logger.debug(
+                            "Restricted users cannot create repository %s/%s", namespace, reponame
                         )
-                    except model.DataModelException as ex:
-                        raise Unsupported(message="Cannot create organization")
+                    else:
+                        logger.debug("Creating organization for: %s/%s", namespace, reponame)
+                        try:
+                            model.organization.create_organization(
+                                namespace,
+                                ("+" + namespace + "@").join(user.email.split("@")),
+                                user,
+                                email_required=features.MAILING,
+                            )
+                        except model.DataModelException as ex:
+                            raise Unsupported(message="Cannot create organization")
+
                 if CreateRepositoryPermission(namespace).can() and user is not None:
-                    logger.debug("Creating repository: %s/%s", namespace, reponame)
-                    visibility = (
-                        "private"
-                        if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", True)
-                        else "public"
-                    )
-                    found = model.repository.get_or_create_repository(
-                        namespace, reponame, user, visibility=visibility
-                    )
-                    if found is not None:
-                        repository_ref = RepositoryReference.for_repo_obj(found)
+                    if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
+                        logger.debug(
+                            "Restricted users cannot create repository %s/%s", namespace, reponame
+                        )
+                    else:
+                        logger.debug("Creating repository: %s/%s", namespace, reponame)
+                        visibility = (
+                            "private"
+                            if app.config.get("CREATE_PRIVATE_REPO_ON_PUSH", True)
+                            else "public"
+                        )
+                        found = model.repository.get_or_create_repository(
+                            namespace, reponame, user, visibility=visibility
+                        )
 
-                        if repository_ref.kind != "image":
-                            raise Unsupported(message="Cannot push to an app repository")
+                        if found is not None:
+                            repository_ref = RepositoryReference.for_repo_obj(found)
 
-                        final_actions.append("push")
+                            if repository_ref.kind != "image":
+                                raise Unsupported(message="Cannot push to an app repository")
+
+                            final_actions.append("push")
                 else:
                     logger.debug("No permission to create repository %s/%s", namespace, reponame)
 
