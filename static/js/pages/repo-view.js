@@ -194,9 +194,5 @@
     $scope.getImages = function(callback) {
       loadImages(callback);
     };
-
-    $scope.isOrganization = function(namespace) {
-      return !!UserService.getOrganization(namespace);
-    };
   }
 })();
