@@ -426,6 +426,9 @@ def initialize_database():
     LogEntryKind.create(name="create_app_specific_token")
     LogEntryKind.create(name="revoke_app_specific_token")
 
+    LogEntryKind.create(name="create_proxy_cache_config")
+    LogEntryKind.create(name="delete_proxy_cache_config")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
