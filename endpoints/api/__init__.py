@@ -582,3 +582,4 @@ import endpoints.api.namespacequota
 
 # V2 Endpoints
 import endpoints.api.v2.organization
+import endpoints.api.v2.user

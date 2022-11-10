@@ -12,6 +12,7 @@ from auth.auth_context import get_authenticated_user
 from endpoints.decorators import anon_allowed
 from endpoints.exception import InvalidToken
 from endpoints.api import query_param, parse_args
+from endpoints.api.v2 import API_V2_ORG_PATH
 from data.database import User
 from util.parsing import truthy_bool
 from data import model
@@ -19,8 +20,6 @@ from auth import scopes
 from app import app, avatar, authentication
 
 logger = logging.getLogger(__name__)
-
-API_V2_ORG_PATH = app.config.get("V2_API_PATH", "/v2")
 
 
 @resource(f"{API_V2_ORG_PATH}/organization/")
@@ -72,15 +71,6 @@ class OrganizationResource(ApiResource):
         if user is None or user.organization or not UserReadPermission(username).can():
             raise InvalidToken("Requires authentication", payload={"session_required": False})
 
-        user_response = model.user.get_default_user_response(user, avatar)
-
-        # User perms
-        is_admin = UserAdminPermission(username).can()
-        user_read = UserReadPermission(username)
-
-        if is_admin:
-            user_response.update(model.user.get_admin_user_response(user, authentication))
-
         org_query = model.organization.get_user_organizations_base_query(
             username,
             search_key=parsed_args.get("search_key", None),
@@ -90,32 +80,29 @@ class OrganizationResource(ApiResource):
             query=org_query
         )  # provides a cursor, does not execute the query
 
-        if user_read.can():
-            # Retrieve the organizations only if user has read permissions
-            public_namespaces = app.config.get("PUBLIC_NAMESPACES", [])
-            sort_by = model.user.UserFieldMapping[parsed_args.get("sort_by")].value
-            query_cursor = (
-                query_obj.sort(field=sort_by, sort_type=parsed_args.get("sort_type", None))
-                .paginate(
-                    page_number=parsed_args.get("page_number", 1),
-                    items_per_page=parsed_args.get("per_page", 10),
-                )
-                .execute()
+        # Retrieve the organizations only if user has read permissions
+        public_namespaces = app.config.get("PUBLIC_NAMESPACES", [])
+        sort_by = model.user.UserFieldMapping[parsed_args.get("sort_by")].value
+        query_cursor = (
+            query_obj.sort(field=sort_by, sort_type=parsed_args.get("sort_type", None))
+            .paginate(
+                page_number=parsed_args.get("page_number", 1),
+                items_per_page=parsed_args.get("per_page", 10),
             )
+            .execute()
+        )
 
-            user_response["organizations"] = model.organization.get_paginated_user_organizations(
+        response = {
+            "organizations": model.organization.get_paginated_user_organizations(
                 query_cursor,
                 public_namespaces,
-                is_admin,
+                UserAdminPermission(username).can(),
                 AdministerOrganizationPermission,
                 CreateRepositoryPermission,
                 allow_if_superuser,
                 avatar,
-            )
+            ),
+            "count": query_obj.count(),
+        }
 
-        # Do we check for user_view_perms here?
-        user_response["orgs_count"] = query_obj.count()
-
-        # Update response based on feature flags
-        user_response.update(model.user.feature_data(user, SuperUserPermission))
-        return user_response
+        return response
