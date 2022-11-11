@@ -117,7 +117,7 @@ def get_user_organizations_base_query(username: str, search_key: str, search_val
 
 
 def get_paginated_user_organizations(
-    query_cursor,
+    orgs,
     public_namespaces: list,
     is_admin: bool,
     org_admin_perms,
@@ -125,7 +125,7 @@ def get_paginated_user_organizations(
     allow_if_superuser,
     avatar,
 ):
-    organizations = {o.username: o for o in query_cursor}
+    organizations = {o.username: o for o in orgs}
 
     if public_namespaces:
         organizations.update({ns: user.get_namespace_user(ns) for ns in public_namespaces})

@@ -5,19 +5,18 @@ from auth.permissions import (
     UserReadPermission,
     AdministerOrganizationPermission,
     CreateRepositoryPermission,
-    SuperUserPermission,
 )
 from endpoints.api import resource, ApiResource, nickname, allow_if_superuser, require_scope
+from data.database import User as UserTable
 from auth.auth_context import get_authenticated_user
 from endpoints.decorators import anon_allowed
 from endpoints.exception import InvalidToken
-from endpoints.api import query_param, parse_args
+from endpoints.api import query_param, parse_args, page_support
 from endpoints.api.v2 import API_V2_ORG_PATH
-from data.database import User
 from util.parsing import truthy_bool
 from data import model
 from auth import scopes
-from app import app, avatar, authentication
+from app import app, avatar
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +64,8 @@ class OrganizationResource(ApiResource):
         default=None,
     )
     @anon_allowed
-    def get(self, parsed_args):
+    @page_support()
+    def get(self, page_token, parsed_args):
         user = get_authenticated_user()
         username = user.username
         if user is None or user.organization or not UserReadPermission(username).can():
@@ -76,25 +76,22 @@ class OrganizationResource(ApiResource):
             search_key=parsed_args.get("search_key", None),
             search_value=parsed_args.get("search_value", None),
         )
-        query_obj = model.querybuilder.QueryBuilder(
-            query=org_query
-        )  # provides a cursor, does not execute the query
 
-        # Retrieve the organizations only if user has read permissions
         public_namespaces = app.config.get("PUBLIC_NAMESPACES", [])
-        sort_by = model.user.UserFieldMapping[parsed_args.get("sort_by")].value
-        query_cursor = (
-            query_obj.sort(field=sort_by, sort_type=parsed_args.get("sort_type", None))
-            .paginate(
-                page_number=parsed_args.get("page_number", 1),
-                items_per_page=parsed_args.get("per_page", 10),
-            )
-            .execute()
+        descending_order = False if parsed_args.get("sort_type", "") == "asc" else True
+
+        orgs, next_page_token = model.modelutil.paginate(
+            org_query,
+            UserTable,
+            descending=descending_order,
+            page_token=page_token,
+            limit=parsed_args.get("per_page", 10),
+            sort_field_name=parsed_args.get("search_key", None),
         )
 
         response = {
             "organizations": model.organization.get_paginated_user_organizations(
-                query_cursor,
+                orgs,
                 public_namespaces,
                 UserAdminPermission(username).can(),
                 AdministerOrganizationPermission,
@@ -102,7 +99,6 @@ class OrganizationResource(ApiResource):
                 allow_if_superuser,
                 avatar,
             ),
-            "count": query_obj.count(),
         }
 
-        return response
+        return response, next_page_token
