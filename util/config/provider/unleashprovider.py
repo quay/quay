@@ -49,10 +49,7 @@ class UnleashConfigProvider(BaseFileProvider):
             # this could possibliy have variants
             pass
 
-    def update_config_value(self, feature, app_config):
-        pass
-
-    def save_config(self, config_obj):
+    def save_config(self, config_object):
         pass
 
     def remove_volume_file(self, relative_file_path):
