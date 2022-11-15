@@ -22,13 +22,17 @@ class UnleashConfigProvider(BaseFileProvider):
 
     def __init__(self, config_volume, yaml_filename, py_filename):
         super(UnleashConfigProvider, self).__init__(config_volume, yaml_filename, py_filename)
+        self.unleash_instance_id = "unleash-python-client"
+        self.app_name = UNLEASH_APP_NAME
+        self.custom_options = {}
 
-        custom_headers = {"Authorization": UNLEASH_API_TOKEN}
+        self.custom_headers = {"Authorization": UNLEASH_API_TOKEN}
         self.unleash_client = UnleashClient(
             url=UNLEASH_URL,
+            instance_id=self.unleash_instance_id,
             app_name=UNLEASH_APP_NAME,
             environment=UNLEASH_ENVIRONMENT,
-            custom_headers=custom_headers,
+            custom_headers=self.custom_headers,
         )
         self.unleash_client.initialize_client()
 
@@ -40,11 +44,18 @@ class UnleashConfigProvider(BaseFileProvider):
 
     def update_app_config(self, app_config):
         self.features = self._get_unleash_features()
-        for feature in self.features:
-            self.update_config_value(feature, app_config)
+        for feature, value in self.features.items():
+            self._update_config_value(feature, value, app_config)
 
     def _get_unleash_features(self):
-        (result, _) = get_feature_toggles()
+        (result, _) = get_feature_toggles(
+            UNLEASH_URL,
+            UNLEASH_APP_NAME,
+            self.unleash_instance_id,
+            self.custom_headers,
+            self.custom_options,
+        )
+
         print("==========================================")
         logger.info(result)
         print("------------------------------------------")
@@ -52,9 +63,15 @@ class UnleashConfigProvider(BaseFileProvider):
         # Iterate through raw features and return a dict of enabled features
         features = {}
         for feature in result["features"]:
-            features[feature] = result["features"][feature]
-
+            name = feature["name"]
+            is_enabled = feature["enabled"]
+            features[name] = is_enabled
         return features
+
+    def _update_config_value(self, config_key, config_value, app_config):
+        # TODO: nested configs
+        # TODO: non-boolean configs
+        app_config[config_key] = config_value
 
     def save_config(self, config_object):
         pass
