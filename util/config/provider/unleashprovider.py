@@ -1,7 +1,7 @@
 import os
 import logging
 from UnleashClient import UnleashClient
-from UnleashClient.api.features import get_features
+from UnleashClient.api.features import get_feature_toggles
 
 from util.config.provider.basefileprovider import BaseFileProvider
 
@@ -32,22 +32,29 @@ class UnleashConfigProvider(BaseFileProvider):
         )
         self.unleash_client.initialize_client()
 
+        self.features = None
+
     @property
     def provider_id(self):
         return "unleash"
 
     def update_app_config(self, app_config):
-        features = self._get_unleash_features()
-        for feature in features:
+        self.features = self._get_unleash_features()
+        for feature in self.features:
             self.update_config_value(feature, app_config)
 
     def _get_unleash_features(self):
-        unleash_features = get_features()
-        logger.info(unleash_features)
-        for feature_name in unleash_features:
-            # update the config
-            # this could possibliy have variants
-            pass
+        (result, _) = get_feature_toggles()
+        print("==========================================")
+        logger.info(result)
+        print("------------------------------------------")
+
+        # Iterate through raw features and return a dict of enabled features
+        features = {}
+        for feature in result["features"]:
+            features[feature] = result["features"][feature]
+
+        return features
 
     def save_config(self, config_object):
         pass
