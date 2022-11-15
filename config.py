@@ -253,6 +253,16 @@ class DefaultConfig(ImmutableConfig):
     # Real-time user events
     USER_EVENTS_REDIS = {"host": "localhost"}
 
+    # Unleash config
+    FEATURE_UNLEASH = False
+    UNLEASH_CONFIG = {
+        "UNLEASH_URL": "",
+        "UNLEASH_APP_NAME": "quay",
+        "UNLEASH_ENVIRONMENT": "dev",
+        "UNLEASH_API_TOKEN": "",
+        "UNLEASH_REFRESH_INTERVAL": 60,
+    }
+
     # Stripe config
     BILLING_TYPE = "FakeStripe"
 
