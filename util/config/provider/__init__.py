@@ -13,11 +13,10 @@ def get_config_provider(
     if testing:
         return TestConfigProvider()
 
+    if unleash:
+        return UnleashConfigProvider(config_volume, yaml_filename, py_filename)
+
     if kubernetes:
         return KubernetesConfigProvider(config_volume, yaml_filename, py_filename)
-
-    # TODO add args
-    if unleash:
-        return UnleashConfigProvider()
 
     return FileConfigProvider(config_volume, yaml_filename, py_filename)

@@ -100,6 +100,7 @@ else:
 # Load the override config via the provider.
 config_provider.update_app_config(app.config)
 
+
 # Update any configuration found in the override environment variable.
 environ_config = json.loads(os.environ.get(OVERRIDE_CONFIG_KEY, "{}"))
 app.config.update(environ_config)

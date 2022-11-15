@@ -8,7 +8,7 @@ except ModuleNotFoundError:
     # Stub out this call so that we can run the external_libraries script
     # without needing the entire codebase.
     def get_config_provider(
-        config_volume, yaml_filename, py_filename, testing=False, kubernetes=False
+        config_volume, yaml_filename, py_filename, testing=False, kubernetes=False, unleash=False
     ):
         return None
 
@@ -24,6 +24,7 @@ TEMPLATE_DIR = os.path.join(ROOT_DIR, "templates/")
 IS_TESTING = "TEST" in os.environ
 IS_BUILDING = "BUILDING" in os.environ
 IS_KUBERNETES = "KUBERNETES_SERVICE_HOST" in os.environ
+IS_UNLEASH = "UNLEASH_URL" in os.environ
 OVERRIDE_CONFIG_DIRECTORY = os.path.join(CONF_DIR, "stack/")
 
 
@@ -33,6 +34,7 @@ config_provider = get_config_provider(
     "config.py",
     testing=IS_TESTING,
     kubernetes=IS_KUBERNETES,
+    unleash=IS_UNLEASH,
 )
 
 
