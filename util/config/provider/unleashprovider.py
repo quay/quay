@@ -1,8 +1,12 @@
 import json
 import os
+import signal
 import logging
 import threading
 import time
+import subprocess
+import gevent
+from gevent import Greenlet
 
 from UnleashClient import UnleashClient
 from UnleashClient.api.features import get_feature_toggles
@@ -45,6 +49,7 @@ class UnleashConfigProvider(BaseFileProvider):
         # start the polling thread
         # th = threading.Thread(target=self._poll_changes)
         # th.start()
+        th = Greenlet.spawn(run=self._poll_changes)
 
     @property
     def provider_id(self):
@@ -148,4 +153,10 @@ class UnleashConfigProvider(BaseFileProvider):
         return False
 
     def _restart_process(self):
-        pass
+        print("======================================")
+        print("Restarting supervisord...")
+        print("---------------------------------------------------")
+
+        supervisord_pid = subprocess.getoutput("supervisorctl -c conf/supervisord.conf pid")
+        print("SUPERVISORD_PID = ", supervisord_pid)
+        os.kill(int(supervisord_pid), signal.SIGHUP)
