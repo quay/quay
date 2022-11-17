@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 import threading
@@ -39,8 +40,7 @@ class UnleashConfigProvider(BaseFileProvider):
             cache_directory="/quay-registry",  # TODO make generic
         )
         self.unleash_client.initialize_client()
-        self.features = self._get_unleash_features()
-        self.feature_names = self._get_unleash_feature_names()
+        self.unleash_features = self._get_unleash_features()
         self.poll_interval = 15  # TODO make it configurable
         # start the polling thread
         # th = threading.Thread(target=self._poll_changes)
@@ -56,9 +56,9 @@ class UnleashConfigProvider(BaseFileProvider):
 
         print("FEATURE_UI_V2 before", app_config["FEATURE_UI_V2"])
 
-        self.features = self._get_unleash_features()
-        for feature, value in self.features.items():
-            self._update_config_value(feature, value, app_config)
+        self.unleash_features = self._get_unleash_features()
+        for feature in self.unleash_features.values():
+            self._update_config_value(feature, app_config)
 
         print("FEATURE_UI_V2 after", app_config["FEATURE_UI_V2"])
 
@@ -71,24 +71,35 @@ class UnleashConfigProvider(BaseFileProvider):
             self.custom_options,
         )
 
-        print("====================##====================")
-        print(result)
-        print("-------------------##---------------------")
-
-        # Iterate through raw features and return a dict of enabled features
-        features = {}
+        unleash_features = {}
         for feature in result.get("features"):
             name = feature.get("name")
-            is_enabled = feature.get("enabled")
-            if name:
-                features[name] = is_enabled
-        return features
+            unleash_features[name] = feature
 
-    def _update_config_value(self, config_key, config_value, app_config):
-        # TODO: nested configs
-        # TODO: non-boolean configs
-        print("Updating config value")
-        app_config[config_key] = config_value
+        return unleash_features
+
+    def _update_config_value(self, feature, app_config):
+        config_key = feature.get("name")
+        value = self._get_feature_value(feature)
+
+        print("-----------------##----------------------")
+        print("Updating config ", config_key, value)
+        print("-----------------##----------------------")
+
+        app_config[config_key] = value
+
+    def _get_feature_value(self, feature):
+        is_enabled = feature.get("enabled")
+        config_value = is_enabled
+        if feature.get("variants"):
+            # TODO: handle multiple variants
+            variant = feature.get("variants")[0].get("payload")
+            variant_type = variant.get("type")
+            variant_value = variant.get("value")
+            if variant_type == "json":
+                variant_value = json.loads(variant_value)
+            config_value = variant_value
+        return config_value
 
     def save_config(self, config_object):
         print("Called save_config", config_object)
@@ -113,6 +124,27 @@ class UnleashConfigProvider(BaseFileProvider):
                 logger.error(e)
 
     def _is_config_changed(self):
+        new_features = self._get_unleash_features()
+        for old_feature_name in self.unleash_features:
+            # Removed a feature
+            if old_feature_name not in new_features:
+                return True
+
+        for feature_name in new_features:
+            # Added a feature
+            if feature_name not in self.unleash_features:
+                return True
+
+        # look for changes in value
+        for feature_name in new_features:
+            # TODO multiple variants
+            new_value = self._get_feature_value(new_features[feature_name])
+            old_value = self._get_feature_value(self.unleash_features[feature_name])
+            # TODO nested
+            # Updated feature
+            if new_value != old_value:
+                return True
+
         return False
 
     def _restart_process(self):
