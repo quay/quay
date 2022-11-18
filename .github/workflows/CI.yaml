@@ -228,3 +228,46 @@ jobs:
 
     - name: tox
       run: tox -e py39-psql
+
+  coverage:
+    name: Run tests & display coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
+          python -m pip install --upgrade pip
+          cat requirements-dev.txt | grep -E 'coverage|tox' | xargs pip install
+
+      - name: Install everything, run the tests, produce the .coverage file
+        run: |
+          coverage run -m tox -e py39-registry
+          coverage report -m tox -e py39-registry
+          coverage xml
+
+      - name: Archive code coverage xml report
+        uses: actions/upload-artifact@v2
+        with:
+          name: code-coverage-report
+          path: coverage.xml
+
+      - name: Fetch Artifacts
+        uses: actions/download-artifact@v2
+        id: download
+        with:
+          name: code-coverage-report
+
+      - name: Get Cover
+        uses: orgoro/coverage@v3
+        with:
+          coverageFile: ${{steps.download.outputs.download-path}}/coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+

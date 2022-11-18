@@ -3,6 +3,7 @@ git+https://github.com/quay/mockldap.git@136253ca136fc7898944a4b37893a99440f7335
 git+https://github.com/jarus/flask-testing.git@17f19d7fee0e1e176703fc7cb04917a77913ba1a#egg=Flask_Testing
 bencode.py==2.1.0
 black==21.12b0
+coverage==6.5.0
 flake8==4.0.1
 boto3-stubs==1.14.9.0
 fakeredis==1.6.1
