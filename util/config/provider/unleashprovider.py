@@ -2,11 +2,14 @@ import json
 import os
 import signal
 import logging
-import threading
 import time
 import subprocess
-import gevent
+from flask_login import current_user
+
 from gevent import Greenlet
+
+import typing as t
+
 
 from UnleashClient import UnleashClient
 from UnleashClient.api.features import get_feature_toggles
@@ -47,8 +50,6 @@ class UnleashConfigProvider(BaseFileProvider):
         self.unleash_features = self._get_unleash_features()
         self.poll_interval = 15  # TODO make it configurable
         # start the polling thread
-        # th = threading.Thread(target=self._poll_changes)
-        # th.start()
         th = Greenlet.spawn(run=self._poll_changes)
 
     @property
@@ -59,13 +60,9 @@ class UnleashConfigProvider(BaseFileProvider):
         print("Called update_app_config", app_config)
         super(UnleashConfigProvider, self).update_app_config(app_config)
 
-        print("FEATURE_UI_V2 before", app_config["FEATURE_UI_V2"])
-
         self.unleash_features = self._get_unleash_features()
         for feature in self.unleash_features.values():
             self._update_config_value(feature, app_config)
-
-        print("FEATURE_UI_V2 after", app_config["FEATURE_UI_V2"])
 
     def _get_unleash_features(self):
         (result, _) = get_feature_toggles(
@@ -90,21 +87,29 @@ class UnleashConfigProvider(BaseFileProvider):
         print("-----------------##----------------------")
         print("Updating config ", config_key, value)
         print("-----------------##----------------------")
-
-        app_config[config_key] = value
+        if value is not None:
+            app_config[config_key] = value
 
     def _get_feature_value(self, feature):
         is_enabled = feature.get("enabled")
-        config_value = is_enabled
-        if feature.get("variants"):
+        has_variants = len(feature.get("variants")) > 0
+
+        if not has_variants:
+            # boolean value
+            return is_enabled
+
+        if is_enabled and has_variants:
             # TODO: handle multiple variants
+            # String or JSON
             variant = feature.get("variants")[0].get("payload")
             variant_type = variant.get("type")
             variant_value = variant.get("value")
             if variant_type == "json":
                 variant_value = json.loads(variant_value)
-            config_value = variant_value
-        return config_value
+            return variant_value
+        else:
+            # has variants but is disabled
+            return None
 
     def save_config(self, config_object):
         print("Called save_config", config_object)
@@ -160,3 +165,58 @@ class UnleashConfigProvider(BaseFileProvider):
         supervisord_pid = subprocess.getoutput("supervisorctl -c conf/supervisord.conf pid")
         print("SUPERVISORD_PID = ", supervisord_pid)
         os.kill(int(supervisord_pid), signal.SIGHUP)
+
+
+class UnleashConfig(dict):
+    def __init__(self, flask_config, unleash_client):
+        super().__init__()
+        self.flask_config = flask_config
+        self.unleash_client = unleash_client
+        for key in flask_config:
+            super().__setitem__(key, flask_config[key])
+
+    def from_envvar(self, variable_name: str, silent: bool = False) -> bool:
+        return self.flask_config.from_envvar(variable_name, silent)
+
+    def from_prefixed_env(
+        self, prefix: str = "FLASK", *, loads: t.Callable[[str], t.Any] = json.loads
+    ) -> bool:
+        return self.flask_config.from_prefixed_env(prefix, loads)
+
+    def from_pyfile(self, filename: str, silent: bool = False) -> bool:
+        return self.flask_config.from_pyfile(filename, silent)
+
+    def from_object(self, obj: t.Union[object, str]) -> None:
+        return self.flask_config.from_object(obj)
+
+    def from_file(
+        self,
+        filename: str,
+        load: t.Callable[[t.IO[t.Any]], t.Mapping],
+        silent: bool = False,
+    ) -> bool:
+        return self.flask_config.from_file(filename, load, silent)
+
+    def from_mapping(
+        self, mapping: t.Optional[t.Mapping[str, t.Any]] = None, **kwargs: t.Any
+    ) -> bool:
+        return self.flask_config.from_mapping(mapping)
+
+    def get_namespace(
+        self, namespace: str, lowercase: bool = True, trim_namespace: bool = True
+    ) -> t.Dict[str, t.Any]:
+        return self.flask_config.get_namespace(namespace, lowercase, trim_namespace)
+
+    def __getitem__(self, key):
+        return self.flask_config[key]
+
+    def get(self, key, default_value=None):
+        print(f"GET CONFIG {key}")
+        print("Current User", current_user)
+        return self.flask_config.get(key, default_value)
+
+    def __setitem__(self, key, value):
+        self.flask_config[key] = value
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} {dict.__repr__(self)}>"

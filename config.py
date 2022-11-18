@@ -49,6 +49,7 @@ CLIENT_WHITELIST = [
 
 
 def frontend_visible_config(config_dict):
+    print("Getting frontend visible config")
     visible_dict = {}
     for name in CLIENT_WHITELIST:
         if name.lower().find("secret") >= 0:
@@ -60,6 +61,7 @@ def frontend_visible_config(config_dict):
             visible_dict["BRANDING"] = visible_dict.get("BRANDING", {})
             visible_dict["BRANDING"]["logo"] = config_dict["ENTERPRISE_LOGO_URL"]
 
+    print("Got branding from function ", visible_dict["BRANDING"])
     return visible_dict
 
 
