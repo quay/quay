@@ -287,6 +287,15 @@ angular.module("quay-config")
           if (!("LOG_ARCHIVE_LOCATION" in config)) {
             config["LOG_ARCHIVE_LOCATION"] = "default";
           }
+          if (!("ALLOWED_OCI_ARTIFACT_TYPES" in config)){
+            config["ALLOWED_OCI_ARTIFACT_TYPES"] = {}
+            config["ALLOWED_OCI_ARTIFACT_TYPES"][
+              "application/vnd.oci.image.config.v1+json"
+            ] = ["application/vnd.oci.image.layer.v1.tar+zstd"];
+            config["ALLOWED_OCI_ARTIFACT_TYPES"][
+              "application/vnd.sylabs.sif.config.v1+json"
+            ] = ["application/vnd.sylabs.sif.layer.v1+tar"];
+          }
           return config;
         }
         $scope.validateConfig = function() {
