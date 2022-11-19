@@ -45,6 +45,7 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
           {props.deleteKebabIsOpen ? props.deleteModal : null}
         </ToolbarItem>
         <ToolbarPagination
+          total={props.total}
           itemsList={props.organizationsList}
           perPage={props.perPage}
           page={props.page}

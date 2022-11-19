@@ -338,6 +338,7 @@ export default function OrganizationsList() {
         </TableComposable>
         <PanelFooter>
           <ToolbarPagination
+            total={totalResults}
             itemsList={filteredOrgs}
             perPage={perPage}
             page={page}

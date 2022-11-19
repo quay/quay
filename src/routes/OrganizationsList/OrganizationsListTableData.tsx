@@ -12,7 +12,8 @@ import {fetchRobotsForNamespace} from 'src/resources/RobotsResource';
 import {formatDate} from 'src/libs/utils';
 import ColumnNames from './ColumnNames';
 import {OrganizationsTableItem} from './OrganizationsList';
-import {useQuery} from '@tanstack/react-query';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {useEffect} from 'react';
 
 interface CountProps {
   count: string | number;
@@ -41,31 +42,41 @@ function RepoLastModifiedDate(props: RepoLastModifiedDateProps) {
 // Get and assemble data from multiple endpoints to show in Org table
 // Only necessary because current API structure does not return all required data
 export default function OrgTableData(props: OrganizationsTableItem) {
+  // const queryClient = useQueryClient();
+  // useEffect(() => {
+  //   return () => {
+  //     queryClient.cancelQueries(['organization', props.name]);
+  //     queryClient.cancelQueries(['organization', props.name, 'members']);
+  //     queryClient.cancelQueries(['organization', props.name, 'robots']);
+  //     queryClient.cancelQueries(['organization', props.name, 'repositories']);
+  //   };
+  // }, [props.name]);
   // Get organization
   const {data: organization} = useQuery(
     ['organization', props.name],
-    () => fetchOrg(props.name),
+    ({signal}) => fetchOrg(props.name, signal),
     {enabled: !props.isUser},
   );
 
   // Get members
   const {data: members} = useQuery(
     ['organization', props.name, 'members'],
-    () => fetchMembersForOrg(props.name),
+    ({signal}) => fetchMembersForOrg(props.name, signal),
     {enabled: !props.isUser},
   );
   const memberCount = members ? members.length : null;
 
   // Get robots
-  const {data: robots} = useQuery(['organization', props.name, 'robots'], () =>
-    fetchRobotsForNamespace(props.name),
+  const {data: robots} = useQuery(
+    ['organization', props.name, 'robots'],
+    ({signal}) => fetchRobotsForNamespace(props.name, false, signal),
   );
   const robotCount = robots ? robots.length : null;
 
   // Get repositories
   const {data: repositories} = useQuery(
     ['organization', props.name, 'repositories'],
-    () => fetchRepositoriesForNamespace(props.name),
+    ({signal}) => fetchRepositoriesForNamespace(props.name, signal),
   );
   const repoCount = repositories ? repositories.length : null;
 

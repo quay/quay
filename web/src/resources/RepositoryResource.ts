@@ -82,6 +82,7 @@ export async function fetchRepositories() {
   const response: AxiosResponse = await axios.get(
     `/api/v1/repository?last_modified=true&public=true`,
   );
+  console.log('HELLOOO', response.data);
   assertHttpCode(response.status, 200);
   return response.data?.repositories as IRepository[];
 }

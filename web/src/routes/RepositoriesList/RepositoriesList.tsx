@@ -68,7 +68,6 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [makePublicModalOpen, setmakePublicModal] = useState(false);
   const [makePrivateModalOpen, setmakePrivateModal] = useState(false);
-  const search = useRecoilValue(searchRepoState);
   const [err, setErr] = useState<string[]>();
 
   const quayConfig = useQuayConfig();
@@ -79,10 +78,12 @@ export default function RepositoriesList(props: RepositoriesListProps) {
     error,
     setPerPage,
     setPage,
+    search,
+    setSearch,
     page,
     perPage,
     totalResults,
-  } = useRepositories();
+  } = useRepositories(currentOrg);
 
   repos.sort((r1, r2) => {
     return r1.last_modified > r2.last_modified ? -1 : 1;

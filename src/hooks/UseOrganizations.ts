@@ -6,10 +6,20 @@ import {
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useCurrentUser} from './UseCurrentUser';
 import {createOrg} from 'src/resources/OrganizationResource';
+import {useState} from 'react';
+import {SearchState} from 'src/components/toolbar/SearchTypes';
 
 export function useOrganizations() {
   // Get user and config data
   const {isSuperUser, user, loading, error} = useCurrentUser();
+
+  // Keep state of current search in this hook
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [search, setSearch] = useState<SearchState>({
+    field: '',
+    query: '',
+  });
 
   // Get super user orgs
   const {data: superUserOrganizations} = useQuery(
@@ -84,11 +94,27 @@ export function useOrganizations() {
   );
 
   return {
+    // Data
     superUserOrganizations,
     superUserUsers,
     organizationsTableDetails,
+
+    // Fetching State
     loading,
     error,
+
+    // Search Query State
+    search,
+    setSearch,
+    page,
+    setPage,
+    perPage,
+    setPerPage,
+
+    // Useful Metadata
+    totalResults: organizationsTableDetails.length,
+
+    // Mutations
     createOrganization: async (name: string, email: string) =>
       createOrganizationMutator.mutate({name, email}),
     deleteOrganizations: async (names: string[]) =>

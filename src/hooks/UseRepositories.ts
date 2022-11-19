@@ -3,10 +3,12 @@ import {
   bulkDeleteRepositories,
   createNewRepository,
   fetchRepositories,
+  fetchRepositoriesForNamespace,
 } from 'src/resources/RepositoryResource';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useCurrentUser} from './UseCurrentUser';
 import {IRepository} from 'src/resources/RepositoryResource';
+import {SearchState} from 'src/components/toolbar/SearchTypes';
 
 interface createRepositoryParams {
   namespace: string;
@@ -16,15 +18,20 @@ interface createRepositoryParams {
   repo_kind: string;
 }
 
-export function useRepositories() {
+export function useRepositories(organization?: string) {
   const {user} = useCurrentUser();
 
+  // Keep state of current search in this hook
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [organization, setOrganization] = useState('');
+  const [search, setSearch] = useState<SearchState>({
+    field: '',
+    query: '',
+  });
+  const [currentOrganization, setCurrentOrganization] = useState(organization);
 
-  const listOfOrgNames: string[] = organization
-    ? [organization]
+  const listOfOrgNames: string[] = currentOrganization
+    ? [currentOrganization]
     : user?.organizations.map((org) => org.name).concat(user.username);
 
   const {
@@ -34,7 +41,9 @@ export function useRepositories() {
     error,
   } = useQuery(
     ['organization', organization, 'repositories'],
-    fetchRepositories,
+    currentOrganization
+      ? ({signal}) => fetchRepositoriesForNamespace(currentOrganization, signal)
+      : fetchRepositories,
     {
       placeholderData: [],
     },
@@ -85,16 +94,27 @@ export function useRepositories() {
   );
 
   return {
+    // Data
     repos: repositories,
-    loading: loading || isPlaceholderData,
+
+    // Fetching State
+    loading: loading || isPlaceholderData || !listOfOrgNames,
     error,
-    setPage,
-    setPerPage,
+
+    // Search Query State
+    search,
+    setSearch,
     page,
+    setPage,
     perPage,
-    setOrganization,
+    setPerPage,
     organization,
-    totalResults: listOfOrgNames.length,
+    setCurrentOrganization,
+
+    // Useful Metadata
+    totalResults: repositories.length,
+
+    // Mutations
     createRepository: async (params: createRepositoryParams) =>
       createRepositoryMutator.mutate(params),
     deleteRepositories: async (repos: IRepository[]) =>

@@ -13,7 +13,7 @@ export function useOrganization(name: string) {
     data: organization,
     isLoading,
     error,
-  } = useQuery(['organization', name], () => fetchOrg(name), {
+  } = useQuery(['organization', name], ({signal}) => fetchOrg(name, signal), {
     enabled: !isUserOrganization,
     placeholderData: (): IOrganization[] => new Array(10).fill({}),
   });
