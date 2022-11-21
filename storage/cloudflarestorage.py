@@ -25,6 +25,7 @@ class CloudFlareS3Storage(S3Storage):
         cloudflare_privatekey_filename,
         storage_path,
         s3_bucket,
+        s3_region,
         *args,
         **kwargs,
     ):
@@ -32,6 +33,7 @@ class CloudFlareS3Storage(S3Storage):
 
         self.cloudflare_domain = cloudflare_domain
         self.cloudflare_privatekey = self._load_private_key(cloudflare_privatekey_filename)
+        self.region = s3_region
 
     def get_direct_download_url(
         self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
@@ -73,7 +75,11 @@ class CloudFlareS3Storage(S3Storage):
     def _build_signed_url(self, cf_url_parsed, signature, expiry_date):
         query = cf_url_parsed.query
         url_dict = dict(urllib.parse.parse_qsl(query))
-        params = {"cf_sign": signature, "cf_expiry": "%d" % expiry_date.timestamp()}
+        params = {
+            "cf_sign": signature,
+            "cf_expiry": "%d" % expiry_date.timestamp(),
+            "region": self.region,
+        }
         url_dict.update(params)
         url_new_query = urllib.parse.urlencode(url_dict)
         url_parse = cf_url_parsed._replace(query=url_new_query)
