@@ -1414,14 +1414,6 @@ def quota_view(quota):
     }
 
 
-def get_default_user_response(user, avatar):
-    return {
-        "anonymous": False,
-        "username": user.username,
-        "avatar": avatar.get_data_for_user(user),
-    }
-
-
 def login_view(login):
     try:
         metadata = json.loads(login.metadata_json)
@@ -1446,19 +1438,20 @@ def get_admin_user_response(user, authentication):
         "invoice_email_address": user.invoice_email_address,
         "preferred_namespace": not (user.stripe_id is None),
         "tag_expiration_s": user.removed_tag_expiration_s,
-        "prompts": get_user_prompts(user),
+        "prompts": get_user_prompts(user),  # TODO: Remove if not need
         "company": user.company,
         "family_name": user.family_name,
         "given_name": user.given_name,
-        "location": user.location,
         "is_free_account": user.stripe_id is None,
-        "has_password_set": authentication.has_password_set(user.username),
     }
 
 
 # TODO@sunanda: Look for optimizing below lines
 def feature_data(user, SuperUserPermission):
-    response = {}
+    response = {
+        "username": user.username,
+    }
+
     # Fetch quotas based on list of orgs!
     if features.QUOTA_MANAGEMENT:
         quotas = namespacequota.get_namespace_quota_list(user.username)

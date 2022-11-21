@@ -12,7 +12,7 @@ from endpoints.exception import InvalidToken
 from endpoints.api.v2 import API_V2_ORG_PATH
 from data.model import user
 from auth import scopes
-from app import avatar, authentication
+from app import authentication
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +32,10 @@ class UserResource(ApiResource):
         ):
             raise InvalidToken("Requires authentication", payload={"session_required": False})
 
-        user_response = user.get_default_user_response(authenticated_user, avatar)
+        user_response = user.feature_data(authenticated_user, SuperUserPermission)
 
         is_admin = UserAdminPermission(username).can()
         if is_admin:
             user_response.update(user.get_admin_user_response(authenticated_user, authentication))
 
-        user_response.update(user.feature_data(authenticated_user, SuperUserPermission))
         return user_response
