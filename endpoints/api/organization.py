@@ -919,6 +919,15 @@ class OrganizationProxyCacheConfig(ApiResource):
         try:
             config = model.proxy_cache.create_proxy_cache_config(**data)
             if config is not None:
+                log_action(
+                    "create_proxy_cache_config",
+                    orgname,
+                    {
+                        "upstream_registry": data["upstream_registry"]
+                        if data["upstream_registry"]
+                        else None
+                    },
+                )
                 return "Created", 201
         except model.DataModelException as e:
             logger.error("Error while creating Proxy cache configuration as: %s", str(e))
@@ -942,6 +951,7 @@ class OrganizationProxyCacheConfig(ApiResource):
         try:
             success = model.proxy_cache.delete_proxy_cache_config(orgname)
             if success:
+                log_action("delete_proxy_cache_config", orgname)
                 return "Deleted", 201
         except model.DataModelException as e:
             logger.error("Error while deleting Proxy cache configuration as: %s", str(e))
