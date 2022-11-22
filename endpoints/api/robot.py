@@ -108,7 +108,7 @@ class UserRobot(ApiResource):
         robot = model.get_user_robot(robot_shortname, parent)
         return robot.to_dict(include_metadata=True, include_token=True)
 
-    @require_user_admin()
+    @require_user_admin(disallow_for_restricted_users=True)
     @nickname("createUserRobot")
     @max_json_size(ROBOT_MAX_SIZE)
     @validate_json_request("CreateRobot", optional=True)
@@ -135,7 +135,7 @@ class UserRobot(ApiResource):
         )
         return robot.to_dict(include_metadata=True, include_token=True), 201
 
-    @require_user_admin()
+    @require_user_admin(disallow_for_restricted_users=True)
     @nickname("deleteUserRobot")
     def delete(self, robot_shortname):
         """
@@ -330,7 +330,7 @@ class RegenerateUserRobot(ApiResource):
     Resource for regenerate an organization's robot's token.
     """
 
-    @require_user_admin()
+    @require_user_admin(disallow_for_restricted_users=True)
     @nickname("regenerateUserRobotToken")
     def post(self, robot_shortname):
         """
