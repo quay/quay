@@ -262,6 +262,7 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                 else:
                     logger.debug("No permission to modify repository %s/%s", namespace, reponame)
 
+            # TODO(kleesc): this is getting hard to follow. Should clean this up at some point.
             elif (
                 features.RESTRICTED_USERS
                 and user is not None
@@ -292,7 +293,11 @@ def _authorize_or_downscope_request(scope_param, has_valid_auth_context):
                             raise Unsupported(message="Cannot create organization")
 
                 if CreateRepositoryPermission(namespace).can() and user is not None:
-                    if features.RESTRICTED_USERS and usermanager.is_restricted_user(user.username):
+                    if (
+                        features.RESTRICTED_USERS
+                        and usermanager.is_restricted_user(user.username)
+                        and user.username == namespace
+                    ):
                         logger.debug(
                             "Restricted users cannot create repository %s/%s", namespace, reponame
                         )
