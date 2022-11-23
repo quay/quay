@@ -978,6 +978,11 @@ class RHOCSStorage(RadosGWStorage):
 
     pass
 
+class VeritasObjectAccessStorage(RadosGWStorage):
+    connect_kwargs = {
+        "config": Config(signature_version="s3v4"), "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
+    }
+    pass
 
 class CloudFrontedS3Storage(S3Storage):
     """
