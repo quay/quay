@@ -26,7 +26,9 @@ from util.ipresolver import ResolvedLocation
 from util.registry import filelike
 from storage.basestorage import BaseStorageV2
 
+
 logger = logging.getLogger(__name__)
+
 
 multipart_uploads_started = Counter(
     "quay_multipart_uploads_started_total",
@@ -37,9 +39,11 @@ multipart_uploads_completed = Counter(
     "number of multipart uploads to Quay storage that completed",
 )
 
+
 _PartUpload = namedtuple("_PartUpload", ["part_number", "e_tag"])
 _PartUploadMetadata = namedtuple("_PartUploadMetadata", ["path", "offset", "length"])
 _CHUNKS_KEY = "chunks"
+
 
 # This is for HEAD requests to check if a key exists.
 # Since the HEAD request does not have a response body, boto3 uses the status code as error code
@@ -104,15 +108,15 @@ class StreamReadKeyAsFile(BufferedIOBase):
 
 class _CloudStorage(BaseStorageV2):
     def __init__(
-            self,
-            context,
-            connection_class,
-            connect_kwargs,
-            upload_params,
-            storage_path,
-            bucket_name,
-            access_key=None,
-            secret_key=None,
+        self,
+        context,
+        connection_class,
+        connect_kwargs,
+        upload_params,
+        storage_path,
+        bucket_name,
+        access_key=None,
+        secret_key=None,
     ):
         super(_CloudStorage, self).__init__()
 
@@ -227,7 +231,7 @@ class _CloudStorage(BaseStorageV2):
         return True
 
     def get_direct_download_url(
-            self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         self._initialize_cloud_conn()
         path = self._init_path(path)
@@ -315,13 +319,13 @@ class _CloudStorage(BaseStorageV2):
             raise IOError("Exception when trying to stream_write path")
 
     def _stream_write_internal(
-            self,
-            path,
-            fp,
-            content_type=None,
-            content_encoding=None,
-            cancel_on_error=True,
-            size=filelike.READ_UNTIL_END,
+        self,
+        path,
+        fp,
+        content_type=None,
+        content_encoding=None,
+        cancel_on_error=True,
+        size=filelike.READ_UNTIL_END,
     ):
         """
         Writes the data found in the file-like stream to the given path, with optional limit on
@@ -367,9 +371,9 @@ class _CloudStorage(BaseStorageV2):
                     total_bytes_written += bytes_staged
                     num_part += 1
                 except (
-                        botocore.exceptions.ClientError,
-                        botocore.exceptions.ConnectionClosedError,
-                        IOError,
+                    botocore.exceptions.ClientError,
+                    botocore.exceptions.ConnectionClosedError,
+                    IOError,
                 ) as e:
                     logger.warn(
                         "Error when writing to stream in stream_write_internal at path %s: %s",
@@ -456,12 +460,12 @@ class _CloudStorage(BaseStorageV2):
         # First try to copy directly via boto, but only if the storages are the
         # same type, with the same access information.
         if (
-                self.__class__ == destination.__class__
-                and self._access_key
-                and self._secret_key
-                and self._access_key == destination._access_key
-                and self._secret_key == destination._secret_key
-                and self._connect_kwargs == destination._connect_kwargs
+            self.__class__ == destination.__class__
+            and self._access_key
+            and self._secret_key
+            and self._access_key == destination._access_key
+            and self._secret_key == destination._secret_key
+            and self._connect_kwargs == destination._connect_kwargs
         ):
 
             # Initialize the cloud connection on the destination as well.
@@ -590,9 +594,9 @@ class _CloudStorage(BaseStorageV2):
                 # sometimes HTTPStatusCode isn't set for some reason, so we need
                 # to protect ourselves against a KeyError.
                 if (
-                        remaining_retries
-                        and s3re.response["Error"].get("HTTPStatusCode", 0) == 200
-                        and s3re.response["Error"].get("Code", "") == "InternalError"
+                    remaining_retries
+                    and s3re.response["Error"].get("HTTPStatusCode", 0) == 200
+                    and s3re.response["Error"].get("Code", "") == "InternalError"
                 ):
                     # Weird internal error case. Retry.
                     continue
@@ -615,8 +619,8 @@ class _CloudStorage(BaseStorageV2):
                 chunk.path, chunk.offset + newchunk_length, chunk.length - newchunk_length
             )
             for subchunk in chain(
-                    _CloudStorage._rechunk(first_subchunk, max_chunk_size),
-                    _CloudStorage._rechunk(second_subchunk, max_chunk_size),
+                _CloudStorage._rechunk(first_subchunk, max_chunk_size),
+                _CloudStorage._rechunk(second_subchunk, max_chunk_size),
             ):
                 yield subchunk
 
@@ -656,14 +660,14 @@ class _CloudStorage(BaseStorageV2):
                     part_copy = part.copy_from(
                         CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
                         CopySourceRange="bytes=%s-%s"
-                                        % (chunk.offset, chunk.length + chunk.offset - 1),
+                        % (chunk.offset, chunk.length + chunk.offset - 1),
                     )
 
                     part_copy = self._perform_action_with_retry(
                         mpu.Part(index + 1).copy_from,
                         CopySource={"Bucket": self.get_cloud_bucket().name, "Key": abs_chunk_path},
                         CopySourceRange="bytes=%s-%s"
-                                        % (chunk.offset, chunk.length + chunk.offset - 1),
+                        % (chunk.offset, chunk.length + chunk.offset - 1),
                     )
 
                     upload_parts.append(_PartUpload(index + 1, part_copy["CopyPartResult"]["ETag"]))
@@ -731,18 +735,18 @@ class S3Storage(_CloudStorage):
     }
 
     def __init__(
-            self,
-            context,
-            storage_path,
-            s3_bucket,
-            s3_access_key=None,
-            s3_secret_key=None,
-            s3_region=None,
-            # Boto2 backward compatible options (host excluding scheme or port)
-            host=None,
-            port=None,
-            # Boto3 options (Full url including scheme anbd optionally port)
-            endpoint_url=None,
+        self,
+        context,
+        storage_path,
+        s3_bucket,
+        s3_access_key=None,
+        s3_secret_key=None,
+        s3_region=None,
+        # Boto2 backward compatible options (host excluding scheme or port)
+        host=None,
+        port=None,
+        # Boto3 options (Full url including scheme anbd optionally port)
+        endpoint_url=None,
     ):
         upload_params = {"ServerSideEncryption": "AES256"}
         connect_kwargs = {"config": Config(signature_version="s3v4")}
@@ -855,22 +859,22 @@ class GoogleCloudStorage(_CloudStorage):
         )
 
     def get_direct_download_url(
-            self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         return (
             super(GoogleCloudStorage, self)
-                .get_direct_download_url(path, request_ip, expires_in, requires_cors, head, **kwargs)
-                .replace("AWSAccessKeyId", "GoogleAccessId")
+            .get_direct_download_url(path, request_ip, expires_in, requires_cors, head, **kwargs)
+            .replace("AWSAccessKeyId", "GoogleAccessId")
         )
 
     def _stream_write_internal(
-            self,
-            path,
-            fp,
-            content_type=None,
-            content_encoding=None,
-            cancel_on_error=True,
-            size=filelike.READ_UNTIL_END,
+        self,
+        path,
+        fp,
+        content_type=None,
+        content_encoding=None,
+        cancel_on_error=True,
+        size=filelike.READ_UNTIL_END,
     ):
         """
         Writes the data found in the file-like stream to the given path, with optional limit on
@@ -919,15 +923,15 @@ class GoogleCloudStorage(_CloudStorage):
 
 class RadosGWStorage(_CloudStorage):
     def __init__(
-            self,
-            context,
-            hostname,
-            is_secure,
-            storage_path,
-            access_key,
-            secret_key,
-            bucket_name,
-            port=None,
+        self,
+        context,
+        hostname,
+        is_secure,
+        storage_path,
+        access_key,
+        secret_key,
+        bucket_name,
+        port=None,
     ):
         upload_params = {}
         connect_kwargs = {
@@ -947,7 +951,7 @@ class RadosGWStorage(_CloudStorage):
 
     # TODO remove when radosgw supports cors: http://tracker.ceph.com/issues/8718#change-38624
     def get_direct_download_url(
-            self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
         if requires_cors:
             return None
@@ -980,15 +984,15 @@ class VeritasObjectAccessStorage(RadosGWStorage):
     Veritas Object Access provides an implementation of the Amazon S3 with only mentioned parameters.
     """
     def __init__(
-            self,
-            context,
-            hostname,
-            is_secure,
-            storage_path,
-            access_key,
-            secret_key,
-            bucket_name,
-            port=None,
+        self,
+        context,
+        hostname,
+        is_secure,
+        storage_path,
+        access_key,
+        secret_key,
+        bucket_name,
+        port=None,
     ):
         upload_params = {}
         connect_kwargs = {
@@ -1008,24 +1012,23 @@ class VeritasObjectAccessStorage(RadosGWStorage):
         )
 
 
-
 class CloudFrontedS3Storage(S3Storage):
     """
     An S3Storage engine that redirects to CloudFront for all requests outside of AWS.
     """
 
     def __init__(
-            self,
-            context,
-            cloudfront_distribution_domain,
-            cloudfront_distribution_org_overrides,
-            cloudfront_key_id,
-            cloudfront_privatekey_filename,
-            storage_path,
-            s3_bucket,
-            s3_region,
-            *args,
-            **kwargs,
+        self,
+        context,
+        cloudfront_distribution_domain,
+        cloudfront_distribution_org_overrides,
+        cloudfront_key_id,
+        cloudfront_privatekey_filename,
+        storage_path,
+        s3_bucket,
+        s3_region,
+        *args,
+        **kwargs,
     ):
         super(CloudFrontedS3Storage, self).__init__(
             context, storage_path, s3_bucket, *args, **kwargs
@@ -1038,7 +1041,7 @@ class CloudFrontedS3Storage(S3Storage):
         self.cloudfront_privatekey = self._load_private_key(cloudfront_privatekey_filename)
 
     def get_direct_download_url(
-            self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
+        self, path, request_ip=None, expires_in=60, requires_cors=False, head=False, **kwargs
     ):
 
         # If CloudFront could not be loaded, fall back to normal S3.
@@ -1057,9 +1060,9 @@ class CloudFrontedS3Storage(S3Storage):
         resolved_ip_info: ResolvedLocation = self._context.ip_resolver.resolve_ip(request_ip)
         logger.debug("Resolved IP information for IP %s: %s", request_ip, resolved_ip_info)
         if (
-                resolved_ip_info
-                and resolved_ip_info.provider == "aws"
-                and resolved_ip_info.aws_region == self.s3_region
+            resolved_ip_info
+            and resolved_ip_info.provider == "aws"
+            and resolved_ip_info.aws_region == self.s3_region
         ):
             return super(CloudFrontedS3Storage, self).get_direct_download_url(
                 path, request_ip, expires_in, requires_cors, head, **kwargs
@@ -1109,8 +1112,8 @@ class CloudFrontedS3Storage(S3Storage):
             return None
 
         with self._context.config_provider.get_volume_file(
-                cloudfront_privatekey_filename,
-                mode="rb",
+            cloudfront_privatekey_filename,
+            mode="rb",
         ) as key_file:
             return serialization.load_pem_private_key(
                 key_file.read(), password=None, backend=default_backend()
