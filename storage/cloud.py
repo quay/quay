@@ -977,9 +977,7 @@ class RHOCSStorage(RadosGWStorage):
 
 class VeritasObjectAccessStorage(RadosGWStorage):
     """
-    Veritas Object Access provides an implementation of the simple object access service. This section
-    explains the details of the RESTful APIs that are supported for the object access service. The
-    supported APIs are compatible with Amazon S3 with only mentioned parameters.
+    Veritas Object Access provides an implementation of the Amazon S3 with only mentioned parameters.
     """
     def __init__(
             self,
