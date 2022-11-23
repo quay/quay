@@ -11,6 +11,7 @@ from test.fixtures import *
         ({"RESTRICTED_USERS_WHITELIST": []}, "devtable", True),
         ({"RESTRICTED_USERS_WHITELIST": ["devtable"]}, "devtable", False),
         ({"RESTRICTED_USERS_WHITELIST": ["someotheruser"]}, "devtable", True),
+        ({"RESTRICTED_USERS_WHITELIST": None}, "devtable", True),
     ],
 )
 def test_restricted_user_whitelist(config, username, expected):

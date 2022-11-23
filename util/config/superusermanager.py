@@ -31,14 +31,17 @@ class ConfigUserManager(UserManager):
         self._superusers_array = Array("c", self._super_max_length, lock=True)
         self._superusers_array.value = super_usernames_str.encode("utf8")
 
-        restricted_usernames_whitelist = app.config.get(RESTRICTED_USERS_WHITELIST_CONFIG, [])
-        restricted_usernames_whitelist_str = ",".join(restricted_usernames_whitelist)
+        restricted_usernames_whitelist = app.config.get(RESTRICTED_USERS_WHITELIST_CONFIG, None)
+        if restricted_usernames_whitelist:
+            restricted_usernames_whitelist_str = ",".join(restricted_usernames_whitelist)
 
-        self._restricted_max_length = (
-            len(restricted_usernames_whitelist_str) + MAX_USERNAME_LENGTH + 1
-        )
-        self._restricted_users_array = Array("c", self._restricted_max_length, lock=True)
-        self._restricted_users_array.value = restricted_usernames_whitelist_str.encode("utf8")
+            self._restricted_max_length = (
+                len(restricted_usernames_whitelist_str) + MAX_USERNAME_LENGTH + 1
+            )
+            self._restricted_users_array = Array("c", self._restricted_max_length, lock=True)
+            self._restricted_users_array.value = restricted_usernames_whitelist_str.encode("utf8")
+        else:
+            self._restricted_users_array = None
 
         global_readonly_usernames = app.config.get("GLOBAL_READONLY_SUPER_USERS", [])
         global_readonly_usernames_str = ",".join(global_readonly_usernames)
@@ -81,8 +84,14 @@ class ConfigUserManager(UserManager):
         if include_robots:
             username = username.split("+")[0]
 
-        usernames = self._restricted_users_array.value.decode("utf8").split(",")
-        return not (username in usernames)
+        if self._restricted_users_array:
+            usernames = self._restricted_users_array.value.decode("utf8").split(",")
+            return not (username in usernames)
+        else:
+            return True
+
+    def restricted_whitelist_is_set(self):
+        return self._restricted_users_array is not None
 
     def has_restricted_users(self) -> bool:
         """
@@ -91,7 +100,7 @@ class ConfigUserManager(UserManager):
         Assumes at least one user always exists. i.e If whitelist not set and no users exist,
         returns True.
         """
-        if not self._restricted_users_array.value:
+        if not self._restricted_users_array or not self._restricted_users_array.value:
             return True
 
         return bool(self._restricted_users_array.value)

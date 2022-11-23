@@ -402,9 +402,10 @@ class FederatedUserManager(ConfigUserManager):
         if include_robots:
             username = username.split("+", 1)[0]
 
-        return self.federated_users.is_restricted_user(username) or super().is_restricted_user(
-            username
-        )
+        if super().restricted_whitelist_is_set() and not super().is_restricted_user(username):
+            return False
+
+        return self.federated_users.is_restricted_user(username)
 
     def has_restricted_users(self) -> bool:
         return self.federated_users.has_restricted_users() or super().has_restricted_users()
