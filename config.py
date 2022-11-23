@@ -846,4 +846,4 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False
 
     FEATURE_RESTRICTED_USERS = False
-    RESTRICTED_USERS_WHITELIST: List[str] = []
+    RESTRICTED_USERS_WHITELIST: Optional[List[str]] = None
