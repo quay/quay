@@ -19,7 +19,8 @@ certifi==2022.12.7
 cffi==1.14.3
 chardet==3.0.4
 charset-normalizer==2.0.12
-click==7.1.2
+click==8.0.0
+cnr-server @ git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b
 cryptography==3.3.2
 DateTime==4.3
 debtcollector==1.22.0
@@ -145,7 +146,7 @@ zope.interface==5.4.0
 Cython==3.0.0a9
 flit_core==3.7.1
 toml==0.10.2
-jsonpickle==1.2
+jsonpickle==1.4.2
 pip==22.2.1
 setuptools==65.5.1
 setuptools-scm[toml]==4.1.2
