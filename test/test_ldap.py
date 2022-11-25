@@ -870,10 +870,10 @@ class TestLDAP(unittest.TestCase):
                 is_superuser = ldap.is_superuser(user.username)
                 is_restricted_user = ldap.is_restricted_user(user.username)
                 self.assertFalse(is_superuser)
-                self.assertFalse(is_restricted_user)
+                self.assertTrue(is_restricted_user)
 
             self.assertFalse(ldap.has_superusers())
-            self.assertFalse(ldap.has_restricted_users())
+            self.assertTrue(ldap.has_restricted_users())
 
     def test_at_least_one_user_exists_filtered(self):
         base_dn = ["dc=quay", "dc=io"]

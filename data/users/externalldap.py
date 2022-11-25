@@ -505,6 +505,9 @@ class LDAPUsers(FederatedUsers):
         if not username_or_email:
             return False
 
+        if self._ldap_restricted_user_filter is None:
+            return True
+
         logger.debug("Looking up LDAP restricted user username or email %s", username_or_email)
         (found_user, err_msg) = self._ldap_single_user_search(
             username_or_email,
@@ -518,6 +521,9 @@ class LDAPUsers(FederatedUsers):
         return True
 
     def has_restricted_users(self) -> bool:
+        if self._ldap_restricted_user_filter is None and self.at_least_one_user_exists():
+            return True
+
         has_restricted_users, _ = self.at_least_one_user_exists(filter_restricted_users=True)
         return has_restricted_users
 
