@@ -15,7 +15,7 @@ ENV PYTHONPATH $QUAYPATH
 RUN set -ex\
 	; microdnf -y module enable nginx:1.20 \
 	; microdnf -y module enable python39:3.9 \
-        ; microdnf update -y \
+	; microdnf update -y \
 	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
@@ -26,8 +26,8 @@ RUN set -ex\
 		python39 \
 		python3-gpg \
 		skopeo \
-                findutils \
-        ; microdnf remove platform-python-pip python39-pip \
+        findutils \
+    ; microdnf remove platform-python-pip python39-pip \
 	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
@@ -39,7 +39,7 @@ ARG CONFIGTOOL_VERSION=v0.1.12
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=4 --exclude='*.go'
 RUN set -ex\
-	; npm install --quiet --no-progress --ignore-engines\
+	; npm install --quiet --no-progress --ignore-engines \
 	; npm run --quiet build\
 	; rm -Rf node_modules\
 	;
@@ -48,19 +48,19 @@ RUN set -ex\
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN set -ex\
-	; microdnf -y --setopt=tsflags=nodocs install\
-		gcc-c++\
-		git\
-		openldap-devel\
-		python39-devel\
-		libffi-devel\
+	; microdnf -y --setopt=tsflags=nodocs install \
+		gcc-c++ \
+		git \
+		openldap-devel \
+		python39-devel \
+		libffi-devel \
         openssl-devel \
         diffutils \
         file \
         make \
         libjpeg-turbo \
         libjpeg-turbo-devel \
-		wget\
+		wget \
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
