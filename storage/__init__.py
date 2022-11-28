@@ -26,6 +26,7 @@ STORAGE_DRIVER_CLASSES = {
     "AzureStorage": AzureStorage,
     "RHOCSStorage": RHOCSStorage,
     "CloudFlareStorage": CloudFlareS3Storage,
+    "VeritasObjectAccessStorage": VeritasObjectAccessStorage,
 }
 
 
