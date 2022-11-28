@@ -69,6 +69,7 @@ build_duration = Histogram(
     "seconds taken for a build's execution",
     labelnames=["executor", "job_status"],  # status in (COMPLETE, INCOMPLETE, ERROR)
 )
+build_jobs = Counter("quay_build_jobs", "total number of build requests", labelnames=["success"])
 
 JOB_PREFIX = "building/"
 LOCK_PREFIX = "lock/"
@@ -357,9 +358,12 @@ class EphemeralBuilderManager(BuildStateInterface):
             BuildJobResult.CANCELLED,
         ):
             if job_result == BuildJobResult.ERROR and not build_job.has_retries_remaining():
+                # increment counter for failed jobs
+                build_jobs.labels("false").inc()
                 build_job.send_notification("build_failure")
             if job_result == BuildJobResult.COMPLETE:
                 build_job.send_notification("build_success")
+                build_jobs.labels("true").inc()
             logger.warning(
                 "Job %s completed with result %s. Marking build done in queue.", job_id, job_result
             )
@@ -927,6 +931,8 @@ class EphemeralBuilderManager(BuildStateInterface):
             if schedule_success:
                 logger.debug("Build job %s scheduled.", job_id)
             else:
+                # job failed to schedule - increment counter
+                build_jobs.labels("false").inc()
                 logger.warning(
                     "Unsuccessful schedule. Build ID: %s. Check build executor service.",
                     build_job.repo_build.uuid,
