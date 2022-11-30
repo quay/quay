@@ -71,17 +71,6 @@ export function useOrganizations() {
   // Get query client for mutations
   const queryClient = useQueryClient();
 
-  const createOrganizationMutator = useMutation(
-    async ({name, email}: {name: string; email: string}) => {
-      return createOrg(name, email);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['user']);
-      },
-    },
-  );
-
   const deleteOrganizationMutator = useMutation(
     async (names: string[]) => {
       return bulkDeleteOrganizations(names, isSuperUser);
@@ -115,8 +104,6 @@ export function useOrganizations() {
     totalResults: organizationsTableDetails.length,
 
     // Mutations
-    createOrganization: async (name: string, email: string) =>
-      createOrganizationMutator.mutate({name, email}),
     deleteOrganizations: async (names: string[]) =>
       deleteOrganizationMutator.mutate(names),
     usernames,

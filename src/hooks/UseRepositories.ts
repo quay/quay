@@ -51,33 +51,6 @@ export function useRepositories(organization?: string) {
 
   const queryClient = useQueryClient();
 
-  const createRepositoryMutator = useMutation(
-    async ({
-      namespace,
-      repository,
-      visibility,
-      description,
-      repo_kind,
-    }: createRepositoryParams) => {
-      return createNewRepository(
-        namespace,
-        repository,
-        visibility,
-        description,
-        repo_kind,
-      );
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries([
-          'organization',
-          organization,
-          'repositories',
-        ]);
-      },
-    },
-  );
-
   const deleteRepositoryMutator = useMutation(
     async (repos: IRepository[]) => {
       return bulkDeleteRepositories(repos);
@@ -115,8 +88,6 @@ export function useRepositories(organization?: string) {
     totalResults: repositories.length,
 
     // Mutations
-    createRepository: async (params: createRepositoryParams) =>
-      createRepositoryMutator.mutate(params),
     deleteRepositories: async (repos: IRepository[]) =>
       deleteRepositoryMutator.mutate(repos),
   };

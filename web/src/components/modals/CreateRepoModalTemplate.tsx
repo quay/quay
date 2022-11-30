@@ -94,19 +94,13 @@ export default function CreateRepositoryModalTemplate(
     if (!validateInput()) {
       return;
     }
-    try {
-      await createRepository({
-        namespace: currentOrganization.name,
-        repository: newRepository.name,
-        visibility: repoVisibility.toLowerCase(),
-        description: newRepository.description,
-        repo_kind: 'image',
-      });
-      props.handleModalToggle();
-    } catch (error) {
-      console.error(error);
-      setErr(addDisplayError('Unable to create repository', error));
-    }
+    await createRepository({
+      namespace: currentOrganization.name,
+      repository: newRepository.name,
+      visibility: repoVisibility.toLowerCase(),
+      description: newRepository.description,
+      repo_kind: 'image',
+    });
   };
 
   const handleNamespaceSelection = (e, value) => {
