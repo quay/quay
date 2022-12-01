@@ -24,7 +24,7 @@ def get_request_ip():
 
 
 def crossorigin(anonymous=True):
-    cors_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE"]
+    cors_methods = ["GET", "HEAD", "OPTIONS", "POST", "DELETE", "PUT"]
 
     def decorate(func):
         @wraps(func)
