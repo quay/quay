@@ -43,6 +43,10 @@ from digest import digest_tools
 from image.shared import ManifestException
 from image.shared.interfaces import ManifestListInterface
 from image.shared.schemautil import LazyManifestLoader
+from image.docker.schema2 import (
+    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+)
 from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
 from image.oci.descriptor import get_descriptor_schema
 from image.oci.manifest import OCIManifest
@@ -70,6 +74,8 @@ INDEX_ANNOTATIONS_KEY = "annotations"
 ALLOWED_MEDIA_TYPES = [
     OCI_IMAGE_MANIFEST_CONTENT_TYPE,
     OCI_IMAGE_INDEX_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+    DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 ]
 
 
