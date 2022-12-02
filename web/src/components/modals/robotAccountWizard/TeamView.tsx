@@ -168,6 +168,7 @@ export default function TeamView(props: TeamViewProps) {
                         onSelectItem(team, rowIndex, isSelecting),
                       isSelected: isItemSelected(team),
                     }}
+                    data-testid={`checkbox-row-${team.name}`}
                   />
                 ) : null}
                 <Td dataLabel={ColumnNames.name}>{team.name}</Td>

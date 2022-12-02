@@ -415,7 +415,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     <CreateRobotAccountModal
       isModalOpen={isCreateRobotModalOpen}
       handleModalToggle={() => setCreateRobotModalOpen(!isCreateRobotModalOpen)}
-      namespace={props.organizationName}
+      orgName={props.organizationName}
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
     />

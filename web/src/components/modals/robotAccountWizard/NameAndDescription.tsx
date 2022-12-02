@@ -39,6 +39,7 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
         helperTextInvalidIcon={<ExclamationCircleIcon />}
       >
         <TextInput
+          data-testid="new-robot-name-input"
           isRequired
           type="text"
           id="robot-wizard-form-name"
@@ -54,6 +55,7 @@ export default function NameAndDescription(props: NameAndDescriptionProps) {
         helperText={props.helperText}
       >
         <TextInput
+          data-testid="new-robot-description-input"
           type="text"
           id="robot-wizard-form-description"
           name="form-description"

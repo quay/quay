@@ -4,10 +4,9 @@ import {
   WizardFooter,
 } from '@patternfly/react-core';
 
-export default function Footer(props: FooterProps) {
-  if (props.isDrawerExpanded) {
-    return null;
-  }
+export default function ReviewAndFinishFooter(
+  props: ReviewAndFinishFooterProps,
+) {
   return (
     <WizardFooter>
       <WizardContextConsumer>
@@ -21,7 +20,7 @@ export default function Footer(props: FooterProps) {
         }) => {
           return (
             <>
-              {activeStep.name != 'Review and Finish' ? (
+              {activeStep.name !== 'Review and Finish' ? (
                 <Button
                   data-testid="next-btn"
                   variant="primary"
@@ -31,26 +30,24 @@ export default function Footer(props: FooterProps) {
                   Next
                 </Button>
               ) : null}
-              {activeStep.name != 'Robot name and description' ? (
+              {activeStep.name !== 'Name & Description' ? (
                 <Button variant="secondary" type="submit" onClick={onBack}>
                   Back
                 </Button>
-              ) : (
-                ''
-              )}
-              {activeStep.name == 'Robot name and description' ||
-              activeStep.name == 'Review and Finish' ? (
+              ) : null}
+              {activeStep.name === 'Add team member (optional)' ||
+              activeStep.name === 'Review and Finish' ? (
                 <Button
-                  data-testid="review-and-finish-btn"
-                  isDisabled={!props.isDataValid()}
+                  data-testid="review-and-finish-wizard-btn"
+                  isDisabled={!props.canSubmit}
                   variant="secondary"
                   onClick={props.onSubmit}
-                  id="create-robot-submit"
+                  id="create-team-submit"
                 >
                   Review and Finish
                 </Button>
               ) : null}
-              <Button variant="link" onClick={onClose} id="create-robot-cancel">
+              <Button variant="link" onClick={onClose} id="create-team-cancel">
                 Cancel
               </Button>
             </>
@@ -61,8 +58,7 @@ export default function Footer(props: FooterProps) {
   );
 }
 
-interface FooterProps {
+interface ReviewAndFinishFooterProps {
   onSubmit: () => void;
-  isDrawerExpanded: boolean;
-  isDataValid: () => boolean;
+  canSubmit: boolean;
 }

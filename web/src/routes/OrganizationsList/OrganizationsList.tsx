@@ -15,8 +15,11 @@ import {
 } from '@patternfly/react-core';
 import './css/Organizations.scss';
 import {CreateOrganizationModal} from './CreateOrganizationModal';
-import {useRecoilState, useRecoilValue} from 'recoil';
-import {selectedOrgsState} from 'src/atoms/UserState';
+import {useRecoilState} from 'recoil';
+import {
+  searchOrgsState,
+  selectedOrgsState,
+} from 'src/atoms/OrganizationListState';
 import {useEffect, useState} from 'react';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import OrgTableData from './OrganizationsListTableData';
@@ -45,7 +48,7 @@ export interface OrganizationsTableItem {
 function OrgListHeader() {
   return (
     <>
-       <QuayBreadcrumb />
+      <QuayBreadcrumb />
       <PageSection variant={PageSectionVariants.light}>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Organizations</Title>

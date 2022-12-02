@@ -6,7 +6,6 @@ import {
   FormGroup,
   Form,
 } from '@patternfly/react-core';
-import React from 'react';
 import {DropdownWithDescription} from 'src/components/toolbar/DropdownWithDescription';
 
 export default function DefaultPermissions(props: DefaultPermissionsProps) {
@@ -39,6 +38,7 @@ export default function DefaultPermissions(props: DefaultPermissionsProps) {
             className="fit-content"
           >
             <TextInput
+              data-testid="applied-to-input"
               value={props.robotName}
               type="text"
               aria-label="robot-name-value"

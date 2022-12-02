@@ -5998,6 +5998,7 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 187	10	28	1	156	2023-08-23 17:52:13.669212	172.19.0.1	{"username": "collaborator1", "repo": "premierleague", "namespace": "testorg", "role": "write"}
 188	31	28	1	\N	2023-08-23 17:54:45.980317	172.19.0.1	{"member": "user1", "team": "chelsea"}
 189	31	28	1	\N	2023-08-23 17:55:15.284759	172.19.0.1	{"member": "testorg+testrobot", "team": "chelsea"}
+190	13	28	1	\N	2023-09-11 02:16:32.720762	172.18.0.1	{"prototypeid": "ee71ad91-b7a6-4fae-8322-664e0daabefa", "username": "user1", "activating_username": "testorg+testrobot", "role": "read", "delegate_team": "owners"}
 \.
 
 
@@ -6330,6 +6331,7 @@ COPY public.organizationrhskus (id, subscription_id, org_id, user_id) FROM stdin
 --
 
 COPY public.permissionprototype (id, org_id, uuid, activating_user_id, delegate_user_id, delegate_team_id, role_id) FROM stdin;
+1	28	ee71ad91-b7a6-4fae-8322-664e0daabefa	30	\N	27	3
 \.
 
 
@@ -6370,8 +6372,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-06-28 18:17:51.112431	t	2023-06-28 21:12:51.080949	5	1f7f0b49-2e34-4a00-8414-2559e4bbe63f
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-08-25 15:22:54.808849	t	2023-08-25 18:17:54.783824	5	89f5e206-0b48-4227-8e7f-15e9a549fa2e
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-09-11 02:21:04.643195	t	2023-09-11 05:16:04.600975	5	8679e58f-1471-41e1-b50f-56d4e4ca3d78
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-09-11 02:21:09.676721	t	2023-09-11 05:16:09.663101	5	1e56dc72-356d-4c51-be56-107754797c11
 \.
 
 
@@ -7902,7 +7904,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 189, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 190, true);
 
 
 --
@@ -8035,7 +8037,7 @@ SELECT pg_catalog.setval('public.organizationrhskus_id_seq', 1, false);
 -- Name: permissionprototype_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.permissionprototype_id_seq', 1, false);
+SELECT pg_catalog.setval('public.permissionprototype_id_seq', 1, true);
 
 
 --

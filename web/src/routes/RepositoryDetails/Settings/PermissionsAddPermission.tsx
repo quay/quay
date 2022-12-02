@@ -3,27 +3,37 @@ import {
   Alert,
   AlertActionCloseButton,
   Button,
+  Divider,
   Dropdown,
   DropdownItem,
   DropdownToggle,
   Form,
   FormGroup,
   Title,
+  SelectGroup,
+  SelectOption,
 } from '@patternfly/react-core';
-import {useEffect, useState} from 'react';
+import {DesktopIcon, UsersIcon} from '@patternfly/react-icons';
+import {SetStateAction, useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
 import EntitySearch from 'src/components/EntitySearch';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
 import {RepoMember, RepoRole} from 'src/resources/RepositoryResource';
 import {Entity, getMemberType} from 'src/resources/UserResource';
 import {roles} from './Types';
+import {useFetchRobotAccounts} from 'src/hooks/useRobotAccounts';
+import React from 'react';
+import {ITeams} from 'src/hooks/UseTeams';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 
 export default function AddPermissions(props: AddPermissionsProps) {
   const [isPermissionOpen, setIsPermissionOpen] = useState<boolean>(false);
   const [role, setRole] = useState<RepoRole>(RepoRole.admin);
-  const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
   const [errorFetchingEntities, setErrorFetchingEntities] =
     useState<boolean>(false);
+  const {usernames} = useOrganizations();
+  const isUserOrganization = usernames.includes(props.org);
+
   const {
     setPermissions,
     errorSetPermissions: errorSettingPermissions,
@@ -31,12 +41,81 @@ export default function AddPermissions(props: AddPermissionsProps) {
     resetSetRepoPermissions,
   } = useUpdateRepositoryPermissions(props.org, props.repo);
 
+  // Get robots
+  const {robots} = useFetchRobotAccounts(props.org);
+
+  const creatorDefaultOptions = [
+    <React.Fragment key="creator">
+      <Conditional if={!isUserOrganization}>
+        <SelectGroup label="Teams" key="group3">
+          {props.teams?.map((t) => (
+            <SelectOption
+              data-testid={`${t.name}-team`}
+              key={t.name}
+              value={t.name}
+              onClick={() => {
+                props.setSelectedEntity({
+                  is_robot: false,
+                  name: t.name,
+                  kind: 'team',
+                });
+              }}
+            />
+          ))}
+        </SelectGroup>
+        <Divider component="li" key={4} />
+      </Conditional>
+      <SelectGroup label="Robot accounts" key="robot-account-grp">
+        {robots?.map((r) => (
+          <SelectOption
+            data-testid={`${r.name}-robot-accnt`}
+            key={r.name}
+            value={r.name}
+            onClick={() => {
+              props.setSelectedEntity({
+                is_robot: true,
+                name: r.name,
+                kind: 'user',
+                is_org_member: true,
+              });
+            }}
+          />
+        ))}
+      </SelectGroup>
+      <Divider component="li" key={5} />
+      <Conditional if={!isUserOrganization}>
+        <SelectOption
+          data-testid="create-new-team-btn"
+          key="Create team1"
+          component="button"
+          onClick={() => props.setIsTeamModalOpen(!props.isTeamModalOpen)}
+          isPlaceholder
+          isFocused
+        >
+          <UsersIcon /> &nbsp; Create team
+        </SelectOption>
+      </Conditional>
+      <SelectOption
+        data-testid="create-new-robot-accnt-btn"
+        key="create-robot-account"
+        component="button"
+        onClick={() =>
+          props.setIsCreateRobotModalOpen(!props.isCreateRobotModalOpen)
+        }
+        isPlaceholder
+        isFocused
+      >
+        <DesktopIcon /> &nbsp; Create robot account
+      </SelectOption>
+    </React.Fragment>,
+  ];
+
   const createPermission = () => {
     const member: RepoMember = {
       org: props.org,
       repo: props.repo,
-      name: selectedEntity.name,
-      type: getMemberType(selectedEntity),
+      name: props.selectedEntity.name,
+      type: getMemberType(props.selectedEntity),
       role: null,
     };
     setPermissions({members: member, newRole: role});
@@ -70,7 +149,12 @@ export default function AddPermissions(props: AddPermissionsProps) {
           <EntitySearch
             org={props.org}
             onError={() => setErrorFetchingEntities(true)}
-            onSelect={(e: Entity) => setSelectedEntity(e)}
+            includeTeams={!isUserOrganization}
+            onSelect={(e: Entity) => props.setSelectedEntity(e)}
+            defaultOptions={creatorDefaultOptions}
+            placeholderText="Search for user, add/create robot account"
+            value={props.selectedEntity?.name}
+            onClear={props.setSelectedEntity}
           />
         </FormGroup>
         <FormGroup fieldId="permission" label="Select a permission" required>
@@ -97,7 +181,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
         </FormGroup>
         <ActionGroup>
           <Button
-            isDisabled={selectedEntity == null}
+            isDisabled={props.selectedEntity == null}
             onClick={() => {
               createPermission();
             }}
@@ -114,5 +198,12 @@ export default function AddPermissions(props: AddPermissionsProps) {
 interface AddPermissionsProps {
   org: string;
   repo: string;
+  teams: ITeams[];
   closeDrawer: () => void;
+  isCreateRobotModalOpen: boolean;
+  setIsCreateRobotModalOpen: React.Dispatch<SetStateAction<boolean>>;
+  isTeamModalOpen: boolean;
+  setIsTeamModalOpen: React.Dispatch<SetStateAction<boolean>>;
+  selectedEntity: Entity;
+  setSelectedEntity: React.Dispatch<SetStateAction<Entity>>;
 }

@@ -1,20 +1,16 @@
-import {useQuery} from '@tanstack/react-query';
 import {useEffect, useState} from 'react';
 import {Entity, fetchEntities} from 'src/resources/UserResource';
 
-export function useEntities(org: string) {
+export function useEntities(org: string, includeTeams?: boolean) {
   const [searchTerm, setSearchTerm] = useState<string>();
   const [isError, setIsError] = useState<boolean>();
   const [entities, setEntities] = useState<Entity[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
 
   const search = async () => {
     try {
-      const entityResults = await fetchEntities(org, searchTerm);
-      setLoading(false);
+      const entityResults = await fetchEntities(searchTerm, org, includeTeams);
       setEntities(entityResults);
     } catch (err) {
-      setLoading(false);
       setIsError(true);
     }
   };
@@ -22,25 +18,19 @@ export function useEntities(org: string) {
   // If next character typed is under a second, don't fire the
   // request
   useEffect(() => {
-    if (searchTerm != null && searchTerm != '') {
-      setLoading(true);
-      const delay = setTimeout(() => {
+    const delay = setTimeout(() => {
+      if (searchTerm != null && searchTerm != '') {
         search();
-      }, 1000);
-      return () => {
-        setLoading(false);
-        clearTimeout(delay);
-      };
-    } else {
-      setEntities([]);
-    }
+      }
+    }, 1000);
+    return () => clearTimeout(delay);
   }, [searchTerm]);
 
   return {
     entities: !isError ? entities : [],
     isError: isError,
-    isLoadingEntities: loading,
     searchTerm: searchTerm,
     setSearchTerm: setSearchTerm,
+    setEntities: setEntities,
   };
 }

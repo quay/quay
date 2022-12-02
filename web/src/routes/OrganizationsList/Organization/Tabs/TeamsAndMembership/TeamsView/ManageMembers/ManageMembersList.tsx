@@ -30,6 +30,7 @@ import {useParams} from 'react-router-dom';
 import Empty from 'src/components/empty/Empty';
 import {useAlerts} from 'src/hooks/UseAlerts';
 import {AlertVariant} from 'src/atoms/AlertState';
+import {getAccountTypeForMember} from 'src/libs/utils';
 
 export enum TableModeType {
   AllMembers = 'All Members',
@@ -179,16 +180,6 @@ export default function ManageMembersList() {
       </ToolbarContent>
     </Toolbar>
   );
-
-  const getAccountTypeForMember = (member: ITeamMember): string => {
-    if (member.is_robot) {
-      return 'Robot account';
-    } else if (!member.is_robot && !member.invited) {
-      return 'Team member';
-    } else if (member.invited) {
-      return '(Invited)';
-    }
-  };
 
   if (loading) {
     return <Spinner />;
