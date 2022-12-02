@@ -156,7 +156,7 @@ angular.module('quay').directive('headerBar', function () {
 
       $scope.shouldShowNewUiToggle = function (context) {
         // we only show the toggle once the user has signed-in
-        if( !Features.UI_V2 || checkElementByID('signin-username') {
+        if( !Features.UI_V2 || checkElementByID('signin-username')) {
           return false;
         }
 
