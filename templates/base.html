@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html ng-app="quay" class="{% if onprem %}onprem{% else %}hosted{% endif %}">
   <head>
+  {% if feature_set.get('FEATURE_UI_V2') and config_set['SERVER_HOSTNAME'] == 'stage.quay.io' %}
+      <script id="trustarc" src="//static.redhat.com/libs/redhat/marketing/latest/trustarc/trustarc.stage.js"></script>
+      <script id="dpal" src="https://www.redhat.com/ma/dpal-staging.js" type="text/javascript"></script>
+  {% endif %}
+
+  {% if feature_set.get('FEATURE_UI_V2') and config_set['SERVER_HOSTNAME'] == 'quay.io' %}
+      <script id="trustarc" src="//static.redhat.com/libs/redhat/marketing/latest/trustarc/trustarc.js"></script>
+      <script id="dpal" src="https://www.redhat.com/ma/dpal.js" type="text/javascript"></script>
+  {% endif %}
+
     <base href="/">
 
     {% block title %}
@@ -31,7 +41,7 @@
       text-align: center;
     }
     </style>
-  
+
     {% block added_stylesheets %}
 
     {% endblock %}
@@ -172,5 +182,13 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
     {% endif %}
 
     <div class="angular-tour-ui" inline="false" tour="angular_tour_current"></div>
+
+   {% if feature_set.get('FEATURE_UI_V2') and config_set['SERVER_HOSTNAME'].endswith('quay.io') %}
+       <script type="text/javascript">
+            if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+                _satellite.pageBottom();
+            }
+        </script>
+   {% endif %}
   </body>
 </html>
