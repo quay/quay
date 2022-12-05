@@ -102,7 +102,7 @@ function provideRoutes($routeProvider: ng.route.IRouteProvider,
     .route('/organization/:orgname/billing/invoices', 'invoices')
 
     // View User
-    .route('/user/:username', 'user-view')
+    .route('/user/:username/', 'user-view')
 
     // View User Billing
     .route('/user/:username/billing', 'billing')

@@ -37,20 +37,13 @@ location /react {
 }
 
 location / {
-    # Only show old UI
-    if ($host ~* "quay.io") {
-        proxy_pass   http://web_app_server;
-        break;
-    }
-
     root {{static_dir}}/patternfly/;
     index index.html;
 
     # Show new UI if patternfly cookie is set
     if ($cookie_patternfly) {
         # catch new static paths and direct to /index.html
-        # TODO: figure out how to match on $uri
-        rewrite ^(/organizations|/repositories) /index.html break; 
+        rewrite ^(/organization|/repository|/tag) /index.html break;
     }
 
     # Show old UI if patternfly cookie is not set
@@ -60,11 +53,12 @@ location / {
 }
 
 # Capture traffic that needs to go to web_app, see /web.py
-location ~* ^(/oauth1|/oauth2|/webhooks|/keys|/.well-known) {
+location ~* ^(/config|/csrf_token|/oauth1|/oauth2|/webhooks|/keys|/.well-known) {
     proxy_pass   http://web_app_server;
 }
 
-location ~* ^(/csrf_token|/config)$ {
+# Capture old UI paths that aren't present in new UI
+location ~* ^(/user/(.*)|/search) {
     proxy_pass   http://web_app_server;
 }
 
