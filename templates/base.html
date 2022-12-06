@@ -149,10 +149,19 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
           <li quay-require="['BILLING']">
             <span class="quay-service-status"></span>
           </li>
+          {% if feature_set.get('FEATURE_UI_V2') and config_set['SERVER_HOSTNAME'] == ('quay.io') or config_set['SERVER_HOSTNAME'] == ('stage.quay.io') %}
+          <li>
+            <span id="teconsent" style="line-height: 1.1;"></span>
+          </li>
+          {% endif %}
           <li>{{ version_number }}</li>
         </ul>
       </div>
     </nav>
+
+    {% if feature_set.get('FEATURE_UI_V2') and config_set['SERVER_HOSTNAME'] == ('quay.io') or config_set['SERVER_HOSTNAME'] == ('stage.quay.io') %}
+    <div id="consent_blackbar" style="position: fixed;bottom: 0;width: 100%;z-index: 5;padding: 10px;"></div>
+    {% endif %}
 
     <!-- Modal message dialog -->
     <div class="modal fade" id="couldnotloadModal" data-backdrop="static">
