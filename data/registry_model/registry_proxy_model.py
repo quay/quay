@@ -5,7 +5,7 @@ import logging
 from typing import Callable
 from peewee import Select, fn
 from data.model.oci.manifest import is_child_manifest
-from data.registry_model.quota import (
+from data.model.quota import (
     add_blob_size,
     blob_exists_in_namespace,
     get_namespace_id_from_repository,

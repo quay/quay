@@ -165,6 +165,14 @@ actions: Dict[str, Callable[..., Action]] = {
             None,
         ),
     ),
+    "DeleteIndexReport": lambda manifest_hash: Action(
+        "DeleteIndexReport",
+        (
+            "DELETE",
+            "/indexer/api/v1/index_report/" + manifest_hash,
+            None,
+        ),
+    ),
 }
 
 
@@ -273,6 +281,17 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
         assert resp.headers["etag"]
 
         return (resp.json(), resp.headers["etag"].strip('"'))
+
+    @observe
+    def delete(self, manifest_digest):
+        try:
+            resp = self.perform(actions["DeleteIndexReport"](manifest_digest))
+        except BadRequestResponseException as ex:
+            raise InvalidContentSent(ex)
+        except (Non200ResponseException, IncompatibleAPIResponse) as ex:
+            raise APIRequestFailure(ex)
+
+        return resp.json()
 
     def retrieve_notification_page(self, notification_id, next_param=None):
         try:

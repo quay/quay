@@ -3,12 +3,12 @@ import os
 import time
 
 from peewee import fn
-from data.registry_model.quota import run_backfill
 from data.database import DeletedNamespace, QuotaNamespaceSize, User
 
 import features
 
 from app import app
+from data.model.quota import run_backfill
 from workers.gunicorn_worker import GunicornWorker
 from workers.queueworker import QueueWorker
 from workers.worker import Worker

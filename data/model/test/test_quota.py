@@ -12,7 +12,7 @@ from data.model.organization import create_organization
 from data.model.repository import create_repository, get_repository_size
 from data.model.storage import get_layer_path
 from data.model.user import get_user
-from data.registry_model.quota import (
+from data.model.quota import (
     calculate_registry_size,
     get_registry_size,
     queue_registry_size_calculation,

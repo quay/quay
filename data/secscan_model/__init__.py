@@ -64,5 +64,8 @@ class SecurityScannerModelProxy(SecurityScannerInterface):
     def mark_notification_handled(self, notification_id):
         return self._model.mark_notification_handled(notification_id)
 
+    def garbage_collect_manifest_report(self, manifest_digest):
+        return self._model.garbage_collect_manifest_report(manifest_digest)
+
 
 secscan_model = SecurityScannerModelProxy()

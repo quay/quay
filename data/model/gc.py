@@ -2,9 +2,12 @@ import logging
 
 from peewee import fn, IntegrityError
 from datetime import datetime
+
 import features
+
 from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag, blob
 from data.model.oci import tag as oci_tag
+from data.model.quota import reset_backfill, subtract_blob_size
 from data.database import ImageStorage, Repository, QuotaRepositorySize, db_for_update
 from data.database import ApprTag
 from data.database import (
@@ -35,7 +38,7 @@ from data.database import (
     Image,
     DerivedStorageForImage,
 )
-from data.registry_model.quota import reset_backfill, subtract_blob_size
+from data.secscan_model import secscan_model
 from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
 
 
@@ -447,6 +450,14 @@ def _garbage_collect_manifest(manifest_id, context):
         manifest.delete_instance()
 
     context.mark_manifest_removed(manifest)
+
+    if features.SECURITY_SCANNER and config.app_config.get("SECURITY_SCANNER_V4_MANIFEST_CLEANUP"):
+        try:
+            secscan_model.garbage_collect_manifest_report(manifest.digest)
+        except:
+            logger.warning(
+                "Exception attempting to delete manifest %s from secscan service" % manifest.digest
+            )
 
     gc_table_rows_deleted.labels(table="ManifestLabel").inc(deleted_manifest_label)
     gc_table_rows_deleted.labels(table="ManifestChild").inc(deleted_manifest_child)

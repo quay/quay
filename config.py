@@ -494,6 +494,9 @@ class DefaultConfig(ImmutableConfig):
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT: Optional[str] = None
 
+    # Cleanup deleted manifests from the security scanner service.
+    SECURITY_SCANNER_V4_MANIFEST_CLEANUP: Optional[bool] = False
+
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
 

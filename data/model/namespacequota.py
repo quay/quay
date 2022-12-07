@@ -32,7 +32,7 @@ from data.model import (
     repository,
     UnsupportedQuotaSize,
 )
-from data.registry_model import quota
+from data.model import quota
 
 
 def get_namespace_quota_list(namespace_name):
