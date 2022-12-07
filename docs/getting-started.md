@@ -52,6 +52,14 @@ or you can run:
 make install-pre-commit-hook
 ```
 
+Run the following in the quay directory where the repository is forked. It installs the pre-commit checks required for git.
+
+```
+pip install pre-commit==2.20.0
+
+pre-commit install
+```
+
 ## Building and Running with Docker Compose
 
 The below commands rely on Docker and Docker Compose to be installed. You can also run Quay with podman - refer to the project's [`docker-compose.yml`](https://github.com/quay/quay/blob/c507eeff2eae61efe1a18a4b0e6addce4d37bc5a/docker-compose.yaml) file to understand and reproduce the setup.

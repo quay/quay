@@ -13,6 +13,8 @@ BACKUP_IMAGE="${BACKUP_URL}/${BACKUP_BASE_IMG}"
 
 GIT_HASH=`git rev-parse --short=7 HEAD`
 
+export REACT_APP_QUAY_DOMAIN=quay.io
+
 # build the image
 BUILD_CMD="docker build" IMG="$IMG" make app-sre-docker-build
 

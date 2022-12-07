@@ -104,6 +104,9 @@ RUN cd quay-ui &&\
 	set -ex &&\
 	npm install --quiet --no-progress --ignore-engines
 
+RUN	cd quay-ui/scripts/ &&\
+        ./add_analytics.sh
+
 RUN	cd quay-ui &&\
 	npm run --quiet build
 
