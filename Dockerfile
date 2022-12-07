@@ -104,14 +104,17 @@ RUN cd quay-ui &&\
 	set -ex &&\
 	npm install --quiet --no-progress --ignore-engines
 
+RUN	cd quay-ui/scripts/ &&\
+        ./add_analytics.sh
+
 RUN	cd quay-ui &&\
 	npm run --quiet build
 
-RUN chown -R 1001:0 quay-ui/dist 
+RUN chown -R 1001:0 quay-ui/dist
 
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
-ENV OS=linux 
+ENV OS=linux
 ARG PUSHGATEWAY_VERSION=1.0.0
 RUN set -ex\
 	; ARCH=$(uname -m) ; echo $ARCH \

@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html ng-app="quay" class="{% if onprem %}onprem{% else %}hosted{% endif %}">
   <head>
+  {% if config_set['SERVER_HOSTNAME'] == 'stage.quay.io' %}
+      <script id="trustarc" src="//static.redhat.com/libs/redhat/marketing/latest/trustarc/trustarc.stage.js"></script>
+      <script id="dpal" src="https://www.redhat.com/ma/dpal-staging.js" type="text/javascript"></script>
+  {% endif %}
+
+  {% if config_set['SERVER_HOSTNAME'] == 'quay.io' %}
+      <script id="trustarc" src="//static.redhat.com/libs/redhat/marketing/latest/trustarc/trustarc.js"></script>
+      <script id="dpal" src="https://www.redhat.com/ma/dpal.js" type="text/javascript"></script>
+  {% endif %}
+
     <base href="/">
 
     {% block title %}
@@ -31,7 +41,7 @@
       text-align: center;
     }
     </style>
-  
+
     {% block added_stylesheets %}
 
     {% endblock %}
@@ -139,10 +149,19 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
           <li quay-require="['BILLING']">
             <span class="quay-service-status"></span>
           </li>
+          {% if config_set['SERVER_HOSTNAME'] == ('quay.io') or config_set['SERVER_HOSTNAME'] == ('stage.quay.io') %}
+          <li>
+            <span id="teconsent" style="line-height: 1.1;"></span>
+          </li>
+          {% endif %}
           <li>{{ version_number }}</li>
         </ul>
       </div>
     </nav>
+
+    {% if config_set['SERVER_HOSTNAME'] == ('quay.io') or config_set['SERVER_HOSTNAME'] == ('stage.quay.io') %}
+    <div id="consent_blackbar" style="position: fixed;bottom: 0;width: 100%;z-index: 5;padding: 10px;"></div>
+    {% endif %}
 
     <!-- Modal message dialog -->
     <div class="modal fade" id="couldnotloadModal" data-backdrop="static">
@@ -172,5 +191,13 @@ mixpanel.init("{{ mixpanel_key }}", { track_pageview : false, debug: {{ is_debug
     {% endif %}
 
     <div class="angular-tour-ui" inline="false" tour="angular_tour_current"></div>
+
+   {% if config_set['SERVER_HOSTNAME'].endswith('quay.io') %}
+       <script type="text/javascript">
+            if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+                _satellite.pageBottom();
+            }
+        </script>
+   {% endif %}
   </body>
 </html>

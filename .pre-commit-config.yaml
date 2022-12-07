@@ -1,0 +1,23 @@
+repos:
+-   repo: https://github.com/zricethezav/gitleaks
+    rev: v8.15.0
+    hooks:
+    -   id: gitleaks
+        args:
+            - 'protect --staged'
+            - '--log-level=trace'
+-   repo: https://github.com/psf/black
+    rev: 22.10.0
+    hooks:
+    -   id: black
+-   repo: local
+    hooks:
+    -   id: config-files-check
+        name: Checking Config file changes
+        entry: .github/hooks/pre-commit.sh
+        language: script
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer

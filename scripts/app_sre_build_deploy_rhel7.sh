@@ -12,6 +12,8 @@ IMG="${BASE_IMG}:latest"
 
 GIT_HASH=`git rev-parse --short=7 HEAD`
 
+export REACT_APP_QUAY_DOMAIN=quay.io
+
 # build the image
 BUILD_CMD="docker build" IMG="$IMG" make app-sre-docker-build
 
@@ -25,5 +27,4 @@ skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
 
 skopeo copy --dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
     "docker-archive:${BASE_IMG}" \
-    "docker://${QUAY_IMAGE}:${GIT_HASH}"
-
+    "docker://${BACKUP_IMAGE}:${GIT_HASH}"

@@ -44,7 +44,7 @@
 
         <!-- Normal -->
         <ul class="nav navbar-nav navbar-right hidden-xs" ng-switch on="user.anonymous">
-          <li class="new-ui-toggle" ng-if="Features.UI_V2 && !checkElementByID('signin-username')">
+          <li class="new-ui-toggle" ng-if="shouldShowNewUiToggle()">
               <new-ui-toggle></new-ui-toggle>
           </li>
           <li>

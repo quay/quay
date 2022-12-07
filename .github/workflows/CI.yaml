@@ -39,7 +39,7 @@ jobs:
         flake8 --ignore=C901,E203,E262,E265,E266,E402,E501,E712,E713,E722,E731,E741,F401,F403,F405,F811,F821,F841,W503
         # Run full scan for visibility purposes.
         flake8 --exit-zero
-    
+
     - name: Check Requirements are pinned
       run: |
         # Read each line of requirement.txt and flag if any line doesn't contain ==, @, newline, or #
@@ -152,8 +152,8 @@ jobs:
     - name: tox
       run: tox -e py39-registry
 
-  docker:
-    name: Docker Build
+  docker-amd64:
+    name: Docker Build amd64
     runs-on: ubuntu-latest
     steps:
 
@@ -168,13 +168,71 @@ jobs:
     - name: Docker Build (linux/amd64)
       env:
        DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/amd64 .
+      run: docker build --platform=linux/amd64 -t localhost/quay-local:latest .
 
-#    Commenting because of recurring failure with arm
-#    - name: Docker Build (linux/arm64)
-#      env:
-#       DOCKER_BUILDKIT: 1
-#      run: docker build --platform=linux/arm64 .
+    - name: Start Quay
+      run: |
+        docker-compose up -d redis quay-db
+        docker exec -t quay-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
+        DOCKER_USER="1001:0" docker-compose up -d --no-build quay
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Clone Quay UI Repository
+      uses: actions/checkout@v3
+      with:
+        repository: quay/quay-ui
+        path: './quay-ui'
+
+    - name: Seed Database
+      run: cd quay-ui && npm run quay:seed
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest requests
+
+    - name: Integration Test
+      run:  |
+        docker restart quay-quay
+        sleep 30
+        make integration-test
+
+  docker-arm64:
+    name: Docker Build arm64
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Docker Build (linux/arm64)
+      env:
+        DOCKER_BUILDKIT: 1
+      run: docker build --platform=linux/arm64 .
+
+  docker-ppc64le:
+    name: Docker Build ppc64le
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
     - name: Docker Build (linux/ppc64le)
       env:
