@@ -7,7 +7,12 @@ from enum import Enum, unique
 from cachetools.func import lru_cache
 
 from data import model
-from data.database import Manifest as ManifestTable, get_epoch_timestamp_ms
+from data.database import (
+    Manifest as ManifestTable,
+    get_epoch_timestamp_ms,
+    Tag as TagTable,
+    ManifestSecurityStatus,
+)
 from data.registry_model.datatype import datatype, requiresinput, optionalinput
 from image.shared import ManifestException
 from image.shared.schemas import parse_manifest_from_bytes, is_manifest_list_type
@@ -342,6 +347,30 @@ class Manifest(
         The ID of this manifest.
         """
         return self._db_id
+
+    @property
+    def created_at(self):
+        """
+        When the manifest was created
+        """
+        result = TagTable.get(TagTable.manifest_id == self.id).lifetime_start_ms
+        return result
+
+    @property
+    def initial_scan(self):
+        """
+        True if the manifest has been scanned the first time after a push, false otherwise
+        """
+        # a new manifest that has not been scanned yet will not be present in the ManifestSecurityStatus table
+        try:
+            query = ManifestSecurityStatus.get(
+                ManifestSecurityStatus.manifest_id == self.id
+            ).last_indexed
+        except ManifestSecurityStatus.DoesNotExist:
+            return False
+        if query is None:
+            return False
+        return True
 
     @property
     def is_manifest_list(self):

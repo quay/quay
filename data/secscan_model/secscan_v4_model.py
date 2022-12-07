@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from math import log10
 from peewee import fn, JOIN
 from enum import Enum
+from data.database import get_epoch_timestamp_ms
 
 from data.secscan_model.interface import SecurityScannerInterface, InvalidConfigurationException
 from data.secscan_model.datatypes import (
@@ -33,6 +34,7 @@ from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure, Inva
 from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore, fetch_vuln_severity
 from util.secscan.blob import BlobURLRetriever
 from util.config import URLSchemeAndHostname
+from util.metrics.prometheus import secscan_result_duration
 
 from data.database import (
     Manifest,
@@ -363,6 +365,11 @@ class V4SecurityScanner(SecurityScannerInterface):
 
             if report["state"] == IndexReportState.Index_Finished:
                 index_status = IndexStatus.COMPLETED
+                # record time to get results if manifest has just been uploaded
+                if not manifest.initial_scan:
+                    dur_ms = get_epoch_timestamp_ms() - manifest.created_at
+                    dur = dur_ms / 1000
+                    secscan_result_duration.observe(dur)
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
             else:
