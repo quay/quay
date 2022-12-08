@@ -28,7 +28,7 @@ data:
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
       "id": 26309,
-      "iteration": 1669038936290,
+      "iteration": 1669655779185,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -176,6 +176,7 @@ data:
             "type": "prometheus",
             "uid": "${catchpoint_datasource}"
           },
+          "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -266,14 +267,14 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "(100 - $push_target_slo) * increase(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$rate])",
+              "expr": "(100 - 99.5) * increase(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$rate])",
               "hide": false,
               "legendFormat": "max budget",
               "range": true,
               "refId": "B"
             }
           ],
-          "title": "Push Error Budget Burn Rate",
+          "title": "Push Error Budget Burn Rate (WIP)",
           "type": "timeseries"
         },
         {
@@ -371,14 +372,14 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "(100 - $pull_target_slo) * sum(increase(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))",
+              "expr": "(100 - 99.9) * sum(increase(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))",
               "hide": false,
               "legendFormat": "max budget",
               "range": true,
               "refId": "B"
             }
           ],
-          "title": "Pull Error Budget Burn Rate",
+          "title": "Pull Error Budget Burn Rate (WIP)",
           "type": "timeseries"
         },
         {
@@ -440,8 +441,8 @@ data:
                 "type": "prometheus",
                 "uid": "${catchpoint_datasource}"
               },
-              "editorMode": "builder",
-              "expr": "$pull_target_slo",
+              "editorMode": "code",
+              "expr": "99.9",
               "hide": false,
               "legendFormat": "pull target",
               "range": true,
@@ -466,48 +467,12 @@ data:
                 "type": "prometheus",
                 "uid": "${catchpoint_datasource}"
               },
-              "editorMode": "builder",
-              "expr": "$push_target_slo",
-              "hide": true,
-              "legendFormat": "push target",
-              "range": true,
-              "refId": "push target"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
               "editorMode": "code",
-              "expr": "100 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$rate]))\n    /\n    sum(increase(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$rate]))\n)",
-              "hide": true,
-              "legendFormat": "push availability",
-              "range": true,
-              "refId": "push availability"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "code",
-              "expr": "100 * (\n  (100 - $pull_target_slo) - 100 * (\n    (\n      sum(increase(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$rate])) \n      / sum(increase(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))\n    )\n  )\n)\n/\n(100 - $pull_target_slo)",
+              "expr": "100 * (\n  (100 - 99.9) - 100 * (\n    (\n      sum(increase(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$rate])) \n      / sum(increase(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))\n    )\n  )\n)\n/\n(100 - 99.9)",
               "hide": false,
               "legendFormat": "error budget left",
               "range": true,
               "refId": "error budget left pull"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "code",
-              "expr": "100 * (\n  (100 - $push_target_slo) - 100 * (\n    (\n      sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$rate])) \n      / sum(increase(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$rate]))\n    )\n  )\n)\n/\n(100 - $push_target_slo)",
-              "hide": true,
-              "legendFormat": "error budget left",
-              "range": true,
-              "refId": "error budget left push"
             }
           ],
           "title": "Pull Operations",
@@ -572,34 +537,8 @@ data:
                 "type": "prometheus",
                 "uid": "${catchpoint_datasource}"
               },
-              "editorMode": "builder",
-              "expr": "$pull_target_slo",
-              "hide": true,
-              "legendFormat": "pull target",
-              "range": true,
-              "refId": "pull target"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
               "editorMode": "code",
-              "exemplar": false,
-              "expr": "100 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))\n    /\n    sum(increase(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))\n)",
-              "hide": true,
-              "instant": false,
-              "legendFormat": "pull availability",
-              "range": true,
-              "refId": "pull availability"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "builder",
-              "expr": "$push_target_slo",
+              "expr": "99.5",
               "hide": false,
               "legendFormat": "push target",
               "range": true,
@@ -623,19 +562,7 @@ data:
                 "uid": "${catchpoint_datasource}"
               },
               "editorMode": "code",
-              "expr": "100 * (\n  (100 - $pull_target_slo) - 100 * (\n    (\n      sum(increase(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$rate])) \n      / sum(increase(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))\n    )\n  )\n)\n/\n(100 - $pull_target_slo)",
-              "hide": true,
-              "legendFormat": "error budget left (pull)",
-              "range": true,
-              "refId": "error budget left pull"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${catchpoint_datasource}"
-              },
-              "editorMode": "code",
-              "expr": "100 * (\n  (100 - $push_target_slo) - 100 * (\n    (\n      sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$rate])) \n      / sum(increase(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$rate]))\n    )\n  )\n)\n/\n(100 - $push_target_slo)",
+              "expr": "100 * (\n  (100 - 99.5) - 100 * (\n    (\n      sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$rate])) \n      / sum(increase(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$rate]))\n    )\n  )\n)\n/\n(100 - 99.5)",
               "hide": false,
               "legendFormat": "error budget left",
               "range": true,
@@ -747,7 +674,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!=\"500\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.user",
               "range": true,
               "refId": "A"
@@ -813,8 +740,8 @@ data:
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "#F2495C",
+                    "value": ""
                   }
                 ]
               },
@@ -864,7 +791,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!=\"500\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.user",
               "range": true,
               "refId": "A"
@@ -875,9 +802,9 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(1 - 0.995) - (1 - (\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status=\"200\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))\n))",
+              "expr": "(\n  \n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!=\"500\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))\n\n)\n-\n0.995",
               "hide": false,
-              "legendFormat": "error budget left",
+              "legendFormat": "error budget",
               "range": true,
               "refId": "C"
             }
@@ -896,7 +823,9 @@ data:
               "color": {
                 "mode": "continuous-RdYlGr"
               },
+              "decimals": 2,
               "mappings": [],
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -967,9 +896,9 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(1 - 0.995) - (1 - (\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",status=\"200\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))\n))",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",status=\"200\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))\n) - 0.995",
               "hide": false,
-              "legendFormat": "error budget left",
+              "legendFormat": "error budget ",
               "range": true,
               "refId": "C"
             }
@@ -980,8 +909,8 @@ data:
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
+            "type": "datasource",
+            "uid": "-- Mixed --"
           },
           "fieldConfig": {
             "defaults": {
@@ -1051,7 +980,7 @@ data:
               "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.listrepositorytags",
               "range": true,
-              "refId": "A"
+              "refId": "current_rate"
             },
             {
               "datasource": {
@@ -1059,9 +988,9 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(1 - 0.995) - (1 - (\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status=\"200\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))\n))",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status=\"200\",method=\"GET\"}[$rate]))\n    /\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))\n)\n- 0.995",
               "hide": false,
-              "legendFormat": "error budget left",
+              "legendFormat": "error budget",
               "range": true,
               "refId": "C"
             }
@@ -1072,8 +1001,8 @@ data:
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
+            "type": "datasource",
+            "uid": "-- Mixed --"
           },
           "fieldConfig": {
             "defaults": {
@@ -1087,6 +1016,10 @@ data:
                   {
                     "color": "green",
                     "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
                   }
                 ]
               },
@@ -1100,7 +1033,7 @@ data:
             "x": 12,
             "y": 42
           },
-          "id": 47,
+          "id": 63,
           "links": [],
           "options": {
             "colorMode": "value",
@@ -1124,7 +1057,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "0.90",
+              "expr": "0.995",
               "hide": false,
               "legendFormat": "target availability",
               "range": true,
@@ -1139,7 +1072,7 @@ data:
               "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.repositorymanifestsecurity",
               "range": true,
-              "refId": "A"
+              "refId": "current_rate"
             },
             {
               "datasource": {
@@ -1147,9 +1080,9 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(1 - 0.90) - (1 - (\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status=\"200\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))\n))",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status=\"200\",method=\"GET\"}[$rate]))\n    /\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))\n)\n- 0.995",
               "hide": false,
-              "legendFormat": "error budget left",
+              "legendFormat": "error budget",
               "range": true,
               "refId": "C"
             }
@@ -1187,9 +1120,9 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
-            "w": 6,
-            "x": 12,
+            "h": 6,
+            "w": 12,
+            "x": 0,
             "y": 47
           },
           "id": 54,
@@ -1340,9 +1273,9 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 10,
-            "w": 6,
-            "x": 18,
+            "h": 6,
+            "w": 12,
+            "x": 12,
             "y": 47
           },
           "id": 55,
@@ -1477,7 +1410,608 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 57
+            "y": 53
+          },
+          "id": 60,
+          "panels": [],
+          "title": "v2 Registry API",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-RdYlGr"
+              },
+              "decimals": 3,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 12,
+            "x": 0,
+            "y": 54
+          },
+          "id": 66,
+          "links": [],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.995",
+              "hide": false,
+              "legendFormat": "target",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status=~\"20[1-2]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status=\"201\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status=\"202\"}[$rate]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n)",
+              "hide": false,
+              "legendFormat": "upload blob",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(    \n    (\n        sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status=~\"20[1-2]\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status=\"201\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status=\"202\"}[$rate]))\n    )\n    /\n    (\n        sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n    )\n) - 0.995",
+              "hide": false,
+              "legendFormat": "error budget",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "upload blob success rate",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-RdYlGr"
+              },
+              "decimals": 3,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 12,
+            "x": 12,
+            "y": 54
+          },
+          "id": 47,
+          "links": [],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.999\n",
+              "hide": false,
+              "legendFormat": "target",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status=\"200\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status=\"200\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\"}[5m]))\n)\n",
+              "hide": false,
+              "legendFormat": "GET manifest",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status=\"200\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status=\"200\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\"}[5m]))\n) - 0.999\n",
+              "hide": false,
+              "legendFormat": "error budget",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "GET manifest success rate",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-RdYlGr"
+              },
+              "decimals": 3,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 12,
+            "x": 0,
+            "y": 58
+          },
+          "id": 67,
+          "links": [],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.995",
+              "hide": false,
+              "legendFormat": "target",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status=\"201\"}[$rate]))\n  + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status=\"201\"}[$rate]))\n)\n/ \n(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n   + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n)",
+              "hide": false,
+              "legendFormat": "upload manifest",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(    \n    (\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status=\"201\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status=\"201\"}[$rate]))\n    )\n    / \n    (\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n    )\n) - 0.995",
+              "hide": false,
+              "legendFormat": "error budget",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "upload manifest success rate",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-RdYlGr"
+              },
+              "decimals": 3,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 12,
+            "x": 12,
+            "y": 58
+          },
+          "id": 65,
+          "links": [],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.999\n",
+              "hide": false,
+              "legendFormat": "target",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status=\"302\", method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))",
+              "hide": false,
+              "legendFormat": "GET blob",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status=\"302\", method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))\n) - 0.999",
+              "hide": false,
+              "legendFormat": "error budget",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "GET blob success rate",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 62
+          },
+          "id": 58,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status=\"200\", method=\"GET\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status=\"200\", method=\"GET\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", method=\"GET\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", method=\"GET\"}[5m]))\n)",
+              "legendFormat": "GET manifest success rate",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status=\"200\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))",
+              "hide": false,
+              "legendFormat": "auth success rate",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status=\"302\", method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))",
+              "hide": false,
+              "legendFormat": "GET blob success rate",
+              "range": true,
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status=~\"20[1-2]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status=\"201\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status=\"202\"}[$rate]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n)",
+              "hide": false,
+              "legendFormat": "upload blob success rate",
+              "range": true,
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status=\"201\"}[$rate]))\n  + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status=\"201\"}[$rate]))\n)\n/ \n(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n   + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n)\n",
+              "hide": false,
+              "legendFormat": "upload manifest success rate",
+              "range": true,
+              "refId": "E"
+            }
+          ],
+          "title": "v2 registry api",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "continuous-RdYlGr"
+              },
+              "decimals": 3,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 12,
+            "x": 12,
+            "y": 62
+          },
+          "id": 64,
+          "links": [],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.999\n",
+              "hide": false,
+              "legendFormat": "target",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status=\"200\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))",
+              "hide": false,
+              "legendFormat": "GET auth",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(  \n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status=\"200\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))\n) - 0.999",
+              "hide": false,
+              "legendFormat": "error budget",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "GET auth success rate",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 71
           },
           "id": 51,
           "panels": [],
@@ -1516,7 +2050,7 @@ data:
             "h": 8,
             "w": 6,
             "x": 0,
-            "y": 58
+            "y": 72
           },
           "id": 40,
           "options": {
@@ -1579,7 +2113,7 @@ data:
             "h": 8,
             "w": 6,
             "x": 6,
-            "y": 58
+            "y": 72
           },
           "id": 42,
           "options": {
@@ -1652,7 +2186,7 @@ data:
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 58
+            "y": 72
           },
           "id": 56,
           "options": {
@@ -1684,6 +2218,70 @@ data:
           ],
           "title": "Build Queue Duration",
           "type": "histogram"
+        },
+        {
+          "cards": {},
+          "color": {
+            "cardColor": "#b4ff00",
+            "colorScale": "sqrt",
+            "colorScheme": "interpolateGreens",
+            "exponent": 0.5,
+            "mode": "spectrum"
+          },
+          "dataFormat": "tsbuckets",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Heatmap of time spent in queue for build jobs",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 80
+          },
+          "heatmap": {},
+          "hideZeroBuckets": true,
+          "highlightCards": true,
+          "id": 62,
+          "legend": {
+            "show": true
+          },
+          "pluginVersion": "9.0.3",
+          "reverseYBuckets": false,
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(increase(quay_build_queue_duration_seconds_bucket{schedule_success=\"True\"}[$rate])) by (le)",
+              "format": "heatmap",
+              "hide": false,
+              "instant": false,
+              "interval": "",
+              "legendFormat": "{{le}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Build Queue Duration",
+          "tooltip": {
+            "show": true,
+            "showHistogram": false
+          },
+          "type": "heatmap",
+          "xAxis": {
+            "show": true
+          },
+          "yAxis": {
+            "format": "s",
+            "logBase": 1,
+            "show": true
+          },
+          "yBucketBound": "auto"
         }
       ],
       "refresh": false,
@@ -1787,44 +2385,6 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "99.5",
-              "value": "99.5"
-            },
-            "hide": 0,
-            "name": "push_target_slo",
-            "options": [
-              {
-                "selected": true,
-                "text": "99.5",
-                "value": "99.5"
-              }
-            ],
-            "query": "99.5",
-            "skipUrlSync": false,
-            "type": "textbox"
-          },
-          {
-            "current": {
-              "selected": false,
-              "text": "99.9",
-              "value": "99.9"
-            },
-            "hide": 0,
-            "name": "pull_target_slo",
-            "options": [
-              {
-                "selected": true,
-                "text": "99.9",
-                "value": "99.9"
-              }
-            ],
-            "query": "99.9",
-            "skipUrlSync": false,
-            "type": "textbox"
-          },
-          {
-            "current": {
-              "selected": false,
               "text": "app-sre-prod-01-prometheus",
               "value": "app-sre-prod-01-prometheus"
             },
@@ -1836,7 +2396,7 @@ data:
             "query": "prometheus",
             "queryValue": "",
             "refresh": 1,
-            "regex": "^((.*quay.*)|(app-sre-prod-01-prometheus))$",
+            "regex": "app-sre-prod-01-prometheus",
             "skipUrlSync": false,
             "type": "datasource"
           },
@@ -1861,7 +2421,7 @@ data:
         ]
       },
       "time": {
-        "from": "now-30d",
+        "from": "now-6h",
         "to": "now"
       },
       "timepicker": {
@@ -1892,7 +2452,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 4,
+      "version": 6,
       "weekStart": ""
     }
 kind: ConfigMap
