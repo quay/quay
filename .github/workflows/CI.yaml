@@ -12,7 +12,7 @@ on:
 jobs:
   build:
     name: Format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v2
@@ -47,7 +47,7 @@ jobs:
 
   unit:
     name: Unit Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v2
@@ -67,7 +67,7 @@ jobs:
 
   types:
     name: Types Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v2
@@ -112,7 +112,7 @@ jobs:
 
   e2e:
     name: E2E Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v2
@@ -133,7 +133,7 @@ jobs:
 
   registry:
     name: E2E Registry Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v2
@@ -154,7 +154,7 @@ jobs:
 
   docker-amd64:
     name: Docker Build amd64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v3
@@ -205,7 +205,7 @@ jobs:
 
   docker-arm64:
     name: Docker Build arm64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v3
@@ -223,7 +223,7 @@ jobs:
 
   docker-ppc64le:
     name: Docker Build ppc64le
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v3
@@ -241,7 +241,7 @@ jobs:
 
   mysql:
     name: E2E MySQL Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v2
@@ -265,7 +265,7 @@ jobs:
 
   psql:
     name: E2E Postgres Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
 
     - uses: actions/checkout@v2
