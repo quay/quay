@@ -27,8 +27,8 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 26309,
-      "iteration": 1669655779185,
+      "id": 29251,
+      "iteration": 1670596018900,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -168,7 +168,7 @@ data:
               "refId": "B"
             }
           ],
-          "title": "Push/Pull Service Level Compliance",
+          "title": "Image Push/Pull Service Level Compliance",
           "type": "timeseries"
         },
         {
@@ -674,7 +674,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!=\"500\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.user",
               "range": true,
               "refId": "A"
@@ -685,7 +685,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))",
               "hide": false,
               "legendFormat": "GET api.repository",
               "range": true,
@@ -697,7 +697,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))",
               "hide": false,
               "legendFormat": "GET api.listrepositorytags",
               "range": true,
@@ -709,7 +709,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))",
               "hide": false,
               "interval": "",
               "legendFormat": "GET api.repositorymanifestsecurity",
@@ -791,7 +791,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!=\"500\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!~\"5[0-9[0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.user",
               "range": true,
               "refId": "A"
@@ -802,7 +802,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n  \n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!=\"500\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))\n\n)\n-\n0.995",
+              "expr": "(\n  \n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",status!~\"5[0-9[0-9]\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.user\",method=\"GET\"}[$rate]))\n\n)\n-\n0.995",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -885,7 +885,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.repository",
               "range": true,
               "refId": "A"
@@ -896,7 +896,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",status=\"200\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))\n) - 0.995",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\", status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repository\",method=\"GET\"}[$rate]))\n) - 0.995",
               "hide": false,
               "legendFormat": "error budget ",
               "range": true,
@@ -977,7 +977,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.listrepositorytags",
               "range": true,
               "refId": "current_rate"
@@ -988,7 +988,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status=\"200\",method=\"GET\"}[$rate]))\n    /\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))\n)\n- 0.995",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n    /\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.listrepositorytags\",method=\"GET\"}[$rate]))\n)\n- 0.995",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -1069,7 +1069,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status=\"200\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))",
               "legendFormat": "GET api.repositorymanifestsecurity",
               "range": true,
               "refId": "current_rate"
@@ -1080,7 +1080,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status=\"200\",method=\"GET\"}[$rate]))\n    /\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))\n)\n- 0.995",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",status!~\"5[0-9][0-9]\",method=\"GET\"}[$rate]))\n    /\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"api.repositorymanifestsecurity\",method=\"GET\"}[$rate]))\n)\n- 0.995",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -1484,7 +1484,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status=~\"20[1-2]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status=\"201\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status=\"202\"}[$rate]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n)",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status!~\"5[0-9][0-9]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status!~\"5[0-9][0-9]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status!~\"5[0-9][0-9]\"}[$rate]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n)",
               "hide": false,
               "legendFormat": "upload blob",
               "range": true,
@@ -1496,7 +1496,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(    \n    (\n        sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status=~\"20[1-2]\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status=\"201\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status=\"202\"}[$rate]))\n    )\n    /\n    (\n        sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n    )\n) - 0.995",
+              "expr": "(    \n    (\n        sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status!~\"5[0-9][0-9]\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status!~\"5[0-9][0-9]\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status!~\"5[0-9][0-9]\"}[$rate]))\n    )\n    /\n    (\n        sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n        + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n    )\n) - 0.995",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -1574,7 +1574,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status=\"200\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status=\"200\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\"}[5m]))\n)\n",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status!~\"5[0-9][0-9]\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status!~\"5[0-9][0-9]\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\"}[5m]))\n)\n",
               "hide": false,
               "legendFormat": "GET manifest",
               "range": true,
@@ -1586,7 +1586,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status=\"200\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status=\"200\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\"}[5m]))\n) - 0.999\n",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status!~\"5[0-9][0-9]\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status!~\"5[0-9][0-9]\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\"}[5m]))\n) - 0.999\n",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -1664,7 +1664,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status=\"201\"}[$rate]))\n  + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status=\"201\"}[$rate]))\n)\n/ \n(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n   + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n)",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status!~\"5[0-9][0-9]\"}[$rate]))\n  + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status!~\"5[0-9][0-9]\"}[$rate]))\n)\n/ \n(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n   + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n)",
               "hide": false,
               "legendFormat": "upload manifest",
               "range": true,
@@ -1676,7 +1676,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(    \n    (\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status=\"201\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status=\"201\"}[$rate]))\n    )\n    / \n    (\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n    )\n) - 0.995",
+              "expr": "(    \n    (\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status!~\"5[0-9][0-9]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status!~\"5[0-9][0-9]\"}[$rate]))\n    )\n    / \n    (\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n    )\n) - 0.995",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -1754,7 +1754,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status=\"302\", method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status!~\"5[0-9][0-9]\", method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))",
               "hide": false,
               "legendFormat": "GET blob",
               "range": true,
@@ -1766,7 +1766,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status=\"302\", method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))\n) - 0.999",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status!~\"5[0-9][0-9]\", method=\"GET\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))\n) - 0.999",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -1858,7 +1858,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status=\"200\", method=\"GET\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status=\"200\", method=\"GET\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", method=\"GET\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", method=\"GET\"}[5m]))\n)",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", status!~\"5[0-9][0-9]\", method=\"GET\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", status!~\"5[0-9][0-9]\", method=\"GET\"}[5m]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_digest\", method=\"GET\"}[5m]))\n    +\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.fetch_manifest_by_tagname\", method=\"GET\"}[5m]))\n)",
               "legendFormat": "GET manifest success rate",
               "range": true,
               "refId": "A"
@@ -1869,7 +1869,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status=\"200\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status!~\"5[0-9][0-9]\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))",
               "hide": false,
               "legendFormat": "auth success rate",
               "range": true,
@@ -1881,7 +1881,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status=\"302\", method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", status!~\"5[0-9][0-9]\", method=\"GET\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.download_blob\", method=\"GET\"}[$rate]))",
               "hide": false,
               "legendFormat": "GET blob success rate",
               "range": true,
@@ -1893,7 +1893,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status=~\"20[1-2]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status=\"201\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status=\"202\"}[$rate]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n)",
+              "expr": "(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\", status!~\"5[0-9][0-9]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\", status!~\"5[0-9][0-9]\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\", status!~\"5[0-9][0-9]\"}[$rate]))\n)\n/\n(\n    sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.start_blob_upload\", method=\"POST\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.monolithic_upload_or_last_chunk\", method=\"PUT\"}[$rate]))\n    + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.upload_chunk\", method=\"PATCH\"}[$rate]))\n)",
               "hide": false,
               "legendFormat": "upload blob success rate",
               "range": true,
@@ -1905,7 +1905,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status=\"201\"}[$rate]))\n  + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status=\"201\"}[$rate]))\n)\n/ \n(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n   + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n)\n",
+              "expr": "(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\", status!~\"5[0-9][0-9]\"}[$rate]))\n  + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\",status!~\"5[0-9][0-9]\"}[$rate]))\n)\n/ \n(\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_tagname\"}[$rate]))\n   + sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.write_manifest_by_digest\"}[$rate]))\n)\n",
               "hide": false,
               "legendFormat": "upload manifest success rate",
               "range": true,
@@ -1982,7 +1982,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status=\"200\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))",
+              "expr": "sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status!~\"5[0-9][0-9]\"}[$rate]))\n/\nsum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))",
               "hide": false,
               "legendFormat": "GET auth",
               "range": true,
@@ -1994,7 +1994,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "(  \n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status=\"200\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))\n) - 0.999",
+              "expr": "(  \n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\", status!~\"5[0-9][0-9]\"}[$rate]))\n  /\n  sum(increase(aggregation:quay_request_duration_seconds_count:rate1m:sum{route=\"v2.generate_registry_jwt\", method=\"GET\"}[$rate]))\n) - 0.999",
               "hide": false,
               "legendFormat": "error budget",
               "range": true,
@@ -2452,12 +2452,12 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 6,
+      "version": 4,
       "weekStart": ""
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-quay-slo
+  name: grafana-dashboard-quay-slo.configmap.yaml
   labels:
     grafana_dashboard: "true"
   annotations:
