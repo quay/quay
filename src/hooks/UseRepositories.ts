@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {
-  fetchRepositories,
+  fetchAllRepos,
   fetchRepositoriesForNamespace,
 } from 'src/resources/RepositoryResource';
 import {useQuery} from '@tanstack/react-query';
@@ -32,7 +32,7 @@ export function useRepositories(organization?: string) {
     ['organization', organization, 'repositories'],
     currentOrganization
       ? ({signal}) => fetchRepositoriesForNamespace(currentOrganization, signal)
-      : fetchRepositories,
+      : ({signal}) => fetchAllRepos(listOfOrgNames, true, signal),
     {
       placeholderData: [],
     },

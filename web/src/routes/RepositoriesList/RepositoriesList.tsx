@@ -405,7 +405,6 @@ export default function RepositoriesList(props: RepositoriesListProps) {
         </TableComposable>
         <PanelFooter>
           <ToolbarPagination
-            total={totalResults}
             itemsList={filteredRepos}
             perPage={perPage}
             page={page}

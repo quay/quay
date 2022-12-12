@@ -64,7 +64,7 @@ export default function OrgTableData(props: OrganizationsTableItem) {
     ({signal}) => fetchMembersForOrg(props.name, signal),
     {placeholderData: props.isUser ? [] : undefined},
   );
-  const memberCount = members ? members.length : null;
+  const memberCount = props.isUser ? 0 : members ? members.length : null;
 
   // Get robots
   const {data: robots} = useQuery(
