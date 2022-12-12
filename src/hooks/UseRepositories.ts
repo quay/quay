@@ -1,22 +1,11 @@
 import {useState} from 'react';
 import {
-  bulkDeleteRepositories,
-  createNewRepository,
   fetchRepositories,
   fetchRepositoriesForNamespace,
 } from 'src/resources/RepositoryResource';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
+import {useQuery} from '@tanstack/react-query';
 import {useCurrentUser} from './UseCurrentUser';
-import {IRepository} from 'src/resources/RepositoryResource';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
-
-interface createRepositoryParams {
-  namespace: string;
-  repository: string;
-  visibility: string;
-  description: string;
-  repo_kind: string;
-}
 
 export function useRepositories(organization?: string) {
   const {user} = useCurrentUser();
@@ -49,23 +38,6 @@ export function useRepositories(organization?: string) {
     },
   );
 
-  const queryClient = useQueryClient();
-
-  const deleteRepositoryMutator = useMutation(
-    async (repos: IRepository[]) => {
-      return bulkDeleteRepositories(repos);
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries([
-          'organization',
-          organization,
-          'repositories',
-        ]);
-      },
-    },
-  );
-
   return {
     // Data
     repos: repositories,
@@ -86,9 +58,5 @@ export function useRepositories(organization?: string) {
 
     // Useful Metadata
     totalResults: repositories.length,
-
-    // Mutations
-    deleteRepositories: async (repos: IRepository[]) =>
-      deleteRepositoryMutator.mutate(repos),
   };
 }
