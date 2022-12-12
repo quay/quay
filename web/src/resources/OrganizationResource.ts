@@ -10,6 +10,8 @@ export interface IAvatar {
 }
 
 export interface IOrganization {
+  invoice_email?: boolean;
+  invoice_email_address?: string;
   name: string;
   avatar?: IAvatar;
   can_create_repo?: boolean;
@@ -17,6 +19,8 @@ export interface IOrganization {
   is_org_admin?: boolean;
   preferred_namespace?: boolean;
   teams?: string[];
+  email?: string;
+  tag_expiration_s?: number;
 }
 
 export async function fetchOrg(orgname: string, signal: AbortSignal) {
@@ -106,5 +110,22 @@ export async function createOrg(name: string, email?: string) {
   }
   const response = await axios.post(createOrgUrl, reqBody);
   assertHttpCode(response.status, 201);
+  return response.data;
+}
+
+export interface UpdateOrgRequest {
+  invoice_email?: boolean;
+  invoice_email_address?: string;
+  tag_expiration_s?: string;
+  email?: string;
+}
+
+export async function updateOrg(
+  name: string,
+  updateOrgRequest: UpdateOrgRequest,
+) {
+  const updateOrgUrl = `/api/v1/organization/${name}`;
+  const response = await axios.put(updateOrgUrl, updateOrgRequest);
+  assertHttpCode(response.status, 200);
   return response.data;
 }

@@ -13,6 +13,7 @@ export function useOrganization(name: string) {
     data: organization,
     isLoading,
     error,
+    isPlaceholderData,
   } = useQuery(['organization', name], ({signal}) => fetchOrg(name, signal), {
     enabled: !isUserOrganization,
     placeholderData: (): IOrganization[] => new Array(10).fill({}),
@@ -21,7 +22,7 @@ export function useOrganization(name: string) {
   return {
     isUserOrganization,
     error,
-    loading: isLoading,
+    loading: isLoading || isPlaceholderData,
     organization,
   };
 }
