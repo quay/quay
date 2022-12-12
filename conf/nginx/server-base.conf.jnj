@@ -47,7 +47,7 @@ location / {
     }
 
     # Show old UI if patternfly cookie is not set
-    if ($cookie_patternfly = "") {
+    if ($cookie_patternfly != "true") {
         proxy_pass   http://web_app_server;
     }
 }
