@@ -131,6 +131,21 @@ RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
 
+FROM base AS build-quaydir
+WORKDIR $QUAYDIR
+COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
+COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
+COPY --from=build-ui /opt/app-root/quay-ui/dist ${QUAYDIR}/static/patternfly
+
+# Copy in source and update local copy of AWS IP Ranges.
+# This is a bad place to do the curl, but there's no good place to do
+# it except to have it checked in.
+COPY --chown=0:0 . ${QUAYDIR}
+RUN set -ex\
+	; chmod -R g=u "${QUAYDIR}"\
+	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
+	;
+
 # Final is the end container, where all the work from the other
 # containers are copied in.
 FROM base AS final
@@ -164,23 +179,11 @@ RUN set -ex\
 	;
 
 WORKDIR $QUAYDIR
-RUN mkdir ${QUAYDIR}/config_app
 # Ordered from least changing to most changing.
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
-COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
-COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
-COPY --from=build-ui /opt/app-root/quay-ui/dist ${QUAYDIR}/static/patternfly
-
-# Copy in source and update local copy of AWS IP Ranges.
-# This is a bad place to do the curl, but there's no good place to do
-# it except to have it checked in.
-COPY --chown=0:0 . ${QUAYDIR}
-RUN set -ex\
-	; chmod -R g=u "${QUAYDIR}"\
-	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
-	;
+COPY --from=build-quaydir $QUAYDIR $QUAYDIR
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
