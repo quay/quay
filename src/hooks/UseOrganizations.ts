@@ -8,6 +8,7 @@ import {useCurrentUser} from './UseCurrentUser';
 import {createOrg} from 'src/resources/OrganizationResource';
 import {useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import ColumnNames from 'src/routes/OrganizationsList/ColumnNames';
 
 export function useOrganizations() {
   // Get user and config data
@@ -17,7 +18,7 @@ export function useOrganizations() {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [search, setSearch] = useState<SearchState>({
-    field: '',
+    field: ColumnNames.name,
     query: '',
   });
 
@@ -42,14 +43,14 @@ export function useOrganizations() {
   // Get org names
   let orgnames: string[];
   if (isSuperUser) {
-    orgnames = superUserOrganizations.map((org) => org.name);
+    orgnames = (superUserOrganizations || []).map((org) => org.name);
   } else {
-    orgnames = user?.organizations.map((org) => org.name);
+    orgnames = (user?.organizations || []).map((org) => org.name);
   }
   // Get user names
   let usernames: string[];
   if (isSuperUser) {
-    usernames = superUserUsers.map((user) => user.username);
+    usernames = (superUserUsers || []).map((user) => user.username);
   } else {
     usernames = [user.username];
   }

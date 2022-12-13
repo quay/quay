@@ -6,6 +6,7 @@ import {
 import {useQuery} from '@tanstack/react-query';
 import {useCurrentUser} from './UseCurrentUser';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import ColumnNames from 'src/routes/RepositoriesList/ColumnNames';
 
 export function useRepositories(organization?: string) {
   const {user} = useCurrentUser();
@@ -14,7 +15,7 @@ export function useRepositories(organization?: string) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [search, setSearch] = useState<SearchState>({
-    field: '',
+    field: ColumnNames.name,
     query: '',
   });
   const [currentOrganization, setCurrentOrganization] = useState(organization);
