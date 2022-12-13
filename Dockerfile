@@ -38,6 +38,7 @@ RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION
 RUN set -ex\
 	; npm install --quiet --no-progress --ignore-engines\
 	; npm run --quiet build\
+	; rm -Rf node_modules\
 	;
 
 # Build-python installs the requirements for the python code.
@@ -180,8 +181,6 @@ RUN set -ex\
 	; chmod -R g=u "${QUAYDIR}"\
 	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
 	;
-
-RUN rm -Rf node_modules config_app/node_modules
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
