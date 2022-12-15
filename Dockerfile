@@ -38,6 +38,7 @@ RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION
 RUN set -ex\
 	; npm install --quiet --no-progress --ignore-engines\
 	; npm run --quiet build\
+	; rm -Rf node_modules\
 	;
 
 # Build-python installs the requirements for the python code.
@@ -130,44 +131,8 @@ RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
 
-# Final is the end container, where all the work from the other
-# containers are copied in.
-FROM base AS final
-LABEL maintainer "quay-devel@redhat.com"
-
-# All of these chgrp+chmod commands are an Openshift-ism.
-#
-# Openshift runs a container as a random UID and GID 0, so anything
-# that's in the base image and needs to be modified at runtime needs
-# to make sure it's group-writable.
-RUN alternatives --set python /usr/bin/python3
-RUN set -ex\
-	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
-	; newdir() { for d in "$@"; do mkdir -m g+w "$d" || { mkdir -p "$d" && chgrp 0 "$d" && chmod g=u "$d"; }; ls -ld "$d"; done; }\
-# Allow TLS certs to be created and installed as non-root user.
-# See also update-ca-trust(8).
-	; setperms /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors\
-# Allow for nginx to run unprivledged.
-	; setperms /etc/nginx\
-	; ln -sf /dev/stdout /var/log/nginx/access.log\
-	; ln -sf /dev/stdout /var/log/nginx/error.log\
-# The code doesn't agree on where the configuration lives, so create a
-# symlink.
-	; ln -s $QUAYCONF /conf\
-# Make a grip of runtime directories.
-	; newdir /certificates /quay-registry/conf/stack /datastorage\
-# Another Openshift-ism: it doesn't bother picking a uid that means
-# anything to the OS inside the container, so the process needs
-# permissions to modify the user database.
-	; setperms /etc/passwd\
-	;
-
+FROM base AS build-quaydir
 WORKDIR $QUAYDIR
-RUN mkdir ${QUAYDIR}/config_app
-# Ordered from least changing to most changing.
-COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
-COPY --from=build-python /app /app
-COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
 COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
 COPY --from=build-ui /opt/app-root/quay-ui/dist ${QUAYDIR}/static/patternfly
@@ -181,7 +146,44 @@ RUN set -ex\
 	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
 	;
 
-RUN rm -Rf node_modules config_app/node_modules
+# Final is the end container, where all the work from the other
+# containers are copied in.
+FROM base AS final
+LABEL maintainer "quay-devel@redhat.com"
+
+# All of these chgrp+chmod commands are an Openshift-ism.
+#
+# Openshift runs a container as a random UID and GID 0, so anything
+# that's in the base image and needs to be modified at runtime needs
+# to make sure it's group-writable.
+RUN alternatives --set python /usr/bin/python3
+RUN set -ex\
+	; setperms() { for d in "$@"; do chgrp -R 0 "$d" && chmod -R g=u "$d" && ls -ld "$d"; done; }\
+	; newdir() { for d in "$@"; do mkdir -m 775 "$d" && ls -ld "$d"; done; }\
+# Allow TLS certs to be created and installed as non-root user.
+# See also update-ca-trust(8).
+	; setperms /etc/pki/ca-trust/extracted /etc/pki/ca-trust/source/anchors\
+# Allow for nginx to run unprivledged.
+	; setperms /etc/nginx\
+	; ln -sf /dev/stdout /var/log/nginx/access.log\
+	; ln -sf /dev/stdout /var/log/nginx/error.log\
+# The code doesn't agree on where the configuration lives, so create a
+# symlink.
+	; ln -s $QUAYCONF /conf\
+# Make a grip of runtime directories.
+	; newdir /certificates "$QUAYDIR" "$QUAYDIR/conf" "$QUAYDIR/conf/stack" /datastorage\
+# Another Openshift-ism: it doesn't bother picking a uid that means
+# anything to the OS inside the container, so the process needs
+# permissions to modify the user database.
+	; setperms /etc/passwd\
+	;
+
+WORKDIR $QUAYDIR
+# Ordered from least changing to most changing.
+COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
+COPY --from=build-python /app /app
+COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
+COPY --from=build-quaydir $QUAYDIR $QUAYDIR
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
