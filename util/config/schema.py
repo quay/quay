@@ -1237,6 +1237,11 @@ CONFIG_SCHEMA = {
             "description": "Enables user to try the beta UI Environment",
             "x-example": False,
         },
+        "FEATURE_UI_V2_REPO_SETTINGS": {
+            "type": "boolean",
+            "description": "Enables repository settings in the beta UI Environment",
+            "x-example": False,
+        },
         "EXPORT_COMPLIANCE_ENDPOINT": {
             "type": "string",
             "description": "The Red Hat Export Compliance Service Endpoint (only used in Quay.io)",
