@@ -1,43 +1,43 @@
-import {fetchUsersAsSuperUser} from 'src/resources/UserResource';
+import { fetchUsersAsSuperUser } from "src/resources/UserResource";
 import {
   bulkDeleteOrganizations,
   fetchOrgsAsSuperUser,
-} from 'src/resources/OrganizationResource';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
-import {useCurrentUser} from './UseCurrentUser';
-import {createOrg} from 'src/resources/OrganizationResource';
-import {useState} from 'react';
-import {SearchState} from 'src/components/toolbar/SearchTypes';
-import ColumnNames from 'src/routes/OrganizationsList/ColumnNames';
+} from "src/resources/OrganizationResource";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCurrentUser } from "./UseCurrentUser";
+import { createOrg } from "src/resources/OrganizationResource";
+import { useState } from "react";
+import { SearchState } from "src/components/toolbar/SearchTypes";
+import ColumnNames from "src/routes/OrganizationsList/ColumnNames";
 
 export function useOrganizations() {
   // Get user and config data
-  const {isSuperUser, user, loading, error} = useCurrentUser();
+  const { isSuperUser, user, loading, error } = useCurrentUser();
 
   // Keep state of current search in this hook
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [search, setSearch] = useState<SearchState>({
     field: ColumnNames.name,
-    query: '',
+    query: "",
   });
 
   // Get super user orgs
-  const {data: superUserOrganizations} = useQuery(
-    ['organization', 'superuser', 'organizations'],
+  const { data: superUserOrganizations } = useQuery(
+    ["organization", "superuser", "superuserorgs"],
     fetchOrgsAsSuperUser,
     {
       enabled: isSuperUser,
-    },
+    }
   );
 
   // Get super user users
-  const {data: superUserUsers} = useQuery(
-    ['organization', 'superuser', 'users'],
+  const { data: superUserUsers } = useQuery(
+    ["organization", "superuser", "superuserorgs"],
     fetchUsersAsSuperUser,
     {
       enabled: isSuperUser,
-    },
+    }
   );
 
   // Get org names
@@ -57,7 +57,7 @@ export function useOrganizations() {
     usernames = [user.username];
   }
 
-  const organizationsTableDetails = [] as {name: string; isUser: boolean}[];
+  const organizationsTableDetails = [] as { name: string; isUser: boolean }[];
   for (const orgname of orgnames) {
     organizationsTableDetails.push({
       name: orgname,
@@ -80,9 +80,9 @@ export function useOrganizations() {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['user']);
+        queryClient.invalidateQueries(["user"]);
       },
-    },
+    }
   );
 
   return {
