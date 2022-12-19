@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "rootDir": ".",
+    "outDir": "dist",
+    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [ "node_modules" ]
+}
