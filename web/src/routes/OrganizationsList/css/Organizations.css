@@ -1,0 +1,36 @@
+.co-m-nav-title {
+  margin-top: 1.5rem;
+  padding: 0 1rem 0;
+}
+
+@media (min-width: 500px) {
+  .co-m-nav-title {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .co-m-nav-title--row {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: horizontal;
+    -webkit-box-direction: normal;
+        -ms-flex-direction: row;
+            flex-direction: row;
+    -webkit-box-pack: justify;
+        -ms-flex-pack: justify;
+            justify-content: space-between;
+  }
+}
+
+.fas.fa-trash {
+  font-size: var(--pf-global--icon--FontSize--lg);
+  color: grey;
+}
+
+.pf-c-button.pf-m-plain {
+  --pf-c-button--disabled--BackgroundColor: transparent
+;
+}
