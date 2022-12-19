@@ -485,6 +485,7 @@ class ActivateBuildTrigger(RepositoryParamResource):
                 RepositoryBuildStatus, repository=repo_string, build_uuid=build_request.uuid
             ),
         }
+        log_action("start_build_trigger", namespace_name, {"trigger_uuid": trigger_uuid})
         return resp, 201, headers
 
 
