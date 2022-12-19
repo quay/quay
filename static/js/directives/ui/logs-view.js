@@ -389,7 +389,14 @@ angular.module('quay').directive('logsView', function () {
         'delete_repo_webhook': 'Delete webhook in repository {repo}',
 
         'create_proxy_cache_config': 'Create proxy cache for {namespace}[[ with upstream {upstream_registry}]]',
-        'delete_proxy_cache_config': 'Create proxy cache for {namespace}'
+        'delete_proxy_cache_config': 'Create proxy cache for {namespace}',
+
+        'start_build_trigger': function(metadata) {
+          var triggerDescription = TriggerService.getDescription(
+            metadata['service'], metadata['config']);
+          return 'Manually start build from trigger[[ - ' + triggerDescription + ']]';
+        },
+        'cancel_build': 'Cancel build {build_uuid}'
 };
 
       var logKinds = {
