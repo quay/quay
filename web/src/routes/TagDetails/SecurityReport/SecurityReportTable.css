@@ -1,0 +1,7 @@
+.security-table-row > td > * {
+    vertical-align: middle;
+}
+
+.security-table-row > td > a > * {
+    vertical-align: middle;
+}

@@ -1,0 +1,15 @@
+{
+    "page": 1,
+    "has_additional": false,
+    "tags": [
+        {
+            "name": "latest",
+            "is_manifest_list": false,
+            "last_modified": "Thu, 02 Jun 2022 19:12:32 -0000",
+            "size": 100,
+            "manifest_digest": "sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be",
+            "reversion": false,
+            "start_ts": 1654197152
+          }
+    ]
+  }
