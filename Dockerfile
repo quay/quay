@@ -93,21 +93,14 @@ RUN set -ex\
 	; npm run --quiet build\
 	;
 
+# Build React UI
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
+COPY --chown=1001:0 web .
 
-# Invalidate quay-ui cache if quay-ui main has changed
-ADD https://api.github.com/repos/quay/quay-ui/git/ref/heads/main version.json
-RUN git clone https://github.com/quay/quay-ui.git
-
-RUN cd quay-ui &&\
-	set -ex &&\
+RUN set -ex &&\
 	npm install --quiet --no-progress --ignore-engines
-
-RUN	cd quay-ui &&\
-	npm run --quiet build
-
-RUN chown -R 1001:0 quay-ui/dist
+RUN	npm run --quiet build
 
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
@@ -170,7 +163,7 @@ COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
 COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
 COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
-COPY --from=build-ui /opt/app-root/quay-ui/dist ${QUAYDIR}/static/patternfly
+COPY --from=build-ui /opt/app-root/dist ${QUAYDIR}/static/patternfly
 
 # Copy in source and update local copy of AWS IP Ranges.
 # This is a bad place to do the curl, but there's no good place to do

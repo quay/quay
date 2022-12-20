@@ -1,0 +1,8 @@
+.pf-c-alert {
+    --pf-c-alert--PaddingTop: 25rem;
+}
+
+.fas{
+    font-size: var(--pf-global--icon--FontSize--md);
+    
+  }

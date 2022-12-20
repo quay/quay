@@ -1,0 +1,43 @@
+/* Global Styles */
+
+html, body, #root,  .App {
+  height: 100%;
+}
+
+.pf-c-content {
+  --pf-c-content--small--Color: red; /* changes all <small> color to red */
+  --pf-c-content--blockquote--BorderLeftColor: purple; /* changes all <blockquote> left border color to purple */
+  --pf-c-content--hr--BackgroundColor: lemonchiffon; /* changes a <hr> color to lemonchiffon */
+}
+
+
+.page-sidebar {
+  background-color: black;
+  color: black;
+}
+
+.pf-c-page__sidebar-body {
+    padding-top: 0;
+}
+
+.disabled-link {
+    pointer-events: none;
+    color: black;
+}
+
+.no-padding-bottom {
+    padding-bottom: 0;
+}
+
+.no-padding-on-sides {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.pf-c-tabs {
+    padding-left: 24px;
+}
+
+.pf-c-panel__footer {
+    padding: 24px 24px 0 0;
+}
