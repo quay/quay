@@ -836,6 +836,9 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Enables user to try the beta UI Environment
     FEATURE_UI_V2 = False
 
+    # Feature Flag: Enables repository settings in the beta UI Environment
+    FEATURE_UI_V2_REPO_SETTINGS = False
+
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""
 
