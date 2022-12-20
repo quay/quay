@@ -12,49 +12,170 @@ on:
 jobs:
   oci:
     name: OCI Distribution Spec
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres_user
+          POSTGRES_PASSWORD: postgres_password
+          POSTGRES_DB: postgres_db
+          POSTGRES_PORT: 5432
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-    - uses: actions/checkout@v2
+    - name: Enable pg_trgm extension
+      run: |
+        psql "postgresql://postgres_user:postgres_password@localhost:5432/postgres_db" \
+          --command="create extension if not exists pg_trgm;"
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+
+    - uses: actions/checkout@v3
       with:
         repository: opencontainers/distribution-spec
         path: dist-spec
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.9
-
     - name: Set up Go 1.18
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: 1.18
 
-    - name: Install dependencies
+    - name: Build conformance.test binary
       run: |
-        # Quay
-        sudo apt-get update
-        sudo apt-get install libgpgme-dev libldap2-dev libsasl2-dev swig
-        pip install -r requirements-dev.txt
-
-        # Conformance
         cd dist-spec/conformance
         CGO_ENABLED=0 go test -c -o conformance.test
 
-    - name: Run conformance tests
-      env:
-        TEST: 'true'
-        PYTHONPATH: '.'
-      run: pytest test/registry/conformance_tests.py -s -vv
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-    - name: Copy report
-      run: mkdir -p .report/ && mv {report.html,junit.xml} .report/
+    - name: Build and export to Docker
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        load: true
+        tags: localhost/quay
+        cache-from: type=gha
+        cache-to: type=gha
+
+    - name: Start Quay
+      run: |
+        IP=$(ip addr show dev eth0 | sed -n 's: *inet \([0-9.]*\)/.*:\1:p')
+
+        mkdir -p /tmp/config
+        cat >/tmp/config/config.yaml <<EOF
+        BUILDLOGS_REDIS: {"host": "$IP", "port": 6379}
+        DATABASE_SECRET_KEY: anothercrazykey!
+        DB_URI: postgresql://postgres_user:postgres_password@$IP:5432/postgres_db
+        DISTRIBUTED_STORAGE_CONFIG: {"default": ["LocalStorage", {"storage_path": "/datastorage/registry"}]}
+        DISTRIBUTED_STORAGE_PREFERENCE: ["default"]
+        SERVER_HOSTNAME: localhost
+        SETUP_COMPLETE: true
+        USER_EVENTS_REDIS: {"host": "$IP", "port": 6379}
+
+        DATA_MODEL_CACHE_CONFIG:
+          engine: memcached
+          endpoint: [127.0.0.1, 18080]
+          repository_blob_cache_ttl: 60s
+          catalog_page_cache_ttl: 60s
+          namespace_geo_restrictions_cache_ttl: 240s
+          # OCI Conformance tests don't expect tags to be cached.
+          # If we implement cache invalidation, we can enable it back.
+          active_repo_tags_cache_ttl: 0s
+          appr_applications_list_cache_ttl: 3600s
+          appr_show_package_cache_ttl: 3600s
+        EOF
+
+        # Run the Quay container. See also:
+        # https://access.redhat.com/documentation/en-us/red_hat_quay/3.8/html/deploy_red_hat_quay_-_high_availability/deploying_red_hat_quay
+        docker run \
+          --detach \
+          --health-cmd="curl -f http://localhost:8080/health/instance" \
+          --health-interval=10s \
+          --health-retries=5 \
+          --health-timeout=5s \
+          --name=quay \
+          --publish=127.0.0.1:443:8443/tcp \
+          --publish=127.0.0.1:80:8080/tcp \
+          --volume=/tmp/config:/conf/stack:Z \
+          localhost/quay
+
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          status=$(docker inspect -f '{{.State.Health.Status}}' quay)
+          printf "[%s] status: %s\n" "$(date -u +'%F %T')" "$status"
+          if [ "$status" == "healthy" ]; then
+            break
+          fi
+          sleep 5
+        done
+
+        docker exec -i quay python <<EOF
+        from app import app
+        from data import model
+        from data.database import configure
+        configure(app.config)
+        myuser = model.user.create_user("myuser", "p@ssw0rd", "admin@localhost.local", auto_verify=True)
+        myorg = model.organization.create_organization("myorg", "myorg@localhost.local", myuser)
+        EOF
+
+    - name: Run conformance tests
+      run: |
+        # Registry details
+        export OCI_ROOT_URL="http://localhost"
+        export OCI_NAMESPACE="myuser/myrepo"
+        export OCI_CROSSMOUNT_NAMESPACE="myorg/other"
+        export OCI_USERNAME="myuser"
+        export OCI_PASSWORD="p@ssw0rd"
+
+        # Which workflows to run
+        export OCI_TEST_PULL=1
+        export OCI_TEST_PUSH=1
+        export OCI_TEST_CONTENT_DISCOVERY=1
+        export OCI_TEST_CONTENT_MANAGEMENT=0
+
+        # Extra settings
+        export OCI_HIDE_SKIPPED_WORKFLOWS=0
+        export OCI_DEBUG=1
+        export OCI_DELETE_MANIFEST_BEFORE_BLOBS=0
+
+        ./dist-spec/conformance/conformance.test
+
+    - name: Create report
+      run: |
+        mkdir -p .oci-test-results/ .logs/
+        mv report.html junit.xml .oci-test-results/ || true
+        docker logs quay >.logs/quay.log 2>&1 || true
+      if: always()
+
+    - name: Stop Quay
+      run: |
+        docker rm --force --volumes quay
       if: always()
 
     - name: Upload test results
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
-        name: oci-test-results-${{ github.sha }}
-        path: .report/
+        name: oci-test-results
+        path: .oci-test-results/
+      if: always()
+
+    - name: Upload Quay logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: logs
+        path: .logs/
       if: always()
