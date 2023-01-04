@@ -151,18 +151,6 @@ clean:
 	rm -rf screenshots
 
 
-yapf-all:
-	yapf -r . -p -i
-
-
-yapf-diff:
-	if [ $(MODIFIED_FILES_COUNT) -ne 0 ]; then yapf -d -p $(MODIFIED_FILES) ; fi
-
-
-yapf-test:
-	if [ `yapf -d -p $(MODIFIED_FILES) | wc -l` -gt 0 ] ; then false ; else true ;fi
-
-
 generate-proto-py:
 	python -m grpc_tools.protoc -Ibuildman/buildman_pb --python_out=buildman/buildman_pb --grpc_python_out=buildman/buildman_pb buildman.proto
 

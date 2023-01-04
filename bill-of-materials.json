@@ -640,11 +640,6 @@
         "project": "xmltodict"
     }, 
     {
-        "format": "Python", 
-        "license": "Apache Software License 2.0", 
-        "project": "yapf"
-    }, 
-    {
         "format": "JavaScript", 
         "license": "ISC", 
         "project": "abbrev"
