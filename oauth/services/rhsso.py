@@ -30,7 +30,10 @@ class RHSSOOAuthService(OIDCLoginService):
                     json={"user": {"login": lusername}, "account": {"primary": True}},
                     timeout=5,
                 )
-                logger.debug("Got result from export compliance service: " + str(result.json()))
+                logger.debug(
+                    f"Got result from export compliance service: {result.json()} "
+                    f"for sub: {sub}, lusername: {lusername}"
+                )
 
                 # 200 => Endpoint was hit successfully and user was found
                 # 400 => Endpoint was hit successfully but no user was found
