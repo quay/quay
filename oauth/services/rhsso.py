@@ -21,13 +21,17 @@ class RHSSOOAuthService(OIDCLoginService):
         if features.EXPORT_COMPLIANCE:
             logger.debug("Attempting to hit export compliance service")
             try:
+
+                # subject is of the form `f:<uuid>:<sso-username>`
+                sso_username = sub.split(":")[-1]
+
                 result = requests.post(
                     app_config.get("EXPORT_COMPLIANCE_ENDPOINT"),
                     cert=(
                         "/conf/stack/export-compliance-client.crt",
                         "/conf/stack/export-compliance-client.key",
                     ),
-                    json={"user": {"login": lusername}, "account": {"primary": True}},
+                    json={"user": {"login": sso_username}, "account": {"primary": True}},
                     timeout=5,
                 )
                 logger.debug(
