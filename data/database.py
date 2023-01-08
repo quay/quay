@@ -766,6 +766,7 @@ class RobotAccountMetadata(BaseModel):
 class RobotAccountToken(BaseModel):
     robot_account = QuayUserField(index=True, allows_robots=True, unique=True)
     token = EncryptedCharField(default_token_length=64)
+    creation_date = DateTimeField(default=datetime.utcnow)
     fully_migrated = BooleanField(default=False)
 
 
