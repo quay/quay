@@ -27,8 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 29251,
-      "iteration": 1670596018900,
+      "iteration": 1673270218949,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -46,7 +45,7 @@ data:
           },
           "id": 36,
           "options": {
-            "content": "# Quay SLOs\n\nDescription goes here\n",
+            "content": "# Quay SLOs\n\nThis dashboard contains information on the following from quay.io:\n- End-to-end (push/pull)\n- Registry API (/v2)\n- Quay API (/api/v1) for UI\n- Builds\n- Clair\n",
             "mode": "markdown"
           },
           "pluginVersion": "9.0.3",
@@ -2220,6 +2219,96 @@ data:
           "type": "histogram"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 80
+          },
+          "id": 69,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "0.995",
+              "hide": false,
+              "legendFormat": "target",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "sum(increase(quay_build_jobs_total{success=\"true\"}[$rate]))\n/\nsum(increase(quay_build_jobs_total[$rate]))",
+              "legendFormat": "success %",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "(\n  sum(increase(quay_build_jobs_total{success=\"true\"}[$rate]))\n  /\n  sum(increase(quay_build_jobs_total[$rate]))\n) - 0.995",
+              "hide": false,
+              "legendFormat": "error budget",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "Build Success",
+          "type": "stat"
+        },
+        {
           "cards": {},
           "color": {
             "cardColor": "#b4ff00",
@@ -2452,7 +2541,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 4,
+      "version": 5,
       "weekStart": ""
     }
 kind: ConfigMap
