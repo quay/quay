@@ -262,7 +262,7 @@ class OrganizationTeam(ApiResource):
         Delete the specified team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             model.team.remove_team(orgname, teamname, get_authenticated_user().username)
             log_action("org_delete_team", orgname, {"team": teamname})
             return "", 204
@@ -417,7 +417,7 @@ class TeamMember(ApiResource):
         Adds or invites a member to an existing team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             team = None
             user = None
 
@@ -506,7 +506,7 @@ class InviteTeamMember(ApiResource):
         Invites an email address to an existing team.
         """
         permission = AdministerOrganizationPermission(orgname)
-        if permission.can():
+        if permission.can() or allow_if_superuser():
             team = None
 
             # Find the team.
