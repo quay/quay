@@ -36,7 +36,9 @@ class BuildTriggerDisabledException(Exception):
     pass
 
 
-def start_build(repository, prepared_build, pull_robot_name=None):
+def start_build(
+    repository, prepared_build, pull_robot_name=None, performer=None, manual_trigger=False
+):
     # Ensure that builds are only run in image repositories.
     if repository.kind.name != "image":
         raise Exception("Attempt to start a build for application repository %s" % repository.id)
@@ -125,6 +127,7 @@ def start_build(repository, prepared_build, pull_robot_name=None):
         event_log_metadata["trigger_id"] = prepared_build.trigger.uuid
         event_log_metadata["trigger_kind"] = prepared_build.trigger.service.name
         event_log_metadata["trigger_metadata"] = prepared_build.metadata or {}
+        event_log_metadata["trigger_manual"] = manual_trigger
 
     logs_model.log_action(
         "build_dockerfile",
@@ -132,6 +135,7 @@ def start_build(repository, prepared_build, pull_robot_name=None):
         ip=get_request_ip(),
         metadata=event_log_metadata,
         repository=repository,
+        performer=performer,
     )
 
     # TODO: remove when more endpoints have been converted to using interfaces

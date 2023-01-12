@@ -471,9 +471,11 @@ angular.module('quay').directive('logsView', function () {
         'repo_mirror_sync_test_success': 'Test Repository Mirror success',
         'repo_mirror_sync_test_failed': 'Test Repository Mirror failed',
         'repo_mirror_sync_test_started': 'Test Repository Mirror started',
-	'create_proxy_cache_config': 'Create Proxy Cache Config',
-	'delete_proxy_cache_config': 'Delete Proxy Cache Config',
-        
+        'create_proxy_cache_config': 'Create Proxy Cache Config',
+        'delete_proxy_cache_config': 'Delete Proxy Cache Config',
+        'start_build_trigger': 'Manual build trigger',
+        'cancel_build': 'Cancel build',
+
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',
         'delete_repo_webhook': 'Delete webhook'
