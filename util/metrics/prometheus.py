@@ -65,6 +65,10 @@ secscan_index_request_duration = Histogram(
     "seconds taken to make an index request to the secscan service",
 )
 
+secscan_result_duration = Histogram(
+    "quay_secscan_result_duration",
+    "how long it takes to receive scan results after pushing an image",
+)
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
