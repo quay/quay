@@ -8,6 +8,7 @@ from collections import namedtuple
 from peewee import IntegrityError
 
 from data.database import (
+    ManifestSubject,
     Tag,
     Manifest,
     ManifestBlob,
@@ -181,6 +182,16 @@ def create_manifest(
     return created_manifest
 
 
+def add_subject(manifest: Manifest, subject: str):
+    try:
+        ManifestSubject.create(
+            manifest=manifest,
+            subject=subject,
+        )
+    except IntegrityError as e:
+        raise _ManifestAlreadyExists(e)
+
+
 def connect_manifests(manifests: list[Manifest], parent: Manifest, repository_id: int):
     """
     Connects manifests to a manifest list.
@@ -340,6 +351,9 @@ def _create_manifest(
     try:
         with db_transaction():
             manifest = create_manifest(repository_id, manifest_interface_instance)
+
+            if manifest_interface_instance.subject:
+                add_subject(manifest, manifest_interface_instance.subject)
 
             if storage_ids:
                 connect_blobs(manifest, storage_ids, repository_id)

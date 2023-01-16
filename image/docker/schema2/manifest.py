@@ -29,6 +29,7 @@ DOCKER_SCHEMA2_MANIFEST_SIZE_KEY = "size"
 DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY = "digest"
 DOCKER_SCHEMA2_MANIFEST_LAYERS_KEY = "layers"
 DOCKER_SCHEMA2_MANIFEST_URLS_KEY = "urls"
+DOCKER_SCHEMA2_MANIFEST_REFERS_KEY = "refers"
 
 # Named tuples.
 DockerV2ManifestConfig = namedtuple("DockerV2ManifestConfig", ["size", "digest"])
@@ -135,6 +136,28 @@ class DockerSchema2Manifest(ManifestInterface):
                     ],
                 },
             },
+            DOCKER_SCHEMA2_MANIFEST_REFERS_KEY: {
+                "type": "object",
+                "description": "Used to inditify subject manifest",
+                "properties": {
+                    DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY: {
+                        "type": "string",
+                        "description": "The MIME type of the referenced object. This should generally be "
+                        + "application/vnd.docker.container.image.v1+json",
+                    },
+                    DOCKER_SCHEMA2_MANIFEST_SIZE_KEY: {
+                        "type": "number",
+                        "description": "The size in bytes of the object. This field exists so that a "
+                        + "client will have an expected size for the content before "
+                        + "validating. If the length of the retrieved content does not "
+                        + "match the specified length, the content should not be trusted.",
+                    },
+                    DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY: {
+                        "type": "string",
+                        "description": "The content addressable digest of the config in the blob store",
+                    },
+                },
+            },
         },
         "required": [
             DOCKER_SCHEMA2_MANIFEST_VERSION_KEY,
@@ -191,6 +214,10 @@ class DockerSchema2Manifest(ManifestInterface):
         return self._parsed[DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY]
 
     @property
+    def artifact_type(self):
+        return None
+
+    @property
     def digest(self):
         return digest_tools.sha256_digest(self._payload.as_encoded_str())
 
@@ -227,6 +254,12 @@ class DockerSchema2Manifest(ManifestInterface):
         return self._parsed[DOCKER_SCHEMA2_MANIFEST_CONFIG_KEY][
             DOCKER_SCHEMA2_MANIFEST_MEDIATYPE_KEY
         ]
+
+    @property
+    def subject(self):
+        return self._parsed.get(DOCKER_SCHEMA2_MANIFEST_REFERS_KEY, {}).get(
+            DOCKER_SCHEMA2_MANIFEST_DIGEST_KEY
+        )
 
     @property
     def has_remote_layer(self):

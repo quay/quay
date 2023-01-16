@@ -261,4 +261,5 @@ from endpoints.v2 import (
     manifest,
     tag,
     v2auth,
+    referrers,
 )

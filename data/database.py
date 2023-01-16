@@ -741,6 +741,7 @@ class User(BaseModel):
                     RepoMirrorRule,
                     NamespaceGeoRestriction,
                     ManifestSecurityStatus,
+                    ManifestSubject,
                     RepoMirrorConfig,
                     UploadedBlob,
                     RepositorySize,
@@ -970,6 +971,7 @@ class Repository(BaseModel):
                 DeletedRepository,
                 ManifestSecurityStatus,
                 UploadedBlob,
+                ManifestSubject,
                 RepositorySize,
             }
             | appr_classes
@@ -1816,6 +1818,16 @@ class Manifest(BaseModel):
             (("repository", "media_type"), False),
             (("repository", "config_media_type"), False),
         )
+
+
+class ManifestSubject(BaseModel):
+    manifest = ForeignKeyField(Manifest)
+    manifest_id: int
+    subject = CharField()  # TODO: implement index
+
+    class Meta:
+        database = db
+        read_only_config = read_only_config
 
 
 class TagKind(BaseModel):

@@ -1285,5 +1285,10 @@ CONFIG_SCHEMA = {
             "description": "Whitelisted users to exclude when FEATURE_RESTRICTED_USERS is enabled",
             "x-example": ["devtable"],
         },
+        "FEATURE_OCI_11": {
+            "type": "boolean",
+            "description": "Enables OCI 1.1 features",
+            "x-example": False,
+        },
     },
 }

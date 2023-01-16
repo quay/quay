@@ -199,6 +199,14 @@ class DockerSchema2ManifestList(ManifestListInterface):
         return self._parsed[DOCKER_SCHEMA2_MANIFESTLIST_MEDIATYPE_KEY]
 
     @property
+    def subject(self):
+        return None  # TODO: Does spec mention anything about adding refers to manifest list?
+
+    @property
+    def artifact_type(self):
+        return self.config_media_type
+
+    @property
     def manifest_dict(self):
         """
         Returns the manifest as a dictionary ready to be serialized to JSON.
