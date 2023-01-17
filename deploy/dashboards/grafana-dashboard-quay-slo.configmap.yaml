@@ -27,7 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "iteration": 1673270218949,
+      "iteration": 1673983948682,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -2371,6 +2371,146 @@ data:
             "show": true
           },
           "yBucketBound": "auto"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 88
+          },
+          "id": 71,
+          "panels": [],
+          "title": "Clair",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 89
+          },
+          "id": 75,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.0.3",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "sum(increase(quay_secscan_result_duration_sum[$rate]))\n/\nsum(increase(quay_secscan_result_duration_count[$rate]))",
+              "refId": "A"
+            }
+          ],
+          "title": "Average Time For Scan Results",
+          "type": "stat"
+        },
+        {
+          "cards": {},
+          "color": {
+            "cardColor": "#b4ff00",
+            "colorScale": "linear",
+            "colorScheme": "interpolateGreens",
+            "exponent": 0.5,
+            "mode": "spectrum"
+          },
+          "dataFormat": "tsbuckets",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "duration of time between pushing an image to quay and receiving scan results",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 6,
+            "y": 89
+          },
+          "heatmap": {},
+          "hideZeroBuckets": true,
+          "highlightCards": true,
+          "id": 73,
+          "legend": {
+            "show": true
+          },
+          "pluginVersion": "9.0.3",
+          "reverseYBuckets": false,
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": true,
+              "expr": "sum(increase(quay_secscan_result_duration_bucket[$rate])) by (le)",
+              "format": "heatmap",
+              "hide": false,
+              "instant": false,
+              "interval": "1",
+              "legendFormat": "{{le}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Scan Result Latency",
+          "tooltip": {
+            "show": true,
+            "showHistogram": false
+          },
+          "type": "heatmap",
+          "xAxis": {
+            "show": true
+          },
+          "yAxis": {
+            "format": "m",
+            "logBase": 1,
+            "show": true
+          },
+          "yBucketBound": "auto"
         }
       ],
       "refresh": false,
@@ -2541,7 +2681,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 5,
+      "version": 6,
       "weekStart": ""
     }
 kind: ConfigMap
