@@ -154,6 +154,18 @@ objects:
           secret:
             secretName: ${{QUAY_APP_CONFIG_SECRET}}
         serviceAccountName: ${{NAME}}
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 1
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: ${{QUAY_APP_COMPONENT_LABEL_KEY}}
+                      operator: In
+                      values:
+                      - ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+                  topologyKey: kubernetes.io/hostname
         containers:
         - name: syslog-cloudwatch-bridge
           image:  ${SYSLOG_IMAGE}:${SYSLOG_IMAGE_TAG}

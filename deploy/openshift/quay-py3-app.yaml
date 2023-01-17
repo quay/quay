@@ -157,7 +157,8 @@ objects:
         affinity:
           podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
-              - podAffinityTerm:
+              - weight: 1
+                podAffinityTerm:
                   labelSelector:
                     matchExpressions:
                     - key: ${{QUAY_APP_COMPONENT_LABEL_KEY}}
