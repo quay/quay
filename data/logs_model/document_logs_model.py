@@ -28,7 +28,7 @@ from data.logs_model.interface import (
     LogRotationContextInterface,
     LogsIterationTimeout,
 )
-from data.logs_model.shared import SharedModel, epoch_ms
+from data.logs_model.shared import SharedModel, epoch_ms, InvalidLogsDateRangeError
 
 from data.logs_model.logs_producer import LogProducerProxy, LogSendException
 from data.logs_model.logs_producer.kafka_logs_producer import KafkaLogsProducer
@@ -411,8 +411,10 @@ class DocumentLogsModel(SharedModel, ActionLogsDataInterface, ElasticsearchLogsM
         namespace_name=None,
         filter_kinds=None,
     ):
-        if end_datetime - start_datetime >= timedelta(days=DATE_RANGE_LIMIT):
-            raise Exception("Cannot lookup aggregated logs over a period longer than a month")
+        if end_datetime - start_datetime > timedelta(days=DATE_RANGE_LIMIT):
+            raise InvalidLogsDateRangeError(
+                "Cannot lookup aggregated logs over a period longer than a month"
+            )
 
         repository_id, account_id, performer_id = DocumentLogsModel._get_ids_by_names(
             repository_name, namespace_name, performer_name

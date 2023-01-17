@@ -6,6 +6,10 @@ from calendar import timegm
 from data import model
 
 
+class InvalidLogsDateRangeError(Exception):
+    pass
+
+
 class SharedModel:
     def queue_logs_export(
         self,

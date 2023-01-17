@@ -16,7 +16,7 @@ from data.logs_model.interface import (
     LogRotationContextInterface,
 )
 from data.logs_model.datatypes import Log, AggregatedLogCount, LogEntriesPage
-from data.logs_model.shared import SharedModel
+from data.logs_model.shared import SharedModel, InvalidLogsDateRangeError
 from data.model.log import get_stale_logs, get_stale_logs_start_id, delete_stale_logs
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,9 @@ class TableLogsModel(SharedModel, ActionLogsDataInterface):
             assert all(isinstance(kind_name, str) for kind_name in filter_kinds)
 
         if end_datetime - start_datetime > timedelta(seconds=MAXIMUM_RANGE_SIZE):
-            raise Exception("Cannot lookup aggregated logs over a period longer than a month")
+            raise InvalidLogsDateRangeError(
+                "Cannot lookup aggregated logs over a period longer than a month"
+            )
 
         repository = None
         if repository_name and namespace_name:
