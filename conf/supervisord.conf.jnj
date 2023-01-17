@@ -140,6 +140,18 @@ autostart = {{ config['repositorygcworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:reconciliationworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/reconciliationworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.reconciliationworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.reconciliationworker
+{% endif -%}
+autostart = {{ config['reconciliationworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:namespacegcworker]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s

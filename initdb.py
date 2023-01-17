@@ -1335,6 +1335,7 @@ WHITELISTED_EMPTY_MODELS = [
     "Image",
     "ProxyCacheConfig",
     "RepositorySize",
+    "RedHatSubscriptions",
 ]
 
 

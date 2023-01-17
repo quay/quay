@@ -748,6 +748,7 @@ class User(BaseModel):
                     QuotaNamespaceSize,
                     UserOrganizationQuota,
                     QuotaLimits,
+                    RedHatSubscriptions,
                 }
                 | appr_classes
                 | v22_classes
@@ -2138,6 +2139,34 @@ class ProxyCacheConfig(BaseModel):
     def upstream_registry_hostname(self) -> str:
         parts = self.upstream_registry.split("/", 1)
         return parts[0]
+
+
+class RedHatSubscriptions(BaseModel):
+    """
+    Represents internal Red Hat subscriptions for customers
+    """
+
+    user_id = ForeignKeyField(User, backref="subscription")
+    subscription_id = IntegerField(unique=True, null=True)
+    account_number = IntegerField(null=True)
+    subscription_end_date = DateTimeField(null=True)
+    sku_id = CharField(null=True)
+
+
+class QuaySkuProperties(IntEnum):
+    """
+    Possible SKU values and how many private repos they entitle
+    """
+
+    MW00584MO = 5
+    MW00585MO = 10
+    MW00586MO = 20
+    MW00587MO = 50
+    MW00588MO = 125
+    MW00589MO = 250
+    MW00590MO = 500
+    MW00591MO = 1000
+    MW00592MO = 2000
 
 
 # Defines a map from full-length index names to the legacy names used in our code

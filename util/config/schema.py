@@ -1345,6 +1345,20 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Enables functionality related to the removal of tags from the time machine window",
             "x-example": True,
+        "FEATURE_ENTITLEMENT_RECONCILIATION": {
+            "type": "boolean",
+            "description": "Enable reconciler for internal RH marketplace",
+            "x-example": False,
+        },
+        "ENTITLEMENT_RECONCILIATION_USER_ENDPOINT": {
+            "type": "string",
+            "description": "Endpoint for internal RH users API",
+            "x-example": "https://internal-rh-user-endpoint",
+        },
+        "ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT": {
+            "type": "string",
+            "description": "Endpoint for internal RH marketplace API",
+            "x-example": "https://internal-rh-marketplace-endpoint",
         },
     },
 }

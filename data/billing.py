@@ -542,6 +542,16 @@ class FakeStripe(object):
 
     Subscription = FakeSubscription
 
+    class Charge(AttrDict):
+        @staticmethod
+        def list(limit):
+            return AttrDict(
+                {
+                    "has_more": False,
+                    "data": [{"id": 1}],
+                }
+            )
+
 
 class Billing(object):
     def __init__(self, app=None):
