@@ -89,19 +89,15 @@ FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
 WORKDIR /opt/app-root/src
 COPY --chown=1001:0 static/  ./static/
 COPY --chown=1001:0 *.json *.js  ./
-RUN set -ex\
-	; npm install --quiet --no-progress --ignore-engines\
-	; npm run --quiet build\
-	;
+RUN npm clean-install
+RUN npm run --quiet build
 
 # Build React UI
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
 COPY --chown=1001:0 web .
-
-RUN set -ex &&\
-	npm install --quiet --no-progress --ignore-engines
-RUN	npm run --quiet build
+RUN npm clean-install
+RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway
