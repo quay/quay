@@ -87,16 +87,18 @@ RUN set -ex\
 # Build-static downloads the static javascript.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
 WORKDIR /opt/app-root/src
+COPY --chown=1001:0 package.json package-lock.json  ./
+RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
 COPY --chown=1001:0 *.json *.js  ./
-RUN npm clean-install
 RUN npm run --quiet build
 
 # Build React UI
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
-COPY --chown=1001:0 web .
+COPY --chown=1001:0 web/package.json web/package-lock.json  ./
 RUN npm clean-install
+COPY --chown=1001:0 web .
 RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
