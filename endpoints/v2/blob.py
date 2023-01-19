@@ -243,6 +243,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @anon_protect
 @check_readonly
 def start_blob_upload(namespace_name, repo_name):
+
     repository_ref = registry_model.lookup_repository(namespace_name, repo_name)
     if repository_ref is None:
         raise NameUnknown("repository not found")
