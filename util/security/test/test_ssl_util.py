@@ -15,7 +15,7 @@ def generate_test_cert(hostname="somehostname", san_list=None, expires=1000000):
     # Based on: http://blog.richardknop.com/2012/08/create-a-self-signed-x509-certificate-in-python/
     # Create a key pair.
     k = crypto.PKey()
-    k.generate_key(crypto.TYPE_RSA, 1024)
+    k.generate_key(crypto.TYPE_RSA, 2048)
 
     # Create a self-signed cert.
     cert = crypto.X509()
