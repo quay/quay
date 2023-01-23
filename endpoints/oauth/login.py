@@ -7,7 +7,6 @@ from collections import namedtuple
 from flask import request, redirect, url_for, Blueprint, abort, session
 from peewee import IntegrityError
 
-
 import features
 
 from app import app, analytics, get_app_url, oauth_login, authentication, url_scheme_and_hostname
@@ -19,7 +18,7 @@ from data.users.shared import can_create_user
 from endpoints.common import common_login
 from endpoints.web import index, render_page_template_with_routedata
 from endpoints.csrf import csrf_protect, OAUTH_CSRF_TOKEN_NAME, generate_csrf_token
-from oauth.login import OAuthLoginException
+from oauth.login import OAuthLoginException, ExportComplianceException
 from util.validation import generate_valid_usernames
 from util.request import get_request_ip
 
@@ -30,7 +29,6 @@ oauthlogin = Blueprint("oauthlogin", __name__)
 oauthlogin_csrf_protect = csrf_protect(
     OAUTH_CSRF_TOKEN_NAME, "state", all_methods=True, check_header=False
 )
-
 
 OAuthResult = namedtuple(
     "OAuthResult",
@@ -185,6 +183,24 @@ def _render_ologin_error(service_name, error_message=None, register_redirect=Fal
     return resp
 
 
+def _render_export_compliance_error(service_name, sso_username, email, quay_username):
+    """
+    Returns a Flask response indicating an Export Compliance error.
+    """
+
+    error_info = {
+        "reason": "exportcomplianceerror",
+        "service_name": service_name,
+        "sso_username": sso_username,
+        "email": email,
+        "quay_username": quay_username,
+    }
+
+    resp = index("", error_info=error_info)
+    resp.status_code = 400
+    return resp
+
+
 def _perform_login(user_obj, service_name):
     """
     Attempts to login the given user, returning the Flask result of whether the login succeeded.
@@ -249,6 +265,11 @@ def _register_service(login_service):
         except OAuthLoginException as ole:
             logger.exception("Got login exception")
             return _render_ologin_error(login_service.service_name(), str(ole))
+        except ExportComplianceException as ece:
+            logger.exception("Export compliance exception", ece)
+            return _render_export_compliance_error(
+                login_service.service_name(), ece.sso_username, ece.email, ece.message
+            )
 
         # Conduct login.
         metadata = {
