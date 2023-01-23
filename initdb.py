@@ -492,15 +492,6 @@ def initialize_database():
     MediaType.create(name="text/plain")
     MediaType.create(name="application/json")
     MediaType.create(name="text/markdown")
-    MediaType.create(name="application/vnd.cnr.blob.v0.tar+gzip")
-    MediaType.create(name="application/vnd.cnr.package-manifest.helm.v0.json")
-    MediaType.create(name="application/vnd.cnr.package-manifest.kpm.v0.json")
-    MediaType.create(name="application/vnd.cnr.package-manifest.docker-compose.v0.json")
-    MediaType.create(name="application/vnd.cnr.package.kpm.v0.tar+gzip")
-    MediaType.create(name="application/vnd.cnr.package.helm.v0.tar+gzip")
-    MediaType.create(name="application/vnd.cnr.package.docker-compose.v0.tar+gzip")
-    MediaType.create(name="application/vnd.cnr.manifests.v0.json")
-    MediaType.create(name="application/vnd.cnr.manifest.list.v0.json")
 
     for media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
         MediaType.create(name=media_type)
