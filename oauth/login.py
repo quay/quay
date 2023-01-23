@@ -18,6 +18,20 @@ class OAuthLoginException(Exception):
     pass
 
 
+class ExportComplianceException(Exception):
+    """
+    Exception raised when a user fails export compliance check
+    """
+
+    def __init__(self, sso_username, email, quay_username):
+        self.sso_username = sso_username
+        self.email = email
+        self.quay_username = quay_username
+
+    def __str__(self):
+        return f"{self.sso_username}: {self.email} : {self.quay_username}"
+
+
 @add_metaclass(ABCMeta)
 class OAuthLoginService(OAuthService):
     """
