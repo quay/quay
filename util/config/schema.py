@@ -11,15 +11,12 @@ INTERNAL_ONLY_PROPERTIES = {
     "SESSION_COOKIE_SAMESITE",
     "DATABASE_SECRET_KEY",
     "V22_NAMESPACE_BLACKLIST",
-    "MAXIMUM_CNR_LAYER_SIZE",
     "OCI_NAMESPACE_WHITELIST",
     "FEATURE_GENERAL_OCI_SUPPORT",
     "FEATURE_HELM_OCI_SUPPORT",
     "FEATURE_NAMESPACE_GARBAGE_COLLECTION",
     "FEATURE_REPOSITORY_GARBAGE_COLLECTION",
     "FEATURE_REPOSITORY_ACTION_COUNTER",
-    "APP_REGISTRY_PACKAGE_LIST_CACHE_WHITELIST",
-    "APP_REGISTRY_SHOW_PACKAGE_CACHE_WHITELIST",
     "FEATURE_MANIFEST_SIZE_BACKFILL",
     "TESTING",
     "SEND_FILE_MAX_AGE_DEFAULT",
@@ -96,7 +93,6 @@ INTERNAL_ONLY_PROPERTIES = {
     "V1_ONLY_DOMAIN",
     "LOGS_MODEL",
     "LOGS_MODEL_CONFIG",
-    "APP_REGISTRY_RESULTS_LIMIT",
     "V3_UPGRADE_MODE",  # Deprecated old flag
     "ACCOUNT_RECOVERY_MODE",
     "BLOBUPLOAD_DELETION_DATE_THRESHOLD",
@@ -943,18 +939,6 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Whether to collect and support user metadata. Defaults to False",
             "x-example": False,
-        },
-        # Feature Flag: Support App Registry.
-        "FEATURE_APP_REGISTRY": {
-            "type": "boolean",
-            "description": "Whether to enable support for App repositories. Defaults to False",
-            "x-example": False,
-        },
-        # Feature Flag: Read only app registry.
-        "FEATURE_READONLY_APP_REGISTRY": {
-            "type": "boolean",
-            "description": "Whether to App repositories are read-only. Defaults to False",
-            "x-example": True,
         },
         # Feature Flag: Public Reposiotires in _catalog Endpoint.
         "FEATURE_PUBLIC_CATALOG": {

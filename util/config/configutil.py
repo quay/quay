@@ -40,7 +40,6 @@ def add_enterprise_config_defaults(config_obj, current_secret_key):
     # Default features that are off.
     config_obj["FEATURE_MAILING"] = config_obj.get("FEATURE_MAILING", False)
     config_obj["FEATURE_BUILD_SUPPORT"] = config_obj.get("FEATURE_BUILD_SUPPORT", False)
-    config_obj["FEATURE_APP_REGISTRY"] = config_obj.get("FEATURE_APP_REGISTRY", False)
     config_obj["FEATURE_REPO_MIRROR"] = config_obj.get("FEATURE_REPO_MIRROR", False)
 
     # Default repo mirror config.
