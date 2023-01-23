@@ -3,8 +3,6 @@ import pytest
 from mock import patch, ANY, MagicMock
 
 from data import model, database
-from data.appr_model import release, channel, blob
-from endpoints.appr.models_cnr import model as appr_model
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.api.repository import RepositoryTrust, Repository, RepositoryList
 from endpoints.test.shared import client_with_identity
@@ -111,41 +109,6 @@ def test_list_repositories_last_modified(client):
                 assert repo["last_modified"] is not None
 
 
-def test_list_app_repositories_last_modified(client):
-    with client_with_identity("devtable", client) as cl:
-        devtable = model.user.get_user("devtable")
-        repo = model.repository.create_repository(
-            "devtable", "someappr", devtable, repo_kind="application"
-        )
-
-        models_ref = appr_model.models_ref
-        blob.get_or_create_blob(
-            "sha256:somedigest", 0, "application/vnd.cnr.blob.v0.tar+gzip", ["local_us"], models_ref
-        )
-
-        release.create_app_release(
-            repo,
-            "test",
-            dict(mediaType="application/vnd.cnr.package-manifest.helm.v0.json"),
-            "sha256:somedigest",
-            models_ref,
-            False,
-        )
-
-        channel.create_or_update_channel(repo, "somechannel", "test", models_ref)
-
-        params = {
-            "namespace": "devtable",
-            "last_modified": "true",
-            "repo_kind": "application",
-        }
-        response = conduct_api_call(cl, RepositoryList, "GET", params).json
-
-        assert len(response["repositories"]) > 0
-        for repo in response["repositories"]:
-            assert repo["last_modified"] is not None
-
-
 @pytest.mark.parametrize(
     "repo_name, extended_repo_names, expected_status",
     [
@@ -205,36 +168,6 @@ def test_get_repo(has_tag_manifest, client, initialized_db):
         response = conduct_api_call(cl, Repository, "GET", params).json
         assert response["kind"] == "image"
         assert response["state"] in ["NORMAL", "MIRROR", "READ_ONLY", "MARKED_FOR_DELETION"]
-
-
-def test_get_app_repo(client, initialized_db):
-    with client_with_identity("devtable", client) as cl:
-        devtable = model.user.get_user("devtable")
-        repo = model.repository.create_repository(
-            "devtable", "someappr", devtable, repo_kind="application"
-        )
-
-        models_ref = appr_model.models_ref
-        blob.get_or_create_blob(
-            "sha256:somedigest", 0, "application/vnd.cnr.blob.v0.tar+gzip", ["local_us"], models_ref
-        )
-
-        release.create_app_release(
-            repo,
-            "test",
-            dict(mediaType="application/vnd.cnr.package-manifest.helm.v0.json"),
-            "sha256:somedigest",
-            models_ref,
-            False,
-        )
-
-        channel.create_or_update_channel(repo, "somechannel", "test", models_ref)
-
-        params = {"repository": "devtable/someappr"}
-        response = conduct_api_call(cl, Repository, "GET", params).json
-        assert response["kind"] == "application"
-        assert response["channels"]
-        assert response["releases"]
 
 
 @pytest.mark.parametrize(
