@@ -32,8 +32,7 @@ from app import (
 )
 from buildtrigger.basehandler import BuildTriggerHandler
 from initdb import setup_database_for_testing, finished_database_for_testing
-from data import database, model, appr_model
-from data.appr_model.models import NEW_MODELS
+from data import database, model
 from data.database import RepositoryActionCount, Repository as RepositoryTable
 from data.logs_model import logs_model
 from data.registry_model import registry_model

@@ -21,7 +21,6 @@ from data.database import close_db_filter, db, configure
 from data.model.user import LoginWrappedDBUser
 from data.userfiles import Userfiles
 from endpoints.api import api_bp
-from endpoints.appr import appr_bp
 from endpoints.web import web
 from endpoints.v1 import v1_bp
 from endpoints.v2 import v2_bp
@@ -328,7 +327,6 @@ def app(appconfig, initialized_db):
     app.url_map.converters["v1createrepopath"] = V1CreateRepositoryPathConverter
 
     app.register_blueprint(api_bp, url_prefix="/api")
-    app.register_blueprint(appr_bp, url_prefix="/cnr")
     app.register_blueprint(web, url_prefix="/")
     app.register_blueprint(v1_bp, url_prefix="/v1")
     app.register_blueprint(v2_bp, url_prefix="/v2")

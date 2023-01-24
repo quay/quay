@@ -96,8 +96,6 @@ jobs:
           # OCI Conformance tests don't expect tags to be cached.
           # If we implement cache invalidation, we can enable it back.
           active_repo_tags_cache_ttl: 0s
-          appr_applications_list_cache_ttl: 3600s
-          appr_show_package_cache_ttl: 3600s
         EOF
 
         # Run the Quay container. See also:
