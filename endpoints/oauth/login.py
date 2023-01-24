@@ -268,7 +268,7 @@ def _register_service(login_service):
         except ExportComplianceException as ece:
             logger.exception("Export compliance exception", ece)
             return _render_export_compliance_error(
-                login_service.service_name(), ece.sso_username, ece.email, ece.message
+                login_service.service_name(), ece.sso_username, ece.email, ece.quay_username
             )
 
         # Conduct login.
