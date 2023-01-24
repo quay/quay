@@ -3,8 +3,8 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.7.10"></a>
-## [v3.7.10] - 2022-10-25
+<a name="v3.7.11"></a>
+## [v3.7.11] - 2022-11-28
 ### Api
 - [2b3c3cc5](https://github.com/quay/quay/commit/2b3c3cc58482b94e83ad4b5483a5a4de7bdee6b4): feature to limit org creation to superusers (PROJQUAY-1245) ([#1516](https://github.com/quay/quay/issues/1516))
 - [aefddd36](https://github.com/quay/quay/commit/aefddd36dd0540709f391a86485a8afb2a57e85a): add OPTIONS method to /config request (PROJQUAY-4276) ([#1476](https://github.com/quay/quay/issues/1476))
@@ -12,8 +12,10 @@
 - [871c43ea](https://github.com/quay/quay/commit/871c43eaf37ea44da13308e06b2e2f9c543fc5dd): handle missing tag on DELETE tag api ([#1444](https://github.com/quay/quay/issues/1444))
 - [bf99e718](https://github.com/quay/quay/commit/bf99e718513b41e67ee2963e220d93e59e4acac5): Update werkzeug to 1.0.0 and add valid CORS methods (PROJQUAY-4163) ([#1443](https://github.com/quay/quay/issues/1443))
 ### Arch
+- [434c193b](https://github.com/quay/quay/commit/434c193b9408367fe1800f7e9a01e92ef59a6e86): Map aarch64 to arm64 in ARCH variable ([#1602](https://github.com/quay/quay/issues/1602))
 - [d08298bc](https://github.com/quay/quay/commit/d08298bc60858ac6b2c07387116f03d439188d31): add ppc64le support to quay (PROJQUAY-4595) ([#1535](https://github.com/quay/quay/issues/1535))
 ### Auth
+- [d34e9399](https://github.com/quay/quay/commit/d34e9399af9e02f4beb7ed59cc8ff7124ecfece2): Adding wraps to user namespace decorator (PROJQUAY-4694) ([#1607](https://github.com/quay/quay/issues/1607))
 - [ea90cc4f](https://github.com/quay/quay/commit/ea90cc4f26a625f4d228dae9cd362be8c0cc9ce9): Speed up permissions loading (PROJQUAY-4004) ([#1566](https://github.com/quay/quay/issues/1566))
 - [6ed0bcde](https://github.com/quay/quay/commit/6ed0bcdedc9a0cb4a84197006602ba39c7f965ec): allow rs384 in jwt (PROJQUAY-4148) ([#1449](https://github.com/quay/quay/issues/1449))
 ### Billing
@@ -23,6 +25,7 @@
 - [ee5ff714](https://github.com/quay/quay/commit/ee5ff7141f1096a2d6c79020df23791c8cd64e8a): Increase column size in logentry3 table (PROJQUAY-4305) ([#1510](https://github.com/quay/quay/issues/1510))
 - [9209cf75](https://github.com/quay/quay/commit/9209cf7596d21719d4797c0caf8677cbc2347a1f): Fix schema discovery on basic auth (PROJQUAY-4362) ([#1498](https://github.com/quay/quay/issues/1498))
 ### Build(Deps)
+- [d9352f0e](https://github.com/quay/quay/commit/d9352f0e9f80b1394b61dfe55e3218ac211b1f2f): bump protobuf from 3.15.0 to 3.18.3 ([#1541](https://github.com/quay/quay/issues/1541))
 - [9a1de19f](https://github.com/quay/quay/commit/9a1de19f975800e2a4bbe384d87b8ceab416aa7e): bump angular and [@types](https://github.com/types)/angular ([#1451](https://github.com/quay/quay/issues/1451))
 - [0c62c0ee](https://github.com/quay/quay/commit/0c62c0ee02920408fc8fa57b3580fef48a9d4ccf): bump terser from 4.3.4 to 4.8.1 ([#1452](https://github.com/quay/quay/issues/1452))
 - [0f2ebdaf](https://github.com/quay/quay/commit/0f2ebdafc58867af6fac9168ed6348178ac63d45): bump moment from 2.29.2 to 2.29.4 ([#1442](https://github.com/quay/quay/issues/1442))
@@ -32,6 +35,9 @@
 - [1d2e55b6](https://github.com/quay/quay/commit/1d2e55b63d906d949de792fd5b9481a6dd42568b): Set imagePullPolicy to always (PROJQUAY-3507) ([#1330](https://github.com/quay/quay/issues/1330))
 - [3a63fd71](https://github.com/quay/quay/commit/3a63fd718788b4a0f733c1a29b8e0992083d0884): Add dnsPolicy option (PROJQUAY-3755) ([#1305](https://github.com/quay/quay/issues/1305))
 ### Buildman
+- [1a60cbe7](https://github.com/quay/quay/commit/1a60cbe7fbdd391f073035d94596bbad8f8c0842): add SLO metric that calculates build success (PROJQUAY-4486) ([#1609](https://github.com/quay/quay/issues/1609))
+- [ea67af5a](https://github.com/quay/quay/commit/ea67af5a04753df2e06007394d58bbc0667acba4): add SLO metric for time spent in queue for build jobs (PROJQUAY-4487) ([#1575](https://github.com/quay/quay/issues/1575))
+- [9a11e476](https://github.com/quay/quay/commit/9a11e4760e809a4cc4ac893382ec7d2654e26a87): allow fallback on non-exception build failures (PROJQUAY-4609) ([#1605](https://github.com/quay/quay/issues/1605))
 - [e3b170ea](https://github.com/quay/quay/commit/e3b170ea3f35920afee9c2c2d32c8dbf40c9bd9d): fix type when getting ec2 ami ([#1328](https://github.com/quay/quay/issues/1328))
 ### Bump
 - [b21400b9](https://github.com/quay/quay/commit/b21400b90d46ff1d6a989c2b3008769420bbd608): Bump to redeploy Quay pods to reflect new endpoint (PROJQUAY-2056) ([#1327](https://github.com/quay/quay/issues/1327))
@@ -52,6 +58,8 @@
 - [e85372d0](https://github.com/quay/quay/commit/e85372d00586217dd8ec1f4b808c6d2534dea28e): //issues.redhat.com/browse/PROJQUAY-2411) ([#1337](https://github.com/quay/quay/issues/1337))
 ### Chore: V3.7.1 Changelog Bump (Https
 - [e76db133](https://github.com/quay/quay/commit/e76db133fcd62b07f6c99c420410ef9eca12dd73): //issues.redhat.com/browse/PROJQUAY-3836) ([#1372](https://github.com/quay/quay/issues/1372))
+### Chore: V3.7.10 Changelog Bump (Https
+- [612a6537](https://github.com/quay/quay/commit/612a65379d261931786a5a8540b2373afcbb9561): //issues.redhat.com/browse/PROJQUAY-4627) ([#1591](https://github.com/quay/quay/issues/1591))
 ### Chore: V3.7.3 Changelog Bump (Https
 - [a55c63e7](https://github.com/quay/quay/commit/a55c63e7117438c483c78cd17c60e0491ab498cd): //issues.redhat.com/browse/PROJQUAY-3989) ([#1420](https://github.com/quay/quay/issues/1420))
 ### Chore: V3.7.4 Changelog Bump (Https
@@ -73,9 +81,12 @@
 ### Conf/Nginx
 - [f45c68eb](https://github.com/quay/quay/commit/f45c68ebf2635eeadbaeaf11ce5df9e215ae62d1): mark beginning of string in oauth location match ([#1550](https://github.com/quay/quay/issues/1550))
 ### Config
+- [6bbfdf5e](https://github.com/quay/quay/commit/6bbfdf5e78e37eeafb3f422253785cf0ddc590a7): Remove whitespace from config (PROJQUAY-4666) ([#1596](https://github.com/quay/quay/issues/1596))
 - [ff8043dd](https://github.com/quay/quay/commit/ff8043dd85732aa96ac7d90218a4ef416ef56cea): Add conftest mediatypes to default Quay configuration (PROJQUAY-4614) ([#1567](https://github.com/quay/quay/issues/1567))
 ### Config
 - [4ebad4dc](https://github.com/quay/quay/commit/4ebad4dcd8b4d7562171e5c7f56ee133305cb932): Updating Cosign SBOM Media Types on Quay (PROJQUAY-4591) ([#1554](https://github.com/quay/quay/issues/1554))
+### Deploy
+- [ad4c13d7](https://github.com/quay/quay/commit/ad4c13d713f1022ba571e21580417b23ed86905f): Add deployment manifests for CloudFlare (PROJQUAY-3512) ([#1604](https://github.com/quay/quay/issues/1604))
 ### Dev
 - [d3cc640f](https://github.com/quay/quay/commit/d3cc640fef64d673ae0c8ff9aef84aad13562c45): Update Clair for dev (PROJQUAY-4461) ([#1528](https://github.com/quay/quay/issues/1528))
 - [04af141a](https://github.com/quay/quay/commit/04af141a49fa231157d91f20f04ab498e307228d): Add pre-commit script to run black (PROJQUAY-4039) ([#1432](https://github.com/quay/quay/issues/1432))
@@ -96,6 +107,8 @@
 - [e1745a9b](https://github.com/quay/quay/commit/e1745a9b13dcb0648091fa61a96cb076750d6590): fix bash path before appending certs (PROJQUAY-3881) ([#1359](https://github.com/quay/quay/issues/1359))
 - [8786ef2e](https://github.com/quay/quay/commit/8786ef2efd78baee88d2354279fe9499f552873a): ensure a newline is present before appending certs (PROJQUAY-3881) ([#1356](https://github.com/quay/quay/issues/1356))
 - [16d9a2ce](https://github.com/quay/quay/commit/16d9a2ce41f2990911c7e18d8b41a6e1e3b41ae0): ensure a newline is present before appending certs (PROJQUAY-3881) ([#1352](https://github.com/quay/quay/issues/1352))
+### Logs
+- [fe2b89d6](https://github.com/quay/quay/commit/fe2b89d6563df35dbe8c6cb891d7cd9f5d90df8d): create action logs on proxy cache config creation/deletion (PROJQUAY-4718) ([#1625](https://github.com/quay/quay/issues/1625))
 ### Makefile
 - [692e3cee](https://github.com/quay/quay/commit/692e3cee29132af1035ba66fa32404f0f9e2e857): use non-standard port for postgres test container ([#1485](https://github.com/quay/quay/issues/1485))
 - [fd4e7723](https://github.com/quay/quay/commit/fd4e7723f34f11d085cb7951c6eab084efe39d65): use variable to tell postgres test target which tests to run ([#1475](https://github.com/quay/quay/issues/1475))
@@ -117,16 +130,17 @@
 ### Pull-Thru
 - [d029a465](https://github.com/quay/quay/commit/d029a4652deb763105af0db9ffa05cbf2b6b2343): bump expiration of all parent manifest lists on pull ([#1336](https://github.com/quay/quay/issues/1336))
 ### Quay
+- [dcf5a377](https://github.com/quay/quay/commit/dcf5a377a93c2d16bd2400747106adfd88a25982): Cloudfront multi domain (PROJQUAY-4506) ([#1598](https://github.com/quay/quay/issues/1598))
 - [7c566ad4](https://github.com/quay/quay/commit/7c566ad4f3879e08ed82955a14122cd2a2e1f269): Exporting image.oci package to Quay module (PROJQUAY-0000) ([#1548](https://github.com/quay/quay/issues/1548))
 ### Quayio
 - [b49fd45e](https://github.com/quay/quay/commit/b49fd45ee646d53c0789d79c60c87a7fb5ae8ec8): Redirect user to billing page when starting free trial (PROJQUAY-4130) ([#1439](https://github.com/quay/quay/issues/1439))
 ### Quota
-- [f90e5e3d](https://github.com/quay/quay/commit/f90e5e3dcef4bb312e31aaf5a4ce536e81e3e424): Configuring Quota for user panel(PROJQUAY-3767) ([#1334](https://github.com/quay/quay/issues/1334))
-- [1e4871ec](https://github.com/quay/quay/commit/1e4871eca27ea1878937a49fb2974401c5963512): Add Cache To Tag Delete (PROJQUAY-3828) ([#1345](https://github.com/quay/quay/issues/1345))
-### Quota
 - [a0df8950](https://github.com/quay/quay/commit/a0df895005bcd3e53847046f69f6a7add87c88fd): Fix calculating org size (PROJQUAY-3889) ([#1391](https://github.com/quay/quay/issues/1391))
 - [f28b35cc](https://github.com/quay/quay/commit/f28b35cc311dae94671cc6bce4b11abc9a68e917): Fix join on caching repo size (PROJQUAY-3889) ([#1378](https://github.com/quay/quay/issues/1378))
 - [9d8ff6b1](https://github.com/quay/quay/commit/9d8ff6b1c109fdc285298d32ec2a83069bd90556): address possible integrity exception if computing size concurrently (PROJQUAY-3752) ([#1303](https://github.com/quay/quay/issues/1303))
+### Quota
+- [f90e5e3d](https://github.com/quay/quay/commit/f90e5e3dcef4bb312e31aaf5a4ce536e81e3e424): Configuring Quota for user panel(PROJQUAY-3767) ([#1334](https://github.com/quay/quay/issues/1334))
+- [1e4871ec](https://github.com/quay/quay/commit/1e4871eca27ea1878937a49fb2974401c5963512): Add Cache To Tag Delete (PROJQUAY-3828) ([#1345](https://github.com/quay/quay/issues/1345))
 ### Quota Management
 - [59d586c4](https://github.com/quay/quay/commit/59d586c4c6294ceceb214d2fa1a8fb7e164081c8): Adding default quota check for image push (PROJQUAY-3789) ([#1316](https://github.com/quay/quay/issues/1316))
 ### Quota UI
@@ -138,10 +152,14 @@
 - [15ea8350](https://github.com/quay/quay/commit/15ea8350db3dd3321801b9b7b8fed8ba252a5b30): Use skopeo list-tags to get repo tags (PROJQUAY-2179) ([#1427](https://github.com/quay/quay/issues/1427))
 ### Requirements.Txt
 - [46cd48dd](https://github.com/quay/quay/commit/46cd48dd9febb0b894b2192d10ce649ce5da9bee): bump flask-restful from 0.3.7 to 0.3.9 ([#1375](https://github.com/quay/quay/issues/1375))
+### Revert "Chore
+- [e4e00f70](https://github.com/quay/quay/commit/e4e00f706a065eeb5fd889a0c2273efa07cd7fb5): Add server side assembly of chunked metadata for RADOSGW driver (PROJQUAY-4592) ([#1557](https://github.com/quay/quay/issues/1557))" ([#1642](https://github.com/quay/quay/issues/1642))
 ### Rhsso
 - [0fdf96a2](https://github.com/quay/quay/commit/0fdf96a2d178c3d499ce7f53b5ff8a50e581cd91): Add checks for e-mail blocked in export screen (PROJQUAY-2056) ([#1333](https://github.com/quay/quay/issues/1333))
 ### Schema1
 - [b2dbdcd7](https://github.com/quay/quay/commit/b2dbdcd79813bbe2b1c205c8f6a6a5616851cba9): Generate kid in the correct format (PROJQUAY-3486) ([#1208](https://github.com/quay/quay/issues/1208))
+### Scripts
+- [facb4b1e](https://github.com/quay/quay/commit/facb4b1e5b45eafb25e7f3ae0cbdf90e21a38550): push to ecr backup when building quay.io (PROJQUAY-3273) ([#1578](https://github.com/quay/quay/issues/1578))
 ### Secscan
 - [98801bfd](https://github.com/quay/quay/commit/98801bfd3e8cb0b81f83cbbcac0346302eef7b8c): Generate key to reduce vulnerabilities (PROJQUAY-4562) ([#1547](https://github.com/quay/quay/issues/1547))
 - [5291daf8](https://github.com/quay/quay/commit/5291daf8fe22218995eb37e4ef6f8b3a481bdd2b): Don't delete manifest security status on error (PROJQUAY-4060) ([#1434](https://github.com/quay/quay/issues/1434))
@@ -155,14 +173,18 @@
 - [4e739d30](https://github.com/quay/quay/commit/4e739d30bf6be74b5094012ab5aae91865a59ef7): Update mount path for export compliance certificate (PROJQUAY-2056) ([#1320](https://github.com/quay/quay/issues/1320))
 - [2c3e26a3](https://github.com/quay/quay/commit/2c3e26a322501aef73d887fc2346ef7e1610fdff): Add test for RHSSO OAuth service (PROJQUAY-2056) ([#1317](https://github.com/quay/quay/issues/1317))
 ### Storage
+- [f4d9dda2](https://github.com/quay/quay/commit/f4d9dda27d59df582b73d0a57122cae335123799): Add **kwargs to get_direct_download_url for CloudFlare storage (PROJQUAY-3512) ([#1594](https://github.com/quay/quay/issues/1594))
 - [40735569](https://github.com/quay/quay/commit/407355691ba593ca9a26ffd9be48cd4826c89669): Add Cloudflare as a CDN provider for an S3 backed storage (PROJQUAY-3699) ([#1294](https://github.com/quay/quay/issues/1294))
 - [47564690](https://github.com/quay/quay/commit/47564690071c02a6f7d5cf7b5ac1c9a102ab7523): handle KeyError we sometimes get from aws ([#1543](https://github.com/quay/quay/issues/1543))
 - [a101553c](https://github.com/quay/quay/commit/a101553cb1bae22cdf4b16e37a3a3a2bc8645e48): return S3 url only for ip ranges in the same region (PROJQUAY-4498) ([#1539](https://github.com/quay/quay/issues/1539))
 - [e6be9fc4](https://github.com/quay/quay/commit/e6be9fc43a04c2770b82927b939f9347f270b7cb): Add username field to requests on CloudFront (PROJQUAY-3511) ([#1486](https://github.com/quay/quay/issues/1486))
 - [56b16b70](https://github.com/quay/quay/commit/56b16b70cca1ff0f5f51dd2fb47852027d66eef6): optimize large azure chunked upload (PROJQUAY-3753) ([#1387](https://github.com/quay/quay/issues/1387))
+### Superusers
+- [64ec1560](https://github.com/quay/quay/commit/64ec15605c6dd8d3e1d66442c97a4511c6d22d04): grant superusers additinonal org permissions (PROJQUAY-4687) ([#1613](https://github.com/quay/quay/issues/1613))
 ### Task
 - [eb308136](https://github.com/quay/quay/commit/eb308136836ccbe64bbaf143ef67330e72a5010e): remove obsolete logrotate.conf file (PROJQUAY-4364) ([#1500](https://github.com/quay/quay/issues/1500))
 ### UI
+- [60181dae](https://github.com/quay/quay/commit/60181dae0313ca4023bfe7e4076acf551a3b1ca4): Fix redirection to user/org page (PROJQUAY-4667) ([#1623](https://github.com/quay/quay/issues/1623))
 - [ba2aa54d](https://github.com/quay/quay/commit/ba2aa54d3fc081c052d65c899b49f67dd6ca3ada): Superuser user panel settings icon permissions fix (PROJQUAY-3905) ([#1364](https://github.com/quay/quay/issues/1364))
 - [c93661e9](https://github.com/quay/quay/commit/c93661e9d51a645b43760db83b20f8b9c8041d3c): Show settings icon for super user under Superuser Users Panel (PROJQUAY-3905) ([#1358](https://github.com/quay/quay/issues/1358))
 ### Ui
@@ -175,6 +197,13 @@
 ### User
 - [1e136d6d](https://github.com/quay/quay/commit/1e136d6dd0fec70cb6e4cbd442ef1768aab1592d): Added function to fetch users public repositories count (PROJQUAY-0000) ([#1540](https://github.com/quay/quay/issues/1540))
 ### Users
+- [dba302b5](https://github.com/quay/quay/commit/dba302b5f162b7800f676cf4789cc4e40898f240): default to true if LDAP_RESTRICTED_USER_FILTER is not set (PROJQUAY-4776) ([#1645](https://github.com/quay/quay/issues/1645))
+- [b128936b](https://github.com/quay/quay/commit/b128936b504dbe0f2083d1784d884cb877db9c97): fix behavior when using ldap and restricted user whitelist is set (PROJQUAY-4767) ([#1640](https://github.com/quay/quay/issues/1640))
+- [7cd55ea0](https://github.com/quay/quay/commit/7cd55ea0cd4a3fc7a995a26be51e8709bc1785be): fix create repo on push on orgs for restricted users (PROJQUAY-4732) ([#1634](https://github.com/quay/quay/issues/1634))
+- [0caa4203](https://github.com/quay/quay/commit/0caa4203eccc21895a5e84322e68db18d5ad959f): prevent CREATE_NAMESPACE_ON_PUSH is restricted (PROJQUAY-4702) ([#1621](https://github.com/quay/quay/issues/1621))
+- [8fc03857](https://github.com/quay/quay/commit/8fc03857cbd3cde85217138389fc08dbecfc2b53): when set, grant superusers repository permissions. ([#1620](https://github.com/quay/quay/issues/1620))
+- [ef8ad2c3](https://github.com/quay/quay/commit/ef8ad2c3e1efec3719ed6ceb249acf9b7b617fd9): prevent creating repo on push for restricted users (PROJQUAY-4706) ([#1614](https://github.com/quay/quay/issues/1614))
+- [c84067a4](https://github.com/quay/quay/commit/c84067a4d6a1a4442c13f841aab9cd448857db37): add restricted users' filter (PROJQUAY-1245) ([#1551](https://github.com/quay/quay/issues/1551))
 - [14e87bd4](https://github.com/quay/quay/commit/14e87bd41e393032576fd23daf4801ea5f7def22): fix missing references in ldap for superusers ([#1542](https://github.com/quay/quay/issues/1542))
 - [070f464b](https://github.com/quay/quay/commit/070f464b149695b79d837fd781bd72aadde5753e): superuser group in federated identity provider (PROJQUAY-3924) ([#1464](https://github.com/quay/quay/issues/1464))
 ### Util
@@ -182,6 +211,17 @@
 - [e8e5d5d9](https://github.com/quay/quay/commit/e8e5d5d90461cca38a4367be603ecdbb2fce956c): Adding git pre-commit checks (PROJQUAY-4658) ([#1585](https://github.com/quay/quay/issues/1585))
 ### V2auth
 - [fd9a6b2e](https://github.com/quay/quay/commit/fd9a6b2e606db6d20bb079f4c3a942e176f83a0c): Check for user before creating org (PROJQUAY-3766) ([#1315](https://github.com/quay/quay/issues/1315))
+
+<a name="v3.7.10"></a>
+## [v3.7.10] - 2022-10-25
+### Auth
+- [b619da30](https://github.com/quay/quay/commit/b619da308de62272eae9d85c9c9d357188c19ff0): Speed up permissions loading (PROJQUAY-4004) ([#1581](https://github.com/quay/quay/issues/1581))
+### Chore: V3.7.10 Changelog Bump (Https
+- [59937c6d](https://github.com/quay/quay/commit/59937c6dbf896cc6b01e5b295f8d17449284c0c1): //issues.redhat.com/browse/PROJQUAY-4627) ([#1592](https://github.com/quay/quay/issues/1592))
+### Secscan
+- [128f1255](https://github.com/quay/quay/commit/128f1255766fa2fb1a0c72a09fa030871383511d): Generate key to reduce vulnerabilities (PROJQUAY-4562) ([#1576](https://github.com/quay/quay/issues/1576))
+### [Redhat-3.7] Chore
+- [72e382c8](https://github.com/quay/quay/commit/72e382c827879dd2c794d217eab5738cd48f862a): Add server side assembly of chunked metadata for RADOSGW driver (PROJQUAY-4592) ([#1583](https://github.com/quay/quay/issues/1583))
 
 <a name="v3.7.9"></a>
 ## [v3.7.9] - 2022-10-17
@@ -783,7 +823,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.7.10...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.7.11...HEAD
+[v3.7.11]: https://github.com/quay/quay/compare/v3.7.10...v3.7.11
 [v3.7.10]: https://github.com/quay/quay/compare/v3.7.9...v3.7.10
 [v3.7.9]: https://github.com/quay/quay/compare/v3.7.8...v3.7.9
 [v3.7.8]: https://github.com/quay/quay/compare/v3.7.7...v3.7.8
