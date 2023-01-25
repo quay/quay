@@ -435,7 +435,7 @@ class RepositoryBuildResource(RepositoryParamResource):
             raise NotFound()
 
         if model.build.cancel_repository_build(build, dockerfile_build_queue):
-            log_action("cancel_build", namespace, {"build_uuid": build_uuid})
+            log_action("cancel_build", namespace, {"build_uuid": build_uuid}, repo_name=repository)
             return "Okay", 201
         else:
             raise InvalidRequest("Build is currently running or has finished")
