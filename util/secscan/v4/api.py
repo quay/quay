@@ -25,6 +25,7 @@ from util.metrics.prometheus import secscan_index_request_duration
 logger = logging.getLogger(__name__)
 
 DOWNLOAD_VALIDITY_LIFETIME_S = 60  # Amount of time the security scanner has to call the layer URL
+INDEX_REQUEST_TIMEOUT = 600
 
 
 def observe(f):
@@ -292,7 +293,9 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         logger.debug("%sing security URL %s", method.upper(), url)
         try:
-            resp = self._client.request(method, url, json=body, headers=headers)
+            resp = self._client.request(
+                method, url, json=body, headers=headers, timeout=INDEX_REQUEST_TIMEOUT
+            )
         except requests.exceptions.ConnectionError as ce:
             logger.exception("Connection error when trying to connect to security scanner endpoint")
             msg = "Connection error when trying to connect to security scanner endpoint: %s" % str(
