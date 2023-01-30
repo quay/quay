@@ -3,6 +3,7 @@ import logging
 import requests
 import json
 import os
+import re
 import jwt
 import base64
 import time
@@ -19,7 +20,7 @@ from jsonschema import validate, RefResolver
 
 from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.model.storage import get_storage_locations
-from util.metrics.prometheus import secscan_index_request_duration
+from util.metrics.prometheus import secscan_index_request_duration, secscan_index_layer_size
 
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,12 @@ class APIRequestFailure(Exception):
 class InvalidContentSent(Exception):
     """
     Exception raised when malformed content is sent to API.
+    """
+
+
+class LayerTooLargeException(Exception):
+    """
+    Exception raised when layer above configured max.
     """
 
 
@@ -160,6 +167,24 @@ actions: Dict[str, Callable[..., Action]] = {
 }
 
 
+def _layer_size_str_to_bytes(layer_size):
+    if not layer_size:
+        return 0
+
+    parsed_max_layer_size = re.split(r"(\d+)", layer_size)
+    if len(parsed_max_layer_size) < 2:
+        return 0
+
+    units = {"B": 1, "K": 2**10, "M": 2**20, "G": 2**30, "T": 2**40}
+
+    max_size, unit = parsed_max_layer_size[-2], parsed_max_layer_size[-1]
+
+    msg = "invalid max layer size format. e.g 1M, 1G"
+    assert max_size.isdigit() and unit.upper() in units.keys(), msg
+
+    return max_size * units[unit]
+
+
 class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
     """
     Class implements the SecurityScannerAPIInterface for Clair V4.
@@ -169,10 +194,11 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
     Clair V4 requests.
     """
 
-    def __init__(self, endpoint, client, blob_url_retriever, jwt_psk=None):
+    def __init__(self, endpoint, client, blob_url_retriever, jwt_psk=None, max_layer_size=None):
         self._client = client
         self._blob_url_retriever = blob_url_retriever
         self.jwt_psk = None
+        self.max_layer_size = _layer_size_str_to_bytes(max_layer_size)
 
         if jwt_psk is not None:
             self.jwt_psk = base64.b64decode(jwt_psk)
@@ -198,7 +224,16 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         body = {
             "hash": manifest.digest,
-            "layers": [
+            "layers": [],
+        }
+
+        for l in layers:
+            layer_compressed_size = l.layer_info.compressed_size
+            secscan_index_layer_size.observe(layer_compressed_size)
+            if self.max_layer_size and layer_compressed_size > self.max_layer_size:
+                raise LayerTooLargeException()
+
+            body["layers"].append(
                 {
                     "hash": str(l.layer_info.blob_digest),
                     "uri": self._blob_url_retriever.url_for_download(manifest.repository, l.blob)
@@ -217,9 +252,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
                         ),
                     ),
                 }
-                for l in layers
-            ],
-        }
+            )
 
         try:
             resp = self._perform(actions["Index"](body))

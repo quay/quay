@@ -65,6 +65,11 @@ secscan_index_request_duration = Histogram(
     "seconds taken to make an index request to the secscan service",
 )
 
+secscan_index_layer_size = Histogram(
+    "quay_secscan_index_layer_size_bytes",
+    "bytes submitted to index to the secscan service",
+)
+
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24

@@ -484,41 +484,17 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SECURITY_SCANNER = False
     FEATURE_SECURITY_NOTIFICATIONS = False
 
-    # The endpoint for the (deprecated) V2 security scanner.
-    SECURITY_SCANNER_ENDPOINT: Optional[str] = None
-
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT: Optional[str] = None
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
 
-    # If specified, the security scanner will only index images newer than the provided ID.
-    SECURITY_SCANNER_INDEXING_MIN_ID = None
-
-    # If specified, the endpoint to be used for all POST calls to the security scanner.
-    SECURITY_SCANNER_ENDPOINT_BATCH = None
-
-    # If specified, GET requests that return non-200 will be retried at the following instances.
-    SECURITY_SCANNER_READONLY_FAILOVER_ENDPOINTS: Optional[List[str]] = []
-
-    # The indexing engine version running inside the security scanner.
-    SECURITY_SCANNER_ENGINE_VERSION_TARGET = 3
-
-    # The version of the API to use for the security scanner.
-    SECURITY_SCANNER_API_VERSION = "v1"
-
     # Minimum number of seconds before re-indexing a manifest with the security scanner.
     SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 300
 
-    # API call timeout for the security scanner.
-    SECURITY_SCANNER_API_TIMEOUT_SECONDS = 10
-
-    # POST call timeout for the security scanner.
-    SECURITY_SCANNER_API_TIMEOUT_POST_SECONDS = 480
-
-    # The issuer name for the security scanner.
-    SECURITY_SCANNER_ISSUER_NAME = "security_scanner"
+    # Maximum layer size allowed for indexing.
+    SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE = None
 
     # A base64 encoded string used to sign JWT(s) on Clair V4
     # requests. If none jwt signing will not occur
