@@ -40,6 +40,7 @@ class SecurityScanStatus(Enum):
     FAILED = "failed"
     QUEUED = "queued"
     UNSUPPORTED = "unsupported"
+    MANIFEST_LAYER_TOO_LARGE = "manifest_layer_too_large"
 
 
 MAPPED_STATUSES = {}
@@ -47,6 +48,9 @@ MAPPED_STATUSES[ScanLookupStatus.FAILED_TO_INDEX] = SecurityScanStatus.FAILED
 MAPPED_STATUSES[ScanLookupStatus.SUCCESS] = SecurityScanStatus.SCANNED
 MAPPED_STATUSES[ScanLookupStatus.NOT_YET_INDEXED] = SecurityScanStatus.QUEUED
 MAPPED_STATUSES[ScanLookupStatus.UNSUPPORTED_FOR_INDEXING] = SecurityScanStatus.UNSUPPORTED
+MAPPED_STATUSES[
+    ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE
+] = SecurityScanStatus.MANIFEST_LAYER_TOO_LARGE
 
 
 logger = logging.getLogger(__name__)

@@ -24,6 +24,9 @@ class ScanLookupStatus(IntEnum):
     # Indicates that the manifest/image has been indexed and its information has been returned.
     SUCCESS = 5
 
+    # Indicates that the layer is too large to be indexed.
+    MANIFEST_LAYER_TOO_LARGE = 6
+
 
 Vulnerability = namedtuple(
     "Vulnerability",

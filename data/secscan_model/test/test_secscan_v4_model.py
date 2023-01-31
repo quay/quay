@@ -256,7 +256,12 @@ def test_perform_indexing_needs_reindexing(initialized_db, set_secscan_config):
         assert mss.indexer_hash == "xyz"
 
 
-def test_perform_indexing_needs_reindexing_skip_unsupported(initialized_db, set_secscan_config):
+@pytest.mark.parametrize(
+    "index_status", [IndexStatus.MANIFEST_UNSUPPORTED, IndexStatus.MANIFEST_LAYER_TOO_LARGE]
+)
+def test_perform_indexing_needs_reindexing_skippable(
+    initialized_db, set_secscan_config, index_status
+):
     secscan = V4SecurityScanner(application, instance_keys, storage)
     secscan._secscan_api = mock.Mock()
     secscan._secscan_api.state.return_value = {"state": "new hash"}
@@ -270,7 +275,7 @@ def test_perform_indexing_needs_reindexing_skip_unsupported(initialized_db, set_
             manifest=manifest,
             repository=manifest.repository,
             error_json={},
-            index_status=IndexStatus.MANIFEST_UNSUPPORTED,
+            index_status=index_status,
             indexer_hash="old hash",
             indexer_version=IndexerVersion.V4,
             last_indexed=datetime.utcnow()

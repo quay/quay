@@ -53,10 +53,6 @@ def add_enterprise_config_defaults(config_obj, current_secret_key):
 
     config_obj["FEATURE_SECURITY_SCANNER"] = config_obj.get("FEATURE_SECURITY_SCANNER", False)
 
-    config_obj["SECURITY_SCANNER_ISSUER_NAME"] = config_obj.get(
-        "SECURITY_SCANNER_ISSUER_NAME", "security_scanner"
-    )
-
     # Default time machine config.
     config_obj["TAG_EXPIRATION_OPTIONS"] = config_obj.get(
         "TAG_EXPIRATION_OPTIONS", ["0s", "1d", "1w", "2w", "4w"]

@@ -34,6 +34,16 @@
         Unsupported
         </span>
 
+	<!-- Unsupported -->
+        <span class="failed-scan"
+            ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'manifest_layer_too_large'"
+            data-title="The manifest for this tag has layer(s) that are too large to index by Quay Security Scanner"
+            bs-tooltip
+            bindonce>
+          <span class="donut-chart" width="22" data="[{'index': 0, 'value': 1, 'color': '#eee'}]"></span>
+          Layer(s) too large
+        </span>
+
         <!-- No Features -->
         <span class="failed-scan"
             ng-if="$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).status == 'scanned' && !$ctrl.getSecurityStatus($ctrl.repository, $ctrl.manifestDigest).hasFeatures"

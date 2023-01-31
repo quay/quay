@@ -29,7 +29,12 @@ from data.registry_model.datatypes import Manifest as ManifestDataType
 from data.registry_model import registry_model
 from util.migrate.allocator import yield_random_entries
 from util.secscan.validator import V4SecurityConfigValidator
-from util.secscan.v4.api import ClairSecurityScannerAPI, APIRequestFailure, InvalidContentSent
+from util.secscan.v4.api import (
+    ClairSecurityScannerAPI,
+    APIRequestFailure,
+    InvalidContentSent,
+    LayerTooLargeException,
+)
 from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore, fetch_vuln_severity
 from util.secscan.blob import BlobURLRetriever
 from util.config import URLSchemeAndHostname
@@ -124,6 +129,7 @@ class V4SecurityScanner(SecurityScannerInterface):
             client=app.config.get("HTTPCLIENT"),
             blob_url_retriever=BlobURLRetriever(storage, instance_keys, app),
             jwt_psk=app.config.get("SECURITY_SCANNER_V4_PSK", None),
+            max_layer_size=app.config.get("SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE", None),
         )
 
     def load_security_information(self, manifest_or_legacy_image, include_vulnerabilities=False):
@@ -144,6 +150,11 @@ class V4SecurityScanner(SecurityScannerInterface):
         if status.index_status == IndexStatus.MANIFEST_UNSUPPORTED:
             return SecurityInformationLookupResult.with_status(
                 ScanLookupStatus.UNSUPPORTED_FOR_INDEXING
+            )
+
+        if status.index_status == IndexStatus.MANIFEST_LAYER_TOO_LARGE:
+            return SecurityInformationLookupResult.with_status(
+                ScanLookupStatus.MANIFEST_LAYER_TOO_LARGE
             )
 
         if status.index_status == IndexStatus.IN_PROGRESS:
@@ -193,6 +204,7 @@ class V4SecurityScanner(SecurityScannerInterface):
                 .join(ManifestSecurityStatus)
                 .where(
                     ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_UNSUPPORTED,
+                    ManifestSecurityStatus.index_status != IndexStatus.MANIFEST_LAYER_TOO_LARGE,
                     ManifestSecurityStatus.indexer_hash != indexer_hash,
                     ManifestSecurityStatus.last_indexed < reindex_threshold
                     or DEFAULT_SECURITY_SCANNER_V4_REINDEX_THRESHOLD,
@@ -307,6 +319,21 @@ class V4SecurityScanner(SecurityScannerInterface):
                     metadata_json={},
                 )
 
+        def mark_manifest_layer_too_large(manifest):
+            with db_transaction():
+                ManifestSecurityStatus.delete().where(
+                    ManifestSecurityStatus.manifest == manifest._db_id,
+                    ManifestSecurityStatus.repository == manifest.repository._db_id,
+                ).execute()
+                ManifestSecurityStatus.create(
+                    manifest=manifest._db_id,
+                    repository=manifest.repository._db_id,
+                    index_status=IndexStatus.MANIFEST_LAYER_TOO_LARGE,
+                    indexer_hash="none",
+                    indexer_version=IndexerVersion.V4,
+                    metadata_json={},
+                )
+
         def should_skip_indexing(manifest_candidate):
             """Check whether this manifest was preempted by another worker.
             That would be the case if the manifest references a manifestsecuritystatus,
@@ -359,6 +386,10 @@ class V4SecurityScanner(SecurityScannerInterface):
                 continue
             except APIRequestFailure as ex:
                 logger.exception("Failed to perform indexing, security scanner API error")
+                continue
+            except LayerTooLargeException as ex:
+                mark_manifest_layer_too_large(manifest)
+                logger.exception("Failed to perform indexing, layer too large")
                 continue
 
             if report["state"] == IndexReportState.Index_Finished:
