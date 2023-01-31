@@ -3,6 +3,9 @@ import json
 from peewee import fn, JOIN, DataError
 
 from data.database import (
+    ImageStorage,
+    ManifestBlob,
+    NamespaceSize,
     Repository,
     QuotaLimits,
     UserOrganizationQuota,
@@ -174,7 +177,6 @@ def verify_namespace_quota(repository_ref):
 
 
 def verify_namespace_quota_force_cache(repository_ref):
-    repository.force_cache_repo_size(repository_ref.id)
     namespace_size = get_namespace_size(repository_ref.namespace_name)
     return check_limits(repository_ref.namespace_name, namespace_size)
 
@@ -277,24 +279,24 @@ def cache_namespace_repository_sizes(namespace_name):
 
 def get_namespace_size(namespace_name):
     namespace = user.get_user_or_org(namespace_name)
-    now_ms = get_epoch_timestamp_ms()
+    namespace_size = 0
+    try:
+        namespace_size_row = (
+            NamespaceSize.select().where(NamespaceSize.namespace_user == namespace).get()
+        )
+        namespace_size = namespace_size_row.size_bytes
+    except NamespaceSize.DoesNotExist:
+        pass
 
-    subquery = (
-        Tag.select(Tag.manifest)
-        .where(Tag.hidden == False)
-        .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
-        .group_by(Tag.manifest)
-        .having(fn.Count(Tag.name) > 0)
-    )
+    return namespace_size
 
-    namespace_size = (
-        Manifest.select(fn.sum(Manifest.layers_compressed_size))
-        .join(Repository)
-        .join(subquery, on=(subquery.c.manifest_id == Manifest.id))
-        .where(Repository.namespace_user == namespace.id)
-    ).scalar()
 
-    return namespace_size or 0
+def get_namespace_size_model(namespace_name):
+    namespace = user.get_user_or_org(namespace_name)
+    try:
+        return NamespaceSize.select().where(NamespaceSize.namespace_user == namespace).get()
+    except NamespaceSize.DoesNotExist:
+        return None
 
 
 def fetch_system_default(quotas):
@@ -304,10 +306,12 @@ def fetch_system_default(quotas):
     return None
 
 
-def get_repo_quota_for_view(namespace_name, repo_name):
+def get_repo_quota_for_view(namespace_name, repo_name, queue):
     repository_ref = model.repository.get_repository(namespace_name, repo_name)
     if not repository_ref:
         return None
+
+    queue.put(["repository", str(repository_ref.id)], json.dumps({"repository": repository_ref.id}))
 
     quotas = get_namespace_quota_list(repository_ref.namespace_user.username)
 
@@ -327,7 +331,7 @@ def get_repo_quota_for_view(namespace_name, repo_name):
 
 
 def get_quota_for_view(namespace_name):
-    cache_namespace_repository_sizes(namespace_name)
+    # cache_namespace_repository_sizes(namespace_name)
 
     namespace_user = model.user.get_user_or_org(namespace_name)
     quotas = get_namespace_quota_list(namespace_user.username)
@@ -335,12 +339,15 @@ def get_quota_for_view(namespace_name):
     # Currently only one quota per namespace is supported
     configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default(quotas)
 
-    namespace_quota_consumed = get_namespace_size(namespace_name)
-    namespace_quota_consumed = int(namespace_quota_consumed) if namespace_quota_consumed else 0
+    namespace_size = get_namespace_size_model(namespace_name)
+    namespace_quota_consumed = (
+        namespace_size.size_bytes if namespace_size.size_bytes is not None else 0
+    )
 
     # If FEATURE_QUOTA_MANAGEMENT is enabled & quota is not set for an org,
     # we still want to report org's storage consumption
     return {
         "quota_bytes": namespace_quota_consumed,
         "configured_quota": configured_namespace_quota,
+        "is_running": namespace_size.running,
     }

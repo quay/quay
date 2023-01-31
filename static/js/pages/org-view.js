@@ -84,6 +84,8 @@
 
     var loadOrganization = function() {
       $scope.orgResource = ApiService.getOrganizationAsResource({'orgname': orgname}).get(function(org) {
+        console.log("org.quota_report.is_running");
+        console.log(org.quota_report.is_running);
         $scope.organization = org;
         $scope.orgScope.organizationEmail = org.email;
         $scope.isAdmin = org.is_admin;

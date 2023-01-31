@@ -1,3 +1,4 @@
+import json
 import logging
 
 from functools import wraps
@@ -6,7 +7,7 @@ from flask import request, url_for, Response
 
 import features
 
-from app import app, storage
+from app import app, storage, quota_total_queue
 from auth.registry_jwt_auth import process_registry_jwt_auth
 from data.model import repository, namespacequota
 from digest import digest_tools
@@ -419,6 +420,10 @@ def _write_manifest(
         elif quota["severity_level"] == "Reject":
             namespacequota.notify_organization_admins(repository_ref, "quota_error")
             raise QuotaExceeded()
+        # TODO: only if quota is enabled
+        quota_total_queue.put(
+            ["repository", str(repository_ref.id)], json.dumps({"repository": repository_ref.id})
+        )
 
     return repository_ref, manifest, tag
 

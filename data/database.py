@@ -988,8 +988,18 @@ class RepositorySearchScore(BaseModel):
 
 class RepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
-    repository_id: int
+    repository_id = int
     size_bytes = BigIntegerField()
+    summed_until_ms = BigIntegerField()
+    running = BooleanField(default=True, null=False)
+
+
+class NamespaceSize(BaseModel):
+    namespace_user = ForeignKeyField(User, unique=True)
+    namespace_user_id = int
+    size_bytes = BigIntegerField()
+    summed_until_ms = BigIntegerField()
+    running = BooleanField(default=True, null=False)
 
 
 class DeletedRepository(BaseModel):

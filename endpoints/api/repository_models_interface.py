@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple, defaultdict
-
+import json
+from app import quota_total_queue
 from datetime import datetime
 from six import add_metaclass
 
@@ -59,7 +60,7 @@ class RepositoryBaseElement(
 
         if features.QUOTA_MANAGEMENT:
             repo["quota_report"] = model.namespacequota.get_repo_quota_for_view(
-                self.namespace_name, self.repository_name
+                self.namespace_name, self.repository_name, quota_total_queue
             )
 
         if self.should_last_modified:

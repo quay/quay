@@ -2,6 +2,7 @@
 Manage organizations, members and OAuth applications.
 """
 
+import json
 import logging
 import recaptcha2
 
@@ -18,6 +19,7 @@ from app import (
     ip_resolver,
     app,
     usermanager,
+    quota_total_queue,
 )
 from endpoints.api import (
     allow_if_superuser,
@@ -111,6 +113,7 @@ def org_view(o, teams):
         view["is_free_account"] = o.stripe_id is None
 
         if features.QUOTA_MANAGEMENT:
+            quota_total_queue.put(["namespace", str(o.id)], json.dumps({"namespace": o.id}))
             quotas = model.namespacequota.get_namespace_quota_list(o.username)
             view["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
             view["quota_report"] = model.namespacequota.get_quota_for_view(o.username)

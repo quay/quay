@@ -23,6 +23,7 @@ from app import (
     namespace_gc_queue,
     ip_resolver,
     url_scheme_and_hostname,
+    quota_total_queue,
 )
 
 from auth import scopes
@@ -191,6 +192,7 @@ def user_view(user, previous_username=None):
         )
 
         if features.QUOTA_MANAGEMENT:
+            quota_total_queue.put(["namespace", str(user.id)], json.dumps({"namespace": user.id}))
             quotas = model.namespacequota.get_namespace_quota_list(user.username)
             user_response["quotas"] = [quota_view(quota) for quota in quotas] if quotas else []
             user_response["quota_report"] = model.namespacequota.get_quota_for_view(user.username)

@@ -288,6 +288,8 @@ repository_gc_queue = WorkQueue(app.config["REPOSITORY_GC_QUEUE_NAME"], tf, has_
 # when a namespace is marked for deletion.
 namespace_gc_queue = WorkQueue(app.config["NAMESPACE_GC_QUEUE_NAME"], tf, has_namespace=False)
 
+quota_total_queue = WorkQueue("quotatotal", tf, has_namespace=True)
+
 all_queues = [
     image_replication_queue,
     dockerfile_build_queue,

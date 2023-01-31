@@ -72,6 +72,12 @@
                   {{ " of " + bytesToHumanReadableString(organization.quota_report.configured_quota) }}
                 </span>
               </h4>
+              <h4 ng-if="organization.quota_report.is_running">
+                Calculating size...
+              </h4>
+              <h4>
+                my new change
+              </h4>
             </span>
           </div>
         </cor-tab-pane>

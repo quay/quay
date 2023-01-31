@@ -7,7 +7,6 @@ from enum import Enum
 from datetime import timedelta, datetime
 from peewee import Case, JOIN, fn, SQL, IntegrityError
 from cachetools.func import ttl_cache
-
 import data
 from data.model import (
     config,
@@ -694,27 +693,22 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
 
 def get_repository_size(repo_id: int):
     try:
-        query = (
-            RepositorySize.select(Repository.name, Repository.id, RepositorySize.size_bytes)
+        size = (
+            RepositorySize.select(RepositorySize.size_bytes)
             .join(Repository)
             .where(RepositorySize.repository_id == repo_id)
+            .scalar()
         )
-        return query.get()
+        return size
     except RepositorySize.DoesNotExist:
-        return None
+        return 0
 
 
 def get_repository_size_and_cache(repo_id: int):
-    repo_size_ref = get_repository_size(repo_id)
-
-    if repo_size_ref is None or repo_size_ref.size_bytes == 0:
-        force_cache_repo_size(repo_id)
-        repo_size_ref = get_repository_size(repo_id)
-
+    size = get_repository_size(repo_id)
     return {
-        "repository_name": repo_size_ref.repository.name,
-        "repository_id": repo_size_ref.repository.id,
-        "repository_size": repo_size_ref.size_bytes,
+        "repository_id": repo_id,
+        "repository_size": size,
     }
 
 
@@ -742,45 +736,4 @@ def get_size_during_upload(repo_id: int):
 
 
 def force_cache_repo_size(repo_id: int):
-    try:
-        now_ms = get_epoch_timestamp_ms()
-        subquery = (
-            Tag.select(Tag.manifest)
-            .where(Tag.hidden == False)
-            .where((Tag.lifetime_end_ms >> None) | (Tag.lifetime_end_ms > now_ms))
-            .where(Tag.repository_id == repo_id)
-            .group_by(Tag.manifest)
-            .having(fn.Count(Tag.name) > 0)
-        )
-
-        cache = (
-            Manifest.select(fn.Sum(Manifest.layers_compressed_size).alias("size_bytes"))
-            .join(subquery, on=(subquery.c.manifest_id == Manifest.id))
-            .where(Manifest.repository == repo_id)
-        ).scalar()
-
-        size = cache
-    except Manifest.DoesNotExist:
-        size = 0
-
-    if size is None:
-        size = 0
-
-    with db_transaction():
-        repo_size_ref = get_repository_size(repo_id)
-        try:
-            if repo_size_ref is not None:
-                update = RepositorySize.update(size_bytes=size).where(
-                    RepositorySize.repository_id == repo_id
-                )
-                update.execute()
-            else:
-                RepositorySize.create(repository_id=repo_id, size_bytes=size)
-        except IntegrityError:
-            # It it possible that this gets preempted by another worker.
-            # If that's the case, it should be safe to just ignore the IntegrityError,
-            # as the RepositorySize should have been created with the correct value.
-            logger.warning("RepositorySize for repo id %s already exists", repo_id)
-            return size
-
-    return size
+    pass

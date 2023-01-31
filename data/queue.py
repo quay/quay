@@ -209,6 +209,20 @@ class WorkQueue(object):
         except QueueItem.DoesNotExist:
             return False
 
+    def queued(self, canonical_name_list):
+        """
+        Returns True if a job matching the canonical name list is currently queued.
+        """
+        canonical_name = self._canonical_name([self._queue_name] + canonical_name_list)
+        try:
+            select_query = QueueItem.select().where(QueueItem.queue_name == canonical_name)
+            now = datetime.utcnow()
+
+            self._available_jobs_where(select_query.clone(), now).get()
+            return True
+        except QueueItem.DoesNotExist:
+            return False
+
     def _queue_dict(self, canonical_name_list, message, available_after, retries_remaining):
         return dict(
             queue_name=self._canonical_name([self._queue_name] + canonical_name_list),
