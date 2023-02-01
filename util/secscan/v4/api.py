@@ -37,6 +37,7 @@ def observe(f):
         retval = f(*args, **kwargs)
 
         dur = time.time() - start_time
+
         secscan_index_request_duration.observe(dur)
 
         return retval
@@ -204,6 +205,7 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
             self.jwt_psk = base64.b64decode(jwt_psk)
 
         self.secscan_api_endpoint = endpoint
+        self.index_start_time = None
 
     def state(self):
         try:
@@ -213,8 +215,8 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         return resp.json()
 
-    @observe
     def index(self, manifest, layers):
+        self.index_start_time = time.time()
         # TODO: Better method of determining if a manifest can be indexed (new field or content-type whitelist)
         assert isinstance(manifest, ManifestDataType) and not manifest.is_manifest_list
 
@@ -335,6 +337,10 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
                 ce
             )
             raise APIRequestFailure(msg)
+
+        if action.name == "Index":
+            dur = time.time() - self.index_start_time
+            secscan_index_request_duration.labels(resp.status_code).observe(dur)
 
         if resp.status_code == 400:
             msg = (
