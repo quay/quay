@@ -38,6 +38,7 @@ from util.secscan.v4.api import (
 from util.secscan import PRIORITY_LEVELS, get_priority_from_cvssscore, fetch_vuln_severity
 from util.secscan.blob import BlobURLRetriever
 from util.config import URLSchemeAndHostname
+from util.metrics.prometheus import secscan_result_duration
 
 from data.database import (
     Manifest,
@@ -47,6 +48,7 @@ from data.database import (
     Repository,
     User,
     db_transaction,
+    get_epoch_timestamp_ms,
 )
 
 logger = logging.getLogger(__name__)
@@ -394,6 +396,11 @@ class V4SecurityScanner(SecurityScannerInterface):
 
             if report["state"] == IndexReportState.Index_Finished:
                 index_status = IndexStatus.COMPLETED
+                # record time to get results if manifest has just been uploaded
+                if not manifest.has_been_scanned:
+                    dur_ms = get_epoch_timestamp_ms() - manifest.created_at
+                    dur_sec = dur_ms / 1000
+                    secscan_result_duration.observe(dur_sec)
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
             else:

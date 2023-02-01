@@ -63,6 +63,7 @@ gc_iterations = Counter("quay_gc_iterations", "number of iterations by the GCWor
 secscan_index_request_duration = Histogram(
     "quay_secscan_index_duration_seconds",
     "seconds taken to make an index request to the secscan service",
+    labelnames=["status"],
 )
 
 secscan_index_layer_size = Histogram(
@@ -70,6 +71,14 @@ secscan_index_layer_size = Histogram(
     "bytes submitted to index to the secscan service",
 )
 
+INF = float("inf")
+SECSCAN_RESULT_BUCKETS = (60, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, INF)
+
+secscan_result_duration = Histogram(
+    "quay_secscan_result_duration_seconds",
+    "how long it takes to receive scan results after pushing an image",
+    buckets=SECSCAN_RESULT_BUCKETS,
+)
 
 PROMETHEUS_PUSH_INTERVAL_SECONDS = 30
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
