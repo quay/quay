@@ -780,7 +780,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_EXTENDED_REPOSITORY_NAMES = True
 
     # Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads
-    CLEAN_BLOB_UPLOAD_FOLDER = False
+    CLEAN_BLOB_UPLOAD_FOLDER = True
 
     # Add quota management configuration, caching, and validation
     FEATURE_QUOTA_MANAGEMENT = False
