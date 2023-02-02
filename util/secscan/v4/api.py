@@ -231,9 +231,14 @@ class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
 
         for l in layers:
             layer_compressed_size = l.layer_info.compressed_size
-            secscan_index_layer_size.observe(layer_compressed_size)
-            if self.max_layer_size and layer_compressed_size > self.max_layer_size:
+            if (
+                self.max_layer_size
+                and layer_compressed_size is not None
+                and layer_compressed_size > self.max_layer_size
+            ):
                 raise LayerTooLargeException()
+
+            secscan_index_layer_size.observe(layer_compressed_size or 0)
 
             body["layers"].append(
                 {
