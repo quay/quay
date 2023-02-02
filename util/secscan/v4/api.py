@@ -168,7 +168,7 @@ actions: Dict[str, Callable[..., Action]] = {
 }
 
 
-def _layer_size_str_to_bytes(layer_size):
+def _layer_size_str_to_bytes(layer_size: str) -> int:
     if not layer_size:
         return 0
 
@@ -183,7 +183,7 @@ def _layer_size_str_to_bytes(layer_size):
     msg = "invalid max layer size format. e.g 1M, 1G"
     assert max_size.isdigit() and unit.upper() in units.keys(), msg
 
-    return max_size * units[unit]
+    return int(max_size) * units[unit]
 
 
 class ClairSecurityScannerAPI(SecurityScannerAPIInterface):
