@@ -60,7 +60,6 @@ Example:
 
 import copy
 import json
-import hashlib
 
 from collections import namedtuple
 from jsonschema import validate as validate_schema, ValidationError
