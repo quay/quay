@@ -7,6 +7,10 @@ from util.registry.filelike import READ_UNTIL_END
 logger = logging.getLogger(__name__)
 
 
+class InvalidConfigurationException(Exception):
+    pass
+
+
 class StoragePaths(object):
     shared_images = "sharedimages"
 

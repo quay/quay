@@ -1,0 +1,131 @@
+from storage import CloudFrontedS3Storage, CloudFlareS3Storage, StorageContext, MultiCDNStorage
+from storage.basestorage import InvalidConfigurationException
+from util.ipresolver import IPResolver
+from app import config_provider
+import json
+import pytest
+from test.fixtures import *
+
+_TEST_CONFIG_JSON = """{
+  "providers": {
+    "CloudFlare": [
+      "CloudFlareStorage",
+      {
+        "cloudflare_domain": "test-domain",
+        "cloudflare_privatekey_filename": "test/data/test.pem",
+        "s3_access_key": "test-access-key",
+        "s3_secret_key": "test-secret-key",
+        "s3_region": "us-east-1",
+        "s3_bucket": "test-bucket",
+        "storage_path": "/images"
+      }
+    ],
+    "AWSCloudFront": [
+      "CloudFrontedS3Storage",
+      {
+        "cloudfront_distribution_domain": "test-cloud",
+        "cloudfront_key_id": "test-cloudfront-key",
+        "cloudfront_privatekey_filename": "test/data/test.pem",
+        "s3_access_key": "test-s3-access-key",
+        "s3_secret_key": "test-s3-secret-key",
+        "s3_bucket": "test-s3-bucket",
+        "s3_region": "us-east-1",
+        "cloudfront_distribution_org_overrides": {},
+        "storage_path": "/images"
+      }
+    ]
+  },
+  "default_provider": "AWSCloudFront",
+  "rules": []
+}"""
+
+
+@pytest.fixture()
+def context(app):
+    return StorageContext("nyc", None, config_provider, IPResolver(app))
+
+
+def test_config_no_rules(context, app):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+
+    engine = MultiCDNStorage(context, **test_config)
+
+    assert len(engine.providers.keys()) == 2
+
+
+def test_should_fail_config_no_default_provider(context, app):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+    test_config["default_provider"] = None
+
+    with pytest.raises(InvalidConfigurationException) as exc_info:
+        engine = MultiCDNStorage(context, **test_config)
+
+    assert "default provider not provided" in str(exc_info.value)
+
+
+def test_should_fail_no_providers(context, app):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+    test_config["providers"] = []
+
+    with pytest.raises(InvalidConfigurationException) as exc_info:
+        engine = MultiCDNStorage(context, **test_config)
+
+    assert "providers should be a dict of storage providers with their configs" in str(
+        exc_info.value
+    )
+
+
+def test_should_fail_bad_default_provider(context, app):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+    test_config["default_provider"] = "BAD_PROVIDER"
+
+    with pytest.raises(InvalidConfigurationException) as exc_info:
+        engine = MultiCDNStorage(context, **test_config)
+
+    assert "Default provider not found in configured providers" in str(exc_info.value)
+
+
+def test_should_pass_namespace_rule(context, app):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+    test_config["rules"] = [{"namespace": "test", "target": "AWSCloudFront"}]
+
+    MultiCDNStorage(context, **test_config)
+
+
+def test_should_fail_bad_target_in_rule(context, app):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+    test_config["rules"] = [{"namespace": "test", "target": "bad-provider"}]
+
+    with pytest.raises(InvalidConfigurationException) as exc_info:
+        engine = MultiCDNStorage(context, **test_config)
+
+    assert "not in the configured targets" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "rule, namespace, ip, expected",
+    [
+        pytest.param(
+            {"continent": "NA", "target": "CloudFlare"}, "test", "8.8.8.8", CloudFlareS3Storage
+        ),
+        pytest.param(
+            {"namespace": "test", "target": "CloudFlare"}, "test", "8.8.8.8", CloudFlareS3Storage
+        ),
+        pytest.param(
+            {"continent": "AF", "namespace": "test", "target": "CloudFlare"},
+            "test",
+            "8.8.8.8",
+            CloudFrontedS3Storage,
+        ),  # no rule match
+    ],
+)
+def test_rule_match(rule, namespace, ip, expected):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+    test_config["rules"] = [rule]
+
+    context = StorageContext("nyc", None, config_provider, IPResolver(app))
+
+    engine = MultiCDNStorage(context, **test_config)
+
+    provider = engine.find_matching_provider(namespace, ip)
+    assert isinstance(provider, expected)
