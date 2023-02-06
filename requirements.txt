@@ -64,7 +64,7 @@ msrest==0.6.21
 ndg-httpsclient==0.5.1
 netaddr==0.7.19
 netifaces==0.10.9
-oauthlib==3.2.1
+oauthlib==3.2.2
 orderedmultidict==1.0.1
 os-service-types==1.7.0
 oslo.config==7.0.0
