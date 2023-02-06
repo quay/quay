@@ -27,7 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "iteration": 1675091349372,
+      "iteration": 1675355255828,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -1217,11 +1217,11 @@ data:
                     "mode": "palette-classic"
                   },
                   "custom": {
-                    "axisLabel": "",
+                    "axisLabel": "success rate",
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 10,
+                    "fillOpacity": 4,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -1255,7 +1255,7 @@ data:
                       },
                       {
                         "color": "red",
-                        "value": 80
+                        "value": 95
                       }
                     ]
                   },
@@ -1269,7 +1269,7 @@ data:
                 "x": 0,
                 "y": 17
               },
-              "id": 29,
+              "id": 79,
               "links": [],
               "options": {
                 "legend": {
@@ -1290,8 +1290,8 @@ data:
                     "uid": "${catchpoint_datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "1 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))\n    /\n    sum(increase(catchpoint_checks_total{probe=\"quayio-pull-monitor-v2\"}[$rate]))\n)\n",
-                  "legendFormat": "pull availability %",
+                  "expr": "1 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-pull-monitor-v2-na\"}[$rate]))\n    /\n    sum(increase(catchpoint_checks_total{probe=\"quayio-push-pull-monitor-v2-na\"}[$rate]))\n)\n",
+                  "legendFormat": "North America",
                   "range": true,
                   "refId": "A"
                 },
@@ -1301,14 +1301,50 @@ data:
                     "uid": "${catchpoint_datasource}"
                   },
                   "editorMode": "code",
-                  "expr": "1 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-monitor-v2\"}[$rate]))\n    /\n    sum(increase(catchpoint_checks_total{probe=\"quayio-push-monitor-v2\"}[$rate]))\n)",
+                  "expr": "1 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-pull-monitor-v2-sa\"}[$rate]))\n    /\n    sum(increase(catchpoint_checks_total{probe=\"quayio-push-pull-monitor-v2-sa\"}[$rate]))\n)",
                   "hide": false,
-                  "legendFormat": "push availability %",
+                  "legendFormat": "South America",
                   "range": true,
                   "refId": "B"
+                },
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "${catchpoint_datasource}"
+                  },
+                  "editorMode": "code",
+                  "expr": "1 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-pull-monitor-v2-af\"}[$rate]))\n    /   \n    sum(increase(catchpoint_checks_total{probe=\"quayio-push-pull-monitor-v2-af\"}[$rate]))\n)",
+                  "hide": false,
+                  "legendFormat": "Africa",
+                  "range": true,
+                  "refId": "C"
+                },
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "${catchpoint_datasource}"
+                  },
+                  "editorMode": "code",
+                  "expr": "1 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-pull-monitor-v2-as\"}[$rate]))\n    /   \n    sum(increase(catchpoint_checks_total{probe=\"quayio-push-pull-monitor-v2-as\"}[$rate]))\n)",
+                  "hide": false,
+                  "legendFormat": "Asia",
+                  "range": true,
+                  "refId": "D"
+                },
+                {
+                  "datasource": {
+                    "type": "prometheus",
+                    "uid": "${catchpoint_datasource}"
+                  },
+                  "editorMode": "code",
+                  "expr": "1 - (\n    sum(increase(catchpoint_check_failures_total{probe=\"quayio-push-pull-monitor-v2-oc\"}[$rate]))\n    /   \n    sum(increase(catchpoint_checks_total{probe=\"quayio-push-pull-monitor-v2-oc\"}[$rate]))\n)",
+                  "hide": false,
+                  "legendFormat": "Oceania",
+                  "range": true,
+                  "refId": "E"
                 }
               ],
-              "title": "Image Push/Pull Service Level Compliance",
+              "title": "Push-Pull Monitor by Region",
               "type": "timeseries"
             },
             {
@@ -1701,8 +1737,8 @@ data:
                 "overrides": []
               },
               "gridPos": {
-                "h": 5,
-                "w": 5,
+                "h": 6,
+                "w": 12,
                 "x": 0,
                 "y": 28
               },
@@ -2014,7 +2050,7 @@ data:
                     "axisPlacement": "auto",
                     "barAlignment": 0,
                     "drawStyle": "line",
-                    "fillOpacity": 0,
+                    "fillOpacity": 7,
                     "gradientMode": "none",
                     "hideFrom": {
                       "legend": false,
@@ -2290,7 +2326,7 @@ data:
                 "overrides": []
               },
               "gridPos": {
-                "h": 6,
+                "h": 8,
                 "w": 5,
                 "x": 0,
                 "y": 20
@@ -2364,7 +2400,7 @@ data:
                 "overrides": []
               },
               "gridPos": {
-                "h": 6,
+                "h": 8,
                 "w": 7,
                 "x": 5,
                 "y": 20
@@ -2417,8 +2453,8 @@ data:
               "gridPos": {
                 "h": 8,
                 "w": 12,
-                "x": 0,
-                "y": 26
+                "x": 12,
+                "y": 20
               },
               "heatmap": {},
               "hideZeroBuckets": true,
@@ -2509,7 +2545,7 @@ data:
                 "h": 8,
                 "w": 6,
                 "x": 0,
-                "y": 21
+                "y": 30
               },
               "id": 75,
               "options": {
@@ -2533,7 +2569,7 @@ data:
                     "type": "prometheus",
                     "uid": "${datasource}"
                   },
-                  "expr": "sum(increase(quay_secscan_result_duration_sum[$rate]))\n/\nsum(increase(quay_secscan_result_duration_count[$rate]))",
+                  "expr": "sum(increase(quay_secscan_result_duration_seconds_sum[$rate]))\n/\nsum(increase(quay_secscan_result_duration_seconds_count[$rate]))",
                   "refId": "A"
                 }
               ],
@@ -2559,7 +2595,7 @@ data:
                 "h": 8,
                 "w": 12,
                 "x": 6,
-                "y": 21
+                "y": 30
               },
               "heatmap": {},
               "hideZeroBuckets": true,
@@ -2579,7 +2615,7 @@ data:
                   },
                   "editorMode": "code",
                   "exemplar": true,
-                  "expr": "sum(increase(quay_secscan_result_duration_bucket[$rate])) by (le)",
+                  "expr": "sum(increase(quay_secscan_result_duration_seconds_bucket[$rate])) by (le)",
                   "format": "heatmap",
                   "hide": false,
                   "instant": false,
@@ -2778,7 +2814,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 7,
+      "version": 11,
       "weekStart": ""
     }
 kind: ConfigMap
