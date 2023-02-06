@@ -12,6 +12,7 @@ ENV QUAYRUN /quay-registry/conf
 ENV QUAYPATH $QUAYDIR
 ENV PYTHONUSERBASE /app
 ENV PYTHONPATH $QUAYPATH
+ENV TZ UTC
 RUN set -ex\
 	; microdnf -y module enable nginx:1.20 \
 	; microdnf -y module enable python39:3.9 \
