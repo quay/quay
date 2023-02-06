@@ -102,7 +102,7 @@ jobs:
         # https://access.redhat.com/documentation/en-us/red_hat_quay/3.8/html/deploy_red_hat_quay_-_high_availability/deploying_red_hat_quay
         docker run \
           --detach \
-          --health-cmd="curl -f http://localhost:8080/health/instance" \
+          --health-cmd="curl -fsS http://localhost:8080/health/instance" \
           --health-interval=10s \
           --health-retries=5 \
           --health-timeout=5s \
