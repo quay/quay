@@ -299,6 +299,10 @@ class DockerSchema1Manifest(ManifestInterface):
         return self.content_type
 
     @property
+    def artifact_type(self):
+        return self.config_media_type
+
+    @property
     def signatures(self):
         return self._signatures
 
@@ -336,6 +340,10 @@ class DockerSchema1Manifest(ManifestInterface):
 
     @property
     def config_media_type(self):
+        return None
+
+    @property
+    def subject(self):
         return None
 
     @property

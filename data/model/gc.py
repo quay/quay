@@ -5,7 +5,7 @@ from datetime import datetime
 
 from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag, blob
 from data.model.oci import tag as oci_tag
-from data.database import Repository, db_for_update
+from data.database import ManifestSubject, Repository, db_for_update
 from data.database import ApprTag
 from data.database import (
     Tag,
@@ -467,6 +467,16 @@ def _check_manifest_used(manifest_id):
         except ManifestChild.DoesNotExist:
             pass
 
+        # Check if the manifest is subject to an existing manifest
+        try:
+            manifestSubject = (
+                ManifestSubject.select().where(ManifestSubject.manifest_id == manifest_id).get()
+            )
+            Manifest.select().where(Manifest.digest == manifestSubject.subject).get()
+            return True
+        except (Manifest.DoesNotExist, ManifestSubject.DoesNotExist):
+            pass
+
     return False
 
 
@@ -503,6 +513,15 @@ def _garbage_collect_manifest(manifest_id, context):
         except Manifest.DoesNotExist:
             return False
 
+        # check for manifests that refer this manifest and attempt to remove those too
+        try:
+            for subjectManifest in ManifestSubject.select().where(
+                ManifestSubject.subject == manifest.digest
+            ):
+                context.add_manifest_id(subjectManifest.id)
+        except Manifest.DoesNotExist:
+            pass
+
         assert manifest.id == manifest_id
         assert manifest.repository_id == context.repository.id
         if _check_manifest_used(manifest_id):
@@ -538,6 +557,16 @@ def _garbage_collect_manifest(manifest_id, context):
             .where(
                 ManifestChild.manifest == manifest_id,
                 ManifestChild.repository == context.repository,
+            )
+            .execute()
+        )
+
+        # Delete any subject manifest rows.
+        # TODO: Add to metrics
+        deleted_manifest_subject = (
+            ManifestSubject.delete()
+            .where(
+                ManifestSubject.manifest == manifest_id,
             )
             .execute()
         )

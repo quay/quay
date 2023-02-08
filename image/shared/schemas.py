@@ -1,3 +1,4 @@
+from image.oci.artifact.manifest import OCIArtifactManifest
 from image.shared import ManifestException
 from image.docker.schema1 import DockerSchema1Manifest, DOCKER_SCHEMA1_CONTENT_TYPES
 from image.docker.schema2 import (
@@ -7,7 +8,11 @@ from image.docker.schema2 import (
 from image.shared.types import SparseManifestList
 from image.docker.schema2.manifest import DockerSchema2Manifest
 from image.docker.schema2.list import DockerSchema2ManifestList
-from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
+from image.oci import (
+    OCI_ARTIFACT_MANIFEST_CONTENT_TYPE,
+    OCI_IMAGE_INDEX_CONTENT_TYPE,
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+)
 from image.oci.index import OCIIndex
 from image.oci.manifest import OCIManifest
 from util.bytes import Bytes
@@ -45,6 +50,9 @@ def parse_manifest_from_bytes(
 
     if media_type == OCI_IMAGE_INDEX_CONTENT_TYPE:
         return OCIIndex(manifest_bytes)
+
+    if media_type == OCI_ARTIFACT_MANIFEST_CONTENT_TYPE:
+        return OCIArtifactManifest(manifest_bytes)
 
     if media_type in DOCKER_SCHEMA1_CONTENT_TYPES:
         return DockerSchema1Manifest(manifest_bytes, validate=validate)

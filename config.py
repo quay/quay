@@ -810,3 +810,5 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_RESTRICTED_USERS = False
     RESTRICTED_USERS_WHITELIST: Optional[List[str]] = None
+
+    FEATURE_OCI_11 = False

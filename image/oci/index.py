@@ -47,7 +47,11 @@ from image.docker.schema2 import (
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
 )
-from image.oci import OCI_IMAGE_INDEX_CONTENT_TYPE, OCI_IMAGE_MANIFEST_CONTENT_TYPE
+from image.oci import (
+    OCI_ARTIFACT_MANIFEST_CONTENT_TYPE,
+    OCI_IMAGE_INDEX_CONTENT_TYPE,
+    OCI_IMAGE_MANIFEST_CONTENT_TYPE,
+)
 from image.oci.descriptor import get_descriptor_schema
 from image.oci.manifest import OCIManifest
 from util.bytes import Bytes
@@ -58,6 +62,7 @@ logger = logging.getLogger(__name__)
 # Keys.
 INDEX_VERSION_KEY = "schemaVersion"
 INDEX_MEDIATYPE_KEY = "mediaType"
+INDEX_ARTIFACTTYPE_KEY = "artifactType"
 INDEX_SIZE_KEY = "size"
 INDEX_DIGEST_KEY = "digest"
 INDEX_URLS_KEY = "urls"
@@ -76,6 +81,7 @@ ALLOWED_MEDIA_TYPES = [
     OCI_IMAGE_INDEX_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
     DOCKER_SCHEMA2_MANIFESTLIST_CONTENT_TYPE,
+    OCI_ARTIFACT_MANIFEST_CONTENT_TYPE,
 ]
 
 
@@ -210,6 +216,13 @@ class OCIIndex(ManifestListInterface):
         return OCI_IMAGE_INDEX_CONTENT_TYPE
 
     @property
+    def artifact_type(self):
+        """
+        The artifact type of the schema, not applicable to manifest lists
+        """
+        return None
+
+    @property
     def manifest_dict(self):
         """
         Returns the manifest as a dictionary ready to be serialized to JSON.
@@ -253,6 +266,10 @@ class OCIIndex(ManifestListInterface):
 
     @property
     def config(self):
+        return None
+
+    @property
+    def subject(self):
         return None
 
     @lru_cache(maxsize=1)
@@ -382,8 +399,9 @@ class OCIIndexBuilder(object):
 
     def __init__(self):
         self.manifests = []
+        self.annotations = {}
 
-    def add_manifest(self, manifest, architecture, os):
+    def add_manifest(self, manifest, architecture, os, artifactType=None):
         """
         Adds a manifest to the list.
         """
@@ -394,9 +412,15 @@ class OCIIndexBuilder(object):
             manifest.media_type,
             architecture,
             os,
+            artifactType,
         )
 
-    def add_manifest_digest(self, manifest_digest, manifest_size, media_type, architecture, os):
+    def add_annotation(self, key, value):
+        self.annotations[key] = value
+
+    def add_manifest_digest(
+        self, manifest_digest, manifest_size, media_type, architecture, os, artifactType=None
+    ):
         """
         Adds a manifest to the list.
         """
@@ -409,28 +433,38 @@ class OCIIndexBuilder(object):
                     INDEX_ARCHITECTURE_KEY: architecture,
                     INDEX_OS_KEY: os,
                 },
+                artifactType,
             )
         )
 
-    def build(self):
+    def get_manifest_schema(self, manifest):
+        schema = {
+            INDEX_MEDIATYPE_KEY: manifest[2],
+            INDEX_DIGEST_KEY: manifest[0],
+            INDEX_SIZE_KEY: manifest[1],
+            INDEX_PLATFORM_KEY: manifest[3],
+        }
+        if manifest[4] is not None:
+            schema[INDEX_ARTIFACTTYPE_KEY] = manifest[4]
+        return schema
+
+    def build(self, allow_empty=False):
         """
         Builds and returns the DockerSchema2ManifestList.
         """
-        assert self.manifests
+        if not allow_empty:
+            assert self.manifests
 
         manifest_list_dict = {
             INDEX_VERSION_KEY: 2,
             INDEX_MEDIATYPE_KEY: OCI_IMAGE_INDEX_CONTENT_TYPE,
             INDEX_MANIFESTS_KEY: [
-                {
-                    INDEX_MEDIATYPE_KEY: manifest[2],
-                    INDEX_DIGEST_KEY: manifest[0],
-                    INDEX_SIZE_KEY: manifest[1],
-                    INDEX_PLATFORM_KEY: manifest[3],
-                }
-                for manifest in self.manifests
+                self.get_manifest_schema(manifest) for manifest in self.manifests
             ],
         }
+
+        if len(self.annotations) > 0:
+            manifest_list_dict[INDEX_ANNOTATIONS_KEY] = self.annotations
 
         json_str = Bytes.for_string_or_unicode(json.dumps(manifest_list_dict, indent=3))
         return OCIIndex(json_str)

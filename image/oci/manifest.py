@@ -73,6 +73,7 @@ OCI_MANIFEST_DIGEST_KEY = "digest"
 OCI_MANIFEST_LAYERS_KEY = "layers"
 OCI_MANIFEST_URLS_KEY = "urls"
 OCI_MANIFEST_ANNOTATIONS_KEY = "annotations"
+OCI_MANIFEST_REFERS_KEY = "refers"
 
 # Named tuples.
 OCIManifestConfig = namedtuple("OCIManifestConfig", ["size", "digest"])
@@ -123,6 +124,28 @@ class OCIManifest(ManifestInterface):
                     "items": get_descriptor_schema(
                         OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
                     ),
+                },
+                OCI_MANIFEST_REFERS_KEY: {
+                    "type": "object",
+                    "description": "Used to inditify subject manifest",
+                    "properties": {
+                        OCI_MANIFEST_MEDIATYPE_KEY: {
+                            "type": "string",
+                            "description": "The MIME type of the referenced object. This should generally be "
+                            + "application/vnd.docker.container.image.v1+json",
+                        },
+                        OCI_MANIFEST_SIZE_KEY: {
+                            "type": "number",
+                            "description": "The size in bytes of the object. This field exists so that a "
+                            + "client will have an expected size for the content before "
+                            + "validating. If the length of the retrieved content does not "
+                            + "match the specified length, the content should not be trusted.",
+                        },
+                        OCI_MANIFEST_DIGEST_KEY: {
+                            "type": "string",
+                            "description": "The content addressable digest of the config in the blob store",
+                        },
+                    },
                 },
             },
             "required": [
@@ -179,6 +202,10 @@ class OCIManifest(ManifestInterface):
     @property
     def media_type(self):
         return OCI_IMAGE_MANIFEST_CONTENT_TYPE
+
+    @property
+    def artifact_type(self):
+        return self.config_media_type()
 
     @property
     def digest(self):
@@ -242,6 +269,10 @@ class OCIManifest(ManifestInterface):
     def annotations(self):
         """Returns the annotations on the manifest itself."""
         return self._parsed.get(OCI_MANIFEST_ANNOTATIONS_KEY) or {}
+
+    @property
+    def subject(self) -> str:
+        return self._parsed.get(OCI_MANIFEST_REFERS_KEY, {}).get(OCI_MANIFEST_DIGEST_KEY)
 
     def get_blob_digests_for_translation(self):
         return self.blob_digests

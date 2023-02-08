@@ -1317,6 +1317,7 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestLegacyImage",
     "Image",
     "ProxyCacheConfig",
+    "ManifestSubject",  # TODO: Remove this once tests have been implemented
 ]
 
 

@@ -35,6 +35,13 @@ class ManifestInterface(object):
         pass
 
     @abstractproperty
+    def artifact_type(self):
+        """
+        The artifact type of the schema.
+        """
+        pass
+
+    @abstractproperty
     def manifest_dict(self):
         """
         Returns the manifest as a dictionary ready to be serialized to JSON.
@@ -69,6 +76,11 @@ class ManifestInterface(object):
         """Returns the media type of the config of this manifest or None if
         this manifest does not support a configuration type.
         """
+
+    @property
+    @abstractmethod
+    def subject(self):
+        """Returns the manifest digest that the manifest refers to"""
 
     @abstractmethod
     def validate(self, content_retriever):

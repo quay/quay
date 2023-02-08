@@ -3,16 +3,17 @@ DESCRIPTOR_SIZE_KEY = "size"
 DESCRIPTOR_DIGEST_KEY = "digest"
 DESCRIPTOR_URLS_KEY = "urls"
 DESCRIPTOR_ANNOTATIONS_KEY = "annotations"
+DESCRIPTOR_DATA_KEY = "data"
+DESCRIPTOR_ARTIFACT_TYPE_KEY = "artifactType"
 
 
 def get_descriptor_schema(
-    allowed_media_types, additional_properties=None, additional_required=None
+    allowed_media_types=None, additional_properties=None, additional_required=None
 ):
     properties = {
         DESCRIPTOR_MEDIATYPE_KEY: {
             "type": "string",
             "description": "The MIME type of the referenced manifest",
-            "enum": allowed_media_types,
         },
         DESCRIPTOR_SIZE_KEY: {
             "type": "number",
@@ -37,7 +38,18 @@ def get_descriptor_schema(
                 "type": "string",
             },
         },
+        DESCRIPTOR_DATA_KEY: {
+            "type": ["string", "null"],
+            "description": "This OPTIONAL property contains an embedded representation of the referenced content. Values MUST conform to the Base 64 encoding, as defined in RFC 4648.",
+        },
+        DESCRIPTOR_ARTIFACT_TYPE_KEY: {
+            "type": ["string", "null"],
+            "description": "This OPTIONAL property contains the type of an artifact when the descriptor points to an artifact. This is the value of artifactType when the descriptor references an artifact manifest. This is the value of the config descriptor mediaType when the descriptor references an image manifest.",
+        },
     }
+
+    if allowed_media_types is not None:
+        properties[DESCRIPTOR_MEDIATYPE_KEY]["enum"] = allowed_media_types
 
     if additional_properties:
         properties.update(additional_properties)
