@@ -64,6 +64,7 @@ def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
         sync_token=123456789,
         country_iso_code=None,
         aws_region="GLOBAL",
+        continent=None,
     )
     assert ipresolver.resolve_ip("10.0.0.2") == ResolvedLocation(
         provider="aws",
@@ -71,6 +72,7 @@ def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
         sync_token=123456789,
         country_iso_code=None,
         aws_region="GLOBAL",
+        continent=None,
     )
     assert ipresolver.resolve_ip("6.0.0.2") == ResolvedLocation(
         provider="aws",
@@ -78,6 +80,7 @@ def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
         sync_token=123456789,
         country_iso_code="US",
         aws_region="GLOBAL",  # DoD assigned
+        continent="NA",
     )
     assert ipresolver.resolve_ip("4.0.0.2") == ResolvedLocation(
         provider="aws",
@@ -85,6 +88,7 @@ def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
         sync_token=123456789,
         country_iso_code="US",
         aws_region="us-east-1",
+        continent="NA",
     )
     assert ipresolver.resolve_ip("56.0.0.2") == ResolvedLocation(
         provider="internet",
@@ -92,6 +96,7 @@ def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
         sync_token=123456789,
         country_iso_code="US",  # USPS assigned
         aws_region=None,
+        continent="NA",
     )
     assert ipresolver.resolve_ip("127.0.0.1") == ResolvedLocation(
         provider="internet",
@@ -99,4 +104,5 @@ def test_resolved(aws_ip_range_data, test_ip_range_cache, test_aws_ip, app):
         sync_token=123456789,
         country_iso_code=None,
         aws_region=None,
+        continent=None,
     )

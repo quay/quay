@@ -206,6 +206,3 @@ class IPResolver(IPResolverInterface):
                 all_amazon[region].add(IPNetwork(service_description["ip_prefix"]))
 
         return all_amazon
-
-    def get_ip_region(self, ip):
-        pass

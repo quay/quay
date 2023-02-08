@@ -11,15 +11,25 @@ from storage.cloud import (
 from storage.fakestorage import FakeStorage
 from storage.distributedstorage import DistributedStorage
 from storage.storagecontext import StorageContext
-from storage.storagedriverclasses import STORAGE_DRIVER_CLASSES
 from storage.swift import SwiftStorage
 from storage.azurestorage import AzureStorage
 from storage.downloadproxy import DownloadProxy
 
 TYPE_LOCAL_STORAGE = "LocalStorage"
 
-# Adding multi-CDN storage provider here to avoid circular import
-STORAGE_DRIVER_CLASSES["MultiCDNStorage"] = MultiCDNStorage
+
+STORAGE_DRIVER_CLASSES = {
+    "LocalStorage": LocalStorage,
+    "S3Storage": S3Storage,
+    "GoogleCloudStorage": GoogleCloudStorage,
+    "RadosGWStorage": RadosGWStorage,
+    "SwiftStorage": SwiftStorage,
+    "CloudFrontedS3Storage": CloudFrontedS3Storage,
+    "AzureStorage": AzureStorage,
+    "RHOCSStorage": RHOCSStorage,
+    "CloudFlareStorage": CloudFlareS3Storage,
+    "MultiCDNStorage": MultiCDNStorage,
+}
 
 
 def get_storage_driver(location, chunk_cleanup_queue, config_provider, ip_resolver, storage_params):

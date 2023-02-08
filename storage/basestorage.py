@@ -7,7 +7,7 @@ from util.registry.filelike import READ_UNTIL_END
 logger = logging.getLogger(__name__)
 
 
-class InvalidConfigurationException(Exception):
+class InvalidStorageConfigurationException(Exception):
     pass
 
 

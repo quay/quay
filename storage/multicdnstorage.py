@@ -1,15 +1,21 @@
 import logging
 from typing import Dict
 
-from storage.basestorage import BaseStorageV2, InvalidConfigurationException
+from storage.cloudflarestorage import CloudFlareS3Storage
+from storage.cloud import CloudFrontedS3Storage
+from storage.basestorage import BaseStorageV2, InvalidStorageConfigurationException
 from util.ipresolver import GEOIP_CONTINENT_CODES
 
 logger = logging.getLogger(__name__)
 
 from storage.storagecontext import StorageContext
-from storage.storagedriverclasses import STORAGE_DRIVER_CLASSES
 
 VALID_RULE_KEYS = ["namespace", "continent", "target"]
+
+MULTICDN_STORAGE_PROVIDER_CLASSES = {
+    "CloudFrontedS3Storage": CloudFrontedS3Storage,
+    "CloudFlareStorage": CloudFlareS3Storage,
+}
 
 
 class MultiCDNStorage(BaseStorageV2):
@@ -60,23 +66,23 @@ class MultiCDNStorage(BaseStorageV2):
     def _validate_config(self, providers, default_provider, rules):
         # validate providers config
         if not providers or not isinstance(providers, dict) or len(providers.keys()) == 0:
-            raise InvalidConfigurationException(
+            raise InvalidStorageConfigurationException(
                 "providers should be a dict of storage providers with their configs"
             )
 
         # default target must always exist and should be valid
         if not default_provider:
-            raise InvalidConfigurationException("default provider not provided")
+            raise InvalidStorageConfigurationException("default provider not provided")
 
         if default_provider not in providers.keys():
-            raise InvalidConfigurationException(
+            raise InvalidStorageConfigurationException(
                 "Default provider not found in configured providers"
             )
 
         for provider_target in providers:
             config = providers.get(provider_target)
             if len(config) != 2:
-                raise InvalidConfigurationException(
+                raise InvalidStorageConfigurationException(
                     f"Provider {provider_target} invalid. Should contain provider name and config as list"
                 )
 
@@ -85,22 +91,22 @@ class MultiCDNStorage(BaseStorageV2):
             rule_config_keys = rule.keys()
             for config_key in rule_config_keys:
                 if config_key not in VALID_RULE_KEYS:
-                    raise InvalidConfigurationException(
+                    raise InvalidStorageConfigurationException(
                         f"{rule} Invalid: {config_key} bad rule key. Should be one of {VALID_RULE_KEYS}"
                     )
 
             if not rule.get("target"):
-                raise InvalidConfigurationException(
+                raise InvalidStorageConfigurationException(
                     f"target not configured for rule {rule}: Add one of the provders as target in the config"
                 )
 
             if rule["target"] not in providers.keys():
-                raise InvalidConfigurationException(
+                raise InvalidStorageConfigurationException(
                     f'{rule} Invalid: {rule["target"]} not in the configured targets {providers.keys()}'
                 )
 
             if rule.get("continent") and rule["continent"] not in GEOIP_CONTINENT_CODES:
-                raise InvalidConfigurationException(
+                raise InvalidStorageConfigurationException(
                     f'{rule} Invalid: {rule["continent"]} not a valid continent. Should be on of {GEOIP_CONTINENT_CODES}'
                 )
 
@@ -108,7 +114,7 @@ class MultiCDNStorage(BaseStorageV2):
         providers = {}
         for target_name in providers_config:
             [provider_name, provider_config] = providers_config.get(target_name)
-            provider_class = STORAGE_DRIVER_CLASSES[provider_name]
+            provider_class = MULTICDN_STORAGE_PROVIDER_CLASSES[provider_name]
             providers[target_name] = provider_class(self.context, **provider_config)
 
         return providers

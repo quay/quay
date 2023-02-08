@@ -1,5 +1,5 @@
 from storage import CloudFrontedS3Storage, CloudFlareS3Storage, StorageContext, MultiCDNStorage
-from storage.basestorage import InvalidConfigurationException
+from storage.basestorage import InvalidStorageConfigurationException
 from util.ipresolver import IPResolver
 from app import config_provider
 import json
@@ -57,7 +57,7 @@ def test_should_fail_config_no_default_provider(context, app):
     test_config = json.loads(_TEST_CONFIG_JSON)
     test_config["default_provider"] = None
 
-    with pytest.raises(InvalidConfigurationException) as exc_info:
+    with pytest.raises(InvalidStorageConfigurationException) as exc_info:
         engine = MultiCDNStorage(context, **test_config)
 
     assert "default provider not provided" in str(exc_info.value)
@@ -67,7 +67,7 @@ def test_should_fail_no_providers(context, app):
     test_config = json.loads(_TEST_CONFIG_JSON)
     test_config["providers"] = []
 
-    with pytest.raises(InvalidConfigurationException) as exc_info:
+    with pytest.raises(InvalidStorageConfigurationException) as exc_info:
         engine = MultiCDNStorage(context, **test_config)
 
     assert "providers should be a dict of storage providers with their configs" in str(
@@ -79,7 +79,7 @@ def test_should_fail_bad_default_provider(context, app):
     test_config = json.loads(_TEST_CONFIG_JSON)
     test_config["default_provider"] = "BAD_PROVIDER"
 
-    with pytest.raises(InvalidConfigurationException) as exc_info:
+    with pytest.raises(InvalidStorageConfigurationException) as exc_info:
         engine = MultiCDNStorage(context, **test_config)
 
     assert "Default provider not found in configured providers" in str(exc_info.value)
@@ -96,7 +96,7 @@ def test_should_fail_bad_target_in_rule(context, app):
     test_config = json.loads(_TEST_CONFIG_JSON)
     test_config["rules"] = [{"namespace": "test", "target": "bad-provider"}]
 
-    with pytest.raises(InvalidConfigurationException) as exc_info:
+    with pytest.raises(InvalidStorageConfigurationException) as exc_info:
         engine = MultiCDNStorage(context, **test_config)
 
     assert "not in the configured targets" in str(exc_info.value)
