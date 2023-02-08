@@ -109,6 +109,12 @@ def test_parse_basic_config():
     assert history == expected
 
 
+def test_config_additional_fields():
+    valid_config = json.loads(SAMPLE_CONFIG)
+    valid_config["additional_field"] = "boop"
+    OCIConfig(Bytes.for_string_or_unicode(json.dumps(valid_config)))
+
+
 def test_config_missing_required():
     valid_config = json.loads(SAMPLE_CONFIG)
     valid_config.pop("os")

@@ -6,13 +6,16 @@ DESCRIPTOR_ANNOTATIONS_KEY = "annotations"
 
 
 def get_descriptor_schema(
-    allowed_media_types, additional_properties=None, additional_required=None
+    allowed_media_types,
+    additional_properties=None,
+    additional_required=None,
+    ignore_unknown_mediatypes=False,
 ):
     properties = {
         DESCRIPTOR_MEDIATYPE_KEY: {
             "type": "string",
             "description": "The MIME type of the referenced manifest",
-            "enum": allowed_media_types,
+            "pattern": r"\w+/[-.\w]+(?:\+[-.\w]+)?",
         },
         DESCRIPTOR_SIZE_KEY: {
             "type": "number",
@@ -38,6 +41,9 @@ def get_descriptor_schema(
             },
         },
     }
+
+    if not ignore_unknown_mediatypes:
+        properties[DESCRIPTOR_MEDIATYPE_KEY]["enum"] = allowed_media_types
 
     if additional_properties:
         properties.update(additional_properties)

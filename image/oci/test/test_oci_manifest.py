@@ -173,7 +173,8 @@ def test_get_schema1_manifest():
     assert via_convert.digest == schema1.digest
 
 
-def test_validate_manifest_invalid_config_type():
+@pytest.mark.parametrize("ignore_unknown_mediatypes", [True, False])
+def test_validate_manifest_invalid_config_type(ignore_unknown_mediatypes):
     manifest_bytes = """{
       "schemaVersion": 2,
       "config": {
@@ -190,8 +191,14 @@ def test_validate_manifest_invalid_config_type():
       ]
     }"""
 
-    with pytest.raises(MalformedOCIManifest):
-        OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
+    if ignore_unknown_mediatypes:
+        OCIManifest(
+            Bytes.for_string_or_unicode(manifest_bytes),
+            ignore_unknown_mediatypes=ignore_unknown_mediatypes,
+        )
+    else:
+        with pytest.raises(MalformedOCIManifest):
+            OCIManifest(Bytes.for_string_or_unicode(manifest_bytes))
 
 
 def test_get_schema1_manifest_missing_history():
