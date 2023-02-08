@@ -27,7 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "iteration": 1675355255828,
+      "iteration": 1675863048663,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -1250,8 +1250,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -1392,8 +1391,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -1497,8 +1495,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -1616,8 +1613,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -1723,8 +1719,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -1880,8 +1875,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       }
                     ]
                   },
@@ -2078,8 +2072,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -2190,8 +2183,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -2312,8 +2304,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -2386,8 +2377,7 @@ data:
                     "mode": "absolute",
                     "steps": [
                       {
-                        "color": "green",
-                        "value": null
+                        "color": "green"
                       },
                       {
                         "color": "red",
@@ -2545,7 +2535,7 @@ data:
                 "h": 8,
                 "w": 6,
                 "x": 0,
-                "y": 30
+                "y": 21
               },
               "id": 75,
               "options": {
@@ -2595,7 +2585,7 @@ data:
                 "h": 8,
                 "w": 12,
                 "x": 6,
-                "y": 30
+                "y": 21
               },
               "heatmap": {},
               "hideZeroBuckets": true,
@@ -2635,7 +2625,7 @@ data:
                 "show": true
               },
               "yAxis": {
-                "format": "m",
+                "format": "s",
                 "logBase": 1,
                 "show": true
               },
@@ -2814,7 +2804,7 @@ data:
       "timezone": "",
       "title": "Quay SLO",
       "uid": "quay-slo",
-      "version": 11,
+      "version": 2,
       "weekStart": ""
     }
 kind: ConfigMap
