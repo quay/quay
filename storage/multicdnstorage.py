@@ -36,34 +36,62 @@ class MultiCDNStorage(BaseStorageV2):
 
     Example Config:
         - MultiCDNStorage
-        - providers:
-            TargetName1:
-                - ProviderName1
-                - porviderConfig1
-            Targetname2:
-                - ProviderName2
-                - ProviderConfig2
-          default_provider: TargetName1
+        - storage_config:
+            s3_access_key: s3-acccess-key
+            s3_secret_key: s3-secret-key
+            s3_region: us-east-1
+            s3_bucket: cloudflare-poc-quay-storage
+            storage_path: "/images"
+          providers:
+            CloudFlare:
+              - CloudFlareStorage
+              - cloudflare_domain: cdn01.quaydev.org
+                cloudflare_privatekey_filename: cloudflare-private-key.pem
+            AWSCloudFront:
+              - CloudFrontedS3Storage
+              - cloudfront_distribution_domain: domain.cloudfront.net
+                cloudfront_key_id: cloudfront-key-id
+                cloudfront_privatekey_filename: default-cloudfront-signing-key.pem
+                cloudfront_distribution_org_overrides: {}
+          default_provider: AWSCloudFront
           rules:
-          - namespace: test
-            continent: APAC
-            target: TargetName2
+            - continent: NA
+              target: CloudFlare
+            - namespace: test-cf
+              target: CloudFlare
 
     Rules are evaluated in the order they are defined. For a match, all fields of the rule have to match
     exactly. Partial matches are not supported. Once a rule is matched, we short-circuit the matching process
     and use the provider in the matched rule
     """
 
-    def __init__(self, context, providers: dict, default_provider: str, rules: list):
+    def __init__(
+        self,
+        context: StorageContext,
+        storage_config: dict,
+        providers: dict,
+        default_provider: str,
+        rules: list,
+    ):
         super().__init__()
 
-        self.context: StorageContext = context
-        self._validate_config(providers, default_provider, rules)
-        self.providers = self._init_providers(providers)
+        self.context = context
+        self._validate_config(storage_config, providers, default_provider, rules)
+        self.providers = self._init_providers(storage_config, providers)
         self.default_provider = self.providers.get(default_provider)
         self.rules = rules
 
-    def _validate_config(self, providers, default_provider, rules):
+    def _validate_config(self, storage_config, providers, default_provider, rules):
+        # validate storage config
+        if (
+            not storage_config
+            or not isinstance(storage_config, dict)
+            or len(storage_config.keys()) == 0
+        ):
+            raise InvalidStorageConfigurationException(
+                "invalid storage_config: should be configuration of underlying storage (eg: S3)"
+            )
+
         # validate providers config
         if not providers or not isinstance(providers, dict) or len(providers.keys()) == 0:
             raise InvalidStorageConfigurationException(
@@ -110,12 +138,13 @@ class MultiCDNStorage(BaseStorageV2):
                     f'{rule} Invalid: {rule["continent"]} not a valid continent. Should be on of {GEOIP_CONTINENT_CODES}'
                 )
 
-    def _init_providers(self, providers_config):
+    def _init_providers(self, storage_config, providers_config):
         providers = {}
         for target_name in providers_config:
             [provider_name, provider_config] = providers_config.get(target_name)
             provider_class = MULTICDN_STORAGE_PROVIDER_CLASSES[provider_name]
-            providers[target_name] = provider_class(self.context, **provider_config)
+            combined_config = {**storage_config, **provider_config}
+            providers[target_name] = provider_class(self.context, **combined_config)
 
         return providers
 

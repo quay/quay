@@ -7,17 +7,19 @@ import pytest
 from test.fixtures import *
 
 _TEST_CONFIG_JSON = """{
+  "storage_config": {
+    "s3_access_key": "test-access-key",
+    "s3_secret_key": "test-secret-key",
+    "s3_region": "us-east-1",
+    "s3_bucket": "test-bucket",
+    "storage_path": "/images"
+  },
   "providers": {
     "CloudFlare": [
       "CloudFlareStorage",
       {
         "cloudflare_domain": "test-domain",
-        "cloudflare_privatekey_filename": "test/data/test.pem",
-        "s3_access_key": "test-access-key",
-        "s3_secret_key": "test-secret-key",
-        "s3_region": "us-east-1",
-        "s3_bucket": "test-bucket",
-        "storage_path": "/images"
+        "cloudflare_privatekey_filename": "test/data/test.pem"
       }
     ],
     "AWSCloudFront": [
@@ -26,12 +28,7 @@ _TEST_CONFIG_JSON = """{
         "cloudfront_distribution_domain": "test-cloud",
         "cloudfront_key_id": "test-cloudfront-key",
         "cloudfront_privatekey_filename": "test/data/test.pem",
-        "s3_access_key": "test-s3-access-key",
-        "s3_secret_key": "test-s3-secret-key",
-        "s3_bucket": "test-s3-bucket",
-        "s3_region": "us-east-1",
-        "cloudfront_distribution_org_overrides": {},
-        "storage_path": "/images"
+        "cloudfront_distribution_org_overrides": {}
       }
     ]
   },
@@ -45,12 +42,22 @@ def context(app):
     return StorageContext("nyc", None, config_provider, IPResolver(app))
 
 
-def test_config_no_rules(context, app):
+def test_should_pass_config_no_rules(context, app):
     test_config = json.loads(_TEST_CONFIG_JSON)
 
     engine = MultiCDNStorage(context, **test_config)
 
     assert len(engine.providers.keys()) == 2
+
+
+def test_should_fail_config_no_storage_config(context, app):
+    test_config = json.loads(_TEST_CONFIG_JSON)
+    test_config["storage_config"] = {}
+
+    with pytest.raises(InvalidStorageConfigurationException) as exc_info:
+        engine = MultiCDNStorage(context, **test_config)
+
+    assert "invalid storage_config" in str(exc_info.value)
 
 
 def test_should_fail_config_no_default_provider(context, app):
