@@ -446,6 +446,16 @@ class Manifest(
         )
 
 
+class ManifestIndex(Manifest):
+    """
+    ManifestIndex represents a Manifest of whose content type is that a manifestlist.
+    """
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        raise StopIteration
+
 class LegacyImage(
     namedtuple(
         "LegacyImage",
