@@ -139,7 +139,7 @@ class OCIManifest(ManifestInterface):
                 },
                 OCI_MANIFEST_SUBJECT_KEY: get_descriptor_schema(
                     [],
-                    ignore_unknown_mediatypes=True,
+                    ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
                 ),
                 OCI_MANIFEST_ANNOTATIONS_KEY: {
                     "type": "object",

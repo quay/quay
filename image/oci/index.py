@@ -166,7 +166,7 @@ class OCIIndex(ManifestListInterface):
                 },
                 INDEX_SUBJECT_KEY: get_descriptor_schema(
                     [],
-                    ignore_unknown_mediatypes=True,
+                    ignore_unknown_mediatypes=self._ignore_unknown_mediatypes,
                 ),
                 INDEX_ANNOTATIONS_KEY: {
                     "type": "object",

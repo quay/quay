@@ -12,6 +12,7 @@ from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 from datetime import datetime
 from enum import Enum, IntEnum, unique
+from functools import lru_cache
 from random import SystemRandom
 
 import rehash
@@ -25,6 +26,7 @@ from playhouse.pool import (
     PooledPostgresqlDatabase,
     PooledSqliteDatabase,
 )
+from playhouse.postgres_ext import BinaryJSONField
 from sqlalchemy.engine.url import make_url
 
 from data.decorators import deprecated_model
@@ -665,6 +667,19 @@ class BaseModel(ReadReplicaSupportedModel):
                 return self.__data__.get(field_name)
 
         return super(BaseModel, self).__getattribute__(name)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def _driver_name(cls):
+        driver_classname = type(db.obj).__name__.lower()
+        if driver_classname.find("mysql") >= 0:
+            return "mysql"
+        elif driver_classname.find("postgresql") >= 0:
+            return "postgresql"
+        elif driver_classname.find("sqlite") >= 0:
+            return "sqlite"
+
+        raise RuntimeError("Unknown database driver: %s", type(db.obj).__name__)
 
 
 class User(BaseModel):
@@ -1729,6 +1744,8 @@ class Manifest(BaseModel):
 
     config_media_type = CharField(null=True)
     layers_compressed_size = BigIntegerField(null=True)
+    subject = CharField(null=True)
+    subject_backfilled = BooleanField(default=False)
 
     class Meta:
         database = db
@@ -1737,6 +1754,7 @@ class Manifest(BaseModel):
             (("repository", "digest"), True),
             (("repository", "media_type"), False),
             (("repository", "config_media_type"), False),
+            (("repository", "subject"), False),
         )
 
 
