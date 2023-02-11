@@ -988,6 +988,39 @@ class RHOCSStorage(RadosGWStorage):
     pass
 
 
+class VeritasObjectAccessStorage(RadosGWStorage):
+    """
+    Veritas Object Access provides an implementation of the Amazon S3 with only mentioned parameters.
+    """
+    def __init__(
+        self,
+        context,
+        hostname,
+        is_secure,
+        storage_path,
+        access_key,
+        secret_key,
+        bucket_name,
+        port=None,
+    ):
+        upload_params = {}
+        connect_kwargs = {
+            "config": Config(signature_version="s3v4"),
+            "endpoint_url": _build_endpoint_url(hostname, port=port, is_secure=is_secure),
+        }
+
+        super(RadosGWStorage, self).__init__(
+            context,
+            boto3.session.Session,
+            connect_kwargs,
+            upload_params,
+            storage_path,
+            bucket_name,
+            access_key,
+            secret_key,
+        )
+
+
 class CloudFrontedS3Storage(S3Storage):
     """
     An S3Storage engine that redirects to CloudFront for all requests outside of AWS.
