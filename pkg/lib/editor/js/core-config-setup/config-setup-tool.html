@@ -461,6 +461,8 @@
                       <option value="RadosGWStorage">Ceph Object Gateway (RADOS)</option>
                       <option value="SwiftStorage">OpenStack Storage (Swift)</option>
                       <option value="CloudFrontedS3Storage">CloudFront + Amazon S3</option>
+                      <option value="CloudFlareStorage">CloudFlare + Amazon S3</option>
+                      <option value="MultiCDNStorage">Multiple CDN providers with common storage</option>
                     </select>
 
                     <div class="co-alert co-alert-danger" ng-if="storageConfigError[$index].engine">

@@ -295,6 +295,39 @@ func ValidateStorage(opts Options, storageName string, storageType string, args 
 		if ok, err := validateSwift(opts, storageName, args.SwiftAuthVersion, args.SwiftUser, args.SwiftPassword, args.SwiftContainer, args.SwiftAuthURL, args.SwiftOsOptions, fgName); !ok {
 			errors = append(errors, err)
 		}
+	case "CloudFlareStorage":
+		// Check access key
+		if ok, err := ValidateRequiredString(args.S3AccessKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_access_key", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check secret key
+		if ok, err := ValidateRequiredString(args.S3SecretKey, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_secret_key", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check bucket name
+		if ok, err := ValidateRequiredString(args.S3Bucket, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".s3_bucket", fgName); !ok {
+			errors = append(errors, err)
+		}
+		// Check distribution domain
+		if ok, err := ValidateRequiredString(args.CloudflareDomain, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".cloudflare_domain", fgName); !ok {
+			errors = append(errors, err)
+		}
+	case "MultiCDNStorage":
+		// Check provider map
+		if ok, err := ValidateRequiredObject(args.Providers, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".providers", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+		// Check default provider
+		if ok, err := ValidateRequiredString(args.DefaultProvider, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".default_provider", fgName); !ok {
+			errors = append(errors, err)
+		}
+
+		// Check storage config
+		if ok, err := ValidateRequiredObject(args.StorageConfig, "DISTRIBUTED_STORAGE_CONFIG."+storageName+".storage_config", fgName); !ok {
+			errors = append(errors, err)
+		}
+
 	default:
 		newError := ValidationError{
 			Tags:       []string{"DISTRIBUTED_STORAGE_CONFIG"},

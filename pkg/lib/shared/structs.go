@@ -50,4 +50,10 @@ type DistributedStorageArgs struct {
 	SwiftCaCertPath  string                 `default:"" validate:"" json:"ca_cert_path,omitempty" yaml:"ca_cert_path,omitempty"`
 	SwiftTempURLKey  string                 `default:"" validate:"" json:"temp_url_key,omitempty" yaml:"temp_url_key,omitempty"`
 	SwiftOsOptions   map[string]interface{} `default:"" validate:"" json:"os_options,omitempty" yaml:"os_options,omitempty"`
+	// Args for CloudFlare
+	CloudflareDomain string `default:"" validate:"" json:"cloudflare_domain,omitempty" yaml:"cloudflare_domain,omitempty"`
+	// Args for MultiCDNStorage
+	DefaultProvider string `default:"" validate:"" json:"default_provider,omitempty" yaml:"default_provider,omitempty"`
+	Providers map[string]interface{} `default:"" validate:"" json:"providers,omitempty" yaml:"providers,omitempty"`
+	StorageConfig map[string]interface{} `default:"" validate:"" json:"storage_config,omitempty" yaml:"storage_config,omitempty"`
 }

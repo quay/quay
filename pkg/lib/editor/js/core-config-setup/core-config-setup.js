@@ -157,6 +157,20 @@ angular.module("quay-config")
             {'name': 'cloudfront_key_id', 'title': 'CloudFront Key ID', 'placeholder': 'APKATHISISAKEYID', 'kind': 'text'},
             {'name': 'cloudfront_privatekey_filename', 'title': 'CloudFront Private Key', 'filesuffix': 'cloudfront-signing-key.pem', 'kind': 'file'},
           ],
+          'CloudFlareStorage': [
+            {'name': 's3_bucket', 'title': 'S3 Bucket',  'placeholder': 'my-cool-bucket', 'kind': 'text'},
+            {'name': 'storage_path', 'title': 'Storage Directory', 'placeholder': '/path/inside/bucket', 'kind': 'text'},
+            {'name': 's3_access_key', 'title': 'AWS Access Key (optional if using IAM)', 'placeholder': 'accesskeyhere', 'kind': 'text', 'optional': true},
+            {'name': 's3_secret_key', 'title': 'AWS Secret Key (optional if using IAM)', 'placeholder': 'secretkeyhere', 'kind': 'text', 'optional': true},
+            {'name': 'cloudflare_domain', 'title': 'CloudFlare Domain Name', 'placeholder': 'somesubdomain.cloudflare.net', 'pattern': '^([0-9a-zA-Z]+\\.)+[0-9a-zA-Z]+$', 'kind': 'text'},
+            {'name': 'cloudflare_privatekey_filename', 'title': 'CloudFlare Private Key', 'filesuffix': 'cloudflare-signing-key.pem', 'kind': 'file'},
+          ],
+          "MultiCDNStorage": [
+            {'name': 'providers', 'title': 'sub Providers for multiple CDNs',  'kind': 'map', 'keys': []},
+            {'name': 'storage_config', 'title': 'Storage config for the common storage',  'kind': 'map', 'keys': []},
+            {'name': 'default_provider', 'title': 'Default provider for storage',  'kind': 'text'},
+            {'name': 'rules', 'title': 'rules for routing CDNs',  'kind': 'list', 'optional': true},
+          ]
         };
 
         $scope.enableFeature = function(config, feature) {
