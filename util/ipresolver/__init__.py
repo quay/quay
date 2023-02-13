@@ -19,10 +19,14 @@ from typing import Dict
 from util.abchelpers import nooper
 
 ResolvedLocation = namedtuple(
-    "ResolvedLocation", ["provider", "service", "sync_token", "country_iso_code", "aws_region"]
+    "ResolvedLocation",
+    ["provider", "service", "sync_token", "country_iso_code", "aws_region", "continent"],
 )
 
 AWS_SERVICES = {"EC2", "CODEBUILD"}
+
+# https://support.maxmind.com/hc/en-us/articles/4414877149467-IP-Geolocation-Data#h_01FRRGRYTGZB29ERDBZCX3MR8Q
+GEOIP_CONTINENT_CODES = ["AF", "AN", "AS", "EU", "NA", "OC", "SA"]
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +149,7 @@ class IPResolver(IPResolverInterface):
         try:
             parsed_ip = IPAddress(ip_address)
         except AddrFormatError:
-            return ResolvedLocation("invalid_ip", None, self.sync_token, None, None)
+            return ResolvedLocation("invalid_ip", None, self.sync_token, None, None, None)
 
         # Try geoip classification
         try:
@@ -164,12 +168,18 @@ class IPResolver(IPResolverInterface):
                     self.sync_token,
                     geoinfo.country.iso_code,
                     None,
+                    geoinfo.continent.code,
                 )
 
-            return ResolvedLocation("internet", None, self.sync_token, None, None)
+            return ResolvedLocation("internet", None, self.sync_token, None, None, None)
 
         return ResolvedLocation(
-            "aws", None, self.sync_token, geoinfo.country.iso_code if geoinfo else None, aws_region
+            "aws",
+            None,
+            self.sync_token,
+            geoinfo.country.iso_code if geoinfo else None,
+            aws_region,
+            geoinfo.continent.code if geoinfo else None,
         )
 
     def get_aws_ip_region(self, ip_address: IPAddress):
