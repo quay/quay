@@ -148,6 +148,8 @@ objects:
           ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
         annotations:
           ${{QUAY_APP_COMPONENT_ANNOTATIONS_KEY}}: ${{QUAY_APP_COMPONENT_ANNOTATIONS_VALUE}}
+          ${{QUAY_DISABLE_MIN_REPLICAS_CHECK}}: ${{QUAY_DISABLE_MIN_REPLICAS_REASON}}
+
       spec:
         volumes:
         - name: configvolume
@@ -393,6 +395,12 @@ parameters:
   - name: QUAY_APP_READINESS_PROBE_TIMEOUT_SECONDS
     value: "10"
     displayName: quay app readiness probe timeout
+  - name: QUAY_DISABLE_MIN_REPLICAS_CHECK
+    value: ""
+    displayName: disable DVO check for minimum replicas
+  - name: QUAY_DISABLE_MIN_REPLICAS_REASON
+    value: ""
+    displayName: reason for disabling check
   - name: DEBUGLOG
     value: "false"
     displayName: debug log
