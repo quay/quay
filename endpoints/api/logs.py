@@ -12,6 +12,7 @@ from auth.permissions import AdministerOrganizationPermission
 from auth.auth_context import get_authenticated_user
 from auth import scopes
 from data.logs_model import logs_model
+from data.logs_model.shared import InvalidLogsDateRangeError
 from data.registry_model import registry_model
 from endpoints.api import (
     resource,
@@ -103,14 +104,17 @@ def _get_aggregate_logs(
     (start_time, end_time) = _validate_logs_arguments(start_time, end_time)
     if end_time < start_time:
         abort(400)
-    aggregated_logs = logs_model.get_aggregated_log_counts(
-        start_time,
-        end_time,
-        performer_name=performer_name,
-        repository_name=repository,
-        namespace_name=namespace,
-        filter_kinds=filter_kinds,
-    )
+    try:
+        aggregated_logs = logs_model.get_aggregated_log_counts(
+            start_time,
+            end_time,
+            performer_name=performer_name,
+            repository_name=repository,
+            namespace_name=namespace,
+            filter_kinds=filter_kinds,
+        )
+    except InvalidLogsDateRangeError:
+        abort(400, "Invalid date range for logs")
 
     return {"aggregated": [log.to_dict() for log in aggregated_logs]}
 

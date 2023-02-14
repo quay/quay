@@ -8,6 +8,7 @@ from urllib.parse import urlunparse
 from flask import request, url_for
 
 from app import app
+from auth.auth_context import get_authenticated_user
 from auth.permissions import (
     UserAdminPermission,
     AdministerOrganizationPermission,
@@ -470,7 +471,14 @@ class ActivateBuildTrigger(RepositoryParamResource):
 
             run_parameters = request.get_json()
             prepared = handler.manual_start(run_parameters=run_parameters)
-            build_request = start_build(repo, prepared, pull_robot_name=pull_robot_name)
+            performer = get_authenticated_user()
+            build_request = start_build(
+                repo,
+                prepared,
+                pull_robot_name=pull_robot_name,
+                performer=performer,
+                manual_trigger=True,
+            )
         except TriggerException as tse:
             raise InvalidRequest(str(tse)) from tse
         except MaximumBuildsQueuedException:

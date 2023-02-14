@@ -253,14 +253,6 @@ def buildtrigger(path, trigger):
     return index("")
 
 
-@route_show_if(features.APP_REGISTRY)
-@web.route("/application/", defaults={"path": ""})
-@web.route("/application/<path:path>", methods=["GET"])
-@no_cache
-def application(path):
-    return index("")
-
-
 @web.route("/security/")
 @no_cache
 def security():

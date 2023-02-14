@@ -7,14 +7,8 @@ import features
 from auth.permissions import ReadRepositoryPermission
 from data.database import Repository as RepositoryTable, RepositoryState
 from data import model
-from data.appr_model import (
-    channel as channel_model,
-    release as release_model,
-    tag as apprtags_model,
-)
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
-from endpoints.appr.models_cnr import model as appr_model
 from endpoints.api.repository_models_interface import (
     RepositoryDataInterface,
     RepositoryBaseElement,
@@ -140,12 +134,8 @@ class PreOCIModel(RepositoryDataInterface):
             repository_ids = [repo.rid for repo in repos]
 
             if last_modified:
-                last_modified_map = (
-                    registry_model.get_most_recent_tag_lifetime_start(repository_refs)
-                    if repo_kind == "image"
-                    else apprtags_model.get_most_recent_tag_lifetime_start(
-                        repository_ids, appr_model.models_ref
-                    )
+                last_modified_map = registry_model.get_most_recent_tag_lifetime_start(
+                    repository_refs
                 )
 
             if popularity:
@@ -236,20 +226,6 @@ class PreOCIModel(RepositoryDataInterface):
             repo.namespace_user.stripe_id is None,
             repo.state,
         )
-
-        if base.kind_name == "application":
-            channels = channel_model.get_repo_channels(repo, appr_model.models_ref)
-            releases = release_model.get_release_objs(repo, appr_model.models_ref)
-            releases_channels_map = defaultdict(list)
-            return ApplicationRepository(
-                base,
-                [_create_channel(channel, releases_channels_map) for channel in channels],
-                [
-                    Release(release.name, release.lifetime_start, releases_channels_map)
-                    for release in releases
-                ],
-                repo.state,
-            )
 
         tags = None
         repo_ref = RepositoryReference.for_repo_obj(repo)

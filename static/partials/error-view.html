@@ -19,6 +19,46 @@
       </div>
     </div>
 
+    <!-- Export compliance error -->
+    <div ng-switch-when="exportcomplianceerror">
+      <h2><i class="fa fa-exclamation-triangle"></i>{{ info.service_name }} login error</h2>
+      <h4>
+          Your Account appears to be on Export Hold. If you feel this is an error, please
+          mail the export compliance team at
+          <a href="mailto:exportcompliance@redhat.com">exportcompliance@redhat.com </a>
+          With the following info:
+      </h4>
+        <hr />
+        <div class="align-items-center">
+            <table class="co-list-table text-center">
+                <tr>
+                    <td> SSO Username </td>
+                    <td> {{ info.sso_username }} </td>
+                </tr>
+                <tr>
+                    <td> Quay User </td>
+                    <td> {{  info.quay_username }} </td>
+                </tr>
+                <tr>
+                    <td> Email </td>
+                    <td> {{ info.email }} </td>
+                </tr>
+            </table>
+        </div>
+        <div>
+        <a href="mailto:exportcompliance@redhat.com?cc=quay-export-blocks@redhat.com
+            &subject=[quay.io] Review export block for {{ info.sso_username }}
+            &body=SSO Username: {{ info.sso_username }}%0DQuay Username: {{ info.quay_username }}%0DEmail: {{ info.email }}"
+           class="btn btn-primary" style="margin-top: 30px; color: white"> Generate Email </a>
+        </div>
+
+        <div style="margin-top: 30px;">
+            Also make sure you review the
+            <a href="https://access.redhat.com/articles/1340183" target="_blank"> export compliance FAQs </a>
+            to expedite the review process
+        </div>
+    </div>
+
     <!-- Otherwise -->
     <div ng-switch-default>
       <!-- 404 -->
@@ -51,6 +91,7 @@
         <h4 ng-if="info.for_repo">Contact the admin of the <strong>{{ info.namespace }}</strong> namespace for access to the repository or you can return to the <a href="/">main page</a></h4>
         <h4 ng-if="!info.for_repo">Return to the <a href="/">main page</a></h4>
       </div>
+
 
     </div>
   </div>

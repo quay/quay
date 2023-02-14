@@ -154,7 +154,7 @@ jobs:
 
   docker-amd64:
     name: Docker Build amd64
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
 
     - uses: actions/checkout@v3
@@ -229,10 +229,8 @@ jobs:
 
   docker-arm64:
     name: Docker Build arm64
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-
-    - uses: actions/checkout@v3
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
@@ -240,17 +238,17 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Docker Build (linux/arm64)
-      env:
-        DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/arm64 .
+    - name: Build image (linux/arm64)
+      uses: docker/build-push-action@v3
+      with:
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/arm64
 
   docker-ppc64le:
     name: Docker Build ppc64le
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-
-    - uses: actions/checkout@v3
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
@@ -258,10 +256,12 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Docker Build (linux/ppc64le)
-      env:
-       DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/ppc64le .
+    - name: Build image (linux/ppc64le)
+      uses: docker/build-push-action@v3
+      with:
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/ppc64le
 
   docker-s390x:
     name: Docker Build s390x

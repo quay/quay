@@ -98,7 +98,7 @@ class MalformedOCIManifest(ManifestException):
 
 
 class OCIManifest(ManifestInterface):
-    def get_meta_schema(self):
+    def get_meta_schema(self, ignore_unknown_mediatypes=False):
         """
         Since the layers are dynamic based on config, populate them here before using
         """
@@ -116,12 +116,16 @@ class OCIManifest(ManifestInterface):
                     "description": "The media type of the schema.",
                     "enum": [OCI_IMAGE_MANIFEST_CONTENT_TYPE],
                 },
-                OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(ALLOWED_ARTIFACT_TYPES),
+                OCI_MANIFEST_CONFIG_KEY: get_descriptor_schema(
+                    ALLOWED_ARTIFACT_TYPES,
+                    ignore_unknown_mediatypes=ignore_unknown_mediatypes,
+                ),
                 OCI_MANIFEST_LAYERS_KEY: {
                     "type": "array",
                     "description": "The array MUST have the base layer at index 0. Subsequent layers MUST then follow in stack order (i.e. from layers[0] to layers[len(layers)-1])",
                     "items": get_descriptor_schema(
-                        OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES
+                        OCI_IMAGE_LAYER_CONTENT_TYPES + ADDITIONAL_LAYER_CONTENT_TYPES,
+                        ignore_unknown_mediatypes=ignore_unknown_mediatypes,
                     ),
                 },
             },
@@ -134,7 +138,7 @@ class OCIManifest(ManifestInterface):
 
         return METASCHEMA
 
-    def __init__(self, manifest_bytes, validate=False):
+    def __init__(self, manifest_bytes, validate=False, ignore_unknown_mediatypes=False):
         assert isinstance(manifest_bytes, Bytes)
 
         self._payload = manifest_bytes
@@ -148,7 +152,7 @@ class OCIManifest(ManifestInterface):
             raise MalformedOCIManifest("malformed manifest data: %s" % ve)
 
         try:
-            validate_schema(self._parsed, self.get_meta_schema())
+            validate_schema(self._parsed, self.get_meta_schema(ignore_unknown_mediatypes))
         except ValidationError as ve:
             raise MalformedOCIManifest("manifest data does not match schema: %s" % ve)
 

@@ -384,12 +384,6 @@ class DefaultConfig(ImmutableConfig):
     # Feature Flag: Whether to support signing
     FEATURE_SIGNING = False
 
-    # Feature Flag: Whether to enable support for App repositories.
-    FEATURE_APP_REGISTRY = False
-
-    # Feature Flag: Whether app registry is in a read-only mode.
-    FEATURE_READONLY_APP_REGISTRY = False
-
     # Feature Flag: If set to true, the _catalog endpoint returns public repositories. Otherwise,
     # only private repositories can be returned.
     FEATURE_PUBLIC_CATALOG = False
@@ -490,41 +484,17 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_SECURITY_SCANNER = False
     FEATURE_SECURITY_NOTIFICATIONS = False
 
-    # The endpoint for the (deprecated) V2 security scanner.
-    SECURITY_SCANNER_ENDPOINT: Optional[str] = None
-
     # The endpoint for the V4 security scanner.
     SECURITY_SCANNER_V4_ENDPOINT: Optional[str] = None
 
     # The number of seconds between indexing intervals in the security scanner
     SECURITY_SCANNER_INDEXING_INTERVAL = 30
 
-    # If specified, the security scanner will only index images newer than the provided ID.
-    SECURITY_SCANNER_INDEXING_MIN_ID = None
-
-    # If specified, the endpoint to be used for all POST calls to the security scanner.
-    SECURITY_SCANNER_ENDPOINT_BATCH = None
-
-    # If specified, GET requests that return non-200 will be retried at the following instances.
-    SECURITY_SCANNER_READONLY_FAILOVER_ENDPOINTS: Optional[List[str]] = []
-
-    # The indexing engine version running inside the security scanner.
-    SECURITY_SCANNER_ENGINE_VERSION_TARGET = 3
-
-    # The version of the API to use for the security scanner.
-    SECURITY_SCANNER_API_VERSION = "v1"
-
     # Minimum number of seconds before re-indexing a manifest with the security scanner.
     SECURITY_SCANNER_V4_REINDEX_THRESHOLD = 300
 
-    # API call timeout for the security scanner.
-    SECURITY_SCANNER_API_TIMEOUT_SECONDS = 10
-
-    # POST call timeout for the security scanner.
-    SECURITY_SCANNER_API_TIMEOUT_POST_SECONDS = 480
-
-    # The issuer name for the security scanner.
-    SECURITY_SCANNER_ISSUER_NAME = "security_scanner"
+    # Maximum layer size allowed for indexing.
+    SECURITY_SCANNER_V4_INDEX_MAX_LAYER_SIZE = None
 
     # A base64 encoded string used to sign JWT(s) on Clair V4
     # requests. If none jwt signing will not occur
@@ -672,8 +642,6 @@ class DefaultConfig(ImmutableConfig):
         "catalog_page_cache_ttl": "60s",
         "namespace_geo_restrictions_cache_ttl": "240s",
         "active_repo_tags_cache_ttl": "120s",
-        "appr_applications_list_cache_ttl": "3600s",
-        "appr_show_package_cache_ttl": "3600s",
     }
 
     # Defines the number of successive failures of a build trigger's build before the trigger is
@@ -745,18 +713,6 @@ class DefaultConfig(ImmutableConfig):
     # The timeout after which a fresh login check is required for sensitive operations.
     FRESH_LOGIN_TIMEOUT = "10m"
 
-    # The limit on the number of results returned by app registry listing operations.
-    APP_REGISTRY_RESULTS_LIMIT = 100
-
-    # The whitelist of namespaces whose app registry package list is cached for 1 hour.
-    APP_REGISTRY_PACKAGE_LIST_CACHE_WHITELIST: Optional[List[str]] = []
-
-    # The whitelist of namespaces whose app registry show package is cached for 1 hour.
-    APP_REGISTRY_SHOW_PACKAGE_CACHE_WHITELIST: Optional[List[str]] = []
-
-    # The maximum size of uploaded CNR layers.
-    MAXIMUM_CNR_LAYER_SIZE = "2m"
-
     # Feature Flag: Whether to clear expired RepositoryActionCount entries.
     FEATURE_CLEAR_EXPIRED_RAC_ENTRIES = False
 
@@ -824,7 +780,7 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_EXTENDED_REPOSITORY_NAMES = True
 
     # Automatically clean stale blobs leftover in the uploads storage folder from cancelled uploads
-    CLEAN_BLOB_UPLOAD_FOLDER = False
+    CLEAN_BLOB_UPLOAD_FOLDER = True
 
     # Add quota management configuration, caching, and validation
     FEATURE_QUOTA_MANAGEMENT = False

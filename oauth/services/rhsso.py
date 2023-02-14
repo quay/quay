@@ -1,5 +1,5 @@
 from oauth.base import OAuthEndpoint
-from oauth.login import OAuthLoginException
+from oauth.login import OAuthLoginException, ExportComplianceException
 from oauth.oidc import OIDCLoginService
 import features
 import logging
@@ -48,9 +48,16 @@ class RHSSOOAuthService(OIDCLoginService):
                     "EMBARGOED_COUNTRY_BLOCK",
                     "ERROR_T5",
                 ]:
-                    raise OAuthLoginException(str(result.json().get("description", "")))
+                    raise ExportComplianceException(sso_username, email_address, lusername)
 
+            except ExportComplianceException as e:
+                # Raise the export compliance exception as-is
+                # to render the compliance error page
+                raise e
             except Exception as e:
+                # This generates a gneneric OAUTH error page
+                # also any issues with reaching the export
+                # compliance API should trigger this
                 raise OAuthLoginException(str(e))
 
         return sub, lusername, email_address

@@ -1,3 +1,4 @@
+from storage.multicdnstorage import MultiCDNStorage
 from storage.cloudflarestorage import CloudFlareS3Storage
 from storage.local import LocalStorage
 from storage.cloud import (
@@ -9,12 +10,13 @@ from storage.cloud import (
 )
 from storage.fakestorage import FakeStorage
 from storage.distributedstorage import DistributedStorage
+from storage.storagecontext import StorageContext
 from storage.swift import SwiftStorage
 from storage.azurestorage import AzureStorage
 from storage.downloadproxy import DownloadProxy
-from util.ipresolver import NoopIPResolver
 
 TYPE_LOCAL_STORAGE = "LocalStorage"
+
 
 STORAGE_DRIVER_CLASSES = {
     "LocalStorage": LocalStorage,
@@ -26,6 +28,7 @@ STORAGE_DRIVER_CLASSES = {
     "AzureStorage": AzureStorage,
     "RHOCSStorage": RHOCSStorage,
     "CloudFlareStorage": CloudFlareS3Storage,
+    "MultiCDNStorage": MultiCDNStorage,
 }
 
 
@@ -39,14 +42,6 @@ def get_storage_driver(location, chunk_cleanup_queue, config_provider, ip_resolv
     driver_class = STORAGE_DRIVER_CLASSES.get(driver, FakeStorage)
     context = StorageContext(location, chunk_cleanup_queue, config_provider, ip_resolver)
     return driver_class(context, **parameters)
-
-
-class StorageContext(object):
-    def __init__(self, location, chunk_cleanup_queue, config_provider, ip_resolver):
-        self.location = location
-        self.chunk_cleanup_queue = chunk_cleanup_queue
-        self.config_provider = config_provider
-        self.ip_resolver = ip_resolver or NoopIPResolver()
 
 
 class Storage(object):

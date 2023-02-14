@@ -61,10 +61,6 @@ class TestConfig(DefaultConfig):
 
     FEATURE_SECURITY_SCANNER = True
     FEATURE_SECURITY_NOTIFICATIONS = True
-    SECURITY_SCANNER_ENDPOINT = "http://fakesecurityscanner/"
-    SECURITY_SCANNER_API_VERSION = "v1"
-    SECURITY_SCANNER_ENGINE_VERSION_TARGET = 1
-    SECURITY_SCANNER_API_TIMEOUT_SECONDS = 1
     SECURITY_SCANNER_V4_ENDPOINT = "http://fakesecurityscanner/"
 
     FEATURE_SIGNING = True
@@ -92,7 +88,6 @@ class TestConfig(DefaultConfig):
     RECAPTCHA_SECRET_KEY = "somesecretkey"
     RECAPTCHA_WHITELISTED_USERS: List[str] = []
 
-    FEATURE_APP_REGISTRY = True
     FEATURE_TEAM_SYNCING = True
     FEATURE_CHANGE_TAG_EXPIRATION = True
 

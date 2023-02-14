@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:latest AS base
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS base
 # Only set variables or install packages that need to end up in the
 # final container here.
 ENV PATH=/app/bin/:$PATH \
@@ -12,10 +12,12 @@ ENV QUAYRUN /quay-registry/conf
 ENV QUAYPATH $QUAYDIR
 ENV PYTHONUSERBASE /app
 ENV PYTHONPATH $QUAYPATH
+ENV TZ UTC
 RUN set -ex\
-	; dnf -y module enable nginx:1.20 \
-	; dnf -y module enable python39:3.9 \
-	; dnf -y -q --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install\
+	; microdnf -y module enable nginx:1.20 \
+	; microdnf -y module enable python39:3.9 \
+	; microdnf update -y \
+	; microdnf -y --setopt=tsflags=nodocs install \
 		dnsmasq \
 		memcached \
 		nginx \
@@ -25,7 +27,9 @@ RUN set -ex\
 		python39 \
 		python3-gpg \
 		skopeo \
-	; dnf -y -q clean all
+        findutils \
+    ; microdnf remove platform-python-pip python39-pip \
+	; microdnf -y clean all && rm -rf /var/cache/yum
 
 # Config-editor builds the javascript for the configtool.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS config-editor
@@ -36,7 +40,7 @@ ARG CONFIGTOOL_VERSION=v0.1.12
 RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION}.tar.gz"\
 	| tar xz --strip-components=4 --exclude='*.go'
 RUN set -ex\
-	; npm install --quiet --no-progress --ignore-engines\
+	; npm install --quiet --no-progress --ignore-engines \
 	; npm run --quiet build\
 	; rm -Rf node_modules\
 	;
@@ -45,21 +49,22 @@ RUN set -ex\
 FROM base AS build-python
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN set -ex\
-	; dnf -y -q --setopt=tsflags=nodocs --setopt=skip_missing_names_on_install=False install\
-		gcc-c++\
-		git\
-		openldap-devel\
-		python39-devel\
-		libffi-devel\
+	; microdnf -y --setopt=tsflags=nodocs install \
+		gcc-c++ \
+		git \
+		openldap-devel \
+		python39-devel \
+		libffi-devel \
         openssl-devel \
         diffutils \
         file \
         make \
         libjpeg-turbo \
         libjpeg-turbo-devel \
-		wget\
-	; dnf -y -q clean all
+		wget \
+	; microdnf -y clean all
 WORKDIR /build
+RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
@@ -95,21 +100,19 @@ RUN set -ex\
 # Build-static downloads the static javascript.
 FROM registry.access.redhat.com/ubi8/nodejs-10 AS build-static
 WORKDIR /opt/app-root/src
+COPY --chown=1001:0 package.json package-lock.json  ./
+RUN npm clean-install
 COPY --chown=1001:0 static/  ./static/
 COPY --chown=1001:0 *.json *.js  ./
-RUN set -ex\
-	; npm install --quiet --no-progress --ignore-engines\
-	; npm run --quiet build\
-	;
+RUN npm run --quiet build
 
 # Build React UI
 FROM registry.access.redhat.com/ubi8/nodejs-16:latest as build-ui
 WORKDIR /opt/app-root
+COPY --chown=1001:0 web/package.json web/package-lock.json  ./
+RUN npm clean-install
 COPY --chown=1001:0 web .
-
-RUN set -ex &&\
-	npm install --quiet --no-progress --ignore-engines
-RUN	npm run --quiet build
+RUN npm run --quiet build
 
 # Pushgateway grabs pushgateway.
 FROM registry.access.redhat.com/ubi8/ubi:latest AS pushgateway

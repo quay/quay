@@ -19,8 +19,7 @@ certifi==2022.12.7
 cffi==1.14.3
 chardet==3.0.4
 charset-normalizer==2.0.12
-click==7.1.2
-cnr-server @ git+https://github.com/quay/appr.git@58c88e4952e95935c0dd72d4a24b0c44f2249f5b
+click==8.0.0
 cryptography==3.3.2
 DateTime==4.3
 debtcollector==1.22.0
@@ -30,13 +29,11 @@ dumb-init==1.2.2
 elasticsearch==7.6.0
 elasticsearch-dsl==7.0.0
 Flask==1.1.1
-Flask-Cors==3.0.9
 Flask-Login==0.4.1
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.9
 furl==2.1.0
-futures==3.1.1
 geoip2==3.0.0
 gevent==21.8.0
 greenlet==1.1.2
@@ -62,10 +59,9 @@ maxminddb==1.5.2
 mixpanel==4.5.0
 msgpack==0.6.2
 msrest==0.6.21
-ndg-httpsclient==0.5.1
 netaddr==0.7.19
 netifaces==0.10.9
-oauthlib==3.2.1
+oauthlib==3.2.2
 orderedmultidict==1.0.1
 os-service-types==1.7.0
 oslo.config==7.0.0
@@ -75,7 +71,7 @@ oslo.utils==4.12.2
 packaging==21.3
 pbr==5.10.0
 peewee==3.13.1
-Pillow==9.0.1
+Pillow==9.3.0
 ply==3.11
 prometheus-client==0.7.1
 protobuf==3.18.3
@@ -95,7 +91,6 @@ PyPDF2 @ https://files.pythonhosted.org/packages/3d/48/0966606e08dd93a77e8398037
 pyrsistent==0.18.0
 python-dateutil==2.8.1
 python-editor==1.0.4
-python-etcd @ git+https://github.com/DevTable/python-etcd.git@f1168cb02a2a8c83bec1108c6fcd8615ef463b14
 python-gitlab==2.0.0
 python-keystoneclient==3.22.0
 python-ldap==3.4.0
@@ -137,7 +132,6 @@ websocket-client==0.57.0
 Werkzeug==1.0.0
 wrapt==1.13.3
 xhtml2pdf==0.2.4
-yapf==0.29.0
 zipp==2.1.0
 zope.event==4.5.0
 zope.interface==5.4.0
@@ -146,9 +140,8 @@ zope.interface==5.4.0
 Cython==3.0.0a9
 flit_core==3.7.1
 toml==0.10.2
-jsonpickle==1.2
 pip==22.2.1
 setuptools==65.5.1
 setuptools-scm[toml]==4.1.2
 typing_extensions==4.0.1
-wheel==0.38.1
+wheel==0.38.4
