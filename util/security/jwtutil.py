@@ -110,6 +110,7 @@ def decode(jwt, key="", verify=True, algorithms=None, options=None, **kwargs):
     elif "verify_signature" not in options:
         options["verify_signature"] = verify
 
+    print(f"********* OPTIONS *************** {options}")
     return _StrictJWT().decode(jwt, key, algorithms, options, **kwargs)
 
 

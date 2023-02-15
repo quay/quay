@@ -27,18 +27,18 @@ const Breadcrumb = {
 export enum NavigationPath {
   // Side Nav
   home = '/',
-  organizationsList = '/organization',
+  organizationsList = 'organization',
 
-  repositoriesList = '/repository',
+  repositoriesList = 'repository',
 
   // Organization detail
-  organizationDetail = '/organization/:organizationName',
+  organizationDetail = 'organization/:organizationName',
 
   // Repository detail
-  repositoryDetail = '/repository/:organizationName/*',
+  repositoryDetail = 'repository/:organizationName/*',
 
   // Tag Detail
-  tagDetail = '/tag/:organizationName/*',
+  tagDetail = 'tag/:organizationName/*',
 }
 
 export function getRepoDetailPath(org: string, repo: string) {

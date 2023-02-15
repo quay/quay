@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import jwt
 
 from functools import partial
 
@@ -34,6 +35,7 @@ from data.archivedlogs import LogArchive
 from data.billing import Billing
 from data.buildlogs import BuildLogs
 from data.cache import get_model_cache
+from data.database import User
 from data.model.user import LoginWrappedDBUser
 from data.queue import WorkQueue
 from data.userevent import UserEventsBuilderModule
@@ -65,6 +67,7 @@ from util.config.configutil import generate_secret_key
 from util.label_validator import LabelValidator
 from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
+from util.security import jwtutil
 from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
 from util.greenlet_tracing import enable_tracing

@@ -5,21 +5,18 @@ import os
 
 from collections import namedtuple
 from flask import request, redirect, url_for, Blueprint, abort, session
-from peewee import IntegrityError
 
 import features
 
-from app import app, analytics, get_app_url, oauth_login, authentication, url_scheme_and_hostname
-from _init import CONF_DIR
+from app import app, get_app_url, oauth_login, authentication, url_scheme_and_hostname, analytics
 from auth.auth_context import get_authenticated_user
 from auth.decorators import require_session_login
 from data import model
-from data.users.shared import can_create_user
 from endpoints.common import common_login
 from endpoints.web import index, render_page_template_with_routedata
 from endpoints.csrf import csrf_protect, OAUTH_CSRF_TOKEN_NAME, generate_csrf_token
 from oauth.login import OAuthLoginException, ExportComplianceException
-from util.validation import generate_valid_usernames
+from oauth.login_utils import _conduct_oauth_login, _attach_service
 from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)
@@ -30,23 +27,6 @@ oauthlogin_csrf_protect = csrf_protect(
     OAUTH_CSRF_TOKEN_NAME, "state", all_methods=True, check_header=False
 )
 
-OAuthResult = namedtuple(
-    "OAuthResult",
-    ["user_obj", "service_name", "error_message", "register_redirect", "requires_verification"],
-)
-
-
-def _oauthresult(
-    user_obj=None,
-    service_name=None,
-    error_message=None,
-    register_redirect=False,
-    requires_verification=False,
-):
-    return OAuthResult(
-        user_obj, service_name, error_message, register_redirect, requires_verification
-    )
-
 
 def _get_response(result):
     if result.error_message is not None:
@@ -55,110 +35,6 @@ def _get_response(result):
         )
 
     return _perform_login(result.user_obj, result.service_name)
-
-
-def _conduct_oauth_login(
-    auth_system, login_service, lid, lusername, lemail, metadata=None, captcha_verified=False
-):
-    """
-    Conducts login from the result of an OAuth service's login flow and returns the status of the
-    login, as well as the followup step.
-    """
-    service_id = login_service.service_id()
-    service_name = login_service.service_name()
-
-    # Check for an existing account *bound to this service*. If found, conduct login of that account
-    # and redirect.
-    user_obj = model.user.verify_federated_login(service_id, lid)
-    if user_obj is not None:
-        return _oauthresult(user_obj=user_obj, service_name=service_name)
-
-    # If the login service has a bound field name, and we have a defined internal auth type that is
-    # not the database, then search for an existing account with that matching field. This allows
-    # users to setup SSO while also being backed by something like LDAP.
-    bound_field_name = login_service.login_binding_field()
-    if auth_system.federated_service is not None and bound_field_name is not None:
-        # Perform lookup.
-        logger.debug('Got oauth bind field name of "%s"', bound_field_name)
-        lookup_value = None
-        if bound_field_name == "sub":
-            lookup_value = lid
-        elif bound_field_name == "username":
-            lookup_value = lusername
-        elif bound_field_name == "email":
-            lookup_value = lemail
-
-        if lookup_value is None:
-            logger.error("Missing lookup value for OAuth login")
-            return _oauthresult(
-                service_name=service_name, error_message="Configuration error in this provider"
-            )
-
-        (user_obj, err) = auth_system.link_user(lookup_value)
-        if err is not None:
-            logger.debug("%s %s not found: %s", bound_field_name, lookup_value, err)
-            msg = "%s %s not found in backing auth system" % (bound_field_name, lookup_value)
-            return _oauthresult(service_name=service_name, error_message=msg)
-
-        # Found an existing user. Bind their internal auth account to this service as well.
-        result = _attach_service(login_service, user_obj, lid, lusername)
-        if result.error_message is not None:
-            return result
-
-        return _oauthresult(user_obj=user_obj, service_name=service_name)
-
-    # Otherwise, we need to create a new user account.
-    blacklisted_domains = app.config.get("BLACKLISTED_EMAIL_DOMAINS", [])
-    if not can_create_user(lemail, blacklisted_domains=blacklisted_domains):
-        error_message = "User creation is disabled. Please contact your administrator"
-        return _oauthresult(service_name=service_name, error_message=error_message)
-
-    if features.RECAPTCHA and not captcha_verified:
-        return _oauthresult(service_name=service_name, requires_verification=True)
-
-    # Try to create the user
-    try:
-        # Generate a valid username.
-        new_username = None
-        for valid in generate_valid_usernames(lusername):
-            if model.user.get_user_or_org(valid):
-                continue
-
-            new_username = valid
-            break
-
-        requires_password = auth_system.requires_distinct_cli_password
-        prompts = model.user.get_default_user_prompts(features)
-        user_obj = model.user.create_federated_user(
-            new_username,
-            lemail,
-            service_id,
-            lid,
-            set_password_notification=requires_password,
-            metadata=metadata or {},
-            confirm_username=features.USERNAME_CONFIRMATION,
-            prompts=prompts,
-            email_required=features.MAILING,
-        )
-
-        # Success, tell analytics
-        analytics.track(user_obj.username, "register", {"service": service_name.lower()})
-        return _oauthresult(user_obj=user_obj, service_name=service_name)
-
-    except model.InvalidEmailAddressException:
-        message = (
-            "The e-mail address {0} is already associated "
-            "with an existing {1} account. \n"
-            "Please log in with your username and password and "
-            "associate your {2} account to use it in the future."
-        )
-        message = message.format(lemail, app.config["REGISTRY_TITLE_SHORT"], service_name)
-        return _oauthresult(
-            service_name=service_name, error_message=message, register_redirect=True
-        )
-
-    except model.DataModelException as ex:
-        return _oauthresult(service_name=service_name, error_message=str(ex))
 
 
 def _render_ologin_error(service_name, error_message=None, register_redirect=False):
@@ -221,27 +97,6 @@ def _perform_login(user_obj, service_name):
         return _render_ologin_error(service_name, "Could not login. Account may be disabled")
 
 
-def _attach_service(login_service, user_obj, lid, lusername):
-    """
-    Attaches the given user account to the given service, with the given service user ID and service
-    username.
-    """
-    metadata = {
-        "service_username": lusername,
-    }
-
-    try:
-        model.user.attach_federated_login(
-            user_obj, login_service.service_id(), lid, metadata=metadata
-        )
-        return _oauthresult(user_obj=user_obj)
-    except IntegrityError:
-        err = "%s account %s is already attached to a %s account" % (
-            login_service.service_name(),
-            lusername,
-            app.config["REGISTRY_TITLE_SHORT"],
-        )
-        return _oauthresult(service_name=login_service.service_name(), error_message=err)
 
 
 def _register_service(login_service):
@@ -281,6 +136,8 @@ def _register_service(login_service):
         session["captcha_verified"] = 0
 
         result = _conduct_oauth_login(
+            app,
+            analytics,
             authentication,
             login_service,
             lid,
@@ -317,7 +174,7 @@ def _register_service(login_service):
 
         # Conduct attach.
         user_obj = get_authenticated_user()
-        result = _attach_service(login_service, user_obj, lid, lusername)
+        result = _attach_service(app, login_service, user_obj, lid, lusername)
         if result.error_message is not None:
             return _get_response(result)
 

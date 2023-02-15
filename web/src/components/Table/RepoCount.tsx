@@ -6,7 +6,7 @@ export default function RepoCount(props: RepoCountProps) {
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchRepositoriesForNamespace(props.name);
+        const data = await fetchRepositoriesForNamespace(props.name, null);
         setValue(data.length);
       } catch (err) {
         setValue('Error');

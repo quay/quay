@@ -381,7 +381,10 @@ class User(ApiResource):
         """
         Get user information for the authenticated user.
         """
+        print("********* GETTTHING USER ***********")
         user = get_authenticated_user()
+        print(f"USER ********* {user}")
+
         if user is None or user.organization or not UserReadPermission(user.username).can():
             raise InvalidToken("Requires authentication", payload={"session_required": False})
 

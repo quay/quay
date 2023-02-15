@@ -6,6 +6,7 @@ from data import model, database
 from data.users import get_users_handler, DatabaseUsers
 from endpoints.oauth.login import _conduct_oauth_login
 from oauth.services.github import GithubOAuthService
+from test.analytics import analytics
 from test.test_ldap import mock_ldap
 
 from test.fixtures import *
@@ -47,7 +48,7 @@ def test_existing_account(auth_system, login_service):
 
     with mock_ldap():
         result = _conduct_oauth_login(
-            auth_system, login_service, login_service_lid, login_service_lid, "example@example.com"
+            app, analytics, auth_system, login_service, login_service_lid, login_service_lid, "example@example.com"
         )
 
         assert result.user_obj == created_user
@@ -57,15 +58,16 @@ def test_existing_account(auth_system, login_service):
         assert current_user_count == existing_user_count
 
 
-def test_new_account_via_database(login_service):
+def test_new_account_via_database(app, login_service):
     existing_user_count = database.User.select().count()
     login_service_lid = "someexternaluser"
     internal_auth = DatabaseUsers()
+    print(app.config)
 
     # Conduct login. Since the external user doesn't (yet) bind to a user in the database,
     # a new user should be created and bound to the external service.
     result = _conduct_oauth_login(
-        internal_auth, login_service, login_service_lid, login_service_lid, "example@example.com"
+        app, analytics, internal_auth, login_service, login_service_lid, login_service_lid, "example@example.com"
     )
     assert result.user_obj is not None
 
@@ -97,7 +99,7 @@ def test_new_account_via_database(login_service):
     ],
 )
 def test_flagged_user_creation(
-    open_creation, invite_only, has_invite, expect_success, login_service
+    app, open_creation, invite_only, has_invite, expect_success, login_service
 ):
     login_service_lid = "someexternaluser"
     email = "some@example.com"
@@ -113,7 +115,7 @@ def test_flagged_user_creation(
         with patch("features.INVITE_ONLY_USER_CREATION", invite_only):
             # Conduct login.
             result = _conduct_oauth_login(
-                internal_auth, login_service, login_service_lid, login_service_lid, email
+                app, analytics, internal_auth, login_service, login_service_lid, login_service_lid, email
             )
             assert (result.user_obj is not None) == expect_success
             assert (result.error_message is None) == expect_success
@@ -168,7 +170,7 @@ def test_new_account_via_ldap(binding_field, lid, lusername, lemail, expected_er
 
     with mock_ldap():
         # Conduct OAuth login.
-        result = _conduct_oauth_login(internal_auth, external_auth, lid, lusername, lemail)
+        result = _conduct_oauth_login(app, analytics, internal_auth, external_auth, lid, lusername, lemail)
         assert result.error_message == expected_error
 
         current_user_count = database.User.select().count()
@@ -220,7 +222,7 @@ def test_existing_account_in_ldap(app):
         # Conduct OAuth login with the same lid and bound field. This should find the existing LDAP
         # user (via the `username` binding), and then bind Github to it as well.
         result = _conduct_oauth_login(
-            internal_auth, external_auth, bound_user.username, bound_user.username, bound_user.email
+            app, analytics, internal_auth, external_auth, bound_user.username, bound_user.username, bound_user.email
         )
         assert result.error_message is None
 

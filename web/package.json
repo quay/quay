@@ -9,6 +9,8 @@
     "@patternfly/react-core": "^4.202.16",
     "@patternfly/react-icons": "^4.53.16",
     "@patternfly/react-table": "^4.71.16",
+    "@redhat-cloud-services/frontend-components": "^3.9.31",
+    "@redhat-cloud-services/frontend-components-config-utilities": "^1.5.29",
     "@tanstack/react-query": "^4.13.5",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^12.1.4",
@@ -33,6 +35,8 @@
   "scripts": {
     "start": "webpack serve --color --progress --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
+    "start-plugin": "NODE_ENV=development webpack serve --color --progress --config webpack.plugin.js",
+    "build-plugin": "NODE_ENV=production webpack --config webpack.plugin.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "format": "prettier --config .prettierrc \"src/**/*.{ts,tsx}\" --write",
@@ -57,6 +61,7 @@
     ]
   },
   "devDependencies": {
+    "@openshift/dynamic-plugin-sdk-webpack": "^2.0.0",
     "@types/react-dom": "^17.0.2",
     "@types/react-router-dom": "^5.3.3",
     "@typescript-eslint/eslint-plugin": "^5.18.0",
@@ -78,6 +83,7 @@
     "eslint-plugin-react-hooks": "^4.4.0",
     "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.0",
+    "jws": "^4.0.0",
     "lint-staged": ">=10",
     "prettier": "^2.1.2",
     "raw-loader": "^4.0.2",

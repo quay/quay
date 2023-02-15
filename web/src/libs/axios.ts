@@ -9,6 +9,11 @@ if (process.env.MOCK_API === 'true') {
 axios.defaults.baseURL =
   process.env.REACT_QUAY_APP_API_URL ||
   `${window.location.protocol}//${window.location.host}`;
+
+if (window?.insights?.chrome?.auth) {
+  axios.defaults.baseURL = 'http://localhost:8080'; // TODO: replace with correct endpoint
+}
+
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -28,8 +33,16 @@ axiosIns.interceptors.request.use(async (config) => {
     GlobalAuthState.csrfToken = r.csrf_token;
   }
 
+  if (!GlobalAuthState.bearerToken && window?.insights?.chrome?.auth) {
+    GlobalAuthState.bearerToken = await window.insights.chrome.auth.getToken();
+  }
+
   if (config.headers && GlobalAuthState.csrfToken) {
     config.headers['X-CSRF-Token'] = GlobalAuthState.csrfToken;
+  }
+
+  if (config.headers && GlobalAuthState.bearerToken) {
+    config.headers['Authorization'] = `Bearer ${GlobalAuthState.bearerToken}`;
   }
 
   return config;

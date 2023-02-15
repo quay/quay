@@ -8,6 +8,7 @@ class AuthKind(Enum):
     oauth = "oauth"
     signed_grant = "signed_grant"
     credentials = "credentials"
+    ssojwt = "ssojwt"
 
     def __str__(self):
         return "%s" % self.value
