@@ -5,3 +5,6 @@ class FakeMixpanel(object):
 
 def init_app(app):
     return FakeMixpanel()
+
+
+analytics = FakeMixpanel()

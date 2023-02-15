@@ -17,9 +17,9 @@ import {useLocation} from 'react-router-dom';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
 
-const GeneralSettings = () => {
+const GeneralSettings = (props: GeneralSettingsProps) => {
   const location = useLocation();
-  const organizationName = location.pathname.split('/')[2];
+  const organizationName = props.organizationName;
 
   const {user} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
@@ -107,7 +107,7 @@ const GeneralSettings = () => {
 //   return <h1>Hello</h1>;
 // };
 
-export default function Settings() {
+export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   const handleTabClick = (event, tabIndex) => {
@@ -118,7 +118,7 @@ export default function Settings() {
     {
       name: 'General Settings',
       id: 'generalsettings',
-      content: <GeneralSettings />,
+      content: <GeneralSettings organizationName={props.organizationName} />,
     },
     // {
     //   name: 'Billing Information',
@@ -156,3 +156,11 @@ export default function Settings() {
     </Flex>
   );
 }
+
+type SettingsProps = {
+  organizationName: string;
+};
+
+type GeneralSettingsProps = {
+  organizationName: string;
+};

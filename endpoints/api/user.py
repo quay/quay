@@ -382,6 +382,7 @@ class User(ApiResource):
         Get user information for the authenticated user.
         """
         user = get_authenticated_user()
+
         if user is None or user.organization or not UserReadPermission(user.username).can():
             raise InvalidToken("Requires authentication", payload={"session_required": False})
 

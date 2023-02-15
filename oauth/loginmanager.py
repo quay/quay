@@ -41,4 +41,18 @@ class OAuthLoginManager(object):
             if service.service_id() == service_id:
                 return service
 
+    def get_service_by_issuer(self, issuer):
+        for service in self.services:
+
+            if not hasattr(service, "get_issuer"):
+                continue
+
+            if not service.get_issuer:
+                continue
+
+            config_issuer = service.get_issuer()
+
+            if config_issuer.rstrip("/") == issuer.rstrip("/"):
+                return service
+
         return None

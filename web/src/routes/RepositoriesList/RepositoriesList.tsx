@@ -43,10 +43,6 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 
-function getReponameFromURL(pathname: string): string {
-  return pathname.includes('organization') ? pathname.split('/')[2] : null;
-}
-
 interface RepoListHeaderProps {
   shouldRender: boolean;
 }
@@ -66,8 +62,8 @@ function RepoListHeader(props: RepoListHeaderProps) {
   );
 }
 
-export default function RepositoriesList() {
-  const currentOrg = getReponameFromURL(useLocation().pathname);
+export default function RepositoriesList(props: RepositoriesListProps) {
+  const currentOrg = props.organizationName;
   const [isCreateRepoModalOpen, setCreateRepoModalOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [makePublicModalOpen, setmakePublicModal] = useState(false);

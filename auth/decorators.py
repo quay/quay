@@ -8,6 +8,7 @@ from auth.basic import validate_basic_auth
 from auth.oauth import validate_bearer_auth
 from auth.cookie import validate_session_cookie
 from auth.signedgrant import validate_signed_grant
+from auth.validateresult import AuthKind
 
 from util.http import abort
 
@@ -57,6 +58,10 @@ def _auth_decorator(pass_result=False, handlers=None):
                 if result.error_message is not None:
                     # Log the failure.
                     authentication_count.labels(result.kind, False).inc()
+                    # Do we only need to abort for JWT based errors?
+                    if result.kind == AuthKind.ssojwt:
+                        abort(401, message=result.error_message)
+
                     break
 
             if pass_result:

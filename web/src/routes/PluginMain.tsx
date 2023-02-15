@@ -1,22 +1,26 @@
 import {Banner, Flex, FlexItem, Page} from '@patternfly/react-core';
 
-import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
+import {Navigate, Outlet, Route, Router, Routes} from 'react-router-dom';
+import {RecoilRoot, useSetRecoilState} from 'recoil';
+import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
-import {QuayHeader} from 'src/components/header/QuayHeader';
-import {QuaySidebar} from 'src/components/sidebar/QuaySidebar';
+import useChrome from '@redhat-cloud-services/frontend-components/useChrome';
+
 import {NavigationPath} from './NavigationPath';
 import OrganizationsList from './OrganizationsList/OrganizationsList';
 import Organization from './OrganizationsList/Organization/Organization';
 import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
-import {useEffect} from 'react';
+import {useEffect, useMemo} from 'react';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
+import {GlobalAuthState} from '../resources/AuthResource';
+import {IsPluginState} from '../atoms/QuayConfigState';
 
 const NavigationRoutes = [
   {
@@ -29,7 +33,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoriesList,
-    Component: <RepositoriesList organizationName={''} />,
+    Component: <RepositoriesList />,
   },
   {
     path: NavigationPath.repositoryDetail,
@@ -41,9 +45,18 @@ const NavigationRoutes = [
   },
 ];
 
-export function StandaloneMain() {
+function PluginMain() {
   const quayConfig = useQuayConfig();
   const {loading, error} = useCurrentUser();
+  const chrome = useChrome();
+  const setIsPluginState = useSetRecoilState(IsPluginState);
+
+  console.log('useChrome chrome', chrome);
+
+  chrome?.auth?.getToken().then((token) => {
+    console.log('chrome auth token', token);
+    GlobalAuthState.bearerToken = token;
+  });
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
@@ -51,18 +64,17 @@ export function StandaloneMain() {
     }
   }, [quayConfig]);
 
+  useEffect(() => {
+    setIsPluginState(true);
+  }, []);
+
   if (loading) {
     return null;
   }
+
   return (
     <ErrorBoundary hasError={!!error} fallback={<SiteUnavailableError />}>
-      <Page
-        header={<QuayHeader />}
-        sidebar={<QuaySidebar />}
-        style={{height: '100vh'}}
-        isManagedSidebar
-        defaultManagedSidebarIsOpen={true}
-      >
+      <Page style={{height: '100vh'}}>
         <Banner variant="info">
           <Flex
             spaceItems={{default: 'spaceItemsSm'}}
@@ -85,7 +97,7 @@ export function StandaloneMain() {
           </Flex>
         </Banner>
         <Routes>
-          <Route index element={<Navigate to="/organization" replace />} />
+          <Route index element={<Navigate to="organization" replace />} />
           {NavigationRoutes.map(({path, Component}, key) => (
             <Route path={path} key={key} element={Component} />
           ))}
@@ -94,5 +106,28 @@ export function StandaloneMain() {
         <Outlet />
       </Page>
     </ErrorBoundary>
+  );
+}
+
+// Wraps the plugin with necessary context providers
+export default function PluginMainRoot() {
+  // initialize the client only on itial render
+  const queryClient = useMemo(() => {
+    return new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          refetchOnWindowFocus: false,
+        },
+      },
+    });
+  }, []);
+
+  return (
+    <RecoilRoot>
+      <QueryClientProvider client={queryClient}>
+        <PluginMain />
+      </QueryClientProvider>
+    </RecoilRoot>
   );
 }

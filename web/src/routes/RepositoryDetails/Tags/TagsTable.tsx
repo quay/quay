@@ -12,7 +12,7 @@ import prettyBytes from 'pretty-bytes';
 import {useState} from 'react';
 import {Tag, Manifest} from 'src/resources/TagResource';
 import {useResetRecoilState} from 'recoil';
-import {Link} from 'react-router-dom';
+import {Link, useLocation} from 'react-router-dom';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
 import TablePopover from './TablePopover';
 import SecurityDetails from './SecurityDetails';
@@ -80,7 +80,7 @@ function SubRow(props: SubRowProps) {
   );
 }
 
-function Row(props: RowProps) {
+function TagsTableRow(props: RowProps) {
   const tag = props.tag;
   const rowIndex = props.rowIndex;
   let size =
@@ -94,6 +94,8 @@ function Row(props: RowProps) {
   // Reset SecurityDetailsState so that loading skeletons appear when viewing report
   const emptySecurityDetails = useResetRecoilState(SecurityDetailsState);
   const resetSecurityDetails = () => emptySecurityDetails();
+
+  const location = useLocation();
 
   return (
     <Tbody
@@ -179,7 +181,7 @@ function Row(props: RowProps) {
   );
 }
 
-export default function Table(props: TableProps) {
+export default function TagsTable(props: TableProps) {
   // Control expanded tags
   const [expandedTags, setExpandedTags] = useState<string[]>([]);
   const setTagExpanded = (tag: Tag, isExpanding = true) =>
@@ -210,7 +212,7 @@ export default function Table(props: TableProps) {
           </Tr>
         </Thead>
         {props.tags.map((tag: Tag, rowIndex: number) => (
-          <Row
+          <TagsTableRow
             key={rowIndex}
             org={props.org}
             repo={props.repo}

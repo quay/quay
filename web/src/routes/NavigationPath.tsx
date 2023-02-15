@@ -38,25 +38,28 @@ export enum NavigationPath {
   repositoryDetail = '/repository/:organizationName/*',
 
   // Tag Detail
-  tagDetail = '/tag/:organizationName/*',
+  tagDetail = '/repository/:organizationName/:repositoryName/tag/:tagName',
 }
 
 export function getRepoDetailPath(org: string, repo: string) {
+  // return relative path to repository detail page from repo list table
   let repoPath = NavigationPath.repositoryDetail.toString();
   repoPath = repoPath.replace(':organizationName', org);
   repoPath = repoPath.replace('*', repo);
-  return repoPath;
+  return domainRoute(repoPath);
 }
 
 export function getTagDetailPath(
   org: string,
   repo: string,
-  tag: string,
+  tagName: string,
   queryParams: Map<string, string> = null,
 ) {
   let tagPath = NavigationPath.tagDetail.toString();
   tagPath = tagPath.replace(':organizationName', org);
-  tagPath = tagPath.replace('*', `${repo}/${tag}`);
+  tagPath = tagPath.replace(':repositoryName', repo);
+  tagPath = tagPath.replace(':tagName', tagName);
+
   if (queryParams) {
     const params = [];
     for (const entry of Array.from(queryParams.entries())) {
@@ -64,7 +67,7 @@ export function getTagDetailPath(
     }
     tagPath = tagPath + '?' + params.join('&');
   }
-  return tagPath;
+  return domainRoute(tagPath);
 }
 
 export function getDomain() {
@@ -83,7 +86,7 @@ function domainRoute(definedRoute) {
   return (
     // This regex replaces everything after the last occurrence of organization|repository|signin with empty string.
     // Doing this gives us the prefix.
-    currentRoute.replace(/\/(\/organization|repository|signin)(?!.*\1).*/, '') +
+    currentRoute.replace(/\/(organization|repository|signin)(?!.*\1).*/, '') +
     definedRoute
   );
 }

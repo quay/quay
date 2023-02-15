@@ -1,5 +1,8 @@
+import jwt
 import pytest
+from httmock import urlmatch, HTTMock
 
+from app import oauth_login
 from auth.oauth import validate_bearer_auth, validate_oauth_token
 from auth.validateresult import AuthKind, ValidateResult
 from data import model

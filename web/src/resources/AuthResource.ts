@@ -8,11 +8,13 @@ const csrfTokenUrl = '/csrf_token';
 interface AuthResource {
   isLoggedIn: boolean;
   csrfToken: string | null;
+  bearerToken: string | null;
 }
 
 export const GlobalAuthState: AuthResource = {
   isLoggedIn: false,
   csrfToken: null,
+  bearerToken: null,
 };
 
 export async function loginUser(username: string, password: string) {
