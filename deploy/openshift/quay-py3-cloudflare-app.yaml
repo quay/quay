@@ -398,7 +398,7 @@ parameters:
     value: "false"
     displayName: debug log
   - name: QUAY_DISABLE_MIN_REPLICAS_CHECK
-    value: ""
+    value: "check_not_disabled"
     displayName: disable DVO check for minimum replicas
   - name: QUAY_DISABLE_MIN_REPLICAS_REASON
     value: ""
