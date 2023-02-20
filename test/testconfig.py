@@ -91,7 +91,6 @@ class TestConfig(DefaultConfig):
     RECAPTCHA_SITE_KEY = "somekey"
     RECAPTCHA_SECRET_KEY = "somesecretkey"
 
-    FEATURE_APP_REGISTRY = True
     FEATURE_TEAM_SYNCING = True
     FEATURE_CHANGE_TAG_EXPIRATION = True
 
