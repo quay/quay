@@ -328,8 +328,8 @@ def require_repo_permission(permission_class, scope, allow_public=False):
                 if features.RESTRICTED_USERS and disallow_for_restricted_user:
                     if (
                         usermanager.is_restricted_user(user.username)
-                        and not SuperUserPermission().can()
                         and not (allow_public and model.repository_is_public(namespace, repository))
+                        and not SuperUserPermission().can()
                     ):
                         raise Unauthorized()
 
