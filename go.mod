@@ -8,7 +8,6 @@ require (
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/aws/aws-sdk-go v1.35.31
-	github.com/aws/aws-sdk-go-v2/config v1.4.1 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/creasty/defaults v1.4.0
 	github.com/dave/jennifer v1.4.0
@@ -17,11 +16,11 @@ require (
 	github.com/go-redis/redis/v8 v8.0.0-beta.6
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	github.com/jackc/pgx/v4 v4.11.0
 	github.com/jojomi/go-spew v1.1.1-0.20180323180114-b94c73b27dc1
 	github.com/json-iterator/go v1.1.12
-	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/lib/pq v1.7.0
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/minio/minio-go/v7 v7.0.40
@@ -33,8 +32,8 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
-	github.com/swaggo/swag v1.6.3
+	github.com/swaggo/http-swagger v1.3.3
+	github.com/swaggo/swag v1.8.1
 	go.opentelemetry.io/otel v0.13.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
