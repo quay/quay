@@ -28,7 +28,7 @@ jobs:
       - name: Create Pull Request Quay
         uses: peter-evans/create-pull-request@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DEPLOY_PAT }}
           commit-message: "config: Update config tool to ${{ github.event.inputs.tag }}"
           author: quay-devel <quay-devel@redhat.com>
           branch: quay/config-tool-pr
