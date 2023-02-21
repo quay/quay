@@ -1004,7 +1004,7 @@ CONFIG_SCHEMA = {
         "LOGS_MODEL": {
             "type": "string",
             "description": "Logs model for action logs",
-            "enum": ["database", "transition_reads_both_writes_es", "elasticsearch"],
+            "enum": ["database", "transition_reads_both_writes_es", "elasticsearch", "splunk"],
             "x-example": "database",
         },
         "LOGS_MODEL_CONFIG": {
@@ -1014,8 +1014,8 @@ CONFIG_SCHEMA = {
             "properties": {
                 "producer": {
                     "type": "string",
-                    "description": "Logs producer if logging to Elasticsearch",
-                    "enum": ["kafka", "elasticsearch", "kinesis_stream"],
+                    "description": "Logs producer",
+                    "enum": ["kafka", "elasticsearch", "kinesis_stream", "splunk"],
                     "x-example": "kafka",
                 },
                 "elasticsearch_config": {
@@ -1130,6 +1130,49 @@ CONFIG_SCHEMA = {
                             "type": "number",
                             "description": "The maximum number of connections to keep in a connection pool",
                             "x-example": 10,
+                        },
+                    },
+                },
+                "splunk_config": {
+                    "type": "object",
+                    "description": "Logs model config for splunk action logs/ splunk cluster configuration",
+                    "x-reference": "https://dev.splunk.com/enterprise/docs/devtools/python/sdk-python"
+                    "/howtousesplunkpython/howtogetdatapython#To-add-data-directly-to-an-index",
+                    "properties": {
+                        "host": {
+                            "type": "string",
+                            "description": "Splunk cluster endpoint",
+                            "x-example": "host.splunk.example",
+                        },
+                        "port": {
+                            "type": "number",
+                            "description": "Splunk management cluster endpoint port",
+                            "x-example": 1234,
+                        },
+                        "bearer_token": {
+                            "type": "string",
+                            "description": "Bearer_Token for splunk.See: "
+                            "https://dev.splunk.com/enterprise/docs/devtools/python/sdk-python"
+                            "/howtousesplunkpython/howtoconnectpython/#Log-in-using-a-bearer-token",
+                            "x-example": "us-east-1",
+                        },
+                        "url_scheme": {
+                            "type": "string",
+                            "description": "The url scheme for accessing the splunk service. If Splunk is behind SSL"
+                            "*at all*, this *must* be `https`",
+                            "enum": ["http", "https"],
+                            "x-example": "https",
+                        },
+                        "verify_ssl": {
+                            "type": "boolean",
+                            "description": "Enable (True) or disable (False) SSL verification for https connections."
+                            "Defaults to True",
+                            "x-example": True,
+                        },
+                        "index_prefix": {
+                            "type": "string",
+                            "description": "Splunk's index prefix",
+                            "x-example": "splunk_logentry_",
                         },
                     },
                 },

@@ -1,5 +1,6 @@
 import logging
 
+from data.logs_model.splunk_logs_model import SplunkLogsModel
 from data.logs_model.table_logs_model import TableLogsModel
 from data.logs_model.document_logs_model import DocumentLogsModel
 from data.logs_model.combined_model import CombinedLogsModel
@@ -18,6 +19,7 @@ _LOG_MODELS = {
     "database": TableLogsModel,
     "transition_reads_both_writes_es": _transition_model,
     "elasticsearch": DocumentLogsModel,
+    "splunk": SplunkLogsModel,
 }
 
 _PULL_LOG_KINDS = {"pull_repo", "repo_verb"}
@@ -43,7 +45,7 @@ logs_model = LogsModelProxy()
 
 
 def configure(app_config):
-    logger.debug("Configuring log lodel")
+    logger.debug("Configuring log model")
     model_name = app_config.get("LOGS_MODEL", "database")
     model_config = app_config.get("LOGS_MODEL_CONFIG", {})
 

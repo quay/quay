@@ -35,11 +35,12 @@
   </div>
 
   <div>
-    <div id="bar-chart" style="width: 800px; height: 500px;"
+      <div class="empty-primary-msg" ng-if="splunkLogMsg"> {{ splunkLogMsg }}</div>
+      <div id="bar-chart" style="width: 800px; height: 500px;"
          quay-show="chartVisible && Features.AGGREGATED_LOG_COUNT_RETRIEVAL">
-      <svg style="width: 800px; height: 500px;"></svg>
+        <svg style="width: 800px; height: 500px;"></svg>
       <div class="cor-loader" ng-if="chartLoading"></div>
-    </div>
+   </div>
 
     <div class="hidden-xs side-controls">
       <div class="result-count">

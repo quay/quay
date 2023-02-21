@@ -35,6 +35,7 @@ angular.module('quay').directive('logsView', function () {
 
       $scope.options = {};
       $scope.context = {};
+      $scope.splunkLogMsg = null;
 
       var datetime = new Date();
       $scope.options.logStartDate = new Date(datetime.getUTCFullYear(), datetime.getUTCMonth(), datetime.getUTCDate() - 7);
@@ -532,6 +533,11 @@ angular.module('quay').directive('logsView', function () {
             $scope.chart.draw('bar-chart', resp.aggregated, $scope.options.logStartDate,
                               $scope.options.logEndDate);
             $scope.chartLoading = false;
+          }).catch(function (resp) {
+            if (resp.status === 501) {
+              $scope.chartLoading = false;
+              $scope.splunkLogMsg = resp.data.message;
+            }
           });
         }
 
@@ -574,6 +580,10 @@ angular.module('quay').directive('logsView', function () {
           $scope.loading = false;
           $scope.nextPageToken = resp.next_page;
           $scope.hasAdditional = !!resp.next_page;
+        }).catch(function (resp) {
+          if (resp.status === 501) {
+            $scope.loading = false;
+          }
         });
       };
 
