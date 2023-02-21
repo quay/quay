@@ -68,7 +68,12 @@ RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
+
 # Added GRPC & Gevent support for IBMZ
+# wget has been added to reduce the build time
+# In Future if wget is to be removed , then uncomment below line for grpc installation on IBMZ i.e. s390x
+# ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL 1
+
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
     GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
