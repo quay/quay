@@ -18,9 +18,14 @@ def upgrade(op, tables, tester):
         "namespacesize",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("namespace_user_id", sa.Integer(), nullable=False),
-        sa.Column("size_bytes", sa.BigInteger(), nullable=False, default=0),
+        sa.Column("size_bytes", sa.BigInteger(), nullable=False, server_default="0"),
         sa.Column("backfill_start_ms", sa.BigInteger()),
-        sa.Column("backfill_complete", sa.Boolean(), nullable=False, default=False),
+        sa.Column(
+            "backfill_complete",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.sql.expression.false(),
+        ),
         sa.ForeignKeyConstraint(
             ["namespace_user_id"],
             ["user.id"],
@@ -42,7 +47,12 @@ def upgrade(op, tables, tester):
     )
     op.add_column(
         "repositorysize",
-        sa.Column("backfill_complete", sa.Boolean(), nullable=False, default=False),
+        sa.Column(
+            "backfill_complete",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.sql.expression.false(),
+        ),
     )
 
 
