@@ -4,6 +4,7 @@ import logging
 
 from typing import Callable
 from peewee import Select, fn
+from data.registry_model.quota import add_blob_size
 
 import features
 from app import app, storage
@@ -166,7 +167,6 @@ class ProxyModel(OCIModel):
         if tags is not None:
             for tag in tags:
                 oci.tag.delete_tag(tag.repository_id, tag.name)
-                repository.force_cache_repo_size(tag.repository_id)
                 curr_ns_size = namespacequota.get_namespace_size(repo_ref.namespace_name)
                 if (curr_ns_size + image_size) <= ns_quota_limit:
                     return
@@ -318,10 +318,6 @@ class ProxyModel(OCIModel):
 
         return tag
 
-    def _recalculate_repository_size(self, repo_ref: RepositoryReference) -> None:
-        if features.QUOTA_MANAGEMENT:
-            repository.force_cache_repo_size(repo_ref.id)
-
     def _create_and_tag_manifest(
         self,
         repo_ref: RepositoryReference,
@@ -405,7 +401,6 @@ class ProxyModel(OCIModel):
                     q.execute()
                     self._create_placeholder_blobs(upstream_manifest, manifest.id, repo_ref.id)
                     db_tag = oci.tag.get_tag_by_manifest_id(repo_ref.id, manifest.id)
-                    self._recalculate_repository_size(repo_ref)
                     return Tag.for_tag(db_tag, self._legacy_image_id_handler), False
 
         # if we got here, the manifest is stale, so we both create a new manifest
@@ -444,7 +439,6 @@ class ProxyModel(OCIModel):
                     db_manifest = oci.manifest.create_manifest(
                         repository_ref.id, manifest, raise_on_error=True
                     )
-                    self._recalculate_repository_size(repository_ref)
                     if db_manifest is None:
                         return None, None
 
@@ -508,7 +502,6 @@ class ProxyModel(OCIModel):
         with db_disallow_replica_use():
             with db_transaction():
                 db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
-                self._recalculate_repository_size(repository_ref)
                 expiration = self._config.expiration_s or None
                 tag = Tag.for_tag(
                     oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration),
@@ -596,7 +589,6 @@ class ProxyModel(OCIModel):
             with complete_when_uploaded(uploader):
                 uploader.upload_chunk(app.config, resp.raw, start_offset, length)
                 uploader.commit_to_blob(app.config, digest)
-        self._recalculate_repository_size(repo_ref)
 
     def convert_manifest(
         self,
@@ -628,6 +620,8 @@ class ProxyModel(OCIModel):
             ManifestBlob.get(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
         except ManifestBlob.DoesNotExist:
             ManifestBlob.create(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
+            if features.QUOTA_MANAGEMENT:
+                add_blob_size(repo_id, manifest_id, [(blob.id, blob.image_size)])
         return blob
 
     def _create_placeholder_blobs(
@@ -644,6 +638,7 @@ class ProxyModel(OCIModel):
                 repo_id,
             )
 
+        # TODO(quota): can consolidate blob sizes to make a single add_blob_size call
         for layer in manifest.filesystem_layers:
             self._create_blob(layer.digest, layer.compressed_size, manifest_id, repo_id)
 

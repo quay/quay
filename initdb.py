@@ -870,7 +870,6 @@ def populate_database(minimal=False):
 
     quota1 = model.namespacequota.create_namespace_quota(org, 3000)
     model.namespacequota.create_namespace_quota_limit(quota1, "warning", 50)
-    model.repository.force_cache_repo_size(publicrepo.id)
 
     quota2 = model.namespacequota.create_namespace_quota(new_user_4, 6000)
     model.namespacequota.create_namespace_quota_limit(quota2, "reject", 90)

@@ -9,6 +9,7 @@ from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
+    NamespaceSize,
     User,
     LoginService,
     FederatedLogin,
@@ -1270,6 +1271,13 @@ def delete_user(user, queues):
 
     # Delete non-repository related items.
     _delete_user_linked_data(user)
+
+    # Delete the namespace size if it exists
+    with db_transaction():
+        try:
+            NamespaceSize.delete().where(NamespaceSize.namespace_user == user).execute()
+        except NamespaceSize.DoesNotExist:
+            pass
 
     # Delete the user itself.
     try:

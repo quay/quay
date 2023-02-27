@@ -244,9 +244,6 @@ class RepositoryTag(RepositoryParamResource):
         if tag_ref is None:
             raise NotFound()
 
-        if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-            repository_model.force_cache_repo_size(repo_ref.id)
-
         username = get_authenticated_user().username
         log_action(
             "delete_tag",

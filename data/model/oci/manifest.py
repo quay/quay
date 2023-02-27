@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import overload, Optional, Literal
-
+import features
 from collections import namedtuple
 
 from peewee import IntegrityError
@@ -25,6 +25,7 @@ from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
+from data.registry_model.quota import add_blob_size
 from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException
@@ -330,6 +331,9 @@ def _create_manifest(
     # Create the manifest and its blobs.
     storage_ids = {storage.id for storage in list(blob_map.values())}
 
+    # Get the storage sizes
+    storage_sizes = [(storage.id, storage.image_size) for storage in list(blob_map.values())]
+
     # Check for the manifest, in case it was created since we checked earlier.
     try:
         manifest = Manifest.get(repository=repository_id, digest=manifest_interface_instance.digest)
@@ -343,6 +347,10 @@ def _create_manifest(
 
             if storage_ids:
                 connect_blobs(manifest, storage_ids, repository_id)
+
+            # TODO: need to only enable when feature is enabled
+            if features.QUOTA_MANAGEMENT and storage_sizes is not None and len(storage_sizes) > 0:
+                add_blob_size(repository_id, manifest.id, storage_sizes)
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)

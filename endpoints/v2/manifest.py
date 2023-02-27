@@ -354,9 +354,6 @@ def delete_manifest_by_digest(namespace_name, repo_name, manifest_ref):
         for tag in tags:
             track_and_log("delete_tag", repository_ref, tag=tag.name, digest=manifest_ref)
 
-        if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-            repository.force_cache_repo_size(repository_ref.id)
-
         return Response(status=202)
 
 
@@ -417,7 +414,7 @@ def _write_manifest(
         raise ManifestInvalid()
 
     if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-        quota = namespacequota.verify_namespace_quota_force_cache(repository_ref)
+        quota = namespacequota.verify_namespace_quota(repository_ref)
         if quota["severity_level"] == "Warning":
             namespacequota.notify_organization_admins(repository_ref, "quota_warning")
         elif quota["severity_level"] == "Reject":

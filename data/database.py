@@ -986,10 +986,22 @@ class RepositorySearchScore(BaseModel):
     last_updated = DateTimeField(null=True)
 
 
+# TODO(quota): make sure these types match DB
 class RepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     repository_id: int
     size_bytes = BigIntegerField()
+    backfill_start_ms = BigIntegerField()
+    backfill_complete = BooleanField()
+
+
+# TODO(quota): make sure these types match DB
+class NamespaceSize(BaseModel):
+    namespace_user = ForeignKeyField(User, unique=True)
+    namespace_user_id = int
+    size_bytes = BigIntegerField()
+    backfill_start_ms = BigIntegerField()
+    backfill_complete = BooleanField()
 
 
 class DeletedRepository(BaseModel):

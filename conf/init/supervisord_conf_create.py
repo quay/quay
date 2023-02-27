@@ -48,6 +48,7 @@ def registry_services():
         "manifestbackfillworker": {"autostart": "true"},
         "securityscanningnotificationworker": {"autostart": "true"},
         "config-editor": {"autostart": "false"},
+        "quotatotalworker": {"autostart": "true"},
     }
 
 
