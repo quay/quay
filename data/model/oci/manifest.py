@@ -25,7 +25,7 @@ from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
-from data.registry_model.quota import add_blob_size
+from data.registry_model.quota import add_blob_size, reset_backfill
 from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException
@@ -348,9 +348,12 @@ def _create_manifest(
             if storage_ids:
                 connect_blobs(manifest, storage_ids, repository_id)
 
-            # TODO: need to only enable when feature is enabled
+            # Add blobs to namespace/repo total. If feature is not enabled the total
+            # should be marked stale
             if features.QUOTA_MANAGEMENT and storage_sizes is not None and len(storage_sizes) > 0:
                 add_blob_size(repository_id, manifest.id, storage_sizes)
+            elif not features.QUOTA_MANAGEMENT:
+                reset_backfill(repository_id)
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)

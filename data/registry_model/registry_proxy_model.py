@@ -4,7 +4,7 @@ import logging
 
 from typing import Callable
 from peewee import Select, fn
-from data.registry_model.quota import add_blob_size
+from data.registry_model.quota import add_blob_size, reset_backfill
 
 import features
 from app import app, storage
@@ -620,8 +620,14 @@ class ProxyModel(OCIModel):
             ManifestBlob.get(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
         except ManifestBlob.DoesNotExist:
             ManifestBlob.create(manifest_id=manifest_id, blob=blob, repository_id=repo_id)
+
+            # Add blobs to namespace/repo total. If feature is not enabled the total
+            # should be marked stale
             if features.QUOTA_MANAGEMENT:
                 add_blob_size(repo_id, manifest_id, [(blob.id, blob.image_size)])
+            else:
+                reset_backfill(repo_id)
+
         return blob
 
     def _create_placeholder_blobs(

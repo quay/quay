@@ -27,10 +27,9 @@ class QuotaTotalWorker(Worker):
         self.add_operation(self.backfill, POLL_PERIOD)
 
     def backfill(self):
-        # for namespace in app.config.get("WHITELISTED_QUOTA_ORGS", None):
-        #     run_backfill(namespace)
-
-        subq = NamespaceSize.select().where(NamespaceSize.namespace_user == User.id)
+        subq = NamespaceSize.select().where(
+            NamespaceSize.namespace_user == User.id, NamespaceSize.backfill_start_ms.is_null(False)
+        )
         for namespace in User.select().where(~fn.EXISTS(subq)).limit(BATCH_SIZE):
             run_backfill(namespace.id)
 

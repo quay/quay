@@ -322,3 +322,23 @@ def update_repositorysize(repository_id: int, params, exists: bool):
     else:
         # pylint: disable-next=no-value-for-parameter
         RepositorySize.insert(repository_id=repository_id, **params).execute()
+
+
+def reset_backfill(repository_id: int):
+    try:
+        RepositorySize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
+            RepositorySize.repository == repository_id
+        ).execute()
+        namespace_id = get_namespace_id_from_repository(repository_id)
+        reset_namespace_backfill(namespace_id)
+    except RepositorySize.DoesNotExist:
+        pass
+
+
+def reset_namespace_backfill(namespace_id: int):
+    try:
+        NamespaceSize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
+            NamespaceSize.namespace_user_id == namespace_id
+        ).execute()
+    except NamespaceSize.DoesNotExist:
+        pass

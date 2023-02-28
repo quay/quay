@@ -38,7 +38,7 @@ from data.database import (
     DerivedStorageForImage,
 )
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
-from data.registry_model.quota import subtract_blob_size
+from data.registry_model.quota import reset_backfill, subtract_blob_size
 from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
 
 
@@ -569,8 +569,13 @@ def _garbage_collect_manifest(manifest_id, context):
             )
             .execute()
         )
+
+        # Subtract blobs from namespace/repo total. If feature is not enabled the total
+        # should be marked stale
         if features.QUOTA_MANAGEMENT:
             subtract_blob_size(manifest.repository_id, manifest_id, blob_sizes)
+        else:
+            reset_backfill(manifest.repository_id)
 
         # Delete the security status for the manifest
         deleted_manifest_security = (
