@@ -173,6 +173,7 @@ class VulnerabilityFoundEvent(NotificationEvent):
     PRIORITY_KEY = "priority"
     VULNERABILITY_KEY = "vulnerability"
     MULTIPLE_VULNERABILITY_KEY = "vulnerabilities"
+    NEW_PUSH = "new_push"
 
     @classmethod
     def event_name(cls):
@@ -209,6 +210,9 @@ class VulnerabilityFoundEvent(NotificationEvent):
     def should_perform(self, event_data, notification_data):
         event_config = notification_data.event_config_dict
         if VulnerabilityFoundEvent.CONFIG_LEVEL not in event_config:
+            return True
+
+        if VulnerabilityFoundEvent.NEW_PUSH in event_data:
             return True
 
         if VulnerabilityFoundEvent.VULNERABILITY_KEY not in event_data:
