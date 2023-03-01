@@ -362,7 +362,7 @@ class TestLDAP(unittest.TestCase):
             # Verify we cannot login.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Anonymous binding not allowed")
+            self.assertEqual(err_msg, "Anonymous binding not allowed.")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "")

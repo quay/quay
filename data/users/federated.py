@@ -95,11 +95,11 @@ class FederatedUsers(object):
         """
         db_user = model.user.get_user(username)
         if not db_user:
-            return (None, "Invalid user")
+            return (None, "Invalid username or password.")
 
         federated_login = model.user.lookup_federated_login(db_user, self._federated_service)
         if not federated_login:
-            return (None, "Invalid user")
+            return (None, "Invalid username or password.")
 
         (credentials, err_msg) = self.verify_credentials(federated_login.service_ident, password)
         if credentials is None:
