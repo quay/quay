@@ -21,6 +21,7 @@ get_epoch_timestamp_ms = lambda: int(time.time() * 1000)
 ID = 0
 IMAGE_SIZE = 1
 
+
 # storage_sizes: [(id, image_size),...]
 def add_blob_size(repository_id: int, manifest_id: int, storage_sizes):
     update_sizes(repository_id, manifest_id, storage_sizes, "add")
@@ -40,11 +41,13 @@ def update_sizes(repository_id: int, manifest_id: int, storage_sizes, operation:
     namespace_total = 0
     repository_total = 0
     for storage_size in storage_sizes:
+        # To account for schema 1, which doesn't include the compressed_size field
+        blob_size = storage_size[IMAGE_SIZE] if storage_size[IMAGE_SIZE] is not None else 0
         if not blob_exists_in_namespace(namespace_id, manifest_id, storage_size[ID]):
-            namespace_total = namespace_total + storage_size[IMAGE_SIZE]
+            namespace_total = namespace_total + blob_size
 
         if not blob_exists_in_repository(repository_id, manifest_id, storage_size[ID]):
-            repository_total = repository_total + storage_size[IMAGE_SIZE]
+            repository_total = repository_total + blob_size
 
     write_namespace_total(namespace_id, manifest_id, namespace_total, operation)
     write_repository_total(repository_id, manifest_id, repository_total, operation)
@@ -149,9 +152,7 @@ def write_repository_total(
 
 def get_namespace_id_from_repository(repository: int):
     try:
-        repo = (
-            Repository.select(Repository.namespace_user_id).where(Repository.id == repository).get()
-        )
+        repo = Repository.select(Repository.namespace_user).where(Repository.id == repository).get()
         return repo.namespace_user_id
     except Repository.DoesNotExist:
         # TODO: should not happen
@@ -284,7 +285,7 @@ def get_namespace_total(namespace_id: int):
         ImageStorage.select(ImageStorage.image_size)
         .join(ManifestBlob, on=(ImageStorage.id == ManifestBlob.blob))
         .join(Repository, on=(Repository.id == ManifestBlob.repository))
-        .where(Repository.namespace_user_id == namespace_id)
+        .where(Repository.namespace_user == namespace_id)
         .group_by(ImageStorage.id)
     )
     total = ImageStorage.select(fn.Sum(derived_ns.c.image_size)).from_(derived_ns).scalar()
