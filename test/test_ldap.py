@@ -413,6 +413,7 @@ class TestLDAP(unittest.TestCase):
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "invalidpass")
             self.assertIsNone(response)
+            self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_missing_mail(self):
         with mock_ldap() as ldap:
