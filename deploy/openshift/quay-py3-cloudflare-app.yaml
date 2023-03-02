@@ -129,6 +129,8 @@ objects:
     name: quay-py3-cloudflare-app
     labels:
       ${{QUAY_APP_COMPONENT_LABEL_KEY}}: ${{QUAY_APP_COMPONENT_LABEL_VALUE}}
+    annotations:
+      ${{QUAY_DISABLE_MIN_REPLICAS_CHECK}}: ${{QUAY_DISABLE_MIN_REPLICAS_REASON}}
   spec:
     replicas: ${{QUAY_APP_DEPLOYMENT_REPLICAS}}
     minReadySeconds: ${{QUAY_APP_DEPLOYMENT_MIN_READY_SECONDS}}
