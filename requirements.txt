@@ -28,8 +28,8 @@ Deprecated==1.2.7
 dumb-init==1.2.2
 elasticsearch==7.6.0
 elasticsearch-dsl==7.0.0
-Flask==1.1.1
-Flask-Login==0.4.1
+Flask==2.0.3
+Flask-Login==0.6.2
 Flask-Mail==0.9.1
 Flask-Principal==0.4.0
 Flask-RESTful==0.3.9
@@ -45,8 +45,8 @@ idna==2.8
 importlib-metadata==1.4.0
 iso8601==0.1.12
 isodate==0.6.0
-itsdangerous==1.1.0
-Jinja2==2.11.3
+itsdangerous==2.1.2
+Jinja2==3.0.3
 jmespath==0.9.4
 jsonpath-rw==1.4.0
 jsonpointer==2.0
@@ -54,7 +54,7 @@ jsonschema==3.2.0
 kafka-python==1.4.7
 keystoneauth1==3.18.0
 Mako==1.2.2
-MarkupSafe==1.1.1
+MarkupSafe==2.1.2
 maxminddb==1.5.2
 mixpanel==4.5.0
 msgpack==0.6.2
@@ -130,7 +130,7 @@ urllib3==1.26.9
 webencodings==0.5.1
 WebOb==1.8.6
 websocket-client==0.57.0
-Werkzeug==1.0.0
+Werkzeug==2.2.3
 wrapt==1.13.3
 xhtml2pdf==0.2.4
 zipp==2.1.0
