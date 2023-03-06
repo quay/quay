@@ -4,7 +4,7 @@ import time
 
 from peewee import fn
 from data.registry_model.quota import run_backfill
-from data.database import NamespaceSize, User
+from data.database import QuotaNamespaceSize, User
 
 import features
 
@@ -27,8 +27,9 @@ class QuotaTotalWorker(Worker):
         self.add_operation(self.backfill, POLL_PERIOD)
 
     def backfill(self):
-        subq = NamespaceSize.select().where(
-            NamespaceSize.namespace_user == User.id, NamespaceSize.backfill_start_ms.is_null(False)
+        subq = QuotaNamespaceSize.select().where(
+            QuotaNamespaceSize.namespace_user == User.id,
+            QuotaNamespaceSize.backfill_start_ms.is_null(False),
         )
         for namespace in User.select().where(~fn.EXISTS(subq)).limit(BATCH_SIZE):
             run_backfill(namespace.id)

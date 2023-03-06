@@ -9,9 +9,9 @@ from data.database import (
     ImageStorage,
     ManifestBlob,
     ManifestChild,
-    NamespaceSize,
+    QuotaNamespaceSize,
     Repository,
-    RepositorySize,
+    QuotaRepositorySize,
     Tag,
     User,
 )
@@ -162,10 +162,12 @@ def get_namespace_id_from_repository(repository: int):
 def get_namespace_size(namespace_id: int):
     try:
         namespace_size = (
-            NamespaceSize.select().where(NamespaceSize.namespace_user_id == namespace_id).get()
+            QuotaNamespaceSize.select()
+            .where(QuotaNamespaceSize.namespace_user_id == namespace_id)
+            .get()
         )
         return namespace_size
-    except NamespaceSize.DoesNotExist:
+    except QuotaNamespaceSize.DoesNotExist:
         return None
 
 
@@ -176,25 +178,27 @@ def increment_namespacesize(
 
     if exists:
         if operation == "add":
-            params["size_bytes"] = NamespaceSize.size_bytes + size
+            params["size_bytes"] = QuotaNamespaceSize.size_bytes + size
         elif operation == "subtract":
-            params["size_bytes"] = NamespaceSize.size_bytes - size
-        NamespaceSize.update(**params).where(
-            NamespaceSize.namespace_user_id == namespace_id
+            params["size_bytes"] = QuotaNamespaceSize.size_bytes - size
+        QuotaNamespaceSize.update(**params).where(
+            QuotaNamespaceSize.namespace_user_id == namespace_id
         ).execute()
     else:
         params["size_bytes"] = size
         # pylint: disable-next=no-value-for-parameter
-        NamespaceSize.insert(namespace_user_id=namespace_id, **params).execute()
+        QuotaNamespaceSize.insert(namespace_user_id=namespace_id, **params).execute()
 
 
 def get_repository_size(repository_id: int):
     try:
         repository_size = (
-            RepositorySize.select().where(RepositorySize.repository_id == repository_id).get()
+            QuotaRepositorySize.select()
+            .where(QuotaRepositorySize.repository_id == repository_id)
+            .get()
         )
         return repository_size
-    except RepositorySize.DoesNotExist:
+    except QuotaRepositorySize.DoesNotExist:
         return None
 
 
@@ -205,14 +209,16 @@ def increment_repositorysize(
 
     if exists:
         if operation == "add":
-            params["size_bytes"] = RepositorySize.size_bytes + size
+            params["size_bytes"] = QuotaRepositorySize.size_bytes + size
         elif operation == "subtract":
-            params["size_bytes"] = RepositorySize.size_bytes - size
-        RepositorySize.update(**params).where(RepositorySize.repository == repository_id).execute()
+            params["size_bytes"] = QuotaRepositorySize.size_bytes - size
+        QuotaRepositorySize.update(**params).where(
+            QuotaRepositorySize.repository == repository_id
+        ).execute()
     else:
         params["size_bytes"] = size
         # pylint: disable-next=no-value-for-parameter
-        RepositorySize.insert(repository_id=repository_id, **params).execute()
+        QuotaRepositorySize.insert(repository_id=repository_id, **params).execute()
 
 
 def only_manifest_in_namespace(namespace_id: int, manifest_id: int):
@@ -309,37 +315,39 @@ def repositories_in_namespace(namespace_id: int):
 
 def update_namespacesize(namespace_id: int, params, exists=False):
     if exists:
-        NamespaceSize.update(**params).where(
-            NamespaceSize.namespace_user_id == namespace_id
+        QuotaNamespaceSize.update(**params).where(
+            QuotaNamespaceSize.namespace_user_id == namespace_id
         ).execute()
     else:
         # pylint: disable-next=no-value-for-parameter
-        NamespaceSize.insert(namespace_user_id=namespace_id, **params).execute()
+        QuotaNamespaceSize.insert(namespace_user_id=namespace_id, **params).execute()
 
 
 def update_repositorysize(repository_id: int, params, exists: bool):
     if exists:
-        RepositorySize.update(**params).where(RepositorySize.repository == repository_id).execute()
+        QuotaRepositorySize.update(**params).where(
+            QuotaRepositorySize.repository == repository_id
+        ).execute()
     else:
         # pylint: disable-next=no-value-for-parameter
-        RepositorySize.insert(repository_id=repository_id, **params).execute()
+        QuotaRepositorySize.insert(repository_id=repository_id, **params).execute()
 
 
 def reset_backfill(repository_id: int):
     try:
-        RepositorySize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
-            RepositorySize.repository == repository_id
+        QuotaRepositorySize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
+            QuotaRepositorySize.repository == repository_id
         ).execute()
         namespace_id = get_namespace_id_from_repository(repository_id)
         reset_namespace_backfill(namespace_id)
-    except RepositorySize.DoesNotExist:
+    except QuotaRepositorySize.DoesNotExist:
         pass
 
 
 def reset_namespace_backfill(namespace_id: int):
     try:
-        NamespaceSize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
-            NamespaceSize.namespace_user_id == namespace_id
+        QuotaNamespaceSize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
+            QuotaNamespaceSize.namespace_user_id == namespace_id
         ).execute()
-    except NamespaceSize.DoesNotExist:
+    except QuotaNamespaceSize.DoesNotExist:
         pass

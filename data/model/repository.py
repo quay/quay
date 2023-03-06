@@ -46,7 +46,7 @@ from data.database import (
     ManifestChild,
     ExternalNotificationEvent,
     RepositoryNotification,
-    RepositorySize,
+    QuotaRepositorySize,
     ManifestBlob,
     BlobUpload,
     Tag,
@@ -695,13 +695,13 @@ def mark_repository_for_deletion(namespace_name, repository_name, repository_gc_
 def get_repository_size(repo_id: int):
     try:
         size = (
-            RepositorySize.select(RepositorySize.size_bytes)
+            QuotaRepositorySize.select(QuotaRepositorySize.size_bytes)
             .join(Repository)
-            .where(RepositorySize.repository_id == repo_id)
+            .where(QuotaRepositorySize.repository_id == repo_id)
             .scalar()
         )
         return size if size is not None else 0
-    except RepositorySize.DoesNotExist:
+    except QuotaRepositorySize.DoesNotExist:
         return 0
 
 

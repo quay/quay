@@ -5,7 +5,7 @@ from datetime import datetime
 import features
 from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag, blob
 from data.model.oci import tag as oci_tag
-from data.database import ImageStorage, Repository, RepositorySize, db_for_update
+from data.database import ImageStorage, Repository, QuotaRepositorySize, db_for_update
 from data.database import ApprTag
 from data.database import (
     Tag,
@@ -253,8 +253,8 @@ def _purge_repository_contents(repo):
             break
 
     try:
-        RepositorySize.delete().where(RepositorySize.repository == repo).execute()
-    except RepositorySize.DoesNotExist:
+        QuotaRepositorySize.delete().where(QuotaRepositorySize.repository == repo).execute()
+    except QuotaRepositorySize.DoesNotExist:
         pass
 
     assert Tag.select().where(Tag.repository == repo).count() == 0

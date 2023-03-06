@@ -9,7 +9,7 @@ from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
-    NamespaceSize,
+    QuotaNamespaceSize,
     User,
     LoginService,
     FederatedLogin,
@@ -1275,8 +1275,8 @@ def delete_user(user, queues):
     # Delete the namespace size if it exists
     with db_transaction():
         try:
-            NamespaceSize.delete().where(NamespaceSize.namespace_user == user).execute()
-        except NamespaceSize.DoesNotExist:
+            QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
+        except QuotaNamespaceSize.DoesNotExist:
             pass
 
     # Delete the user itself.

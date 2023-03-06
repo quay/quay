@@ -5,7 +5,7 @@ from peewee import fn, JOIN, DataError
 from data.database import (
     ImageStorage,
     ManifestBlob,
-    NamespaceSize,
+    QuotaNamespaceSize,
     Repository,
     QuotaLimits,
     UserOrganizationQuota,
@@ -13,7 +13,6 @@ from data.database import (
     Manifest,
     get_epoch_timestamp_ms,
     Tag,
-    RepositorySize,
     User,
     QuotaTypes,
 )
@@ -239,18 +238,20 @@ def get_namespace_size(namespace_name):
     namespace = user.get_user_or_org(namespace_name)
     try:
         namespace_size_row = (
-            NamespaceSize.select().where(NamespaceSize.namespace_user == namespace).get()
+            QuotaNamespaceSize.select().where(QuotaNamespaceSize.namespace_user == namespace).get()
         )
         return namespace_size_row.size_bytes if namespace_size_row.size_bytes is not None else 0
-    except NamespaceSize.DoesNotExist:
+    except QuotaNamespaceSize.DoesNotExist:
         return 0
 
 
 def get_namespace_size_model(namespace_name):
     namespace = user.get_user_or_org(namespace_name)
     try:
-        return NamespaceSize.select().where(NamespaceSize.namespace_user == namespace).get()
-    except NamespaceSize.DoesNotExist:
+        return (
+            QuotaNamespaceSize.select().where(QuotaNamespaceSize.namespace_user == namespace).get()
+        )
+    except QuotaNamespaceSize.DoesNotExist:
         return None
 
 
