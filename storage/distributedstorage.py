@@ -29,6 +29,17 @@ def _location_aware(unbound_func, requires_write=False):
     return wrapper
 
 
+def _call_endtoend(unbound_func, requires_write=False):
+    @wraps(unbound_func)
+    def wrapper(self, locations, *args, **kwargs):
+        if requires_write:
+            assert not self.readonly_mode
+
+        for storage in self._storages:
+            storage_func = getattr(storage, unbound_func.__name__)
+            storage_func(*args, **kwargs)
+
+
 class DistributedStorage(StoragePaths):
     def __init__(
         self,
@@ -37,12 +48,22 @@ class DistributedStorage(StoragePaths):
         default_locations=None,
         proxy=None,
         readonly_mode=False,
+        validate_endtoend=False,
     ):
         self._storages = dict(storages)
         self.preferred_locations = list(preferred_locations or [])
         self.default_locations = list(default_locations or [])
         self.proxy = proxy
         self.readonly_mode = readonly_mode
+        self.validate_endtoend = validate_endtoend
+
+        setattr(
+            DistributedStorage,
+            "validate",
+            _call_endtoend(BaseStorage.validate, requires_write=True)
+            if self.validate_endtoend
+            else _location_aware(BaseStorage.validate, requires_write=True),
+        )
 
     @property
     def locations(self):
@@ -61,7 +82,6 @@ class DistributedStorage(StoragePaths):
     stream_write = _location_aware(BaseStorage.stream_write, requires_write=True)
     exists = _location_aware(BaseStorage.exists)
     remove = _location_aware(BaseStorage.remove, requires_write=True)
-    validate = _location_aware(BaseStorage.validate, requires_write=True)
     get_checksum = _location_aware(BaseStorage.get_checksum)
     get_supports_resumable_downloads = _location_aware(BaseStorage.get_supports_resumable_downloads)
     clean_partial_uploads = _location_aware(BaseStorage.clean_partial_uploads, requires_write=True)
