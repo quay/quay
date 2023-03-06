@@ -744,6 +744,8 @@ class User(BaseModel):
                     RepoMirrorConfig,
                     UploadedBlob,
                     RepositorySize,
+                    QuotaRepositorySize,
+                    QuotaNamespaceSize,
                     UserOrganizationQuota,
                     QuotaLimits,
                 }
@@ -993,14 +995,6 @@ class RepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     repository_id: int
     size_bytes = BigIntegerField()
-    backfill_start_ms = BigIntegerField(null=True)
-    backfill_complete = BooleanField(null=False, default=False)
-
-
-class NamespaceSize(BaseModel):
-    namespace_user = ForeignKeyField(User, unique=True)
-    namespace_user_id = int
-    size_bytes = BigIntegerField(null=False, default=0)
     backfill_start_ms = BigIntegerField(null=True)
     backfill_complete = BooleanField(null=False, default=False)
 

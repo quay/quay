@@ -1316,6 +1316,7 @@ WHITELISTED_EMPTY_MODELS = [
     "ManifestLegacyImage",
     "Image",
     "ProxyCacheConfig",
+    "RepositorySize",
 ]
 
 
