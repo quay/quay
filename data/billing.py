@@ -1,3 +1,5 @@
+import random
+import string
 from typing import Any, Dict
 import stripe
 
@@ -348,18 +350,23 @@ def get_plan(plan_id):
     return None
 
 
-class FakeSubscription(AttrDict):
-    @classmethod
-    def build(cls, data, customer):
-        data = AttrDict.deep_copy(data)
-        data["customer"] = customer
-        return cls(data)
-
-    def delete(self):
-        self.customer.subscription = None
-
-
 class FakeStripe(object):
+    ACTIVE_CUSTOMERS: Dict[str, Any] = {}
+
+    class FakeSubscription(AttrDict):
+        @classmethod
+        def build(cls, data, customer):
+            data = AttrDict.deep_copy(data)
+            data["customer"] = customer
+            data["id"] = "sub_" + "".join(random.choices(string.ascii_lowercase, k=14))
+            return cls(data)
+
+        @classmethod
+        def delete(cls, sub_id):
+            for _, cus_obj in FakeStripe.ACTIVE_CUSTOMERS.items():
+                if cus_obj._subscription and cus_obj._subscription.id == sub_id:
+                    cus_obj._subscription = None
+
     class Customer(AttrDict):
         FAKE_PLAN = AttrDict(
             {
@@ -396,7 +403,13 @@ class FakeStripe(object):
             }
         )
 
-        ACTIVE_CUSTOMERS: Dict[str, Any] = {}
+        @property
+        def id(self):
+            return self.get("id", None)
+
+        @property
+        def subscription(self):
+            return FakeStripe.ACTIVE_CUSTOMERS[self.id]._subscription
 
         @property
         def card(self):
@@ -420,16 +433,19 @@ class FakeStripe(object):
                     "Test raising exception on set card.", self.get("new_card"), 402
                 )
             if self.get("new_plan", None) is not None:
-                if self.subscription is None:
-                    self.subscription = FakeSubscription.build(self.FAKE_SUBSCRIPTION, self)
-                self.subscription.plan.id = self.get("new_plan")
+                if self._subscription is None:
+                    self._subscription = FakeStripe.FakeSubscription.build(
+                        self.FAKE_SUBSCRIPTION, self
+                    )
+                self._subscription.plan.id = self.get("new_plan")
 
         @classmethod
         def retrieve(cls, stripe_customer_id):
-            if stripe_customer_id in cls.ACTIVE_CUSTOMERS:
-                cls.ACTIVE_CUSTOMERS[stripe_customer_id].pop("new_card", None)
-                cls.ACTIVE_CUSTOMERS[stripe_customer_id].pop("new_plan", None)
-                return cls.ACTIVE_CUSTOMERS[stripe_customer_id]
+            if stripe_customer_id in FakeStripe.ACTIVE_CUSTOMERS:
+                FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id].pop("new_card", None)
+                FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id].pop("new_plan", None)
+
+                return FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id]
             else:
                 new_customer = cls(
                     {
@@ -438,11 +454,56 @@ class FakeStripe(object):
                         "id": stripe_customer_id,
                     }
                 )
-                new_customer.subscription = FakeSubscription.build(
+
+                FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id] = new_customer
+
+                new_customer._subscription = FakeStripe.FakeSubscription.build(
                     cls.FAKE_SUBSCRIPTION, new_customer
                 )
-                cls.ACTIVE_CUSTOMERS[stripe_customer_id] = new_customer
+
                 return new_customer
+
+        @classmethod
+        def create(cls, **kwargs):
+            cus_id = "cus_" + "".join(random.choices(string.ascii_lowercase, k=14))
+            new_customer = cls(
+                {
+                    "default_card": "card123",
+                    "cards": AttrDict.deep_copy(cls.FAKE_CARD_LIST),
+                    "id": cus_id,
+                }
+            )
+            new_customer._subscription = FakeStripe.FakeSubscription.build(
+                cls.FAKE_SUBSCRIPTION, new_customer
+            )
+            FakeStripe.ACTIVE_CUSTOMERS[stripe_customer_id] = new_customer
+            return new_customer
+
+        @classmethod
+        def modify(cls, cus_id, **kwargs):
+            customer = FakeStripe.ACTIVE_CUSTOMERS.get(cus_id)
+            if not customer:
+                # For testing, assume customer exists
+                customer = cls(
+                    {
+                        "default_card": "card123",
+                        "cards": AttrDict.deep_copy(cls.FAKE_CARD_LIST),
+                        "id": cus_id,
+                    }
+                )
+                customer._subscription = FakeStripe.FakeSubscription.build(
+                    cls.FAKE_SUBSCRIPTION, new_customer
+                )
+                FakeStripe.ACTIVE_CUSTOMERS[cus_id] = customer
+
+            if kwargs.get("plan"):
+                if customer._subscription is None:
+                    customer._subscription = FakeStripe.FakeSubscription.build(
+                        cls.FAKE_SUBSCRIPTION, customer
+                    )
+                customer._subscription.plan.id = kwargs.get("plan")
+
+            return customer
 
     class Invoice(AttrDict):
         @staticmethod
@@ -452,6 +513,8 @@ class FakeStripe(object):
                     "data": [],
                 }
             )
+
+    Subscription = FakeSubscription
 
 
 class Billing(object):
