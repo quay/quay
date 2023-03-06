@@ -204,7 +204,7 @@ class LDAPUsers(FederatedUsers):
 
         elif filter_superusers:
             if not self._ldap_superuser_filter:
-                return (None, "Username not found")
+                return (None, "Superuser username not found")
 
             query = self._add_superuser_filter(query)
 
@@ -491,7 +491,7 @@ class LDAPUsers(FederatedUsers):
             username_or_email, filter_superusers=True
         )
         if found_user is None:
-            logger.debug("LDAP user %s not found: %s", username_or_email, err_msg)
+            logger.debug("LDAP superuser %s not found: %s", username_or_email, err_msg)
             return False
 
         logger.debug("Found superuser for LDAP username or email %s", username_or_email)

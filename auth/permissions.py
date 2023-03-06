@@ -148,16 +148,6 @@ class QuayDeferredPermissionUser(Identity):
         logger.debug("User namespace repo permission: {0}".format(user_repos))
         self.provides.add(user_repos)
 
-        if (
-            scopes.SUPERUSER in self._scope_set or scopes.DIRECT_LOGIN in self._scope_set
-        ) and usermanager.is_superuser(user_object.username):
-            logger.debug("Adding superuser to user: %s", user_object.username)
-            self.provides.add(_SuperUserNeed())
-
-        if usermanager.is_global_readonly_superuser(user_object.username):
-            logger.debug("Adding global readonly superuser to user: %s", user_object.username)
-            self.provides.add(_GlobalReadOnlySuperUserNeed())
-
     def _populate_namespace_wide_provides(self, user_object, namespace_filter):
         """
         Populates the namespace-wide provides for a particular user under a particular namespace.
@@ -208,6 +198,17 @@ class QuayDeferredPermissionUser(Identity):
             logger.debug("User added permission: {0}".format(repo_grant))
             self.provides.add(repo_grant)
 
+    def _populate_superuser_provides(self, user_object):
+        if (
+            scopes.SUPERUSER in self._scope_set or scopes.DIRECT_LOGIN in self._scope_set
+        ) and usermanager.is_superuser(user_object.username):
+            logger.debug("Adding superuser to user: %s", user_object.username)
+            self.provides.add(_SuperUserNeed())
+
+        if usermanager.is_global_readonly_superuser(user_object.username):
+            logger.debug("Adding global readonly superuser to user: %s", user_object.username)
+            self.provides.add(_GlobalReadOnlySuperUserNeed())
+
     def can(self, permission):
         logger.debug("Loading user permissions after deferring for: %s", self.id)
         user_object = self._user_object or model.user.get_user_by_uuid(self.id)
@@ -232,6 +233,8 @@ class QuayDeferredPermissionUser(Identity):
             perm_repository = "%s/%s" % (perm_namespace, perm_repo_name)
 
         if not perm_namespace and not perm_repo_name:
+            self._populate_superuser_provides(user_object)
+
             # Nothing more to load, so just check directly.
             return super(QuayDeferredPermissionUser, self).can(permission)
 
@@ -248,6 +251,9 @@ class QuayDeferredPermissionUser(Identity):
         if perm_namespace and perm_namespace not in self._namespace_wide_loaded:
             self._populate_namespace_wide_provides(user_object, perm_namespace)
             self._namespace_wide_loaded.add(perm_namespace)
+
+        # Lazy-load superuser permissions
+        self._populate_superuser_provides(user_object)
 
         return super(QuayDeferredPermissionUser, self).can(permission)
 
