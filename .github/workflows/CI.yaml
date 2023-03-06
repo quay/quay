@@ -242,7 +242,8 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-to: ${{ github.ref_protected && 'type=gha,mode=max' || '' }}
+        no-cache-filters: pushgateway,config-tool,build-quaydir,final
         platforms: linux/arm64
 
   docker-ppc64le:
@@ -260,7 +261,8 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-to: ${{ github.ref_protected && 'type=gha,mode=max' || '' }}
+        no-cache-filters: pushgateway,config-tool,build-quaydir,final
         platforms: linux/ppc64le
 
   docker-s390x:
