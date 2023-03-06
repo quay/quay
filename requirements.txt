@@ -20,7 +20,7 @@ cffi==1.14.3
 chardet==3.0.4
 charset-normalizer==2.0.12
 click==8.0.0
-cryptography==3.3.2
+cryptography==39.0.1
 DateTime==4.3
 debtcollector==1.22.0
 decorator==4.4.1
