@@ -1250,11 +1250,6 @@ CONFIG_SCHEMA = {
             "description": "The time to delay the Quota backfill operation. Must be set longer than the time required to complete the deployment.",
             "x-example": 30,
         },
-        "WHITELISTED_QUOTA_ORGS": {
-            "type": "array",
-            "description": "",
-            "x-example": [1],
-        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
