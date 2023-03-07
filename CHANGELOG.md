@@ -3,8 +3,21 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.8.4"></a>
+## [v3.8.4] - 2023-03-07
+### Chore
+- [4b29cd5b](https://github.com/quay/quay/commit/4b29cd5b42dd8bcad4729bbc9b5db05399b2ff58): Bump Authlib (PROJQUAY-5120) ([#1776](https://github.com/quay/quay/issues/1776))
+### Permissions
+- [0caa7786](https://github.com/quay/quay/commit/0caa7786ec529fc01bcfa3fe9f3672a75906386e): lazy-load superuser permissions (PROJQUAY-5117) ([#1779](https://github.com/quay/quay/issues/1779))
+### Storage
+- [1c191a2f](https://github.com/quay/quay/commit/1c191a2f106edc06a7ed34d60b333e75097886a0): add option to validate all configured storages (PROJQUAY-5074) ([#1768](https://github.com/quay/quay/issues/1768))
+### Tox
+- [cd2cc5c3](https://github.com/quay/quay/commit/cd2cc5c37ae2fb42b3c7fa8bb15e8952a1e78fbd): allow /bin/sh (PROJQUAY-5092) ([#1769](https://github.com/quay/quay/issues/1769))
+
 <a name="v3.8.3"></a>
-## [v3.8.3] - 0001-01-01
+## [v3.8.3] - 2023-02-28
+### Chore
+- [02caa532](https://github.com/quay/quay/commit/02caa532c7e90f49cddba218426187e1ae1faef0): v3.8.3 changelog bump (PROJQUAY-5062) ([#1766](https://github.com/quay/quay/issues/1766))
 
 <a name="v3.8.2"></a>
 ## [v3.8.2] - 2023-02-07
@@ -845,7 +858,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.3...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.4...HEAD
+[v3.8.4]: https://github.com/quay/quay/compare/v3.8.3...v3.8.4
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
 [v3.8.2]: https://github.com/quay/quay/compare/v3.8.1...v3.8.2
 [v3.8.1]: https://github.com/quay/quay/compare/v3.8.0...v3.8.1
