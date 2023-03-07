@@ -995,8 +995,6 @@ class RepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     repository_id: int
     size_bytes = BigIntegerField()
-    backfill_start_ms = BigIntegerField(null=True)
-    backfill_complete = BooleanField(null=False, default=False)
 
 
 class QuotaNamespaceSize(BaseModel):
