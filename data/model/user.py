@@ -1090,7 +1090,7 @@ def get_public_repo_count(username):
     )
 
 
-def get_active_users(disabled=True, deleted=False):
+def get_active_users(disabled=True, deleted=False, start_id=None):
     query = User.select().where(User.organization == False, User.robot == False)
 
     if not disabled:
@@ -1099,6 +1099,10 @@ def get_active_users(disabled=True, deleted=False):
         # NOTE: Deleted users are already disabled, so we don't need this extra check.
         if not deleted:
             query = query.where(User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)))
+
+    # Add the start ID if necessary.
+    if start_id is not None:
+        query = query.where(User.id >= start_id)
 
     return query
 

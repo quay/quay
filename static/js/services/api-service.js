@@ -22,6 +22,33 @@ angular.module('quay').factory('ApiService', ['Restangular', '$q', 'UtilService'
       return this;
     };
 
+    resource.getCurrentPage = function(processor, opt_errorHandler) {
+      var options = this.options;
+      var result = {
+        'loading': true,
+        'value': null,
+        'hasError': false
+      };
+      var paginatedResults = [];
+
+      var performGet = function(opt_nextPageToken) {
+        getMethod(options, opt_parameters, opt_background, true).then(function(resp) {
+          result.value = processor(resp);
+          result.loading = false;
+        }, function(resp) {
+            result.hasError = true;
+            result.loading = false;
+            if (opt_errorHandler) {
+              opt_errorHandler(resp);
+            }
+          }
+        );
+      }
+
+      performGet();
+      return result;
+    }
+
     resource.get = function(processor, opt_errorHandler) {
       var options = this.options;
       var result = {
