@@ -86,7 +86,13 @@ def subscribe(user, plan, token, require_business_plan):
             card = token
 
             try:
-                cus = billing.Customer.create(email=user.email, plan=plan, card=card)
+                cus = billing.Customer.create(
+                    email=user.email,
+                    plan=plan,
+                    card=card,
+                    payment_behavior="default_incomplete",
+                    # API versions prior to 2019-03-14 defaults to 'error_if_incomplete'
+                )
                 user.stripe_id = cus.id
                 user.save()
                 check_repository_usage(user, plan_found)
@@ -110,7 +116,7 @@ def subscribe(user, plan, token, require_business_plan):
             if cus.subscription is not None:
                 # We only have to cancel the subscription if they actually have one
                 try:
-                    cus.subscription.delete()
+                    billing.Subscription.delete(cus.subscription.id)
                 except stripe.error.APIConnectionError as e:
                     return connection_response(e)
 
@@ -119,13 +125,12 @@ def subscribe(user, plan, token, require_business_plan):
 
         else:
             # User may have been a previous customer who is resubscribing
+            modify_cus_args = {"plan": plan, "payment_behavior": "default_incomplete"}
             if token:
-                cus.card = token
-
-            cus.plan = plan
+                modify_cus_args["card"] = token
 
             try:
-                cus.save()
+                billing.Customer.modify(cus.id, **modify_cus_args)
             except stripe.error.CardError as e:
                 return carderror_response(e)
             except stripe.error.APIConnectionError as e:
