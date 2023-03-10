@@ -84,11 +84,13 @@ angular.module('quay').factory('TriggerService', ['UtilService', '$sanitize', 'K
       'get_redirect_url': function(namespace, repository) {
         var redirect_uri = KeyService['gitlabRedirectUri'] + '/trigger';
         var client_id = KeyService['gitlabTriggerClientId'];
+        var scopes = "read_repository openid profile email"
 
         var authorize_url = new UtilService.UrlBuilder(KeyService['gitlabTriggerAuthorizeUrl']);
         authorize_url.setQueryParameter('client_id', client_id);
         authorize_url.setQueryParameter('state', 'repo:' + namespace + '/' + repository);
         authorize_url.setQueryParameter('redirect_uri', redirect_uri);
+        authorize_url.setQueryParameter('scope', scopes);
         authorize_url.setQueryParameter('response_type', 'code');
         return authorize_url.toString();
       },
