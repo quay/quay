@@ -77,7 +77,7 @@ def _check_storage(app):
         return (True, None)
     except Exception as ex:
         logger.exception("Storage check failed with exception %s", ex)
-        return (False, "Storage check failed with exception %s" % ex.message)
+        return (False, "Storage check failed with exception %s" % ex)
 
 
 def _check_auth(app):
