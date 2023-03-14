@@ -512,6 +512,10 @@ class DefaultConfig(ImmutableConfig):
     # Replaces the SERVER_HOSTNAME as the destination for mirroring.
     REPO_MIRROR_SERVER_HOSTNAME: Optional[str] = None
 
+    # Enables rolling repository back to previous state in the event the mirror fails.
+    # Defaults to false, to allow partial mirroring of upstream repositories.
+    REPO_MIRROR_ROLLBACK = False
+
     # "Secret" key for generating encrypted paging tokens. Only needed to be secret to
     # hide the ID range for production (in which this value is overridden). Should *not*
     # be relied upon for secure encryption otherwise.
