@@ -1261,10 +1261,5 @@ CONFIG_SCHEMA = {
             "description": "Whitelisted users to exclude when FEATURE_RESTRICTED_USERS is enabled",
             "x-example": ["devtable"],
         },
-        "FEATURE_LISTEN_IP_VERSION": {
-            "type": "string",
-            "description": "Enables IPv4/IPv6 or dual-stack listening modes. Valid options are IPv4, IPv6 or dual-stack. Defaults to IPv4.",
-            "x-example": "IPv4",
-        },
     },
 }
