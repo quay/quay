@@ -825,3 +825,8 @@ class DefaultConfig(ImmutableConfig):
 
     # Origin to allow for CORS requests
     CORS_ORIGIN = "*"
+
+    # Enables IPv4, IPv6 or dual-stack listening mode.
+    # Valid options are IPv4, IPv6 or dual-stack.
+    # Defaults to IPv4
+    FEATURE_LISTEN_IP_VERSION = "IPv4"

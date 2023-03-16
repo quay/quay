@@ -117,6 +117,7 @@ CONFIG_SCHEMA = {
         "DISTRIBUTED_STORAGE_PREFERENCE",
         "DEFAULT_TAG_EXPIRATION",
         "TAG_EXPIRATION_OPTIONS",
+        "FEATURE_LISTEN_IP_VERSION"
     ],
     "properties": {
         "REGISTRY_STATE": {
@@ -1241,6 +1242,11 @@ CONFIG_SCHEMA = {
             "type": "string",
             "description": "Cross-Origin domain to allow requests from",
             "x-example": "localhost:9000",
+        },
+        "FEATURE_LISTEN_IP_VERSION": {
+            "type": "string",
+            "description": "Enables IPv4/IPv6 or dual-stack listening modes. Valid options are IPv4, IPv6 or dual-stack. Defaults to IPv4.",
+            "x-example": "IPv4",
         },
     },
 }
