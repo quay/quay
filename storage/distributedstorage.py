@@ -122,6 +122,12 @@ class DistributedStorage(StoragePaths):
         """
         Copies a file between the source location and the destination location.
         """
-        source_storage = self._storages[source_location]
-        destination_storage = self._storages[destination_location]
-        source_storage.copy_to(destination_storage, path)
+        try:
+            source_storage = self._storages[source_location]
+            destination_storage = self._storages[destination_location]
+            source_storage.copy_to(destination_storage, path)
+        except Exception as e:
+            raise IOError(
+                "Failed to copy %s between storages %s and %s: %s"
+                % (path, source_location, destination_location, e)
+            )
