@@ -190,4 +190,5 @@ from data.model import (
     user,
     proxy_cache,
     namespacequota,
+    querybuilder,
 )

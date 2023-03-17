@@ -602,3 +602,8 @@ import endpoints.api.secscan
 import endpoints.api.signing
 import endpoints.api.mirror
 import endpoints.api.namespacequota
+
+
+# V2 Endpoints
+import endpoints.api.v2.organization
+import endpoints.api.v2.user

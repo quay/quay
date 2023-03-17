@@ -169,6 +169,17 @@ def get_user_organizations(username):
     )
 
 
+def filter_user_organizations(whereclause: tuple, UserAlias):
+    return (
+        User.select()
+        .distinct()
+        .join(Team)
+        .join(TeamMember)
+        .join(UserAlias, on=(UserAlias.id == TeamMember.user))
+        .where(*whereclause)
+    )
+
+
 def calculate_image_aggregate_size(ancestors_str, image_size, parent_image):
     ancestors = ancestors_str.split("/")[1:-1]
     if not ancestors:
