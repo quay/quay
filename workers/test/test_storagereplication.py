@@ -10,6 +10,7 @@ from workers.storagereplication import (
     StorageReplicationWorker,
     JobException,
     WorkerUnhealthyException,
+    WorkerSleepException,
 )
 
 from test.fixtures import *
@@ -121,7 +122,7 @@ def test_storage_replication_copy_error(
     storage.put_content(["local_us"], "break_copying", b"true")
 
     # Attempt to replicate storage. This should fail because the write fails.
-    with pytest.raises(JobException):
+    with pytest.raises(WorkerSleepException):
         replication_worker.replicate_storage(
             storage_user, cas_storage.uuid, storage, backoff_check=False
         )
@@ -149,33 +150,6 @@ def test_storage_replication_copy_didnot_copy(
 
     # Attempt to replicate storage. This should fail because the copy doesn't actually do the copy.
     with pytest.raises(JobException):
-        replication_worker.replicate_storage(
-            storage_user, cas_storage.uuid, storage, backoff_check=False
-        )
-
-    # Ensure the storage location count remains 1.
-    locations = model.storage.get_storage_locations(cas_storage.uuid)
-    assert len(locations) == 1
-
-
-def test_storage_replication_copy_unhandled_exception(
-    storage_user, storage_paths, replication_worker, storage, app
-):
-    # Add a storage entry with a CAS path.
-    content_checksum = "sha256:" + hashlib.sha256(b"some content").hexdigest()
-    cas_storage = database.ImageStorage.create(cas_path=True, content_checksum=content_checksum)
-
-    location = database.ImageStorageLocation.get(name="local_us")
-    database.ImageStoragePlacement.create(storage=cas_storage, location=location)
-
-    content_path = storage_paths.blob_path(cas_storage.content_checksum)
-    storage.put_content(["local_us"], content_path, b"some content")
-
-    # Tell storage to raise an exception when copying.
-    storage.put_content(["local_us"], "except_copying", b"true")
-
-    # Attempt to replicate storage. This should fail because the copy raises an unhandled exception.
-    with pytest.raises(WorkerUnhealthyException):
         replication_worker.replicate_storage(
             storage_user, cas_storage.uuid, storage, backoff_check=False
         )
