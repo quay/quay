@@ -62,6 +62,7 @@ WORKDIR /build
 COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
+# Added GRPC & Gevent support for IBMZ
 RUN ARCH=$(uname -m) ; echo $ARCH; \
     if [ "$ARCH" == "ppc64le" ] ; then \
     GE_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
@@ -71,7 +72,15 @@ RUN ARCH=$(uname -m) ; echo $ARCH; \
     GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
 	wget https://github.com/IBM/oss-ecosystem-grpc/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
 	python3 -m pip install --no-cache-dir --user grpcio-${GRPC_LATEST}-cp39-cp39-linux_ppc64le.whl; \
-	fi
+	fi;\
+    if [ "$ARCH" == "s390x" ] ; then \
+    GRPC_LATEST=$(grep "grpcio" requirements.txt |cut -d "=" -f 3); \
+        wget https://github.com/IBM/grpc-for-Z/releases/download/${GRPC_LATEST}/grpcio-${GRPC_LATEST}-cp39-cp39-linux_s390x.whl; \
+	python3 -m pip install --no-cache-dir --user grpcio-${GRPC_LATEST}-cp39-cp39-linux_s390x.whl; \
+    GEVENT_LATEST=$(grep "gevent" requirements.txt |cut -d "=" -f 3); \
+        wget https://github.com/IBM/gevent-for-z/releases/download/${GEVENT_LATEST}/gevent-${GEVENT_LATEST}-cp39-cp39-linux_s390x.whl; \
+	python3 -m pip install --no-cache-dir --user gevent-${GEVENT_LATEST}-cp39-cp39-linux_s390x.whl; \
+    fi
 RUN set -ex\
     ; python3 -m pip install --no-cache-dir --progress-bar off --user $(grep -e '^pip=' -e '^wheel=' -e '^setuptools=' ./requirements.txt) \
 	; python3 -m pip install --no-cache-dir --progress-bar off --user --requirement requirements.txt \
