@@ -102,7 +102,7 @@ jobs:
         # https://access.redhat.com/documentation/en-us/red_hat_quay/3.8/html/deploy_red_hat_quay_-_high_availability/deploying_red_hat_quay
         docker run \
           --detach \
-          --health-cmd="curl -f http://localhost:8080/health/instance" \
+          --health-cmd="curl -fsS http://localhost:8080/health/instance" \
           --health-interval=10s \
           --health-retries=5 \
           --health-timeout=5s \
@@ -112,14 +112,15 @@ jobs:
           --volume=/tmp/config:/conf/stack:Z \
           localhost/quay
 
-        for i in 1 2 3 4 5 6 7 8 9 10; do
+        for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
           status=$(docker inspect -f '{{.State.Health.Status}}' quay)
           printf "[%s] status: %s\n" "$(date -u +'%F %T')" "$status"
           if [ "$status" == "healthy" ]; then
             break
           fi
-          sleep 5
+          sleep 10
         done
+        docker inspect --format='{{json .State.Health}}' quay
 
         docker exec -i quay python <<EOF
         from app import app
