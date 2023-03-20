@@ -61,12 +61,19 @@ RUN set -ex\
         libjpeg-turbo \
         libjpeg-turbo-devel \
 		wget \
+		rust-toolset \
 	; microdnf -y clean all
 WORKDIR /build
 RUN python3 -m ensurepip --upgrade
 COPY requirements.txt .
 # Note that it installs into PYTHONUSERBASE because of the '--user'
 # flag.
+
+# When cross-compiling the container, cargo uncontrollably consumes memory and
+# gets killed by the OOM Killer when it fetches dependencies. The workaround is
+# to use the git executable.
+# See https://github.com/rust-lang/cargo/issues/10583 for details.
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 # Added GRPC & Gevent support for IBMZ
 # wget has been added to reduce the build time
