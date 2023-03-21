@@ -362,24 +362,24 @@ class TestLDAP(unittest.TestCase):
             # Verify we cannot login.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Anonymous binding not allowed")
+            self.assertEqual(err_msg, "Anonymous binding not allowed.")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_login_whitespace_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "    ")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Invalid password")
+            self.assertEqual(err_msg, "Invalid username or password.")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "    ")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_login_secondary(self):
         with mock_ldap() as ldap:
@@ -396,24 +396,24 @@ class TestLDAP(unittest.TestCase):
             # Verify we cannot login with a wildcard.
             (response, err_msg) = ldap.verify_and_link_user("some*", "somepass")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Username not found")
+            self.assertEqual(err_msg, "Invalid username or password.")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("some*", "somepass")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_invalid_password(self):
         with mock_ldap() as ldap:
             # Verify we cannot login with an invalid password.
             (response, err_msg) = ldap.verify_and_link_user("someuser", "invalidpass")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Invalid password")
+            self.assertEqual(err_msg, "Invalid username or password.")
 
             # Verify we cannot confirm the user.
             (response, err_msg) = ldap.confirm_existing_user("someuser", "invalidpass")
             self.assertIsNone(response)
-            self.assertEqual(err_msg, "Invalid user")
+            self.assertEqual(err_msg, "Invalid username or password.")
 
     def test_missing_mail(self):
         with mock_ldap() as ldap:

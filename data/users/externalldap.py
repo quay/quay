@@ -287,7 +287,7 @@ class LDAPUsers(FederatedUsers):
 
         # Make sure we have at least one result.
         if len(with_dns) < 1:
-            return (None, "Username not found")
+            return (None, "Invalid username or password.")
 
         # If we have found a single pair, then return it.
         if len(with_dns) == 1:
@@ -417,7 +417,7 @@ class LDAPUsers(FederatedUsers):
         """
         # Make sure that even if the server supports anonymous binds, we don't allow it
         if not password:
-            return (None, "Anonymous binding not allowed")
+            return (None, "Anonymous binding not allowed.")
 
         (found_user, err_msg) = self._ldap_single_user_search(username_or_email)
         if found_user is None:
@@ -434,7 +434,7 @@ class LDAPUsers(FederatedUsers):
         except ldap.REFERRAL as re:
             referral_dn = self._get_ldap_referral_dn(re)
             if not referral_dn:
-                return (None, "Invalid username")
+                return (None, "Invalid username or password.")
 
             try:
                 with LDAPConnection(
@@ -443,11 +443,11 @@ class LDAPUsers(FederatedUsers):
                     pass
             except ldap.INVALID_CREDENTIALS:
                 logger.debug("Invalid LDAP credentials")
-                return (None, "Invalid password")
+                return (None, "Invalid username or password.")
 
         except ldap.INVALID_CREDENTIALS:
             logger.debug("Invalid LDAP credentials")
-            return (None, "Invalid password")
+            return (None, "Invalid username or password.")
 
         return self._build_user_information(found_response)
 
