@@ -3,10 +3,27 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.8.4"></a>
-## [v3.8.4] - 2023-03-07
+<a name="v3.8.5"></a>
+## [v3.8.5] - 2023-03-21
+### Build(Deps)
+- [c38bbef9](https://github.com/quay/quay/commit/c38bbef98cb6338f784130f1ee6ffdaa701138bd): bump setuptools from 63.4.0 to 65.5.1 ([#1797](https://github.com/quay/quay/issues/1797))
+- [e4a562b5](https://github.com/quay/quay/commit/e4a562b58bc111bcf4a6faca0511f97d1a96a84d): reduce CVEs in dependencies and runtime environment (PROJQUAY-4777) ([#1644](https://github.com/quay/quay/issues/1644)) ([#1795](https://github.com/quay/quay/issues/1795))
 ### Chore
+- [5695cbf9](https://github.com/quay/quay/commit/5695cbf9dd28d5bf23a34209394e1ce54eecb697): Downgrade cryptography to 3.3.2 (PROJQUAY-5120) ([#1804](https://github.com/quay/quay/issues/1804))
+- [5af451df](https://github.com/quay/quay/commit/5af451df5af503201e1c71a011a14e98cfead890): Add setuptools-rust as a build dependency ([#1798](https://github.com/quay/quay/issues/1798))
+- [7e2eab2e](https://github.com/quay/quay/commit/7e2eab2e9a6c8e558c232b1aa7bad09ccfd57eeb): backport requirements.txt changes (PROJQUAY-4777) ([#1781](https://github.com/quay/quay/issues/1781))
+### [Redhat-3.8] Chore
+- [54799d69](https://github.com/quay/quay/commit/54799d6963e6ca4d22d62561ec9effed8b470b30): Bump pyOpenSSL and cryptography (PROJQUAY-5120) ([#1796](https://github.com/quay/quay/issues/1796))
+### [Redhat-3.8] Security
+- [3b38e859](https://github.com/quay/quay/commit/3b38e85935d1142e0af15bdc35f76a920d4e76cc): Change error messages in UI during LDAP login (PROJQUAY-4845) ([#1801](https://github.com/quay/quay/issues/1801))
+
+<a name="v3.8.4"></a>
+## [v3.8.4] - 2023-03-10
+### Chore
+- [abc58174](https://github.com/quay/quay/commit/abc58174e562709245069c12b0b6df4e8e10507d): v3.8.4 changelog bump (PROJQUAY-5148) ([#1780](https://github.com/quay/quay/issues/1780))
 - [4b29cd5b](https://github.com/quay/quay/commit/4b29cd5b42dd8bcad4729bbc9b5db05399b2ff58): Bump Authlib (PROJQUAY-5120) ([#1776](https://github.com/quay/quay/issues/1776))
+### Healthcheck
+- [9858a0d8](https://github.com/quay/quay/commit/9858a0d86d889e6335fa75816344b2c65fc0a608): fix invalid Exception attribute (PROJQUAY-5047) ([#1783](https://github.com/quay/quay/issues/1783))
 ### Permissions
 - [0caa7786](https://github.com/quay/quay/commit/0caa7786ec529fc01bcfa3fe9f3672a75906386e): lazy-load superuser permissions (PROJQUAY-5117) ([#1779](https://github.com/quay/quay/issues/1779))
 ### Storage
@@ -858,7 +875,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.4...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.5...HEAD
+[v3.8.5]: https://github.com/quay/quay/compare/v3.8.4...v3.8.5
 [v3.8.4]: https://github.com/quay/quay/compare/v3.8.3...v3.8.4
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
 [v3.8.2]: https://github.com/quay/quay/compare/v3.8.1...v3.8.2
