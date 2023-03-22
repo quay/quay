@@ -29,16 +29,29 @@ def crossorigin(anonymous=True):
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            cors_origin = app.config.get("CORS_ORIGIN", "*")
+            cors_origin_list = app.config.get("CORS_ORIGIN", [])
+            cors_origin = "*"
+
+            if len(cors_origin_list) == 1:
+                cors_origin = cors_origin_list[0]
+            elif len(cors_origin_list) > 1:
+                # if there are multiple CORS_ORIGIN set, then use
+                # the Origin header from the request to set the
+                # correct Allow-Origin
+                request_origin = request.headers.get("Origin")
+                if request_origin in cors_origin_list:
+                    cors_origin = request_origin
+
             headers = BASE_CROSS_DOMAIN_HEADERS
 
-            # For calls that can only be called from
-            # a known cross-origin domain like CSRF token
-            # request
+            # For calls that are not anonymous eg: CSRF token request
+            # respond with no CORS headers if CORS_ORIGIN is not set
             if not anonymous and cors_origin == "*":
                 return func(*args, **kwargs)
 
             credentials = False
+            # if we have CORS_ORIGIN set to a domain, then add the corresponding
+            # CORS headers as allowed headers
             if cors_origin != "*":
                 headers = BASE_CROSS_DOMAIN_HEADERS + SINGLE_ORIGIN_CROSS_DOMAIN_HEADERS
                 # for single origin requests, allow cookies
