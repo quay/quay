@@ -1223,9 +1223,9 @@ CONFIG_SCHEMA = {
             "x-example": "export-compliance.com",
         },
         "CORS_ORIGIN": {
-            "type": "string",
+            "type": "array",
             "description": "Cross-Origin domain to allow requests from",
-            "x-example": "localhost:9000",
+            "x-example": ["localhost:9000", "localhost:8080"],
         },
         "FEATURE_LISTEN_IP_VERSION": {
             "type": "string",

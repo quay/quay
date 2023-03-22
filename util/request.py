@@ -29,17 +29,19 @@ def crossorigin(anonymous=True):
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            cors_origin = app.config.get("CORS_ORIGIN", "*")
+            cors_origin_list = app.config.get("CORS_ORIGIN", None)
+            cors_origin = "*"
 
-            # if there are multiple CORS_ORIGIN set, then use
-            # the Origin header from the request to set the
-            # correct Allow-Origin
-            if isinstance(cors_origin, list):
+            if len(cors_origin_list) == 1:
+                cors_origin = cors_origin_list[0]
+            elif len(cors_origin_list) > 1:
+                # if there are multiple CORS_ORIGIN set, then use
+                # the Origin header from the request to set the
+                # correct Allow-Origin
                 request_origin = request.headers.get("Origin")
-                if request_origin in cors_origin:
+                if request_origin in cors_origin_list:
                     cors_origin = request_origin
-                else:
-                    cors_origin = "*"  # default cors origin
+
 
             headers = BASE_CROSS_DOMAIN_HEADERS
 
