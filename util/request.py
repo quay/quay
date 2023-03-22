@@ -42,7 +42,6 @@ def crossorigin(anonymous=True):
                 if request_origin in cors_origin_list:
                     cors_origin = request_origin
 
-
             headers = BASE_CROSS_DOMAIN_HEADERS
 
             # For calls that are not anonymous eg: CSRF token request
