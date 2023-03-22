@@ -29,7 +29,7 @@ def crossorigin(anonymous=True):
     def decorate(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            cors_origin_list = app.config.get("CORS_ORIGIN", None)
+            cors_origin_list = app.config.get("CORS_ORIGIN", [])
             cors_origin = "*"
 
             if len(cors_origin_list) == 1:
