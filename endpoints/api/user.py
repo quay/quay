@@ -59,7 +59,7 @@ from endpoints.api import (
     page_support,
 )
 from endpoints.exception import NotFound, InvalidToken, InvalidRequest, DownstreamIssue
-from endpoints.api.subscribe import subscribe
+from endpoints.api.subscribe import change_subscription, get_price
 from endpoints.common import common_login
 from endpoints.csrf import generate_csrf_token, OAUTH_CSRF_TOKEN_NAME
 from endpoints.decorators import (
@@ -734,7 +734,8 @@ class ConvertToOrganization(ApiResource):
         # Subscribe the organization to the new plan.
         if features.BILLING:
             plan = convert_data.get("plan", "free")
-            subscribe(user, plan, None, True)  # Require business plans
+            price = get_price(plan, True)
+            change_subscription(user, price)  # Require business plans
 
         # Convert the user to an organization.
         model.organization.convert_user_to_organization(user, admin_user)

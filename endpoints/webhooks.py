@@ -4,6 +4,7 @@ from flask import request, make_response, Blueprint
 
 from app import billing as stripe, app
 from data import model
+from data.logs_model import logs_model
 from data.database import RepositoryState
 from auth.decorators import process_auth
 from auth.permissions import ModifyRepositoryPermission
@@ -30,6 +31,18 @@ webhooks = Blueprint("webhooks", __name__)
 
 @webhooks.route("/stripe", methods=["POST"])
 def stripe_webhook():
+    def _stripe_checkout_log_action(kind, namespace_name, performer_name, ip, metadata=None):
+        if not metadata:
+            metadata = {}
+
+        performer = data.model.users.get_user(performer_name)
+        logs_model.log_action(
+            kind,
+            namespace_name,
+            performer=performer,
+            ip=ip,
+        )
+
     request_data = request.get_json()
     logger.debug("Stripe webhook call: %s", request_data)
 
@@ -82,6 +95,47 @@ def stripe_webhook():
     elif event_type == "invoice.payment_failed":
         if namespace:
             send_payment_failed(namespace.email, namespace.username)
+
+    elif event_type == "checkout.session.completed":
+        mode = request_data["data"]["object"]["mode"]
+
+        if mode == "setup":
+            setup_intent = stripe.SetupIntent.retrieve(
+                request_data["data"]["object"]["setup_intent"]
+            )
+            setup_intent_metadata = setup_intent["metadata"]
+
+            payment_method = setup_intent["payment_method"]
+            customer = setup_intent["customer"]
+            subscription = setup_intent_metadata["subscription_id"]
+
+            stripe.Customer.modify(
+                customer,
+                invoice_settings={"default_payment_method": payment_method},
+            )
+            stripe.Subscription.modify(
+                subscription,
+                default_payment_method=payment_method,
+            )
+
+            _stripe_checkout_log_action(
+                setup_intent_metadata["kind"],
+                setup_intent_metadata["namespace"],
+                setup_intent_metadata["performer"],
+                setup_intent_metadata["ip"],
+            )
+
+        elif mode == "subscription":
+            sub = stripe.Subscription.retrieve(request_data["data"]["object"]["subscription"])
+            sub_metadata = sub["metadata"]
+
+            _stripe_checkout_log_action(
+                sub_metadata["kind"],
+                sub_metadata["namespace"],
+                sub_metadata["performer"],
+                sub_metadata["ip"],
+                metadata={"plan": sub_metadata["plan"]},
+            )
 
     return make_response("Okay")
 
