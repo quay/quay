@@ -70,6 +70,7 @@ def get_sub_username_email_from_token(decoded_id_token, user_info=None, config={
         email_address = user_info.get("email") if user_info.get("email_verified") else None
 
     logger.debug("Found e-mail address `%s` for sub `%s`", email_address, user_info["sub"])
+
     if mailing:
         if email_address is None:
             raise OAuthLoginException(
@@ -201,6 +202,7 @@ def _conduct_oauth_login(
 
         requires_password = auth_system.requires_distinct_cli_password
         prompts = model.user.get_default_user_prompts(features)
+        print(f"******* CREATE USER {new_username} {lemail} {service_id} {lid} {metadata}")
         user_obj = model.user.create_federated_user(
             new_username,
             lemail,
@@ -213,8 +215,6 @@ def _conduct_oauth_login(
             email_required=features.MAILING,
         )
 
-        print (f"*********** NEW USER CREATED {user_obj} *******")
-
         # Success, tell analytics
         analytics.track(user_obj.username, "register", {"service": service_name.lower()})
         return _oauthresult(user_obj=user_obj, service_name=service_name)
@@ -226,12 +226,10 @@ def _conduct_oauth_login(
             "Please log in with your username and password and "
             "associate your {2} account to use it in the future."
         )
-        print("************ EMAIL ALREADY USED ********")
         message = message.format(lemail, app.config["REGISTRY_TITLE_SHORT"], service_name)
         return _oauthresult(
             service_name=service_name, error_message=message, register_redirect=True
         )
 
     except model.DataModelException as ex:
-        print("************ DATA MODEL EXCEPTION ********")
         return _oauthresult(service_name=service_name, error_message=str(ex))

@@ -1,5 +1,8 @@
+import jwt
 import pytest
+from httmock import urlmatch, HTTMock
 
+from app import oauth_login
 from auth.oauth import validate_bearer_auth, validate_oauth_token
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
@@ -13,10 +16,10 @@ from test.fixtures import *
         ("somerandomtoken", ValidateResult(AuthKind.oauth, missing=True)),
         ("bearer some random token", ValidateResult(AuthKind.oauth, missing=True)),
         (
-            "bearer invalidtoken",
-            ValidateResult(
-                AuthKind.oauth, error_message="OAuth access token could not be validated"
-            ),
+                "bearer invalidtoken",
+                ValidateResult(
+                    AuthKind.oauth, error_message="OAuth access token could not be validated"
+                ),
         ),
     ],
 )
@@ -63,3 +66,5 @@ def test_expired_token(app):
     assert result.authed_user is None
     assert not result.auth_valid
     assert result.error_message == "OAuth access token has expired"
+
+

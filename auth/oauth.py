@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from jwt import ExpiredSignatureError
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 from app import oauth_login, authentication, app, analytics
 from auth.scopes import scopes_from_scope_string
@@ -9,6 +9,7 @@ from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from oauth.login import OAuthLoginException
 from oauth.login_utils import is_jwt, get_sub_username_email_from_token, _conduct_oauth_login, get_jwt_issuer
+from oauth.oidc import PublicKeyLoadException
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +40,28 @@ def validate_oauth_token(token):
 
 def validate_sso_oauth_token(token):
     issuer = get_jwt_issuer(token)
-    service = oauth_login.get_service_by_issuer(issuer)
-    if not service:
+    if not issuer:
         return ValidateResult(
-            AuthKind.ssojwt, error_message=f"Issuer {issuer} not configured"
+            AuthKind.ssojwt, error_message=f"Token does not contain issuer"
         )
 
     try:
+        service = oauth_login.get_service_by_issuer(issuer)
+        if not service:
+            return ValidateResult(
+                AuthKind.ssojwt, error_message=f"Issuer {issuer} not configured"
+            )
+    except ConnectionError as e:
+        logger.exception(e)
+        return ValidateResult(AuthKind.ssojwt, error_message="Unable to connect to auth server")
+
+    try:
         # for client side oauth, the audience will be the client side oauth client
-        decoded_id_token = service.decode_user_jwt(token, options={'verify_aud': False, 'verify_nbf': False})
+        options = {'verify_aud': False, 'verify_nbf': False}
+        if app.config.get('TESTING', False):
+            options['verify_signature'] = False
+
+        decoded_id_token = service.decode_user_jwt(token, options=options)
         sub, lusername, lemail = get_sub_username_email_from_token(decoded_id_token, None, service.config, False)
 
         login_result = _conduct_oauth_login(app=app,
@@ -64,8 +78,8 @@ def validate_sso_oauth_token(token):
 
         return ValidateResult(AuthKind.ssojwt, user=login_result.user_obj)
 
-    except (OAuthLoginException, ExpiredSignatureError) as ole:
-        logger.exception("Got login exception")
+    except (OAuthLoginException, ExpiredSignatureError, InvalidTokenError, PublicKeyLoadException) as ole:
+        logger.exception(ole)
         return ValidateResult(
             AuthKind.ssojwt, error_message=str(ole)
         )

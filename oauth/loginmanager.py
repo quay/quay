@@ -36,18 +36,27 @@ class OAuthLoginManager(object):
                     else:
                         self.services.append(OIDCLoginService(config, key, client=client))
 
+
     def get_service(self, service_id):
         for service in self.services:
             if service.service_id() == service_id:
                 return service
 
     def get_service_by_issuer(self, issuer):
+        print(f"********* GET SERVICES BY ISSUER f{issuer}")
+        print(f"********* SERVICES f{self.services}")
         for service in self.services:
+
+            if not hasattr(service, 'get_issuer'):
+                continue
+
+            if not service.get_issuer:
+                continue
+
             config_issuer = service.get_issuer()
+            print(f"********* ISSUER f{config_issuer}")
+
             if config_issuer.rstrip('/') == issuer.rstrip('/'):
                 return service
-
-        return None
-
 
         return None

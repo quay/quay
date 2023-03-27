@@ -249,10 +249,15 @@ class OIDCLoginService(OAuthService):
             self.client_id(),
             self._issuer,
         )
+
+        key = ""
+        if options.get('verify_signature', True):
+            key = self._get_public_key(kid)
+
         try:
             return decode(
                 token,
-                self._get_public_key(kid),
+                key,
                 algorithms=ALLOWED_ALGORITHMS,
                 audience=self.client_id(),
                 issuer=self._issuer,

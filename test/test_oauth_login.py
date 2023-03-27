@@ -11,10 +11,12 @@ from authlib.jose import JsonWebKey
 from cryptography.hazmat.primitives import serialization
 
 from app import app, authentication
+from auth.oauth import validate_bearer_auth
 from data import model
 from endpoints.oauth.login import oauthlogin as oauthlogin_bp
 from test.test_endpoints import EndpointTestCase
 from test.test_ldap import mock_ldap
+
 
 
 class AuthForTesting(object):
@@ -39,13 +41,13 @@ except ValueError:
 
 class OAuthLoginTestCase(EndpointTestCase):
     def invoke_oauth_tests(
-        self,
-        callback_endpoint,
-        attach_endpoint,
-        service_name,
-        service_ident,
-        new_username,
-        test_attach=True,
+            self,
+            callback_endpoint,
+            attach_endpoint,
+            service_name,
+            service_ident,
+            new_username,
+            test_attach=True,
     ):
         # Test callback.
         created = self.invoke_oauth_test(
@@ -238,6 +240,52 @@ class OAuthLoginTestCase(EndpointTestCase):
                         "cool_user",
                         test_attach=False,
                     )
+
+    def test_jwt_bearer_token_no_provider(self):
+        encoded_jwt = jwt.encode({"iss": "badissuer"}, "secret", algorithm="HS256")
+        oidc_mocks = self._get_oidc_mocks()
+        with HTTMock(*oidc_mocks):
+            result = validate_bearer_auth(f'Bearer {encoded_jwt}')
+            assert (result.error_message == 'Issuer badissuer not configured')
+
+    def test_jwt_bearer_email_used(self):
+        # issuer from testconfig.py
+        encoded_jwt = jwt.encode(
+            {
+                "iss": app.config["TESTOIDC_LOGIN_CONFIG"]["OIDC_SERVER"],
+                "aud": app.config["TESTOIDC_LOGIN_CONFIG"]["CLIENT_ID"],
+                "nbf": int(time.time()),
+                "iat": int(time.time()),
+                "exp": int(time.time() + 600),
+                "sub": "cool.user",
+                "email": "someemail@example.com",
+                "email_verified": False,
+            }, "secret", algorithm="HS256", headers={"kid": "fakekid"}, )
+
+        oidc_mocks = self._get_oidc_mocks()
+        with HTTMock(*oidc_mocks):
+            result = validate_bearer_auth(f'Bearer {encoded_jwt}')
+            assert ('already associated with an existing Project Quay account' in result.error_message)
+
+
+    def test_jwt_bearer_new_user(self):
+        # issuer from testconfig.py
+        encoded_jwt = jwt.encode(
+            {
+                "iss": app.config["TESTOIDC_LOGIN_CONFIG"]["OIDC_SERVER"],
+                "aud": app.config["TESTOIDC_LOGIN_CONFIG"]["CLIENT_ID"],
+                "nbf": int(time.time()),
+                "iat": int(time.time()),
+                "exp": int(time.time() + 600),
+                "sub": "cool.user",
+                "email": "somenewemail@example.com",
+                "email_verified": True,
+            }, "secret", algorithm="HS256", headers={"kid": "fakekid"}, )
+
+        oidc_mocks = self._get_oidc_mocks()
+        with HTTMock(*oidc_mocks):
+            result = validate_bearer_auth(f'Bearer {encoded_jwt}')
+            assert(result.error_message is None)
 
 
 if __name__ == "__main__":
