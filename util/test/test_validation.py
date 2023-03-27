@@ -83,7 +83,7 @@ def test_validate_label_key(key, is_valid):
     [
         ("jake", "jake"),
         ("frank", "frank"),
-        ("fra-nk", "fra_nk"),
+        ("fra-nk", "fra-nk"),
         ("Jake", "jake"),
         ("FranK", "frank"),
         ("ja__ke", "ja_ke"),

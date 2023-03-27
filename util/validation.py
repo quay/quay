@@ -18,7 +18,7 @@ VALID_LABEL_KEY_REGEX = r"^[a-z0-9](([a-z0-9]|[-.](?![.-]))*[a-z0-9])?$"
 VALID_USERNAME_REGEX = r"^([a-z0-9]+(?:[._-][a-z0-9]+)*)$"
 VALID_SERVICE_KEY_NAME_REGEX = r"^[\s a-zA-Z0-9\-_:/]*$"
 
-INVALID_USERNAME_CHARACTERS = r"[^a-z0-9_]"
+INVALID_USERNAME_CHARACTERS = r"[^a-z0-9_-]"
 
 
 def validate_label_key(label_key):
