@@ -1,4 +1,5 @@
 import logging
+import features
 import functools
 import itertools
 import random
@@ -404,41 +405,43 @@ class V4SecurityScanner(SecurityScannerInterface):
                     dur_sec = dur_ms / 1000
                     secscan_result_duration.observe(dur_sec)
 
-                    # if there are "new" vulnerabilities found, take the first one and add it to the notification queue
-                    try:
-                        vulnerability_report = self._secscan_api.vulnerability_report(
-                            manifest.digest
-                        )
-                    except APIRequestFailure:
-                        vulnerability_report = None
+                    if features.NOTIFY_NEW_PUSH_VULNS:
+                        # if there are "new" vulnerabilities found, take the first one and add it to the notification queue
+                        try:
+                            vulnerability_report = self._secscan_api.vulnerability_report(
+                                manifest.digest
+                            )
+                        except APIRequestFailure:
+                            vulnerability_report = None
 
-                    try:
-                        found_vulnerabilities = vulnerability_report["vulnerabilities"]
-                    except TypeError:
-                        found_vulnerabilities = None
+                        try:
+                            found_vulnerabilities = vulnerability_report["vulnerabilities"]
+                        except TypeError:
+                            found_vulnerabilities = None
 
-                    if found_vulnerabilities is not None:
-                        keys = list(found_vulnerabilities)
-                        vuln = found_vulnerabilities[keys[FIRST_INDEX]]
-                        event_data = {
-                            "new_push": "true",
-                            "vulnerability": {
-                                "id": vuln["id"],
-                                "description": vuln["description"],
-                                "link": vuln["links"],
-                                "priority": vuln["severity"],
-                                "has_fix": bool(vuln["fixed_in_version"]),
-                            },
-                        }
-                        logger.debug(event_data)
-                        import notifications
+                        if found_vulnerabilities is not None:
+                            keys = list(found_vulnerabilities)
+                            vuln = found_vulnerabilities[keys[FIRST_INDEX]]
 
-                        logger.debug("Attempting to add vulnerability notifications to queue")
-                        notifications.spawn_notification(
-                            manifest.repository, "vulnerability_found", event_data
-                        )
-                    else:
-                        logger.debug("No net new vulnerabilities found")
+                            event_data = {
+                                "new_push": "true",
+                                "vulnerability": {
+                                    "id": vuln["id"],
+                                    "description": vuln["description"],
+                                    "link": vuln["links"],
+                                    "priority": vuln["severity"],
+                                    "has_fix": bool(vuln["fixed_in_version"]),
+                                },
+                            }
+
+                            import notifications
+
+                            logger.debug("Attempting to add vulnerability notifications to queue")
+                            notifications.spawn_notification(
+                                manifest.repository, "vulnerability_found", event_data
+                            )
+                        else:
+                            logger.debug("No net new vulnerabilities found")
 
             elif report["state"] == IndexReportState.Index_Error:
                 index_status = IndexStatus.FAILED
