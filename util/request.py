@@ -39,7 +39,7 @@ def crossorigin(anonymous=True):
                 # the Origin header from the request to set the
                 # correct Allow-Origin
                 request_origin = request.headers.get("Origin")
-                if request_origin in cors_origin_list:
+                if request_origin and request_origin in cors_origin_list:
                     cors_origin = request_origin
 
             headers = BASE_CROSS_DOMAIN_HEADERS
