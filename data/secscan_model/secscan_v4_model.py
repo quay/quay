@@ -2,7 +2,6 @@ import logging
 import functools
 import itertools
 import random
-import json
 
 from collections import namedtuple
 from datetime import datetime, timedelta
