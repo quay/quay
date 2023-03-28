@@ -97,8 +97,6 @@ def _perform_login(user_obj, service_name):
         return _render_ologin_error(service_name, "Could not login. Account may be disabled")
 
 
-
-
 def _register_service(login_service):
     """
     Registers the given login service, adding its callback and attach routes to the blueprint.

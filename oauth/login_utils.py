@@ -11,7 +11,6 @@ from oauth.login import OAuthLoginException
 from util.validation import generate_valid_usernames
 
 
-
 OAuthResult = namedtuple(
     "OAuthResult",
     ["user_obj", "service_name", "error_message", "register_redirect", "requires_verification"],
@@ -22,10 +21,10 @@ logger = logging.getLogger(__name__)
 
 def is_jwt(token):
     try:
-        [h_b64, p_b64, s_b64] = token.split('.')
-        headers_json = base64.b64decode(h_b64 + '==')
+        [h_b64, p_b64, s_b64] = token.split(".")
+        headers_json = base64.b64decode(h_b64 + "==")
         headers = json.loads(headers_json)
-        return headers.get('typ', '').lower() == 'jwt'
+        return headers.get("typ", "").lower() == "jwt"
     except (json.JSONDecodeError, ValueError):
         pass
 
@@ -38,11 +37,11 @@ def get_jwt_issuer(token):
     The passed token is assumed to be a valid
     JWT token
     """
-    [h_b64, p_b64, s_b64] = token.split('.')
-    payload_json = base64.b64decode(p_b64 + '==')
+    [h_b64, p_b64, s_b64] = token.split(".")
+    payload_json = base64.b64decode(p_b64 + "==")
     payload = json.loads(payload_json)
 
-    return payload.get('iss', None)
+    return payload.get("iss", None)
 
 
 def get_sub_username_email_from_token(decoded_id_token, user_info=None, config={}, mailing=False):
@@ -91,9 +90,10 @@ def get_sub_username_email_from_token(decoded_id_token, user_info=None, config={
         lusername = user_info["sub"]
 
     if lusername.find("@") >= 0:
-        lusername = lusername[0: lusername.find("@")]
+        lusername = lusername[0 : lusername.find("@")]
 
     return decoded_id_token["sub"], lusername, email_address
+
 
 def _oauthresult(
     user_obj=None,
@@ -131,7 +131,15 @@ def _attach_service(app, login_service, user_obj, lid, lusername):
 
 
 def _conduct_oauth_login(
-    app, analytics, auth_system, login_service, lid, lusername, lemail, metadata=None, captcha_verified=False
+    app,
+    analytics,
+    auth_system,
+    login_service,
+    lid,
+    lusername,
+    lemail,
+    metadata=None,
+    captcha_verified=False,
 ):
     """
     Conducts login from the result of an OAuth service's login flow and returns the status of the

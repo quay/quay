@@ -183,7 +183,9 @@ class OIDCLoginService(OAuthService):
         else:
             user_info = decoded_id_token
 
-        return get_sub_username_email_from_token(decoded_id_token, user_info, self.config, self._mailing)
+        return get_sub_username_email_from_token(
+            decoded_id_token, user_info, self.config, self._mailing
+        )
 
     @property
     def _issuer(self):
@@ -192,7 +194,6 @@ class OIDCLoginService(OAuthService):
 
         # If specified, use the overridden OIDC issuer.
         return self.config.get("OIDC_ISSUER", issuer)
-
 
     def get_issuer(self):
         return self._issuer
@@ -251,7 +252,7 @@ class OIDCLoginService(OAuthService):
         )
 
         key = ""
-        if options.get('verify_signature', True):
+        if options.get("verify_signature", True):
             key = self._get_public_key(kid)
 
         try:
