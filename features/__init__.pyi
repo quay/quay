@@ -186,7 +186,7 @@ MANIFEST_SIZE_BACKFILL: FeatureNameValue
 USER_INITIALIZE: FeatureNameValue
 
 # Feature Flag: If set to true, notifications about vulnerabilities can be sent on new pushes
-NOTIFY_NEW_PUSH_VULNS: FeatureNameValue
+SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX: FeatureNameValue
 
 # Allows "/" in repository names
 EXTENDED_REPOSITORY_NAMES: FeatureNameValue
