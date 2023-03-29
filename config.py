@@ -809,6 +809,9 @@ class DefaultConfig(ImmutableConfig):
     # Origin to allow for CORS requests
     CORS_ORIGIN = "*"
 
+    # Feature Flag: Enables notifications about vulnerabilities to be sent for new pushes
+    FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX = False
+
     FEATURE_SUPERUSERS_FULL_ACCESS = False
     FEATURE_SUPERUSERS_ORG_CREATION_ONLY = False
 

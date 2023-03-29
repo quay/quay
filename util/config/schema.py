@@ -1260,5 +1260,10 @@ CONFIG_SCHEMA = {
             "description": "Whitelisted users to exclude when FEATURE_RESTRICTED_USERS is enabled",
             "x-example": ["devtable"],
         },
+        "FEATURE_SECURITY_SCANNER_NOTIFY_ON_NEW_INDEX": {
+            "type": "boolean",
+            "description": "Whether to allow sending notifications about vulnerabilities for new pushes",
+            "x-example": False,
+        },
     },
 }
