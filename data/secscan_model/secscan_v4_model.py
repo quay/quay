@@ -417,6 +417,8 @@ class V4SecurityScanner(SecurityScannerInterface):
                             found_vulnerabilities = vulnerability_report.get("vulnerabilities")
 
                         if found_vulnerabilities is not None:
+                            import notifications
+
                             keys = list(found_vulnerabilities)
                             for key in keys:
                                 vuln = found_vulnerabilities[key]
@@ -431,8 +433,6 @@ class V4SecurityScanner(SecurityScannerInterface):
                                         "has_fix": bool(vuln["fixed_in_version"]),
                                     },
                                 }
-
-                                import notifications
 
                                 notifications.spawn_notification(
                                     manifest.repository, "vulnerability_found", event_data
