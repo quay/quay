@@ -62,3 +62,11 @@ def handle_readonly(ex):
     )
     response.status_code = 503
     return response
+
+
+@app.errorhandler(NotImplementedError)
+def handle_not_implemented_error(ex):
+    logger.exception(ex)
+    response = jsonify({"message": str(ex)})
+    response.status_code = 501
+    return response
