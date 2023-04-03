@@ -94,7 +94,7 @@ services:
   # namespace with quay. this allows quay to serve
   # layers to clair over localhost.
   clair:
-    user: nobody
+    user: ${DOCKER_USER:-nobody:0}
     container_name: quay-clair
     image: quay.io/projectquay/clair:4.4.0
     volumes:
@@ -106,6 +106,4 @@ services:
     cpus: 2
     command:
       ["bash", "-c", "cd /src/clair/cmd/clair; go run -mod vendor ."]
-    depends_on:
-      - quay
 

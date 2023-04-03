@@ -231,7 +231,7 @@ endif
 local-dev-up-with-clair: local-dev-up
 	$(DOCKER_COMPOSE) up -d clair-db
 	$(DOCKER) exec -it clair-db bash -c 'while ! pg_isready; do echo "waiting for postgres"; sleep 2; done'
-	$(DOCKER_COMPOSE) up -d clair
+	DOCKER_USER="$$(id -u):0" $(DOCKER_COMPOSE) up -d clair
 
 .PHONY: local-dev-up-static
 local-dev-up-static: local-dev-clean
