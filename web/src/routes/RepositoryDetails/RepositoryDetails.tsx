@@ -15,7 +15,7 @@ import {
   DrawerPanelContent,
 } from '@patternfly/react-core';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
-import Tags from './Tags/Tags';
+import TagsList from './Tags/TagsList';
 import {useLocation, useSearchParams, useNavigate} from 'react-router-dom';
 import {useEffect, useRef, useState} from 'react';
 import Settings from './Settings/Settings';
@@ -30,6 +30,7 @@ import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import Conditional from 'src/components/empty/Conditional';
+import {parseOrgNameFromUrl, parseRepoNameFromUrl} from '../../libs/utils';
 
 enum TabIndex {
   Tags = 'tags',
@@ -61,9 +62,8 @@ export default function RepositoryDetails() {
 
   const drawerRef = useRef<HTMLDivElement>();
 
-  // TODO: refactor
-  const [organization, ...repo] = location.pathname.split('/').slice(2);
-  const repository = repo.join('/');
+  const organization = parseOrgNameFromUrl(location.pathname);
+  const repository = parseRepoNameFromUrl(location.pathname);
 
   const requestedTabIndex = getTabIndex(searchParams.get('tab'));
   if (requestedTabIndex && requestedTabIndex !== activeTabKey) {
@@ -152,7 +152,7 @@ export default function RepositoryDetails() {
                     eventKey={TabIndex.Tags}
                     title={<TabTitleText>Tags</TabTitleText>}
                   >
-                    <Tags
+                    <TagsList
                       organization={organization}
                       repository={repository}
                       repoDetails={repoDetails}

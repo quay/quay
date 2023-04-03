@@ -38,23 +38,27 @@ export enum NavigationPath {
   repositoryDetail = 'repository/:organizationName/*',
 
   // Tag Detail
-  tagDetail = 'tag/:organizationName/*',
+  tagDetail = 'repository/:organizationName/:repositoryName/tag/:tagName',
 }
 
 export function getRepoDetailPath(org: string, repo: string) {
-  let repoPath = NavigationPath.repositoryDetail.toString();
+  /* let repoPath = NavigationPath.repositoryDetail.toString();
   repoPath = repoPath.replace(':organizationName', org);
   repoPath = repoPath.replace('*', repo);
-  return repoPath;
+  return repoPath
+  */
+  console.log('repo detail path', `../../repository/${org}/${repo}`);
+
+  return `../../repository/${org}/${repo}`;
 }
 
 export function getTagDetailPath(
   org: string,
   repo: string,
-  tag: string,
+  tagName: string,
   queryParams: Map<string, string> = null,
 ) {
-  let tagPath = NavigationPath.tagDetail.toString();
+  /* let tagPath = NavigationPath.tagDetail.toString();
   tagPath = tagPath.replace(':organizationName', org);
   tagPath = tagPath.replace('*', `${repo}/${tag}`);
   if (queryParams) {
@@ -64,7 +68,8 @@ export function getTagDetailPath(
     }
     tagPath = tagPath + '?' + params.join('&');
   }
-  return tagPath;
+  return tagPath;*/
+  return `${repo}/tag/${tagName}`;
 }
 
 export function getDomain() {

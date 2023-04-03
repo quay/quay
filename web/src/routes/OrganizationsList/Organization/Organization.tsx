@@ -7,7 +7,7 @@ import {
   TabTitleText,
   Title,
 } from '@patternfly/react-core';
-import {useLocation, useSearchParams} from 'react-router-dom';
+import {useLocation, useParams, useSearchParams} from 'react-router-dom';
 import {useCallback, useState} from 'react';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
@@ -15,7 +15,7 @@ import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 
 export default function Organization() {
   const location = useLocation();
-  const repositoryName = location.pathname.split('/')[2];
+  const {organizationName} = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
@@ -34,10 +34,11 @@ export default function Organization() {
     {
       name: 'Repositories',
       component: <RepositoriesList />,
+      params: {organizationName},
     },
     {
       name: 'Settings',
-      component: <Settings />,
+      component: <Settings organizationName={organizationName} />,
     },
   ];
 
@@ -49,7 +50,7 @@ export default function Organization() {
         className="no-padding-bottom"
       >
         <Title data-testid="repo-title" headingLevel="h1">
-          {repositoryName}
+          {organizationName}
         </Title>
       </PageSection>
       <PageSection

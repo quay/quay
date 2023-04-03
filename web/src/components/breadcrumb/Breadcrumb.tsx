@@ -10,11 +10,17 @@ import useBreadcrumbs, {
   BreadcrumbComponentType,
 } from 'use-react-router-breadcrumbs';
 import {useLocation} from 'react-router-dom';
-import {useRecoilState} from 'recoil';
+import {useRecoilState, useRecoilValue} from 'recoil';
 import {BrowserHistoryState} from 'src/atoms/BrowserHistoryState';
+import {IsPluginState} from 'src/atoms/QuayConfigState';
 
 export function QuayBreadcrumb() {
-  /* return <div> Breadcrumb </div>; */
+  const isPlugin = useRecoilValue(IsPluginState);
+  // TODO: Fix breadcrumbs for plugin
+  if (isPlugin) {
+    return <div> Breadcrumbs </div>;
+  }
+
   const [browserHistory, setBrowserHistoryState] =
     useRecoilState(BrowserHistoryState);
 

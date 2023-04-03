@@ -29,7 +29,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoriesList,
-    Component: <RepositoriesList />,
+    Component: <RepositoriesList organizationName={''} />,
   },
   {
     path: NavigationPath.repositoryDetail,
@@ -85,7 +85,7 @@ export function StandaloneMain() {
           </Flex>
         </Banner>
         <Routes>
-          <Route index element={<Navigate to="/settings/quay/organization" replace />} />
+          <Route index element={<Navigate to="/organization" replace />} />
           {NavigationRoutes.map(({path, Component}, key) => (
             <Route path={path} key={key} element={Component} />
           ))}

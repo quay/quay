@@ -1,5 +1,5 @@
 import {TagsToolbar} from './TagsToolbar';
-import Table from './Table';
+import TagsTable from './TagsTable';
 import {useState, useEffect} from 'react';
 import {
   searchTagsFilterState,
@@ -28,7 +28,7 @@ import {CubesIcon} from '@patternfly/react-icons';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
 
-export default function Tags(props: TagsProps) {
+export default function TagsList(props: TagsProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [err, setErr] = useState<string>();
@@ -135,7 +135,7 @@ export default function Tags(props: TagsProps) {
             selectTag={selectTag}
             repoDetails={props.repoDetails}
           />
-          <Table
+          <TagsTable
             org={props.organization}
             repo={props.repository}
             tags={paginatedTags}

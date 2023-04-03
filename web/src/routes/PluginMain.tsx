@@ -1,7 +1,7 @@
 import {Banner, Flex, FlexItem, Page} from '@patternfly/react-core';
 
 import {Navigate, Outlet, Route, Router, Routes} from 'react-router-dom';
-import {RecoilRoot} from 'recoil';
+import {RecoilRoot, useSetRecoilState} from 'recoil';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
 import useChrome from '@redhat-cloud-services/frontend-components/useChrome';
@@ -20,6 +20,7 @@ import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {GlobalAuthState} from '../resources/AuthResource';
+import {IsPluginState} from '../atoms/QuayConfigState';
 
 const NavigationRoutes = [
   {
@@ -48,6 +49,7 @@ function PluginMain() {
   const quayConfig = useQuayConfig();
   const {loading, error} = useCurrentUser();
   const chrome = useChrome();
+  const setIsPluginState = useSetRecoilState(IsPluginState);
 
   console.log('useChrome chrome', chrome);
 
@@ -61,6 +63,10 @@ function PluginMain() {
       document.title = quayConfig.config.REGISTRY_TITLE;
     }
   }, [quayConfig]);
+
+  useEffect(() => {
+    setIsPluginState(true);
+  }, []);
 
   if (loading) {
     return null;
