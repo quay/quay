@@ -6,7 +6,12 @@ import features
 from app import app, storage as app_storage, image_replication_queue
 from data.database import CloseForLongOperation
 from data import model
-from workers.queueworker import QueueWorker, WorkerUnhealthyException, JobException
+from workers.queueworker import (
+    QueueWorker,
+    WorkerUnhealthyException,
+    JobException,
+    WorkerSleepException,
+)
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
 
@@ -130,7 +135,7 @@ class StorageReplicationWorker(QueueWorker):
                     partial_storage.uuid,
                     location,
                 )
-                raise JobException()
+                raise WorkerSleepException()
             except:
                 logger.exception(
                     "Unknown exception when copying path %s of image storage %s to loc %s",
