@@ -33,8 +33,7 @@ export default function Organization() {
   const repositoriesSubNav = [
     {
       name: 'Repositories',
-      component: <RepositoriesList />,
-      params: {organizationName},
+      component: <RepositoriesList organizationName={organizationName} />,
     },
     {
       name: 'Settings',

@@ -42,13 +42,7 @@ export enum NavigationPath {
 }
 
 export function getRepoDetailPath(org: string, repo: string) {
-  /* let repoPath = NavigationPath.repositoryDetail.toString();
-  repoPath = repoPath.replace(':organizationName', org);
-  repoPath = repoPath.replace('*', repo);
-  return repoPath
-  */
-  console.log('repo detail path', `../../repository/${org}/${repo}`);
-
+  // return relative path to repository detail page from repo list table
   return `../../repository/${org}/${repo}`;
 }
 
@@ -58,9 +52,7 @@ export function getTagDetailPath(
   tagName: string,
   queryParams: Map<string, string> = null,
 ) {
-  /* let tagPath = NavigationPath.tagDetail.toString();
-  tagPath = tagPath.replace(':organizationName', org);
-  tagPath = tagPath.replace('*', `${repo}/${tag}`);
+  let tagPath = `${repo}/tag/${tagName}`;
   if (queryParams) {
     const params = [];
     for (const entry of Array.from(queryParams.entries())) {
@@ -68,8 +60,7 @@ export function getTagDetailPath(
     }
     tagPath = tagPath + '?' + params.join('&');
   }
-  return tagPath;*/
-  return `${repo}/tag/${tagName}`;
+  return tagPath;
 }
 
 export function getDomain() {
