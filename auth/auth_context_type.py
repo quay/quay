@@ -139,6 +139,7 @@ class ValidatedAuthContext(AuthContext):
         robot=None,
         appspecifictoken=None,
         signed_data=None,
+        sso_token=None,
     ):
         # Note: These field names *MUST* match the string values of the kinds defined in
         # ContextEntityKind.
@@ -148,6 +149,7 @@ class ValidatedAuthContext(AuthContext):
         self.oauthtoken = oauthtoken
         self.appspecifictoken = appspecifictoken
         self.signed_data = signed_data
+        self.sso_token = sso_token
 
     def tuple(self):
         return list(vars(self).values())

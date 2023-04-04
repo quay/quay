@@ -81,7 +81,7 @@ def validate_sso_oauth_token(token):
             logger.error(f"Error logging in {login_result.error_message}")
             return ValidateResult(AuthKind.ssojwt, error_message=login_result.error_message)
 
-        return ValidateResult(AuthKind.ssojwt, user=login_result.user_obj)
+        return ValidateResult(AuthKind.ssojwt, user=login_result.user_obj, sso_token=token)
 
     except (
         OAuthLoginException,
