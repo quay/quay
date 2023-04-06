@@ -45,7 +45,7 @@ export interface OrganizationsTableItem {
 function OrgListHeader() {
   return (
     <>
-      {/* <QuayBreadcrumb /> */}
+       <QuayBreadcrumb />
       <PageSection variant={PageSectionVariants.light}>
         <div className="co-m-nav-title--row">
           <Title headingLevel="h1">Organizations</Title>

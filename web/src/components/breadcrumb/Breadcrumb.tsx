@@ -4,23 +4,15 @@ import {
   PageBreadcrumb,
 } from '@patternfly/react-core';
 import {NavigationRoutes} from 'src/routes/NavigationPath';
-import {Link, useParams} from 'react-router-dom';
+import {Link, useParams, useLocation} from 'react-router-dom';
 import React, {useEffect, useState} from 'react';
 import useBreadcrumbs, {
   BreadcrumbComponentType,
 } from 'use-react-router-breadcrumbs';
-import {useLocation} from 'react-router-dom';
-import {useRecoilState, useRecoilValue} from 'recoil';
+import {useRecoilState} from 'recoil';
 import {BrowserHistoryState} from 'src/atoms/BrowserHistoryState';
-import {IsPluginState} from 'src/atoms/QuayConfigState';
 
 export function QuayBreadcrumb() {
-  const isPlugin = useRecoilValue(IsPluginState);
-  // TODO: Fix breadcrumbs for plugin
-  if (isPlugin) {
-    return <div> Breadcrumbs </div>;
-  }
-
   const [browserHistory, setBrowserHistoryState] =
     useRecoilState(BrowserHistoryState);
 

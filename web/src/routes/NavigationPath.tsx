@@ -4,6 +4,9 @@ import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
 
+// TODO: Need to move to config
+const prependedRoute = '/settings/quay';
+
 const organizationNameBreadcrumb = (match) => {
   return <span>{match.params.organizationName}</span>;
 };
@@ -69,27 +72,27 @@ export function getDomain() {
 
 const NavigationRoutes = [
   {
-    path: NavigationPath.organizationsList,
+    path: `${prependedRoute}/${NavigationPath.organizationsList}`,
     Component: <OrganizationsList />,
     breadcrumb: Breadcrumb.organizationsListBreadcrumb,
   },
   {
-    path: NavigationPath.organizationDetail,
+    path: `${prependedRoute}/${NavigationPath.organizationDetail}`,
     Component: <Organization />,
     breadcrumb: Breadcrumb.organizationDetailBreadcrumb,
   },
   {
-    path: NavigationPath.repositoriesList,
+    path: `${prependedRoute}/${NavigationPath.repositoriesList}`,
     Component: <RepositoriesList />,
     breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
   },
   {
-    path: NavigationPath.repositoryDetail,
+    path: `${prependedRoute}/${NavigationPath.repositoryDetail}`,
     Component: <RepositoryDetails />,
     breadcrumb: Breadcrumb.repositoryDetailBreadcrumb,
   },
   {
-    path: NavigationPath.tagDetail,
+    path: `${prependedRoute}/${NavigationPath.tagDetail}`,
     Component: <TagDetails />,
     breadcrumb: Breadcrumb.tagDetailBreadcrumb,
   },
