@@ -70,7 +70,7 @@ export function getDomain() {
 function domainRoute(definedRoute) {
   const currentRoute = window.location.pathname;
   return (
-    currentRoute.replace(/\/(organization|repository|signin).*/, '') +
+    currentRoute.replace(/\/(\/organization|repository|signin)(?!.*\1).*/, '') +
     definedRoute
   );
 }
