@@ -21,6 +21,7 @@ from data.database import RepositoryState
 from data.registry_model import registry_model
 from data.registry_model.datatypes import RepositoryReference
 from data.model.repo_mirror import get_mirroring_robot
+from endpoints.api import log_action
 from endpoints.decorators import anon_protect
 from endpoints.v2 import v2_bp
 from endpoints.v2.errors import (
@@ -126,8 +127,11 @@ def generate_registry_jwt(auth_result):
         }
 
     # Send the user event.
-    if get_authenticated_user() is not None:
-        event = userevents.get_event(get_authenticated_user().username)
+    user = get_authenticated_user()
+    if user is not None:
+        if user_event_data["action"] == "login":
+            log_action("login_success", user.username)
+        event = userevents.get_event(user.username)
         event.publish_event_data("docker-cli", user_event_data)
 
     # Build the signed JWT.

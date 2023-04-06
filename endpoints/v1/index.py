@@ -23,6 +23,7 @@ from auth.signedgrant import generate_signed_token
 from data import model
 from data.registry_model import registry_model
 from data.registry_model.manifestbuilder import create_manifest_builder, lookup_manifest_builder
+from endpoints.api import log_action
 from endpoints.decorators import (
     anon_protect,
     anon_allowed,
@@ -136,6 +137,7 @@ def create_user():
 
     if result.has_nonrobot_user:
         # Mark that the user was logged in.
+        log_action("login_success", username)
         event = userevents.get_event(username)
         event.publish_event_data("docker-cli", {"action": "login"})
 

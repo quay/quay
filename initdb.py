@@ -432,6 +432,9 @@ def initialize_database():
     LogEntryKind.create(name="start_build_trigger")
     LogEntryKind.create(name="cancel_build")
 
+    LogEntryKind.create(name="login_success")
+    LogEntryKind.create(name="logout_success")
+
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
 
