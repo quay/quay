@@ -4,9 +4,6 @@ import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
 
-// TODO: Need to move to config
-const prependedRoute = '/settings/quay';
-
 const organizationNameBreadcrumb = (match) => {
   return <span>{match.params.organizationName}</span>;
 };
@@ -30,18 +27,18 @@ const Breadcrumb = {
 export enum NavigationPath {
   // Side Nav
   home = '/',
-  organizationsList = 'organization',
+  organizationsList = '/organization',
 
-  repositoriesList = 'repository',
+  repositoriesList = '/repository',
 
   // Organization detail
-  organizationDetail = 'organization/:organizationName',
+  organizationDetail = '/organization/:organizationName',
 
   // Repository detail
-  repositoryDetail = 'repository/:organizationName/*',
+  repositoryDetail = '/repository/:organizationName/*',
 
   // Tag Detail
-  tagDetail = 'repository/:organizationName/:repositoryName/tag/:tagName',
+  tagDetail = '/repository/:organizationName/:repositoryName/tag/:tagName',
 }
 
 export function getRepoDetailPath(org: string, repo: string) {
@@ -70,29 +67,37 @@ export function getDomain() {
   return process.env.REACT_APP_QUAY_DOMAIN || 'quay.io';
 }
 
+function domainRoute(definedRoute) {
+  const currentRoute = window.location.pathname;
+  return (
+    currentRoute.replace(/\/(organization|repository|signin).*/, '') +
+    definedRoute
+  );
+}
+
 const NavigationRoutes = [
   {
-    path: `${prependedRoute}/${NavigationPath.organizationsList}`,
+    path: domainRoute(NavigationPath.organizationsList),
     Component: <OrganizationsList />,
     breadcrumb: Breadcrumb.organizationsListBreadcrumb,
   },
   {
-    path: `${prependedRoute}/${NavigationPath.organizationDetail}`,
+    path: domainRoute(NavigationPath.organizationDetail),
     Component: <Organization />,
     breadcrumb: Breadcrumb.organizationDetailBreadcrumb,
   },
   {
-    path: `${prependedRoute}/${NavigationPath.repositoriesList}`,
+    path: domainRoute(NavigationPath.repositoriesList),
     Component: <RepositoriesList />,
     breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
   },
   {
-    path: `${prependedRoute}/${NavigationPath.repositoryDetail}`,
+    path: domainRoute(NavigationPath.repositoryDetail),
     Component: <RepositoryDetails />,
     breadcrumb: Breadcrumb.repositoryDetailBreadcrumb,
   },
   {
-    path: `${prependedRoute}/${NavigationPath.tagDetail}`,
+    path: domainRoute(NavigationPath.tagDetail),
     Component: <TagDetails />,
     breadcrumb: Breadcrumb.tagDetailBreadcrumb,
   },
