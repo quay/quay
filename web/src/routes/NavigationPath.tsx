@@ -68,8 +68,17 @@ export function getDomain() {
 }
 
 function domainRoute(definedRoute) {
+  /***
+   * This function returns prefix + route.
+   Eg:If quay is hosted on https://stage.foo.redhat.com:1337/settings/quay/organization,
+   window.location.pathname here is `/settings/quay/organization`,
+   the regex removes everything after organization and returns /settings/quay.
+   So, the function returns /settings/quay/<route> .
+   ***/
   const currentRoute = window.location.pathname;
   return (
+    // This regex replaces everything after the last occurrence of organization|repository|signin with empty string.
+    // Doing this gives us the prefix.
     currentRoute.replace(/\/(\/organization|repository|signin)(?!.*\1).*/, '') +
     definedRoute
   );
