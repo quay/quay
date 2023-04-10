@@ -74,7 +74,7 @@ class GlobalLock(object):
             logger.debug("Acquired lock %s", self._lock_name)
             return True
         except RedisError as re:
-            logger.debug("Could not connect to Redis for lock %s: %s", self._lock_name, re)
+            logger.warning("Could not connect to Redis for lock %s: %s", self._lock_name, re)
             return False
         except:
             logger.debug("Could not acquire lock %s", self._lock_name)
