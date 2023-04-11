@@ -52,7 +52,8 @@ def subscription_view(stripe_subscription, used_repos):
     return view
 
 
-def subscribe(user, plan, token, require_business_plan):
+def get_price(plan, require_business_plan):
+    """Billing Price (previously stripe Plan) from id."""
     if not features.BILLING:
         return
 
@@ -69,6 +70,10 @@ def subscribe(user, plan, token, require_business_plan):
         logger.warning("Business attempting to subscribe to personal plan: %s", user.username)
         raise request_error(message="No matching plan found")
 
+    return plan_found
+
+
+def change_subscription(user, plan):
     private_repos = model.get_private_repo_count(user.username)
 
     # This is the default response
@@ -78,66 +83,36 @@ def subscribe(user, plan, token, require_business_plan):
     }
     status_code = 200
 
-    if not user.stripe_id:
-        # Check if a non-paying user is trying to subscribe to a free plan
-        if not plan_found["price"] == 0:
-            # They want a real paying plan, create the customer and plan
-            # simultaneously
-            card = token
+    try:
+        cus = billing.Customer.retrieve(user.stripe_id)
+    except stripe.error.APIConnectionError as e:
+        return connection_response(e)
 
+    if plan["price"] == 0:
+        if cus.subscription is not None:
+            # We only have to cancel the subscription if they actually have one
             try:
-                cus = billing.Customer.create(
-                    email=user.email,
-                    plan=plan,
-                    card=card,
-                    payment_behavior="default_incomplete",
-                    # API versions prior to 2019-03-14 defaults to 'error_if_incomplete'
-                )
-                user.stripe_id = cus.id
-                user.save()
-                check_repository_usage(user, plan_found)
-                log_action("account_change_plan", user.username, {"plan": plan})
-            except stripe.error.CardError as e:
-                return carderror_response(e)
+                billing.Subscription.delete(cus.subscription.id)
             except stripe.error.APIConnectionError as e:
                 return connection_response(e)
 
-            response_json = subscription_view(cus.subscription, private_repos)
-            status_code = 201
+            check_repository_usage(user, plan)
+            log_action("account_change_plan", user.username, {"plan": plan["stripeId"]})
 
     else:
-        # Change the plan
+        # User may have been a previous customer who is resubscribing
+        modify_cus_args = {"plan": plan["stripeId"], "payment_behavior": "default_incomplete"}
+
         try:
-            cus = billing.Customer.retrieve(user.stripe_id)
+            billing.Customer.modify(cus.id, **modify_cus_args)
+        except stripe.error.CardError as e:
+            return carderror_response(e)
         except stripe.error.APIConnectionError as e:
             return connection_response(e)
 
-        if plan_found["price"] == 0:
-            if cus.subscription is not None:
-                # We only have to cancel the subscription if they actually have one
-                try:
-                    billing.Subscription.delete(cus.subscription.id)
-                except stripe.error.APIConnectionError as e:
-                    return connection_response(e)
-
-                check_repository_usage(user, plan_found)
-                log_action("account_change_plan", user.username, {"plan": plan})
-
-        else:
-            # User may have been a previous customer who is resubscribing
-            modify_cus_args = {"plan": plan, "payment_behavior": "default_incomplete"}
-            if token:
-                modify_cus_args["card"] = token
-
-            try:
-                billing.Customer.modify(cus.id, **modify_cus_args)
-            except stripe.error.CardError as e:
-                return carderror_response(e)
-            except stripe.error.APIConnectionError as e:
-                return connection_response(e)
-
-            response_json = subscription_view(cus.subscription, private_repos)
-            check_repository_usage(user, plan_found)
-            log_action("account_change_plan", user.username, {"plan": plan})
+        cus = cus.refresh()
+        response_json = subscription_view(cus.subscription, private_repos)
+        check_repository_usage(user, plan)
+        log_action("account_change_plan", user.username, {"plan": plan["stripeId"]})
 
     return response_json, status_code

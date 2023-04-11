@@ -3605,8 +3605,8 @@ class TestUserCard(ApiTestCase):
 
     def test_setusercard_error(self):
         self.login(ADMIN_ACCESS_USER)
-        json = self.postJsonResponse(UserCard, data=dict(token="sometoken"), expected_code=402)
-        assert "carderror" in json
+        # token not a valid param anymore. This becomes a checkout session instead
+        json = self.postJsonResponse(UserCard, data=dict(token="sometoken"), expected_code=400)
 
 
 class TestOrgCard(ApiTestCase):

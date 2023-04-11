@@ -367,6 +367,9 @@ class FakeStripe(object):
                 if cus_obj._subscription and cus_obj._subscription.id == sub_id:
                     cus_obj._subscription = None
 
+        def default_payment_method(self, payment_method):
+            return "pm_somestripepaymentmethodid"
+
     class Customer(AttrDict):
         FAKE_PLAN = AttrDict(
             {
@@ -426,6 +429,9 @@ class FakeStripe(object):
         @plan.setter
         def plan(self, plan_name):
             self["new_plan"] = plan_name
+
+        def refresh(self):
+            return self
 
         def save(self):
             if self.get("new_card", None) is not None:
@@ -513,6 +519,26 @@ class FakeStripe(object):
                     "data": [],
                 }
             )
+
+    class PaymentMethod(AttrDict):
+        FAKE_PAYMENT_METHOD = AttrDict(
+            {
+                "id": "card123",
+                "type": "Visa",
+                "card": AttrDict(
+                    {
+                        "last4": "4242",
+                        "exp_month": 5,
+                        "exp_year": 2016,
+                    }
+                ),
+                "billing_details": AttrDict({"name": "Joe User"}),
+            }
+        )
+
+        @classmethod
+        def retrieve(cls, payment_method_id):
+            return cls.FAKE_PAYMENT_METHOD
 
     Subscription = FakeSubscription
 

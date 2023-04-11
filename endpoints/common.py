@@ -113,7 +113,7 @@ def render_page_template(name, route_data=None, **kwargs):
 
     # Add Stripe checkout if billing is enabled.
     if features.BILLING:
-        external_scripts.append("//checkout.stripe.com/checkout.js")
+        external_scripts.append("//js.stripe.com/v3/")
 
     has_contact = len(app.config.get("CONTACT_INFO", [])) > 0
     contact_href = None

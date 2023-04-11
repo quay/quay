@@ -2,9 +2,8 @@
  * Helper service for loading, changing and working with subscription plans.
  */
 angular.module('quay')
-       .factory('PlanService', ['KeyService', 'UserService', 'CookieService', 'ApiService', 'Features', 'Config', '$location',
-
-function(KeyService, UserService, CookieService, ApiService, Features, Config, $location) {
+  .factory('PlanService', ['KeyService', 'UserService', 'CookieService', 'ApiService', 'Features', 'Config', '$location', '$timeout',
+function(KeyService, UserService, CookieService, ApiService, Features, Config, $location, $timeout) {
   var plans = null;
   var planDict = {};
   var planService = {};
@@ -176,26 +175,46 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
     ApiService.getSubscription(orgname).then(success, failure);
   };
 
-  planService.setSubscription = function(orgname, planId, success, failure, opt_token) {
+  planService.createSubscription = function($scope, orgname, planId, success, failure) {
     if (!Features.BILLING) { return; }
 
+    var redirectURL = $scope.redirectUrl || window.location.toString();
     var subscriptionDetails = {
-      plan: planId
+      plan: planId,
+      success_url: redirectURL,
+      cancel_url: redirectURL
     };
 
-    if (opt_token) {
-      subscriptionDetails['token'] = opt_token.id;
-    }
-
-    ApiService.updateSubscription(orgname, subscriptionDetails).then(function(resp) {
-      success(resp);
-      planService.getPlan(planId, function(plan) {
-        for (var i = 0; i < listeners.length; ++i) {
-          listeners[i]['callback'](plan);
-        }
-      });
-    }, failure);
+    ApiService.createSubscription(orgname, subscriptionDetails).then(
+      function(resp) {
+        $timeout(function() {
+          success(resp);
+          document.location = resp.url;
+        }, 250);
+      },
+      failure
+    );
   };
+
+  planService.updateSubscription = function($scope, orgname, planId, success, failure) {
+    if (!Features.BILLING) { return; }
+    
+    var subscriptionDetails = {
+      plan: planId,
+    };
+    
+    planService.getPlan(planId, function(plan) {
+      ApiService.updateSubscription(orgname, subscriptionDetails).then(
+	function(resp) {
+	  success(resp);
+	  for (var i = 0; i < listeners.length; ++i) {
+            listeners[i]['callback'](plan);
+	  }
+	},
+	failure
+      );
+    });
+  };  
 
   planService.getCardInfo = function(orgname, callback) {
     if (!Features.BILLING) { return; }
@@ -232,19 +251,29 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
       if (orgname && !planService.isOrgCompatible(plan)) { return; }
 
       planService.getCardInfo(orgname, function(cardInfo) {
+
         if (plan.price > 0 && (previousSubscribeFailure || !cardInfo.last4 || !opt_reuseCard)) {
-          var title = cardInfo.last4 ? 'Subscribe' : 'Start Trial ({{amount}} plan)';
-          planService.showSubscribeDialog($scope, orgname, planId, callbacks, title, /* async */true);
+          var redirectURL = $scope.redirectUrl || window.location.toString();
+          var setCardDetails = {
+            success_url: redirectURL,
+            cancel_url: redirectURL
+          };
+
+          planService.createSubscription($scope, orgname, planId, callbacks['success'], function(resp) {
+            previousSubscribeFailure = true;
+            planService.handleCardError(resp);
+            callbacks['failure'](resp);
+          });
           return;
         }
 
         previousSubscribeFailure = false;
 
-        planService.setSubscription(orgname, planId, callbacks['success'], function(resp) {
-          previousSubscribeFailure = true;
-          planService.handleCardError(resp);
-          callbacks['failure'](resp);
-        });
+        planService.updateSubscription($scope, orgname, planId, callbacks['success'], function(resp) {
+	  previousSubscribeFailure = true;
+	  planService.handleCardError(resp);
+	  callbacks['failure'](resp);
+	});
       });
     });
   };
@@ -256,125 +285,25 @@ function(KeyService, UserService, CookieService, ApiService, Features, Config, $
       callbacks['opening']();
     }
 
-    var submitted = false;
-    var submitToken = function(token) {
-      if (submitted) { return; }
-      submitted = true;
-      $scope.$apply(function() {
-        if (callbacks['started']) {
-          callbacks['started']();
-        }
-
-        var cardInfo = {
-          'token': token.id
-        };
-
-        ApiService.setCard(orgname, cardInfo).then(callbacks['success'], function(resp) {
-          planService.handleCardError(resp);
-          callbacks['failure'](resp);
-        });
-      });
+    var redirectURL = $scope.redirectUrl || window.location.toString();
+    var setCardDetails = {
+      success_url: redirectURL,
+      cancel_url: redirectURL
     };
 
-    var email = planService.getEmail(orgname);
-    StripeCheckout.open({
-        key:            KeyService.stripePublishableKey,
-        email:          email,
-        currency:       'usd',
-        name:           'Update credit card',
-        description:    'Enter your credit card number',
-        panelLabel:     'Update',
-        token:          submitToken,
-        image:          'static/img/quay-icon-stripe.png',
-        billingAddress: true,
-        zipCode:        true,
-        opened:         function() { $scope.$apply(function() { callbacks['opened']() }); },
-        closed:         function() { $scope.$apply(function() { callbacks['closed']() }); }
-     });
-  };
-
-  planService.getEmail = function(orgname) {
-    var email = null;
-    if (UserService.currentUser()) {
-      email = UserService.currentUser().email;
-
-      if (orgname) {
-        org = UserService.getOrganization(orgname);
-        if (org) {
-          emaiil = org.email;
-        }
+    ApiService.setCard(orgname, setCardDetails).then(
+      function(resp) {
+        $timeout(function() {
+          callbacks['success'](resp)
+          document.location = resp.url;
+        }, 250);
+        
+      },
+      function(resp) {
+        planService.handleCardError(resp);
+        callbacks['failure'](resp);
       }
-    }
-    return email;
-  };
-
-  planService.showSubscribeDialog = function($scope, orgname, planId, callbacks, opt_title, opt_async) {
-    if (!Features.BILLING) { return; }
-
-    // If the async parameter is true and this is a browser that does not allow async popup of the
-    // Stripe dialog (such as Mobile Safari or IE), show a bootbox to show the dialog instead.
-    var isIE = navigator.appName.indexOf("Internet Explorer") != -1;
-    var isMobileSafari = navigator.userAgent.match(/(iPod|iPhone|iPad)/) && navigator.userAgent.match(/AppleWebKit/);
-
-    if (opt_async && (isIE || isMobileSafari)) {
-      bootbox.dialog({
-        "message": "Please click 'Subscribe' to continue",
-        "buttons": {
-          "subscribe": {
-            "label": "Subscribe",
-            "className": "btn-primary",
-            "callback": function() {
-              planService.showSubscribeDialog($scope, orgname, planId, callbacks, opt_title, false);
-            }
-          },
-          "close": {
-            "label": "Cancel",
-            "className": "btn-default"
-          }
-        }
-      });
-      return;
-    }
-
-    if (callbacks['opening']) {
-      callbacks['opening']();
-    }
-
-    var submitted = false;
-    var submitToken = function(token) {
-      if (submitted) { return; }
-      submitted = true;
-
-      if (Config.MIXPANEL_KEY) {
-        mixpanel.track('plan_subscribe');
-      }
-
-      $scope.$apply(function() {
-        if (callbacks['started']) {
-          callbacks['started']();
-        }
-        planService.setSubscription(orgname, planId, callbacks['success'], callbacks['failure'], token);
-      });
-    };
-
-    planService.getPlan(planId, function(planDetails) {
-      var email = planService.getEmail(orgname);
-      StripeCheckout.open({
-        key:            KeyService.stripePublishableKey,
-        email:          email,
-        amount:         planDetails.price,
-        currency:       'usd',
-        name:           'Quay ' + planDetails.title + ' Subscription',
-        description:    'Up to ' + planDetails.privateRepos + ' private repositories',
-        panelLabel:     opt_title || 'Subscribe',
-        token:          submitToken,
-        image:          'static/img/quay-icon-stripe.png',
-        billingAddress: true,
-        zipCode:        true,
-        opened:         function() { $scope.$apply(function() { callbacks['opened']() }); },
-        closed:         function() { $scope.$apply(function() { callbacks['closed']() }); }
-      });
-    });
+    );
   };
 
   return planService;
