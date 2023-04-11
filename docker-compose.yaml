@@ -28,6 +28,7 @@ services:
     user: postgres
     container_name: clair-db
     image: docker.io/library/postgres:12.1
+    command: -c 'max_connections=300'
     environment:
       POSTGRES_USER: "clair"
       POSTGRES_DB: "clair"
