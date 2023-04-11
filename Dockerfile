@@ -6,12 +6,7 @@ ENV PATH=/app/bin/:$PATH \
 	PYTHONIOENCODING=UTF-8 \
 	LC_ALL=C.UTF-8 \
 	LANG=C.UTF-8
-ENV QUAYDIR /quay-registry
-ENV QUAYCONF /quay-registry/conf
-ENV QUAYRUN /quay-registry/conf
-ENV QUAYPATH $QUAYDIR
 ENV PYTHONUSERBASE /app
-ENV PYTHONPATH $QUAYPATH
 ENV TZ UTC
 RUN set -ex\
 	; microdnf -y module enable nginx:1.20 \
@@ -148,18 +143,18 @@ RUN curl -fsSL "https://github.com/quay/config-tool/archive/${CONFIGTOOL_VERSION
 COPY --from=config-editor /opt/app-root/src/static/build  /opt/app-root/src/pkg/lib/editor/static/build
 RUN go install -tags=fips ./cmd/config-tool
 
-FROM base AS build-quaydir
-WORKDIR $QUAYDIR
-COPY --from=config-editor /opt/app-root/src ${QUAYDIR}/config_app
-COPY --from=build-static /opt/app-root/src/static ${QUAYDIR}/static
-COPY --from=build-ui /opt/app-root/dist ${QUAYDIR}/static/patternfly
+FROM registry.access.redhat.com/ubi8/ubi-minimal AS build-quaydir
+WORKDIR /quaydir
+COPY --from=config-editor /opt/app-root/src /quaydir/config_app
+COPY --from=build-static /opt/app-root/src/static /quaydir/static
+COPY --from=build-ui /opt/app-root/dist /quaydir/static/patternfly
 
 # Copy in source and update local copy of AWS IP Ranges.
 # This is a bad place to do the curl, but there's no good place to do
 # it except to have it checked in.
-COPY --chown=0:0 . ${QUAYDIR}
+COPY --chown=0:0 . .
 RUN set -ex\
-	; chmod -R g=u "${QUAYDIR}"\
+	; chmod -R g=u .\
 	; curl -fsSL https://ip-ranges.amazonaws.com/ip-ranges.json -o util/ipresolver/aws-ip-ranges.json\
 	;
 
@@ -167,6 +162,12 @@ RUN set -ex\
 # containers are copied in.
 FROM base AS final
 LABEL maintainer "quay-devel@redhat.com"
+
+ENV QUAYDIR /quay-registry
+ENV QUAYCONF /quay-registry/conf
+ENV QUAYRUN /quay-registry/conf
+ENV QUAYPATH $QUAYDIR
+ENV PYTHONPATH $QUAYPATH
 
 # All of these chgrp+chmod commands are an Openshift-ism.
 #
@@ -200,7 +201,7 @@ WORKDIR $QUAYDIR
 COPY --from=pushgateway /usr/local/bin/pushgateway /usr/local/bin/pushgateway
 COPY --from=build-python /app /app
 COPY --from=config-tool /opt/app-root/src/go/bin/config-tool /bin
-COPY --from=build-quaydir $QUAYDIR $QUAYDIR
+COPY --from=build-quaydir /quaydir $QUAYDIR
 
 EXPOSE 8080 8443 7443 9091 55443
 # Don't expose /var/log as a volume, because we just configured it
