@@ -3,12 +3,22 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.8.6"></a>
+## [v3.8.6] - 2023-04-12
+### Build(Deps)
+- [f218831c](https://github.com/quay/quay/commit/f218831c5162f5159b26e7787cf65f0d617bb90d): bump certifi from 2019.11.28 to 2022.12.7 ([#1823](https://github.com/quay/quay/issues/1823))
+### Chore
+- [7761140e](https://github.com/quay/quay/commit/7761140e24a2bc537567f48f2b8e63d88d514e30): Pin distribution-spec conformance tests ([#1816](https://github.com/quay/quay/issues/1816))
+### Storagereplication
+- [3809d7ff](https://github.com/quay/quay/commit/3809d7ff428d8342a4acad55a7fef46ff04d8a83): sleep on unexpected exception for retry (PROJQUAY-4792) ([#1810](https://github.com/quay/quay/issues/1810))
+
 <a name="v3.8.5"></a>
 ## [v3.8.5] - 2023-03-21
 ### Build(Deps)
 - [c38bbef9](https://github.com/quay/quay/commit/c38bbef98cb6338f784130f1ee6ffdaa701138bd): bump setuptools from 63.4.0 to 65.5.1 ([#1797](https://github.com/quay/quay/issues/1797))
 - [e4a562b5](https://github.com/quay/quay/commit/e4a562b58bc111bcf4a6faca0511f97d1a96a84d): reduce CVEs in dependencies and runtime environment (PROJQUAY-4777) ([#1644](https://github.com/quay/quay/issues/1644)) ([#1795](https://github.com/quay/quay/issues/1795))
 ### Chore
+- [9ca88389](https://github.com/quay/quay/commit/9ca883899ebdf7af66957b542b0fcf6f483cd24c): v3.8.5 changelog bump (PROJQUAY-5228) ([#1805](https://github.com/quay/quay/issues/1805))
 - [5695cbf9](https://github.com/quay/quay/commit/5695cbf9dd28d5bf23a34209394e1ce54eecb697): Downgrade cryptography to 3.3.2 (PROJQUAY-5120) ([#1804](https://github.com/quay/quay/issues/1804))
 - [5af451df](https://github.com/quay/quay/commit/5af451df5af503201e1c71a011a14e98cfead890): Add setuptools-rust as a build dependency ([#1798](https://github.com/quay/quay/issues/1798))
 - [7e2eab2e](https://github.com/quay/quay/commit/7e2eab2e9a6c8e558c232b1aa7bad09ccfd57eeb): backport requirements.txt changes (PROJQUAY-4777) ([#1781](https://github.com/quay/quay/issues/1781))
@@ -875,7 +885,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.5...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.6...HEAD
+[v3.8.6]: https://github.com/quay/quay/compare/v3.8.5...v3.8.6
 [v3.8.5]: https://github.com/quay/quay/compare/v3.8.4...v3.8.5
 [v3.8.4]: https://github.com/quay/quay/compare/v3.8.3...v3.8.4
 [v3.8.3]: https://github.com/quay/quay/compare/v3.8.2...v3.8.3
