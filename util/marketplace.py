@@ -46,7 +46,6 @@ class RHUserAPI:
             timeout=REQUEST_TIMEOUT,
         )
 
-        logger.debug(r.content)
         info = json.loads(r.content)
         if not info:
             return None
