@@ -228,7 +228,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def delete_tag(self, repository_ref, tag_name):
+    def delete_tag(self, repository_ref, tag_name, force=False):
         """
         Deletes the latest, *active* tag with the given name in the repository.
         """

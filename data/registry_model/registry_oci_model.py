@@ -505,12 +505,12 @@ class OCIModel(RegistryDataInterface):
 
             return Tag.for_tag(tag, self._legacy_image_id_handler)
 
-    def delete_tag(self, repository_ref, tag_name):
+    def delete_tag(self, repository_ref, tag_name, force=False):
         """
         Deletes the latest, *active* tag with the given name in the repository.
         """
         with db_disallow_replica_use():
-            deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name)
+            deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name, force)
             if deleted_tag is None:
                 return None
 

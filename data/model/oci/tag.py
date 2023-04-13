@@ -432,7 +432,7 @@ def retarget_tag(
         return created
 
 
-def delete_tag(repository_id, tag_name):
+def delete_tag(repository_id, tag_name, force=False):
     """
     Deletes the alive tag with the given name in the specified repository and returns the deleted
     tag.
@@ -443,18 +443,17 @@ def delete_tag(repository_id, tag_name):
     if tag is None:
         return None
 
-    return _delete_tag(tag, get_epoch_timestamp_ms())
+    return _delete_tag(tag, get_epoch_timestamp_ms(), force)
 
 
-def _delete_tag(tag, now_ms):
+def _delete_tag(tag, now_ms, force=False):
     """
     Deletes the given tag by marking it as expired.
     """
-    now_ts = int(now_ms // 1000)
-
     with db_transaction():
+        params = {"lifetime_end_ms": 0, "hidden": True} if force else {"lifetime_end_ms": now_ms}
         updated = (
-            Tag.update(lifetime_end_ms=now_ms)
+            Tag.update(params)
             .where(Tag.id == tag.id, Tag.lifetime_end_ms == tag.lifetime_end_ms)
             .execute()
         )
@@ -463,6 +462,7 @@ def _delete_tag(tag, now_ms):
 
         # TODO: Remove the linkage code once RepositoryTag is gone.
         try:
+            now_ts = 0 if force else int(now_ms // 1000)
             old_style_tag = (
                 TagToRepositoryTag.select(TagToRepositoryTag, RepositoryTag)
                 .join(RepositoryTag)

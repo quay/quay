@@ -231,16 +231,25 @@ class RepositoryTag(RepositoryParamResource):
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
+    @parse_args()
+    @query_param(
+        "force",
+        "Forces tag to be garbage collected regardless of time machine settings.",
+        type=truthy_bool,
+        default=False,
+    )
     @nickname("deleteFullTag")
-    def delete(self, namespace, repository, tag):
+    def delete(self, namespace, repository, tag, parsed_args):
         """
         Delete the specified repository tag.
         """
+
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
 
-        tag_ref = registry_model.delete_tag(repo_ref, tag)
+        force = parsed_args.get("force")
+        tag_ref = registry_model.delete_tag(repo_ref, tag, force)
         if tag_ref is None:
             raise NotFound()
 

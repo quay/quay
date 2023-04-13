@@ -656,8 +656,8 @@ class TestRegistryProxyModelLookupManifestByDigest:
 
         assert updated_tag.id == manifest_tag.id
         assert updated_list_tag.id == manifest_list_tag.id
-        assert updated_tag.lifetime_end_ms > manifest_tag.lifetime_end_ms
-        assert updated_list_tag.lifetime_end_ms > manifest_list_tag.lifetime_end_ms
+        assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms()
+        assert updated_list_tag.lifetime_end_ms > get_epoch_timestamp_ms()
 
     def test_renew_manifest_list_tag_when_upstream_manifest_changed(
         self, create_repo, proxy_manifest_response
@@ -1286,40 +1286,38 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         with pytest.raises(QuotaExceededException):
             proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest)
 
-    # TODO(quota): Need to determine what we want the UX to be since size
-    # is no longer recalculated immediately
-    # @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
-    # def test_auto_pruning_when_quota_limit_reached(
-    #     self, create_repo, proxy_manifest_response, initialized_db
-    # ):
-    #     repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-    #     limit_bytes = 83375093
-    #     namespace = user.get_user_or_org(self.orgname)
-    #     namespacequota.create_namespace_quota(namespace, limit_bytes)
+    @patch("data.registry_model.registry_proxy_model.Proxy", MagicMock())
+    def test_auto_pruning_when_quota_limit_reached(
+        self, create_repo, proxy_manifest_response, initialized_db
+    ):
+        repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
+        limit_bytes = 83375093
+        namespace = user.get_user_or_org(self.orgname)
+        namespacequota.create_namespace_quota(namespace, limit_bytes)
 
-    #     proxy_mock = proxy_manifest_response(
-    #         "8.4", UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
-    #     )
-    #     with patch(
-    #         "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
-    #     ):
-    #         proxy_model = ProxyModel(
-    #             self.orgname,
-    #             self.upstream_repository,
-    #             self.user,
-    #         )
-    #         first_manifest = proxy_model.get_repo_tag(repo_ref, "8.4")
-    #     assert first_manifest is not None
-    #     first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
-    #     assert first_tag is not None
-    #     assert namespacequota.get_namespace_size(self.orgname) == 83375093
+        proxy_mock = proxy_manifest_response(
+            "8.4", UBI8_8_4_MANIFEST_SCHEMA2, DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE
+        )
+        with patch(
+            "data.registry_model.registry_proxy_model.Proxy", MagicMock(return_value=proxy_mock)
+        ):
+            proxy_model = ProxyModel(
+                self.orgname,
+                self.upstream_repository,
+                self.user,
+            )
+            first_manifest = proxy_model.get_repo_tag(repo_ref, "8.4")
+        assert first_manifest is not None
+        first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
+        assert first_tag is not None
+        assert namespacequota.get_namespace_size(self.orgname) == 83375093
 
-    #     # pull a different tag when the quota limit is reached and verify
-    #     # that the previous tag was removed
-    #     input_manifest = parse_manifest_from_bytes(
-    #         Bytes.for_string_or_unicode(testdata.UBI8_LINUX_AMD64["manifest"]),
-    #         DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
-    #     )
-    #     assert proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest) is None
-    #     first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
-    #     assert first_tag is None
+        # pull a different tag when the quota limit is reached and verify
+        # that the previous tag was removed
+        input_manifest = parse_manifest_from_bytes(
+            Bytes.for_string_or_unicode(testdata.UBI8_LINUX_AMD64["manifest"]),
+            DOCKER_SCHEMA2_MANIFEST_CONTENT_TYPE,
+        )
+        assert proxy_model._check_image_upload_possible_or_prune(repo_ref, input_manifest) is None
+        first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
+        assert first_tag is None
