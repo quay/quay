@@ -176,10 +176,9 @@ def create_gunicorn_worker():
     Follows the gunicorn application factory pattern, enabling
     a quay worker to run as a gunicorn worker thread
     """
-    if not features.ENTITLEMENT_RECONCILIATION:
-        logger.debug("Reconciler disabled, skipping")
-        return None
-    worker = GunicornWorker(__name__, app, ReconciliationWorker(), True)
+    worker = GunicornWorker(
+        __name__, app, ReconciliationWorker(), features.ENTITLEMENT_RECONCILIATION
+    )
     return worker
 
 
