@@ -4,7 +4,7 @@ import time
 
 from peewee import fn
 from data.registry_model.quota import run_backfill
-from data.database import QuotaNamespaceSize, User
+from data.database import DeletedNamespace, QuotaNamespaceSize, User
 
 import features
 
@@ -17,8 +17,8 @@ from util.log import logfile_path
 
 
 logger = logging.getLogger(__name__)
-POLL_PERIOD = 5
-BATCH_SIZE = 1000
+POLL_PERIOD = app.config.get("QUOTA_BACKFILL_POLL_PERIOD", 15)
+BATCH_SIZE = app.config.get("QUOTA_BACKFILL_BATCH_SIZE", 100)
 
 
 class QuotaTotalWorker(Worker):
@@ -31,7 +31,14 @@ class QuotaTotalWorker(Worker):
             QuotaNamespaceSize.namespace_user == User.id,
             QuotaNamespaceSize.backfill_start_ms.is_null(False),
         )
-        for namespace in User.select().where(~fn.EXISTS(subq)).limit(BATCH_SIZE):
+        for namespace in (
+            User.select()
+            .where(
+                ~fn.EXISTS(subq),
+                User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)),
+            )
+            .limit(BATCH_SIZE)
+        ):
             run_backfill(namespace.id)
 
 
@@ -47,6 +54,11 @@ if __name__ == "__main__":
             time.sleep(100000)
 
     if not features.QUOTA_MANAGEMENT:
+        logger.debug("Quota management disabled; skipping quotatotalworker")
+        while True:
+            time.sleep(100000)
+
+    if not app.config.get("QUOTA_BACKFILL", True):
         logger.debug("Quota management disabled; skipping quotatotalworker")
         while True:
             time.sleep(100000)

@@ -17,6 +17,7 @@ from data.database import (
     RepositoryNotification,
     ExternalNotificationEvent,
     db_transaction,
+    get_epoch_timestamp_ms,
 )
 from data.model import BlobDoesNotExist
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
@@ -197,6 +198,10 @@ def connect_manifests(manifests: list[Manifest], parent: Manifest, repository_id
         raise _ManifestAlreadyExists(e)
 
 
+def is_child_manifest(manifest_id: int):
+    return ManifestChild.select().where(ManifestChild.child_manifest == manifest_id).exists()
+
+
 def connect_blobs(manifest: ManifestInterface, blob_ids: set[int], repository_id: int):
     manifest_blobs = [
         dict(manifest=manifest, repository=repository_id, blob=blob_id) for blob_id in blob_ids
@@ -357,6 +362,13 @@ def _create_manifest(
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)
+                for child_manifest in child_manifest_rows.values():
+                    # Allows for immediate GC of sub-manifests on manifest list deletion
+                    Tag.update(lifetime_end_ms=get_epoch_timestamp_ms()).where(
+                        Tag.repository == repository_id,
+                        Tag.manifest == child_manifest.id,
+                        Tag.hidden == True,
+                    ).execute()
 
             # If this manifest is being created not for immediate tagging, add a temporary tag to the
             # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're

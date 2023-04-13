@@ -1250,6 +1250,21 @@ CONFIG_SCHEMA = {
             "description": "The time to delay the Quota backfill operation. Must be set longer than the time required to complete the deployment.",
             "x-example": 30,
         },
+        "QUOTA_BACKFILL": {
+            "type": "boolean",
+            "description": "Enables the quota backfill worker to calculate the size of pre-existing blobs",
+            "x-example": True,
+        },
+        "QUOTA_BACKFILL_POLL_PERIOD": {
+            "type": "int",
+            "description": "The amount of time between runs of the quota backfill worker in seconds",
+            "x-example": 15,
+        },
+        "QUOTA_BACKFILL_BATCH_SIZE": {
+            "type": "int",
+            "description": "The amount of namespaces that will be calculated for quota backfill on wakeup of the backfill worker.",
+            "x-example": 100,
+        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",

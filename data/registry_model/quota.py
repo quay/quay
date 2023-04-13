@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from data.model import db_transaction
 
-from peewee import fn
+from peewee import JOIN, fn
 from data.database import (
     ImageStorage,
     ManifestBlob,
@@ -12,6 +12,7 @@ from data.database import (
     QuotaNamespaceSize,
     Repository,
     QuotaRepositorySize,
+    RepositoryState,
     Tag,
     User,
 )
@@ -41,12 +42,15 @@ def update_sizes(repository_id: int, manifest_id: int, storage_sizes, operation:
     namespace_total = 0
     repository_total = 0
     for storage_size in storage_sizes:
-        # To account for schema 1, which doesn't include the compressed_size field
+
+        # If the blob doesn't exist in the namespace it doesn't exist in the repo either
+        # so add the total to both. If it exists in the namespace we need to check
+        # if it exists in the repository.
         blob_size = storage_size[IMAGE_SIZE] if storage_size[IMAGE_SIZE] is not None else 0
         if not blob_exists_in_namespace(namespace_id, manifest_id, storage_size[ID]):
             namespace_total = namespace_total + blob_size
-
-        if not blob_exists_in_repository(repository_id, manifest_id, storage_size[ID]):
+            repository_total = repository_total + blob_size
+        elif not blob_exists_in_repository(repository_id, manifest_id, storage_size[ID]):
             repository_total = repository_total + blob_size
 
     write_namespace_total(namespace_id, manifest_id, namespace_total, operation)
@@ -54,36 +58,29 @@ def update_sizes(repository_id: int, manifest_id: int, storage_sizes, operation:
 
 
 def blob_exists_in_namespace(namespace_id: int, manifest_id: int, blob_id: int):
-    try:
-        (
-            ManifestBlob.select(ManifestBlob.id)
-            .join(Repository, on=(ManifestBlob.repository == Repository.id))
-            .where(
-                Repository.namespace_user == namespace_id,
-                ManifestBlob.blob == blob_id,
-                ManifestBlob.manifest != manifest_id,
-            )
-            .get()
+    return (
+        ManifestBlob.select(1)
+        .join(Repository, on=(ManifestBlob.repository == Repository.id))
+        .where(
+            Repository.namespace_user == namespace_id,
+            ManifestBlob.blob == blob_id,
+            ManifestBlob.manifest != manifest_id,
+            Repository.state != RepositoryState.MARKED_FOR_DELETION,
         )
-        return True
-    except ManifestBlob.DoesNotExist:
-        return False
+        .exists()
+    )
 
 
 def blob_exists_in_repository(repository_id: int, manifest_id: int, blob_id: int):
-    try:
-        (
-            ManifestBlob.select(ManifestBlob.id)
-            .where(
-                ManifestBlob.repository == repository_id,
-                ManifestBlob.blob == blob_id,
-                ManifestBlob.manifest != manifest_id,
-            )
-            .get()
+    return (
+        ManifestBlob.select(1)
+        .where(
+            ManifestBlob.repository == repository_id,
+            ManifestBlob.blob == blob_id,
+            ManifestBlob.manifest != manifest_id,
         )
-        return True
-    except ManifestBlob.DoesNotExist:
-        return False
+        .exists()
+    )
 
 
 def write_namespace_total(
@@ -93,10 +90,7 @@ def write_namespace_total(
     namespace_size_exists = namespace_size is not None
 
     # If backfill hasn't ran yet for this namespace don't do anything
-    if namespace_size_exists and (
-        namespace_size.backfill_start_ms is None
-        or namespace_size.backfill_start_ms > get_epoch_timestamp_ms()
-    ):
+    if namespace_size_exists and not namespace_size.backfill_complete:
         return
 
     # If the namespacesize entry doesn't exist and this is the only manifest in the namespace
@@ -124,10 +118,7 @@ def write_repository_total(
     repository_size_exists = repository_size is not None
 
     # If backfill hasn't ran yet for this repository don't do anything
-    if repository_size_exists and (
-        repository_size.backfill_start_ms is None
-        or repository_size.backfill_start_ms > get_epoch_timestamp_ms()
-    ):
+    if repository_size_exists and not repository_size.backfill_complete:
         return
 
     # If the repositorysize entry doesn't exist and this is the only manifest in the repository
@@ -155,7 +146,6 @@ def get_namespace_id_from_repository(repository: int):
         repo = Repository.select(Repository.namespace_user).where(Repository.id == repository).get()
         return repo.namespace_user_id
     except Repository.DoesNotExist:
-        # TODO: should not happen
         return None
 
 
@@ -222,26 +212,75 @@ def increment_repositorysize(
 
 
 def only_manifest_in_namespace(namespace_id: int, manifest_id: int):
-    try:
-        (
-            ManifestBlob.select()
-            .join(Repository, on=(Repository.id == ManifestBlob.repository))
-            .where(Repository.namespace_user == namespace_id, ManifestBlob.manifest != manifest_id)
-            .get()
+    return not (
+        ManifestBlob.select(1)
+        .join(Repository, on=(Repository.id == ManifestBlob.repository))
+        .where(
+            Repository.namespace_user == namespace_id,
+            ManifestBlob.manifest != manifest_id,
+            Repository.state != RepositoryState.MARKED_FOR_DELETION,
         )
-        return False
-    except ManifestBlob.DoesNotExist:
-        return True
+        .exists()
+    )
 
 
 def only_manifest_in_repository(repository_id: int, manifest_id: int):
-    try:
-        ManifestBlob.select().where(
-            ManifestBlob.repository == repository_id, ManifestBlob.manifest != manifest_id
-        ).get()
-        return False
-    except ManifestBlob.DoesNotExist:
-        return True
+    return not (
+        ManifestBlob.select(1)
+        .where(ManifestBlob.repository == repository_id, ManifestBlob.manifest != manifest_id)
+        .exists()
+    )
+
+
+def is_blob_alive(namespace_id: int, tag_id: int, blob_id: int):
+    # Check if the blob is being referenced by an alive, non-hidden tag that isn't the
+    # tag we're currently creating/deleting within the namespace.
+    # Since sub-manifests are only considered alive if their parent tag is alive,
+    # check the parent tag as well.
+    # The where statements create an if ... else ... statement creating the logic:
+    # if ParentTag is None:
+    #     check that Tag is not hidden, alive, and in the namespace
+    # elif ParentTag is not None:
+    #     check that ParentTag is not hidden, alive, and in the namespace
+    ParentTag = Tag.alias()
+    return (
+        ManifestBlob.select(1)
+        .join(Repository, on=(ManifestBlob.repository == Repository.id))
+        .join(Tag, on=(Tag.manifest == ManifestBlob.manifest))
+        .join(
+            ManifestChild,
+            on=(ManifestBlob.manifest == ManifestChild.child_manifest),
+            join_type=JOIN.LEFT_OUTER,
+        )
+        .join(
+            ParentTag, on=(ManifestChild.manifest == ParentTag.manifest), join_type=JOIN.LEFT_OUTER
+        )
+        .where(
+            (
+                ParentTag.id.is_null(True)
+                & ~Tag.hidden
+                & (Repository.namespace_user == namespace_id)
+                & (ManifestBlob.blob == blob_id)
+                & (Tag.id != tag_id)
+                & (
+                    Tag.lifetime_end_ms.is_null(True)
+                    | (Tag.lifetime_end_ms > get_epoch_timestamp_ms())
+                )
+            )
+            | (
+                ParentTag.id.is_null(False)
+                & ~ParentTag.hidden
+                & (Repository.namespace_user == namespace_id)
+                & (ParentTag.id != tag_id)
+                & (ManifestBlob.blob == blob_id)
+                & (
+                    ParentTag.lifetime_end_ms.is_null(True)
+                    | (ParentTag.lifetime_end_ms > get_epoch_timestamp_ms())
+                )
+            )
+        )
+        .exists()
+    )
 
 
 # Backfill of existing manifests
@@ -282,7 +321,6 @@ def run_backfill(namespace_id: int):
             update_repositorysize(repository.id, params, repository_size_exists)
 
             params = {"size_bytes": get_repository_total(repository.id), "backfill_complete": True}
-            print("catdebug", "repository", repository.id, "backfill", params)
             update_repositorysize(repository.id, params, True)
 
 
@@ -291,7 +329,10 @@ def get_namespace_total(namespace_id: int):
         ImageStorage.select(ImageStorage.image_size)
         .join(ManifestBlob, on=(ImageStorage.id == ManifestBlob.blob))
         .join(Repository, on=(Repository.id == ManifestBlob.repository))
-        .where(Repository.namespace_user == namespace_id)
+        .where(
+            Repository.namespace_user == namespace_id,
+            Repository.state != RepositoryState.MARKED_FOR_DELETION,
+        )
         .group_by(ImageStorage.id)
     )
     total = ImageStorage.select(fn.Sum(derived_ns.c.image_size)).from_(derived_ns).scalar()
@@ -310,7 +351,10 @@ def get_repository_total(repository_id: int):
 
 
 def repositories_in_namespace(namespace_id: int):
-    return Repository.select().where(Repository.namespace_user == namespace_id)
+    return Repository.select().where(
+        Repository.namespace_user == namespace_id,
+        Repository.state != RepositoryState.MARKED_FOR_DELETION,
+    )
 
 
 def update_namespacesize(namespace_id: int, params, exists=False):
@@ -335,9 +379,9 @@ def update_repositorysize(repository_id: int, params, exists: bool):
 
 def reset_backfill(repository_id: int):
     try:
-        QuotaRepositorySize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
-            QuotaRepositorySize.repository == repository_id
-        ).execute()
+        QuotaRepositorySize.update(
+            {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
+        ).where(QuotaRepositorySize.repository == repository_id).execute()
         namespace_id = get_namespace_id_from_repository(repository_id)
         reset_namespace_backfill(namespace_id)
     except QuotaRepositorySize.DoesNotExist:
@@ -346,8 +390,8 @@ def reset_backfill(repository_id: int):
 
 def reset_namespace_backfill(namespace_id: int):
     try:
-        QuotaNamespaceSize.update({"backfill_start_ms": None, "backfill_complete": False}).where(
-            QuotaNamespaceSize.namespace_user_id == namespace_id
-        ).execute()
+        QuotaNamespaceSize.update(
+            {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
+        ).where(QuotaNamespaceSize.namespace_user_id == namespace_id).execute()
     except QuotaNamespaceSize.DoesNotExist:
         pass

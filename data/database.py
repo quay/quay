@@ -999,7 +999,6 @@ class RepositorySize(BaseModel):
 
 class QuotaNamespaceSize(BaseModel):
     namespace_user = ForeignKeyField(User, unique=True)
-    namespace_user_id = int
     size_bytes = BigIntegerField(null=False, default=0)
     backfill_start_ms = BigIntegerField(null=True)
     backfill_complete = BooleanField(null=False, default=False)
@@ -1007,7 +1006,6 @@ class QuotaNamespaceSize(BaseModel):
 
 class QuotaRepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
-    repository_id: int
     size_bytes = BigIntegerField(null=False, default=0)
     backfill_start_ms = BigIntegerField(null=True)
     backfill_complete = BooleanField(null=False, default=False)

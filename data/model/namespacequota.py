@@ -290,23 +290,28 @@ def get_quota_for_view(namespace_name):
     # Currently only one quota per namespace is supported
     configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default(quotas)
 
-    namespace_quota_consumed = 0
-    running = False
     namespace_size = get_namespace_size_model(namespace_name)
-    if namespace_size is not None:
-        namespace_quota_consumed = (
-            namespace_size.size_bytes if namespace_size.size_bytes is not None else 0
-        )
-        running = (
-            namespace_size.backfill_start_ms is not None
-            and namespace_size.backfill_start_ms < get_epoch_timestamp_ms()
-            and not namespace_size.backfill_complete
-        )
+    namespace_size_exists = namespace_size is not None
+    backfill_started = namespace_size_exists and namespace_size.backfill_start_ms is not None
+
+    namespace_quota_consumed = (
+        namespace_size.size_bytes
+        if namespace_size_exists and namespace_size.size_bytes is not None
+        else 0
+    )
+
+    backfill_status = ""
+    if not namespace_size_exists or (not backfill_started and not namespace_size.backfill_complete):
+        backfill_status = "waiting"
+    elif backfill_started and not namespace_size.backfill_complete:
+        backfill_status = "running"
+    elif backfill_started and namespace_size.backfill_complete:
+        backfill_status = "complete"
 
     # If FEATURE_QUOTA_MANAGEMENT is enabled & quota is not set for an org,
     # we still want to report org's storage consumption
     return {
         "quota_bytes": namespace_quota_consumed,
         "configured_quota": configured_namespace_quota,
-        "running_backfill": running,
+        "running_backfill": backfill_status,
     }

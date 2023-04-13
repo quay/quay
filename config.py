@@ -45,6 +45,7 @@ CLIENT_WHITELIST = [
     "FEATURE_REPO_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
     "FEATURE_PROXY_CACHE",
+    "QUOTA_BACKFILL",
 ]
 
 
@@ -794,6 +795,9 @@ class DefaultConfig(ImmutableConfig):
     # totals, so this field should be set to a time longer than it takes for the rolling
     # deployment to complete
     QUOTA_TOTAL_DELAY_SECONDS = 60
+
+    # Enables the quota backfill worker
+    QUOTA_BACKFILL = True
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
