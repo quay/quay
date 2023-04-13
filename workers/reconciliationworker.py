@@ -143,7 +143,7 @@ class ReconciliationWorker(Worker):
 
         logger.info("Reconciliation worker is done")
 
-    def _reconcile_entitlements(self, skip_lock_for_testing=True):
+    def _reconcile_entitlements(self, skip_lock_for_testing=False):
         """
         Performs reconciliation for user entitlements
         """

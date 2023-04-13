@@ -348,6 +348,8 @@ RH_SKUS = {
     "MW00590MO": 500,
     "MW00591MO": 1000,
     "MW00592MO": 2000,
+    # fake sku for unit tests
+    "fake_sku": 0,
 }
 
 RH_SKU_STRIPE_IDS = {
@@ -360,9 +362,9 @@ RH_SKU_STRIPE_IDS = {
     "MW00590MO": "bus-500-2018",
     "MW00591MO": "bus-1000-2018",
     "MW00592MO": "bus-2000-2018",
-    # mapping MW005860 to depracated plan
-    # for passing unit test
-    "MW00586MO": "bus-small",
+    # mapping fake_sku to fake stripe plan
+    # for unit tests
+    "fake_sku": "bus-small",
 }
 
 

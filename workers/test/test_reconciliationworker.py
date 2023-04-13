@@ -31,7 +31,7 @@ USER_WITH_STRIPE = {
     "email": "userwithstripe@test.com",
     "username": "withstripe",
     "password": "password",
-    "sku": "some_other_sku",
+    "sku": "fake_sku",
 }
 
 USER_TO_EXTEND = {
