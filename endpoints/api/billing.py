@@ -93,19 +93,39 @@ def get_card(user):
         except stripe.error.APIConnectionError as e:
             abort(503, message="Cannot contact Stripe")
 
-        if cus and cus.subscription:
-            # Find the default card.
-            payment_method = billing.PaymentMethod.retrieve(cus.subscription.default_payment_method)
+        if cus:
+            if cus.subscription and cus.subscription.default_payment_method:
+                payment_method = billing.PaymentMethod.retrieve(
+                    cus.subscription.default_payment_method
+                )
 
-            if payment_method.card:
-                default_card = payment_method.card
-                card_info = {
-                    "owner": payment_method.billing_details.name,
-                    "type": payment_method.type,
-                    "last4": default_card.last4,
-                    "exp_month": default_card.exp_month,
-                    "exp_year": default_card.exp_year,
-                }
+                if payment_method.card:
+                    default_card = payment_method.card
+                    card_info = {
+                        "owner": payment_method.billing_details.name,
+                        "type": payment_method.type,
+                        "last4": default_card.last4,
+                        "exp_month": default_card.exp_month,
+                        "exp_year": default_card.exp_year,
+                    }
+
+            # Stripe pre-paymentmethod api
+            # Ref: https://stripe.com/blog/payment-api-design
+            elif cus.default_card:
+                default_card = None
+                for card in cus.cards.data:
+                    if card.id == cus.default_card:
+                        default_card = card
+                        break
+
+                if default_card:
+                    card_info = {
+                        "owner": default_card.name,
+                        "type": default_card.type,
+                        "last4": default_card.last4,
+                        "exp_month": default_card.exp_month,
+                        "exp_year": default_card.exp_year,
+                    }
 
     return {"card": card_info}
 
