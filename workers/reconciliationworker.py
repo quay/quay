@@ -7,10 +7,10 @@ import time
 import features
 from app import app
 from app import billing as stripe
-from data import marketplace, model
-from data.billing import get_plan
-from data.database import QuaySkuProperties
+from data import model
+from data.billing import get_plan, RH_SKU_STRIPE_IDS, RH_SKUS
 from data.model import entitlements
+from util import marketplace
 from util.locking import GlobalLock, LockNotAcquiredException
 from workers.gunicorn_worker import GunicornWorker
 from workers.namespacegcworker import LOCK_TIMEOUT_PADDING
@@ -40,17 +40,24 @@ class ReconciliationWorker(Worker):
         """
         Check if user's stripe plan matches with RH sku
         """
-        stripe_customer = stripe.Customer.retrieve(user.stripe_id)
-        logger.debug("stripe customer = %s", stripe_customer)
+        stripe_id = user.stripe_id
+
+        if stripe_id is None:
+            return False
+
+        stripe_customer = stripe.Customer.retrieve(stripe_id)
         if stripe_customer is None:
             logger.debug("user %s has no valid subscription on stripe", user.username)
             return False
 
         plan = get_plan(stripe_customer.subscription.plan.id)
-        if plan["privateRepos"] == sku.value:
+        if plan is None:
+            return False
+
+        if plan["stripeId"] == RH_SKU_STRIPE_IDS[sku]:
             return True
 
-        logger.debug("stripe plan and sku %s do not match for %s", sku.name, user.username)
+        logger.debug("stripe plan and sku %s do not match for %s", sku, user.username)
         return False
 
     def _perform_reconciliation(self, user_api, marketplace_api):
@@ -78,9 +85,9 @@ class ReconciliationWorker(Worker):
                 if ebsAccountNumber:
                     entitlements.save_ebs_account_number(user, ebsAccountNumber)
 
-            for sku in QuaySkuProperties:
+            for sku in RH_SKUS:
                 # Check each sku since user can have multiple subscriptions
-                rh_sku = sku.name
+                rh_sku = sku
 
                 if ebsAccountNumber is None:
                     logger.debug("No account found for %s", user.username)
@@ -91,7 +98,7 @@ class ReconciliationWorker(Worker):
                 # If there is no subscription, we need to create one for them
                 if subscription is None and user.stripe_id:
                     logger.debug("Checking if we need to create subscription for %s", user.username)
-                    if self._check_stripe_matches_sku(user, sku):
+                    if self._check_stripe_matches_sku(user, rh_sku):
                         logger.debug("Will create %s for %s", rh_sku, user.username)
                         marketplace_api.create_entitlement(ebsAccountNumber, rh_sku)
                     continue
@@ -140,8 +147,8 @@ class ReconciliationWorker(Worker):
         """
         Performs reconciliation for user entitlements
         """
-        internal_user_api = marketplace.UserAPI(app.config)
-        internal_marketplace_api = marketplace.MarketplaceAPI(app.config)
+        internal_user_api = marketplace.RHUserAPI(app.config)
+        internal_marketplace_api = marketplace.RHMarketplaceAPI(app.config)
         # generate random wait
         random_wait = random.randint(1, 100)
         time.sleep(random_wait)
@@ -172,8 +179,8 @@ def create_gunicorn_worker():
     if not features.ENTITLEMENT_RECONCILIATION:
         logger.debug("Reconciler disabled, skipping")
         return None
-    g_worker = GunicornWorker(__name__, app, ReconciliationWorker(), True)
-    return g_worker
+    worker = GunicornWorker(__name__, app, ReconciliationWorker(), True)
+    return worker
 
 
 if __name__ == "__main__":

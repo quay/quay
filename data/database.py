@@ -2153,22 +2153,6 @@ class RedHatSubscriptions(BaseModel):
     sku_id = CharField(null=True)
 
 
-class QuaySkuProperties(IntEnum):
-    """
-    Possible SKU values and how many private repos they entitle
-    """
-
-    MW00584MO = 5
-    MW00585MO = 10
-    MW00586MO = 20
-    MW00587MO = 50
-    MW00588MO = 125
-    MW00589MO = 250
-    MW00590MO = 500
-    MW00591MO = 1000
-    MW00592MO = 2000
-
-
 # Defines a map from full-length index names to the legacy names used in our code
 # to meet length restrictions.
 LEGACY_INDEX_MAP = {

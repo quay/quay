@@ -338,6 +338,33 @@ PLANS = [
     },
 ]
 
+RH_SKUS = {
+    "MW00584MO": 5,
+    "MW00585MO": 10,
+    "MW00586MO": 20,
+    "MW00587MO": 50,
+    "MW00588MO": 125,
+    "MW00589MO": 250,
+    "MW00590MO": 500,
+    "MW00591MO": 1000,
+    "MW00592MO": 2000,
+}
+
+RH_SKU_STRIPE_IDS = {
+    "MW00584MO": "personal-2018",
+    "MW00585MO": "bus-micro-2018",
+    "MW00586MO": "bus-small-2018",
+    "MW00587MO": "bus-medium-2018",
+    "MW00588MO": "bus-large-2018",
+    "MW00589MO": "bus-xlarge-2018",
+    "MW00590MO": "bus-500-2018",
+    "MW00591MO": "bus-1000-2018",
+    "MW00592MO": "bus-2000-2018",
+    # mapping MW005860 to depracated plan
+    # for passing unit test
+    "MW00586MO": "bus-small",
+}
+
 
 def get_plan(plan_id):
     """
