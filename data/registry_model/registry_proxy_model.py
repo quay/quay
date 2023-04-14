@@ -178,6 +178,9 @@ class ProxyModel(OCIModel):
                 is_manifest_list = (
                     ManifestChild.select(1).where(ManifestChild.manifest == tag.manifest).exists()
                 )
+
+                # Get all the blobs under this manifest. If a manifest list get all the blobs
+                # under the child manifests as well
                 blobs = None
                 if is_manifest_list:
                     blobs = (
@@ -196,7 +199,9 @@ class ProxyModel(OCIModel):
                         .where(ManifestBlob.manifest == tag.manifest)
                     )
 
-                # We remove duplicates within the loop to prevent using "distinct" in the above query
+                # We remove duplicates within the loop to prevent using "distinct" in the above query.
+                # If the blob is not being referenced by an alive tag we'll get that size back
+                # when it's GC'd, so add it to the reclaimable total.
                 seen_blobs = []
                 for blob in blobs:
                     if blob.id not in seen_blobs and not is_blob_alive(
@@ -207,6 +212,8 @@ class ProxyModel(OCIModel):
                     seen_blobs.append(blob.id)
 
                 oci.tag.delete_tag(tag.repository_id, tag.name)
+
+                # If we get enough size back from deleting this tag, exit
                 if (curr_ns_size + image_size - reclaimable_size) <= ns_quota_limit:
                     return
 
@@ -290,6 +297,8 @@ class ProxyModel(OCIModel):
                     if self._config.expiration_s
                     else None
                 )
+                # If child manifest, set expiration to now to allow immediate GC of the manifest
+                # when the parent is GC'd
                 expiration = get_epoch_timestamp_ms() if len(tag_ids) > 0 else new_expiration
                 oci.tag.set_tag_end_ms(db_tag, expiration)
 
@@ -357,6 +366,8 @@ class ProxyModel(OCIModel):
                     if self._config.expiration_s
                     else None
                 )
+                # If child manifest, set expiration to now to allow immediate GC of the manifest
+                # when the parent is GC'd
                 if db_tag is not None and is_child_manifest(db_tag.manifest):
                     new_expiration = get_epoch_timestamp_ms()
                 oci.tag.set_tag_end_ms(db_tag, new_expiration)
@@ -491,6 +502,8 @@ class ProxyModel(OCIModel):
                 # 0 means a tag never expires - if we get 0 as expiration,
                 # we set the tag expiration to None.
                 expiration = self._config.expiration_s or None
+                # If child manifest, set expiration to now to allow immediate GC of the manifest
+                # when the parent is GC'd
                 if db_manifest is not None and is_child_manifest(db_manifest.id):
                     expiration = get_epoch_timestamp_ms()
                 tag = oci.tag.retarget_tag(
@@ -552,6 +565,8 @@ class ProxyModel(OCIModel):
             with db_transaction():
                 db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
                 expiration = self._config.expiration_s or None
+                # If child manifest, set expiration to now to allow immediate GC of the manifest
+                # when the parent is GC'd
                 if db_manifest is not None and is_child_manifest(db_manifest.id):
                     expiration = get_epoch_timestamp_ms()
                 tag = Tag.for_tag(
@@ -675,7 +690,7 @@ class ProxyModel(OCIModel):
             # Add blobs to namespace/repo total. If feature is not enabled the total
             # should be marked stale
             if features.QUOTA_MANAGEMENT:
-                add_blob_size(repo_id, manifest_id, [(blob.id, blob.image_size)])
+                add_blob_size(repo_id, manifest_id, {blob.id: blob.image_size})
             else:
                 reset_backfill(repo_id)
 
@@ -695,7 +710,6 @@ class ProxyModel(OCIModel):
                 repo_id,
             )
 
-        # TODO(quota): can consolidate blob sizes to make a single add_blob_size call
         for layer in manifest.filesystem_layers:
             self._create_blob(layer.digest, layer.compressed_size, manifest_id, repo_id)
 

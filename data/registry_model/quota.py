@@ -19,21 +19,23 @@ from data.database import (
 
 get_epoch_timestamp_ms = lambda: int(time.time() * 1000)
 
-ID = 0
-IMAGE_SIZE = 1
+
+def add_blob_size(repository_id: int, manifest_id: int, blobs: dict):
+    update_sizes(repository_id, manifest_id, blobs, "add")
 
 
-# storage_sizes: [(id, image_size),...]
-def add_blob_size(repository_id: int, manifest_id: int, storage_sizes):
-    update_sizes(repository_id, manifest_id, storage_sizes, "add")
+def subtract_blob_size(repository_id: int, manifest_id: int, blobs: dict):
+    update_sizes(repository_id, manifest_id, blobs, "subtract")
 
 
-# storage_sizes: [(id, image_size),...]
-def subtract_blob_size(repository_id: int, manifest_id: int, storage_sizes):
-    update_sizes(repository_id, manifest_id, storage_sizes, "subtract")
+def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: str):
+    """
+    Adds or subtracts the blobs that are currently not being referrenced by
+    existing manifests from the total
+    """
+    if len(blobs) == 0:
+        return
 
-
-def update_sizes(repository_id: int, manifest_id: int, storage_sizes, operation: str):
     namespace_id = get_namespace_id_from_repository(repository_id)
 
     # Addition - if the blob already referenced it's already been counted
@@ -41,16 +43,16 @@ def update_sizes(repository_id: int, manifest_id: int, storage_sizes, operation:
     # don't subtract
     namespace_total = 0
     repository_total = 0
-    for storage_size in storage_sizes:
+    for blob_id, blob_image_size in blobs.items():
 
         # If the blob doesn't exist in the namespace it doesn't exist in the repo either
         # so add the total to both. If it exists in the namespace we need to check
         # if it exists in the repository.
-        blob_size = storage_size[IMAGE_SIZE] if storage_size[IMAGE_SIZE] is not None else 0
-        if not blob_exists_in_namespace(namespace_id, manifest_id, storage_size[ID]):
+        blob_size = blob_image_size if blob_image_size is not None else 0
+        if not blob_exists_in_namespace(namespace_id, manifest_id, blob_id):
             namespace_total = namespace_total + blob_size
             repository_total = repository_total + blob_size
-        elif not blob_exists_in_repository(repository_id, manifest_id, storage_size[ID]):
+        elif not blob_exists_in_repository(repository_id, manifest_id, blob_id):
             repository_total = repository_total + blob_size
 
     write_namespace_total(namespace_id, manifest_id, namespace_total, operation)
@@ -58,6 +60,8 @@ def update_sizes(repository_id: int, manifest_id: int, storage_sizes, operation:
 
 
 def blob_exists_in_namespace(namespace_id: int, manifest_id: int, blob_id: int):
+    # Return true if there exists some other manifest within the namespace that
+    # references this blob
     return (
         ManifestBlob.select(1)
         .join(Repository, on=(ManifestBlob.repository == Repository.id))
@@ -72,6 +76,8 @@ def blob_exists_in_namespace(namespace_id: int, manifest_id: int, blob_id: int):
 
 
 def blob_exists_in_repository(repository_id: int, manifest_id: int, blob_id: int):
+    # Return true if there exists some other manifest within the repository that
+    # references this blob
     return (
         ManifestBlob.select(1)
         .where(
@@ -283,8 +289,11 @@ def is_blob_alive(namespace_id: int, tag_id: int, blob_id: int):
     )
 
 
-# Backfill of existing manifests
 def run_backfill(namespace_id: int):
+    """
+    Calculates the total of unique blobs in the namespace and repositories within
+    the namespace.
+    """
     namespace_size = get_namespace_size(namespace_id)
     namespace_size_exists = namespace_size is not None
 
@@ -378,6 +387,11 @@ def update_repositorysize(repository_id: int, params, exists: bool):
 
 
 def reset_backfill(repository_id: int):
+    """
+    Resets the quotarepositorysize fields to be picked up by the backfill worker
+    for recalculation. Since the repository total will change we
+    need to reset the namespace backfill has well.
+    """
     try:
         QuotaRepositorySize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
@@ -389,6 +403,10 @@ def reset_backfill(repository_id: int):
 
 
 def reset_namespace_backfill(namespace_id: int):
+    """
+    Resets the quotanamespacesize fields to be picked up by the backfill worker
+    for recalculation.
+    """
     try:
         QuotaNamespaceSize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}

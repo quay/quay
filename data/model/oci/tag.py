@@ -451,6 +451,8 @@ def _delete_tag(tag, now_ms, force=False):
     Deletes the given tag by marking it as expired.
     """
     with db_transaction():
+        # Force set's lifetime_end_ms outside of any time machine policy and hidden
+        # prevents the tag from appearing in tag history for restoration
         params = {"lifetime_end_ms": 0, "hidden": True} if force else {"lifetime_end_ms": now_ms}
         updated = (
             Tag.update(params)

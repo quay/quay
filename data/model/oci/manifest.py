@@ -337,7 +337,9 @@ def _create_manifest(
     storage_ids = {storage.id for storage in list(blob_map.values())}
 
     # Get the storage sizes
-    storage_sizes = [(storage.id, storage.image_size) for storage in list(blob_map.values())]
+    blob_sizes = {}
+    for storage in list(blob_map.values()):
+        blob_sizes[storage.id] = storage.image_size
 
     # Check for the manifest, in case it was created since we checked earlier.
     try:
@@ -355,8 +357,8 @@ def _create_manifest(
 
             # Add blobs to namespace/repo total. If feature is not enabled the total
             # should be marked stale
-            if features.QUOTA_MANAGEMENT and storage_sizes is not None and len(storage_sizes) > 0:
-                add_blob_size(repository_id, manifest.id, storage_sizes)
+            if features.QUOTA_MANAGEMENT and len(blob_sizes) > 0:
+                add_blob_size(repository_id, manifest.id, blob_sizes)
             elif not features.QUOTA_MANAGEMENT:
                 reset_backfill(repository_id)
 

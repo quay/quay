@@ -32,6 +32,7 @@ from data.model import (
     repository,
     UnsupportedQuotaSize,
 )
+from data.registry_model import quota
 
 
 def get_namespace_quota_list(namespace_name):
@@ -245,16 +246,6 @@ def get_namespace_size(namespace_name):
         return 0
 
 
-def get_namespace_size_model(namespace_name):
-    namespace = user.get_user_or_org(namespace_name)
-    try:
-        return (
-            QuotaNamespaceSize.select().where(QuotaNamespaceSize.namespace_user == namespace).get()
-        )
-    except QuotaNamespaceSize.DoesNotExist:
-        return None
-
-
 def fetch_system_default(quotas):
     if not quotas and config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES") != 0:
         return config.app_config.get("DEFAULT_SYSTEM_REJECT_QUOTA_BYTES")
@@ -290,7 +281,7 @@ def get_quota_for_view(namespace_name):
     # Currently only one quota per namespace is supported
     configured_namespace_quota = quotas[0].limit_bytes if quotas else fetch_system_default(quotas)
 
-    namespace_size = get_namespace_size_model(namespace_name)
+    namespace_size = quota.get_namespace_size(namespace_user.id)
     namespace_size_exists = namespace_size is not None
     backfill_started = namespace_size_exists and namespace_size.backfill_start_ms is not None
 
