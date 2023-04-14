@@ -153,7 +153,7 @@ def get_namespace_size(namespace_id: int):
     try:
         namespace_size = (
             QuotaNamespaceSize.select()
-            .where(QuotaNamespaceSize.namespace_user_id == namespace_id)
+            .where(QuotaNamespaceSize.namespace_user == namespace_id)
             .get()
         )
         return namespace_size
@@ -172,7 +172,7 @@ def increment_namespacesize(
         elif operation == "subtract":
             params["size_bytes"] = QuotaNamespaceSize.size_bytes - size
         QuotaNamespaceSize.update(**params).where(
-            QuotaNamespaceSize.namespace_user_id == namespace_id
+            QuotaNamespaceSize.namespace_user == namespace_id
         ).execute()
     else:
         params["size_bytes"] = size
@@ -184,7 +184,7 @@ def get_repository_size(repository_id: int):
     try:
         repository_size = (
             QuotaRepositorySize.select()
-            .where(QuotaRepositorySize.repository_id == repository_id)
+            .where(QuotaRepositorySize.repository == repository_id)
             .get()
         )
         return repository_size
@@ -360,7 +360,7 @@ def repositories_in_namespace(namespace_id: int):
 def update_namespacesize(namespace_id: int, params, exists=False):
     if exists:
         QuotaNamespaceSize.update(**params).where(
-            QuotaNamespaceSize.namespace_user_id == namespace_id
+            QuotaNamespaceSize.namespace_user == namespace_id
         ).execute()
     else:
         # pylint: disable-next=no-value-for-parameter
@@ -392,6 +392,6 @@ def reset_namespace_backfill(namespace_id: int):
     try:
         QuotaNamespaceSize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
-        ).where(QuotaNamespaceSize.namespace_user_id == namespace_id).execute()
+        ).where(QuotaNamespaceSize.namespace_user == namespace_id).execute()
     except QuotaNamespaceSize.DoesNotExist:
         pass

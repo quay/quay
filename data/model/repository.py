@@ -696,7 +696,7 @@ def get_repository_size(repo_id: int):
     try:
         size = (
             QuotaRepositorySize.select(QuotaRepositorySize.size_bytes)
-            .where(QuotaRepositorySize.repository_id == repo_id)
+            .where(QuotaRepositorySize.repository == repo_id)
             .scalar()
         )
         return size if size is not None else 0
