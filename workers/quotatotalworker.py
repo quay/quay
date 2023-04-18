@@ -35,7 +35,7 @@ class QuotaTotalWorker(Worker):
             User.select()
             .where(
                 ~fn.EXISTS(subq),
-                User.id.not_in(DeletedNamespace.select(DeletedNamespace.namespace)),
+                User.enabled == True,
             )
             .limit(BATCH_SIZE)
         ):

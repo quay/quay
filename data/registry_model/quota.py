@@ -95,6 +95,9 @@ def write_namespace_total(
     namespace_size = get_namespace_size(namespace_id)
     namespace_size_exists = namespace_size is not None
 
+    # TODO: The following checks should be before the blob lookup to prevent
+    # unnecessary reads
+
     # If backfill hasn't ran yet for this namespace don't do anything
     if namespace_size_exists and not namespace_size.backfill_complete:
         return
@@ -103,18 +106,32 @@ def write_namespace_total(
     # we can assume this is the first push to the namespace and there is no blobs to be
     # backfilled, so let the entry be created. Otherwise it still needs to be handled by the
     # backfill worker so let's exit
-    params = {}
     if (
         operation == "add"
         and not namespace_size_exists
         and only_manifest_in_namespace(namespace_id, manifest_id)
     ):
-        params["backfill_start_ms"] = 0
-        params["backfill_complete"] = True
-    elif operation == "add" and not namespace_size_exists:
+        # pylint: disable-next=no-value-for-parameter
+        QuotaNamespaceSize.insert(
+            namespace_user_id=namespace_id,
+            backfill_start_ms=0,
+            backfill_complete=True,
+            size_bytes=namespace_total,
+        ).execute()
         return
 
-    increment_namespacesize(namespace_id, namespace_total, operation, namespace_size_exists, params)
+    # If the quotanamespacesize entry doesn't exist and it's not the only
+    # manifest in the repository, it needs to be handled by the backfill worker.
+    # If it does exist we can add/subtract the total
+    if namespace_size_exists:
+        params = {}
+        if operation == "add":
+            params["size_bytes"] = QuotaNamespaceSize.size_bytes + namespace_total
+        elif operation == "subtract":
+            params["size_bytes"] = QuotaNamespaceSize.size_bytes - namespace_total
+        QuotaNamespaceSize.update(**params).where(
+            QuotaNamespaceSize.namespace_user == namespace_id
+        ).execute()
 
 
 def write_repository_total(
@@ -122,6 +139,9 @@ def write_repository_total(
 ):
     repository_size = get_repository_size(repository_id)
     repository_size_exists = repository_size is not None
+
+    # TODO: The following checks should be before the blob lookup to prevent
+    # unnecessary reads
 
     # If backfill hasn't ran yet for this repository don't do anything
     if repository_size_exists and not repository_size.backfill_complete:
@@ -131,20 +151,32 @@ def write_repository_total(
     # we can assume this is the first push to the repository and there is no blobs to be
     # backfilled, so let the entry be created. Otherwise it still needs to be handled by the
     # backfill worker so let's exit
-    params = {}
     if (
         operation == "add"
         and not repository_size_exists
         and only_manifest_in_repository(repository_id, manifest_id)
     ):
-        params["backfill_start_ms"] = 0
-        params["backfill_complete"] = True
-    elif operation == "add" and not repository_size_exists:
+        # pylint: disable-next=no-value-for-parameter
+        QuotaRepositorySize.insert(
+            repository_id=repository_id,
+            backfill_start_ms=0,
+            backfill_complete=True,
+            size_bytes=repository_total,
+        ).execute()
         return
 
-    increment_repositorysize(
-        repository_id, repository_total, operation, repository_size_exists, params
-    )
+    # If the quotarepositorysize entry doesn't exist and it's not the only
+    # manifest in the repository, it needs to be handled by the backfill worker.
+    # If it does exist we can add/subtract the total
+    if repository_size_exists:
+        params = {}
+        if operation == "add":
+            params["size_bytes"] = QuotaRepositorySize.size_bytes + repository_total
+        elif operation == "subtract":
+            params["size_bytes"] = QuotaRepositorySize.size_bytes - repository_total
+        QuotaRepositorySize.update(**params).where(
+            QuotaRepositorySize.repository == repository_id
+        ).execute()
 
 
 def get_namespace_id_from_repository(repository: int):
@@ -167,25 +199,6 @@ def get_namespace_size(namespace_id: int):
         return None
 
 
-def increment_namespacesize(
-    namespace_id: int, size: int, operation: str, exists: bool, params=None
-):
-    params = params if params is not None else {}
-
-    if exists:
-        if operation == "add":
-            params["size_bytes"] = QuotaNamespaceSize.size_bytes + size
-        elif operation == "subtract":
-            params["size_bytes"] = QuotaNamespaceSize.size_bytes - size
-        QuotaNamespaceSize.update(**params).where(
-            QuotaNamespaceSize.namespace_user == namespace_id
-        ).execute()
-    else:
-        params["size_bytes"] = size
-        # pylint: disable-next=no-value-for-parameter
-        QuotaNamespaceSize.insert(namespace_user_id=namespace_id, **params).execute()
-
-
 def get_repository_size(repository_id: int):
     try:
         repository_size = (
@@ -196,25 +209,6 @@ def get_repository_size(repository_id: int):
         return repository_size
     except QuotaRepositorySize.DoesNotExist:
         return None
-
-
-def increment_repositorysize(
-    repository_id: int, size: int, operation: str, exists: bool, params=None
-):
-    params = params if params is not None else {}
-
-    if exists:
-        if operation == "add":
-            params["size_bytes"] = QuotaRepositorySize.size_bytes + size
-        elif operation == "subtract":
-            params["size_bytes"] = QuotaRepositorySize.size_bytes - size
-        QuotaRepositorySize.update(**params).where(
-            QuotaRepositorySize.repository == repository_id
-        ).execute()
-    else:
-        params["size_bytes"] = size
-        # pylint: disable-next=no-value-for-parameter
-        QuotaRepositorySize.insert(repository_id=repository_id, **params).execute()
 
 
 def only_manifest_in_namespace(namespace_id: int, manifest_id: int):

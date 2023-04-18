@@ -1274,10 +1274,7 @@ def delete_user(user, queues):
 
     # Delete the namespace size if it exists
     with db_transaction():
-        try:
-            QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
-        except QuotaNamespaceSize.DoesNotExist:
-            pass
+        QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
 
     # Delete the user itself.
     try:

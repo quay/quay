@@ -990,7 +990,7 @@ class RepositorySearchScore(BaseModel):
     last_updated = DateTimeField(null=True)
 
 
-# Deprecated, to be removed in a future release
+@deprecated_model
 class RepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     repository_id: int

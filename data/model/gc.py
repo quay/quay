@@ -252,11 +252,9 @@ def _purge_repository_contents(repo):
         if not found:
             break
 
-    try:
-        QuotaRepositorySize.delete().where(QuotaRepositorySize.repository == repo).execute()
-    except QuotaRepositorySize.DoesNotExist:
-        pass
+    QuotaRepositorySize.delete().where(QuotaRepositorySize.repository == repo).execute()
 
+    assert QuotaRepositorySize.select().where(QuotaRepositorySize.repository == repo).count() == 0
     assert Tag.select().where(Tag.repository == repo).count() == 0
     assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0

@@ -56,5 +56,5 @@ def upgrade(op, tables, tester):
 
 
 def downgrade(op, tables, tester):
-    # TODO(quota): determine downgrade path
-    pass
+    op.drop_table("quotanamespacesize")
+    op.drop_table("quotarepositorysize")
