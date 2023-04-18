@@ -37,7 +37,7 @@ def get_jwt_issuer(token):
     The passed token is assumed to be a valid
     JWT token
     """
-    decoded = jwt.decode(token, verify=False)
+    decoded = jwt.decode(token, verify_signature=False)
     return decoded.get("iss", None)
 
 
