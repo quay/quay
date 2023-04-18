@@ -67,7 +67,6 @@ from util.config.configutil import generate_secret_key
 from util.label_validator import LabelValidator
 from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
-from util.security import jwtutil
 from util.tufmetadata.api import TUFMetadataAPI
 from util.security.instancekeys import InstanceKeys
 from util.greenlet_tracing import enable_tracing

@@ -46,7 +46,7 @@ def validate_oauth_token(token):
 def validate_sso_oauth_token(token):
     issuer = get_jwt_issuer(token)
     if not issuer:
-        return ValidateResult(AuthKind.ssojwt, error_message=f"Token does not contain issuer")
+        return ValidateResult(AuthKind.ssojwt, error_message="Token does not contain issuer")
 
     try:
         service = oauth_login.get_service_by_issuer(issuer)

@@ -3,6 +3,8 @@ import json
 import logging
 from collections import namedtuple
 
+import jwt
+
 import features
 from data import model
 from data.users.shared import can_create_user
@@ -21,11 +23,9 @@ logger = logging.getLogger(__name__)
 
 def is_jwt(token):
     try:
-        [h_b64, p_b64, s_b64] = token.split(".")
-        headers_json = base64.b64decode(h_b64 + "==")
-        headers = json.loads(headers_json)
+        headers = jwt.get_unverified_header(token)
         return headers.get("typ", "").lower() == "jwt"
-    except (json.JSONDecodeError, ValueError):
+    except (jwt.exceptions.DecodeError):
         pass
 
     return False
@@ -37,11 +37,8 @@ def get_jwt_issuer(token):
     The passed token is assumed to be a valid
     JWT token
     """
-    [h_b64, p_b64, s_b64] = token.split(".")
-    payload_json = base64.b64decode(p_b64 + "==")
-    payload = json.loads(payload_json)
-
-    return payload.get("iss", None)
+    decoded = jwt.decode(token, verify=False)
+    return decoded.get("iss", None)
 
 
 def get_sub_username_email_from_token(decoded_id_token, user_info=None, config={}, mailing=False):
