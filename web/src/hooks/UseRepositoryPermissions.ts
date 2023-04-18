@@ -6,7 +6,7 @@ import {
   fetchUserRepoPermissions,
   RepoMember,
 } from 'src/resources/RepositoryResource';
-import ColumnNames from 'src/routes/RepositoryDetails/Settings/ColumnNames';
+import {PermissionsColumnNames} from 'src/routes/RepositoryDetails/Settings/ColumnNames';
 
 enum MemberType {
   user = 'user',
@@ -19,7 +19,7 @@ export function useRepositoryPermissions(org: string, repo: string) {
   const [perPage, setPerPage] = useState(10);
   const [search, setSearch] = useState<SearchState>({
     query: '',
-    field: ColumnNames.account,
+    field: PermissionsColumnNames.account,
   });
 
   const {

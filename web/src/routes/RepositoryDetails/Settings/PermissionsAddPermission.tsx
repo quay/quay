@@ -2,61 +2,34 @@ import {
   ActionGroup,
   Alert,
   AlertActionCloseButton,
-  AlertGroup,
   Button,
   Dropdown,
   DropdownItem,
   DropdownToggle,
   Form,
   FormGroup,
-  Select,
-  SelectOption,
-  SelectVariant,
   Title,
 } from '@patternfly/react-core';
 import {useEffect, useState} from 'react';
 import Conditional from 'src/components/empty/Conditional';
-import {useEntities} from 'src/hooks/UseEntities';
+import EntitySearch from 'src/components/EntitySearch';
 import {useUpdateRepositoryPermissions} from 'src/hooks/UseUpdateRepositoryPermissions';
-import {
-  RepoMember,
-  MemberType,
-  RepoRole,
-} from 'src/resources/RepositoryResource';
-import {Entity} from 'src/resources/UserResource';
+import {RepoMember, RepoRole} from 'src/resources/RepositoryResource';
+import {Entity, getMemberType} from 'src/resources/UserResource';
 import {roles} from './Types';
 
 export default function AddPermissions(props: AddPermissionsProps) {
-  const [isUserOpen, setIsUserOpen] = useState<boolean>(false);
   const [isPermissionOpen, setIsPermissionOpen] = useState<boolean>(false);
   const [role, setRole] = useState<RepoRole>(RepoRole.admin);
-  const {
-    entities,
-    isError: errorFetchingEntities,
-    searchTerm,
-    setSearchTerm,
-  } = useEntities(props.org);
+  const [selectedEntity, setSelectedEntity] = useState<Entity>(null);
+  const [errorFetchingEntities, setErrorFetchingEntities] =
+    useState<boolean>(false);
   const {
     setPermissions,
     errorSetPermissions: errorSettingPermissions,
     successSetPermissions: success,
     resetSetRepoPermissions,
   } = useUpdateRepositoryPermissions(props.org, props.repo);
-
-  const filteredEntities = entities.filter((e) => e.name === searchTerm);
-  const validInput = filteredEntities.length > 0;
-  const selectedEntity =
-    filteredEntities.length > 0 ? filteredEntities[0] : null;
-
-  const getMemberType = (entity: Entity) => {
-    if (entity.kind == MemberType.team) {
-      return MemberType.team;
-    } else if (entity.kind == MemberType.user && entity.is_robot) {
-      return MemberType.robot;
-    } else if (entity.kind == MemberType.user) {
-      return MemberType.user;
-    }
-  };
 
   const createPermission = () => {
     const member: RepoMember = {
@@ -93,34 +66,12 @@ export default function AddPermissions(props: AddPermissionsProps) {
         />
       </Conditional>
       <Form id="add-permission-form">
-        <FormGroup fieldId="user" label="Select a user" required>
-          <Select
-            isOpen={isUserOpen}
-            selections={searchTerm}
-            onSelect={(e, value) => {
-              setSearchTerm(value as string);
-              setIsUserOpen(!isUserOpen);
-            }}
-            onToggle={() => {
-              setIsUserOpen(!isUserOpen);
-            }}
-            variant={SelectVariant.typeahead}
-            onTypeaheadInputChanged={(value) => {
-              setSearchTerm(value);
-            }}
-            shouldResetOnSelect={true}
-            onClear={() => {
-              setSearchTerm('');
-            }}
-          >
-            {entities.map((e) => (
-              <SelectOption
-                key={e.name}
-                value={e.name}
-                description={getMemberType(e)}
-              />
-            ))}
-          </Select>
+        <FormGroup fieldId="user" label="Select a team or user" required>
+          <EntitySearch
+            org={props.org}
+            onError={() => setErrorFetchingEntities(true)}
+            onSelect={(e: Entity) => setSelectedEntity(e)}
+          />
         </FormGroup>
         <FormGroup fieldId="permission" label="Select a permission" required>
           <Dropdown
@@ -146,7 +97,7 @@ export default function AddPermissions(props: AddPermissionsProps) {
         </FormGroup>
         <ActionGroup>
           <Button
-            isDisabled={!validInput}
+            isDisabled={selectedEntity == null}
             onClick={() => {
               createPermission();
             }}

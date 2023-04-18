@@ -9,6 +9,7 @@ import {
   Tbody,
   Td,
   ExpandableRowContent,
+  ThProps,
 } from '@patternfly/react-table';
 import {SecurityReportMetadataTable} from './SecurityReportMetadataTable';
 import {
@@ -40,6 +41,14 @@ const columnNames = {
   fixedInVersion: 'Fixed in Version',
 };
 
+const VulnSeverityOrder = {
+  Critical: 0,
+  High: 1,
+  Medium: 2,
+  Low: 3,
+  Unknown: 4,
+};
+
 function getVulnerabilityLink(vulnerability: VulnerabilityListItem) {
   if (!vulnerability.Link) {
     return '';
@@ -53,36 +62,81 @@ function TableTitle() {
   return <Title headingLevel={'h1'}> Vulnerabilities </Title>;
 }
 
-function TableHead() {
-  return (
-    <Thead>
-      <Tr>
-        <Th />
-        <Th>{columnNames.advisory}</Th>
-        <Th>{columnNames.severity}</Th>
-        <Th>{columnNames.package}</Th>
-        <Th>{columnNames.currentVersion}</Th>
-        <Th>{columnNames.fixedInVersion}</Th>
-      </Tr>
-    </Thead>
-  );
-}
-
 export default function SecurityReportTable({features}: SecurityDetailsProps) {
   const [vulnList, setVulnList] = useState<VulnerabilityListItem[]>([]);
   const [filteredVulnList, setFilteredVulnList] = useState<
     VulnerabilityListItem[]
   >([]);
 
+  // Sorting states
+  const [activeSortIndex, setActiveSortIndex] = React.useState<number | null>(
+    1,
+  );
+  const [activeSortDirection, setActiveSortDirection] = React.useState<
+    'asc' | 'desc' | null
+  >('desc');
+
   // Pagination state
   const [page, setPage] = useState<number>(1);
   const [perPage, setPerPage] = useState<number>(10);
+
   const paginatedVulns: VulnerabilityListItem[] = filteredVulnList.slice(
     (page - 1) * perPage,
     page * perPage,
   );
 
+  function sortVulnerabilities(sortIndex, direction) {
+    setFilteredVulnList((prevVulnList) => {
+      return prevVulnList.sort((a, b) => {
+        const aValue = VulnSeverityOrder[getSortableRowValues(a)[sortIndex]];
+        const bValue = VulnSeverityOrder[getSortableRowValues(b)[sortIndex]];
+        if (direction === 'desc') {
+          return (aValue as number) - (bValue as number);
+        }
+        return (bValue as number) - (aValue as number);
+      });
+    });
+  }
+
   const [expandedVulnKeys, setExpandedVulnKeys] = React.useState<string[]>([]);
+
+  const sortBySeverity = (columnIndex: number): ThProps['sort'] => ({
+    sortBy: {
+      index: activeSortIndex,
+      direction: activeSortDirection,
+    },
+    onSort: (_event, index, direction) => {
+      setActiveSortIndex(index);
+      setActiveSortDirection(direction);
+      sortVulnerabilities(index, direction);
+    },
+    columnIndex,
+  });
+
+  const getSortableRowValues = (
+    vulnerability: VulnerabilityListItem,
+  ): (string | number)[] => {
+    const {Advisory, Severity, PackageName, CurrentVersion, FixedInVersion} =
+      vulnerability;
+    return [Advisory, Severity, PackageName, CurrentVersion, FixedInVersion];
+  };
+
+  function TableHead() {
+    return (
+      <Thead>
+        <Tr>
+          <Th />
+          <Th>{columnNames.advisory}</Th>
+          <Th sort={sortBySeverity(1)} id="severity-sort">
+            {columnNames.severity}
+          </Th>
+          <Th>{columnNames.package}</Th>
+          <Th>{columnNames.currentVersion}</Th>
+          <Th>{columnNames.fixedInVersion}</Th>
+        </Tr>
+      </Thead>
+    );
+  }
 
   const generateUniqueKey = (vulnerability: VulnerabilityListItem) => {
     let hashInput =
@@ -126,6 +180,7 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
       });
       setVulnList(vulnList);
       setFilteredVulnList(vulnList);
+      sortVulnerabilities(activeSortIndex, activeSortDirection);
     } else {
       setVulnList([]);
       setFilteredVulnList([]);
@@ -151,7 +206,10 @@ export default function SecurityReportTable({features}: SecurityDetailsProps) {
           />
         </ToolbarContent>
       </Toolbar>
-      <TableComposable data-testid="vulnerability-table" aria-label="Expandable table">
+      <TableComposable
+        data-testid="vulnerability-table"
+        aria-label="Expandable table"
+      >
         <TableHead />
         {paginatedVulns.length !== 0 ? (
           paginatedVulns.map(

@@ -12,7 +12,7 @@ export interface IRepository {
   namespace: string;
   name: string;
   description?: string;
-  is_public: boolean;
+  is_public?: boolean;
   kind?: string;
   state?: string;
   size?: number;
@@ -37,10 +37,14 @@ export async function fetchAllRepos(
   namespaces: string[],
   flatten = false,
   signal: AbortSignal,
+  next_page_token = null,
 ): Promise<IRepository[] | IRepository[][]> {
   const namespacedRepos = await Promise.all(
-    namespaces.map((ns) => fetchRepositoriesForNamespace(ns, signal)),
+    namespaces.map((ns) => {
+      return fetchRepositoriesForNamespace(ns, signal, next_page_token);
+    }),
   );
+
   // Flatten responses to a single list of all repositories
   if (flatten) {
     return namespacedRepos.reduce(
@@ -55,14 +59,22 @@ export async function fetchAllRepos(
 export async function fetchRepositoriesForNamespace(
   ns: string,
   signal: AbortSignal,
-) {
-  // TODO: Add return type to AxiosResponse
-  const response: AxiosResponse = await axios.get(
-    `/api/v1/repository?last_modified=true&namespace=${ns}&public=true`,
-    {signal},
-  );
+  next_page_token: string = null,
+): Promise<IRepository[]> {
+  const url = next_page_token
+    ? `/api/v1/repository?next_page=${next_page_token}&last_modified=true&namespace=${ns}&public=true`
+    : `/api/v1/repository?last_modified=true&namespace=${ns}&public=true`;
+  const response: AxiosResponse = await axios.get(url, {signal});
   assertHttpCode(response.status, 200);
-  return response.data?.repositories as IRepository[];
+
+  const next_page = response.data?.next_page;
+  const repos = response.data?.repositories as IRepository[];
+
+  if (next_page) {
+    const resp = await fetchRepositoriesForNamespace(ns, signal, next_page);
+    return repos.concat(resp);
+  }
+  return repos as IRepository[];
 }
 
 export async function fetchRepositories() {

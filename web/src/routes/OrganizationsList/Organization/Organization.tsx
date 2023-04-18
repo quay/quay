@@ -12,10 +12,11 @@ import {useCallback, useState} from 'react';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
+import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
 
 export default function Organization() {
   const location = useLocation();
-  const repositoryName = location.pathname.split('/')[2];
+  const orgName = location.pathname.split('/')[2];
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
@@ -36,6 +37,10 @@ export default function Organization() {
       component: <RepositoriesList />,
     },
     {
+      name: 'Robot accounts',
+      component: <RobotAccountsList orgName={orgName} />,
+    },
+    {
       name: 'Settings',
       component: <Settings />,
     },
@@ -49,7 +54,7 @@ export default function Organization() {
         className="no-padding-bottom"
       >
         <Title data-testid="repo-title" headingLevel="h1">
-          {repositoryName}
+          {orgName}
         </Title>
       </PageSection>
       <PageSection

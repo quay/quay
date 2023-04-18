@@ -7,14 +7,15 @@ import {
   Thead,
   Tr,
 } from '@patternfly/react-table';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {useRepositoryPermissions} from 'src/hooks/UseRepositoryPermissions';
 import PermissionsToolbar from './PermissionsToolbar';
-import ColumnNames from './ColumnNames';
+import {PermissionsColumnNames} from './ColumnNames';
 import PermissionsDropdown from './PermissionsDropdown';
 import {RepoMember} from 'src/resources/RepositoryResource';
 import PermissionsKebab from './PermissionsKebab';
 import {DrawerContentType} from '../Types';
+import EntityIcon from 'src/components/EntityIcon';
 
 export default function Permissions(props: PermissionsProps) {
   const {
@@ -42,6 +43,13 @@ export default function Permissions(props: PermissionsProps) {
     });
   };
 
+  // Close drawer if navigating away from permissions settings
+  useEffect(() => {
+    return () => {
+      props.setDrawerContent(DrawerContentType.None);
+    };
+  }, []);
+
   if (loading) {
     return <Spinner />;
   }
@@ -62,7 +70,7 @@ export default function Permissions(props: PermissionsProps) {
         setPage={setPage}
         perPage={perPage}
         setPerPage={setPerPage}
-        searchOptions={[ColumnNames.account]}
+        searchOptions={[PermissionsColumnNames.account]}
         search={search}
         setSearch={setSearch}
         onItemSelect={onSelectMember}
@@ -73,9 +81,9 @@ export default function Permissions(props: PermissionsProps) {
         <Thead>
           <Tr>
             <Th />
-            <Th>{ColumnNames.account}</Th>
-            <Th>{ColumnNames.type}</Th>
-            <Th>{ColumnNames.permissions}</Th>
+            <Th>{PermissionsColumnNames.account}</Th>
+            <Th>{PermissionsColumnNames.type}</Th>
+            <Th>{PermissionsColumnNames.permissions}</Th>
             <Th />
           </Tr>
         </Thead>
@@ -93,7 +101,9 @@ export default function Permissions(props: PermissionsProps) {
                 }}
               />
               <Td data-label="membername">{member.name}</Td>
-              <Td data-label="type">{member.type}</Td>
+              <Td data-label="type">
+                <EntityIcon type={member.type} includeText />
+              </Td>
               <Td data-label="role">
                 <PermissionsDropdown member={member} />
               </Td>

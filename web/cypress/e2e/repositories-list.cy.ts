@@ -18,7 +18,8 @@ describe('Repositories List Page', () => {
     cy.contains('Repositories').should('exist');
     cy.get('[data-testid="repository-list-table"]')
       .children()
-      .should('have.length', 4);
+      .should('have.length', 10);
+    cy.get('input[placeholder="Search by Name..."]').type('user1');
     cy.get('[data-testid="repository-list-table"]').within(() => {
       cy.contains('user1/hello-world').should('exist');
       cy.contains('user1/nested/repo').should('exist');
@@ -56,7 +57,7 @@ describe('Repositories List Page', () => {
     cy.contains('Create Repository').click();
     cy.contains('Create repository').should('exist');
     cy.contains('Select namespace').click();
-    cy.get('ul:contains("user1")').click();
+    cy.get('li:contains("user1")').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new public repository',
@@ -64,8 +65,9 @@ describe('Repositories List Page', () => {
     cy.get('[id="create-repository-modal"]').within(() =>
       cy.get('button:contains("Create")').click(),
     );
-    cy.contains('new-repo').should('exist');
-    cy.get('tr:contains("new-repo")').within(() =>
+    cy.get('input[placeholder="Search by Name..."]').type('user1');
+    cy.contains('user1/new-repo').should('exist');
+    cy.get('tr:contains("user1/new-repo")').within(() =>
       cy.contains('public').should('exist'),
     );
   });
@@ -75,7 +77,7 @@ describe('Repositories List Page', () => {
     cy.contains('Create Repository').click();
     cy.contains('Create repository').should('exist');
     cy.contains('Select namespace').click();
-    cy.get('ul:contains("user1")').click();
+    cy.get('li:contains("user1")').click();
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new private repository',
@@ -84,6 +86,7 @@ describe('Repositories List Page', () => {
     cy.get('[id="create-repository-modal"]').within(() =>
       cy.get('button:contains("Create")').click(),
     );
+    cy.get('input[placeholder="Search by Name..."]').type('user1');
     cy.contains('new-repo').should('exist');
     cy.get('tr:contains("new-repo")').within(() =>
       cy.contains('private').should('exist'),
@@ -91,10 +94,10 @@ describe('Repositories List Page', () => {
   });
 
   it('create repository under organization', () => {
-    cy.visit('/organization/user1');
+    cy.visit('/organization/testorg');
     cy.contains('Create Repository').click();
     cy.contains('Create repository').should('exist');
-    cy.get('button:contains("user1")').should('exist');
+    cy.get('button:contains("testorg")').should('exist');
     cy.get('input[id="repository-name-input"]').type('new-repo');
     cy.get('input[id="repository-description-input"]').type(
       'This is a new private repository',
@@ -112,7 +115,7 @@ describe('Repositories List Page', () => {
   it('deletes multiple repositories', () => {
     cy.visit('/repository');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select page').click();
+    cy.contains('Select all (153)').click();
     cy.contains('Actions').click();
     cy.contains('Delete').click();
     cy.contains('Permanently delete repositories?');
@@ -143,13 +146,14 @@ describe('Repositories List Page', () => {
 
   it('makes multiple repositories public', () => {
     cy.visit('/repository');
+    cy.get('input[placeholder="Search by Name..."]').type('user1');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select page (4)').click();
+    cy.contains('Select page (2)').click();
     cy.contains('Actions').click();
     cy.contains('Make Public').click();
     cy.contains('Make repositories public');
     cy.contains(
-      'Update 4 repositories visibility to be public so they are visible to all user, and may be pulled by all users.',
+      'Update 2 repositories visibility to be public so they are visible to all user, and may be pulled by all users.',
     );
     cy.contains('Make public').click();
     cy.contains('private').should('not.exist');
@@ -158,12 +162,12 @@ describe('Repositories List Page', () => {
   it('makes multiple repositories private', () => {
     cy.visit('/repository');
     cy.get('button[id="toolbar-dropdown-checkbox"]').click();
-    cy.contains('Select page (4)').click();
+    cy.contains('Select page (10)').click();
     cy.contains('Actions').click();
     cy.contains('Make Private').click();
     cy.contains('Make repositories private');
     cy.contains(
-      'Update 4 repositories visibility to be private so they are only visible to certain users, and only may be pulled by certain users.',
+      'Update 10 repositories visibility to be private so they are only visible to certain users, and only may be pulled by certain users.',
     );
     cy.contains('Make private').click();
     cy.contains('public').should('not.exist');

@@ -5244,7 +5244,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-2d66ad598b56
+7bca88923f2c
 \.
 
 
@@ -5608,6 +5608,160 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 17	22	28	1	5	2022-11-30 21:23:26.32246	172.20.0.1	{"username": "user2", "repo": "testrepo", "namespace": "testorg"}
 18	15	28	1	\N	2022-11-30 21:23:53.670728	172.20.0.1	{"robot": "testrobot2", "description": "", "unstructured_metadata": null}
 19	32	28	1	\N	2022-11-30 21:24:13.085006	172.20.0.1	{"team": "testteam2"}
+20	6	28	1	5	2022-12-14 18:50:25.878608	172.18.0.1	{"repo": "testrepo", "namespace": "testorg", "notification_id": "a5a83554-b024-4522-8b63-509266b1e45e", "event": "build_failure", "method": "flowdock"}
+21	6	28	1	5	2022-12-14 18:50:56.412989	172.18.0.1	{"repo": "testrepo", "namespace": "testorg", "notification_id": "2a4aeb62-3bea-4bb7-83ca-75a34dec3367", "event": "build_queued", "method": "hipchat"}
+22	6	28	1	5	2022-12-14 18:51:19.966575	172.18.0.1	{"repo": "testrepo", "namespace": "testorg", "notification_id": "70a8f966-1dc1-47b8-9b51-3cf71d0f9ad2", "event": "vulnerability_found", "method": "slack"}
+23	6	28	1	5	2022-12-14 18:53:14.486603	172.18.0.1	{"repo": "testrepo", "namespace": "testorg", "notification_id": "1efd38da-6ab4-4e09-822d-3b1742a00b1c", "event": "repo_mirror_sync_started", "method": "webhook"}
+24	6	28	1	5	2022-12-14 18:54:27.270995	172.18.0.1	{"repo": "testrepo", "namespace": "testorg", "notification_id": "1d07e6db-be20-405a-8780-9d83bf1d16da", "event": "repo_mirror_sync_success", "method": "email"}
+25	14	4	1	6	2023-01-03 11:23:29.127492	172.18.0.1	{"repo": "repo1", "namespace": "projectquay"}
+26	14	4	1	7	2023-01-03 11:24:07.289142	172.18.0.1	{"repo": "repo2", "namespace": "projectquay"}
+27	14	4	1	8	2023-01-03 11:24:07.392768	172.18.0.1	{"repo": "repo3", "namespace": "projectquay"}
+28	14	4	1	9	2023-01-03 11:24:07.498178	172.18.0.1	{"repo": "repo4", "namespace": "projectquay"}
+29	14	4	1	10	2023-01-03 11:24:07.60126	172.18.0.1	{"repo": "repo5", "namespace": "projectquay"}
+30	14	4	1	11	2023-01-03 11:24:07.688207	172.18.0.1	{"repo": "repo6", "namespace": "projectquay"}
+31	14	4	1	12	2023-01-03 11:24:07.772948	172.18.0.1	{"repo": "repo7", "namespace": "projectquay"}
+32	14	4	1	13	2023-01-03 11:24:07.868094	172.18.0.1	{"repo": "repo8", "namespace": "projectquay"}
+33	14	4	1	14	2023-01-03 11:24:07.975415	172.18.0.1	{"repo": "repo9", "namespace": "projectquay"}
+34	14	4	1	15	2023-01-03 11:24:08.098511	172.18.0.1	{"repo": "repo10", "namespace": "projectquay"}
+35	14	4	1	16	2023-01-03 11:24:08.180972	172.18.0.1	{"repo": "repo11", "namespace": "projectquay"}
+36	14	4	1	17	2023-01-03 11:24:08.26493	172.18.0.1	{"repo": "repo12", "namespace": "projectquay"}
+37	14	4	1	18	2023-01-03 11:24:08.362142	172.18.0.1	{"repo": "repo13", "namespace": "projectquay"}
+38	14	4	1	19	2023-01-03 11:24:08.478308	172.18.0.1	{"repo": "repo14", "namespace": "projectquay"}
+39	14	4	1	20	2023-01-03 11:24:08.576514	172.18.0.1	{"repo": "repo15", "namespace": "projectquay"}
+40	14	4	1	21	2023-01-03 11:24:08.689088	172.18.0.1	{"repo": "repo16", "namespace": "projectquay"}
+41	14	4	1	22	2023-01-03 11:24:08.789179	172.18.0.1	{"repo": "repo17", "namespace": "projectquay"}
+42	14	4	1	23	2023-01-03 11:24:08.878261	172.18.0.1	{"repo": "repo18", "namespace": "projectquay"}
+43	14	4	1	24	2023-01-03 11:24:08.984273	172.18.0.1	{"repo": "repo19", "namespace": "projectquay"}
+44	14	4	1	25	2023-01-03 11:24:09.074947	172.18.0.1	{"repo": "repo20", "namespace": "projectquay"}
+45	14	4	1	26	2023-01-03 11:24:09.178844	172.18.0.1	{"repo": "repo21", "namespace": "projectquay"}
+46	14	4	1	27	2023-01-03 11:24:09.268188	172.18.0.1	{"repo": "repo22", "namespace": "projectquay"}
+47	14	4	1	28	2023-01-03 11:24:09.400272	172.18.0.1	{"repo": "repo23", "namespace": "projectquay"}
+48	14	4	1	29	2023-01-03 11:24:09.517563	172.18.0.1	{"repo": "repo24", "namespace": "projectquay"}
+49	14	4	1	30	2023-01-03 11:24:09.603853	172.18.0.1	{"repo": "repo25", "namespace": "projectquay"}
+50	14	4	1	31	2023-01-03 11:24:09.703642	172.18.0.1	{"repo": "repo26", "namespace": "projectquay"}
+51	14	4	1	32	2023-01-03 11:24:09.799168	172.18.0.1	{"repo": "repo27", "namespace": "projectquay"}
+52	14	4	1	33	2023-01-03 11:24:09.883759	172.18.0.1	{"repo": "repo28", "namespace": "projectquay"}
+53	14	4	1	34	2023-01-03 11:24:09.990651	172.18.0.1	{"repo": "repo29", "namespace": "projectquay"}
+54	14	4	1	35	2023-01-03 11:24:10.09297	172.18.0.1	{"repo": "repo30", "namespace": "projectquay"}
+55	14	4	1	36	2023-01-03 11:24:10.175237	172.18.0.1	{"repo": "repo31", "namespace": "projectquay"}
+56	14	4	1	37	2023-01-03 11:24:10.267836	172.18.0.1	{"repo": "repo32", "namespace": "projectquay"}
+57	14	4	1	38	2023-01-03 11:24:10.3547	172.18.0.1	{"repo": "repo33", "namespace": "projectquay"}
+58	14	4	1	39	2023-01-03 11:24:10.439201	172.18.0.1	{"repo": "repo34", "namespace": "projectquay"}
+59	14	4	1	40	2023-01-03 11:24:10.544936	172.18.0.1	{"repo": "repo35", "namespace": "projectquay"}
+60	14	4	1	41	2023-01-03 11:24:10.633541	172.18.0.1	{"repo": "repo36", "namespace": "projectquay"}
+61	14	4	1	42	2023-01-03 11:24:10.732571	172.18.0.1	{"repo": "repo37", "namespace": "projectquay"}
+62	14	4	1	43	2023-01-03 11:24:10.824627	172.18.0.1	{"repo": "repo38", "namespace": "projectquay"}
+63	14	4	1	44	2023-01-03 11:24:10.923588	172.18.0.1	{"repo": "repo39", "namespace": "projectquay"}
+64	14	4	1	45	2023-01-03 11:24:11.041483	172.18.0.1	{"repo": "repo40", "namespace": "projectquay"}
+65	14	4	1	46	2023-01-03 11:24:11.128777	172.18.0.1	{"repo": "repo41", "namespace": "projectquay"}
+66	14	4	1	47	2023-01-03 11:24:11.234224	172.18.0.1	{"repo": "repo42", "namespace": "projectquay"}
+67	14	4	1	48	2023-01-03 11:24:11.325114	172.18.0.1	{"repo": "repo43", "namespace": "projectquay"}
+68	14	4	1	49	2023-01-03 11:24:11.416029	172.18.0.1	{"repo": "repo44", "namespace": "projectquay"}
+69	14	4	1	50	2023-01-03 11:24:11.505937	172.18.0.1	{"repo": "repo45", "namespace": "projectquay"}
+70	14	4	1	51	2023-01-03 11:24:11.605184	172.18.0.1	{"repo": "repo46", "namespace": "projectquay"}
+71	14	4	1	52	2023-01-03 11:24:11.689828	172.18.0.1	{"repo": "repo47", "namespace": "projectquay"}
+72	14	4	1	53	2023-01-03 11:24:11.770225	172.18.0.1	{"repo": "repo48", "namespace": "projectquay"}
+73	14	4	1	54	2023-01-03 11:24:11.865629	172.18.0.1	{"repo": "repo49", "namespace": "projectquay"}
+74	14	4	1	55	2023-01-03 11:24:11.948911	172.18.0.1	{"repo": "repo50", "namespace": "projectquay"}
+75	14	4	1	56	2023-01-03 11:24:12.065091	172.18.0.1	{"repo": "repo51", "namespace": "projectquay"}
+76	14	4	1	57	2023-01-03 11:24:12.165851	172.18.0.1	{"repo": "repo52", "namespace": "projectquay"}
+77	14	4	1	58	2023-01-03 11:24:12.264743	172.18.0.1	{"repo": "repo53", "namespace": "projectquay"}
+78	14	4	1	59	2023-01-03 11:24:12.35374	172.18.0.1	{"repo": "repo54", "namespace": "projectquay"}
+79	14	4	1	60	2023-01-03 11:24:12.447602	172.18.0.1	{"repo": "repo55", "namespace": "projectquay"}
+80	14	4	1	61	2023-01-03 11:24:12.567227	172.18.0.1	{"repo": "repo56", "namespace": "projectquay"}
+81	14	4	1	62	2023-01-03 11:24:12.651624	172.18.0.1	{"repo": "repo57", "namespace": "projectquay"}
+82	14	4	1	63	2023-01-03 11:24:12.743139	172.18.0.1	{"repo": "repo58", "namespace": "projectquay"}
+83	14	4	1	64	2023-01-03 11:24:12.839808	172.18.0.1	{"repo": "repo59", "namespace": "projectquay"}
+84	14	4	1	65	2023-01-03 11:24:12.920751	172.18.0.1	{"repo": "repo60", "namespace": "projectquay"}
+85	14	4	1	66	2023-01-03 11:24:13.014928	172.18.0.1	{"repo": "repo61", "namespace": "projectquay"}
+86	14	4	1	67	2023-01-03 11:24:13.129302	172.18.0.1	{"repo": "repo62", "namespace": "projectquay"}
+87	14	4	1	68	2023-01-03 11:24:13.224277	172.18.0.1	{"repo": "repo63", "namespace": "projectquay"}
+88	14	4	1	69	2023-01-03 11:24:13.312733	172.18.0.1	{"repo": "repo64", "namespace": "projectquay"}
+89	14	4	1	70	2023-01-03 11:24:13.405642	172.18.0.1	{"repo": "repo65", "namespace": "projectquay"}
+90	14	4	1	71	2023-01-03 11:24:13.501792	172.18.0.1	{"repo": "repo66", "namespace": "projectquay"}
+91	14	4	1	72	2023-01-03 11:24:13.606172	172.18.0.1	{"repo": "repo67", "namespace": "projectquay"}
+92	14	4	1	73	2023-01-03 11:24:13.700487	172.18.0.1	{"repo": "repo68", "namespace": "projectquay"}
+93	14	4	1	74	2023-01-03 11:24:13.796284	172.18.0.1	{"repo": "repo69", "namespace": "projectquay"}
+94	14	4	1	75	2023-01-03 11:24:13.899458	172.18.0.1	{"repo": "repo70", "namespace": "projectquay"}
+95	14	4	1	76	2023-01-03 11:24:13.998793	172.18.0.1	{"repo": "repo71", "namespace": "projectquay"}
+96	14	4	1	77	2023-01-03 11:24:14.112698	172.18.0.1	{"repo": "repo72", "namespace": "projectquay"}
+97	14	4	1	78	2023-01-03 11:24:14.242319	172.18.0.1	{"repo": "repo73", "namespace": "projectquay"}
+98	14	4	1	79	2023-01-03 11:24:14.354475	172.18.0.1	{"repo": "repo74", "namespace": "projectquay"}
+99	14	4	1	80	2023-01-03 11:24:14.452028	172.18.0.1	{"repo": "repo75", "namespace": "projectquay"}
+100	14	4	1	81	2023-01-03 11:24:14.549839	172.18.0.1	{"repo": "repo76", "namespace": "projectquay"}
+101	14	4	1	82	2023-01-03 11:24:14.666819	172.18.0.1	{"repo": "repo77", "namespace": "projectquay"}
+102	14	4	1	83	2023-01-03 11:24:14.788838	172.18.0.1	{"repo": "repo78", "namespace": "projectquay"}
+103	14	4	1	84	2023-01-03 11:24:14.886401	172.18.0.1	{"repo": "repo79", "namespace": "projectquay"}
+104	14	4	1	85	2023-01-03 11:24:14.999025	172.18.0.1	{"repo": "repo80", "namespace": "projectquay"}
+105	14	4	1	86	2023-01-03 11:24:15.130121	172.18.0.1	{"repo": "repo81", "namespace": "projectquay"}
+106	14	4	1	87	2023-01-03 11:24:15.229618	172.18.0.1	{"repo": "repo82", "namespace": "projectquay"}
+107	14	4	1	88	2023-01-03 11:24:15.328717	172.18.0.1	{"repo": "repo83", "namespace": "projectquay"}
+108	14	4	1	89	2023-01-03 11:24:15.424039	172.18.0.1	{"repo": "repo84", "namespace": "projectquay"}
+109	14	4	1	90	2023-01-03 11:24:15.534964	172.18.0.1	{"repo": "repo85", "namespace": "projectquay"}
+110	14	4	1	91	2023-01-03 11:24:15.657202	172.18.0.1	{"repo": "repo86", "namespace": "projectquay"}
+111	14	4	1	92	2023-01-03 11:24:15.77514	172.18.0.1	{"repo": "repo87", "namespace": "projectquay"}
+112	14	4	1	93	2023-01-03 11:24:15.862311	172.18.0.1	{"repo": "repo88", "namespace": "projectquay"}
+113	14	4	1	94	2023-01-03 11:24:15.985682	172.18.0.1	{"repo": "repo89", "namespace": "projectquay"}
+114	14	4	1	95	2023-01-03 11:24:16.093066	172.18.0.1	{"repo": "repo90", "namespace": "projectquay"}
+115	14	4	1	96	2023-01-03 11:24:16.221376	172.18.0.1	{"repo": "repo91", "namespace": "projectquay"}
+116	14	4	1	97	2023-01-03 11:24:16.317677	172.18.0.1	{"repo": "repo92", "namespace": "projectquay"}
+117	14	4	1	98	2023-01-03 11:24:16.415534	172.18.0.1	{"repo": "repo93", "namespace": "projectquay"}
+118	14	4	1	99	2023-01-03 11:24:16.509949	172.18.0.1	{"repo": "repo94", "namespace": "projectquay"}
+119	14	4	1	100	2023-01-03 11:24:16.63324	172.18.0.1	{"repo": "repo95", "namespace": "projectquay"}
+120	14	4	1	101	2023-01-03 11:24:16.732202	172.18.0.1	{"repo": "repo96", "namespace": "projectquay"}
+121	14	4	1	102	2023-01-03 11:24:16.82705	172.18.0.1	{"repo": "repo97", "namespace": "projectquay"}
+122	14	4	1	103	2023-01-03 11:24:16.91848	172.18.0.1	{"repo": "repo98", "namespace": "projectquay"}
+123	14	4	1	104	2023-01-03 11:24:17.019767	172.18.0.1	{"repo": "repo99", "namespace": "projectquay"}
+124	14	4	1	105	2023-01-03 11:24:17.138695	172.18.0.1	{"repo": "repo100", "namespace": "projectquay"}
+125	14	4	1	106	2023-01-03 11:24:17.265682	172.18.0.1	{"repo": "repo101", "namespace": "projectquay"}
+126	14	4	1	107	2023-01-03 11:24:17.377005	172.18.0.1	{"repo": "repo102", "namespace": "projectquay"}
+127	14	4	1	108	2023-01-03 11:24:17.47581	172.18.0.1	{"repo": "repo103", "namespace": "projectquay"}
+128	14	4	1	109	2023-01-03 11:24:17.583725	172.18.0.1	{"repo": "repo104", "namespace": "projectquay"}
+129	14	4	1	110	2023-01-03 11:24:17.692915	172.18.0.1	{"repo": "repo105", "namespace": "projectquay"}
+130	14	4	1	111	2023-01-03 11:24:17.792304	172.18.0.1	{"repo": "repo106", "namespace": "projectquay"}
+131	14	4	1	112	2023-01-03 11:24:17.896477	172.18.0.1	{"repo": "repo107", "namespace": "projectquay"}
+132	14	4	1	113	2023-01-03 11:24:17.994114	172.18.0.1	{"repo": "repo108", "namespace": "projectquay"}
+133	14	4	1	114	2023-01-03 11:24:18.09674	172.18.0.1	{"repo": "repo109", "namespace": "projectquay"}
+134	14	4	1	115	2023-01-03 11:24:18.197745	172.18.0.1	{"repo": "repo110", "namespace": "projectquay"}
+135	14	4	1	116	2023-01-03 11:24:18.286844	172.18.0.1	{"repo": "repo111", "namespace": "projectquay"}
+136	14	4	1	117	2023-01-03 11:24:18.374023	172.18.0.1	{"repo": "repo112", "namespace": "projectquay"}
+137	14	4	1	118	2023-01-03 11:24:18.464705	172.18.0.1	{"repo": "repo113", "namespace": "projectquay"}
+138	14	4	1	119	2023-01-03 11:24:18.55502	172.18.0.1	{"repo": "repo114", "namespace": "projectquay"}
+139	14	4	1	120	2023-01-03 11:24:18.646881	172.18.0.1	{"repo": "repo115", "namespace": "projectquay"}
+140	14	4	1	121	2023-01-03 11:24:18.731506	172.18.0.1	{"repo": "repo116", "namespace": "projectquay"}
+141	14	4	1	122	2023-01-03 11:24:18.825978	172.18.0.1	{"repo": "repo117", "namespace": "projectquay"}
+142	14	4	1	123	2023-01-03 11:24:18.929857	172.18.0.1	{"repo": "repo118", "namespace": "projectquay"}
+143	14	4	1	124	2023-01-03 11:24:19.018836	172.18.0.1	{"repo": "repo119", "namespace": "projectquay"}
+144	14	4	1	125	2023-01-03 11:24:19.112381	172.18.0.1	{"repo": "repo120", "namespace": "projectquay"}
+145	14	4	1	126	2023-01-03 11:24:19.200414	172.18.0.1	{"repo": "repo121", "namespace": "projectquay"}
+146	14	4	1	127	2023-01-03 11:24:19.324926	172.18.0.1	{"repo": "repo122", "namespace": "projectquay"}
+147	14	4	1	128	2023-01-03 11:24:19.411567	172.18.0.1	{"repo": "repo123", "namespace": "projectquay"}
+148	14	4	1	129	2023-01-03 11:24:19.502882	172.18.0.1	{"repo": "repo124", "namespace": "projectquay"}
+149	14	4	1	130	2023-01-03 11:24:19.616296	172.18.0.1	{"repo": "repo125", "namespace": "projectquay"}
+150	14	4	1	131	2023-01-03 11:24:19.718203	172.18.0.1	{"repo": "repo126", "namespace": "projectquay"}
+151	14	4	1	132	2023-01-03 11:24:19.817604	172.18.0.1	{"repo": "repo127", "namespace": "projectquay"}
+152	14	4	1	133	2023-01-03 11:24:19.911922	172.18.0.1	{"repo": "repo128", "namespace": "projectquay"}
+153	14	4	1	134	2023-01-03 11:24:20.012881	172.18.0.1	{"repo": "repo129", "namespace": "projectquay"}
+154	14	4	1	135	2023-01-03 11:24:20.112741	172.18.0.1	{"repo": "repo130", "namespace": "projectquay"}
+155	14	4	1	136	2023-01-03 11:24:20.228978	172.18.0.1	{"repo": "repo131", "namespace": "projectquay"}
+156	14	4	1	137	2023-01-03 11:24:20.370357	172.18.0.1	{"repo": "repo132", "namespace": "projectquay"}
+157	14	4	1	138	2023-01-03 11:24:20.463671	172.18.0.1	{"repo": "repo133", "namespace": "projectquay"}
+158	14	4	1	139	2023-01-03 11:24:20.56237	172.18.0.1	{"repo": "repo134", "namespace": "projectquay"}
+159	14	4	1	140	2023-01-03 11:24:20.65016	172.18.0.1	{"repo": "repo135", "namespace": "projectquay"}
+160	14	4	1	141	2023-01-03 11:24:20.74896	172.18.0.1	{"repo": "repo136", "namespace": "projectquay"}
+161	14	4	1	142	2023-01-03 11:24:20.835699	172.18.0.1	{"repo": "repo137", "namespace": "projectquay"}
+162	14	4	1	143	2023-01-03 11:24:20.922058	172.18.0.1	{"repo": "repo138", "namespace": "projectquay"}
+163	14	4	1	144	2023-01-03 11:24:21.023797	172.18.0.1	{"repo": "repo139", "namespace": "projectquay"}
+164	14	4	1	145	2023-01-03 11:24:21.120846	172.18.0.1	{"repo": "repo140", "namespace": "projectquay"}
+165	14	4	1	146	2023-01-03 11:24:21.212627	172.18.0.1	{"repo": "repo141", "namespace": "projectquay"}
+166	14	4	1	147	2023-01-03 11:24:21.323846	172.18.0.1	{"repo": "repo142", "namespace": "projectquay"}
+167	14	4	1	148	2023-01-03 11:24:21.44063	172.18.0.1	{"repo": "repo143", "namespace": "projectquay"}
+168	14	4	1	149	2023-01-03 11:24:21.543192	172.18.0.1	{"repo": "repo144", "namespace": "projectquay"}
+169	14	4	1	150	2023-01-03 11:24:21.639557	172.18.0.1	{"repo": "repo145", "namespace": "projectquay"}
+170	14	4	1	151	2023-01-03 11:24:21.729224	172.18.0.1	{"repo": "repo146", "namespace": "projectquay"}
+171	14	4	1	152	2023-01-03 11:24:21.83626	172.18.0.1	{"repo": "repo147", "namespace": "projectquay"}
+172	14	4	1	153	2023-01-03 11:24:21.922767	172.18.0.1	{"repo": "repo148", "namespace": "projectquay"}
+173	14	4	1	154	2023-01-03 11:24:22.021513	172.18.0.1	{"repo": "repo149", "namespace": "projectquay"}
 \.
 
 
@@ -5691,6 +5845,8 @@ COPY public.logentrykind (id, name) FROM stdin;
 73	repo_mirror_sync_test_failed
 74	repo_mirror_sync_test_started
 75	change_repo_state
+76	create_proxy_cache_config
+77	delete_proxy_cache_config
 \.
 
 
@@ -5942,8 +6098,8 @@ COPY public.quayservice (id, name) FROM stdin;
 --
 
 COPY public.queueitem (id, queue_name, body, available_after, available, processing_expires, retries_remaining, state_id) FROM stdin;
-1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2022-11-30 21:26:51.497982	t	2022-12-01 00:21:51.470842	5	a7c201f0-a472-48a7-8032-65e9ba2c766f
-2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2022-11-30 21:26:56.605709	t	2022-12-01 00:21:56.51308	5	c54c092e-4c5b-4c14-a687-6fa70a2b79c5
+1	namespacegc/2/	{"marker_id": 1, "original_username": "quay"}	2023-01-03 11:27:34.193037	t	2023-01-03 14:22:34.160624	5	d721825a-0a39-41c7-a41e-49b8415026e6
+2	namespacegc/3/	{"marker_id": 2, "original_username": "clair"}	2023-01-03 11:27:39.22571	t	2023-01-03 14:22:39.211412	5	7a1a7e72-a63d-4479-a152-a0e0dc418aac
 \.
 
 
@@ -5986,11 +6142,160 @@ COPY public.repomirrorrule (id, uuid, repository_id, creation_date, rule_type, r
 --
 
 COPY public.repository (id, namespace_user_id, name, visibility_id, description, badge_token, kind_id, trust_enabled, state) FROM stdin;
-1	1	hello-world	2	\N	b6c6a402-af02-4cc1-a4a9-48155b049f19	1	f	0
+1	1	hello-world	1	\N	b6c6a402-af02-4cc1-a4a9-48155b049f19	1	f	0
 2	1	nested/repo	2		637a151b-62db-4c26-a160-0ba01d1c96d4	1	f	0
 3	2	alpine	1		9d24b211-b0af-47e2-9a88-543483b68461	1	f	0
 4	4	clair-jwt	1		cc957b5d-c4f8-4359-9bc9-f6e667a216da	1	f	0
-5	28	testrepo	2		8f1a8b8a-a83c-404b-bdd0-c087d3226560	1	f	0
+5	28	testrepo	1		8f1a8b8a-a83c-404b-bdd0-c087d3226560	1	f	0
+6	4	repo1	1	This is the description of repo1	6c0cd2e2-d93c-43fa-9ca0-f181d1d1bf01	1	f	0
+7	4	repo2	1	This is the description of repo2	35b48635-6610-482f-88f8-6e85dbecc7c7	1	f	0
+8	4	repo3	1	This is the description of repo3	9ccd98aa-8f64-4370-9d11-525860943177	1	f	0
+9	4	repo4	1	This is the description of repo4	e34ddf80-de3b-4dea-8a1a-fc091920137c	1	f	0
+10	4	repo5	1	This is the description of repo5	e1fecd03-889e-4397-bff6-8e9f32408f19	1	f	0
+11	4	repo6	1	This is the description of repo6	5aba2702-b67e-4b4d-92ef-8a687c50f86f	1	f	0
+12	4	repo7	1	This is the description of repo7	e0e59647-d9bb-425a-aa0e-62fe84c251db	1	f	0
+13	4	repo8	1	This is the description of repo8	4b5794c1-4d54-4e7b-99c3-088fa3cf1481	1	f	0
+14	4	repo9	1	This is the description of repo9	0cc2cdd9-35c3-4e33-b619-0f2f0e2b44dc	1	f	0
+15	4	repo10	1	This is the description of repo10	dc5172fd-24c3-4e7b-ba88-91f97f75c504	1	f	0
+16	4	repo11	1	This is the description of repo11	c8e43f81-bef0-45f7-b38c-5794ae049a9a	1	f	0
+17	4	repo12	1	This is the description of repo12	9316361f-2282-400d-a696-29651b63293c	1	f	0
+18	4	repo13	1	This is the description of repo13	151a32fe-4ecd-4f53-ab2e-6817b7f65887	1	f	0
+19	4	repo14	1	This is the description of repo14	6f622528-672b-4839-a925-5a3166027eb5	1	f	0
+20	4	repo15	1	This is the description of repo15	931321b3-39b7-4b44-b7f0-af468fd5f323	1	f	0
+21	4	repo16	1	This is the description of repo16	a9381201-d1f5-4a78-8f9e-2fa6af91335f	1	f	0
+22	4	repo17	1	This is the description of repo17	d08c905b-0077-4729-a54b-72b198ccbce6	1	f	0
+23	4	repo18	1	This is the description of repo18	995b57f6-7e47-4678-8c79-eeb9f6a74e98	1	f	0
+24	4	repo19	1	This is the description of repo19	fe1ab89f-2d64-4429-b14f-367233a44ecc	1	f	0
+25	4	repo20	1	This is the description of repo20	005efe98-e0fc-4675-bb8d-90166042af71	1	f	0
+26	4	repo21	1	This is the description of repo21	a9cf48c9-cc1b-49db-8428-2f302b35dd52	1	f	0
+27	4	repo22	1	This is the description of repo22	2bea06df-ecb1-4522-81be-b4284cd70162	1	f	0
+28	4	repo23	1	This is the description of repo23	97ce3804-211d-4656-8d95-1bab91533cd8	1	f	0
+29	4	repo24	1	This is the description of repo24	e412f0a9-543e-4e2d-8b2d-b23f06827712	1	f	0
+30	4	repo25	1	This is the description of repo25	3381d226-c151-4c35-a55a-ed1a16902398	1	f	0
+31	4	repo26	1	This is the description of repo26	99f356bc-f15e-4329-9787-990487aff882	1	f	0
+32	4	repo27	1	This is the description of repo27	37db1c11-2523-4097-9021-d022345bd681	1	f	0
+33	4	repo28	1	This is the description of repo28	b04acff4-4aca-4936-94fe-b19391cb6651	1	f	0
+34	4	repo29	1	This is the description of repo29	72cbd2c7-354a-4366-ba6e-9b01e03a90d4	1	f	0
+35	4	repo30	1	This is the description of repo30	fb214718-f21f-4e9f-86f4-f3c8ed14a08e	1	f	0
+36	4	repo31	1	This is the description of repo31	ad462da4-86f4-4e78-ace2-27dee297817f	1	f	0
+37	4	repo32	1	This is the description of repo32	5bdfec07-6862-453e-b7d9-03c48184fb04	1	f	0
+38	4	repo33	1	This is the description of repo33	228d596b-95ae-4f67-a8bd-91327bbb1cc1	1	f	0
+39	4	repo34	1	This is the description of repo34	c641c589-da9e-4410-99ff-7e5324c1ae39	1	f	0
+40	4	repo35	1	This is the description of repo35	f38accc8-de1c-4d4f-b702-bd9fed980083	1	f	0
+41	4	repo36	1	This is the description of repo36	1efb9bf8-18f8-4e62-8abc-710f450c5a75	1	f	0
+42	4	repo37	1	This is the description of repo37	0ae0cf2d-f7f4-4f0f-9bb6-be6f70cc60ad	1	f	0
+43	4	repo38	1	This is the description of repo38	63983122-271f-4137-86ed-2b0ae97a5927	1	f	0
+44	4	repo39	1	This is the description of repo39	f2b18776-9bfc-4f52-9160-e9c7be933e48	1	f	0
+45	4	repo40	1	This is the description of repo40	e22bf927-6b83-42e8-b798-21011ed2a5c1	1	f	0
+46	4	repo41	1	This is the description of repo41	19c44c70-d016-4148-ac74-5e84b2004eb8	1	f	0
+47	4	repo42	1	This is the description of repo42	d7e47ea5-e4b6-446f-bf17-22e0e5e21649	1	f	0
+48	4	repo43	1	This is the description of repo43	6c5af7da-1166-4d61-86b5-8eb26f96247a	1	f	0
+49	4	repo44	1	This is the description of repo44	07d7e63c-014f-45ed-9efc-3b62ecbed797	1	f	0
+50	4	repo45	1	This is the description of repo45	ff8bc900-0d8b-4c33-941b-10d3abd9c0b2	1	f	0
+51	4	repo46	1	This is the description of repo46	a21af3d7-894f-4202-a5fe-1184ed64d9a3	1	f	0
+52	4	repo47	1	This is the description of repo47	81260add-7ab5-43df-9ca3-ed227c2802af	1	f	0
+53	4	repo48	1	This is the description of repo48	a8e8f5f7-a43f-4f34-92f7-7e8f620a5053	1	f	0
+54	4	repo49	1	This is the description of repo49	5aa0791c-5fc5-4344-9485-48e625386b69	1	f	0
+55	4	repo50	1	This is the description of repo50	109183d7-42fc-4fc9-9a09-f24c8328640b	1	f	0
+56	4	repo51	1	This is the description of repo51	db2969e6-63b8-4c81-90ca-4522254dcd45	1	f	0
+57	4	repo52	1	This is the description of repo52	7a10c5ac-26a1-4676-bf1e-44f560ac1967	1	f	0
+58	4	repo53	1	This is the description of repo53	c1738403-de0c-482b-86fc-9cfaf7663dd4	1	f	0
+59	4	repo54	1	This is the description of repo54	3f36d29e-3c11-4878-82d4-e3989dd0394b	1	f	0
+60	4	repo55	1	This is the description of repo55	b9f49d6c-42e2-4278-b7ec-c8619b22ddb2	1	f	0
+61	4	repo56	1	This is the description of repo56	a13ac516-1fc4-4bee-ab34-86392448ddf7	1	f	0
+62	4	repo57	1	This is the description of repo57	280174e0-ccdf-4a88-a1b1-bbe28be4199f	1	f	0
+63	4	repo58	1	This is the description of repo58	03b8da6f-6e66-4786-940d-809db9989aaf	1	f	0
+64	4	repo59	1	This is the description of repo59	defa4705-3847-41b4-8dc7-428a0ba79418	1	f	0
+65	4	repo60	1	This is the description of repo60	113ab27c-5bf5-4223-ac05-5d00c48e7a37	1	f	0
+66	4	repo61	1	This is the description of repo61	6f0c41ff-d047-4c4d-9172-b2a393c5308f	1	f	0
+67	4	repo62	1	This is the description of repo62	c3ee9c1f-ad6d-4813-92a3-0cfcaf74d457	1	f	0
+68	4	repo63	1	This is the description of repo63	fc4c8ddb-5167-48a0-bbb4-4ab6136ea130	1	f	0
+69	4	repo64	1	This is the description of repo64	0bc9bdbf-e5f0-49a8-84d7-3aea11f95c15	1	f	0
+70	4	repo65	1	This is the description of repo65	07bc8da5-401d-4c9c-bfa3-a995bc7a44e2	1	f	0
+71	4	repo66	1	This is the description of repo66	8d498d52-7a70-43c5-8da8-20ee9362805d	1	f	0
+72	4	repo67	1	This is the description of repo67	e2d0e12f-256c-450c-a40b-5d422835c74e	1	f	0
+73	4	repo68	1	This is the description of repo68	391f4b54-294f-417a-8922-b1fc0b8699d4	1	f	0
+74	4	repo69	1	This is the description of repo69	5ed65322-c2a7-462f-9937-e9f467ed66c2	1	f	0
+75	4	repo70	1	This is the description of repo70	daae712a-30bc-4b90-aecb-ac11b6ff6730	1	f	0
+76	4	repo71	1	This is the description of repo71	7d511671-3c0c-4c3a-9ed8-f3baa9197b3e	1	f	0
+77	4	repo72	1	This is the description of repo72	1630b7f3-93ac-4162-b6ba-0d6630027b73	1	f	0
+78	4	repo73	1	This is the description of repo73	692aab25-c7b7-4e9a-885c-95f2b9ce4cb6	1	f	0
+79	4	repo74	1	This is the description of repo74	5cd363bb-16be-4191-8776-73900f7e52d3	1	f	0
+80	4	repo75	1	This is the description of repo75	9892b54f-d424-4008-8774-12b90b957478	1	f	0
+81	4	repo76	1	This is the description of repo76	3a5fb84c-a6a0-4b58-b089-1221181b6a2b	1	f	0
+82	4	repo77	1	This is the description of repo77	8a357446-3be0-4447-8f36-c1412aece483	1	f	0
+83	4	repo78	1	This is the description of repo78	071244d7-52a0-4b5a-ae62-3159d67ac3ce	1	f	0
+84	4	repo79	1	This is the description of repo79	7ba99687-ea1c-4f14-8049-1418b94261e2	1	f	0
+85	4	repo80	1	This is the description of repo80	c29f04c0-21c7-4be6-ae2b-1aaf6bd45b44	1	f	0
+86	4	repo81	1	This is the description of repo81	d43191b9-3fc9-45ed-bf75-9a2b7e092670	1	f	0
+87	4	repo82	1	This is the description of repo82	ece7d994-f3a8-41de-933a-d9487500379e	1	f	0
+88	4	repo83	1	This is the description of repo83	ee56470b-c780-49a8-969f-e5a7518c5d85	1	f	0
+89	4	repo84	1	This is the description of repo84	66dd21b2-6b4f-43bf-8ffc-33aa6c21d1c1	1	f	0
+90	4	repo85	1	This is the description of repo85	ddb2a056-2ea1-45c8-b224-51d16387174a	1	f	0
+91	4	repo86	1	This is the description of repo86	1af8b96c-0b24-47ef-9b11-72e323498a52	1	f	0
+92	4	repo87	1	This is the description of repo87	b8b6c7ea-e6b9-4391-9b87-d7fccb5a9baf	1	f	0
+93	4	repo88	1	This is the description of repo88	35e3a2e9-e66f-44cd-ac11-c371d749d9da	1	f	0
+94	4	repo89	1	This is the description of repo89	4c9a24ee-2176-4dd7-a72c-f3bec497085c	1	f	0
+95	4	repo90	1	This is the description of repo90	c00ed328-c3b6-43a4-a8c8-5b31c15d9036	1	f	0
+96	4	repo91	1	This is the description of repo91	99c052f8-31b4-4b85-8ac6-2ed0577fcc16	1	f	0
+97	4	repo92	1	This is the description of repo92	b7d9b70f-aa77-4d83-aea5-a8ac7c91202b	1	f	0
+98	4	repo93	1	This is the description of repo93	dd0d8bd4-a68f-4894-b141-f7148f352dda	1	f	0
+99	4	repo94	1	This is the description of repo94	8cc16277-f6c9-4b77-bd36-294b2da90219	1	f	0
+100	4	repo95	1	This is the description of repo95	ab89f9ac-d280-4cb5-b7bc-a5453ddf2bb3	1	f	0
+101	4	repo96	1	This is the description of repo96	977ebc8d-6637-4947-9a14-5e36d1223850	1	f	0
+102	4	repo97	1	This is the description of repo97	352a6dc4-55c9-4c18-a0b3-2abe14aa6430	1	f	0
+103	4	repo98	1	This is the description of repo98	8a3dec6b-fb43-4168-8f47-49795c60f7e5	1	f	0
+104	4	repo99	1	This is the description of repo99	a86c48d9-66e0-40cb-a010-ba8f5cb15245	1	f	0
+105	4	repo100	1	This is the description of repo100	af4c3af3-f7aa-45cc-b651-19cc9e172f6b	1	f	0
+106	4	repo101	1	This is the description of repo101	3f30624f-7ab4-461a-a9e2-472f40faa945	1	f	0
+107	4	repo102	1	This is the description of repo102	84d22eab-d211-4818-9b51-f45ffc80a89b	1	f	0
+108	4	repo103	1	This is the description of repo103	3c9f54aa-ef7d-405b-b72d-a2ba95b6f5a1	1	f	0
+109	4	repo104	1	This is the description of repo104	42fa64d4-ab9c-4014-a9de-db0f398f133d	1	f	0
+110	4	repo105	1	This is the description of repo105	69652df1-9ab4-42c9-8e2a-8dbb9fc69602	1	f	0
+111	4	repo106	1	This is the description of repo106	ab154323-f977-4986-afb0-34ac23133522	1	f	0
+112	4	repo107	1	This is the description of repo107	00006dd1-e617-4620-a425-f26b2b60ac6b	1	f	0
+113	4	repo108	1	This is the description of repo108	25179884-8ea5-4d18-9a79-e3d4a71edf21	1	f	0
+114	4	repo109	1	This is the description of repo109	176a8a2b-ba1d-4dc6-883d-b64e0ae5b117	1	f	0
+115	4	repo110	1	This is the description of repo110	f97624a7-5ef6-4dea-8e93-d4692cff3e1c	1	f	0
+116	4	repo111	1	This is the description of repo111	9948e0cf-0905-4d90-804c-6a0c93c2332a	1	f	0
+117	4	repo112	1	This is the description of repo112	298fa279-17f5-4ec8-aa96-7ac489ba4671	1	f	0
+118	4	repo113	1	This is the description of repo113	28122f45-17c8-4ab0-96d9-585e4fc13e26	1	f	0
+119	4	repo114	1	This is the description of repo114	17f73ff9-3940-4a93-a64a-0f5d3aea208a	1	f	0
+120	4	repo115	1	This is the description of repo115	4852269e-9cf4-448d-a8ab-2817675cb26a	1	f	0
+121	4	repo116	1	This is the description of repo116	1c9e3ec0-c4e7-4f93-be4b-ec34c4cb74f7	1	f	0
+122	4	repo117	1	This is the description of repo117	5bca21c4-184d-4f19-a074-1c0a7bfff03a	1	f	0
+123	4	repo118	1	This is the description of repo118	63453d05-1653-4b58-bd86-3dc85a2d4e1b	1	f	0
+124	4	repo119	1	This is the description of repo119	30005577-5114-4276-b0af-4152e3c7135f	1	f	0
+125	4	repo120	1	This is the description of repo120	183cf3f0-4cb5-402f-bd68-df2594fba486	1	f	0
+126	4	repo121	1	This is the description of repo121	5f0c8856-1669-4949-88e9-b8408715ed9e	1	f	0
+127	4	repo122	1	This is the description of repo122	68d04fe6-def8-4c65-8bba-06054f02b86b	1	f	0
+128	4	repo123	1	This is the description of repo123	2cadd996-529c-468c-a7e9-20a8039d5017	1	f	0
+129	4	repo124	1	This is the description of repo124	a5997c31-4c9c-4abb-8f0a-ac1e6f4c7acb	1	f	0
+130	4	repo125	1	This is the description of repo125	26803c9b-ce51-4b42-af27-87e58bd4ce2a	1	f	0
+131	4	repo126	1	This is the description of repo126	233d12e5-ed25-4132-bfc4-d5f8150bbd13	1	f	0
+132	4	repo127	1	This is the description of repo127	4aa3a88d-8915-46ec-8387-bfe9ebab33ec	1	f	0
+133	4	repo128	1	This is the description of repo128	62092a21-063e-4719-8837-f39cfda41bf5	1	f	0
+134	4	repo129	1	This is the description of repo129	82f91dd8-dd39-4b16-b722-94337c4ed26d	1	f	0
+135	4	repo130	1	This is the description of repo130	0ec9513c-5c48-4bfa-b492-36543df0cba1	1	f	0
+136	4	repo131	1	This is the description of repo131	836b6382-cdb7-4f0e-9ef3-f71b54d8ce84	1	f	0
+137	4	repo132	1	This is the description of repo132	d95b4426-4242-4a6e-a71f-251d8affb388	1	f	0
+138	4	repo133	1	This is the description of repo133	72f55d93-9d62-44f0-acae-5438e381c32b	1	f	0
+139	4	repo134	1	This is the description of repo134	565515e1-80c3-49cb-9c7c-6391178edef0	1	f	0
+140	4	repo135	1	This is the description of repo135	98a3e46e-93c6-4887-935e-9fce06daf1db	1	f	0
+141	4	repo136	1	This is the description of repo136	fc31fb2e-0134-4309-b9fd-d13c5b58c795	1	f	0
+142	4	repo137	1	This is the description of repo137	c0ceebc0-8300-419b-97b0-62688b7a8f75	1	f	0
+143	4	repo138	1	This is the description of repo138	dedf8996-d8b7-41ff-a1dd-9d0be120057e	1	f	0
+144	4	repo139	1	This is the description of repo139	25e163a6-7990-452a-93dd-1b89b566c9f5	1	f	0
+145	4	repo140	1	This is the description of repo140	b835e1c8-c762-43f6-affb-d3e257c91faa	1	f	0
+146	4	repo141	1	This is the description of repo141	1baf74ee-e882-4565-ba19-2cc37495bf24	1	f	0
+147	4	repo142	1	This is the description of repo142	cc3b853a-a1a8-4d7a-a268-d897fee1eed6	1	f	0
+148	4	repo143	1	This is the description of repo143	a7e29ff7-5b63-44d9-9165-78da5a79d19e	1	f	0
+149	4	repo144	1	This is the description of repo144	3e92da50-cc65-499c-a05f-82bc4876b6f5	1	f	0
+150	4	repo145	1	This is the description of repo145	fabd9245-c631-4743-9859-61729b6d33d7	1	f	0
+151	4	repo146	1	This is the description of repo146	ef04b240-dba1-4c9c-9d85-4a5887d0cf83	1	f	0
+152	4	repo147	1	This is the description of repo147	3d058d1e-a700-423e-ab91-364afd0c2926	1	f	0
+153	4	repo148	1	This is the description of repo148	0c796577-7825-4c9d-a4fb-2a7866544248	1	f	0
+154	4	repo149	1	This is the description of repo149	8db24323-26f1-4fc1-9a10-1ac9d6f768d5	1	f	0
 \.
 
 
@@ -6004,6 +6309,155 @@ COPY public.repositoryactioncount (id, repository_id, count, date) FROM stdin;
 3	3	0	2022-11-20
 4	4	0	2022-11-20
 5	5	0	2022-11-28
+6	6	0	2023-01-02
+7	7	0	2023-01-02
+8	8	0	2023-01-02
+9	9	0	2023-01-02
+10	10	0	2023-01-02
+11	11	0	2023-01-02
+12	12	0	2023-01-02
+13	13	0	2023-01-02
+14	14	0	2023-01-02
+15	15	0	2023-01-02
+16	16	0	2023-01-02
+17	17	0	2023-01-02
+18	18	0	2023-01-02
+19	19	0	2023-01-02
+20	20	0	2023-01-02
+21	21	0	2023-01-02
+22	22	0	2023-01-02
+23	23	0	2023-01-02
+24	24	0	2023-01-02
+25	25	0	2023-01-02
+26	26	0	2023-01-02
+27	27	0	2023-01-02
+28	28	0	2023-01-02
+29	29	0	2023-01-02
+30	30	0	2023-01-02
+31	31	0	2023-01-02
+32	32	0	2023-01-02
+33	33	0	2023-01-02
+34	34	0	2023-01-02
+35	35	0	2023-01-02
+36	36	0	2023-01-02
+37	37	0	2023-01-02
+38	38	0	2023-01-02
+39	39	0	2023-01-02
+40	40	0	2023-01-02
+41	41	0	2023-01-02
+42	42	0	2023-01-02
+43	43	0	2023-01-02
+44	44	0	2023-01-02
+45	45	0	2023-01-02
+46	46	0	2023-01-02
+47	47	0	2023-01-02
+48	48	0	2023-01-02
+49	49	0	2023-01-02
+50	50	0	2023-01-02
+51	51	0	2023-01-02
+52	52	0	2023-01-02
+53	53	0	2023-01-02
+54	54	0	2023-01-02
+55	55	0	2023-01-02
+56	56	0	2023-01-02
+57	57	0	2023-01-02
+58	58	0	2023-01-02
+59	59	0	2023-01-02
+60	60	0	2023-01-02
+61	61	0	2023-01-02
+62	62	0	2023-01-02
+63	63	0	2023-01-02
+64	64	0	2023-01-02
+65	65	0	2023-01-02
+66	66	0	2023-01-02
+67	67	0	2023-01-02
+68	68	0	2023-01-02
+69	69	0	2023-01-02
+70	70	0	2023-01-02
+71	71	0	2023-01-02
+72	72	0	2023-01-02
+73	73	0	2023-01-02
+74	74	0	2023-01-02
+75	75	0	2023-01-02
+76	76	0	2023-01-02
+77	77	0	2023-01-02
+78	78	0	2023-01-02
+79	79	0	2023-01-02
+80	80	0	2023-01-02
+81	81	0	2023-01-02
+82	82	0	2023-01-02
+83	83	0	2023-01-02
+84	84	0	2023-01-02
+85	85	0	2023-01-02
+86	86	0	2023-01-02
+87	87	0	2023-01-02
+88	88	0	2023-01-02
+89	89	0	2023-01-02
+90	90	0	2023-01-02
+91	91	0	2023-01-02
+92	92	0	2023-01-02
+93	93	0	2023-01-02
+94	94	0	2023-01-02
+95	95	0	2023-01-02
+96	96	0	2023-01-02
+97	97	0	2023-01-02
+98	98	0	2023-01-02
+99	99	0	2023-01-02
+100	100	0	2023-01-02
+101	101	0	2023-01-02
+102	102	0	2023-01-02
+103	103	0	2023-01-02
+104	104	0	2023-01-02
+105	105	0	2023-01-02
+106	106	0	2023-01-02
+107	107	0	2023-01-02
+108	108	0	2023-01-02
+109	109	0	2023-01-02
+110	110	0	2023-01-02
+111	111	0	2023-01-02
+112	112	0	2023-01-02
+113	113	0	2023-01-02
+114	114	0	2023-01-02
+115	115	0	2023-01-02
+116	116	0	2023-01-02
+117	117	0	2023-01-02
+118	118	0	2023-01-02
+119	119	0	2023-01-02
+120	120	0	2023-01-02
+121	121	0	2023-01-02
+122	122	0	2023-01-02
+123	123	0	2023-01-02
+124	124	0	2023-01-02
+125	125	0	2023-01-02
+126	126	0	2023-01-02
+127	127	0	2023-01-02
+128	128	0	2023-01-02
+129	129	0	2023-01-02
+130	130	0	2023-01-02
+131	131	0	2023-01-02
+132	132	0	2023-01-02
+133	133	0	2023-01-02
+134	134	0	2023-01-02
+135	135	0	2023-01-02
+136	136	0	2023-01-02
+137	137	0	2023-01-02
+138	138	0	2023-01-02
+139	139	0	2023-01-02
+140	140	0	2023-01-02
+141	141	0	2023-01-02
+142	142	0	2023-01-02
+143	143	0	2023-01-02
+144	144	0	2023-01-02
+145	145	0	2023-01-02
+146	146	0	2023-01-02
+147	147	0	2023-01-02
+148	148	0	2023-01-02
+149	149	0	2023-01-02
+150	150	0	2023-01-02
+151	151	0	2023-01-02
+152	152	0	2023-01-02
+153	153	0	2023-01-02
+154	154	0	2023-01-02
 \.
 
 
@@ -6012,6 +6466,7 @@ COPY public.repositoryactioncount (id, repository_id, count, date) FROM stdin;
 --
 
 COPY public.repositoryauthorizedemail (id, repository_id, email, code, confirmed) FROM stdin;
+1	5	user1@redhat.com	J9VE21W29UAZ8UU0	t
 \.
 
 
@@ -6046,6 +6501,11 @@ COPY public.repositorykind (id, name) FROM stdin;
 --
 
 COPY public.repositorynotification (id, uuid, repository_id, event_id, method_id, title, config_json, event_config_json, number_of_failures) FROM stdin;
+1	a5a83554-b024-4522-8b63-509266b1e45e	5	1	2		{"flow_api_token": "testtoken"}	{}	0
+2	2a4aeb62-3bea-4bb7-83ca-75a34dec3367	5	2	3	hipchat-notification	{"notification_token": "testtoken", "room_id": "123"}	{}	0
+3	70a8f966-1dc1-47b8-9b51-3cf71d0f9ad2	5	6	5	slack-notification	{"url": "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"}	{}	3
+4	1efd38da-6ab4-4e09-822d-3b1742a00b1c	5	8	6	webhook-notification	{"url": "https://doesnotexist", "template": "{\\"foo\\":\\"bar\\"}"}	{}	3
+5	1d07e6db-be20-405a-8780-9d83bf1d16da	5	9	1	email-notification	{"email": "user1@redhat.com"}	{}	3
 \.
 
 
@@ -6061,6 +6521,155 @@ COPY public.repositorypermission (id, team_id, user_id, repository_id, role_id) 
 5	\N	1	5	1
 6	28	\N	5	3
 8	\N	30	5	3
+9	\N	1	6	1
+10	\N	1	7	1
+11	\N	1	8	1
+12	\N	1	9	1
+13	\N	1	10	1
+14	\N	1	11	1
+15	\N	1	12	1
+16	\N	1	13	1
+17	\N	1	14	1
+18	\N	1	15	1
+19	\N	1	16	1
+20	\N	1	17	1
+21	\N	1	18	1
+22	\N	1	19	1
+23	\N	1	20	1
+24	\N	1	21	1
+25	\N	1	22	1
+26	\N	1	23	1
+27	\N	1	24	1
+28	\N	1	25	1
+29	\N	1	26	1
+30	\N	1	27	1
+31	\N	1	28	1
+32	\N	1	29	1
+33	\N	1	30	1
+34	\N	1	31	1
+35	\N	1	32	1
+36	\N	1	33	1
+37	\N	1	34	1
+38	\N	1	35	1
+39	\N	1	36	1
+40	\N	1	37	1
+41	\N	1	38	1
+42	\N	1	39	1
+43	\N	1	40	1
+44	\N	1	41	1
+45	\N	1	42	1
+46	\N	1	43	1
+47	\N	1	44	1
+48	\N	1	45	1
+49	\N	1	46	1
+50	\N	1	47	1
+51	\N	1	48	1
+52	\N	1	49	1
+53	\N	1	50	1
+54	\N	1	51	1
+55	\N	1	52	1
+56	\N	1	53	1
+57	\N	1	54	1
+58	\N	1	55	1
+59	\N	1	56	1
+60	\N	1	57	1
+61	\N	1	58	1
+62	\N	1	59	1
+63	\N	1	60	1
+64	\N	1	61	1
+65	\N	1	62	1
+66	\N	1	63	1
+67	\N	1	64	1
+68	\N	1	65	1
+69	\N	1	66	1
+70	\N	1	67	1
+71	\N	1	68	1
+72	\N	1	69	1
+73	\N	1	70	1
+74	\N	1	71	1
+75	\N	1	72	1
+76	\N	1	73	1
+77	\N	1	74	1
+78	\N	1	75	1
+79	\N	1	76	1
+80	\N	1	77	1
+81	\N	1	78	1
+82	\N	1	79	1
+83	\N	1	80	1
+84	\N	1	81	1
+85	\N	1	82	1
+86	\N	1	83	1
+87	\N	1	84	1
+88	\N	1	85	1
+89	\N	1	86	1
+90	\N	1	87	1
+91	\N	1	88	1
+92	\N	1	89	1
+93	\N	1	90	1
+94	\N	1	91	1
+95	\N	1	92	1
+96	\N	1	93	1
+97	\N	1	94	1
+98	\N	1	95	1
+99	\N	1	96	1
+100	\N	1	97	1
+101	\N	1	98	1
+102	\N	1	99	1
+103	\N	1	100	1
+104	\N	1	101	1
+105	\N	1	102	1
+106	\N	1	103	1
+107	\N	1	104	1
+108	\N	1	105	1
+109	\N	1	106	1
+110	\N	1	107	1
+111	\N	1	108	1
+112	\N	1	109	1
+113	\N	1	110	1
+114	\N	1	111	1
+115	\N	1	112	1
+116	\N	1	113	1
+117	\N	1	114	1
+118	\N	1	115	1
+119	\N	1	116	1
+120	\N	1	117	1
+121	\N	1	118	1
+122	\N	1	119	1
+123	\N	1	120	1
+124	\N	1	121	1
+125	\N	1	122	1
+126	\N	1	123	1
+127	\N	1	124	1
+128	\N	1	125	1
+129	\N	1	126	1
+130	\N	1	127	1
+131	\N	1	128	1
+132	\N	1	129	1
+133	\N	1	130	1
+134	\N	1	131	1
+135	\N	1	132	1
+136	\N	1	133	1
+137	\N	1	134	1
+138	\N	1	135	1
+139	\N	1	136	1
+140	\N	1	137	1
+141	\N	1	138	1
+142	\N	1	139	1
+143	\N	1	140	1
+144	\N	1	141	1
+145	\N	1	142	1
+146	\N	1	143	1
+147	\N	1	144	1
+148	\N	1	145	1
+149	\N	1	146	1
+150	\N	1	147	1
+151	\N	1	148	1
+152	\N	1	149	1
+153	\N	1	150	1
+154	\N	1	151	1
+155	\N	1	152	1
+156	\N	1	153	1
+157	\N	1	154	1
 \.
 
 
@@ -6074,6 +6683,155 @@ COPY public.repositorysearchscore (id, repository_id, score, last_updated) FROM 
 3	3	0	\N
 4	4	0	\N
 5	5	0	\N
+6	6	0	\N
+7	7	0	\N
+8	8	0	\N
+9	9	0	\N
+10	10	0	\N
+11	11	0	\N
+12	12	0	\N
+13	13	0	\N
+14	14	0	\N
+15	15	0	\N
+16	16	0	\N
+17	17	0	\N
+18	18	0	\N
+19	19	0	\N
+20	20	0	\N
+21	21	0	\N
+22	22	0	\N
+23	23	0	\N
+24	24	0	\N
+25	25	0	\N
+26	26	0	\N
+27	27	0	\N
+28	28	0	\N
+29	29	0	\N
+30	30	0	\N
+31	31	0	\N
+32	32	0	\N
+33	33	0	\N
+34	34	0	\N
+35	35	0	\N
+36	36	0	\N
+37	37	0	\N
+38	38	0	\N
+39	39	0	\N
+40	40	0	\N
+41	41	0	\N
+42	42	0	\N
+43	43	0	\N
+44	44	0	\N
+45	45	0	\N
+46	46	0	\N
+47	47	0	\N
+48	48	0	\N
+49	49	0	\N
+50	50	0	\N
+51	51	0	\N
+52	52	0	\N
+53	53	0	\N
+54	54	0	\N
+55	55	0	\N
+56	56	0	\N
+57	57	0	\N
+58	58	0	\N
+59	59	0	\N
+60	60	0	\N
+61	61	0	\N
+62	62	0	\N
+63	63	0	\N
+64	64	0	\N
+65	65	0	\N
+66	66	0	\N
+67	67	0	\N
+68	68	0	\N
+69	69	0	\N
+70	70	0	\N
+71	71	0	\N
+72	72	0	\N
+73	73	0	\N
+74	74	0	\N
+75	75	0	\N
+76	76	0	\N
+77	77	0	\N
+78	78	0	\N
+79	79	0	\N
+80	80	0	\N
+81	81	0	\N
+82	82	0	\N
+83	83	0	\N
+84	84	0	\N
+85	85	0	\N
+86	86	0	\N
+87	87	0	\N
+88	88	0	\N
+89	89	0	\N
+90	90	0	\N
+91	91	0	\N
+92	92	0	\N
+93	93	0	\N
+94	94	0	\N
+95	95	0	\N
+96	96	0	\N
+97	97	0	\N
+98	98	0	\N
+99	99	0	\N
+100	100	0	\N
+101	101	0	\N
+102	102	0	\N
+103	103	0	\N
+104	104	0	\N
+105	105	0	\N
+106	106	0	\N
+107	107	0	\N
+108	108	0	\N
+109	109	0	\N
+110	110	0	\N
+111	111	0	\N
+112	112	0	\N
+113	113	0	\N
+114	114	0	\N
+115	115	0	\N
+116	116	0	\N
+117	117	0	\N
+118	118	0	\N
+119	119	0	\N
+120	120	0	\N
+121	121	0	\N
+122	122	0	\N
+123	123	0	\N
+124	124	0	\N
+125	125	0	\N
+126	126	0	\N
+127	127	0	\N
+128	128	0	\N
+129	129	0	\N
+130	130	0	\N
+131	131	0	\N
+132	132	0	\N
+133	133	0	\N
+134	134	0	\N
+135	135	0	\N
+136	136	0	\N
+137	137	0	\N
+138	138	0	\N
+139	139	0	\N
+140	140	0	\N
+141	141	0	\N
+142	142	0	\N
+143	143	0	\N
+144	144	0	\N
+145	145	0	\N
+146	146	0	\N
+147	147	0	\N
+148	148	0	\N
+149	149	0	\N
+150	150	0	\N
+151	151	0	\N
+152	152	0	\N
+153	153	0	\N
+154	154	0	\N
 \.
 
 
@@ -6084,9 +6842,158 @@ COPY public.repositorysearchscore (id, repository_id, score, last_updated) FROM 
 COPY public.repositorysize (id, repository_id, size_bytes) FROM stdin;
 1	1	2479
 3	3	0
+6	6	0
+7	7	0
+8	8	0
+9	9	0
+10	10	0
+11	11	0
+12	12	0
+13	13	0
+14	14	0
+15	15	0
 2	2	0
-4	4	0
+19	19	0
 5	5	0
+16	16	0
+17	17	0
+18	18	0
+20	20	0
+21	21	0
+22	22	0
+23	23	0
+24	24	0
+25	25	0
+26	26	0
+27	27	0
+28	28	0
+29	29	0
+30	30	0
+31	31	0
+32	32	0
+33	33	0
+34	34	0
+35	35	0
+36	36	0
+37	37	0
+38	38	0
+39	39	0
+40	40	0
+41	41	0
+42	42	0
+43	43	0
+44	44	0
+45	45	0
+46	46	0
+47	47	0
+48	48	0
+49	49	0
+50	50	0
+51	51	0
+52	52	0
+53	53	0
+54	54	0
+55	55	0
+56	56	0
+57	57	0
+58	58	0
+59	59	0
+60	60	0
+61	61	0
+62	62	0
+63	63	0
+64	64	0
+65	65	0
+66	66	0
+67	67	0
+68	68	0
+69	69	0
+70	70	0
+71	71	0
+72	72	0
+73	73	0
+74	74	0
+75	75	0
+76	76	0
+77	77	0
+78	78	0
+79	79	0
+80	80	0
+81	81	0
+82	82	0
+83	83	0
+84	84	0
+85	85	0
+86	86	0
+87	87	0
+88	88	0
+89	89	0
+90	90	0
+91	91	0
+92	92	0
+93	93	0
+94	94	0
+95	95	0
+96	96	0
+97	97	0
+98	98	0
+99	99	0
+100	100	0
+101	101	0
+102	102	0
+103	103	0
+104	104	0
+105	105	0
+106	106	0
+107	107	0
+108	108	0
+109	109	0
+110	110	0
+111	111	0
+112	112	0
+113	113	0
+114	114	0
+115	115	0
+116	116	0
+117	117	0
+118	118	0
+119	119	0
+120	120	0
+121	121	0
+122	122	0
+123	123	0
+124	124	0
+125	125	0
+126	126	0
+127	127	0
+128	128	0
+129	129	0
+130	130	0
+131	131	0
+132	132	0
+133	133	0
+134	134	0
+135	135	0
+136	136	0
+137	137	0
+138	138	0
+139	139	0
+140	140	0
+141	141	0
+142	142	0
+143	143	0
+144	144	0
+145	145	0
+146	146	0
+147	147	0
+148	148	0
+149	149	0
+150	150	0
+151	151	0
+152	152	0
+153	153	0
+154	154	0
+4	4	0
 \.
 
 
@@ -6134,10 +7041,7 @@ COPY public.role (id, name) FROM stdin;
 --
 
 COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, expiration_date, rotation_duration, approval_id) FROM stdin;
-3	http://localhost:8080	wymy28RvVXS0McHaIj1wHjC1EyhlDczyo4gw0etqOX0	quay	{"n": "vjW8tgIpHoHptN3RslleeLDBbGeQmh_Usp5TvKWDOKJZFOQboxaqXCnFVsB_Ua_HX0Qxz5Rk1LnO1s0rWHwDenoHG_Yt_ph5gd97H2zLQdSt6oZ2dGFYvBIK8-MbZ-vzk5vN7Vgg7BQleIEl-pmeHBhlv9jzAnoFCToEgsSvT72FU0MNM1bx_cKdMdHDxp8mCbFxgwxfecHznf50MJVm9SdDedtFvJ8gUf_QjWdhxQ5JxqwmwYNqp5-h4RyPKySuTXtcwb2-tIIr0Rux3IS4DCnWEykM3BeD_grQMRkysS_kwsMWuGPOk72hRk3Q9Ug01tV5wD4XzzuuTdGFinzKrQ", "e": "AQAB", "kty": "RSA", "kid": "wymy28RvVXS0McHaIj1wHjC1EyhlDczyo4gw0etqOX0"}	{"created_by": "CLI tool"}	2022-11-15 13:34:27.001785	2022-11-15 15:34:26.969059	\N	3
-4	http://localhost:8080	ZN_lSn1MoxnNCzytTOzLMWCk-orZMuADii9Sq-8x-IY	quay	{"n": "nl6bWQNChlr6m7uK2h7fSwAHwYKrGLNdX8SvqHkvtNknxKCIsEpFIr7a_Fe3ZTk-vyB4aT-m32LiL8XXvptI25BnpZ2zCPhZDAM4rtH0E8AyJ0C31JpNNhUtq_fjFhgnxkCiO_zDdBtUP8r-TafHxL9nb9NmsgYblXQY4JGNtCUbF_r5OmJZQ7VHzUveDP15af62hKMeIVt9BmHHqozrKgac_EKlh1JAAckQrpJHhHt77OUw08hFDXmjS6Kbqi8y99unwPdMCKi4fHC-cRN5Rav02JLTFy8CpT8C10P-elgVykaHWWyb-IJtXKfP3brgfFvTFJmm33N6UhINr_lf6Q", "e": "AQAB", "kty": "RSA", "kid": "ZN_lSn1MoxnNCzytTOzLMWCk-orZMuADii9Sq-8x-IY"}	{"created_by": "CLI tool"}	2022-11-21 18:40:02.350605	2022-11-21 20:40:02.300317	\N	4
-5	http://localhost:8080	W5XCs7v0wlWNdxINw__qqEGaaHA1REQDheowzey_mwk	quay	{"n": "1TPNyRNsQQgOc0Mb2uFJRbWn_a--Tfl62zYDtXS5X1C45S5PSwqnKQalLPudSaCvjV9E4Ez53OgEFLmq7At3r-6zuIfWsSnpDjYAjcH7yMCmreJ45b1TWOxOXLUpNj7XS4Lh1akVaHgJ12kfIztwqIYm2f4GGmKdzwXoOMvPEY-3ph7vmGfOdURZLM9hT-0mx5tjFCeC1oh1GOdwLn5i0UJd3yXyt0kWC6xV5nksUCr01QOg8wSyxyCelR2-ohVr40H5znsgHfPIQe6jhL6o9yCzoYSVDmD5vRmBdvTlAIP1DGhhWxFVGHGGPNw_Qnzlib3Iui2NbHUHBDbt2G0Ezw", "e": "AQAB", "kty": "RSA", "kid": "W5XCs7v0wlWNdxINw__qqEGaaHA1REQDheowzey_mwk"}	{"created_by": "CLI tool"}	2022-11-21 18:43:45.386442	2022-11-21 20:43:45.335226	\N	5
-6	http://localhost:8080	tRXwIjs2xAQHUZ3Qu0Akdj94ghiGT0SC0uiztOQKV0k	quay	{"n": "vMUcyTKhjv7fJY5CBsodDchHfdMV6hxprj4uoGV-0FWnRR4ZAH4-csSzlkIihMvRY095YbHgi9bJJp03Mkcz9juMHN7tvA_Ew328f6hP6aExEBfTFbB49Ky2cuKrDL0hi0waqYOfm35JVb2xY4yHTdXPaMa9IvcEqsaM4ih2T5GRfKneCC35ffdufqBYvmVBrM0jAXLGvi7K2_UFBcH2pjm_aEJ0EzNhQEqgig2z6mbb-w77CQYjDfrrwPIMfsY4fIyCkQjzAe-7Yt5Cuf_TH7BkPv1ZNnCfo4kPSOeV6MY7tygaZXxkvKINU24YXLgETmHPasqZ7fttPR5P6VimNw", "e": "AQAB", "kty": "RSA", "kid": "tRXwIjs2xAQHUZ3Qu0Akdj94ghiGT0SC0uiztOQKV0k"}	{"created_by": "CLI tool"}	2022-11-21 18:47:59.573251	2022-11-21 20:47:59.495676	\N	6
+7	http://localhost:8080	P8HCej8ZzT3H5ZYy7MxTvhg1sHbcala08GAhxKi2bBw	quay	{"n": "kDMkzNJQ-5dIQESnv0C08ngyDkxlS_RmCm_261oE8PTmimZx4yLxTOqreuW9XIspHaWwjlGUno-R0-4jP5eio0O09TKMS4vc9btPbNM6afhnzn7zVs5qvgdgmESTMtxuV03e8axLxEHY_jM-RKgSxgfB-akC3THj0N-7wRBZl3k7l4CWi4UUDsrHl5RUQSwyA75HRGaK5pDQFeJuIiP2ePKuKCMHOKunqXrUVrsIKScn47i4fpJyhICYTHhHJBGp8Q9UTRSZ57aaIhpjOe3gV3_gGw_nFTD1gOA-IWfmhr70z1SPI52DqLxweq4Ye1L1NiT8miRvVYSlFCszXQJVDw", "e": "AQAB", "kty": "RSA", "kid": "P8HCej8ZzT3H5ZYy7MxTvhg1sHbcala08GAhxKi2bBw"}	{"created_by": "CLI tool"}	2022-12-14 18:48:53.987846	2022-12-14 20:48:53.80133	\N	7
 \.
 
 
@@ -6151,6 +7055,7 @@ COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, n
 4	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:40:02.364779	
 5	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:43:45.399899	
 6	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:47:59.585515	
+7	\N	ServiceKeyApprovalType.AUTOMATIC	2022-12-14 18:48:54.002141	
 \.
 
 
@@ -6671,7 +7576,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 19, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 173, true);
 
 
 --
@@ -6685,7 +7590,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 75, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 77, true);
 
 
 --
@@ -6762,7 +7667,7 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 1, false);
+SELECT pg_catalog.setval('public.notification_id_seq', 1, true);
 
 
 --
@@ -6867,21 +7772,21 @@ SELECT pg_catalog.setval('public.repomirrorrule_id_seq', 1, false);
 -- Name: repository_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repository_id_seq', 5, true);
+SELECT pg_catalog.setval('public.repository_id_seq', 154, true);
 
 
 --
 -- Name: repositoryactioncount_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 5, true);
+SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 154, true);
 
 
 --
 -- Name: repositoryauthorizedemail_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositoryauthorizedemail_id_seq', 1, false);
+SELECT pg_catalog.setval('public.repositoryauthorizedemail_id_seq', 1, true);
 
 
 --
@@ -6909,28 +7814,28 @@ SELECT pg_catalog.setval('public.repositorykind_id_seq', 1, false);
 -- Name: repositorynotification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorynotification_id_seq', 1, false);
+SELECT pg_catalog.setval('public.repositorynotification_id_seq', 5, true);
 
 
 --
 -- Name: repositorypermission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorypermission_id_seq', 8, true);
+SELECT pg_catalog.setval('public.repositorypermission_id_seq', 157, true);
 
 
 --
 -- Name: repositorysearchscore_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 5, true);
+SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 154, true);
 
 
 --
 -- Name: repositorysize_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorysize_id_seq', 5, true);
+SELECT pg_catalog.setval('public.repositorysize_id_seq', 154, true);
 
 
 --
@@ -6965,14 +7870,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 6, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 7, true);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 6, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 7, true);
 
 
 --

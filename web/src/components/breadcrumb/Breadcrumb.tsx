@@ -4,12 +4,11 @@ import {
   PageBreadcrumb,
 } from '@patternfly/react-core';
 import {NavigationRoutes} from 'src/routes/NavigationPath';
-import {Link, useParams} from 'react-router-dom';
+import {Link, useParams, useLocation} from 'react-router-dom';
 import React, {useEffect, useState} from 'react';
 import useBreadcrumbs, {
   BreadcrumbComponentType,
 } from 'use-react-router-breadcrumbs';
-import {useLocation} from 'react-router';
 import {useRecoilState} from 'recoil';
 import {BrowserHistoryState} from 'src/atoms/BrowserHistoryState';
 

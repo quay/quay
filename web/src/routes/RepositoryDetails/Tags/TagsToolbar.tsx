@@ -64,6 +64,7 @@ export function TagsToolbar(props: ToolBarProps) {
               isKebabOpen={isKebabOpen}
               setKebabOpen={setKebabOpen}
               kebabItems={kebabItems}
+              useActions={true}
             />
           ) : null}
         </ToolbarItem>

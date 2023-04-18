@@ -38,6 +38,7 @@ export default function Delete(props: DeleteProps) {
         </AlertGroup>
       </Conditional>
       <MenuItem
+        id="bulk-delete-permissions"
         onClick={() => {
           deletePermissions(props.selectedItems);
         }}

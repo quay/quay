@@ -49,6 +49,7 @@ export function DeleteModal(props: ModalProps) {
     <>
       <ErrorModal title="Tag deletion failed" error={err} setError={setErr} />
       <Modal
+        id="tag-deletion-modal"
         title={`Delete the following tag${
           props.selectedTags.length > 1 ? 's' : ''
         }?`}

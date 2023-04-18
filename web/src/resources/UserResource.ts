@@ -1,8 +1,8 @@
-import {AvatarProps} from '@patternfly/react-core';
 import {AxiosResponse} from 'axios';
 import axios from 'src/libs/axios';
 import {assertHttpCode} from './ErrorHandling';
 import {IAvatar, IOrganization} from './OrganizationResource';
+import {MemberType} from './RepositoryResource';
 
 export interface IUserResource {
   anonymous: boolean;
@@ -65,6 +65,16 @@ export interface Entity {
 
 interface EntitiesResponse {
   results: Entity[];
+}
+
+export function getMemberType(entity: Entity) {
+  if (entity.kind == MemberType.team) {
+    return MemberType.team;
+  } else if (entity.kind == MemberType.user && entity.is_robot) {
+    return MemberType.robot;
+  } else if (entity.kind == MemberType.user) {
+    return MemberType.user;
+  }
 }
 
 export async function fetchEntities(org: string, search: string) {

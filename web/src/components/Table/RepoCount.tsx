@@ -1,13 +1,14 @@
 import {useEffect, useState} from 'react';
-import {fetchRepositoriesForNamespace} from 'src/resources/RepositoryResource';
+import {useRepositories} from 'src/hooks/UseRepositories';
 
 export default function RepoCount(props: RepoCountProps) {
   const [value, setValue] = useState<string>('Loading...');
+  const {totalResults} = useRepositories(props.name);
+
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchRepositoriesForNamespace(props.name);
-        setValue(data.length);
+        setValue(totalResults.toString());
       } catch (err) {
         setValue('Error');
       }

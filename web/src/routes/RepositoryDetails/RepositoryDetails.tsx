@@ -23,13 +23,14 @@ import {DrawerContentType} from './Types';
 import AddPermissions from './Settings/PermissionsAddPermission';
 import {
   fetchRepositoryDetails,
-  RepositoryDetails,
+  RepositoryDetails as IRepositoryDetails,
 } from 'src/resources/RepositoryResource';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {addDisplayError, isErrorString} from 'src/resources/ErrorHandling';
 import RequestError from 'src/components/errors/RequestError';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import Conditional from 'src/components/empty/Conditional';
+import CreateNotification from './Settings/NotificationsCreateNotification';
+import {useRepository} from 'src/hooks/UseRepository';
 
 enum TabIndex {
   Tags = 'tags',
@@ -56,7 +57,6 @@ export default function RepositoryDetails() {
   const [drawerContent, setDrawerContent] = useState<DrawerContentType>(
     DrawerContentType.None,
   );
-  const [repoDetails, setRepoDetails] = useState<RepositoryDetails>();
   const [err, setErr] = useState<string>();
 
   const drawerRef = useRef<HTMLDivElement>();
@@ -64,6 +64,10 @@ export default function RepositoryDetails() {
   // TODO: refactor
   const [organization, ...repo] = location.pathname.split('/').slice(2);
   const repository = repo.join('/');
+  const {repoDetails, errorLoadingRepoDetails} = useRepository(
+    organization,
+    repository,
+  );
 
   const requestedTabIndex = getTabIndex(searchParams.get('tab'));
   if (requestedTabIndex && requestedTabIndex !== activeTabKey) {
@@ -86,22 +90,25 @@ export default function RepositoryDetails() {
         closeDrawer={closeDrawer}
       />
     ),
+    [DrawerContentType.CreateNotification]: (
+      <CreateNotification
+        org={organization}
+        repo={repository}
+        closeDrawer={closeDrawer}
+      />
+    ),
   };
 
-  // TODO: replace this with hooks
   useEffect(() => {
-    (async () => {
-      try {
-        const repoDetails = await fetchRepositoryDetails(
-          organization,
-          repository,
-        );
-        setRepoDetails(repoDetails);
-      } catch (err) {
-        setErr(addDisplayError('Unable to get repository', err));
-      }
-    })();
-  }, []);
+    if (errorLoadingRepoDetails) {
+      setErr(
+        addDisplayError(
+          'Unable to get repository',
+          errorLoadingRepoDetails as Error,
+        ),
+      );
+    }
+  }, [errorLoadingRepoDetails]);
 
   return (
     <Drawer
@@ -158,18 +165,21 @@ export default function RepositoryDetails() {
                       repoDetails={repoDetails}
                     />
                   </Tab>
-                  <Conditional if={config?.features.UI_V2_REPO_SETTINGS}>
-                    <Tab
-                      eventKey={TabIndex.Settings}
-                      title={<TabTitleText>Settings</TabTitleText>}
-                    >
-                      <Settings
-                        org={organization}
-                        repo={repository}
-                        setDrawerContent={setDrawerContent}
-                      />
-                    </Tab>
-                  </Conditional>
+                  <Tab
+                    eventKey={TabIndex.Settings}
+                    title={<TabTitleText>Settings</TabTitleText>}
+                    isHidden={
+                      config?.features.UI_V2_REPO_SETTINGS != true ||
+                      !repoDetails?.can_admin
+                    }
+                  >
+                    <Settings
+                      org={organization}
+                      repo={repository}
+                      setDrawerContent={setDrawerContent}
+                      repoDetails={repoDetails}
+                    />
+                  </Tab>
                 </Tabs>
               </ErrorBoundary>
             </PageSection>
