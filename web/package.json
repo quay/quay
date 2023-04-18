@@ -36,7 +36,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "format": "prettier --config .prettierrc \"src/**/*.{ts,tsx}\" --write",
-    "prepare": "husky install",
+    "prepare": "cd .. && husky install web/.husky",
     "test:integration": "cypress run",
     "start:integration": "serve -s dist -l 9000",
     "quay:dump": "${CLIENT:=docker} exec -t quay-db bash -c 'pg_dump -U quay -d quay -c' > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
