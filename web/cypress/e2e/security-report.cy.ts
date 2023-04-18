@@ -185,4 +185,46 @@ describe('Security Report Page', () => {
     cy.contains('1 - 10 of 41').should('exist');
     cy.get('td[data-label="Advisory"]').should('have.length', 10);
   });
+
+  it('render default desc sorted vlunerabilities', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      {fixture: 'security/mixedVulns.json'},
+    ).as('getDescSortedSecurityReport');
+    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.get('td[data-label="Advisory"]').should('have.length', 10);
+    cy.get('[data-testid="vulnerability-table"]').within(() => {
+      cy.get('[data-label="Severity"]')
+        .get('span:contains("Critical")')
+        .should('have.length', 3);
+      cy.get('[data-label="Severity"]')
+        .get('span:contains("High")')
+        .should('have.length', 7);
+    });
+  });
+
+  it('render asc sorted vlunerabilities', () => {
+    cy.intercept(
+      'GET',
+      '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
+      {fixture: 'security/mixedVulns.json'},
+    ).as('getAscSortedSecurityReport');
+    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.get('[data-testid="vulnerability-table"]').within(() => {
+      cy.log('**sort by severity**').wait(1000);
+      cy.get('#severity-sort').find('button').click();
+    });
+    cy.get('[data-testid="vulnerability-table"]').within(() => {
+      cy.get('[data-label="Severity"]')
+        .get('span:contains("Unknown")')
+        .should('have.length', 2);
+      cy.get('[data-label="Severity"]')
+        .get('span:contains("Low")')
+        .should('have.length', 2);
+      cy.get('[data-label="Severity"]')
+        .get('span:contains("Medium")')
+        .should('have.length', 6);
+    });
+  });
 });

@@ -5,6 +5,7 @@
 declare namespace Cypress {
   interface Chainable {
     loginByCSRF: (arg: string) => void;
+    getIframeBody: (selector: string) => Cypress.Chainable<JQuery<any>>;
   }
 }
 
@@ -23,4 +24,14 @@ Cypress.Commands.add('loginByCSRF', (csrfToken) => {
       password: password,
     },
   });
+});
+
+// Used for adding iframes to the scope of cy
+Cypress.Commands.add('getIframeBody', (selector: string) => {
+  cy.log('getIframeBody');
+  return cy
+    .get(selector, {log: false})
+    .its('0.contentDocument.body', {log: false})
+    .should('not.be.empty')
+    .then((body) => cy.wrap(body, {log: false}));
 });

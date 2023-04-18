@@ -4,8 +4,6 @@ import {
   ModalVariant,
   PageSection,
   PageSectionVariants,
-  Pagination,
-  PaginationVariant,
   TextInput,
   Toolbar,
   ToolbarContent,
@@ -126,7 +124,7 @@ export const BulkDeleteModalTemplate = <T,>(
             <ToolbarPagination
               page={bulkModalPage}
               perPage={bulkModalPerPage}
-              itemsList={paginatedBulkItemsList}
+              itemsList={itemsMarkedForDelete}
               setPage={setBulkModalPage}
               setPerPage={setBulkModalPerPage}
             />
@@ -159,7 +157,7 @@ export const BulkDeleteModalTemplate = <T,>(
           <ToolbarPagination
             page={bulkModalPage}
             perPage={bulkModalPerPage}
-            itemsList={paginatedBulkItemsList}
+            itemsList={itemsMarkedForDelete}
             setPage={setBulkModalPage}
             setPerPage={setBulkModalPerPage}
             bottom={true}

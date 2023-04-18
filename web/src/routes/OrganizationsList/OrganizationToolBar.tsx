@@ -39,6 +39,7 @@ export function OrganizationToolBar(props: OrganizationToolBarProps) {
               isKebabOpen={props.isKebabOpen}
               setKebabOpen={props.setKebabOpen}
               kebabItems={props.kebabItems}
+              useActions={true}
             />
           ) : null}
           {props.deleteKebabIsOpen ? props.deleteModal : null}

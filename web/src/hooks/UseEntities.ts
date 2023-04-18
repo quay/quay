@@ -6,12 +6,15 @@ export function useEntities(org: string) {
   const [searchTerm, setSearchTerm] = useState<string>();
   const [isError, setIsError] = useState<boolean>();
   const [entities, setEntities] = useState<Entity[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const search = async () => {
     try {
       const entityResults = await fetchEntities(org, searchTerm);
+      setLoading(false);
       setEntities(entityResults);
     } catch (err) {
+      setLoading(false);
       setIsError(true);
     }
   };
@@ -19,17 +22,24 @@ export function useEntities(org: string) {
   // If next character typed is under a second, don't fire the
   // request
   useEffect(() => {
-    const delay = setTimeout(() => {
-      if (searchTerm != null && searchTerm != '') {
+    if (searchTerm != null && searchTerm != '') {
+      setLoading(true);
+      const delay = setTimeout(() => {
         search();
-      }
-    }, 1000);
-    return () => clearTimeout(delay);
+      }, 1000);
+      return () => {
+        setLoading(false);
+        clearTimeout(delay);
+      };
+    } else {
+      setEntities([]);
+    }
   }, [searchTerm]);
 
   return {
     entities: !isError ? entities : [],
     isError: isError,
+    isLoadingEntities: loading,
     searchTerm: searchTerm,
     setSearchTerm: setSearchTerm,
   };

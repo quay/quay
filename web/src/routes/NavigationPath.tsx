@@ -71,29 +71,46 @@ export function getDomain() {
   return process.env.REACT_APP_QUAY_DOMAIN || 'quay.io';
 }
 
+function domainRoute(definedRoute) {
+  /***
+   * This function returns prefix + route.
+   Eg:If quay is hosted on https://stage.foo.redhat.com:1337/settings/quay/organization,
+   window.location.pathname here is `/settings/quay/organization`,
+   the regex removes everything after organization and returns /settings/quay.
+   So, the function returns /settings/quay/<route> .
+   ***/
+  const currentRoute = window.location.pathname;
+  return (
+    // This regex replaces everything after the last occurrence of organization|repository|signin with empty string.
+    // Doing this gives us the prefix.
+    currentRoute.replace(/\/(\/organization|repository|signin)(?!.*\1).*/, '') +
+    definedRoute
+  );
+}
+
 const NavigationRoutes = [
   {
-    path: NavigationPath.organizationsList,
+    path: domainRoute(NavigationPath.organizationsList),
     Component: <OrganizationsList />,
     breadcrumb: Breadcrumb.organizationsListBreadcrumb,
   },
   {
-    path: NavigationPath.organizationDetail,
+    path: domainRoute(NavigationPath.organizationDetail),
     Component: <Organization />,
     breadcrumb: Breadcrumb.organizationDetailBreadcrumb,
   },
   {
-    path: NavigationPath.repositoriesList,
+    path: domainRoute(NavigationPath.repositoriesList),
     Component: <RepositoriesList />,
     breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
   },
   {
-    path: NavigationPath.repositoryDetail,
+    path: domainRoute(NavigationPath.repositoryDetail),
     Component: <RepositoryDetails />,
     breadcrumb: Breadcrumb.repositoryDetailBreadcrumb,
   },
   {
-    path: NavigationPath.tagDetail,
+    path: domainRoute(NavigationPath.tagDetail),
     Component: <TagDetails />,
     breadcrumb: Breadcrumb.tagDetailBreadcrumb,
   },

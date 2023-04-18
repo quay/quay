@@ -109,7 +109,9 @@ describe('Repository Details Page', () => {
     cy.contains('Delete the following tag?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
-    cy.get('button').contains('Delete').click();
+    cy.get('[id="tag-deletion-modal"]').within(() =>
+      cy.get('button:contains("Delete")').click(),
+    );
     cy.contains('latest').should('not.exist');
   });
 
@@ -120,16 +122,16 @@ describe('Repository Details Page', () => {
     cy.contains('Actions').click();
     cy.contains('Delete').click();
     cy.contains('Delete the following tags?').should('exist');
-    cy.get('[data-testid="delete-tags-modal"]').within(() => {
-      cy.contains('latest').should('exist');
-      cy.contains('manifestlist').should('exist');
-    });
     cy.contains('Note: This operation can take several minutes.').should(
       'exist',
     );
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
-    cy.get('button').contains('Delete').click();
+    cy.get('[id="tag-deletion-modal"]').within(() => {
+      cy.contains('latest').should('exist');
+      cy.contains('manifestlist').should('exist');
+      cy.get('button').contains('Delete').click();
+    });
     cy.contains('latest').should('not.exist');
     cy.contains('manifestlist').should('not.exist');
   });

@@ -1,7 +1,12 @@
-const ColumnNames = {
-  account: 'Account',
-  type: 'Type',
-  permissions: 'Permissions',
-};
+export enum PermissionsColumnNames {
+  account = 'Account',
+  type = 'Type',
+  permissions = 'Permissions',
+}
 
-export default ColumnNames;
+export enum NotificationsColumnNames {
+  title = 'Title',
+  event = 'Event',
+  notification = 'Notification',
+  status = 'Status',
+}

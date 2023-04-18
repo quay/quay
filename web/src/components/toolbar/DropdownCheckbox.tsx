@@ -24,6 +24,7 @@ export function DropdownCheckbox(props: DropdownCheckboxProps) {
   };
 
   const selectAllItems = () => {
+    deSelectAll();
     props.allItemsList.map((value, index) =>
       props.onItemSelect(value, index, true),
     );

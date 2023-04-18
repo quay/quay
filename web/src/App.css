@@ -25,6 +25,10 @@ html, body, #root,  .App {
     color: black;
 }
 
+.no-padding {
+    padding: 0 !important;
+}
+
 .no-padding-bottom {
     padding-bottom: 0;
 }
@@ -40,4 +44,24 @@ html, body, #root,  .App {
 
 .pf-c-panel__footer {
     padding: 24px 24px 0 0;
+}
+
+.drawer-styling {
+    height: 645px;
+    padding: 0 !important;
+    min-width: 920px !important;
+}
+
+.drawer-footer {
+    padding: 24px 0px 24px 0px;
+    bottom: 0;
+    position: fixed;
+}
+
+.fit-content {
+    width: fit-content;
+}
+
+.red-color {
+    color: red !important;
 }
