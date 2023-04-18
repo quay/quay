@@ -68,7 +68,6 @@ def test_new_account_via_database(app, login_service):
     existing_user_count = database.User.select().count()
     login_service_lid = "someexternaluser"
     internal_auth = DatabaseUsers()
-    print(app.config)
 
     # Conduct login. Since the external user doesn't (yet) bind to a user in the database,
     # a new user should be created and bound to the external service.
