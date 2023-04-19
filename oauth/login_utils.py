@@ -207,7 +207,6 @@ def _conduct_oauth_login(
 
         requires_password = auth_system.requires_distinct_cli_password
         prompts = model.user.get_default_user_prompts(features)
-        print(f"******* CREATE USER {new_username} {lemail} {service_id} {lid} {metadata}")
         user_obj = model.user.create_federated_user(
             new_username,
             lemail,

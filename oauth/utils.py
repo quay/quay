@@ -5,7 +5,6 @@ import string
 import urllib.parse
 from random import SystemRandom
 
-
 UNICODE_ASCII_CHARACTERS = string.ascii_letters + string.digits
 
 
