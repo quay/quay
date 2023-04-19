@@ -233,8 +233,8 @@ class RepositoryTag(RepositoryParamResource):
     @disallow_for_user_namespace
     @parse_args()
     @query_param(
-        "force",
-        "Forces tag to be garbage collected regardless of time machine settings.",
+        "skipRecoveryPeriod",
+        "Tag will be immediately available for garbage collection and not recoverable through time machine settings.",
         type=truthy_bool,
         default=False,
     )
@@ -248,8 +248,8 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        force = parsed_args.get("force")
-        tag_ref = registry_model.delete_tag(repo_ref, tag, force)
+        skip_recovery_period = parsed_args.get("skipRecoveryPeriod")
+        tag_ref = registry_model.delete_tag(repo_ref, tag, skip_recovery_period)
         if tag_ref is None:
             raise NotFound()
 

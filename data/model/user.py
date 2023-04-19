@@ -1272,10 +1272,6 @@ def delete_user(user, queues):
     # Delete non-repository related items.
     _delete_user_linked_data(user)
 
-    # Delete the namespace size if it exists
-    with db_transaction():
-        QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
-
     # Delete the user itself.
     try:
         user.delete_instance(recursive=True, delete_nullable=True)
@@ -1329,6 +1325,9 @@ def _delete_user_linked_data(user):
 
     # Delete any federated user links.
     FederatedLogin.delete().where(FederatedLogin.user == user).execute()
+
+    # Delete the quota size entry
+    QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
 
 
 def get_pull_credentials(robotname):

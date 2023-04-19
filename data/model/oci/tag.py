@@ -12,6 +12,7 @@ from data.database import (
     MediaType,
     RepositoryTag,
     RepositoryState,
+    User,
     get_epoch_timestamp_ms,
     db_transaction,
     Repository,
@@ -432,7 +433,7 @@ def retarget_tag(
         return created
 
 
-def delete_tag(repository_id, tag_name, force=False):
+def delete_tag(repository_id, tag_name, skip_recovery_period=False):
     """
     Deletes the alive tag with the given name in the specified repository and returns the deleted
     tag.
@@ -443,17 +444,33 @@ def delete_tag(repository_id, tag_name, force=False):
     if tag is None:
         return None
 
-    return _delete_tag(tag, get_epoch_timestamp_ms(), force)
+    return _delete_tag(tag, get_epoch_timestamp_ms(), skip_recovery_period)
 
 
-def _delete_tag(tag, now_ms, force=False):
+def _delete_tag(tag, now_ms, skip_recovery_period=False):
     """
     Deletes the given tag by marking it as expired.
     """
     with db_transaction():
-        # Force set's lifetime_end_ms outside of any time machine policy and hidden
+        params = {"lifetime_end_ms": now_ms}
+
+        # skip_recovery_period set's lifetime_end_ms outside of the time machine policy and hidden
         # prevents the tag from appearing in tag history for restoration
-        params = {"lifetime_end_ms": 0, "hidden": True} if force else {"lifetime_end_ms": now_ms}
+        if skip_recovery_period:
+            try:
+                namespace = (
+                    User.select(User.removed_tag_expiration_s)
+                    .join(Repository, on=(Repository.namespace_user == User.id))
+                    .where(Repository.id == tag.repository)
+                    .get()
+                )
+                params = {
+                    "lifetime_end_ms": now_ms - (namespace.removed_tag_expiration_s * 1000),
+                    "hidden": True,
+                }
+            except User.DoesNotExist:
+                return None
+
         updated = (
             Tag.update(params)
             .where(Tag.id == tag.id, Tag.lifetime_end_ms == tag.lifetime_end_ms)
@@ -461,21 +478,6 @@ def _delete_tag(tag, now_ms, force=False):
         )
         if updated != 1:
             return None
-
-        # TODO: Remove the linkage code once RepositoryTag is gone.
-        try:
-            now_ts = 0 if force else int(now_ms // 1000)
-            old_style_tag = (
-                TagToRepositoryTag.select(TagToRepositoryTag, RepositoryTag)
-                .join(RepositoryTag)
-                .where(TagToRepositoryTag.tag == tag)
-                .get()
-            ).repository_tag
-
-            old_style_tag.lifetime_end_ts = now_ts
-            old_style_tag.save()
-        except TagToRepositoryTag.DoesNotExist:
-            pass
 
         return tag
 
