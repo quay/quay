@@ -12,12 +12,15 @@ import {useCallback, useState} from 'react';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
+import { useOrganization } from 'src/hooks/UseOrganization';
 import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
 
 export default function Organization() {
   const location = useLocation();
   const orgName = location.pathname.split('/')[2];
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const {organization} = useOrganization(orgName)
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
     searchParams.get('tab') || 'Repositories',
@@ -35,14 +38,17 @@ export default function Organization() {
     {
       name: 'Repositories',
       component: <RepositoriesList />,
+      visible: true
     },
     {
       name: 'Robot accounts',
       component: <RobotAccountsList orgName={orgName} />,
+      visible: organization.is_org_admin || organization.is_admin,
     },
     {
       name: 'Settings',
       component: <Settings />,
+      visible: organization.is_org_admin || organization.is_admin,
     },
   ];
 
@@ -62,15 +68,17 @@ export default function Organization() {
         padding={{default: 'noPadding'}}
       >
         <Tabs activeKey={activeTabKey} onSelect={onTabSelect}>
-          {repositoriesSubNav.map((nav) => (
-            <Tab
-              key={nav.name}
-              eventKey={nav.name}
-              title={<TabTitleText>{nav.name}</TabTitleText>}
-            >
-              {nav.component}
-            </Tab>
-          ))}
+           {repositoriesSubNav.map((nav) => {
+            nav.visible && (
+              <Tab
+                key={nav.name}
+                eventKey={nav.name}
+                title={<TabTitleText>{nav.name}</TabTitleText>}
+              >
+                {nav.component}
+              </Tab>
+            );
+          })}
         </Tabs>
       </PageSection>
     </Page>
