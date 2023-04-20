@@ -461,7 +461,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def remove_tag_from_timemachine(self, repo_id, tag_name, manifest_id):
+    def remove_tag_from_timemachine(self, repo_ref, tag_name, manifest_ref):
         """
         Updates any expired tags in the time machine window referencing the given manifest
         with an expiry outside the time machine window.

@@ -336,16 +336,16 @@ class RestoreTag(RepositoryParamResource):
         return {}
 
 
-@resource("/v1/repository/<apirepopath:repository>/tag/<tag>/skiptimemachine")
+@resource("/v1/repository/<apirepopath:repository>/tag/<tag>/expire")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("tag", "The name of the tag")
 class TagTimeMachineDelete(RepositoryParamResource):
     """
-    Resource for updating the expiry of a tag outside the time machine window
+    Resource for updating the expiry of tags outside the time machine window
     """
 
     schemas = {
-        "TagSkipTimeMachine": {
+        "ExpireTag": {
             "type": "object",
             "description": "Removes tag from the time machine window",
             "properties": {
@@ -360,10 +360,10 @@ class TagTimeMachineDelete(RepositoryParamResource):
     @require_repo_write(allow_for_superuser=True)
     @disallow_for_app_repositories
     @nickname("removeTagFromTimemachine")
-    @validate_json_request("TagSkipTimeMachine")
+    @validate_json_request("ExpireTag")
     def post(self, namespace, repository, tag):
         """
-        Updates a tag with an expiry outside the time machine window
+        Updates any expired tags with the matching name and manifest with an expiry outside the time machine window
         """
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
@@ -379,7 +379,7 @@ class TagTimeMachineDelete(RepositoryParamResource):
         if manifest_ref is None:
             raise NotFound()
 
-        tags_updated = registry_model.remove_tag_from_timemachine(repo_ref.id, tag, manifest_ref.id)
+        tags_updated = registry_model.remove_tag_from_timemachine(repo_ref, tag, manifest_ref)
         if not tags_updated:
             raise NotFound()
 

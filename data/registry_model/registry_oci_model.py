@@ -1026,8 +1026,8 @@ class OCIModel(RegistryDataInterface):
             manifest_row, manifest.get_parsed_manifest(), storage
         )
 
-    def remove_tag_from_timemachine(self, repo_id, tag_name, manifest_id):
-        return oci.tag.remove_tag_from_timemachine(repo_id, tag_name, manifest_id)
+    def remove_tag_from_timemachine(self, repo_ref, tag_name, manifest_ref):
+        return oci.tag.remove_tag_from_timemachine(repo_ref, tag_name, manifest_ref)
 
     def _get_manifest_local_blobs(self, manifest, repo_id, storage, include_placements=False):
         parsed = manifest.get_parsed_manifest()
