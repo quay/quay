@@ -38,7 +38,7 @@ export function formatSize(sizeInBytes: number) {
 
   const i = Math.floor(Math.log(sizeInBytes) / Math.log(1024));
   return (
-    (sizeInBytes / Math.pow(1024, i)).toFixed(2) * 1 +
+    (sizeInBytes / Math.pow(1024, i)).toFixed(2) +
     ' ' +
     ['B', 'kB', 'MB', 'GB', 'TB'][i]
   );
@@ -47,4 +47,47 @@ export function formatSize(sizeInBytes: number) {
 export function isValidEmail(email: string): boolean {
   const regex = /\S+@\S+\.\S+/;
   return regex.test(email);
+}
+
+export function parseRepoNameFromUrl(url: string): string {
+  //url is in the format of <prefix>/repository/<org>/<repo>
+  //or <prefix>/repository/<org>/<repo>/tag/<tag>
+
+  const urlParts = url.split('/');
+  const repoKeywordIndex = urlParts.indexOf('repository');
+  if (repoKeywordIndex === -1) {
+    return '';
+  }
+
+  return urlParts[repoKeywordIndex + 2];
+}
+
+export function parseOrgNameFromUrl(url: string): string {
+  //url is in the format of <prefix>/repository/<org>/<repo>
+  //or <prefix>/repository/<org>/<repo>/tag/<tag>
+  const urlParts = url.split('/');
+  const repoKeywordIndex = urlParts.indexOf('repository');
+  if (repoKeywordIndex === -1) {
+    return '';
+  }
+  return urlParts[repoKeywordIndex + 1];
+}
+
+export function parseTagNameFromUrl(url: string): string {
+  //url is in the format of <prefix>/repository/<org>/<repo>
+  //or <prefix>/repository/<org>/<repo>/tag/<tag>
+
+  const urlParts = url.split('/');
+  const repoKeywordIndex = urlParts.indexOf('repository');
+  const tagKeywordIndex = urlParts.indexOf('tag');
+
+  if (repoKeywordIndex === -1) {
+    return '';
+  }
+
+  if (tagKeywordIndex === -1) {
+    return '';
+  }
+
+  return urlParts[tagKeywordIndex + 1];
 }

@@ -9,7 +9,7 @@ from flask import session, request, Response
 import features
 
 from app import app
-from auth.auth_context import get_validated_oauth_token
+from auth.auth_context import get_validated_oauth_token, get_sso_token
 from util.http import abort
 
 
@@ -65,7 +65,7 @@ def csrf_protect(
         @wraps(func)
         def wrapper(*args, **kwargs):
             # Verify the CSRF token.
-            if get_validated_oauth_token() is None:
+            if get_validated_oauth_token() is None and get_sso_token() is None:
                 if all_methods or (request.method != "GET" and request.method != "HEAD"):
                     verify_csrf(session_token_name, request_token_name, check_header)
 

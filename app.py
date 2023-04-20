@@ -2,11 +2,8 @@ import hashlib
 import json
 import logging
 import os
-
 from functools import partial
-
 from authlib.jose import JsonWebKey
-from cryptography.hazmat.primitives import serialization
 from flask import Flask, request, Request
 from flask_login import LoginManager
 from flask_mail import Mail
@@ -18,7 +15,6 @@ import features
 
 from _init import (
     config_provider,
-    CONF_DIR,
     IS_KUBERNETES,
     IS_TESTING,
     OVERRIDE_CONFIG_DIRECTORY,
@@ -55,7 +51,6 @@ from oauth.loginmanager import OAuthLoginManager
 from storage import Storage
 from util.log import filter_logs
 from util import get_app_url
-from util.secscan.secscan_util import get_blob_download_uri_getter
 from util.ipresolver import IPResolver
 from util.saas.analytics import Analytics
 from util.saas.exceptionlog import Sentry

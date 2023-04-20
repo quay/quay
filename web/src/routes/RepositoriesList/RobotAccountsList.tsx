@@ -110,7 +110,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   const {robotAccountsForOrg, page, perPage, setPage, setPerPage} =
     useRobotAccounts({
-      name: props.orgName,
+      name: props.organizationName,
       onSuccess: () => {
         setLoading(false);
       },
@@ -138,9 +138,9 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   // Fetching teams
   useQuery(
-    ['organization', props.orgName, 'teams'],
+    ['organization', props.organizationName, 'teams'],
     ({signal}) => {
-      fetchOrg(props.orgName, signal).then((response) => {
+      fetchOrg(props.organizationName, signal).then((response) => {
         setTeams(Object['values'](response?.teams));
         return response?.teams;
       });
@@ -148,7 +148,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     },
     {
       placeholderData: () => {
-        return queryClient.getQueryData(['organization', props.orgName]);
+        return queryClient.getQueryData(['organization', props.organizationName]);
       },
     },
   );
@@ -196,7 +196,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   };
 
   const {deleteRobotAccounts} = useDeleteRobotAccounts({
-    namespace: props.orgName,
+    namespace: props.organizationName,
     onSuccess: () => {
       setSelectedRobotAccounts([]);
       setDeleteModalOpen(!isDeleteModalOpen);
@@ -218,7 +218,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   });
 
   const {updateRepoPerms, deleteRepoPerms} = useRobotRepoPermissions({
-    namespace: props.orgName,
+    namespace: props.organizationName,
     onSuccess: () => null,
     onError: (err) => {
       setErrTitle('Repository Permission update failed');
@@ -265,7 +265,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   const onRepoModalSave = async () => {
     try {
-      const robotname = robotForModalView.name.replace(props.orgName + '+', '');
+      const robotname = robotForModalView.name.replace(props.organizationName + '+', '');
       const [toUpdate, toDelete] = updateRepoPermissions();
       if (toUpdate.length > 0) {
         await updateRepoPerms({robotName: robotname, repoPerms: toUpdate});
@@ -403,7 +403,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     <CreateRobotAccountModal
       isModalOpen={isCreateRobotModalOpen}
       handleModalToggle={() => setCreateRobotModalOpen(!isCreateRobotModalOpen)}
-      namespace={props.orgName}
+      namespace={props.organizationName}
       teams={teams}
       RepoPermissionDropdownItems={RepoPermissionDropdownItems}
     />
@@ -516,7 +516,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           Component={
             <RobotRepositoryPermissions
               robotAccount={robotForModalView}
-              namespace={props.orgName}
+              namespace={props.organizationName}
               RepoPermissionDropdownItems={RepoPermissionDropdownItems}
               repos={robotRepos}
               selectedRepos={selectedReposForModalView}
@@ -538,7 +538,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           onClose={onTokenModalClose}
           Component={
             <RobotTokensModal
-              namespace={props.orgName}
+              namespace={props.organizationName}
               robotAccount={robotForModalView}
             />
           }
@@ -609,7 +609,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
                   <Td data-label="kebab">
                     <RobotAccountKebab
                       robotAccount={robotAccount}
-                      namespace={props.orgName}
+                      namespace={props.organizationName}
                       setError={setErr}
                       deleteModal={bulkDeleteRobotAccountModal}
                       deleteKebabIsOpen={isDeleteModalOpen}
@@ -654,5 +654,5 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 }
 
 interface RobotAccountsListProps {
-  orgName: string;
+  organizationName: string;
 }

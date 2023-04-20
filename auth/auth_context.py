@@ -24,6 +24,14 @@ def get_validated_oauth_token():
     return context.authed_oauth_token if context else None
 
 
+def get_sso_token():
+    """
+    Returns the authenticated and SSO token, if any, or None if none.
+    """
+    context = get_authenticated_context()
+    return context.sso_token if context else None
+
+
 def set_authenticated_context(auth_context):
     """
     Sets the auth context for the current request context to that given.

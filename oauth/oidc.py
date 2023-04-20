@@ -17,6 +17,7 @@ from oauth.base import (
     OAuthEndpoint,
 )
 from oauth.login import OAuthLoginException
+from oauth.login_utils import get_sub_username_email_from_token
 from util.security.jwtutil import decode, InvalidTokenError
 
 logger = logging.getLogger(__name__)
@@ -182,50 +183,9 @@ class OIDCLoginService(OAuthService):
         else:
             user_info = decoded_id_token
 
-        # Verify for impersonation
-        if user_info.get("impersonated", False):
-            logger.debug("Requests from impersonated principals are not supported")
-            raise OAuthLoginException("Requests from impersonated principals are not supported")
-
-        # Verify subs.
-        if user_info["sub"] != decoded_id_token["sub"]:
-            logger.debug(
-                "Mismatch in `sub` returned by OIDC user info endpoint: %s vs %s",
-                user_info["sub"],
-                decoded_id_token["sub"],
-            )
-            raise OAuthLoginException("Mismatch in `sub` returned by OIDC user info endpoint")
-
-        # Check if we have a verified email address.
-        if self.config.get("VERIFIED_EMAIL_CLAIM_NAME"):
-            email_address = user_info.get(self.config["VERIFIED_EMAIL_CLAIM_NAME"])
-        else:
-            email_address = user_info.get("email") if user_info.get("email_verified") else None
-
-        logger.debug("Found e-mail address `%s` for sub `%s`", email_address, user_info["sub"])
-        if self._mailing:
-            if email_address is None:
-                raise OAuthLoginException(
-                    "A verified email address is required to login with this service"
-                )
-
-        # Check for a preferred username.
-        if self.config.get("PREFERRED_USERNAME_CLAIM_NAME"):
-            lusername = user_info.get(self.config["PREFERRED_USERNAME_CLAIM_NAME"])
-        else:
-            lusername = user_info.get("preferred_username")
-            if lusername is None:
-                # Note: Active Directory provides `unique_name` and `upn`.
-                # https://docs.microsoft.com/en-us/azure/active-directory/develop/v1-id-and-access-tokens
-                lusername = user_info.get("unique_name", user_info.get("upn"))
-
-        if lusername is None:
-            lusername = user_info["sub"]
-
-        if lusername.find("@") >= 0:
-            lusername = lusername[0 : lusername.find("@")]
-
-        return decoded_id_token["sub"], lusername, email_address
+        return get_sub_username_email_from_token(
+            decoded_id_token, user_info, self.config, self._mailing
+        )
 
     @property
     def _issuer(self):
@@ -234,6 +194,9 @@ class OIDCLoginService(OAuthService):
 
         # If specified, use the overridden OIDC issuer.
         return self.config.get("OIDC_ISSUER", issuer)
+
+    def get_issuer(self):
+        return self._issuer
 
     @lru_cache(maxsize=1)
     def _oidc_config(self):
@@ -267,7 +230,7 @@ class OIDCLoginService(OAuthService):
             logger.exception("Could not parse OIDC discovery for url: %s", discovery_url)
             raise DiscoveryFailureException("Could not parse OIDC discovery information")
 
-    def decode_user_jwt(self, token):
+    def decode_user_jwt(self, token, options={}):
         """
         Decodes the given JWT under the given provider and returns it.
 
@@ -287,15 +250,20 @@ class OIDCLoginService(OAuthService):
             self.client_id(),
             self._issuer,
         )
+
+        key = ""
+        if options.get("verify_signature", True):
+            key = self._get_public_key(kid)
+
         try:
             return decode(
                 token,
-                self._get_public_key(kid),
+                key,
                 algorithms=ALLOWED_ALGORITHMS,
                 audience=self.client_id(),
                 issuer=self._issuer,
                 leeway=JWT_CLOCK_SKEW_SECONDS,
-                options=dict(require=["iat", "exp"]),
+                options=dict(require=["iat", "exp"], **options),
             )
         except InvalidTokenError as ite:
             logger.warning(
@@ -314,7 +282,7 @@ class OIDCLoginService(OAuthService):
                     audience=self.client_id(),
                     issuer=self._issuer,
                     leeway=JWT_CLOCK_SKEW_SECONDS,
-                    options=dict(require=["iat", "exp"]),
+                    options=dict(require=["iat", "exp"], **options),
                 )
             except InvalidTokenError as ite:
                 logger.warning(
@@ -332,7 +300,7 @@ class OIDCLoginService(OAuthService):
                     audience=self.client_id(),
                     issuer=self._issuer,
                     leeway=JWT_CLOCK_SKEW_SECONDS,
-                    options=dict(require=["iat", "exp"], verify_signature=False),
+                    options=dict(require=["iat", "exp"], verify_signature=False, **options),
                 )
                 logger.debug("Got an error when trying to verify OIDC JWT: %s", nonverified)
                 raise ite

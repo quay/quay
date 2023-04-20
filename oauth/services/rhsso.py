@@ -55,7 +55,7 @@ class RHSSOOAuthService(OIDCLoginService):
                 # to render the compliance error page
                 raise e
             except Exception as e:
-                # This generates a gneneric OAUTH error page
+                # This generates a generic OAUTH error page
                 # also any issues with reaching the export
                 # compliance API should trigger this
                 raise OAuthLoginException(str(e))
