@@ -193,13 +193,14 @@ class OrganizationList(ApiResource):
 
         is_possible_abuser = ip_resolver.is_ip_possible_threat(get_request_ip())
         try:
-            model.organization.create_organization(
+            new_org = model.organization.create_organization(
                 org_data["name"],
                 org_data.get("email"),
                 user,
                 email_required=features.MAILING,
                 is_possible_abuser=is_possible_abuser,
             )
+            log_action("create_org", new_org.username)
             return "Created", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -290,6 +291,7 @@ class Organization(ApiResource):
 
                 logger.debug("Changing email address for organization: %s", org.username)
                 model.user.update_email(org, new_email)
+                log_action("change_org_email", org.username)
 
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in org_data:
                 logger.debug(
@@ -315,7 +317,9 @@ class Organization(ApiResource):
             except model.InvalidOrganizationException:
                 raise NotFound()
 
-            model.user.mark_namespace_for_deletion(org, all_queues, namespace_gc_queue)
+            delete_ns_id = model.user.mark_namespace_for_deletion(org, all_queues, namespace_gc_queue)
+            if delete_ns_id is not None:
+                log_action("delete_org", org.username)
             return "", 204
 
         raise Unauthorized()

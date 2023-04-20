@@ -545,7 +545,7 @@ class User(ApiResource):
                 is_possible_abuser=is_possible_abuser,
                 prompts=prompts,
             )
-
+            log_action("create_user", new_user.username)
             email_address_confirmed = handle_invite_code(invite_code, new_user)
             if features.MAILING and not email_address_confirmed:
                 confirmation_code = model.user.create_confirm_email_code(new_user)
@@ -571,9 +571,13 @@ class User(ApiResource):
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             abort(404)
 
-        model.user.mark_namespace_for_deletion(
-            get_authenticated_user(), all_queues, namespace_gc_queue
+        user = get_authenticated_user()
+        delete_ns_id = model.user.mark_namespace_for_deletion(
+            user, all_queues, namespace_gc_queue
         )
+        if delete_ns_id is not None:
+            log_action("delete_user", user.username)
+
         return "", 204
 
 
