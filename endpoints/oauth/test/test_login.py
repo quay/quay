@@ -37,7 +37,7 @@ def _get_users_handler(auth_type):
     return get_users_handler(config, None, None)
 
 
-def test_existing_account(auth_system, login_service):
+def test_existing_account(app, auth_system, login_service):
     login_service_lid = "someexternaluser"
 
     # Create an existing bound federated user.
@@ -48,7 +48,7 @@ def test_existing_account(auth_system, login_service):
 
     with mock_ldap():
         result = _conduct_oauth_login(
-            appconfig,
+            app.config,
             analytics,
             auth_system,
             login_service,
@@ -72,7 +72,7 @@ def test_new_account_via_database(app, login_service):
     # Conduct login. Since the external user doesn't (yet) bind to a user in the database,
     # a new user should be created and bound to the external service.
     result = _conduct_oauth_login(
-        appconfig,
+        app.config,
         analytics,
         internal_auth,
         login_service,
@@ -126,7 +126,7 @@ def test_flagged_user_creation(
         with patch("features.INVITE_ONLY_USER_CREATION", invite_only):
             # Conduct login.
             result = _conduct_oauth_login(
-                appconfig,
+                app.config,
                 analytics,
                 internal_auth,
                 login_service,
@@ -188,7 +188,7 @@ def test_new_account_via_ldap(binding_field, lid, lusername, lemail, expected_er
     with mock_ldap():
         # Conduct OAuth login.
         result = _conduct_oauth_login(
-            app, analytics, internal_auth, external_auth, lid, lusername, lemail
+            app.config, analytics, internal_auth, external_auth, lid, lusername, lemail
         )
         assert result.error_message == expected_error
 
@@ -241,7 +241,7 @@ def test_existing_account_in_ldap(app):
         # Conduct OAuth login with the same lid and bound field. This should find the existing LDAP
         # user (via the `username` binding), and then bind Github to it as well.
         result = _conduct_oauth_login(
-            appconfig,
+            app.config,
             analytics,
             internal_auth,
             external_auth,
