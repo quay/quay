@@ -126,7 +126,7 @@ def test_flagged_user_creation(
         with patch("features.INVITE_ONLY_USER_CREATION", invite_only):
             # Conduct login.
             result = _conduct_oauth_login(
-               appconfig,
+                appconfig,
                 analytics,
                 internal_auth,
                 login_service,
