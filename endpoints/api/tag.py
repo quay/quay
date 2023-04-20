@@ -334,3 +334,53 @@ class RestoreTag(RepositoryParamResource):
         log_action("revert_tag", namespace, log_data, repo_name=repository)
 
         return {}
+
+
+@resource("/v1/repository/<apirepopath:repository>/tag/<tag>/skiptimemachine")
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("tag", "The name of the tag")
+class TagTimeMachineDelete(RepositoryParamResource):
+    """
+    Resource for updating the expiry of a tag outside the time machine window
+    """
+
+    schemas = {
+        "TagSkipTimeMachine": {
+            "type": "object",
+            "description": "Removes tag from the time machine window",
+            "properties": {
+                "manifest_digest": {
+                    "type": "string",
+                    "description": "If specified, the manifest digest that should be used",
+                },
+            },
+        },
+    }
+
+    @require_repo_write(allow_for_superuser=True)
+    @disallow_for_app_repositories
+    @nickname("removeTagFromTimemachine")
+    @validate_json_request("TagSkipTimeMachine")
+    def post(self, namespace, repository, tag):
+        """
+        Updates a tag with an expiry outside the time machine window
+        """
+        repo_ref = registry_model.lookup_repository(namespace, repository)
+        if repo_ref is None:
+            raise NotFound()
+
+        manifest_digest = request.get_json().get("manifest_digest", None)
+        if manifest_digest is None:
+            raise InvalidRequest("Missing manifest_digest")
+
+        manifest_ref = registry_model.lookup_manifest_by_digest(
+            repo_ref, manifest_digest, allow_dead=True
+        )
+        if manifest_ref is None:
+            raise NotFound()
+
+        tags_updated = registry_model.remove_tag_from_timemachine(repo_ref.id, tag, manifest_ref.id)
+        if not tags_updated:
+            raise NotFound()
+
+        return "", 200

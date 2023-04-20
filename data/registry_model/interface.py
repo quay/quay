@@ -459,3 +459,10 @@ class RegistryDataInterface(object):
         Returns the names of the tags that point to the given manifest, up to the given
         limit.
         """
+
+    @abstractmethod
+    def remove_tag_from_timemachine(self, repo_id, tag_name, manifest_id):
+        """
+        Updates any expired tags in the time machine window referencing the given manifest
+        with an expiry outside the time machine window.
+        """

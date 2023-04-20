@@ -704,3 +704,42 @@ def get_legacy_images_for_tags(tags):
 
     by_manifest = {mli.manifest_id: mli.image for mli in query}
     return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
+
+
+def remove_tag_from_timemachine(repo_id, tag_name, manifest_id):
+    try:
+        namespace = (
+            User.select(User.removed_tag_expiration_s)
+            .join(Repository, on=(Repository.namespace_user == User.id))
+            .where(Repository.id == repo_id)
+            .get()
+        )
+    except User.DoesNotExist:
+        return False
+
+    if namespace.removed_tag_expiration_s == 0:
+        return False
+
+    time_machine_ms = namespace.removed_tag_expiration_s * 1000
+    now_ms = get_epoch_timestamp_ms()
+
+    tags = (
+        Tag.select()
+        .where(Tag.name == tag_name)
+        .where(Tag.repository == repo_id)
+        .where(Tag.manifest == manifest_id)
+        .where(Tag.lifetime_end_ms <= now_ms)
+        .where(Tag.lifetime_end_ms > now_ms - time_machine_ms)
+    )
+    updated = False
+    # Increment used to create unique lifetime_end_ms entries because of
+    # tag_repository_id_name_lifetime_end_ms index
+    increment = 1
+    with db_transaction():
+        for tag in tags:
+            Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment, hidden=True).where(
+                Tag.id == tag
+            ).execute()
+            updated = True
+            increment = increment + 1
+    return updated

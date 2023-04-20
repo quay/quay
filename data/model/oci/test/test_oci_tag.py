@@ -25,6 +25,7 @@ from data.model.oci.tag import (
     delete_tag,
     delete_tags_for_manifest,
     change_tag_expiration,
+    remove_tag_from_timemachine,
     set_tag_expiration_for_manifest,
     retarget_tag,
     create_temporary_tag_if_necessary,
@@ -33,6 +34,7 @@ from data.model.oci.tag import (
     get_epoch_timestamp_ms,
 )
 from data.model.repository import get_repository, create_repository
+from data.model.user import get_user
 
 from test.fixtures import *
 
@@ -514,3 +516,32 @@ def test_lookup_unrecoverable_tags(initialized_db):
 
     found = list(lookup_unrecoverable_tags(repo))
     assert not found
+
+
+def test_remove_tag_from_timemachine(initialized_db):
+    org = get_user("devtable")
+    repo = get_repository("devtable", "history")
+    results, _ = list_repository_tag_history(repo, 1, 100, specific_tag_name="latest")
+    assert len(results) == 2
+    assert org.removed_tag_expiration_s > 0
+
+    expiration_window = org.removed_tag_expiration_s
+    manifest_id = results[0].manifest
+
+    # Expire the tags
+    results[0].lifetime_end_ms = get_epoch_timestamp_ms() - 100
+    results[1].lifetime_end_ms = get_epoch_timestamp_ms() - 101
+
+    # Recreate scenario of the same tag being deleted twice
+    # by setting the tags to the same manifest
+    results[1].manifest = manifest_id
+
+    results[0].save()
+    results[1].save()
+
+    remove_tag_from_timemachine(repo.id, "latest", manifest_id)
+
+    results, _ = list_repository_tag_history(repo, 1, 100, specific_tag_name="latest")
+    for tag in results:
+        assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+        assert tag.hidden
