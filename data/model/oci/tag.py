@@ -706,12 +706,12 @@ def get_legacy_images_for_tags(tags):
     return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
 
 
-def remove_tag_from_timemachine(repo_ref, tag_name, manifest_ref):
+def remove_tag_from_timemachine(repo_id, tag_name, manifest_id):
     try:
         namespace = (
             User.select(User.removed_tag_expiration_s)
             .join(Repository, on=(Repository.namespace_user == User.id))
-            .where(Repository.id == repo_ref.id)
+            .where(Repository.id == repo_id)
             .get()
         )
     except User.DoesNotExist:
@@ -726,8 +726,8 @@ def remove_tag_from_timemachine(repo_ref, tag_name, manifest_ref):
     tags = (
         Tag.select()
         .where(Tag.name == tag_name)
-        .where(Tag.repository == repo_ref.id)
-        .where(Tag.manifest == manifest_ref.id)
+        .where(Tag.repository == repo_id)
+        .where(Tag.manifest == manifest_id)
         .where(Tag.lifetime_end_ms <= now_ms)
         .where(Tag.lifetime_end_ms > now_ms - time_machine_ms)
     )
