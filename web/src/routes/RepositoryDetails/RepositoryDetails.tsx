@@ -95,7 +95,7 @@ export default function RepositoryDetails() {
     ),
   };
 
-  useEffect(() => {
+  /* useEffect(() => {
     if (errorLoadingRepoDetails) {
       setErr(
         addDisplayError(
@@ -104,7 +104,7 @@ export default function RepositoryDetails() {
         ),
       );
     }
-  }, [errorLoadingRepoDetails]);
+  }, [errorLoadingRepoDetails]); */
 
   return (
     <Drawer

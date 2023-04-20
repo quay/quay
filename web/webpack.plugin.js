@@ -60,7 +60,7 @@ module.exports = {
   output: {
     path: pathTo('dist'),
     // reflect the CDN public path, TODO: Adjust in the future based on the actual location in HCC
-    publicPath: '/beta/apps/quay/',
+    publicPath: '/apps/quay/',
     chunkFilename: isProd ? 'chunks/[id].[chunkhash].min.js' : 'chunks/[id].js',
     assetModuleFilename: isProd
       ? 'assets/[contenthash][ext]'
@@ -250,6 +250,9 @@ module.exports = {
         '/beta/config/chrome': {
           host: 'http://localhost:8003',
         },
+        '/api/chrome-service/v1/static/stable/stage/navigation': {
+          host: 'http://localhost:8003',
+        }
       },
     }),
   },

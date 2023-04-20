@@ -134,7 +134,7 @@ def _register_service(login_service):
         session["captcha_verified"] = 0
 
         result = _conduct_oauth_login(
-            app,
+            app.config,
             analytics,
             authentication,
             login_service,
@@ -172,7 +172,7 @@ def _register_service(login_service):
 
         # Conduct attach.
         user_obj = get_authenticated_user()
-        result = _attach_service(app, login_service, user_obj, lid, lusername)
+        result = _attach_service(app.config, login_service, user_obj, lid, lusername)
         if result.error_message is not None:
             return _get_response(result)
 

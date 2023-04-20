@@ -38,7 +38,7 @@ export default function Organization() {
     },
     {
       name: 'Robot accounts',
-      component: <RobotAccountsList orgName={orgName} />,
+      component: <RobotAccountsList organizationName={organizationName} />,
     },
     {
       name: 'Settings',

@@ -68,7 +68,7 @@ def validate_sso_oauth_token(token):
         )
 
         login_result = _conduct_oauth_login(
-            app=app,
+            config=app.config,
             analytics=analytics,
             auth_system=authentication,
             login_service=service,

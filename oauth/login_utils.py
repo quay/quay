@@ -104,7 +104,7 @@ def _oauthresult(
     )
 
 
-def _attach_service(app, login_service, user_obj, lid, lusername):
+def _attach_service(config, login_service, user_obj, lid, lusername):
     """
     Attaches the given user account to the given service, with the given service user ID and service
     username.
@@ -122,13 +122,13 @@ def _attach_service(app, login_service, user_obj, lid, lusername):
         err = "%s account %s is already attached to a %s account" % (
             login_service.service_name(),
             lusername,
-            app.config["REGISTRY_TITLE_SHORT"],
+            config["REGISTRY_TITLE_SHORT"],
         )
         return _oauthresult(service_name=login_service.service_name(), error_message=err)
 
 
 def _conduct_oauth_login(
-    app,
+    config,
     analytics,
     auth_system,
     login_service,
@@ -179,14 +179,14 @@ def _conduct_oauth_login(
             return _oauthresult(service_name=service_name, error_message=msg)
 
         # Found an existing user. Bind their internal auth account to this service as well.
-        result = _attach_service(app, login_service, user_obj, lid, lusername)
+        result = _attach_service(config, login_service, user_obj, lid, lusername)
         if result.error_message is not None:
             return result
 
         return _oauthresult(user_obj=user_obj, service_name=service_name)
 
     # Otherwise, we need to create a new user account.
-    blacklisted_domains = app.config.get("BLACKLISTED_EMAIL_DOMAINS", [])
+    blacklisted_domains = config.get("BLACKLISTED_EMAIL_DOMAINS", [])
     if not can_create_user(lemail, blacklisted_domains=blacklisted_domains):
         error_message = "User creation is disabled. Please contact your administrator"
         return _oauthresult(service_name=service_name, error_message=error_message)
@@ -230,7 +230,7 @@ def _conduct_oauth_login(
             "Please log in with your username and password and "
             "associate your {2} account to use it in the future."
         )
-        message = message.format(lemail, app.config["REGISTRY_TITLE_SHORT"], service_name)
+        message = message.format(lemail, config["REGISTRY_TITLE_SHORT"], service_name)
         return _oauthresult(
             service_name=service_name, error_message=message, register_redirect=True
         )

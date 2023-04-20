@@ -7,6 +7,7 @@ from data.users import get_users_handler, DatabaseUsers
 from endpoints.oauth.login import _conduct_oauth_login
 from oauth.services.github import GithubOAuthService
 from test.analytics import analytics
+from test.testconfig import TestConfig
 from test.test_ldap import mock_ldap
 
 from test.fixtures import *
@@ -48,7 +49,7 @@ def test_existing_account(auth_system, login_service):
 
     with mock_ldap():
         result = _conduct_oauth_login(
-            app,
+            TestConfig(),
             analytics,
             auth_system,
             login_service,
@@ -72,7 +73,7 @@ def test_new_account_via_database(app, login_service):
     # Conduct login. Since the external user doesn't (yet) bind to a user in the database,
     # a new user should be created and bound to the external service.
     result = _conduct_oauth_login(
-        app,
+        TestConfig(),
         analytics,
         internal_auth,
         login_service,
@@ -126,7 +127,7 @@ def test_flagged_user_creation(
         with patch("features.INVITE_ONLY_USER_CREATION", invite_only):
             # Conduct login.
             result = _conduct_oauth_login(
-                app,
+                TestConfig(),
                 analytics,
                 internal_auth,
                 login_service,
@@ -241,7 +242,7 @@ def test_existing_account_in_ldap(app):
         # Conduct OAuth login with the same lid and bound field. This should find the existing LDAP
         # user (via the `username` binding), and then bind Github to it as well.
         result = _conduct_oauth_login(
-            app,
+            TestConfig(),
             analytics,
             internal_auth,
             external_auth,
