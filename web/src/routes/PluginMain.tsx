@@ -12,7 +12,7 @@ import Organization from './OrganizationsList/Organization/Organization';
 import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
-import {useEffect, useMemo} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
@@ -20,6 +20,7 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {GlobalAuthState} from '../resources/AuthResource';
 import {IsPluginState} from '../atoms/QuayConfigState';
+import {NewUserConfirmation} from 'src/components/modals/NewUserConfirmation';
 
 const NavigationRoutes = [
   {
@@ -46,9 +47,10 @@ const NavigationRoutes = [
 
 function PluginMain() {
   const quayConfig = useQuayConfig();
-  const {loading, error} = useCurrentUser();
+  const {user, loading, error} = useCurrentUser();
   const chrome = useChrome();
   const setIsPluginState = useSetRecoilState(IsPluginState);
+  const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
 
   console.log('useChrome chrome', chrome);
 
@@ -65,7 +67,10 @@ function PluginMain() {
 
   useEffect(() => {
     setIsPluginState(true);
-  }, []);
+    if (user?.prompts && user.prompts.includes("confirm_username")) {
+      setConfirmUserModalOpen(true);
+    }
+  }, [user]);
 
   if (loading) {
     return null;
@@ -73,6 +78,11 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
+    <NewUserConfirmation
+      user={user}
+      isModalOpen={isConfirmUserModalOpen}
+      setModalOpen={setConfirmUserModalOpen}
+      />
       <Banner variant="info">
         <Flex
           spaceItems={{default: 'spaceItemsSm'}}
@@ -94,13 +104,17 @@ function PluginMain() {
           </FlexItem>
         </Flex>
       </Banner>
-      <Routes>
-        <Route index element={<Navigate to="organization" replace />} />
-        {NavigationRoutes.map(({path, Component}, key) => (
-          <Route path={path} key={key} element={Component} />
-        ))}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      {user?.prompts && user.prompts.includes('confirm_username') ? (
+        null
+      ) : (
+        <Routes>
+          <Route index element={<Navigate to="organization" replace />} />
+          {NavigationRoutes.map(({path, Component}, key) => (
+            <Route path={path} key={key} element={Component} />
+          ))}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      )}
       <Outlet />
     </Page>
   );

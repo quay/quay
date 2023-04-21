@@ -89,3 +89,11 @@ export async function fetchEntities(org: string, search: string) {
   assertHttpCode(response.status, 200);
   return response.data?.results;
 }
+
+export async function updateUser(username: string) {
+  const response: AxiosResponse<IUserResource> = await axios.put(
+    'api/v1/user/', {username: username}
+  );
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
