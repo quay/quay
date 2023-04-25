@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: quayio-frontend
+objects:
+  - apiVersion: cloud.redhat.com/v1alpha1
+    kind: Frontend
+    metadata:
+      name: quayio
+    spec:
+      envName: ${ENV_NAME}
+      title: Quay
+      deploymentRepo: https://github.com/quay/quay
+      API:
+        versions:
+          - v1
+      frontend:
+        paths:
+          - /apps/quay
+      image: ${IMAGE}:${IMAGE_TAG}
+      navItems:
+        - appId: "quay"
+          title: "Quay"
+          href: "/containers/quay"
+          product: "Red Hat Quay.io"
+      module:
+        manifestLocation: "/apps/quay/fed-mods.json"
+        modules:
+          - id: "quay"
+            module: "./QuayPluginMain"
+            routes:
+              - pathname: /containers/quay
+parameters:
+  - name: ENV_NAME
+    required: true
+  - name: IMAGE_TAG
+    required: true
+  - name: IMAGE
+    value: quay.io/app-sre/quayio-frontend
+
