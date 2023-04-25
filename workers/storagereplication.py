@@ -14,6 +14,7 @@ from workers.queueworker import (
 )
 from util.log import logfile_path
 from workers.gunicorn_worker import GunicornWorker
+from workers.worker import with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ class StorageReplicationWorker(QueueWorker):
 
         return False
 
+    @with_exponential_backoff(backoff_multiplier=4, max_backoff=30, max_retries=3)
     def replicate_storage(self, namespace, storage_uuid, storage, backoff_check=True):
         # Lookup the namespace and its associated regions.
         if not namespace:
