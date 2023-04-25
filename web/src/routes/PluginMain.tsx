@@ -18,8 +18,9 @@ import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
-import {GlobalAuthState} from '../resources/AuthResource';
-import {IsPluginState} from '../atoms/QuayConfigState';
+import {GlobalAuthState} from 'src/resources/AuthResource';
+import {IsPluginState} from 'src/atoms/QuayConfigState';
+import axios from 'axios';
 
 const NavigationRoutes = [
   {
@@ -56,6 +57,14 @@ function PluginMain() {
     console.log('chrome auth token', token);
     GlobalAuthState.bearerToken = token;
   });
+
+  if (chrome?.isProd()) {
+    axios.defaults.baseURL = 'https://quay.io';
+  } else if (chrome?.isDemo()) {
+    axios.defaults.baseURL = 'http://localhost:8080';
+  } else {
+    axios.defaults.baseURL = 'https://stage.quay.io';
+  }
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
