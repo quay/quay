@@ -83,13 +83,13 @@ mv Dockerfile.bak Dockerfile
 docker save ${IMAGE}:${IMAGE_TAG} -o ${BASE_IMG}
 
 # push image to backup repository
-skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
-    "docker-archive:${BASE_IMG}" \
-    "docker://${BACKUP_IMAGE}:latest"
-
-skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
-    "docker-archive:${BASE_IMG}" \
-    "docker://${BACKUP_IMAGE}:${IMAGE_TAG}"
+# skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
+#     "docker-archive:${BASE_IMG}" \
+#     "docker://${BACKUP_IMAGE}:latest"
+# 
+# skopeo copy --dest-creds "${BACKUP_USER}:${BACKUP_TOKEN}" \
+#     "docker-archive:${BASE_IMG}" \
+#     "docker://${BACKUP_IMAGE}:${IMAGE_TAG}"
 
 # push to quay.io repository
 #
