@@ -10,10 +10,6 @@ axios.defaults.baseURL =
   process.env.REACT_QUAY_APP_API_URL ||
   `${window.location.protocol}//${window.location.host}`;
 
-if (window?.insights?.chrome?.auth) {
-  axios.defaults.baseURL = 'http://localhost:8080'; // TODO: replace with correct endpoint
-}
-
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
