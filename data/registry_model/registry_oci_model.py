@@ -505,12 +505,16 @@ class OCIModel(RegistryDataInterface):
 
             return Tag.for_tag(tag, self._legacy_image_id_handler)
 
-    def delete_tag(self, repository_ref, tag_name, skip_recovery_period=False):
+    def delete_tag(
+        self, repository_ref, tag_name, skip_recovery_period=False, include_submanifests=False
+    ):
         """
         Deletes the latest, *active* tag with the given name in the repository.
         """
         with db_disallow_replica_use():
-            deleted_tag = oci.tag.delete_tag(repository_ref._db_id, tag_name, skip_recovery_period)
+            deleted_tag = oci.tag.delete_tag(
+                repository_ref._db_id, tag_name, skip_recovery_period, include_submanifests
+            )
             if deleted_tag is None:
                 return None
 
@@ -1026,8 +1030,12 @@ class OCIModel(RegistryDataInterface):
             manifest_row, manifest.get_parsed_manifest(), storage
         )
 
-    def remove_tag_from_timemachine(self, repo_ref, tag_name, manifest_ref):
-        return oci.tag.remove_tag_from_timemachine(repo_ref.id, tag_name, manifest_ref.id)
+    def remove_tag_from_timemachine(
+        self, repo_ref, tag_name, manifest_ref, include_submanifests=False
+    ):
+        return oci.tag.remove_tag_from_timemachine(
+            repo_ref.id, tag_name, manifest_ref.id, include_submanifests
+        )
 
     def _get_manifest_local_blobs(self, manifest, repo_id, storage, include_placements=False):
         parsed = manifest.get_parsed_manifest()

@@ -570,7 +570,7 @@ def _garbage_collect_manifest(manifest_id, context):
 
         # Subtract blobs from namespace/repo total after they've been deleted successfully.
         # If the quota feature is disabled mark the total as stale
-        if features.QUOTA_MANAGEMENT and len(blob_sizes) > 0:
+        if features.QUOTA_MANAGEMENT:
             subtract_blob_size(manifest.repository_id, manifest_id, blob_sizes)
         else:
             reset_backfill(manifest.repository_id)

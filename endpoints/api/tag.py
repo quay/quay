@@ -238,6 +238,12 @@ class RepositoryTag(RepositoryParamResource):
         type=truthy_bool,
         default=False,
     )
+    @query_param(
+        "includeSubmanifests",
+        "If tag is a manifest list, the sub-manifests will be marked for deletion as well",
+        type=truthy_bool,
+        default=False,
+    )
     @nickname("deleteFullTag")
     def delete(self, namespace, repository, tag, parsed_args):
         """
@@ -249,7 +255,10 @@ class RepositoryTag(RepositoryParamResource):
             raise NotFound()
 
         skip_recovery_period = parsed_args.get("skipRecoveryPeriod")
-        tag_ref = registry_model.delete_tag(repo_ref, tag, skip_recovery_period)
+        includeSubmanifests = parsed_args.get("includeSubmanifests")
+        tag_ref = registry_model.delete_tag(
+            repo_ref, tag, skip_recovery_period, includeSubmanifests
+        )
         if tag_ref is None:
             raise NotFound()
 
@@ -353,6 +362,10 @@ class TagTimeMachineDelete(RepositoryParamResource):
                     "type": "string",
                     "description": "If specified, the manifest digest that should be used",
                 },
+                "include_submanifests": {
+                    "type": "boolean",
+                    "description": "If set to True, expire the sub-manifests as well",
+                },
             },
         },
     }
@@ -379,7 +392,10 @@ class TagTimeMachineDelete(RepositoryParamResource):
         if manifest_ref is None:
             raise NotFound()
 
-        tags_updated = registry_model.remove_tag_from_timemachine(repo_ref, tag, manifest_ref)
+        include_submanifests = request.get_json().get("include_submanifests", False)
+        tags_updated = registry_model.remove_tag_from_timemachine(
+            repo_ref, tag, manifest_ref, include_submanifests
+        )
         if not tags_updated:
             raise NotFound()
 

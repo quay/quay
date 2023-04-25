@@ -5,6 +5,7 @@ from calendar import timegm
 from peewee import fn
 
 from data.database import (
+    ManifestChild,
     Tag,
     Manifest,
     ManifestLegacyImage,
@@ -110,6 +111,13 @@ def get_current_tag(repository_id, tag_name):
         )
     except Tag.DoesNotExist:
         return None
+
+
+def get_child_manifests(repo_id, manifest_id):
+    return ManifestChild.select(ManifestChild.child_manifest).where(
+        ManifestChild.repository == repo_id,
+        ManifestChild.manifest == manifest_id,
+    )
 
 
 def tag_names_for_manifest(manifest_id, limit=None):
@@ -433,7 +441,7 @@ def retarget_tag(
         return created
 
 
-def delete_tag(repository_id, tag_name, skip_recovery_period=False):
+def delete_tag(repository_id, tag_name, skip_recovery_period=False, include_submanifests=False):
     """
     Deletes the alive tag with the given name in the specified repository and returns the deleted
     tag.
@@ -444,10 +452,10 @@ def delete_tag(repository_id, tag_name, skip_recovery_period=False):
     if tag is None:
         return None
 
-    return _delete_tag(tag, get_epoch_timestamp_ms(), skip_recovery_period)
+    return _delete_tag(tag, get_epoch_timestamp_ms(), skip_recovery_period, include_submanifests)
 
 
-def _delete_tag(tag, now_ms, skip_recovery_period=False):
+def _delete_tag(tag, now_ms, skip_recovery_period=False, include_submanifests=False):
     """
     Deletes the given tag by marking it as expired.
     """
@@ -478,6 +486,15 @@ def _delete_tag(tag, now_ms, skip_recovery_period=False):
         )
         if updated != 1:
             return None
+
+        if include_submanifests:
+            for child_manifest in get_child_manifests(tag.repository, tag.manifest):
+                Tag.update(params).where(
+                    Tag.repository == tag.repository,
+                    Tag.manifest == child_manifest.child_manifest,
+                    Tag.lifetime_end_ms > params.get("lifetime_end_ms", now_ms),
+                    Tag.hidden == True,
+                ).execute()
 
         return tag
 
@@ -706,7 +723,7 @@ def get_legacy_images_for_tags(tags):
     return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
 
 
-def remove_tag_from_timemachine(repo_id, tag_name, manifest_id):
+def remove_tag_from_timemachine(repo_id, tag_name, manifest_id, include_submanifests=False):
     try:
         namespace = (
             User.select(User.removed_tag_expiration_s)
@@ -724,7 +741,7 @@ def remove_tag_from_timemachine(repo_id, tag_name, manifest_id):
     now_ms = get_epoch_timestamp_ms()
 
     tags = (
-        Tag.select()
+        Tag.select(Tag.id)
         .where(Tag.name == tag_name)
         .where(Tag.repository == repo_id)
         .where(Tag.manifest == manifest_id)
@@ -742,4 +759,15 @@ def remove_tag_from_timemachine(repo_id, tag_name, manifest_id):
             ).execute()
             updated = True
             increment = increment + 1
+
+        if include_submanifests:
+            for child_manifest in get_child_manifests(repo_id, manifest_id):
+                Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment).where(
+                    Tag.repository == repo_id,
+                    Tag.manifest == child_manifest.child_manifest,
+                    Tag.hidden == True,
+                    Tag.lifetime_end_ms > now_ms - time_machine_ms - increment,
+                ).execute()
+                increment = increment + 1
+
     return updated

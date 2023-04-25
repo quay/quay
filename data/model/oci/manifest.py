@@ -21,7 +21,11 @@ from data.database import (
 )
 from data.model import BlobDoesNotExist
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
-from data.model.oci.tag import filter_to_alive_tags, create_temporary_tag_if_necessary
+from data.model.oci.tag import (
+    filter_to_alive_tags,
+    create_temporary_tag_if_necessary,
+    get_child_manifests,
+)
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
@@ -212,6 +216,23 @@ def connect_blobs(manifest: ManifestInterface, blob_ids: set[int], repository_id
         raise _ManifestAlreadyExists(e)
 
 
+def reset_child_manifest_expiration(repository_id, manifest):
+    """
+    Resets the expirations of tags targeting the child manifests.
+    Here we make the assumption tags with hidden==true are the temporary
+    tags created by Quay. We'll revisit if this assumption ever changes.
+    """
+    with db_transaction():
+        for child_manifest in get_child_manifests(repository_id, manifest):
+            now_ms = get_epoch_timestamp_ms()
+            Tag.update(lifetime_end_ms=now_ms).where(
+                Tag.repository == repository_id,
+                Tag.manifest == child_manifest.child_manifest,
+                Tag.lifetime_end_ms > now_ms,
+                Tag.hidden == True,
+            ).execute()
+
+
 def get_or_create_manifest(
     repository_id,
     manifest_interface_instance,
@@ -240,9 +261,10 @@ def get_or_create_manifest(
         temp_tag_expiration_sec=temp_tag_expiration_sec,
     )
     if existing is not None:
+        reset_child_manifest_expiration(repository_id, existing)
         return CreatedManifest(manifest=existing, newly_created=False, labels_to_apply=None)
 
-    return _create_manifest(
+    created_manifest = _create_manifest(
         repository_id,
         manifest_interface_instance,
         storage,
@@ -251,6 +273,9 @@ def get_or_create_manifest(
         raise_on_error=raise_on_error,
         retriever=retriever,
     )
+    if created_manifest is not None:
+        reset_child_manifest_expiration(repository_id, created_manifest.manifest)
+    return created_manifest
 
 
 def _create_manifest(
@@ -364,13 +389,6 @@ def _create_manifest(
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)
-                for child_manifest in child_manifest_rows.values():
-                    # Allows for immediate GC of sub-manifests on manifest list deletion
-                    Tag.update(lifetime_end_ms=get_epoch_timestamp_ms()).where(
-                        Tag.repository == repository_id,
-                        Tag.manifest == child_manifest.id,
-                        Tag.hidden == True,
-                    ).execute()
 
             # If this manifest is being created not for immediate tagging, add a temporary tag to the
             # manifest to ensure it isn't being GCed. If the manifest *is* for tagging, then since we're

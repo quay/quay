@@ -56,6 +56,8 @@ def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: s
             repository_total = repository_total + blob_size
 
     write_namespace_total(namespace_id, manifest_id, namespace_total, operation)
+
+    # TODO: If repository is marked for deletion or doesn't exist, don't write total
     write_repository_total(repository_id, manifest_id, repository_total, operation)
 
 
@@ -69,7 +71,6 @@ def blob_exists_in_namespace(namespace_id: int, manifest_id: int, blob_id: int):
             Repository.namespace_user == namespace_id,
             ManifestBlob.blob == blob_id,
             ManifestBlob.manifest != manifest_id,
-            Repository.state != RepositoryState.MARKED_FOR_DELETION,
         )
         .exists()
     )
@@ -304,7 +305,6 @@ def run_backfill(namespace_id: int):
         update_namespacesize(namespace_id, params, namespace_size_exists)
 
         params = {"size_bytes": get_namespace_total(namespace_id), "backfill_complete": True}
-        print("catdebug", "namespace", namespace_id, "backfill", params)
         update_namespacesize(namespace_id, params, True)
 
     # pylint: disable-next=not-an-iterable
@@ -334,7 +334,6 @@ def get_namespace_total(namespace_id: int):
         .join(Repository, on=(Repository.id == ManifestBlob.repository))
         .where(
             Repository.namespace_user == namespace_id,
-            Repository.state != RepositoryState.MARKED_FOR_DELETION,
         )
         .group_by(ImageStorage.id)
     )
