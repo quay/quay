@@ -12,15 +12,15 @@ import Organization from './OrganizationsList/Organization/Organization';
 import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
-import {useEffect, useMemo} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {GlobalAuthState} from 'src/resources/AuthResource';
 import {IsPluginState} from 'src/atoms/QuayConfigState';
 import axios from 'axios';
+import axiosIns from 'src/libs/axios';
 
 const NavigationRoutes = [
   {
@@ -46,25 +46,27 @@ const NavigationRoutes = [
 ];
 
 function PluginMain() {
+  const chrome = useChrome();
+  if (!chrome) {
+    return null;
+  }
+
+  if (chrome?.isProd()) {
+    axios.defaults.baseURL = 'https://quay.io';
+    axiosIns.defaults.baseURL = 'https://quay.io';
+  } else {
+    axios.defaults.baseURL = 'https://stage.quay.io';
+    axiosIns.defaults.baseURL = 'https://stage.quay.io';
+  }
+
   const quayConfig = useQuayConfig();
   const {loading, error} = useCurrentUser();
-  const chrome = useChrome();
   const setIsPluginState = useSetRecoilState(IsPluginState);
-
-  console.log('useChrome chrome', chrome);
 
   chrome?.auth?.getToken().then((token) => {
     console.log('chrome auth token', token);
     GlobalAuthState.bearerToken = token;
   });
-
-  if (chrome?.isProd()) {
-    axios.defaults.baseURL = 'https://quay.io';
-  } else if (chrome?.isDemo()) {
-    axios.defaults.baseURL = 'http://localhost:8080';
-  } else {
-    axios.defaults.baseURL = 'https://stage.quay.io';
-  }
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {

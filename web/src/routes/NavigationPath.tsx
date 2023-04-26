@@ -46,6 +46,7 @@ export function getRepoDetailPath(org: string, repo: string) {
   let repoPath = NavigationPath.repositoryDetail.toString();
   repoPath = repoPath.replace(':organizationName', org);
   repoPath = repoPath.replace('*', repo);
+  console.log('repo detail path', repoPath);
   return domainRoute(repoPath);
 }
 
@@ -83,12 +84,14 @@ function domainRoute(definedRoute) {
    So, the function returns /settings/quay/<route> .
    ***/
   const currentRoute = window.location.pathname;
-  return (
-    // This regex replaces everything after the last occurrence of organization|repository|signin with empty string.
-    // Doing this gives us the prefix.
+  console.log('current route ', currentRoute);
+  console.log('defined route ', definedRoute);
+  const newPath =
     currentRoute.replace(/\/(organization|repository|signin)(?!.*\1).*/, '') +
-    definedRoute
-  );
+    definedRoute;
+  console.log('new path ', newPath);
+
+  return newPath;
 }
 
 const NavigationRoutes = [
