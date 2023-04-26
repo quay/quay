@@ -3,11 +3,17 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
+<a name="v3.8.7"></a>
+## [v3.8.7] - 2023-04-24
+### Chore
+- [3db02218](https://github.com/quay/quay/commit/3db022180a41138a7f84994830064640f2846564): Ensure use of HTTP 1.1 when proxying storage (PROJQUAY-5140) We were not enforcing the use of `HTTP 1.1` when storage proxy was concerned. This causes problems in certain complex scenarios. ([#1828](https://github.com/quay/quay/issues/1828))
+
 <a name="v3.8.6"></a>
 ## [v3.8.6] - 2023-04-12
 ### Build(Deps)
 - [f218831c](https://github.com/quay/quay/commit/f218831c5162f5159b26e7787cf65f0d617bb90d): bump certifi from 2019.11.28 to 2022.12.7 ([#1823](https://github.com/quay/quay/issues/1823))
 ### Chore
+- [12b0bc23](https://github.com/quay/quay/commit/12b0bc236bea594024427d2aa66756bc8484fb8b): v3.8.6 changelog bump (PROJQUAY-5279) ([#1824](https://github.com/quay/quay/issues/1824))
 - [7761140e](https://github.com/quay/quay/commit/7761140e24a2bc537567f48f2b8e63d88d514e30): Pin distribution-spec conformance tests ([#1816](https://github.com/quay/quay/issues/1816))
 ### Storagereplication
 - [3809d7ff](https://github.com/quay/quay/commit/3809d7ff428d8342a4acad55a7fef46ff04d8a83): sleep on unexpected exception for retry (PROJQUAY-4792) ([#1810](https://github.com/quay/quay/issues/1810))
@@ -885,7 +891,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.6...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.7...HEAD
+[v3.8.7]: https://github.com/quay/quay/compare/v3.8.6...v3.8.7
 [v3.8.6]: https://github.com/quay/quay/compare/v3.8.5...v3.8.6
 [v3.8.5]: https://github.com/quay/quay/compare/v3.8.4...v3.8.5
 [v3.8.4]: https://github.com/quay/quay/compare/v3.8.3...v3.8.4
