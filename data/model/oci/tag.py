@@ -159,6 +159,7 @@ def list_repository_tag_history(
     specific_tag_name=None,
     active_tags_only=False,
     since_time_ms=None,
+    query_param=None,
 ):
     """
     Returns a tuple of the full set of tags found in the specified repository, including those that
@@ -183,6 +184,9 @@ def list_repository_tag_history(
         .limit(page_size + 1)
         .offset(page_size * (page - 1))
     )
+
+    if query_param is not None:
+        query = query.where(Tag.name.contains(query_param))
 
     if specific_tag_name is not None:
         query = query.where(Tag.name == specific_tag_name)

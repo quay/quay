@@ -65,6 +65,12 @@
         'onlyActiveTags': true
       };
 
+      const urlSearchParams = new URLSearchParams(window.location.search);
+      const urlParams = Object.fromEntries(urlSearchParams.entries());
+      if (urlParams['query']) {
+        params['query'] = urlParams['query'];
+      }
+
       ApiService.listRepoTags(null, params).then(function(resp) {
         var newTags = resp.tags.reduce(function(result, item, index, array) {
           var tag_name = item['name'];

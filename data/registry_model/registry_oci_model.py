@@ -275,6 +275,7 @@ class OCIModel(RegistryDataInterface):
         specific_tag_name=None,
         active_tags_only=False,
         since_time_ms=None,
+        query=None,
     ):
         """
         Returns the history of all tags in the repository (unless filtered).
@@ -283,7 +284,7 @@ class OCIModel(RegistryDataInterface):
         into service.
         """
         tags, has_more = oci.tag.list_repository_tag_history(
-            repository_ref._db_id, page, size, specific_tag_name, active_tags_only, since_time_ms
+            repository_ref._db_id, page, size, specific_tag_name, active_tags_only, since_time_ms, query,
         )
 
         # TODO: Remove this once the layers compressed sizes have been fully backfilled.
