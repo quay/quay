@@ -14,10 +14,11 @@ angular.module('quay').directive('repoTagHistory', function () {
       'filter': '=filter',
       'isEnabled': '=isEnabled',
     },
-    controller: function($scope, $element, ApiService, StateService) {
+    controller: function($scope, $element, Config, ApiService, StateService) {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.tagHistoryData = null;
       $scope.tagHistoryLeaves = {};
+      $scope.Config = Config;
 
       $scope.options = {
         'showFuture': false

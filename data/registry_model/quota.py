@@ -2,7 +2,7 @@ from collections import namedtuple
 import time
 from typing import Dict, List
 
-from data.model import db_transaction
+from data.model import db_transaction, config
 
 from peewee import JOIN, fn
 from data.database import (
@@ -385,6 +385,9 @@ def reset_backfill(repository_id: int):
     for recalculation. Since the repository total will change we
     need to reset the namespace backfill has well.
     """
+    if not config.app_config.get("QUOTA_INVALIDATE_TOTALS", True):
+        return
+
     try:
         QuotaRepositorySize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}
@@ -400,6 +403,9 @@ def reset_namespace_backfill(namespace_id: int):
     Resets the quotanamespacesize fields to be picked up by the backfill worker
     for recalculation.
     """
+    if not config.app_config.get("QUOTA_INVALIDATE_TOTALS", True):
+        return
+    
     try:
         QuotaNamespaceSize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}

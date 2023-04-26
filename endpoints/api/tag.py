@@ -16,6 +16,7 @@ from endpoints.api import (
     require_repo_write,
     RepositoryParamResource,
     log_action,
+    show_if,
     validate_json_request,
     path_param,
     parse_args,
@@ -256,6 +257,9 @@ class RepositoryTag(RepositoryParamResource):
 
         skip_recovery_period = parsed_args.get("skipRecoveryPeriod")
         includeSubmanifests = parsed_args.get("includeSubmanifests")
+        if (skip_recovery_period or includeSubmanifests) and not app.config.get("PERMANENTLY_DELETE_TAGS", True):
+            raise InvalidRequest("Permanent tag deletion options not enabled")
+
         tag_ref = registry_model.delete_tag(
             repo_ref, tag, skip_recovery_period, includeSubmanifests
         )
@@ -348,6 +352,7 @@ class RestoreTag(RepositoryParamResource):
 @resource("/v1/repository/<apirepopath:repository>/tag/<tag>/expire")
 @path_param("repository", "The full path of the repository. e.g. namespace/name")
 @path_param("tag", "The name of the tag")
+@show_if(app.config.get("PERMANENTLY_DELETE_TAGS", True))
 class TagTimeMachineDelete(RepositoryParamResource):
     """
     Resource for updating the expiry of tags outside the time machine window

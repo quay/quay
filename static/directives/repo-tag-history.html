@@ -18,7 +18,7 @@
           <td class="history-col">Tag Change</td>
           <td class="datetime-col hidden-sm hidden-xs">Date/Time</td>
           <td class="revert-col hidden-sm hidden-xs"><span ng-if="repository.can_write && !inReadOnlyMode">Revert</span></td>
-          <td class="delete-col hidden-sm hidden-xs"><span ng-if="repository.can_write && !inReadOnlyMode && repository.tag_expiration_s > 0">Permanently Delete</span></td>
+          <td class="delete-col hidden-sm hidden-xs"><span ng-if="Config.PERMANENTLY_DELETE_TAGS && repository.can_write && !inReadOnlyMode && repository.tag_expiration_s > 0">Permanently Delete</span></td>
         </thead>
         <tbody>
           <tr style="height: 20px;"><td colspan="4"></td></tr>
@@ -101,7 +101,7 @@
               </div>
             </td>
             <td class="delete-col hidden-xs hidden-sm">
-              <div ng-if="!entry.date_break && repository.can_write && !inReadOnlyMode && !isFuture(entry) && (entry.action=='delete' || entry.action == 'revert') && repository.tag_expiration_s > 0" class="history-delete">
+              <div ng-if="Config.PERMANENTLY_DELETE_TAGS && !entry.date_break && repository.can_write && !inReadOnlyMode && !isFuture(entry) && (entry.action=='delete' || entry.action == 'revert') && repository.tag_expiration_s > 0" class="history-delete">
                 <a ng-click="askPermanentlyDeleteTag(entry)">
                   Delete <b>{{entry.tag_name}}</b>
                   <manifest-link ng-if="entry.action=='delete'" repository="repository"

@@ -19,7 +19,7 @@ from data.database import (
     db_transaction,
     get_epoch_timestamp_ms,
 )
-from data.model import BlobDoesNotExist
+from data.model import BlobDoesNotExist, config
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
 from data.model.oci.tag import (
     filter_to_alive_tags,
@@ -222,6 +222,9 @@ def reset_child_manifest_expiration(repository_id, manifest):
     Here we make the assumption tags with hidden==true are the temporary
     tags created by Quay. We'll revisit if this assumption ever changes.
     """
+    if not config.app_config.get("RESET_CHILD_MANIFEST_EXPIRATION",True):
+        return
+
     with db_transaction():
         for child_manifest in get_child_manifests(repository_id, manifest):
             now_ms = get_epoch_timestamp_ms()
@@ -363,8 +366,9 @@ def _create_manifest(
 
     # Get the storage sizes
     blob_sizes = {}
-    for storage in list(blob_map.values()):
-        blob_sizes[storage.id] = storage.image_size
+    if features.QUOTA_MANAGEMENT:
+        for storage in list(blob_map.values()):
+            blob_sizes[storage.id] = storage.image_size
 
     # Check for the manifest, in case it was created since we checked earlier.
     try:

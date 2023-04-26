@@ -89,6 +89,9 @@ INTERNAL_ONLY_PROPERTIES = {
     "ACCOUNT_RECOVERY_MODE",
     "BLOBUPLOAD_DELETION_DATE_THRESHOLD",
     "REPO_MIRROR_TAG_ROLLBACK_PAGE_SIZE",
+    "QUOTA_INVALIDATE_TOTALS",
+    "RESET_CHILD_MANIFEST_EXPIRATION",
+    "PERMANENTLY_DELETE_TAGS",
 }
 
 CONFIG_SCHEMA = {
@@ -1265,6 +1268,11 @@ CONFIG_SCHEMA = {
             "description": "The amount of namespaces that will be calculated for quota backfill on wakeup of the backfill worker.",
             "x-example": 100,
         },
+        "QUOTA_INVALIDATE_TOTALS": {
+            "type": "boolean",
+            "description": "Invalidates totals when a write happens to a namespace and repository when FEATURE_QUOTA_MANAGEMENT is not enabled",
+            "x-example": True,
+        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
@@ -1327,6 +1335,16 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Whether to allow sending notifications about vulnerabilities for new pushes",
             "x-example": False,
+        },
+        "RESET_CHILD_MANIFEST_EXPIRATION": {
+            "type": "boolean",
+            "description": "When a manifest list is pushed, reset the expiry of the child manifest tags to become immediately eligible for GC on parent tag deletion",
+            "x-example": True,
+        },
+        "PERMANENTLY_DELETE_TAGS": {
+            "type": "boolean",
+            "description": "Enables functionality related to the removal of tags from the time machine window",
+            "x-example": True,
         },
     },
 }
