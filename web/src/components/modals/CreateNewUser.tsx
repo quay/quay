@@ -14,7 +14,7 @@ import {getUser, getOrganization} from 'src/resources/AuthResource';
 
 type validate = 'success' | 'error' | 'default';
 
-export function NewUserConfirmation(props: NewUserConfirmationProps) {
+export function CreateNewUser(props: CreateNewUserProps) {
   const [username, setUsername] = useState(props.user.username);
   const [validatedUsername, setValidatedUsername] = useState<validate>('success');
   const [helperText, setHelperText] = useState('');
@@ -107,6 +107,7 @@ export function NewUserConfirmation(props: NewUserConfirmationProps) {
         </Button>,
       ]}
     >
+
       <Form id="confirm-username-form">
         <FormGroup
           isRequired
@@ -131,7 +132,7 @@ export function NewUserConfirmation(props: NewUserConfirmationProps) {
   );
 }
 
-type NewUserConfirmationProps = {
+type CreateNewUserProps = {
   user: IUserResource;
   isModalOpen: boolean;
   setModalOpen: (boolean) => void;

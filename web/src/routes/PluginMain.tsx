@@ -14,13 +14,13 @@ import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
 import {useEffect, useState, useMemo} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
 import {GlobalAuthState} from '../resources/AuthResource';
 import {IsPluginState} from '../atoms/QuayConfigState';
-import {NewUserConfirmation} from 'src/components/modals/NewUserConfirmation';
+import {CreateNewUser} from 'src/components/modals/CreateNewUser';
+import NewUserEmptyPage from 'src/components/NewUserEmptyPage';
 
 const NavigationRoutes = [
   {
@@ -78,7 +78,7 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
-    <NewUserConfirmation
+    <CreateNewUser
       user={user}
       isModalOpen={isConfirmUserModalOpen}
       setModalOpen={setConfirmUserModalOpen}
@@ -105,7 +105,9 @@ function PluginMain() {
         </Flex>
       </Banner>
       {user?.prompts && user.prompts.includes('confirm_username') ? (
-        null
+        <NewUserEmptyPage
+          setCreateUserModalOpen={setConfirmUserModalOpen}
+        />
       ) : (
         <Routes>
           <Route index element={<Navigate to="organization" replace />} />
