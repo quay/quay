@@ -69,7 +69,6 @@ function PluginMain() {
   const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
 
   chrome?.auth?.getToken().then((token) => {
-    console.log('chrome auth token', token);
     GlobalAuthState.bearerToken = token;
   });
 
