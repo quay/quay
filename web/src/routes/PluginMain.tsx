@@ -12,7 +12,7 @@ import Organization from './OrganizationsList/Organization/Organization';
 import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';

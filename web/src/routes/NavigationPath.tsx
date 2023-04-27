@@ -46,7 +46,6 @@ export function getRepoDetailPath(org: string, repo: string) {
   let repoPath = NavigationPath.repositoryDetail.toString();
   repoPath = repoPath.replace(':organizationName', org);
   repoPath = repoPath.replace('*', repo);
-  console.log('repo detail path', repoPath);
   return domainRoute(repoPath);
 }
 
@@ -84,14 +83,10 @@ function domainRoute(definedRoute) {
    So, the function returns /settings/quay/<route> .
    ***/
   const currentRoute = window.location.pathname;
-  console.log('current route ', currentRoute);
-  console.log('defined route ', definedRoute);
-  const newPath =
+  return (
     currentRoute.replace(/\/(organization|repository|signin)(?!.*\1).*/, '') +
-    definedRoute;
-  console.log('new path ', newPath);
-
-  return newPath;
+    definedRoute
+  );
 }
 
 const NavigationRoutes = [

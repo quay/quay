@@ -363,11 +363,11 @@ export default function RepositoriesList(props: RepositoriesListProps) {
                   />
                   <Td dataLabel={RepositoryListColumnNames.name}>
                     {currentOrg == null ? (
-                      <Link to={getRepoDetailPath(repo.namespace, repo.name)} replace={true}>
+                      <Link to={getRepoDetailPath(repo.namespace, repo.name)} >
                         {repo.namespace}/{repo.name}
                       </Link>
                     ) : (
-                      <Link to={getRepoDetailPath(repo.namespace, repo.name)} replace={true}>
+                      <Link to={getRepoDetailPath(repo.namespace, repo.name)} >
                         {repo.name}
                       </Link>
                     )}
