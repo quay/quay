@@ -184,13 +184,16 @@ def list_repository_tag_history(
         .limit(page_size + 1)
         .offset(page_size * (page - 1))
     )
-
-    if filter_tag_name is not None:
-        operation, value = filter_tag_name.split(':')
-        if operation == 'like':
-            query = query.where(Tag.name.contains(value))
-        elif operation == 'eq':
-            query = query.where(Tag.name == value)
+    try:
+        if filter_tag_name is not None:
+            operation, value = filter_tag_name.split(':')
+            if operation == 'like':
+                query = query.where(Tag.name.contains(value))
+            elif operation == 'eq':
+                query = query.where(Tag.name == value)
+    except ValueError:
+        raise ValueError("UnSupported syntax for filter_tag_name. Expected <operation>:<tag_name> where <operation>"
+                         "can be 'like' or 'eq'.")
 
     if specific_tag_name is not None:
         query = query.where(Tag.name == specific_tag_name)

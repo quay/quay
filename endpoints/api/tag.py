@@ -24,6 +24,7 @@ from endpoints.api import (
     format_date,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
+    abort as custom_abort,
 )
 from endpoints.exception import NotFound, InvalidRequest
 from util.names import TAG_ERROR, TAG_REGEX
@@ -85,15 +86,19 @@ class ListRepositoryTags(RepositoryParamResource):
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
+        try:
+            history, has_more = registry_model.list_repository_tag_history(
+                repo_ref,
+                page=page,
+                size=limit,
+                specific_tag_name=specific_tag,
+                active_tags_only=active_tags_only,
+                filter_tag_name=filter_tag_name,
+            )
+        except ValueError as error:
+            print("error", error)
+            custom_abort(400, message=str(error))
 
-        history, has_more = registry_model.list_repository_tag_history(
-            repo_ref,
-            page=page,
-            size=limit,
-            specific_tag_name=specific_tag,
-            active_tags_only=active_tags_only,
-            filter_tag_name=filter_tag_name,
-        )
         return {
             "tags": [_tag_dict(tag) for tag in history],
             "page": page,
