@@ -67,8 +67,8 @@
 
       const urlSearchParams = new URLSearchParams(window.location.search);
       const urlParams = Object.fromEntries(urlSearchParams.entries());
-      if (urlParams['query']) {
-        params['query'] = urlParams['query'];
+      if (urlParams['filter_tag_name']) {
+        params['filter_tag_name'] = urlParams['filter_tag_name'];
       }
 
       ApiService.listRepoTags(null, params).then(function(resp) {

@@ -178,7 +178,7 @@ class RegistryDataInterface(object):
         specific_tag_name=None,
         active_tags_only=False,
         since_time_ms=None,
-        query=None,
+        filter_tag_name=None,
     ):
         """
         Returns the history of all tags in the repository (unless filtered).
