@@ -226,6 +226,7 @@ angular.module('quay').directive('tagOperationsDialog', function () {
           var data = {
             'manifest_digest': manifest_digest,
             'include_submanifests': true,
+            'is_alive': false,
           };
           var errorHandler = ApiService.errorDisplay('Cannot permanently delete tag', callback);
           ApiService.removeTagFromTimemachine(data, params).then(function(res){

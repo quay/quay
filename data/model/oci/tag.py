@@ -441,60 +441,31 @@ def retarget_tag(
         return created
 
 
-def delete_tag(repository_id, tag_name, skip_recovery_period=False, include_submanifests=False):
+def delete_tag(repository_id, tag_name):
     """
     Deletes the alive tag with the given name in the specified repository and returns the deleted
     tag.
-
     If the tag did not exist, returns None.
     """
     tag = get_tag(repository_id, tag_name)
     if tag is None:
         return None
 
-    return _delete_tag(tag, get_epoch_timestamp_ms(), skip_recovery_period, include_submanifests)
+    return _delete_tag(tag, get_epoch_timestamp_ms())
 
 
-def _delete_tag(tag, now_ms, skip_recovery_period=False, include_submanifests=False):
+def _delete_tag(tag, now_ms):
     """
     Deletes the given tag by marking it as expired.
     """
     with db_transaction():
-        params = {"lifetime_end_ms": now_ms}
-
-        # skip_recovery_period set's lifetime_end_ms outside of the time machine policy and hidden
-        # prevents the tag from appearing in tag history for restoration
-        if skip_recovery_period:
-            try:
-                namespace = (
-                    User.select(User.removed_tag_expiration_s)
-                    .join(Repository, on=(Repository.namespace_user == User.id))
-                    .where(Repository.id == tag.repository)
-                    .get()
-                )
-                params = {
-                    "lifetime_end_ms": now_ms - (namespace.removed_tag_expiration_s * 1000),
-                    "hidden": True,
-                }
-            except User.DoesNotExist:
-                return None
-
         updated = (
-            Tag.update(params)
+            Tag.update(lifetime_end_ms=now_ms)
             .where(Tag.id == tag.id, Tag.lifetime_end_ms == tag.lifetime_end_ms)
             .execute()
         )
         if updated != 1:
             return None
-
-        if include_submanifests:
-            for child_manifest in get_child_manifests(tag.repository, tag.manifest):
-                Tag.update(params).where(
-                    Tag.repository == tag.repository,
-                    Tag.manifest == child_manifest.child_manifest,
-                    Tag.lifetime_end_ms > params.get("lifetime_end_ms", now_ms),
-                    Tag.hidden == True,
-                ).execute()
 
         return tag
 
@@ -722,8 +693,19 @@ def get_legacy_images_for_tags(tags):
     by_manifest = {mli.manifest_id: mli.image for mli in query}
     return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
 
+def get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, timemaching_window_ms):
+    now_ms = get_epoch_timestamp_ms()
+    return (
+            Tag.select(Tag.id)
+            .where(Tag.name == tag_name)
+            .where(Tag.repository == repo_id)
+            .where(Tag.manifest == manifest_id)
+            .where(Tag.lifetime_end_ms <= now_ms)
+            .where(Tag.lifetime_end_ms > now_ms - timemaching_window_ms)
+        )
 
-def remove_tag_from_timemachine(repo_id, tag_name, manifest_id, include_submanifests=False):
+
+def remove_tag_from_timemachine(repo_id, tag_name, manifest_id, include_submanifests=False, is_alive=False):
     try:
         namespace = (
             User.select(User.removed_tag_expiration_s)
@@ -740,27 +722,41 @@ def remove_tag_from_timemachine(repo_id, tag_name, manifest_id, include_submanif
     time_machine_ms = namespace.removed_tag_expiration_s * 1000
     now_ms = get_epoch_timestamp_ms()
 
-    tags = (
-        Tag.select(Tag.id)
-        .where(Tag.name == tag_name)
-        .where(Tag.repository == repo_id)
-        .where(Tag.manifest == manifest_id)
-        .where(Tag.lifetime_end_ms <= now_ms)
-        .where(Tag.lifetime_end_ms > now_ms - time_machine_ms)
-    )
-    updated = False
     # Increment used to create unique lifetime_end_ms entries because of
     # tag_repository_id_name_lifetime_end_ms index
     increment = 1
-    with db_transaction():
-        for tag in tags:
-            Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment, hidden=True).where(
-                Tag.id == tag
-            ).execute()
-            updated = True
-            increment = increment + 1
+    updated = False
+    if is_alive:
 
-        if include_submanifests:
+        # Ensure the tag is actually alive
+        alive_tag = get_tag(repo_id, tag_name)
+        if alive_tag is None:
+            return False
+        
+        # Expire the tag past the time machine window and set hidden=true to 
+        # prevent it from appearing in tag history
+        updated = (
+            Tag.update(lifetime_end_ms=now_ms - time_machine_ms, hidden=True)
+            .where(Tag.id == alive_tag)
+            .where(Tag.lifetime_end_ms == alive_tag.lifetime_end_ms)
+            .execute()
+        )
+        if updated != 1:
+            return False
+    else:
+        # Update all tags with matching name and manifest with a expiry outside the time machine
+        # window
+        with db_transaction():
+            for tag in get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, time_machine_ms):
+                Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment, hidden=True).where(
+                    Tag.id == tag
+                ).execute()
+                updated = True
+                increment = increment + 1
+
+    if include_submanifests:
+        with db_transaction():
+            # pylint: disable-next=not-an-iterable
             for child_manifest in get_child_manifests(repo_id, manifest_id):
                 Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment).where(
                     Tag.repository == repo_id,

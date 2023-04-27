@@ -232,21 +232,8 @@ class RepositoryTag(RepositoryParamResource):
     @disallow_for_app_repositories
     @disallow_for_non_normal_repositories
     @disallow_for_user_namespace
-    @parse_args()
-    @query_param(
-        "skipRecoveryPeriod",
-        "Tag will be immediately available for garbage collection and not recoverable through time machine settings.",
-        type=truthy_bool,
-        default=False,
-    )
-    @query_param(
-        "includeSubmanifests",
-        "If tag is a manifest list, the sub-manifests will be marked for deletion as well",
-        type=truthy_bool,
-        default=False,
-    )
     @nickname("deleteFullTag")
-    def delete(self, namespace, repository, tag, parsed_args):
+    def delete(self, namespace, repository, tag):
         """
         Delete the specified repository tag.
         """
@@ -255,14 +242,7 @@ class RepositoryTag(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
-        skip_recovery_period = parsed_args.get("skipRecoveryPeriod")
-        includeSubmanifests = parsed_args.get("includeSubmanifests")
-        if (skip_recovery_period or includeSubmanifests) and not app.config.get("PERMANENTLY_DELETE_TAGS", True):
-            raise InvalidRequest("Permanent tag deletion options not enabled")
-
-        tag_ref = registry_model.delete_tag(
-            repo_ref, tag, skip_recovery_period, includeSubmanifests
-        )
+        tag_ref = registry_model.delete_tag(repo_ref, tag)
         if tag_ref is None:
             raise NotFound()
 
@@ -365,12 +345,16 @@ class TagTimeMachineDelete(RepositoryParamResource):
             "properties": {
                 "manifest_digest": {
                     "type": "string",
-                    "description": "If specified, the manifest digest that should be used",
+                    "description": "Required if is_alive set to false. If specified, the manifest digest that should be used",
                 },
                 "include_submanifests": {
                     "type": "boolean",
-                    "description": "If set to True, expire the sub-manifests as well",
+                    "description": "If set to true, expire the sub-manifests as well",
                 },
+                "is_alive": {
+                    "type": "boolean",
+                    "description": "If true, set the expiry of the matching alive tag outside the time machine window. If false set the expiry of any expired tags with the same tag and manifest outside the time machine window.",
+                }
             },
         },
     }
@@ -387,19 +371,21 @@ class TagTimeMachineDelete(RepositoryParamResource):
         if repo_ref is None:
             raise NotFound()
 
+        alive = request.get_json().get("is_alive", False)
         manifest_digest = request.get_json().get("manifest_digest", None)
-        if manifest_digest is None:
-            raise InvalidRequest("Missing manifest_digest")
+        if not alive and manifest_digest is None:
+            raise InvalidRequest("manifest_digest required when is_alive set to false")
 
-        manifest_ref = registry_model.lookup_manifest_by_digest(
-            repo_ref, manifest_digest, allow_dead=True
-        )
-        if manifest_ref is None:
-            raise NotFound()
+        if not alive:
+            manifest_ref = registry_model.lookup_manifest_by_digest(
+                repo_ref, manifest_digest, allow_dead=True
+            )
+            if manifest_ref is None:
+                raise NotFound()
 
         include_submanifests = request.get_json().get("include_submanifests", False)
         tags_updated = registry_model.remove_tag_from_timemachine(
-            repo_ref, tag, manifest_ref, include_submanifests
+            repo_ref, tag, manifest_ref, include_submanifests, alive
         )
         if not tags_updated:
             raise NotFound()

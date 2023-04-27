@@ -228,7 +228,7 @@ class RegistryDataInterface(object):
         """
 
     @abstractmethod
-    def delete_tag(self, repository_ref, tag_name, force=False, include_submanifests=False):
+    def delete_tag(self, repository_ref, tag_name):
         """
         Deletes the latest, *active* tag with the given name in the repository.
         """
@@ -462,7 +462,7 @@ class RegistryDataInterface(object):
 
     @abstractmethod
     def remove_tag_from_timemachine(
-        self, repo_ref, tag_name, manifest_ref, include_submanifests=False
+        self, repo_ref, tag_name, manifest_ref, include_submanifests=False, is_alive=False
     ):
         """
         Updates any expired tags in the time machine window referencing the given manifest
