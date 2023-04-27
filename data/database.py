@@ -2147,10 +2147,7 @@ class RedHatSubscriptions(BaseModel):
     """
 
     user_id = ForeignKeyField(User, backref="subscription")
-    subscription_id = IntegerField(unique=True, null=True)
-    account_number = IntegerField(null=True)
-    subscription_end_date = DateTimeField(null=True)
-    sku_id = CharField(null=True)
+    account_number = IntegerField(unique=True)
 
 
 # Defines a map from full-length index names to the legacy names used in our code

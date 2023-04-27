@@ -18,18 +18,9 @@ def upgrade(op, tables, tester):
         "redhatsubscriptions",
         sa.Column("id", sa.Integer, nullable=False),
         sa.Column("user_id", sa.Integer, nullable=False),
-        sa.Column("subscription_id", sa.Integer, unique=True),
         sa.Column("account_number", sa.Integer, nullable=False),
-        sa.Column("subscription_end_date", sa.DateTime),
-        sa.Column("sku_id", sa.String(length=9)),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_redhatsubscriptions")),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"], name=op.f("fk_redhatsubscriptions")),
-    )
-    op.create_index(
-        "redhatsubscriptions_subscription_id",
-        "redhatsubscriptions",
-        ["subscription_id"],
-        unique=True,
     )
 
 

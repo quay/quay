@@ -836,3 +836,5 @@ class DefaultConfig(ImmutableConfig):
     # Endpoints for marketplace compatibility
     ENTITLEMENT_RECONCILIATION_USER_ENDPOINT = ""
     ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT = ""
+
+    FEATURE_RH_MARKETPLACE = False

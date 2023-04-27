@@ -23,6 +23,8 @@ from app import (
     namespace_gc_queue,
     ip_resolver,
     url_scheme_and_hostname,
+    rh_user_api,
+    rh_marketplace_api,
 )
 
 from auth import scopes
@@ -35,7 +37,6 @@ from auth.permissions import (
     SuperUserPermission,
 )
 from data import model
-from data.billing import get_plan
 from data.database import Repository as RepositoryTable
 from data.users.shared import can_create_user
 from endpoints.api import (
@@ -640,6 +641,11 @@ class PrivateRepositories(ApiResource):
                 plan = get_plan(cus.subscription.plan.id)
                 if plan:
                     repos_allowed = plan["privateRepos"]
+        elif features.RH_MARKETPLACE:
+            user_account_number = rh_user_api.get_account_number(user)
+            user_subscription = rh_marketplace_api.find_stripe_subscription(user_account_number)
+            if user_subscription:
+                repos_allowed = user_subscription["privateRepos"]
 
         return {"privateCount": private_repos, "privateAllowed": (private_repos < repos_allowed)}
 

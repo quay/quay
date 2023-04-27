@@ -58,6 +58,7 @@ from util.names import urn_generator
 from util.config import URLSchemeAndHostname
 from util.config.configutil import generate_secret_key
 from util.label_validator import LabelValidator
+from util.marketplace import RHMarketplaceAPI, RHUserAPI
 from util.metrics.prometheus import PrometheusPlugin
 from util.repomirror.api import RepoMirrorAPI
 from util.tufmetadata.api import TUFMetadataAPI
@@ -136,6 +137,7 @@ if features.HELM_OCI_SUPPORT:
         "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
     ]
     register_artifact_type(HELM_CHART_CONFIG_TYPE, HELM_CHART_LAYER_TYPES)
+
 
 CONFIG_DIGEST = hashlib.sha256(json.dumps(app.config, default=str).encode("utf-8")).hexdigest()[0:8]
 
@@ -236,6 +238,12 @@ app.url_map.converters["v1createrepopath"] = V1CreateRepositoryPathConverter
 Principal(app, use_sessions=False)
 
 tf = app.config["DB_TRANSACTION_FACTORY"]
+
+rh_user_api = None
+rh_marketplace_api = None
+if features.ENTITLEMENT_RECONCILIATION or features.RH_MARKETPLACE:
+    rh_user_api = RHUserAPI(app.config)
+    rh_marketplace_api = RHMarketplaceAPI(app.config)
 
 model_cache = get_model_cache(app.config)
 avatar = Avatar(app)

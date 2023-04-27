@@ -2,6 +2,11 @@ import json
 import logging
 import requests
 
+from data.billing import RH_SKU_STRIPE_IDS, RH_SKUS, get_plan
+from datetime import datetime
+
+from data.model import entitlements
+
 logger = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT = 60
@@ -11,9 +16,19 @@ MARKETPLACE_SECRET = "/conf/stack/auth/quay-marketplace-api-stage.key"
 
 
 class RHUserAPI:
-    def __init__(self, app_config=None):
+    def __init__(self, app_config):
         self.cert = (MARKETPLACE_FILE, MARKETPLACE_SECRET)
         self.user_endpoint = app_config.get("ENTITLEMENT_RECONCILIATION_USER_ENDPOINT")
+
+    def get_account_number(self, user):
+        email = user.email
+        account_number = entitlements.get_ebs_account_number(user.id)
+        if account_number is None:
+            account_number = self.lookup_customer_id(email)
+            if account_number:
+                # store in database for next lookup
+                entitlements.save_ebs_account_number(user, account_number)
+        return account_number
 
     def lookup_customer_id(self, email):
         """
@@ -64,7 +79,9 @@ class RHMarketplaceAPI:
         """
         Use internal marketplace API to find subscription for customerId and sku
         """
-        logger.debug("looking up subscription for %s", str(ebsAccountNumber))
+        logger.debug(
+            "looking up subscription sku %s for account %s", str(skuId), str(ebsAccountNumber)
+        )
 
         subscriptions_url = f"{self.marketplace_endpoint}/subscription/v5/search/criteria;sku={skuId};web_customer_id={ebsAccountNumber}"
         request_headers = {"Content-Type": "application/json"}
@@ -140,3 +157,14 @@ class RHMarketplaceAPI:
             timeout=REQUEST_TIMEOUT,
         )
         return r.status_code
+
+    def find_stripe_subscription(self, account_number):
+        """
+        Returns the stripe plan for a given account number
+        """
+        for sku in RH_SKUS:
+            user_subscription = self.lookup_subscription(account_number, sku)
+            if user_subscription is not None:
+                return get_plan(RH_SKU_STRIPE_IDS[sku])
+
+        return None

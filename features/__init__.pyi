@@ -203,3 +203,6 @@ RESTRICTED_USERS: FeatureNameValue
 ENTITLEMENT_RECONCILIATION: FeatureNameValue
 ENTITLEMENT_RECONCILIATION_USER_ENDPOINT: FeatureNameValue
 ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT: FeatureNameValue
+
+# Feature Flag: Whether to use RH internal marketplace for subscriptions
+RH_MARKETPLACE: FeatureNameValue
