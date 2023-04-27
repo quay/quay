@@ -84,8 +84,6 @@ function domainRoute(definedRoute) {
    ***/
   const currentRoute = window.location.pathname;
   return (
-    // This regex replaces everything after the last occurrence of organization|repository|signin with empty string.
-    // Doing this gives us the prefix.
     currentRoute.replace(/\/(organization|repository|signin)(?!.*\1).*/, '') +
     definedRoute
   );

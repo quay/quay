@@ -22,6 +22,7 @@ import {IsPluginState} from '../atoms/QuayConfigState';
 import {CreateNewUser} from 'src/components/modals/CreateNewUser';
 import NewUserEmptyPage from 'src/components/NewUserEmptyPage';
 import axios from 'axios';
+import axiosIns from 'src/libs/axios';
 
 
 const NavigationRoutes = [
@@ -48,26 +49,29 @@ const NavigationRoutes = [
 ];
 
 function PluginMain() {
+  const chrome = useChrome();
+  if (!chrome) {
+    return null;
+  }
+
+  if (chrome?.isProd()) {
+    axios.defaults.baseURL = 'https://quay.io';
+    axiosIns.defaults.baseURL = 'https://quay.io';
+  } else {
+    axios.defaults.baseURL = 'https://stage.quay.io';
+    axiosIns.defaults.baseURL = 'https://stage.quay.io';
+  }
+
   const quayConfig = useQuayConfig();
   const {user, loading, error} = useCurrentUser();
-  const chrome = useChrome();
+
   const setIsPluginState = useSetRecoilState(IsPluginState);
   const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
-
-  console.log('useChrome chrome', chrome);
 
   chrome?.auth?.getToken().then((token) => {
     console.log('chrome auth token', token);
     GlobalAuthState.bearerToken = token;
   });
-
-  if (chrome?.isProd()) {
-    axios.defaults.baseURL = 'https://quay.io';
-  } else if (chrome?.isDemo()) {
-    axios.defaults.baseURL = 'http://localhost:8080';
-  } else {
-    axios.defaults.baseURL = 'https://stage.quay.io';
-  }
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
