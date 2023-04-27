@@ -43,3 +43,13 @@ export async function getCsrfToken() {
   GlobalAuthState.csrfToken = response.data.csrf_token;
   return response.data;
 }
+
+export async function getUser(username: string) {
+  const response = await axios.get(`api/v1/users/${username}`);
+  return response;
+}
+
+export async function getOrganization(orgName: string) {
+  const response = await axios.get(`api/v1/organization/${orgName}`);
+  return response;
+}
