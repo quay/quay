@@ -405,7 +405,7 @@ def reset_namespace_backfill(namespace_id: int):
     """
     if not config.app_config.get("QUOTA_INVALIDATE_TOTALS", True):
         return
-    
+
     try:
         QuotaNamespaceSize.update(
             {"size_bytes": 0, "backfill_start_ms": None, "backfill_complete": False}

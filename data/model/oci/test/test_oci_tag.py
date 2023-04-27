@@ -1,4 +1,3 @@
-
 import json
 import pytest
 from calendar import timegm
@@ -50,6 +49,7 @@ from util.bytes import Bytes
 
 
 from test.fixtures import *
+
 
 def _populate_blob(content):
     content = Bytes.for_string_or_unicode(content).as_encoded_str()
@@ -584,7 +584,7 @@ def test_remove_tag_from_timemachine_alive(initialized_db):
     updated = remove_tag_from_timemachine(repo.id, "latest", tag.manifest, is_alive=True)
     assert updated
 
-    tag = Tag.select().where(Tag.id==tag.id).get()
+    tag = Tag.select().where(Tag.id == tag.id).get()
     assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
     assert tag.hidden
 
@@ -654,17 +654,21 @@ def test_remove_tag_from_timemachine_submanifests(initialized_db):
     created_tag.lifetime_end_ms = get_epoch_timestamp_ms() - 100
     created_tag.save()
 
-    updated = remove_tag_from_timemachine(created_tag.repository, "manifestlist", created_tag.manifest, include_submanifests=True)
+    updated = remove_tag_from_timemachine(
+        created_tag.repository, "manifestlist", created_tag.manifest, include_submanifests=True
+    )
     assert updated
 
-    updated_tag = Tag.select().where(Tag.id==created_tag.id).get()
+    updated_tag = Tag.select().where(Tag.id == created_tag.id).get()
     assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
     assert updated_tag.hidden
 
-    child_manifests = [cm.child_manifest for cm in ManifestChild.select().where(ManifestChild.manifest == created_tag.manifest)]
+    child_manifests = [
+        cm.child_manifest
+        for cm in ManifestChild.select().where(ManifestChild.manifest == created_tag.manifest)
+    ]
     tags = list(Tag.select().where(Tag.manifest << child_manifests))
     for tag in tags:
         assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
         assert tag.hidden
         assert tag.name.startswith("$temp-")
-

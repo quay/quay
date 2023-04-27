@@ -354,7 +354,7 @@ class TagTimeMachineDelete(RepositoryParamResource):
                 "is_alive": {
                     "type": "boolean",
                     "description": "If true, set the expiry of the matching alive tag outside the time machine window. If false set the expiry of any expired tags with the same tag and manifest outside the time machine window.",
-                }
+                },
             },
         },
     }

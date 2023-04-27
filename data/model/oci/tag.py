@@ -693,19 +693,22 @@ def get_legacy_images_for_tags(tags):
     by_manifest = {mli.manifest_id: mli.image for mli in query}
     return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
 
+
 def get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, timemaching_window_ms):
     now_ms = get_epoch_timestamp_ms()
     return (
-            Tag.select(Tag.id)
-            .where(Tag.name == tag_name)
-            .where(Tag.repository == repo_id)
-            .where(Tag.manifest == manifest_id)
-            .where(Tag.lifetime_end_ms <= now_ms)
-            .where(Tag.lifetime_end_ms > now_ms - timemaching_window_ms)
-        )
+        Tag.select(Tag.id)
+        .where(Tag.name == tag_name)
+        .where(Tag.repository == repo_id)
+        .where(Tag.manifest == manifest_id)
+        .where(Tag.lifetime_end_ms <= now_ms)
+        .where(Tag.lifetime_end_ms > now_ms - timemaching_window_ms)
+    )
 
 
-def remove_tag_from_timemachine(repo_id, tag_name, manifest_id, include_submanifests=False, is_alive=False):
+def remove_tag_from_timemachine(
+    repo_id, tag_name, manifest_id, include_submanifests=False, is_alive=False
+):
     try:
         namespace = (
             User.select(User.removed_tag_expiration_s)
@@ -732,8 +735,8 @@ def remove_tag_from_timemachine(repo_id, tag_name, manifest_id, include_submanif
         alive_tag = get_tag(repo_id, tag_name)
         if alive_tag is None:
             return False
-        
-        # Expire the tag past the time machine window and set hidden=true to 
+
+        # Expire the tag past the time machine window and set hidden=true to
         # prevent it from appearing in tag history
         updated = (
             Tag.update(lifetime_end_ms=now_ms - time_machine_ms, hidden=True)
@@ -747,7 +750,9 @@ def remove_tag_from_timemachine(repo_id, tag_name, manifest_id, include_submanif
         # Update all tags with matching name and manifest with a expiry outside the time machine
         # window
         with db_transaction():
-            for tag in get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, time_machine_ms):
+            for tag in get_tags_within_timemachine_window(
+                repo_id, tag_name, manifest_id, time_machine_ms
+            ):
                 Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment, hidden=True).where(
                     Tag.id == tag
                 ).execute()

@@ -222,7 +222,7 @@ def reset_child_manifest_expiration(repository_id, manifest):
     Here we make the assumption tags with hidden==true are the temporary
     tags created by Quay. We'll revisit if this assumption ever changes.
     """
-    if not config.app_config.get("RESET_CHILD_MANIFEST_EXPIRATION",True):
+    if not config.app_config.get("RESET_CHILD_MANIFEST_EXPIRATION", True):
         return
 
     with db_transaction():
