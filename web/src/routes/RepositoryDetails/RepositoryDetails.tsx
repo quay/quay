@@ -64,6 +64,10 @@ export default function RepositoryDetails() {
 
   const organization = parseOrgNameFromUrl(location.pathname);
   const repository = parseRepoNameFromUrl(location.pathname);
+  const {repoDetails, errorLoadingRepoDetails} = useRepository(
+    organization,
+    repository,
+  );
 
   const requestedTabIndex = getTabIndex(searchParams.get('tab'));
   if (requestedTabIndex && requestedTabIndex !== activeTabKey) {
@@ -95,7 +99,7 @@ export default function RepositoryDetails() {
     ),
   };
 
-  /* useEffect(() => {
+  useEffect(() => {
     if (errorLoadingRepoDetails) {
       setErr(
         addDisplayError(
@@ -104,7 +108,7 @@ export default function RepositoryDetails() {
         ),
       );
     }
-  }, [errorLoadingRepoDetails]); */
+  }, [errorLoadingRepoDetails]);
 
   return (
     <Drawer

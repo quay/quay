@@ -87,7 +87,7 @@ pymemcache==3.0.0
 PyMySQL==0.9.3
 pyOpenSSL==21.0.0
 pyparsing==2.4.6
-PyPDF2 @ https://files.pythonhosted.org/packages/3d/48/0966606e08dd93a77e839803789151ff81ac27ec6767957af8afb9588501/PyPDF2-1.27.6.tar.gz#egg=PyPDF2&cachito_hash=sha256:3a3c0585678279b93a4c0fa31fb6f6217cfbdac3f6d3dcd1dfc9888579f3e858 # Generated from PyPi download link + sha256
+PyPDF2==1.27.6
 pyrsistent==0.18.0
 python-dateutil==2.8.1
 python-editor==1.0.4
