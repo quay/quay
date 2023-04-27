@@ -320,8 +320,8 @@ class Organization(ApiResource):
             except model.InvalidOrganizationException:
                 raise NotFound()
 
+            log_action("org_delete", orgname) # we need to do this before the deletion, as the org will be gone after
             model.user.mark_namespace_for_deletion(org, all_queues, namespace_gc_queue)
-            log_action("org_delete", orgname)
             return "", 204
 
         raise Unauthorized()
