@@ -1183,6 +1183,12 @@ CONFIG_SCHEMA = {
                             "description": "Splunk's index prefix",
                             "x-example": "splunk_logentry_",
                         },
+                        "ssl_ca_path": {
+                            "type": "string",
+                            "description": "*Relative container path* to a single .pem file containing a CA "
+                            "certificate for SSL verification",
+                            "x-example": "conf/stack/ssl-ca-cert.pem",
+                        },
                     },
                 },
             },
