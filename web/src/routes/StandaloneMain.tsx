@@ -31,7 +31,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoriesList,
-    Component: <RepositoriesList organizationName={''} />,
+    Component: <RepositoriesList organizationName={null} />,
   },
   {
     path: NavigationPath.repositoryDetail,
