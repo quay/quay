@@ -263,9 +263,6 @@ mock.onPost(visibilityPathRegex).reply((request: AxiosRequestConfig) => {
   const splitUrl = request.url.split('/');
   const org = splitUrl[4];
   const requestedRepo = splitUrl.slice(5, splitUrl.length - 1).join('/');
-  console.log('org', org);
-  console.log('request.url', request.url);
-  console.log('requestedRepo', requestedRepo);
 
   const repoIndex = responses[org].repositories.findIndex(
     (repo) => repo.name === requestedRepo,

@@ -1,5 +1,5 @@
 import {Tabs, Tab, TabTitleText} from '@patternfly/react-core';
-import {useSearchParams, useNavigate} from 'react-router-dom';
+import {useSearchParams, useNavigate, useLocation} from 'react-router-dom';
 import {useState} from 'react';
 import Details from './Details/Details';
 import SecurityReport from './SecurityReport/SecurityReport';
@@ -20,6 +20,7 @@ function getTabIndex(tab: string) {
 export default function TagTabs(props: TagTabsProps) {
   const [activeTabKey, setActiveTabKey] = useState<TabIndex>(TabIndex.Details);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Navigate to the correct tab
   const [searchParams] = useSearchParams();
