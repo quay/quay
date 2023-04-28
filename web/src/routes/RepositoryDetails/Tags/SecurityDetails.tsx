@@ -3,7 +3,7 @@ import {
   SecurityDetailsResponse,
   getSecurityDetails,
 } from 'src/resources/TagResource';
-import {Link} from 'react-router-dom';
+import {Link, useLocation} from 'react-router-dom';
 import {Skeleton} from '@patternfly/react-core';
 import {getTagDetailPath} from 'src/routes/NavigationPath';
 import {TabIndex} from 'src/routes/TagDetails/Types';
@@ -34,6 +34,7 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
   const [err, setErr] = useState<string>();
   const setGlobalErr = useSetRecoilState(SecurityDetailsErrorState);
   const setGlobalData = useSetRecoilState(SecurityDetailsState);
+  const location = useLocation();
 
   const severityOrder = [
     VulnerabilitySeverity.Critical,
@@ -117,7 +118,13 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
   if (vulnCount.size === 0) {
     return (
       <Link
-        to={getTagDetailPath(props.org, props.repo, props.tag, queryParams)}
+        to={getTagDetailPath(
+          location.pathname,
+          props.org,
+          props.repo,
+          props.tag,
+          queryParams,
+        )}
         className={'pf-u-display-inline-flex pf-u-align-items-center'}
         style={{textDecoration: 'none'}}
       >
@@ -137,7 +144,13 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
     const highestSeverity: VulnerabilitySeverity = getHighestSeverity();
     return (
       <Link
-        to={getTagDetailPath(props.org, props.repo, props.tag, queryParams)}
+        to={getTagDetailPath(
+          location.pathname,
+          props.org,
+          props.repo,
+          props.tag,
+          queryParams,
+        )}
         className={'pf-u-display-inline-flex pf-u-align-items-center'}
         style={{textDecoration: 'none'}}
       >
@@ -178,7 +191,13 @@ export default function SecurityDetails(props: SecurityDetailsProps) {
     });
   return (
     <Link
-      to={getTagDetailPath(props.org, props.repo, props.tag, queryParams)}
+      to={getTagDetailPath(
+        location.pathname,
+        props.org,
+        props.repo,
+        props.tag,
+        queryParams,
+      )}
       style={{textDecoration: 'none'}}
     >
       {counts}
