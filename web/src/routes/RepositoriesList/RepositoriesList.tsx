@@ -71,8 +71,6 @@ export default function RepositoriesList(props: RepositoriesListProps) {
   const [err, setErr] = useState<string[]>();
   const location = useLocation();
 
-  console.log('current route location', location.pathname);
-
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
   const {
