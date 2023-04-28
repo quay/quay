@@ -200,7 +200,7 @@ class OrganizationList(ApiResource):
                 email_required=features.MAILING,
                 is_possible_abuser=is_possible_abuser,
             )
-            log_action("org_create", org_data["name"], {"email": org_data.get("email")})
+            log_action("org_create", org_data["name"], {"email": org_data.get("email"), "namespace": org_data["name"]})
             return "Created", 201
         except model.DataModelException as ex:
             raise request_error(exception=ex)
@@ -275,7 +275,7 @@ class Organization(ApiResource):
             if "invoice_email" in org_data:
                 logger.debug("Changing invoice_email for organization: %s", org.username)
                 model.user.change_send_invoice_email(org, org_data["invoice_email"])
-                log_action("org_change_invoicing", orgname, {"invoice_email": org_data["invoice_email"]})
+                log_action("org_change_invoicing", orgname, {"invoice_email": org_data["invoice_email"], "namespace": orgname})
 
             if (
                 "invoice_email_address" in org_data
@@ -284,7 +284,7 @@ class Organization(ApiResource):
                 new_email = org_data["invoice_email_address"]
                 logger.debug("Changing invoice email address for organization: %s", org.username)
                 model.user.change_invoice_email_address(org, new_email)
-                log_action("org_change_invoicing", orgname, {"invoice_email_address": new_email})
+                log_action("org_change_invoicing", orgname, {"invoice_email_address": new_email, "namespace": orgname})
 
             if "email" in org_data and org_data["email"] != org.email:
                 new_email = org_data["email"]
@@ -293,14 +293,14 @@ class Organization(ApiResource):
 
                 logger.debug("Changing email address for organization: %s", org.username)
                 model.user.update_email(org, new_email)
-                log_action("org_change_email", orgname, {"email": new_email})
+                log_action("org_change_email", orgname, {"email": new_email, "namespace": orgname})
 
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in org_data:
                 logger.debug(
                     "Changing organization tag expiration to: %ss", org_data["tag_expiration_s"]
                 )
                 model.user.change_user_tag_expiration(org, org_data["tag_expiration_s"])
-                log_action("org_change_tag_expiration", orgname, {"tag_expiration": org_data["tag_expiration_s"]})
+                log_action("org_change_tag_expiration", orgname, {"tag_expiration": org_data["tag_expiration_s"], "namespace": orgname})
 
             teams = model.team.get_teams_within_org(org)
             return org_view(org, teams)
@@ -320,7 +320,7 @@ class Organization(ApiResource):
             except model.InvalidOrganizationException:
                 raise NotFound()
 
-            log_action("org_delete", orgname) # we need to do this before the deletion, as the org will be gone after
+            log_action("org_delete", orgname,  {"namespace": orgname}) # we need to do this before the deletion, as the org will be gone after
             model.user.mark_namespace_for_deletion(org, all_queues, namespace_gc_queue)
             return "", 204
 

@@ -251,6 +251,19 @@ angular.module('quay').directive('logsView', function () {
           }
           return 'Build from Dockerfile[[ for repository {namespace}/{repo}]]';
         },
+        'org_create': 'Create Organization {namespace}',
+        'org_delete': 'Delete Organization {namespace}',
+        'org_change_email': 'Change organization email {email}',
+        'org_change_invoicing': function(metadata) {
+          if (metadata.invoice_email) {
+            return 'Enabled email invoicing';
+          } else if(metadata.invoice_email_address) {
+            return 'Set email invoicing address to {invoice_email_address}';
+          } else {
+            return 'Disabled email invoicing';
+          }
+        },
+        'org_change_tag_expiration': 'Change time machine window to {tag_expiration}',
         'org_create_team': 'Create team {team}',
         'org_delete_team': 'Delete team {team}',
         'org_add_team_member': 'Add member {member} to team {team}',
@@ -424,6 +437,11 @@ angular.module('quay').directive('logsView', function () {
         'create_tag': 'Create Tag',
         'move_tag': 'Move Tag',
         'revert_tag':'Restore Tag',
+        'org_create': 'Create organization',
+        'org_delete': 'Delete organization',
+        'org_change_email': 'Change organization email',
+        'org_change_invoicing': 'Change organization invoicing',
+        'org_change_tag_expiration': 'Change time machine window',
         'org_create_team': 'Create team',
         'org_delete_team': 'Delete team',
         'org_add_team_member': 'Add team member',
