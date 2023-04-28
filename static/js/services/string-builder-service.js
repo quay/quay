@@ -26,7 +26,8 @@ angular.module('quay').factory('StringBuilderService', ['$sce', 'UtilService', f
     'original_image': 'archive',
     'client_id': 'chain',
     'manifest_digest': 'link',
-    'tag_expiration': 'clock-o'
+    'tag_expiration': 'clock-o',
+    'namespace': 'sitemap',
   };
 
   var allowMarkdown = {

@@ -332,6 +332,13 @@ def initialize_database():
     AccessTokenKind.create(name="build-worker")
     AccessTokenKind.create(name="pushpull-token")
 
+    LogEntryKind.create(name="user_create")
+    LogEntryKind.create(name="user_delete")
+    LogEntryKind.create(name="user_disable")
+    LogEntryKind.create(name="user_enable")
+    LogEntryKind.create(name="user_change_email")
+    LogEntryKind.create(name="user_change_password")
+
     LogEntryKind.create(name="account_change_plan")
     LogEntryKind.create(name="account_change_cc")
     LogEntryKind.create(name="account_change_password")
@@ -375,6 +382,7 @@ def initialize_database():
     LogEntryKind.create(name="org_change_email")
     LogEntryKind.create(name="org_change_invoicing")
     LogEntryKind.create(name="org_change_tag_expiration")
+    LogEntryKind.create(name="org_change_name")
 
     LogEntryKind.create(name="create_prototype_permission")
     LogEntryKind.create(name="modify_prototype_permission")

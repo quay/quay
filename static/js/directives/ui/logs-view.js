@@ -63,6 +63,48 @@ angular.module('quay').directive('logsView', function () {
       };
 
       var logDescriptions = {
+        'user_create': function(metadata) {
+          if(metadata.superuser) {
+            return '[Superuser] {superuser} created user {username}';
+          } else {
+            return 'User {username} created';
+          }
+        },
+        'user_delete': function(metadata) {
+          if(metadata.superuser) {
+            return '[Superuser] {superuser} deleted user {username}';
+          } else {
+            return 'User {username} deleted';
+          }
+        },
+        'user_enable': function(metadata) {
+          if(metadata.superuser) {
+            return '[Superuser] {superuser} enabled user {username}';
+          } else {
+            return 'User {username} enabled';
+          }
+        },
+        'user_disable': function(metadata) {
+          if(metadata.superuser) {
+            return '[Superuser] {superuser} disabled user {username}';
+          } else {
+            return 'User {username} disabled';
+          }
+        },
+        'user_change_password': function(metadata) {
+          if(metadata.superuser) {
+            return '[Superuser] {superuser} changed password of user {username}';
+          } else {
+            return 'User {username} changed password';
+          }
+        },
+        'user_change_email': function(metadata) {
+          if(metadata.superuser) {
+            return '[Superuser] {superuser} changed email of user {username} to {email}';
+          } else {
+            return 'User {username} changed email to {email}';
+          }
+        },
         'account_change_plan': 'Change plan',
         'account_change_cc': 'Update credit card',
         'account_change_password': 'Change password',
@@ -251,8 +293,8 @@ angular.module('quay').directive('logsView', function () {
           }
           return 'Build from Dockerfile[[ for repository {namespace}/{repo}]]';
         },
-        'org_create': 'Create Organization {namespace}',
-        'org_delete': 'Delete Organization {namespace}',
+        'org_create': 'Organization {namespace} created',
+        'org_delete': 'Organization {namespace} deleted',
         'org_change_email': 'Change organization email {email}',
         'org_change_invoicing': function(metadata) {
           if (metadata.invoice_email) {
@@ -367,9 +409,9 @@ angular.module('quay').directive('logsView', function () {
 
         'take_ownership': function(metadata) {
           if (metadata.was_user) {
-            return '[Superuser ]{superuser} took ownership of user namespace {namespace}';
+            return '[Superuser] {superuser} took ownership of user namespace {namespace}';
           } else {
-            return '[Superuser ]{superuser} took ownership of organization {namespace}';
+            return '[Superuser] {superuser} took ownership of organization {namespace}';
           }
         },
 
