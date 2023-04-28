@@ -143,6 +143,12 @@ export async function getTags(
   if (specificTag) {
     path = path.concat(`&specificTag=${specificTag}`);
   }
+
+  const urlSearchParams = new URLSearchParams(window.location.search);
+  const urlParams = Object.fromEntries(urlSearchParams.entries());
+  if (urlParams['filter_tag_name']) {
+    path = path.concat(`&filter_tag_name=${urlParams['filter_tag_name']}`)
+  }
   const response: AxiosResponse<TagsResponse> = await axios.get(path);
   assertHttpCode(response.status, 200);
   return response.data;

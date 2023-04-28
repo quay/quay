@@ -24,6 +24,7 @@ from endpoints.api import (
     format_date,
     disallow_for_non_normal_repositories,
     disallow_for_user_namespace,
+    abort as custom_abort,
 )
 from endpoints.exception import NotFound, InvalidRequest
 from util.names import TAG_ERROR, TAG_REGEX
@@ -68,6 +69,8 @@ class ListRepositoryTags(RepositoryParamResource):
     @disallow_for_app_repositories
     @parse_args()
     @query_param("specificTag", "Filters the tags to the specific tag.", type=str, default="")
+    @query_param("filter_tag_name", "Syntax: <op>:<name> Filters the tag names based on the operation."
+                                    "<op> can be 'like' or 'eq'.", type=str, default="")
     @query_param(
         "limit", "Limit to the number of results to return per page. Max 100.", type=int, default=50
     )
@@ -76,6 +79,7 @@ class ListRepositoryTags(RepositoryParamResource):
     @nickname("listRepoTags")
     def get(self, namespace, repository, parsed_args):
         specific_tag = parsed_args.get("specificTag") or None
+        filter_tag_name = parsed_args.get("filter_tag_name") or None
         page = max(1, parsed_args.get("page", 1))
         limit = min(100, max(1, parsed_args.get("limit", 50)))
         active_tags_only = parsed_args.get("onlyActiveTags")
@@ -83,14 +87,19 @@ class ListRepositoryTags(RepositoryParamResource):
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
+        try:
+            history, has_more = registry_model.list_repository_tag_history(
+                repo_ref,
+                page=page,
+                size=limit,
+                specific_tag_name=specific_tag,
+                active_tags_only=active_tags_only,
+                filter_tag_name=filter_tag_name,
+            )
+        except ValueError as error:
+            print("error", error)
+            custom_abort(400, message=str(error))
 
-        history, has_more = registry_model.list_repository_tag_history(
-            repo_ref,
-            page=page,
-            size=limit,
-            specific_tag_name=specific_tag,
-            active_tags_only=active_tags_only,
-        )
         return {
             "tags": [_tag_dict(tag) for tag in history],
             "page": page,
