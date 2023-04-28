@@ -24,7 +24,7 @@ const routes: SideNavProps[] = [
     isSideNav: true,
     navPath: NavigationPath.repositoriesList,
     title: 'Repositories',
-    component: <RepositoriesList />,
+    component: <RepositoriesList organizationName={null}/>,
   },
 ];
 

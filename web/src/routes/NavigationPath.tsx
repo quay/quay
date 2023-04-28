@@ -108,7 +108,7 @@ const NavigationRoutes = [
   },
   {
     path: domainRoute(currentRoute, NavigationPath.repositoriesList),
-    Component: <RepositoriesList organizationName="" />,
+    Component: <RepositoriesList organizationName={null} />,
     breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
   },
   {
