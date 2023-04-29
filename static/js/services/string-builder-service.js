@@ -7,8 +7,11 @@ angular.module('quay').factory('StringBuilderService', ['$sce', 'UtilService', f
   var fieldIcons = {
     'inviter': 'user',
     'username': 'user',
+    'old_username': 'user',
+    'superuser': 'user-secret',
     'user': 'user',
     'email': 'envelope',
+    'old_email': 'envelope',
     'invoice_email_address': 'envelope',
     'activating_username': 'user',
     'delegate_user': 'user',
@@ -27,7 +30,12 @@ angular.module('quay').factory('StringBuilderService', ['$sce', 'UtilService', f
     'client_id': 'chain',
     'manifest_digest': 'link',
     'tag_expiration': 'clock-o',
+    'expiration_date': 'calendar',
+    'old_expiration_date': 'calendar',
     'namespace': 'sitemap',
+    'old_name': 'sitemap',
+    'new_name': 'sitemap',
+    'app_specific_token_title': 'key'
   };
 
   var allowMarkdown = {
