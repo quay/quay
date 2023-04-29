@@ -338,6 +338,11 @@ def initialize_database():
     LogEntryKind.create(name="user_enable")
     LogEntryKind.create(name="user_change_email")
     LogEntryKind.create(name="user_change_password")
+    LogEntryKind.create(name="user_change_name")
+    LogEntryKind.create(name="user_change_invoicing")
+    LogEntryKind.create(name="user_change_tag_expiration")
+    LogEntryKind.create(name="user_change_metadata")
+    LogEntryKind.create(name="user_generate_client_key")
 
     LogEntryKind.create(name="account_change_plan")
     LogEntryKind.create(name="account_change_cc")

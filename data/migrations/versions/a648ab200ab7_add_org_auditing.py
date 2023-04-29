@@ -28,6 +28,10 @@ def upgrade(op, tables, tester):
             {"name": "user_enable"},
             {"name": "user_change_email"},
             {"name": "user_change_password"},
+            {"name": "user_change_invoicing"},
+            {"name": "user_change_tag_expiration"},
+            {"name": "user_change_metadata"},
+            {"name": "user_generate_client_key"}
         ],
     )
 
@@ -47,6 +51,11 @@ def downgrade(op, tables, tester):
             == op.inline_literal("user_disable") | tables.logentrykind.name 
             == op.inline_literal("user_enable") | tables.logentrykind.name 
             == op.inline_literal("user_change_email") | tables.logentrykind.name 
-            == op.inline_literal("user_change_password")
+            == op.inline_literal("user_change_password") | tables.logentrykind.name 
+            == op.inline_literal("user_change_name") | tables.logentrykind.name 
+            == op.inline_literal("user_change_invoicing") | tables.logentrykind.name 
+            == op.inline_literal("user_change_tag_expiration") | tables.logentrykind.name 
+            == op.inline_literal("user_change_metadata") | tables.logentrykind.name 
+            == op.inline_literal("user_generate_client_key")
         )
     )
