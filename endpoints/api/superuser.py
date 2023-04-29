@@ -12,6 +12,7 @@ from random import SystemRandom
 from flask import request, make_response, jsonify
 
 from cryptography.hazmat.primitives import serialization
+import auth
 
 import features
 
@@ -567,9 +568,12 @@ class SuperUserManagement(ApiResource):
                 if app.config["AUTHENTICATION_TYPE"] not in ["Database", "AppToken"]:
                     raise InvalidRequest("Cannot change e-mail in non-database auth")
 
-                log_action("user_change_email", username, {"username": username, "email": user_data["email"], "superuser": authed_user.username})
+                old_email = user.email
+                new_email = user_data["email"]
 
                 pre_oci_model.update_email(username, user_data["email"], auto_verify=True)
+
+                log_action("user_change_email", username, {"old_email": old_email, "email": new_email, "superuser": authed_user.username})
 
             if "enabled" in user_data:
                 # Disable/enable the user.
@@ -701,7 +705,9 @@ class SuperUserOrganizationManagement(ApiResource):
             org_data = request.get_json()
             new_name = org_data["name"] if "name" in org_data else None
 
-            log_action("org_change_name", name, {"old_name": name, "new_name": new_name})
+            authed_user = get_authenticated_user()
+
+            log_action("org_change_name", name, {"old_name": name, "new_name": new_name, "superuser": authed_user.username})
             
             org = pre_oci_model.change_organization_name(name, new_name)
             return org.to_dict()
