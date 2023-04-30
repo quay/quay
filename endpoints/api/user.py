@@ -422,19 +422,31 @@ class User(ApiResource):
             if "invoice_email" in user_data:
                 logger.debug("Changing invoice_email for user: %s", user.username)
                 model.user.change_send_invoice_email(user, user_data["invoice_email"])
-                log_action("user_change_invoicing", user.username, {"invoice_email": user_data["invoice_email"]})
+                log_action(
+                    "user_change_invoicing",
+                    user.username,
+                    {"invoice_email": user_data["invoice_email"]},
+                )
 
             if features.CHANGE_TAG_EXPIRATION and "tag_expiration_s" in user_data:
                 logger.debug("Changing user tag expiration to: %ss", user_data["tag_expiration_s"])
                 model.user.change_user_tag_expiration(user, user_data["tag_expiration_s"])
-                log_action("user_change_tag_expiration", user.username, {"tag_expiration": user_data["tag_expiration_s"]})
+                log_action(
+                    "user_change_tag_expiration",
+                    user.username,
+                    {"tag_expiration": user_data["tag_expiration_s"]},
+                )
 
             if (
                 "invoice_email_address" in user_data
                 and user_data["invoice_email_address"] != user.invoice_email_address
             ):
                 model.user.change_invoice_email_address(user, user_data["invoice_email_address"])
-                log_action("user_change_invoicing", user.username, {"invoice_email_address": user_data["invoice_email_address"]})
+                log_action(
+                    "user_change_invoicing",
+                    user.username,
+                    {"invoice_email_address": user_data["invoice_email_address"]},
+                )
 
             if "email" in user_data and user_data["email"] != user.email:
                 new_email = user_data["email"]
@@ -453,7 +465,11 @@ class User(ApiResource):
                     send_change_email(user.username, user_data["email"], confirmation_code)
                 else:
                     model.user.update_email(user, new_email, auto_verify=not features.MAILING)
-                    log_action("user_change_email", user.username, {"email": new_email, "old_email": old_email})
+                    log_action(
+                        "user_change_email",
+                        user.username,
+                        {"email": new_email, "old_email": old_email},
+                    )
 
             if features.USER_METADATA:
                 metadata = {}
@@ -556,7 +572,11 @@ class User(ApiResource):
                 prompts=prompts,
             )
 
-            log_action("user_create", user_data["username"], {"email": user_data.get("email"), "username": user_data["username"]})
+            log_action(
+                "user_create",
+                user_data["username"],
+                {"email": user_data.get("email"), "username": user_data["username"]},
+            )
 
             email_address_confirmed = handle_invite_code(invite_code, new_user)
             if features.MAILING and not email_address_confirmed:
@@ -582,7 +602,6 @@ class User(ApiResource):
         """
         if app.config["AUTHENTICATION_TYPE"] != "Database":
             abort(404)
-
 
         authed_user = get_authenticated_user()
 

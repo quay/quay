@@ -413,7 +413,11 @@ class SuperUserList(ApiResource):
 
             authed_user = get_authenticated_user()
 
-            log_action("user_create", username, {"email": email, "username": username, "superuser": authed_user.username})
+            log_action(
+                "user_create",
+                username,
+                {"email": email, "username": username, "superuser": authed_user.username},
+            )
 
             if features.MAILING:
                 send_confirmation_email(
@@ -527,7 +531,7 @@ class SuperUserManagement(ApiResource):
                 raise InvalidRequest("Cannot delete a superuser")
 
             log_action("user_delete", username, {"username": username})
-                       
+
             pre_oci_model.mark_user_for_deletion(username)
             return "", 204
 
@@ -550,7 +554,6 @@ class SuperUserManagement(ApiResource):
             if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot update a superuser")
 
-
             authed_user = get_authenticated_user()
 
             user_data = request.get_json()
@@ -559,7 +562,11 @@ class SuperUserManagement(ApiResource):
                 if app.config["AUTHENTICATION_TYPE"] != "Database":
                     raise InvalidRequest("Cannot change password in non-database auth")
 
-                log_action("user_change_password", username, {"username": username, "superuser": authed_user.username})
+                log_action(
+                    "user_change_password",
+                    username,
+                    {"username": username, "superuser": authed_user.username},
+                )
 
                 pre_oci_model.change_password(username, user_data["password"])
 
@@ -573,7 +580,11 @@ class SuperUserManagement(ApiResource):
 
                 pre_oci_model.update_email(username, user_data["email"], auto_verify=True)
 
-                log_action("user_change_email", username, {"old_email": old_email, "email": new_email, "superuser": authed_user.username})
+                log_action(
+                    "user_change_email",
+                    username,
+                    {"old_email": old_email, "email": new_email, "superuser": authed_user.username},
+                )
 
             if "enabled" in user_data:
                 # Disable/enable the user.
@@ -581,10 +592,18 @@ class SuperUserManagement(ApiResource):
 
                 authed_user = get_authenticated_user()
 
-                if(enabled):
-                    log_action("user_enable", username, {"username": username, "superuser": authed_user.username})
+                if enabled:
+                    log_action(
+                        "user_enable",
+                        username,
+                        {"username": username, "superuser": authed_user.username},
+                    )
                 else:
-                    log_action("user_disable", username, {"username": username, "superuser": authed_user.username})
+                    log_action(
+                        "user_disable",
+                        username,
+                        {"username": username, "superuser": authed_user.username},
+                    )
 
                 pre_oci_model.update_enabled(username, enabled)
 
@@ -707,8 +726,12 @@ class SuperUserOrganizationManagement(ApiResource):
 
             authed_user = get_authenticated_user()
 
-            log_action("org_change_name", name, {"old_name": name, "new_name": new_name, "superuser": authed_user.username})
-            
+            log_action(
+                "org_change_name",
+                name,
+                {"old_name": name, "new_name": new_name, "superuser": authed_user.username},
+            )
+
             org = pre_oci_model.change_organization_name(name, new_name)
             return org.to_dict()
 
