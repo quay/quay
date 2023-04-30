@@ -12,15 +12,18 @@ import Organization from './OrganizationsList/Organization/Organization';
 import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
 import TagDetails from 'src/routes/TagDetails/TagDetails';
-import {useEffect, useMemo} from 'react';
+import {useEffect, useState, useMemo} from 'react';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
-import SiteUnavailableError from 'src/components/errors/SiteUnavailableError';
 import NotFound from 'src/components/errors/404';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {InfoCircleIcon} from '@patternfly/react-icons';
-import {GlobalAuthState} from 'src/resources/AuthResource';
-import {IsPluginState} from 'src/atoms/QuayConfigState';
+import {GlobalAuthState} from '../resources/AuthResource';
+import {IsPluginState} from '../atoms/QuayConfigState';
+import {CreateNewUser} from 'src/components/modals/CreateNewUser';
+import NewUserEmptyPage from 'src/components/NewUserEmptyPage';
 import axios from 'axios';
+import axiosIns from 'src/libs/axios';
+
 
 const NavigationRoutes = [
   {
@@ -33,7 +36,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoriesList,
-    Component: <RepositoriesList />,
+    Component: <RepositoriesList organizationName={null} />,
   },
   {
     path: NavigationPath.repositoryDetail,
@@ -46,25 +49,28 @@ const NavigationRoutes = [
 ];
 
 function PluginMain() {
-  const quayConfig = useQuayConfig();
-  const {loading, error} = useCurrentUser();
   const chrome = useChrome();
-  const setIsPluginState = useSetRecoilState(IsPluginState);
-
-  console.log('useChrome chrome', chrome);
-
-  chrome?.auth?.getToken().then((token) => {
-    console.log('chrome auth token', token);
-    GlobalAuthState.bearerToken = token;
-  });
+  if (!chrome) {
+    return null;
+  }
 
   if (chrome?.isProd()) {
     axios.defaults.baseURL = 'https://quay.io';
-  } else if (chrome?.isDemo()) {
-    axios.defaults.baseURL = 'http://localhost:8080';
+    axiosIns.defaults.baseURL = 'https://quay.io';
   } else {
     axios.defaults.baseURL = 'https://stage.quay.io';
+    axiosIns.defaults.baseURL = 'https://stage.quay.io';
   }
+
+  const quayConfig = useQuayConfig();
+  const {user, loading, error} = useCurrentUser();
+
+  const setIsPluginState = useSetRecoilState(IsPluginState);
+  const [isConfirmUserModalOpen, setConfirmUserModalOpen] = useState(false);
+
+  chrome?.auth?.getToken().then((token) => {
+    GlobalAuthState.bearerToken = token;
+  });
 
   useEffect(() => {
     if (quayConfig?.config?.REGISTRY_TITLE) {
@@ -74,7 +80,10 @@ function PluginMain() {
 
   useEffect(() => {
     setIsPluginState(true);
-  }, []);
+    if (user?.prompts && user.prompts.includes("confirm_username")) {
+      setConfirmUserModalOpen(true);
+    }
+  }, [user]);
 
   if (loading) {
     return null;
@@ -82,6 +91,11 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
+    <CreateNewUser
+      user={user}
+      isModalOpen={isConfirmUserModalOpen}
+      setModalOpen={setConfirmUserModalOpen}
+      />
       <Banner variant="info">
         <Flex
           spaceItems={{default: 'spaceItemsSm'}}
@@ -103,13 +117,19 @@ function PluginMain() {
           </FlexItem>
         </Flex>
       </Banner>
-      <Routes>
-        <Route index element={<Navigate to="organization" replace />} />
-        {NavigationRoutes.map(({path, Component}, key) => (
-          <Route path={path} key={key} element={Component} />
-        ))}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      {user?.prompts && user.prompts.includes('confirm_username') ? (
+        <NewUserEmptyPage
+          setCreateUserModalOpen={setConfirmUserModalOpen}
+        />
+      ) : (
+        <Routes>
+          <Route index element={<Navigate to="organization" replace />} />
+          {NavigationRoutes.map(({path, Component}, key) => (
+            <Route path={path} key={key} element={Component} />
+          ))}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      )}
       <Outlet />
     </Page>
   );

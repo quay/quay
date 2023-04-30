@@ -41,15 +41,20 @@ export enum NavigationPath {
   tagDetail = '/repository/:organizationName/:repositoryName/tag/:tagName',
 }
 
-export function getRepoDetailPath(org: string, repo: string) {
+export function getRepoDetailPath(
+  currentRoute: string,
+  org: string,
+  repo: string,
+) {
   // return relative path to repository detail page from repo list table
   let repoPath = NavigationPath.repositoryDetail.toString();
   repoPath = repoPath.replace(':organizationName', org);
   repoPath = repoPath.replace('*', repo);
-  return domainRoute(repoPath);
+  return domainRoute(currentRoute, repoPath);
 }
 
 export function getTagDetailPath(
+  currentRoute: string,
   org: string,
   repo: string,
   tagName: string,
@@ -67,14 +72,14 @@ export function getTagDetailPath(
     }
     tagPath = tagPath + '?' + params.join('&');
   }
-  return domainRoute(tagPath);
+  return domainRoute(currentRoute, tagPath);
 }
 
 export function getDomain() {
   return process.env.REACT_APP_QUAY_DOMAIN || 'quay.io';
 }
 
-function domainRoute(definedRoute) {
+function domainRoute(currentRoute, definedRoute) {
   /***
    * This function returns prefix + route.
    Eg:If quay is hosted on https://stage.foo.redhat.com:1337/settings/quay/organization,
@@ -82,38 +87,37 @@ function domainRoute(definedRoute) {
    the regex removes everything after organization and returns /settings/quay.
    So, the function returns /settings/quay/<route> .
    ***/
-  const currentRoute = window.location.pathname;
   return (
-    // This regex replaces everything after the last occurrence of organization|repository|signin with empty string.
-    // Doing this gives us the prefix.
     currentRoute.replace(/\/(organization|repository|signin)(?!.*\1).*/, '') +
     definedRoute
   );
 }
 
+const currentRoute = window.location.pathname;
+
 const NavigationRoutes = [
   {
-    path: domainRoute(NavigationPath.organizationsList),
+    path: domainRoute(currentRoute, NavigationPath.organizationsList),
     Component: <OrganizationsList />,
     breadcrumb: Breadcrumb.organizationsListBreadcrumb,
   },
   {
-    path: domainRoute(NavigationPath.organizationDetail),
+    path: domainRoute(currentRoute, NavigationPath.organizationDetail),
     Component: <Organization />,
     breadcrumb: Breadcrumb.organizationDetailBreadcrumb,
   },
   {
-    path: domainRoute(NavigationPath.repositoriesList),
-    Component: <RepositoriesList />,
+    path: domainRoute(currentRoute, NavigationPath.repositoriesList),
+    Component: <RepositoriesList organizationName={null} />,
     breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
   },
   {
-    path: domainRoute(NavigationPath.repositoryDetail),
+    path: domainRoute(currentRoute, NavigationPath.repositoryDetail),
     Component: <RepositoryDetails />,
     breadcrumb: Breadcrumb.repositoryDetailBreadcrumb,
   },
   {
-    path: domainRoute(NavigationPath.tagDetail),
+    path: domainRoute(currentRoute, NavigationPath.tagDetail),
     Component: <TagDetails />,
     breadcrumb: Breadcrumb.tagDetailBreadcrumb,
   },

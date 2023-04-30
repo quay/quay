@@ -34,6 +34,7 @@ function SubRow(props: SubRowProps) {
           <ExpandableRowContent>
             <Link
               to={getTagDetailPath(
+                location.pathname,
                 props.org,
                 props.repo,
                 props.tag.name,
@@ -126,7 +127,12 @@ function TagsTableRow(props: RowProps) {
         />
         <Td dataLabel={ColumnNames.name}>
           <Link
-            to={getTagDetailPath(props.org, props.repo, tag.name)}
+            to={getTagDetailPath(
+              location.pathname,
+              props.org,
+              props.repo,
+              tag.name,
+            )}
             onClick={resetSecurityDetails}
           >
             {tag.name}

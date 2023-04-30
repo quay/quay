@@ -34,6 +34,7 @@ const pluginSharedModules = {
   react: {singleton: true, import: false},
   'react-dom': {singleton: true, import: false},
   'react-router-dom': {singleton: true, import: false},
+  '@scalprum/react-core': {singleton: true, import: false},
 };
 
 const plugins = [
@@ -60,7 +61,7 @@ module.exports = {
   output: {
     path: pathTo('dist'),
     // reflect the CDN public path, TODO: Adjust in the future based on the actual location in HCC
-    publicPath: '/apps/quay/',
+    publicPath: '/beta/apps/quay/',
     chunkFilename: isProd ? 'chunks/[id].[chunkhash].min.js' : 'chunks/[id].js',
     assetModuleFilename: isProd
       ? 'assets/[contenthash][ext]'
