@@ -501,7 +501,7 @@ class User(ApiResource):
                         raise request_error(message="Username is already in use")
 
                     user = model.user.change_username(user.id, new_username)
-                    log_action("user_change_username", new_username, {"old_username": old_username})
+                    log_action("user_change_name", new_username, {"old_username": old_username})
                 elif confirm_username:
                     model.user.remove_user_prompt(user, "confirm_username")
 
