@@ -29,6 +29,7 @@ def upgrade(op, tables, tester):
             {"name": "user_enable"},
             {"name": "user_change_email"},
             {"name": "user_change_password"},
+            {"name": "user_change_name"},
             {"name": "user_change_invoicing"},
             {"name": "user_change_tag_expiration"},
             {"name": "user_change_metadata"},
