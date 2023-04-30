@@ -69,8 +69,13 @@ class ListRepositoryTags(RepositoryParamResource):
     @disallow_for_app_repositories
     @parse_args()
     @query_param("specificTag", "Filters the tags to the specific tag.", type=str, default="")
-    @query_param("filter_tag_name", "Syntax: <op>:<name> Filters the tag names based on the operation."
-                                    "<op> can be 'like' or 'eq'.", type=str, default="")
+    @query_param(
+        "filter_tag_name",
+        "Syntax: <op>:<name> Filters the tag names based on the operation."
+        "<op> can be 'like' or 'eq'.",
+        type=str,
+        default="",
+    )
     @query_param(
         "limit", "Limit to the number of results to return per page. Max 100.", type=int, default=50
     )
