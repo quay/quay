@@ -18,7 +18,7 @@ export function getSeverityColor(severity: VulnerabilitySeverity) {
 }
 
 export function formatDate(date: string | number) {
-  if (date == -1) {
+  if (!date || date == -1) {
     return 'N/A';
   }
 

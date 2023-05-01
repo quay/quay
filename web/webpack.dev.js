@@ -15,6 +15,16 @@ module.exports = merge(common('development'), {
       disableDotRule: true,
     },
     open: true,
+    proxy: {
+      '/api/v1': {
+        target: 'http://localhost:8080',
+        logLevel: 'debug',
+      },
+      '/csrf_token': {
+        target: 'http://localhost:8080',
+        logLevel: 'debug',
+      },
+    },
   },
   module: {
     rules: [
