@@ -13,8 +13,6 @@ import {BulkDelete} from 'src/components/toolbar/BulkDelete';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 
 export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
-  // const [search, setSearch] = useRecoilState(searchRobotAccountState);
-
   return (
     <Toolbar>
       <ToolbarContent>

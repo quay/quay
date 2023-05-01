@@ -121,7 +121,6 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       },
     });
 
-  // const search = useRecoilValue(searchRobotAccountState);
   const [search, setSearch] = useState<SearchState>({
     query: '',
     field: RobotAccountColumnNames.robotAccountName,
