@@ -10,9 +10,10 @@ import React, {ReactElement} from 'react';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ExpandCollapseButton} from 'src/components/toolbar/ExpandCollapseButton';
 import {BulkDelete} from 'src/components/toolbar/BulkDelete';
+import {SearchState} from 'src/components/toolbar/SearchTypes';
 
 export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
-  const [search, setSearch] = useRecoilState(searchRobotAccountState);
+  // const [search, setSearch] = useRecoilState(searchRobotAccountState);
 
   return (
     <Toolbar>
@@ -26,8 +27,8 @@ export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
           id="robot-account-dropdown-checkbox"
         />
         <FilterInput
-          searchState={search}
-          onChange={setSearch}
+          searchState={props.search}
+          onChange={props.setSearch}
           id="robot-account-search"
         />
         <ToolbarButton
@@ -59,6 +60,8 @@ export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
 }
 
 type RobotAccountsToolBarProps = {
+  search: SearchState;
+  setSearch: (searchState) => void;
   selectedItems: IRobot[];
   allItemsList: IRobot[];
   itemsPerPageList: IRobot[];
