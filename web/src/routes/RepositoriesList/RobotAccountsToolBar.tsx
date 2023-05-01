@@ -11,6 +11,7 @@ import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {ExpandCollapseButton} from 'src/components/toolbar/ExpandCollapseButton';
 import {BulkDelete} from 'src/components/toolbar/BulkDelete';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
+import {SearchInput} from 'src/components/toolbar/SearchInput';
 
 export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
   return (
@@ -24,7 +25,7 @@ export function RobotAccountsToolBar(props: RobotAccountsToolBarProps) {
           onItemSelect={props.onItemSelect}
           id="robot-account-dropdown-checkbox"
         />
-        <FilterInput
+        <SearchInput
           searchState={props.search}
           onChange={props.setSearch}
           id="robot-account-search"
