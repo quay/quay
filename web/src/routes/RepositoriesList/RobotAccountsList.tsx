@@ -51,6 +51,7 @@ import {
 } from 'src/atoms/RepositoryState';
 import {useRobotRepoPermissions} from 'src/hooks/UseRobotRepoPermissions';
 import RobotTokensModal from 'src/components/modals/RobotTokensModal';
+import {SearchState} from 'src/components/toolbar/SearchTypes';
 
 const RepoPermissionDropdownItems = [
   {
@@ -81,7 +82,6 @@ const EmptyRobotAccount = {
 };
 
 export default function RobotAccountsList(props: RobotAccountsListProps) {
-  const search = useRecoilValue(searchRobotAccountState);
   const [selectedReposForModalView, setSelectedReposForModalView] =
     useRecoilState(selectedReposState);
   const [isCreateRobotModalOpen, setCreateRobotModalOpen] = useState(false);
@@ -120,6 +120,11 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
         setLoading(false);
       },
     });
+
+  const [search, setSearch] = useState<SearchState>({
+    query: '',
+    field: RobotAccountColumnNames.robotAccountName,
+  });
 
   const queryClient = useQueryClient();
 
@@ -468,6 +473,8 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
       <PageSection variant={PageSectionVariants.light}>
         <ErrorModal title={errTitle} error={err} setError={setErr} />
         <RobotAccountsToolBar
+          search={search}
+          setSearch={setSearch}
           selectedItems={selectedRobotAccounts}
           allItemsList={filteredRobotAccounts}
           setSelectedRobotAccounts={setSelectedRobotAccounts}
