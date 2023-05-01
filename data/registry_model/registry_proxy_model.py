@@ -211,7 +211,13 @@ class ProxyModel(OCIModel):
                         reclaimable_size = reclaimable_size + size
                     seen_blobs.append(blob.id)
 
-                updated = oci.tag.remove_tag_from_timemachine(tag.repository_id, tag.name, tag.manifest, include_submanifests=is_manifest_list, is_alive=True)
+                updated = oci.tag.remove_tag_from_timemachine(
+                    tag.repository_id,
+                    tag.name,
+                    tag.manifest,
+                    include_submanifests=is_manifest_list,
+                    is_alive=True,
+                )
 
                 # If we get enough size back from deleting this tag, exit
                 if updated and reclaimable_size > image_size:
