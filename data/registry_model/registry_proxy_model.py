@@ -211,10 +211,10 @@ class ProxyModel(OCIModel):
                         reclaimable_size = reclaimable_size + size
                     seen_blobs.append(blob.id)
 
-                oci.tag.delete_tag(tag.repository_id, tag.name)
+                updated = oci.tag.remove_tag_from_timemachine(tag.repository_id, tag.name, tag.manifest, include_submanifests=is_manifest_list, is_alive=True)
 
                 # If we get enough size back from deleting this tag, exit
-                if (curr_ns_size + image_size - reclaimable_size) <= ns_quota_limit:
+                if updated and reclaimable_size > image_size:
                     return
 
         # if we got here, then there aren't enough tags in the namespace to expire, so we raise an exception
