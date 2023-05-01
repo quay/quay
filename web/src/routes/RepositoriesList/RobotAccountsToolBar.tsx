@@ -3,7 +3,6 @@ import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {IRobot} from 'src/resources/RobotsResource';
 import {useRecoilState} from 'recoil';
 import {searchRobotAccountState} from 'src/atoms/RobotAccountState';
-import {FilterInput} from 'src/components/toolbar/FilterInput';
 import {ToolbarButton} from 'src/components/toolbar/ToolbarButton';
 import {Kebab} from 'src/components/toolbar/Kebab';
 import React, {ReactElement} from 'react';
