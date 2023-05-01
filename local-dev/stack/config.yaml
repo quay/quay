@@ -76,13 +76,13 @@ CORS_ORIGIN:
   - "https://stage.foo.redhat.com:1337"
   - "http://localhost:9000"
 FEATURE_UI_V2: True
-RHSSO_LOGIN_CONFIG:
-  CLIENT_ID: stage.quay.io
-  CLIENT_SECRET: SECRET
-  OIDC_SERVER: https://sso.stage.redhat.com/auth/realms/redhat-external/
-  SERVICE_NAME: Red Hat
-  SERVICE_ICON: /static/img/RedHat.svg
-  VERIFIED_EMAIL_CLAIM_NAME: email
-  PREFERRED_USERNAME_CLAIM_NAME: preferred_username
-  LOGIN_SCOPES: ['openid']
+#RHSSO_LOGIN_CONFIG:
+#  CLIENT_ID: stage.quay.io
+#  CLIENT_SECRET: SECRET
+#  OIDC_SERVER: https://sso.stage.redhat.com/auth/realms/redhat-external/
+#  SERVICE_NAME: Red Hat
+#  SERVICE_ICON: /static/img/RedHat.svg
+#  VERIFIED_EMAIL_CLAIM_NAME: email
+#  PREFERRED_USERNAME_CLAIM_NAME: preferred_username
+#  LOGIN_SCOPES: ['openid']
 
