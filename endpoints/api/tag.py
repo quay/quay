@@ -345,7 +345,7 @@ class TagTimeMachineDelete(RepositoryParamResource):
             "properties": {
                 "manifest_digest": {
                     "type": "string",
-                    "description": "Required if is_alive set to false. If specified, the manifest digest that should be used",
+                    "description": "Required if is_alive set to false. If specified, the manifest digest that should be used. Ignored when setting alive to true.",
                 },
                 "include_submanifests": {
                     "type": "boolean",
@@ -376,7 +376,13 @@ class TagTimeMachineDelete(RepositoryParamResource):
         if not alive and manifest_digest is None:
             raise InvalidRequest("manifest_digest required when is_alive set to false")
 
-        if not alive:
+        manifest_ref = None
+        if alive:
+            existing_tag = registry_model.get_repo_tag(repo_ref, tag)
+            if existing_tag is None:
+                raise NotFound()
+            manifest_ref = existing_tag.manifest
+        else:
             manifest_ref = registry_model.lookup_manifest_by_digest(
                 repo_ref, manifest_digest, allow_dead=True
             )
