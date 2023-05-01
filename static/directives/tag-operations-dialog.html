@@ -151,6 +151,25 @@
                    manifest-digest="restoreTagInfo.manifest_digest"></manifest-link>?
   </div>
 
+  <!-- Permanently Tag Confirm -->
+  <div class="cor-confirm-dialog"
+       dialog-context="permanentlyDeleteTagInfo"
+       dialog-action="permanentlyDeleteTag(info.tag, info.manifest_digest, callback)"
+       dialog-title="Permanently Delete Tag"
+       dialog-action-title="Permanently Delete Tag">
+
+    <div class="co-alert co-alert-warning">
+      The tag deleted cannot be restored within the time machine window and
+      references to the tag will be removed from tag history. Any alive tags with the
+      same name and digest will not be deleted.
+    </div>
+
+    Are you sure you want to permanently delete tag
+    <span class="label label-default tag">{{ permanentlyDeleteTagInfo.tag.name }}</span> @
+    <manifest-link repository="repository"
+                   manifest-digest="permanentlyDeleteTagInfo.manifest_digest"></manifest-link>?
+  </div>
+
   <!-- Tag Operations Disabled Dialog -->
   <div class="modal fade" id="tagOperationsDisabledModal">
     <div class="modal-dialog">

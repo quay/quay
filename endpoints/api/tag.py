@@ -16,6 +16,7 @@ from endpoints.api import (
     require_repo_write,
     RepositoryParamResource,
     log_action,
+    show_if,
     validate_json_request,
     path_param,
     parse_args,
@@ -69,8 +70,13 @@ class ListRepositoryTags(RepositoryParamResource):
     @disallow_for_app_repositories
     @parse_args()
     @query_param("specificTag", "Filters the tags to the specific tag.", type=str, default="")
-    @query_param("filter_tag_name", "Syntax: <op>:<name> Filters the tag names based on the operation."
-                                    "<op> can be 'like' or 'eq'.", type=str, default="")
+    @query_param(
+        "filter_tag_name",
+        "Syntax: <op>:<name> Filters the tag names based on the operation."
+        "<op> can be 'like' or 'eq'.",
+        type=str,
+        default="",
+    )
     @query_param(
         "limit", "Limit to the number of results to return per page. Max 100.", type=int, default=50
     )
@@ -236,6 +242,7 @@ class RepositoryTag(RepositoryParamResource):
         """
         Delete the specified repository tag.
         """
+
         repo_ref = registry_model.lookup_repository(namespace, repository)
         if repo_ref is None:
             raise NotFound()
@@ -243,9 +250,6 @@ class RepositoryTag(RepositoryParamResource):
         tag_ref = registry_model.delete_tag(repo_ref, tag)
         if tag_ref is None:
             raise NotFound()
-
-        if app.config.get("FEATURE_QUOTA_MANAGEMENT", False):
-            repository_model.force_cache_repo_size(repo_ref.id)
 
         username = get_authenticated_user().username
         log_action(
@@ -328,3 +332,73 @@ class RestoreTag(RepositoryParamResource):
         log_action("revert_tag", namespace, log_data, repo_name=repository)
 
         return {}
+
+
+@resource("/v1/repository/<apirepopath:repository>/tag/<tag>/expire")
+@path_param("repository", "The full path of the repository. e.g. namespace/name")
+@path_param("tag", "The name of the tag")
+@show_if(app.config.get("PERMANENTLY_DELETE_TAGS", True))
+class TagTimeMachineDelete(RepositoryParamResource):
+    """
+    Resource for updating the expiry of tags outside the time machine window
+    """
+
+    schemas = {
+        "ExpireTag": {
+            "type": "object",
+            "description": "Removes tag from the time machine window",
+            "properties": {
+                "manifest_digest": {
+                    "type": "string",
+                    "description": "Required if is_alive set to false. If specified, the manifest digest that should be used. Ignored when setting alive to true.",
+                },
+                "include_submanifests": {
+                    "type": "boolean",
+                    "description": "If set to true, expire the sub-manifests as well",
+                },
+                "is_alive": {
+                    "type": "boolean",
+                    "description": "If true, set the expiry of the matching alive tag outside the time machine window. If false set the expiry of any expired tags with the same tag and manifest outside the time machine window.",
+                },
+            },
+        },
+    }
+
+    @require_repo_write(allow_for_superuser=True)
+    @disallow_for_app_repositories
+    @nickname("removeTagFromTimemachine")
+    @validate_json_request("ExpireTag")
+    def post(self, namespace, repository, tag):
+        """
+        Updates any expired tags with the matching name and manifest with an expiry outside the time machine window
+        """
+        repo_ref = registry_model.lookup_repository(namespace, repository)
+        if repo_ref is None:
+            raise NotFound()
+
+        alive = request.get_json().get("is_alive", False)
+        manifest_digest = request.get_json().get("manifest_digest", None)
+        if not alive and manifest_digest is None:
+            raise InvalidRequest("manifest_digest required when is_alive set to false")
+
+        manifest_ref = None
+        if alive:
+            existing_tag = registry_model.get_repo_tag(repo_ref, tag)
+            if existing_tag is None:
+                raise NotFound()
+            manifest_ref = existing_tag.manifest
+        else:
+            manifest_ref = registry_model.lookup_manifest_by_digest(
+                repo_ref, manifest_digest, allow_dead=True
+            )
+            if manifest_ref is None:
+                raise NotFound()
+
+        include_submanifests = request.get_json().get("include_submanifests", False)
+        tags_updated = registry_model.remove_tag_from_timemachine(
+            repo_ref, tag, manifest_ref, include_submanifests, alive
+        )
+        if not tags_updated:
+            raise NotFound()
+
+        return "", 200

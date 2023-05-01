@@ -9,6 +9,7 @@ from flask_login import UserMixin
 from peewee import JOIN, IntegrityError, fn
 
 from data.database import (
+    QuotaNamespaceSize,
     User,
     LoginService,
     FederatedLogin,
@@ -1324,6 +1325,9 @@ def _delete_user_linked_data(user):
 
     # Delete any federated user links.
     FederatedLogin.delete().where(FederatedLogin.user == user).execute()
+
+    # Delete the quota size entry
+    QuotaNamespaceSize.delete().where(QuotaNamespaceSize.namespace_user == user).execute()
 
 
 def get_pull_credentials(robotname):

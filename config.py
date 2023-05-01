@@ -45,6 +45,8 @@ CLIENT_WHITELIST = [
     "FEATURE_REPO_MIRROR",
     "FEATURE_QUOTA_MANAGEMENT",
     "FEATURE_PROXY_CACHE",
+    "QUOTA_BACKFILL",
+    "PERMANENTLY_DELETE_TAGS",
 ]
 
 
@@ -790,6 +792,13 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_QUOTA_MANAGEMENT = False
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
+    # Time delay for starting the quota backfill. Rolling deployments can cause incorrect
+    # totals, so this field should be set to a time longer than it takes for the rolling
+    # deployment to complete
+    QUOTA_TOTAL_DELAY_SECONDS = 60
+
+    # Enables the quota backfill worker
+    QUOTA_BACKFILL = True
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
@@ -817,3 +826,7 @@ class DefaultConfig(ImmutableConfig):
 
     FEATURE_RESTRICTED_USERS = False
     RESTRICTED_USERS_WHITELIST: Optional[List[str]] = None
+
+    QUOTA_INVALIDATE_TOTALS = True
+    RESET_CHILD_MANIFEST_EXPIRATION = True
+    PERMANENTLY_DELETE_TAGS = True

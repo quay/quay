@@ -309,6 +309,14 @@ def test_get_or_create_manifest_list(initialized_db):
     assert v1_manifest.digest in child_manifests
     assert v2_manifest.digest in child_manifests
 
+    # Ensure the expiry of the child manifest tags have been reset
+    tags = list(Tag.select().where(Tag.manifest << list(child_manifests.values())))
+    assert len(tags) > 0
+    for tag in tags:
+        assert tag.hidden
+        assert tag.name.startswith("$temp-")
+        assert tag.lifetime_end_ms < get_epoch_timestamp_ms()
+
     assert child_manifests[v1_manifest.digest].media_type.name == v1_manifest.media_type
     assert child_manifests[v2_manifest.digest].media_type.name == v2_manifest.media_type
 

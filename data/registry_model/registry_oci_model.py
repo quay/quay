@@ -284,7 +284,13 @@ class OCIModel(RegistryDataInterface):
         into service.
         """
         tags, has_more = oci.tag.list_repository_tag_history(
-            repository_ref._db_id, page, size, specific_tag_name, active_tags_only, since_time_ms, filter_tag_name,
+            repository_ref._db_id,
+            page,
+            size,
+            specific_tag_name,
+            active_tags_only,
+            since_time_ms,
+            filter_tag_name,
         )
 
         # TODO: Remove this once the layers compressed sizes have been fully backfilled.
@@ -1024,6 +1030,13 @@ class OCIModel(RegistryDataInterface):
         manifest_row = database.Manifest.get(id=manifest._db_id)
         oci.manifest.populate_legacy_images_for_testing(
             manifest_row, manifest.get_parsed_manifest(), storage
+        )
+
+    def remove_tag_from_timemachine(
+        self, repo_ref, tag_name, manifest_ref, include_submanifests=False, is_alive=False
+    ):
+        return oci.tag.remove_tag_from_timemachine(
+            repo_ref.id, tag_name, manifest_ref.id, include_submanifests, is_alive
         )
 
     def _get_manifest_local_blobs(self, manifest, repo_id, storage, include_placements=False):

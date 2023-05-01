@@ -2,10 +2,10 @@ import logging
 
 from peewee import fn, IntegrityError
 from datetime import datetime
-
+import features
 from data.model import config, db_transaction, storage, _basequery, tag as pre_oci_tag, blob
 from data.model.oci import tag as oci_tag
-from data.database import Repository, db_for_update
+from data.database import ImageStorage, Repository, QuotaRepositorySize, db_for_update
 from data.database import ApprTag
 from data.database import (
     Tag,
@@ -38,6 +38,7 @@ from data.database import (
     DerivedStorageForImage,
 )
 from data.database import TagManifestToManifest, TagToRepositoryTag, TagManifestLabelMap
+from data.registry_model.quota import reset_backfill, subtract_blob_size
 from util.metrics.prometheus import gc_table_rows_deleted, gc_repos_purged
 
 
@@ -251,6 +252,9 @@ def _purge_repository_contents(repo):
         if not found:
             break
 
+    QuotaRepositorySize.delete().where(QuotaRepositorySize.repository == repo).execute()
+
+    assert QuotaRepositorySize.select().where(QuotaRepositorySize.repository == repo).count() == 0
     assert Tag.select().where(Tag.repository == repo).count() == 0
     assert RepositoryTag.select().where(RepositoryTag.repository == repo).count() == 0
     assert Manifest.select().where(Manifest.repository == repo).count() == 0
@@ -542,6 +546,19 @@ def _garbage_collect_manifest(manifest_id, context):
             .execute()
         )
 
+        blob_sizes = {}
+        if features.QUOTA_MANAGEMENT:
+            # Get the blobs before they're deleted
+            for manifest_blob in (
+                ImageStorage.select(ImageStorage.image_size, ImageStorage.id)
+                .join(ManifestBlob, on=(ImageStorage.id == ManifestBlob.blob))
+                .where(
+                    ManifestBlob.manifest == manifest_id,
+                    ManifestBlob.repository == context.repository,
+                )
+            ):
+                blob_sizes[manifest_blob.id] = manifest_blob.image_size
+
         # Delete the manifest blobs for the manifest.
         deleted_manifest_blob = (
             ManifestBlob.delete()
@@ -550,6 +567,13 @@ def _garbage_collect_manifest(manifest_id, context):
             )
             .execute()
         )
+
+        # Subtract blobs from namespace/repo total after they've been deleted successfully.
+        # If the quota feature is disabled mark the total as stale
+        if features.QUOTA_MANAGEMENT:
+            subtract_blob_size(manifest.repository_id, manifest_id, blob_sizes)
+        else:
+            reset_backfill(manifest.repository_id)
 
         # Delete the security status for the manifest
         deleted_manifest_security = (

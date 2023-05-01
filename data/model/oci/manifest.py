@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import overload, Optional, Literal
-
+import features
 from collections import namedtuple
 
 from peewee import IntegrityError
@@ -17,14 +17,20 @@ from data.database import (
     RepositoryNotification,
     ExternalNotificationEvent,
     db_transaction,
+    get_epoch_timestamp_ms,
 )
-from data.model import BlobDoesNotExist
+from data.model import BlobDoesNotExist, config
 from data.model.blob import get_or_create_shared_blob, get_shared_blob
-from data.model.oci.tag import filter_to_alive_tags, create_temporary_tag_if_necessary
+from data.model.oci.tag import (
+    filter_to_alive_tags,
+    create_temporary_tag_if_necessary,
+    get_child_manifests,
+)
 from data.model.oci.label import create_manifest_label
 from data.model.oci.retriever import RepositoryContentRetriever
 from data.model.storage import lookup_repo_storages_by_content_checksum
 from data.model.image import lookup_repository_images, get_image, synthesize_v1_image
+from data.registry_model.quota import add_blob_size, reset_backfill
 from image.shared.interfaces import ManifestInterface, ManifestListInterface
 from image.docker.schema2 import EMPTY_LAYER_BLOB_DIGEST, EMPTY_LAYER_BYTES
 from image.docker.schema1 import ManifestException
@@ -196,6 +202,10 @@ def connect_manifests(manifests: list[Manifest], parent: Manifest, repository_id
         raise _ManifestAlreadyExists(e)
 
 
+def is_child_manifest(manifest_id: int):
+    return ManifestChild.select().where(ManifestChild.child_manifest == manifest_id).exists()
+
+
 def connect_blobs(manifest: ManifestInterface, blob_ids: set[int], repository_id: int):
     manifest_blobs = [
         dict(manifest=manifest, repository=repository_id, blob=blob_id) for blob_id in blob_ids
@@ -204,6 +214,26 @@ def connect_blobs(manifest: ManifestInterface, blob_ids: set[int], repository_id
         ManifestBlob.insert_many(manifest_blobs).execute()
     except IntegrityError as e:
         raise _ManifestAlreadyExists(e)
+
+
+def reset_child_manifest_expiration(repository_id, manifest):
+    """
+    Resets the expirations of tags targeting the child manifests.
+    Here we make the assumption tags with hidden==true are the temporary
+    tags created by Quay. We'll revisit if this assumption ever changes.
+    """
+    if not config.app_config.get("RESET_CHILD_MANIFEST_EXPIRATION", True):
+        return
+
+    with db_transaction():
+        for child_manifest in get_child_manifests(repository_id, manifest):
+            now_ms = get_epoch_timestamp_ms()
+            Tag.update(lifetime_end_ms=now_ms).where(
+                Tag.repository == repository_id,
+                Tag.manifest == child_manifest.child_manifest,
+                Tag.lifetime_end_ms > now_ms,
+                Tag.hidden == True,
+            ).execute()
 
 
 def get_or_create_manifest(
@@ -234,9 +264,10 @@ def get_or_create_manifest(
         temp_tag_expiration_sec=temp_tag_expiration_sec,
     )
     if existing is not None:
+        reset_child_manifest_expiration(repository_id, existing)
         return CreatedManifest(manifest=existing, newly_created=False, labels_to_apply=None)
 
-    return _create_manifest(
+    created_manifest = _create_manifest(
         repository_id,
         manifest_interface_instance,
         storage,
@@ -245,6 +276,9 @@ def get_or_create_manifest(
         raise_on_error=raise_on_error,
         retriever=retriever,
     )
+    if created_manifest is not None:
+        reset_child_manifest_expiration(repository_id, created_manifest.manifest)
+    return created_manifest
 
 
 def _create_manifest(
@@ -330,6 +364,12 @@ def _create_manifest(
     # Create the manifest and its blobs.
     storage_ids = {storage.id for storage in list(blob_map.values())}
 
+    # Get the storage sizes
+    blob_sizes = {}
+    if features.QUOTA_MANAGEMENT:
+        for storage in list(blob_map.values()):
+            blob_sizes[storage.id] = storage.image_size
+
     # Check for the manifest, in case it was created since we checked earlier.
     try:
         manifest = Manifest.get(repository=repository_id, digest=manifest_interface_instance.digest)
@@ -343,6 +383,13 @@ def _create_manifest(
 
             if storage_ids:
                 connect_blobs(manifest, storage_ids, repository_id)
+
+            # Add blobs to namespace/repo total. If feature is not enabled the total
+            # should be marked stale
+            if features.QUOTA_MANAGEMENT and len(blob_sizes) > 0:
+                add_blob_size(repository_id, manifest.id, blob_sizes)
+            elif not features.QUOTA_MANAGEMENT:
+                reset_backfill(repository_id)
 
             if child_manifest_rows:
                 connect_manifests(child_manifest_rows.values(), manifest, repository_id)

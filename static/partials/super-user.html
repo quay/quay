@@ -125,6 +125,12 @@
                   <span ng-if="current_org.quota_report.configured_quota">
                   {{ " of " + bytesToHumanReadableString(current_org.quota_report.configured_quota) }}
                   </span>
+                  <span ng-if="Features.QUOTA_MANAGEMENT && current_org.quota_report.backfill_status == 'waiting'">
+                    Backfill Queued <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently queued." bs-tooltip></i>
+                  </span>
+                  <span ng-if="Features.QUOTA_MANAGEMENT && current_org.quota_report.backfill_status == 'running'">
+                    Backfill Running <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently running." bs-tooltip></i>
+                  </span>
                 </td>
                 <td style="text-align: center;">
                   <span class="cor-options-menu" ng-show="!inReadOnlyMode">
