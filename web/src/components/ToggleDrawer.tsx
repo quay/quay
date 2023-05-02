@@ -24,8 +24,8 @@ export default function ToggleDrawer(props: ToggleDrawerProps) {
     <DrawerPanelContent
       id="right-resize-panel"
       colorVariant={DrawerColorVariant.light200}
-      minSize='920px'
       className="drawer-styling"
+      minSize='920px'
     >
       <DrawerHead>
         <span tabIndex={props.isExpanded ? 0 : -1} ref={drawerRef}>
