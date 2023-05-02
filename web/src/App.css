@@ -47,9 +47,7 @@ html, body, #root,  .App {
 }
 
 .drawer-styling {
-    height: 645px;
-    padding: 0 !important;
-    min-width: 920px !important;
+    height: 100%;
 }
 
 .drawer-footer {

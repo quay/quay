@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  SearchInput,
+  TextInput,
   ToolbarItem,
   Dropdown,
   DropdownToggle,
@@ -25,13 +25,15 @@ export function FilterWithDropdown(props: FilterWithDropdownProps) {
         toggle={
           <DropdownToggle
             splitButtonItems={[
-              <SearchInput
+              <TextInput
+                isRequired
+                type="search"
+                id="filter-with-dropdown"
                 key="filter-with-dropdown"
+                name="search input"
                 placeholder={props.searchInputText}
                 value={props.searchState.query}
                 onChange={setSearchState}
-                onClear={() => setSearchState('')}
-                className="no-padding"
               />,
             ]}
             onToggle={(isOpen: boolean) => setIsOpen(isOpen)}
