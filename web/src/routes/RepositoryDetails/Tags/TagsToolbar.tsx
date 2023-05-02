@@ -20,7 +20,7 @@ import {RepositoryDetails} from 'src/resources/RepositoryResource';
 import { useQuayConfig } from 'src/hooks/UseQuayConfig';
 
 export function TagsToolbar(props: ToolBarProps) {
-  const config = useQuayConfig();
+  const quayConfig = useQuayConfig();
   const [modalOptions, setModalOptions] = useState<ModalOptions>({
     isOpen: false,
     force: false,
@@ -46,7 +46,7 @@ export function TagsToolbar(props: ToolBarProps) {
     </DropdownItem>,
   ];
 
-  if (config.PERMANENTLY_DELETE_TAGS && props.repoDetails?.tag_expiration_s > 0) {
+  if (quayConfig?.config?.PERMANENTLY_DELETE_TAGS && props.repoDetails?.tag_expiration_s > 0) {
     kebabItems.push(
       <DropdownItem
         key="delete"
