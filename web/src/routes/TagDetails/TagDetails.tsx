@@ -24,6 +24,11 @@ import {
   SecurityDetailsErrorState,
   SecurityDetailsState,
 } from 'src/atoms/SecurityDetailsState';
+import {
+  parseOrgNameFromUrl,
+  parseRepoNameFromUrl,
+  parseTagNameFromUrl,
+} from '../../libs/utils';
 
 export default function TagDetails() {
   const [searchParams] = useSearchParams();
@@ -48,9 +53,10 @@ export default function TagDetails() {
 
   // TODO: refactor, need more checks when parsing path
   const location = useLocation();
-  const [org, ...repoPath] = location.pathname.split('/').slice(2);
-  const tag = repoPath.pop();
-  const repo = repoPath.join('/');
+
+  const org = parseOrgNameFromUrl(location.pathname);
+  const repo = parseRepoNameFromUrl(location.pathname);
+  const tag = parseTagNameFromUrl(location.pathname);
 
   useEffect(() => {
     (async () => {

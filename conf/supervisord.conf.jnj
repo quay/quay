@@ -332,6 +332,18 @@ autostart = {{ config['repomirrorworker']['autostart'] }}
 stdout_events_enabled = true
 stderr_events_enabled = true
 
+[program:quotatotalworker]
+environment=
+  PYTHONPATH=%(ENV_QUAYDIR)s
+command={% if hotreload -%}
+  gunicorn --timeout=600 -b 'unix:/tmp/quotatotalworker.sock' -c %(ENV_QUAYCONF)s/gunicorn_worker.py 'workers.quotatotalworker:create_gunicorn_worker()'
+{% else -%}
+  python -m workers.quotatotalworker
+{% endif -%}
+autostart = {{ config['quotatotalworker']['autostart'] }}
+stdout_events_enabled = true
+stderr_events_enabled = true
+
 [program:config-editor]
 environment=
   PYTHONPATH=%(ENV_QUAYDIR)s,

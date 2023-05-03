@@ -38,7 +38,7 @@ export default function CreateRepositoryModalTemplate(
   const [currentOrganization, setCurrentOrganization] = useState({
     // For org scoped view, the name is set current org and for Repository list view,
     // the name is set to 1st value from the Namespace dropdown
-    name: props.orgName !== null ? props.orgName : null,
+    name: props.orgName ? props.orgName : (props.username ? props.username : null),
     isDropdownOpen: false,
   });
 

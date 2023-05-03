@@ -18,7 +18,6 @@ import {
   ToolbarItem,
 } from '@patternfly/react-core';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
-import {FilterInput} from 'src/components/toolbar/FilterInput';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {
   TableComposable,
@@ -32,6 +31,7 @@ import {DropdownWithDescription} from 'src/components/toolbar/DropdownWithDescri
 import {IRepository} from 'src/resources/RepositoryResource';
 import {formatDate} from 'src/libs/utils';
 import _ from 'lodash';
+import {SearchInput} from 'src/components/toolbar/SearchInput';
 
 const ColumnNames = {
   name: 'Repository',
@@ -207,7 +207,7 @@ export default function AddToRepository(props: AddToRepositoryProps) {
               itemsPerPageList={paginatedItems}
               onItemSelect={onSelectItem}
             />
-            <FilterInput searchState={search} onChange={setSearch} />
+            <SearchInput searchState={search} onChange={setSearch} id="robot-wizard-repo-search" />
             <ToolbarItem>
               <ToggleGroup aria-label="Default with single selectable">
                 <ToggleGroupItem

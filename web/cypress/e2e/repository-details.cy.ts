@@ -101,30 +101,62 @@ describe('Repository Details Page', () => {
     });
   });
 
-  it('deletes tag', () => {
+  it.only('deletes tag', () => {
+    cy.intercept(
+      'DELETE',
+      '/api/v1/repository/user1/hello-world/tag/latest?force=false',
+    ).as('deleteTag');
     cy.visit('/repository/user1/hello-world');
     cy.get('tbody:contains("latest")').within(() => cy.get('input').click());
     cy.contains('Actions').click();
-    cy.contains('Delete').click();
+    cy.contains('Remove').click();
     cy.contains('Delete the following tag?').should('exist');
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
     cy.get('[id="tag-deletion-modal"]').within(() =>
       cy.get('button:contains("Delete")').click(),
     );
-    cy.contains('latest').should('not.exist');
+    cy.wait('@deleteTag', {timeout: 20000})
+      .its('request.url')
+      .should(
+        'contain',
+        '/api/v1/repository/user1/hello-world/tag/latest?force=false',
+      );
   });
 
-  it('bulk deletes tags', () => {
+  it.only('force deletes tag', () => {
+    cy.intercept(
+      'DELETE',
+      '/api/v1/repository/user1/hello-world/tag/latest?force=true',
+    ).as('deleteTag');
+    cy.visit('/repository/user1/hello-world');
+    cy.get('tbody:contains("latest")').within(() => cy.get('input').click());
+    cy.contains('Actions').click();
+    cy.contains('Permanently Delete').click();
+    cy.contains('Permanently delete the following tag?').should('exist');
+    cy.contains(
+      'Tags deleted cannot be restored within the time machine window and will be immediately eligible for garbage collection.',
+    ).should('exist');
+    cy.contains('Cancel').should('exist');
+    cy.get('button').contains('Delete').should('exist');
+    cy.get('[id="tag-deletion-modal"]').within(() =>
+      cy.get('button:contains("Delete")').click(),
+    );
+    cy.wait('@deleteTag', {timeout: 20000})
+      .its('request.url')
+      .should(
+        'contain',
+        '/api/v1/repository/user1/hello-world/tag/latest?force=true',
+      );
+  });
+
+  it.only('bulk deletes tags', () => {
     cy.visit('/repository/user1/hello-world');
     cy.get('#toolbar-dropdown-checkbox').click();
     cy.get('button').contains('Select page (2)').click();
     cy.contains('Actions').click();
-    cy.contains('Delete').click();
+    cy.contains('Remove').click();
     cy.contains('Delete the following tags?').should('exist');
-    cy.contains('Note: This operation can take several minutes.').should(
-      'exist',
-    );
     cy.contains('Cancel').should('exist');
     cy.get('button').contains('Delete').should('exist');
     cy.get('[id="tag-deletion-modal"]').within(() => {

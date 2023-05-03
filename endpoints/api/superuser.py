@@ -409,6 +409,15 @@ class SuperUserList(ApiResource):
             install_user, confirmation_code = pre_oci_model.create_install_user(
                 username, password, email
             )
+
+            authed_user = get_authenticated_user()
+
+            log_action(
+                "user_create",
+                username,
+                {"email": email, "username": username, "superuser": authed_user.username},
+            )
+
             if features.MAILING:
                 send_confirmation_email(
                     install_user.username, install_user.email, confirmation_code
@@ -520,6 +529,8 @@ class SuperUserManagement(ApiResource):
             if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot delete a superuser")
 
+            log_action("user_delete", username, {"username": username})
+
             pre_oci_model.mark_user_for_deletion(username)
             return "", 204
 
@@ -542,11 +553,19 @@ class SuperUserManagement(ApiResource):
             if usermanager.is_superuser(username):
                 raise InvalidRequest("Cannot update a superuser")
 
+            authed_user = get_authenticated_user()
+
             user_data = request.get_json()
             if "password" in user_data:
                 # Ensure that we are using database auth.
                 if app.config["AUTHENTICATION_TYPE"] != "Database":
                     raise InvalidRequest("Cannot change password in non-database auth")
+
+                log_action(
+                    "user_change_password",
+                    username,
+                    {"username": username, "superuser": authed_user.username},
+                )
 
                 pre_oci_model.change_password(username, user_data["password"])
 
@@ -555,11 +574,37 @@ class SuperUserManagement(ApiResource):
                 if app.config["AUTHENTICATION_TYPE"] not in ["Database", "AppToken"]:
                     raise InvalidRequest("Cannot change e-mail in non-database auth")
 
+                old_email = user.email
+                new_email = user_data["email"]
+
                 pre_oci_model.update_email(username, user_data["email"], auto_verify=True)
+
+                log_action(
+                    "user_change_email",
+                    username,
+                    {"old_email": old_email, "email": new_email, "superuser": authed_user.username},
+                )
 
             if "enabled" in user_data:
                 # Disable/enable the user.
-                pre_oci_model.update_enabled(username, bool(user_data["enabled"]))
+                enabled = bool(user_data["enabled"])
+
+                authed_user = get_authenticated_user()
+
+                if enabled:
+                    log_action(
+                        "user_enable",
+                        username,
+                        {"username": username, "superuser": authed_user.username},
+                    )
+                else:
+                    log_action(
+                        "user_disable",
+                        username,
+                        {"username": username, "superuser": authed_user.username},
+                    )
+
+                pre_oci_model.update_enabled(username, enabled)
 
             if "superuser" in user_data:
                 config_object = config_provider.get_config()
@@ -676,8 +721,17 @@ class SuperUserOrganizationManagement(ApiResource):
         """
         if SuperUserPermission().can():
             org_data = request.get_json()
-            old_name = org_data["name"] if "name" in org_data else None
-            org = pre_oci_model.change_organization_name(name, old_name)
+            new_name = org_data["name"] if "name" in org_data else None
+
+            authed_user = get_authenticated_user()
+
+            log_action(
+                "org_change_name",
+                name,
+                {"old_name": name, "new_name": new_name, "superuser": authed_user.username},
+            )
+
+            org = pre_oci_model.change_organization_name(name, new_name)
             return org.to_dict()
 
         raise Unauthorized()

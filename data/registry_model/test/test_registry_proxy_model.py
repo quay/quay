@@ -656,8 +656,8 @@ class TestRegistryProxyModelLookupManifestByDigest:
 
         assert updated_tag.id == manifest_tag.id
         assert updated_list_tag.id == manifest_list_tag.id
-        assert updated_tag.lifetime_end_ms > manifest_tag.lifetime_end_ms
-        assert updated_list_tag.lifetime_end_ms > manifest_list_tag.lifetime_end_ms
+        assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms()
+        assert updated_list_tag.lifetime_end_ms > get_epoch_timestamp_ms()
 
     def test_renew_manifest_list_tag_when_upstream_manifest_changed(
         self, create_repo, proxy_manifest_response
@@ -1291,7 +1291,7 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         self, create_repo, proxy_manifest_response, initialized_db
     ):
         repo_ref = create_repo(self.orgname, self.upstream_repository, self.user)
-        limit_bytes = 83370727
+        limit_bytes = 83375093
         namespace = user.get_user_or_org(self.orgname)
         namespacequota.create_namespace_quota(namespace, limit_bytes)
 
@@ -1310,7 +1310,7 @@ class TestPruningLRUProxiedImagesToAllowBlobUpload:
         assert first_manifest is not None
         first_tag = oci.tag.get_tag(repo_ref.id, "8.4")
         assert first_tag is not None
-        assert namespacequota.get_namespace_size(self.orgname) == 83370727
+        assert namespacequota.get_namespace_size(self.orgname) == 83375093
 
         # pull a different tag when the quota limit is reached and verify
         # that the previous tag was removed

@@ -5,6 +5,7 @@ from calendar import timegm
 from peewee import fn
 
 from data.database import (
+    ManifestChild,
     Tag,
     Manifest,
     ManifestLegacyImage,
@@ -12,6 +13,7 @@ from data.database import (
     MediaType,
     RepositoryTag,
     RepositoryState,
+    User,
     get_epoch_timestamp_ms,
     db_transaction,
     Repository,
@@ -111,6 +113,13 @@ def get_current_tag(repository_id, tag_name):
         return None
 
 
+def get_child_manifests(repo_id, manifest_id):
+    return ManifestChild.select(ManifestChild.child_manifest).where(
+        ManifestChild.repository == repo_id,
+        ManifestChild.manifest == manifest_id,
+    )
+
+
 def tag_names_for_manifest(manifest_id, limit=None):
     """
     Returns the names of the tags pointing to the given manifest.
@@ -159,6 +168,7 @@ def list_repository_tag_history(
     specific_tag_name=None,
     active_tags_only=False,
     since_time_ms=None,
+    filter_tag_name=None,
 ):
     """
     Returns a tuple of the full set of tags found in the specified repository, including those that
@@ -183,6 +193,18 @@ def list_repository_tag_history(
         .limit(page_size + 1)
         .offset(page_size * (page - 1))
     )
+    try:
+        if filter_tag_name is not None:
+            operation, value = filter_tag_name.split(":", 1)
+            if operation == "like":
+                query = query.where(Tag.name.contains(value))
+            elif operation == "eq":
+                query = query.where(Tag.name == value)
+    except ValueError:
+        raise ValueError(
+            "Unsupported syntax for filter_tag_name. Expected <operation>:<tag_name> where <operation>"
+            "can be 'like' or 'eq'."
+        )
 
     if specific_tag_name is not None:
         query = query.where(Tag.name == specific_tag_name)
@@ -425,7 +447,6 @@ def delete_tag(repository_id, tag_name):
     """
     Deletes the alive tag with the given name in the specified repository and returns the deleted
     tag.
-
     If the tag did not exist, returns None.
     """
     tag = get_tag(repository_id, tag_name)
@@ -439,8 +460,6 @@ def _delete_tag(tag, now_ms):
     """
     Deletes the given tag by marking it as expired.
     """
-    now_ts = int(now_ms // 1000)
-
     with db_transaction():
         updated = (
             Tag.update(lifetime_end_ms=now_ms)
@@ -449,20 +468,6 @@ def _delete_tag(tag, now_ms):
         )
         if updated != 1:
             return None
-
-        # TODO: Remove the linkage code once RepositoryTag is gone.
-        try:
-            old_style_tag = (
-                TagToRepositoryTag.select(TagToRepositoryTag, RepositoryTag)
-                .join(RepositoryTag)
-                .where(TagToRepositoryTag.tag == tag)
-                .get()
-            ).repository_tag
-
-            old_style_tag.lifetime_end_ts = now_ts
-            old_style_tag.save()
-        except TagToRepositoryTag.DoesNotExist:
-            pass
 
         return tag
 
@@ -689,3 +694,83 @@ def get_legacy_images_for_tags(tags):
 
     by_manifest = {mli.manifest_id: mli.image for mli in query}
     return {tag.id: by_manifest[tag.manifest_id] for tag in tags if tag.manifest_id in by_manifest}
+
+
+def get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, timemaching_window_ms):
+    now_ms = get_epoch_timestamp_ms()
+    return (
+        Tag.select(Tag.id)
+        .where(Tag.name == tag_name)
+        .where(Tag.repository == repo_id)
+        .where(Tag.manifest == manifest_id)
+        .where(Tag.lifetime_end_ms <= now_ms)
+        .where(Tag.lifetime_end_ms > now_ms - timemaching_window_ms)
+    )
+
+
+def remove_tag_from_timemachine(
+    repo_id, tag_name, manifest_id, include_submanifests=False, is_alive=False
+):
+    try:
+        namespace = (
+            User.select(User.removed_tag_expiration_s)
+            .join(Repository, on=(Repository.namespace_user == User.id))
+            .where(Repository.id == repo_id)
+            .get()
+        )
+    except User.DoesNotExist:
+        return False
+
+    if namespace.removed_tag_expiration_s == 0:
+        return False
+
+    time_machine_ms = namespace.removed_tag_expiration_s * 1000
+    now_ms = get_epoch_timestamp_ms()
+
+    # Increment used to create unique lifetime_end_ms entries because of
+    # tag_repository_id_name_lifetime_end_ms index
+    increment = 1
+    updated = False
+    if is_alive:
+
+        # Ensure the tag is actually alive
+        alive_tag = get_tag(repo_id, tag_name)
+        if alive_tag is None:
+            return False
+
+        # Expire the tag past the time machine window and set hidden=true to
+        # prevent it from appearing in tag history
+        updated = (
+            Tag.update(lifetime_end_ms=now_ms - time_machine_ms, hidden=True)
+            .where(Tag.id == alive_tag)
+            .where(Tag.lifetime_end_ms == alive_tag.lifetime_end_ms)
+            .execute()
+        )
+        if updated != 1:
+            return False
+    else:
+        # Update all tags with matching name and manifest with a expiry outside the time machine
+        # window
+        with db_transaction():
+            for tag in get_tags_within_timemachine_window(
+                repo_id, tag_name, manifest_id, time_machine_ms
+            ):
+                Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment, hidden=True).where(
+                    Tag.id == tag
+                ).execute()
+                updated = True
+                increment = increment + 1
+
+    if include_submanifests:
+        with db_transaction():
+            # pylint: disable-next=not-an-iterable
+            for child_manifest in get_child_manifests(repo_id, manifest_id):
+                Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment).where(
+                    Tag.repository == repo_id,
+                    Tag.manifest == child_manifest.child_manifest,
+                    Tag.hidden == True,
+                    Tag.lifetime_end_ms > now_ms - time_machine_ms - increment,
+                ).execute()
+                increment = increment + 1
+
+    return updated

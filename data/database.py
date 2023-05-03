@@ -744,6 +744,8 @@ class User(BaseModel):
                     RepoMirrorConfig,
                     UploadedBlob,
                     RepositorySize,
+                    QuotaRepositorySize,
+                    QuotaNamespaceSize,
                     UserOrganizationQuota,
                     QuotaLimits,
                 }
@@ -971,6 +973,8 @@ class Repository(BaseModel):
                 ManifestSecurityStatus,
                 UploadedBlob,
                 RepositorySize,
+                QuotaNamespaceSize,
+                QuotaRepositorySize,
             }
             | appr_classes
             | v22_classes
@@ -986,10 +990,25 @@ class RepositorySearchScore(BaseModel):
     last_updated = DateTimeField(null=True)
 
 
+@deprecated_model
 class RepositorySize(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     repository_id: int
     size_bytes = BigIntegerField()
+
+
+class QuotaNamespaceSize(BaseModel):
+    namespace_user = ForeignKeyField(User, unique=True)
+    size_bytes = BigIntegerField(null=False, default=0)
+    backfill_start_ms = BigIntegerField(null=True)
+    backfill_complete = BooleanField(null=False, default=False)
+
+
+class QuotaRepositorySize(BaseModel):
+    repository = ForeignKeyField(Repository, unique=True)
+    size_bytes = BigIntegerField(null=False, default=0)
+    backfill_start_ms = BigIntegerField(null=True)
+    backfill_complete = BooleanField(null=False, default=False)
 
 
 class DeletedRepository(BaseModel):

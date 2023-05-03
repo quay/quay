@@ -59,9 +59,9 @@
                quota-management-enabled="quotaManagementEnabled">
             <h3>Repositories</h3>
             <span ng-show="Features.QUOTA_MANAGEMENT">
-              <h4 ng-if="organization.quota_report.quota_bytes || organization.quota_report.configured_quota">
+              <h4>
                 Total Quota Consumed:
-                <span ng-if="organization.quota_report.quota_bytes">
+                <span>
                   {{ bytesToHumanReadableString(organization.quota_report.quota_bytes) }}
                 </span>
                   <span ng-if="organization.quota_report.configured_quota">
@@ -72,6 +72,12 @@
                   {{ " of " + bytesToHumanReadableString(organization.quota_report.configured_quota) }}
                 </span>
               </h4>
+              <span ng-if="Features.QUOTA_MANAGEMENT && Config.QUOTA_BACKFILL && organization.repositories.value.length > 0 && organization.quota_report.backfill_status == 'waiting'">
+                Backfill Queued <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently queued." bs-tooltip></i>
+              </span>
+              <span ng-if="Features.QUOTA_MANAGEMENT && Config.QUOTA_BACKFILL && organization.repositories.value.length > 0 && organization.quota_report.backfill_status == 'running'">
+                Backfill Running <i class="fa fa-info-circle" data-title="A task to total the pre-existing images is currently running." bs-tooltip></i>
+              </span>
             </span>
           </div>
         </cor-tab-pane>

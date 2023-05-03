@@ -112,3 +112,30 @@ def test_list_repo_tags(repo_namespace, repo_name, client, query_count, app):
         repo_ref = registry_model.lookup_repository(repo_namespace, repo_name)
         history, _ = registry_model.list_repository_tag_history(repo_ref)
         assert len(tags) == len(history)
+
+
+@pytest.mark.parametrize(
+    "repo_namespace, repo_name, query_count",
+    [
+        ("devtable", "gargantuan", 4),
+    ],
+)
+def test_list_repo_tags_filter(repo_namespace, repo_name, client, query_count, app):
+    Manifest.media_type.get_name(1)
+
+    params = {"repository": repo_namespace + "/" + repo_name}
+    with client_with_identity("devtable", client) as cl:
+        with assert_query_count(query_count):
+            params["filter_tag_name"] = "like:v"
+            tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+        assert len(tags) == 5
+
+    with client_with_identity("devtable", client) as cl:
+        with assert_query_count(query_count):
+            params["filter_tag_name"] = "eq:prod"
+            tags = conduct_api_call(cl, ListRepositoryTags, "get", params).json["tags"]
+        assert len(tags) == 1
+
+    with client_with_identity("devtable", client) as cl:
+        params["filter_tag_name"] = "random"
+        resp = conduct_api_call(cl, ListRepositoryTags, "get", params, None, expected_code=400)

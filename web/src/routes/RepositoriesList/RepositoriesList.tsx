@@ -14,13 +14,13 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
-import {useRecoilState, useRecoilValue} from 'recoil';
+import {useRecoilState} from 'recoil';
 import {IRepository} from 'src/resources/RepositoryResource';
 import {ReactElement, useState} from 'react';
 import {Link, useLocation} from 'react-router-dom';
 import CreateRepositoryModalTemplate from 'src/components/modals/CreateRepoModalTemplate';
 import {getRepoDetailPath} from 'src/routes/NavigationPath';
-import {selectedReposState, searchRepoState} from 'src/atoms/RepositoryState';
+import {selectedReposState} from 'src/atoms/RepositoryState';
 import {formatDate, formatSize} from 'src/libs/utils';
 import {BulkDeleteModalTemplate} from 'src/components/modals/BulkDeleteModalTemplate';
 import {RepositoryToolBar} from 'src/routes/RepositoriesList/RepositoryToolBar';
@@ -43,10 +43,6 @@ import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useRepositories} from 'src/hooks/UseRepositories';
 import {useDeleteRepositories} from 'src/hooks/UseDeleteRepositories';
 
-function getReponameFromURL(pathname: string): string {
-  return pathname.includes('organization') ? pathname.split('/')[2] : null;
-}
-
 interface RepoListHeaderProps {
   shouldRender: boolean;
 }
@@ -66,13 +62,14 @@ function RepoListHeader(props: RepoListHeaderProps) {
   );
 }
 
-export default function RepositoriesList() {
-  const currentOrg = getReponameFromURL(useLocation().pathname);
+export default function RepositoriesList(props: RepositoriesListProps) {
+  const currentOrg = props.organizationName;
   const [isCreateRepoModalOpen, setCreateRepoModalOpen] = useState(false);
   const [isKebabOpen, setKebabOpen] = useState(false);
   const [makePublicModalOpen, setmakePublicModal] = useState(false);
   const [makePrivateModalOpen, setmakePrivateModal] = useState(false);
   const [err, setErr] = useState<string[]>();
+  const location = useLocation();
 
   const quayConfig = useQuayConfig();
   const {user} = useCurrentUser();
@@ -367,11 +364,23 @@ export default function RepositoriesList() {
                   />
                   <Td dataLabel={RepositoryListColumnNames.name}>
                     {currentOrg == null ? (
-                      <Link to={getRepoDetailPath(repo.namespace, repo.name)}>
+                      <Link
+                        to={getRepoDetailPath(
+                          location.pathname,
+                          repo.namespace,
+                          repo.name,
+                        )}
+                      >
                         {repo.namespace}/{repo.name}
                       </Link>
                     ) : (
-                      <Link to={getRepoDetailPath(repo.namespace, repo.name)}>
+                      <Link
+                        to={getRepoDetailPath(
+                          location.pathname,
+                          repo.namespace,
+                          repo.name,
+                        )}
+                      >
                         {repo.name}
                       </Link>
                     )}
@@ -417,4 +426,8 @@ interface RepoListTableItem {
   is_public: boolean;
   size: number;
   last_modified: number;
+}
+
+interface RepositoriesListProps {
+  organizationName: string;
 }

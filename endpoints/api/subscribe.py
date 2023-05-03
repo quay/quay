@@ -83,6 +83,9 @@ def change_subscription(user, plan):
     }
     status_code = 200
 
+    if not user.stripe_id:
+        return response_json, status_code
+
     try:
         cus = billing.Customer.retrieve(user.stripe_id)
     except stripe.error.APIConnectionError as e:

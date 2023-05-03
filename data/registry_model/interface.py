@@ -178,6 +178,7 @@ class RegistryDataInterface(object):
         specific_tag_name=None,
         active_tags_only=False,
         since_time_ms=None,
+        filter_tag_name=None,
     ):
         """
         Returns the history of all tags in the repository (unless filtered).
@@ -457,4 +458,13 @@ class RegistryDataInterface(object):
         """
         Returns the names of the tags that point to the given manifest, up to the given
         limit.
+        """
+
+    @abstractmethod
+    def remove_tag_from_timemachine(
+        self, repo_ref, tag_name, manifest_ref, include_submanifests=False, is_alive=False
+    ):
+        """
+        Updates any expired tags in the time machine window referencing the given manifest
+        with an expiry outside the time machine window.
         """

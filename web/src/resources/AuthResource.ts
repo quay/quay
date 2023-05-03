@@ -8,11 +8,13 @@ const csrfTokenUrl = '/csrf_token';
 interface AuthResource {
   isLoggedIn: boolean;
   csrfToken: string | null;
+  bearerToken: string | null;
 }
 
 export const GlobalAuthState: AuthResource = {
   isLoggedIn: false,
   csrfToken: null,
+  bearerToken: null,
 };
 
 export async function loginUser(username: string, password: string) {
@@ -40,4 +42,14 @@ export async function getCsrfToken() {
   assertHttpCode(response.status, 200);
   GlobalAuthState.csrfToken = response.data.csrf_token;
   return response.data;
+}
+
+export async function getUser(username: string) {
+  const response = await axios.get(`api/v1/users/${username}`);
+  return response;
+}
+
+export async function getOrganization(orgName: string) {
+  const response = await axios.get(`api/v1/organization/${orgName}`);
+  return response;
 }

@@ -1,6 +1,6 @@
 import pytest
 
-from auth.oauth import validate_bearer_auth, validate_oauth_token
+from auth.oauth import validate_bearer_auth
 from auth.validateresult import AuthKind, ValidateResult
 from data import model
 from test.fixtures import *

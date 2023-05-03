@@ -6,9 +6,6 @@ if (process.env.MOCK_API === 'true') {
   require('src/tests/fake-db/ApiMock');
 }
 
-axios.defaults.baseURL =
-  process.env.REACT_QUAY_APP_API_URL ||
-  `${window.location.protocol}//${window.location.host}`;
 axios.defaults.withCredentials = true;
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -28,8 +25,16 @@ axiosIns.interceptors.request.use(async (config) => {
     GlobalAuthState.csrfToken = r.csrf_token;
   }
 
+  if (!GlobalAuthState.bearerToken && window?.insights?.chrome?.auth) {
+    GlobalAuthState.bearerToken = await window.insights.chrome.auth.getToken();
+  }
+
   if (config.headers && GlobalAuthState.csrfToken) {
     config.headers['X-CSRF-Token'] = GlobalAuthState.csrfToken;
+  }
+
+  if (config.headers && GlobalAuthState.bearerToken) {
+    config.headers['Authorization'] = `Bearer ${GlobalAuthState.bearerToken}`;
   }
 
   return config;
@@ -40,9 +45,16 @@ axiosIns.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      window.location.href = '/signin';
+      if (window?.insights?.chrome?.auth) {
+        // refresh token for plugin
+        GlobalAuthState.bearerToken =
+          await window.insights.chrome.auth.getToken();
+      } else {
+        // redirect to login page for standalone
+        window.location.href = '/signin';
+      }
     }
     throw error; // Rethrow error to be handled in components
   },

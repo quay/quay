@@ -24,6 +24,7 @@ import {
   selectedRobotReposPermissionState,
 } from 'src/atoms/RobotAccountState';
 import {useRepositories} from 'src/hooks/UseRepositories';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 
 export default function CreateRobotAccountModal(
   props: CreateRobotAccountModalProps,
@@ -52,6 +53,7 @@ export default function CreateRobotAccountModal(
   );
   const [isDrawerExpanded, setDrawerExpanded] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [activeStep, setActiveStep] = useState<string>('Robot name and description');
 
   const {createNewRobot} = useRobotAccounts({
     name: props.namespace,
@@ -63,6 +65,9 @@ export default function CreateRobotAccountModal(
     },
   });
 
+  const {usernames} = useOrganizations();
+  const isUserOrganization = usernames.includes(props.namespace);
+
   const onSubmit = async () => {
     try {
       const reposToUpdate = filteredRepos();
@@ -70,7 +75,7 @@ export default function CreateRobotAccountModal(
         namespace: props.namespace,
         robotname: robotName,
         description: robotDescription,
-        isUser: false,
+        isUser: isUserOrganization,
         reposToUpdate: reposToUpdate,
         selectedTeams: selectedTeams,
         robotDefaultPerm: robotDefaultPerm,
@@ -94,6 +99,10 @@ export default function CreateRobotAccountModal(
       selectedRepos.includes(repo.name),
     );
   };
+
+  const handleStepChange = (step) => {
+    setActiveStep(step.name);
+  }
 
   const steps = [
     {
@@ -198,7 +207,8 @@ export default function CreateRobotAccountModal(
             isDataValid={validateRobotName}
           />
         }
-        hasNoBodyPadding={isDrawerExpanded ? true : false}
+        hasNoBodyPadding={isDrawerExpanded && activeStep == 'Add to team (optional)'  ? true : false}
+        onCurrentStepChanged={(step)=>handleStepChange(step)}
       />
     </Modal>
   );

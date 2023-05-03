@@ -14,10 +14,11 @@ angular.module('quay').directive('repoTagHistory', function () {
       'filter': '=filter',
       'isEnabled': '=isEnabled',
     },
-    controller: function($scope, $element, ApiService, StateService) {
+    controller: function($scope, $element, Config, ApiService, StateService) {
       $scope.inReadOnlyMode = StateService.inReadOnlyMode();
       $scope.tagHistoryData = null;
       $scope.tagHistoryLeaves = {};
+      $scope.Config = Config;
 
       $scope.options = {
         'showFuture': false
@@ -80,7 +81,7 @@ angular.module('quay').directive('repoTagHistory', function () {
             if (!$scope.options.showFuture && time && (time * 1000) >= new Date().getTime()) {
               return;
             }
-  
+
             tagEntries[tagName].push(entry);
             entries.push(entry);
           };
@@ -154,6 +155,19 @@ angular.module('quay').directive('repoTagHistory', function () {
         if ($scope.repository.can_write) {
           var digest = use_current_id ? entity.manifest_digest : entity.old_manifest_digest;
           $scope.tagActionHandler.askRestoreTag(entity.tag, digest);
+        }
+      };
+
+      $scope.askPermanentlyDeleteTag = function(entity) {
+        if ($scope.repository.can_write) {
+          var manifest_digest = null;
+          if(entity.action == "delete"){
+            manifest_digest = entity.manifest_digest
+          }
+          else if(entity.action == "move" || entity.action == "revert"){
+            manifest_digest = entity.old_manifest_digest
+          }
+          $scope.tagActionHandler.askPermanentlyDeleteTag(entity.tag, manifest_digest);
         }
       };
 

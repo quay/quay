@@ -20,6 +20,7 @@ from flask import (
 )
 
 from flask_login import current_user
+from endpoints.api import log_action
 
 import features
 
@@ -539,6 +540,11 @@ def confirm_email():
 
     try:
         user, new_email, old_email = model.user.confirm_user_email(code)
+
+        if new_email and old_email:
+            log_action(
+                "user_change_email", user.username, {"email": new_email, "old_email": old_email}
+            )
     except model.DataModelException as ex:
         return index("", error_info=dict(reason="confirmerror", error_message=str(ex)))
 

@@ -143,6 +143,12 @@ export async function getTags(
   if (specificTag) {
     path = path.concat(`&specificTag=${specificTag}`);
   }
+
+  const urlSearchParams = new URLSearchParams(window.location.search);
+  const urlParams = Object.fromEntries(urlSearchParams.entries());
+  if (urlParams['filter_tag_name']) {
+    path = path.concat(`&filter_tag_name=${urlParams['filter_tag_name']}`)
+  }
   const response: AxiosResponse<TagsResponse> = await axios.get(path);
   assertHttpCode(response.status, 200);
   return response.data;
@@ -162,9 +168,10 @@ interface TagLocation {
   tag: string;
 }
 
-export async function bulkDeleteTags(tags: TagLocation[]) {
+export async function bulkDeleteTags(tags: TagLocation[], force = false) {
+  const deletion_function = force ? expireTag : deleteTag;
   const responses = await Promise.allSettled(
-    tags.map((tag) => deleteTag(tag.org, tag.repo, tag.tag)),
+    tags.map((tag) => deletion_function(tag.org, tag.repo, tag.tag)),
   );
 
   // Filter failed responses
@@ -205,6 +212,29 @@ export async function deleteTag(org: string, repo: string, tag: string) {
   } catch (err) {
     throw new TagDeleteError(
       'failed to delete tag',
+      `${org}/${repo}:${tag}`,
+      err,
+    );
+  }
+}
+
+export async function expireTag(
+  org: string,
+  repo: string,
+  tag: string,
+) {
+  try {
+    const response: AxiosResponse = await axios.post(
+      `/api/v1/repository/${org}/${repo}/tag/${tag}/expire`,
+      {
+        include_submanifests: true,
+        is_alive: true,
+      }
+    );
+    assertHttpCode(response.status, 200);
+  } catch (err) {
+    throw new TagDeleteError(
+      'failed to expire tag',
       `${org}/${repo}:${tag}`,
       err,
     );

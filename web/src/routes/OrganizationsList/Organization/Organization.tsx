@@ -7,7 +7,7 @@ import {
   TabTitleText,
   Title,
 } from '@patternfly/react-core';
-import {useLocation, useSearchParams} from 'react-router-dom';
+import {useLocation, useParams, useSearchParams} from 'react-router-dom';
 import {useCallback, useState} from 'react';
 import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
@@ -17,7 +17,7 @@ import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
 
 export default function Organization() {
   const location = useLocation();
-  const orgName = location.pathname.split('/')[2];
+  const {organizationName} = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {organization} = useOrganization(orgName)
@@ -37,17 +37,18 @@ export default function Organization() {
   const repositoriesSubNav = [
     {
       name: 'Repositories',
-      component: <RepositoriesList />,
-      visible: true
+      component: <RepositoriesList organizationName={organizationName} />,
+      visible: true,
     },
     {
       name: 'Robot accounts',
-      component: <RobotAccountsList orgName={orgName} />,
+      component: <RobotAccountsList organizationName={organizationName} />,
       visible: organization.is_org_admin || organization.is_admin,
+
     },
     {
       name: 'Settings',
-      component: <Settings />,
+      component: <Settings organizationName={organizationName} />,
       visible: organization.is_org_admin || organization.is_admin,
     },
   ];
@@ -60,7 +61,7 @@ export default function Organization() {
         className="no-padding-bottom"
       >
         <Title data-testid="repo-title" headingLevel="h1">
-          {orgName}
+          {organizationName}
         </Title>
       </PageSection>
       <PageSection
