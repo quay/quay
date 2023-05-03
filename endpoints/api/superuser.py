@@ -12,7 +12,6 @@ from random import SystemRandom
 from flask import request, make_response, jsonify
 
 from cryptography.hazmat.primitives import serialization
-import auth
 
 import features
 
