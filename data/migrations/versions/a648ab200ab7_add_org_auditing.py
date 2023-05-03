@@ -10,7 +10,7 @@ Create Date: 2023-04-27 18:00:59.985970
 import sqlalchemy as sa
 
 revision = "a648ab200ab7"
-down_revision = "b2d1e4b95fc2"
+down_revision = "f0875fbc7c7a"
 
 
 def upgrade(op, tables, tester):
