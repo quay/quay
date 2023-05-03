@@ -4,8 +4,11 @@ import {
   fetchRobotAccountToken,
   regenerateRobotToken,
 } from 'src/resources/RobotsResource';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 
 export function useRobotToken({orgName, robName, onSuccess, onError}) {
+  const {usernames} = useOrganizations();
+  const isUserOrganization = usernames.includes(orgName);
   const [namespace, setNamespace] = useState(orgName);
   const [robotName, setRobotName] = useState(robName);
   const [page, setPage] = useState(1);
@@ -14,7 +17,7 @@ export function useRobotToken({orgName, robName, onSuccess, onError}) {
 
   const {data: robotAccountToken, isLoading: loading} = useQuery(
     ['Namespace', namespace, 'robot', robotName, 'token'],
-    ({signal}) => fetchRobotAccountToken(namespace, robotName, false, signal),
+    ({signal}) => fetchRobotAccountToken(namespace, robotName, isUserOrganization, signal),
     {
       enabled: true,
       placeholderData: {},
@@ -29,7 +32,7 @@ export function useRobotToken({orgName, robName, onSuccess, onError}) {
 
   const regenerateRobotTokenMutator = useMutation(
     async ({namespace, robotName}: regenerateRobotTokenParams) => {
-      return regenerateRobotToken(namespace, robotName);
+      return regenerateRobotToken(namespace, robotName, isUserOrganization);
     },
     {
       onSuccess: (result) => {

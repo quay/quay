@@ -292,7 +292,8 @@ export async function regenerateRobotToken(
   isUser = false,
 ): Promise<IRobot[]> {
   const robot = robotName.replace(orgName + '+', '');
-  const updatePermsUrl = `/api/v1/organization/${orgName}/robots/${robot}/regenerate`;
+  const userOrOrgPath = isUser ? 'user' : `organization/${orgName}`;
+  const updatePermsUrl = `/api/v1/${userOrOrgPath}/robots/${robot}/regenerate`;
   const response: AxiosResponse = await axios.post(updatePermsUrl, {});
   assertHttpCode(response.status, 200);
   return response.data;
