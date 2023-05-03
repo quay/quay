@@ -23,7 +23,7 @@ import React, {useEffect, useState} from 'react';
 import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import {FilterWithDropdown} from 'src/components/toolbar/FilterWithDropdown';
 import {formatDate} from 'src/libs/utils';
-import {FilterInput} from 'src/components/toolbar/FilterInput';
+import {SearchInput} from 'src/components/toolbar/SearchInput';
 
 const ColumnNames = {
   name: 'Team',
@@ -111,7 +111,7 @@ export default function TeamView(props: TeamViewProps) {
               searchInputText={searchInputText}
             />
           ) : (
-            <FilterInput searchState={search} onChange={setSearch} />
+            <SearchInput searchState={search} onChange={setSearch} id="robot-wizard-team-search" />
           )}
           {props.showCheckbox ? (
             <ToolbarItem>
