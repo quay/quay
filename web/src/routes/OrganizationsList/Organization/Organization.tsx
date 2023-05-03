@@ -20,7 +20,7 @@ export default function Organization() {
   const {organizationName} = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const {organization} = useOrganization(orgName)
+  const {organization} = useOrganization(organizationName);
 
   const [activeTabKey, setActiveTabKey] = useState<string>(
     searchParams.get('tab') || 'Repositories',
@@ -69,17 +69,16 @@ export default function Organization() {
         padding={{default: 'noPadding'}}
       >
         <Tabs activeKey={activeTabKey} onSelect={onTabSelect}>
-           {repositoriesSubNav.map((nav) => {
-            nav.visible && (
-              <Tab
-                key={nav.name}
-                eventKey={nav.name}
-                title={<TabTitleText>{nav.name}</TabTitleText>}
-              >
-                {nav.component}
-              </Tab>
-            );
-          })}
+          {repositoriesSubNav.map((nav) => (
+            <Tab
+              key={nav.name}
+              eventKey={nav.name}
+              title={<TabTitleText>{nav.name}</TabTitleText>}
+              isHidden={!nav.visible}
+            >
+              {nav.component}
+            </Tab>
+          ))}
         </Tabs>
       </PageSection>
     </Page>
