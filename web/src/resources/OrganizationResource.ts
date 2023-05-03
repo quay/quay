@@ -15,6 +15,7 @@ export interface IOrganization {
   can_create_repo?: boolean;
   public?: boolean;
   is_org_admin?: boolean;
+  is_admin?: boolean;
   preferred_namespace?: boolean;
   teams?: string[];
 }
