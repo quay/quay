@@ -2,14 +2,14 @@ import json
 import logging
 import requests
 
-from data.billing import RH_SKU_STRIPE_IDS, RH_SKUS, get_plan
+from data.billing import RH_SKUS, get_plan, get_plan_using_rh_sku
 from datetime import datetime
 
 from data.model import entitlements
 
 logger = logging.getLogger(__name__)
 
-REQUEST_TIMEOUT = 60
+REQUEST_TIMEOUT = 20
 
 MARKETPLACE_FILE = "/conf/stack/auth/quay-marketplace-api-stage.crt"
 MARKETPLACE_SECRET = "/conf/stack/auth/quay-marketplace-api-stage.key"
@@ -64,8 +64,8 @@ class RHUserAPI:
         info = json.loads(r.content)
         if not info:
             return None
-        CustomerId = info[0]["accountRelationships"][0]["account"]["ebsAccountNumber"]
-        return CustomerId
+        account_number = info[0]["accountRelationships"][0]["account"]["ebsAccountNumber"]
+        return account_number
 
 
 class RHMarketplaceAPI:
@@ -165,6 +165,6 @@ class RHMarketplaceAPI:
         for sku in RH_SKUS:
             user_subscription = self.lookup_subscription(account_number, sku)
             if user_subscription is not None:
-                return get_plan(RH_SKU_STRIPE_IDS[sku])
+                return get_plan_using_rh_sku(sku)
 
         return None

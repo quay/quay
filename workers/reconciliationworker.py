@@ -11,7 +11,7 @@ from app import (
     rh_marketplace_api as internal_marketplace_api,
 )
 from data import model
-from data.billing import get_plan, RH_SKU_STRIPE_IDS, RH_SKUS
+from data.billing import get_plan, RH_SKUS
 from data.model import entitlements
 from util import marketplace
 from util.locking import GlobalLock, LockNotAcquiredException
@@ -57,7 +57,7 @@ class ReconciliationWorker(Worker):
         if plan is None:
             return False
 
-        if plan["stripeId"] == RH_SKU_STRIPE_IDS[sku]:
+        if plan.get("rh_sku") == sku:
             return True
 
         logger.debug(
@@ -95,7 +95,7 @@ class ReconciliationWorker(Worker):
 
             # if user is a stripe customer, check if we need to create a subscription for them in RH
             if user.stripe_id:
-                for sku_id in RH_SKU_STRIPE_IDS:
+                for sku_id in RH_SKUS:
                     if self._check_stripe_matches_sku(user, sku_id):
                         subscription = marketplace_api.lookup_subscription(ebsAccountNumber, sku_id)
                         if subscription is None:

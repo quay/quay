@@ -21,4 +21,4 @@ def save_ebs_account_number(user, ebsAccountNumber):
     try:
         return RedHatSubscriptions.create(user_id=user.id, account_number=ebsAccountNumber)
     except model.DataModelException as ex:
-        logger.warning("Error saving account number for %s: %s", user.username, ex)
+        logger.error("Problem saving account number for %s: %s", user.username, ex)
