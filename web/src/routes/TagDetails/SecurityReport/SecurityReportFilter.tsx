@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Checkbox, Flex, FlexItem, SearchInput} from '@patternfly/react-core';
+import {Checkbox, Flex, FlexItem, TextInput} from '@patternfly/react-core';
 import {VulnerabilityListItem} from './Types';
 
 export function SecurityReportFilter(props: SecurityReportFilterProps) {
@@ -33,12 +33,15 @@ export function SecurityReportFilter(props: SecurityReportFilterProps) {
   return (
     <Flex className="pf-u-mt-md">
       <FlexItem>
-        <SearchInput
+        <TextInput
+          isRequired
+          type="search"
+          id="vulnerabilities-search"
+          key="vulnerabilities-search"
           name="vulnerability-search"
           placeholder="Filter Vulnerabilities..."
           value={searchTerm}
           onChange={onSearchTermChanged}
-          onClear={(evt) => onSearchTermChanged('')}
         />
       </FlexItem>
       <FlexItem>
