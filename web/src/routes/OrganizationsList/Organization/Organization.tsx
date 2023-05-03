@@ -38,18 +38,18 @@ export default function Organization() {
     {
       name: 'Repositories',
       component: <RepositoriesList organizationName={organizationName} />,
-      visible: true,
+      hidden: false,
     },
     {
       name: 'Robot accounts',
       component: <RobotAccountsList organizationName={organizationName} />,
-      visible: organization.is_org_admin || organization.is_admin,
+      hidden: !(organization.is_org_admin || organization.is_admin),
 
     },
     {
       name: 'Settings',
       component: <Settings organizationName={organizationName} />,
-      visible: organization.is_org_admin || organization.is_admin,
+      hidden: !(organization.is_org_admin || organization.is_admin),
     },
   ];
 
@@ -74,7 +74,7 @@ export default function Organization() {
               key={nav.name}
               eventKey={nav.name}
               title={<TabTitleText>{nav.name}</TabTitleText>}
-              isHidden={!nav.visible}
+              isHidden={nav.hidden}
             >
               {nav.component}
             </Tab>
