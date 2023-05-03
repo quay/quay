@@ -358,8 +358,9 @@ RH_SKUS = {
     "MW00590MO": 500,
     "MW00591MO": 1000,
     "MW00592MO": 2000,
-    "FakeSKU": 0, # mock sku for unit test
+    "FakeSKU": 0,  # mock sku for unit test
 }
+
 
 def get_plan(plan_id):
     """
@@ -370,6 +371,7 @@ def get_plan(plan_id):
             return plan
 
     return None
+
 
 def get_plan_using_rh_sku(sku):
     """
@@ -572,6 +574,7 @@ class FakeStripe(object):
             return cls.FAKE_PAYMENT_METHOD
 
     Subscription = FakeSubscription
+
 
 class Billing(object):
     def __init__(self, app=None):
