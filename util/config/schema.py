@@ -1346,6 +1346,7 @@ CONFIG_SCHEMA = {
             "type": "boolean",
             "description": "Enables functionality related to the removal of tags from the time machine window",
             "x-example": True,
+        },
         "FEATURE_ENTITLEMENT_RECONCILIATION": {
             "type": "boolean",
             "description": "Enable reconciler for internal RH marketplace",
