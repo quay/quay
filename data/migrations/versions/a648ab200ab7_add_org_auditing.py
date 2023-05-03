@@ -1,7 +1,7 @@
 """add org auditing
 
 Revision ID: a648ab200ab7
-Revises: b2d1e4b95fc2
+Revises: f0875fbc7c7a
 Create Date: 2023-04-27 18:00:59.985970
 
 """
