@@ -8,7 +8,7 @@ import {ReactElement, useState} from 'react';
 import {useRecoilState} from 'recoil';
 import {searchTagsState, selectedTagsState} from 'src/atoms/TagListState';
 import {Tag} from 'src/resources/TagResource';
-import {DeleteModal} from './DeleteModal';
+import {DeleteModal, ModalOptions} from './DeleteModal';
 import {ToolbarPagination} from 'src/components/toolbar/ToolbarPagination';
 import {SearchInput} from 'src/components/toolbar/SearchInput';
 import {Kebab} from 'src/components/toolbar/Kebab';
@@ -17,9 +17,14 @@ import {DropdownCheckbox} from 'src/components/toolbar/DropdownCheckbox';
 import ColumnNames from './ColumnNames';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {RepositoryDetails} from 'src/resources/RepositoryResource';
+import { useQuayConfig } from 'src/hooks/UseQuayConfig';
 
 export function TagsToolbar(props: ToolBarProps) {
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const quayConfig = useQuayConfig();
+  const [modalOptions, setModalOptions] = useState<ModalOptions>({
+    isOpen: false,
+    force: false,
+  });
   const [selectedTags, setSelectedTags] = useRecoilState(selectedTagsState);
   const [search, setSearch] = useRecoilState<SearchState>(searchTagsState);
 
@@ -29,13 +34,36 @@ export function TagsToolbar(props: ToolBarProps) {
       key="delete"
       onClick={() => {
         setKebabOpen(!isKebabOpen);
-        setIsModalOpen(!isModalOpen);
+        setModalOptions((prevOptions) => ({
+          ...prevOptions,
+          isOpen: !prevOptions.isOpen,
+        }));
       }}
       isDisabled={selectedTags.length <= 0}
+      style={{color: 'red'}}
     >
-      Delete
+      Remove
     </DropdownItem>,
   ];
+
+  if (quayConfig?.config?.PERMANENTLY_DELETE_TAGS && props.repoDetails?.tag_expiration_s > 0) {
+    kebabItems.push(
+      <DropdownItem
+        key="delete"
+        onClick={() => {
+          setKebabOpen(!isKebabOpen);
+          setModalOptions((prevOptions) => ({
+            force: true,
+            isOpen: !prevOptions.isOpen,
+          }));
+        }}
+        isDisabled={selectedTags.length <= 0}
+        style={{color: 'red'}}
+      >
+        Permanently Delete
+      </DropdownItem>,
+    );
+  }
 
   return (
     <Toolbar>
@@ -78,8 +106,8 @@ export function TagsToolbar(props: ToolBarProps) {
         />
       </ToolbarContent>
       <DeleteModal
-        isOpen={isModalOpen}
-        setIsOpen={setIsModalOpen}
+        modalOptions={modalOptions}
+        setModalOptions={setModalOptions}
         selectedTags={selectedTags}
         setSelectedTags={setSelectedTags}
         org={props.organization}
