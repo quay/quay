@@ -34,22 +34,22 @@ export default function Organization() {
     [],
   );
 
-  const repositoriesSubNav = [
+  let repositoriesSubNav = [
     {
       name: 'Repositories',
       component: <RepositoriesList organizationName={organizationName} />,
-      hidden: false,
+      visible: true,
     },
     {
       name: 'Robot accounts',
       component: <RobotAccountsList organizationName={organizationName} />,
-      hidden: !(organization.is_org_admin || organization.is_admin),
+      visible: organization.is_org_admin || organization.is_admin,
 
     },
     {
       name: 'Settings',
       component: <Settings organizationName={organizationName} />,
-      hidden: !(organization.is_org_admin || organization.is_admin),
+      visible: organization.is_org_admin || organization.is_admin,
     },
   ];
 
@@ -69,12 +69,11 @@ export default function Organization() {
         padding={{default: 'noPadding'}}
       >
         <Tabs activeKey={activeTabKey} onSelect={onTabSelect}>
-          {repositoriesSubNav.map((nav) => (
+          {repositoriesSubNav.filter((nav) => nav.visible).map((nav)=> (
             <Tab
               key={nav.name}
               eventKey={nav.name}
               title={<TabTitleText>{nav.name}</TabTitleText>}
-              isHidden={nav.hidden}
             >
               {nav.component}
             </Tab>
