@@ -34,7 +34,7 @@ export default function Organization() {
     [],
   );
 
-  let repositoriesSubNav = [
+  const repositoriesSubNav = [
     {
       name: 'Repositories',
       component: <RepositoriesList organizationName={organizationName} />,
