@@ -1,4 +1,5 @@
 import {VulnerabilitySeverity} from 'src/resources/TagResource';
+import moment from 'moment';
 
 export function getSeverityColor(severity: VulnerabilitySeverity) {
   switch (severity) {
@@ -95,4 +96,17 @@ export function parseTagNameFromUrl(url: string): string {
   }
 
   return urlParts[tagKeywordIndex + 1];
+}
+
+export function humanizeTimeForExpiry(time_seconds: number): string {
+  return moment.duration(time_seconds || 0, 's').humanize();
+}
+
+export function getSeconds(duration_str: string): number {
+  if (!duration_str) {
+    return 0;
+  }
+
+  let [number, suffix] = duration_str.split(' ');
+  return moment.duration(parseInt(number), suffix).asSeconds();
 }

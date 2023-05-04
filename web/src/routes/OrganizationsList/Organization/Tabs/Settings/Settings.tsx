@@ -7,15 +7,20 @@ import {
   FlexItem,
   FormGroup,
   Form,
+  FormAlert,
   TextInput,
   FormSelect,
   FormSelectOption,
   ActionGroup,
   Button,
+  Alert,
 } from '@patternfly/react-core';
 import {useLocation} from 'react-router-dom';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
+import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
+
+type validate = 'success' | 'warning' | 'error' | 'default';
 
 const GeneralSettings = (props: GeneralSettingsProps) => {
   const location = useLocation();
@@ -24,25 +29,78 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   const {user} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
     useOrganization(organizationName);
+  const [error, setError] = useState<string>('');
 
   // Time Machine
-  const timeMachineOptions = ['1 week', '1 month', '1 year', 'Never'];
+  const timeMachineOptions = ['1 week', '2 weeks', '1 month', '1 year', 'Never'];
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
-    timeMachineOptions[0],
+    timeMachineOptions[1],
   );
+  const namespaceTimeMachineExpiry = isUserOrganization ? user.tag_expiration_s : (organization as any).tag_expiration_s;
 
   // Email
+  const namespaceEmail = isUserOrganization ? user.email : (organization as any).email;
   const [emailFormValue, setEmailFormValue] = useState('');
+  const [validated, setValidated] = useState<validate>('default');
+
+
   useEffect(() => {
-    if (!loading && organization) {
-      setEmailFormValue((organization as any).email);
-    } else if (isUserOrganization) {
-      setEmailFormValue(user.email);
+    if (!loading){
+      setEmailFormValue(namespaceEmail);
+      const humanized_expiry = humanizeTimeForExpiry(parseInt(timeMachineFormValue));
+      if (humanized_expiry == '7 days') {
+        setTimeMachineFormValue(timeMachineOptions[0]);
+      } else if (humanized_expiry == '14 days') {
+        setTimeMachineFormValue(timeMachineOptions[1]);
+      }
     }
   }, [loading, isUserOrganization]);
 
+
+  const handleEmailChange = (emailFormValue: string) => {
+    setEmailFormValue(emailFormValue);
+    if (!emailFormValue) {
+      setValidated('error');
+      setError('Please enter email associate with organization');
+      return;
+    }
+
+    if (namespaceEmail != emailFormValue) {
+      if (isValidEmail(emailFormValue)) {
+        setValidated('success');
+        setError('');
+      }
+      else {
+        setValidated('error');
+        setError('Please enter a valid email address');
+      }
+    }
+  }
+
+  const checkForChanges = () => {
+    if ((namespaceEmail != emailFormValue) && (validated == 'success')) {
+      return true;
+    } else {
+      return false;
+    }
+
+    if (getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry) {
+      return true;
+    }
+    return false;
+  }
+
+  function onSave() {
+
+  }
+
   return (
     <Form id="form-form" maxWidth="70%">
+      {validated === 'error' && (
+        <FormAlert>
+          <Alert variant="danger" title={error} aria-live="polite" isInline />
+        </FormAlert>
+      )}
       <FormGroup
         isInline
         label="Organization"
@@ -67,7 +125,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           type="email"
           id="modal-with-form-form-name"
           value={emailFormValue}
-          onChange={(val) => setEmailFormValue(val)}
+          onChange={handleEmailChange}
         />
       </FormGroup>
 
@@ -95,8 +153,14 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           justifyContent={{default: 'justifyContentFlexEnd'}}
           width={'100%'}
         >
-          <Button variant="primary">Save</Button>
-          <Button variant="link">Cancel</Button>
+          <Button
+            variant="primary"
+            type="submit"
+            onClick={onSave}
+            isDisabled={!checkForChanges()}
+          >
+            Save
+          </Button>
         </Flex>
       </ActionGroup>
     </Form>
