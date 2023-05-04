@@ -107,7 +107,7 @@ function PluginMain() {
           <FlexItem>
             Please use{' '}
             <a
-              href="https://forms.gle/M2CtyneF3iaMT5UVA"
+              href="https://7qdvkuo9rkj.typeform.com/to/fuxVxdWM"
               target="_blank"
               rel="noreferrer"
             >
