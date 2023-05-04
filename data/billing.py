@@ -348,18 +348,18 @@ PLANS = [
     },
 ]
 
-RH_SKUS = {
-    "MW00584MO": 5,
-    "MW00585MO": 10,
-    "MW00586MO": 20,
-    "MW00587MO": 50,
-    "MW00588MO": 125,
-    "MW00589MO": 250,
-    "MW00590MO": 500,
-    "MW00591MO": 1000,
-    "MW00592MO": 2000,
-    "FakeSKU": 0,  # mock sku for unit test
-}
+RH_SKUS = [
+    "MW00584MO",
+    "MW00585MO",
+    "MW00586MO",
+    "MW00587MO",
+    "MW00588MO",
+    "MW00589MO",
+    "MW00590MO",
+    "MW00591MO",
+    "MW00592MO",
+    "FakeSKU",
+]
 
 
 def get_plan(plan_id):
