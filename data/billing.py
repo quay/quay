@@ -348,18 +348,7 @@ PLANS = [
     },
 ]
 
-RH_SKUS = [
-    "MW00584MO",
-    "MW00585MO",
-    "MW00586MO",
-    "MW00587MO",
-    "MW00588MO",
-    "MW00589MO",
-    "MW00590MO",
-    "MW00591MO",
-    "MW00592MO",
-    "FakeSKU",
-]
+RH_SKUS = [plan["rh_sku"] for plan in PLANS if plan.get("rh_sku") is not None]
 
 
 def get_plan(plan_id):
