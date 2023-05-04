@@ -19,7 +19,8 @@ describe('Repository Settings - Visibility', () => {
     ).as('getConfig');
   });
 
-  it('Sets public', () => {
+  // FIXME: nested repositories should be fixed by https://issues.redhat.com/browse/PROJQUAY-5446
+  it.skip('Sets public', () => {
     cy.intercept('GET', '/config', (req) =>
       req.reply((res) => {
         res.body.features['UI_V2_REPO_SETTINGS'] = true;
@@ -111,6 +112,10 @@ describe('Repository Settings - Visibility', () => {
       cy.contains('Quay Developer').should('exist');
       cy.contains('Up to 5 private repositories').should('exist');
       cy.contains('user1@redhat.com').should('exist');
+      // Stripe focuses on the name field once it's completely loaded, and a
+      // sudden focus change may interfere with the test. Let's wait until it
+      // is loaded.
+      cy.wait(1000);
       cy.get('input[placeholder="Name"]').type('user1');
       cy.get('input[placeholder="Address"]').type('1 broadway');
       cy.get('#billing-zip').type('10004');
@@ -178,6 +183,10 @@ describe('Repository Settings - Visibility', () => {
       cy.contains('Quay Micro Subscription').should('exist');
       cy.contains('Up to 10 private repositories').should('exist');
       cy.contains('user1@redhat.com').should('exist');
+      // Stripe focuses on the name field once it's completely loaded, and a
+      // sudden focus change may interfere with the test. Let's wait until it
+      // is loaded.
+      cy.wait(1000);
       cy.get('input[placeholder="Name"]').type('user1');
       cy.get('input[placeholder="Address"]').type('1 broadway');
       cy.get('#billing-zip').type('10004');

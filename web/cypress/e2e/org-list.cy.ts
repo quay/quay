@@ -22,6 +22,9 @@ describe('Org List Page', () => {
     cy.get('#toolbar-text-input').type('asdf');
     cy.contains('0 - 0 of 0');
     cy.get('#toolbar-text-input').clear();
+
+    // Wait requests to finish
+    cy.wait(9000);
   });
 
   it('Create Org', () => {

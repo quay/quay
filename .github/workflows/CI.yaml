@@ -216,16 +216,18 @@ jobs:
         working-directory: web
       env:
         REACT_QUAY_APP_API_URL: http://localhost:8080
+
     - uses: actions/upload-artifact@v2
       if: failure()
       with:
         name: cypress-screenshots
-        path: cypress/screenshots
+        path: web/cypress/screenshots
+
     - uses: actions/upload-artifact@v2
       if: always()
       with:
         name: cypress-videos
-        path: cypress/videos
+        path: web/cypress/videos
 
   docker-arm64:
     name: Docker Build arm64

@@ -21,7 +21,7 @@ describe('Tag Details Page', () => {
   });
 
   it('renders details', () => {
-    cy.visit('/tag/user1/hello-world/latest');
+    cy.visit('/repository/user1/hello-world/tag/latest');
     cy.get('[data-testid="name"]').contains('latest').should('exist');
     cy.get('[data-testid="creation"]')
       .contains(formatDate(1667589234))
@@ -81,35 +81,35 @@ describe('Tag Details Page', () => {
   });
 
   it('switch to security report tab', () => {
-    cy.visit('/tag/user1/hello-world/latest');
+    cy.visit('/repository/user1/hello-world/tag/latest');
     cy.get('button').contains('Security Report').click();
     cy.url().should(
       'include',
-      '/tag/user1/hello-world/latest?tab=securityreport',
+      '/repository/user1/hello-world/tag/latest?tab=securityreport',
     );
     cy.contains('Quay Security Reporting has detected 41 vulnerabilities');
   });
 
   it('switch to packages tab', () => {
-    cy.visit('/tag/user1/hello-world/latest');
+    cy.visit('/repository/user1/hello-world/tag/latest');
     cy.get('button').contains('Packages').click();
-    cy.url().should('include', '/tag/user1/hello-world/latest?tab=packages');
+    cy.url().should('include', '/repository/user1/hello-world/tag/latest?tab=packages');
     cy.contains('Quay Security Reporting has recognized 49 packages');
   });
 
   it('switch to security report tab via vulnerabilities field', () => {
-    cy.visit('/tag/user1/hello-world/latest');
+    cy.visit('/repository/user1/hello-world/tag/latest');
     cy.contains('12 High').click();
     cy.url().should(
       'include',
-      '/tag/user1/hello-world/latest?tab=securityreport',
+      '/repository/user1/hello-world/tag/latest?tab=securityreport',
     );
     cy.contains('Quay Security Reporting has detected 41 vulnerabilities');
   });
 
   it('switch between architectures', () => {
     cy.visit(
-      '/tag/user1/hello-world/manifestlist?digest=sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4',
+      '/repository/user1/hello-world/tag/manifestlist?digest=sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4',
     );
     cy.get('[data-testid="name"]').contains('manifestlist').should('exist');
     cy.get('[data-testid="digest-clipboardcopy"]')
