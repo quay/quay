@@ -74,7 +74,9 @@ class ReconciliationWorker(Worker):
 
         users = model.user.get_active_users()
 
-        for user in users:
+        stripe_users = [user for user in users if user.stripe_id is not None]
+
+        for user in stripe_users:
 
             email = user.email
             ebsAccountNumber = entitlements.get_ebs_account_number(user.id)
@@ -93,14 +95,13 @@ class ReconciliationWorker(Worker):
                     logger.debug("User %s does not have an account number", user.username)
                     continue
 
-            # if user is a stripe customer, check if we need to create a subscription for them in RH
-            if user.stripe_id:
-                for sku_id in RH_SKUS:
-                    if self._check_stripe_matches_sku(user, sku_id):
-                        subscription = marketplace_api.lookup_subscription(ebsAccountNumber, sku_id)
-                        if subscription is None:
-                            marketplace_api.create_entitlement(ebsAccountNumber, sku_id)
-                        break
+            # check if we need to create a subscription for customer in RH marketplace
+            for sku_id in RH_SKUS:
+                if self._check_stripe_matches_sku(user, sku_id):
+                    subscription = marketplace_api.lookup_subscription(ebsAccountNumber, sku_id)
+                    if subscription is None:
+                        marketplace_api.create_entitlement(ebsAccountNumber, sku_id)
+                    break
 
             logger.debug("Finished work for user %s", user.username)
 

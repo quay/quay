@@ -45,8 +45,8 @@ MILLISECONDS_IN_SECONDS = 1000
 
 def check_internal_api_for_subscription(namespace_user):
     """
-    If Reconciler is enabled, RH marketplace should also be checked
-    for valid subscriptions
+    Returns subscription from RH marketplace.
+    None returned if no subscription is found.
     """
     user_account_number = rh_user_api.get_account_number(namespace_user)
     user_subscription = rh_marketplace_api.find_stripe_subscription(user_account_number)
