@@ -94,7 +94,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const [isReposModalOpen, setReposModalOpen] = useState<boolean>(false);
   const [robotRepos, setRobotRepos] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [robotForDeletion, setRobotForDeletion] = useState([]);
+  const [robotForDeletion, setRobotForDeletion] = useState<IRobot[]>([]);
   const [robotForModalView, setRobotForModalView] = useState(EmptyRobotAccount);
   const [isTokenModalOpen, setTokenModalOpen] = useState<boolean>(false);
   // For repository modal view
@@ -153,7 +153,10 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     },
     {
       placeholderData: () => {
-        return queryClient.getQueryData(['organization', props.organizationName]);
+        return queryClient.getQueryData([
+          'organization',
+          props.organizationName,
+        ]);
       },
     },
   );
@@ -186,7 +189,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   // Logic for handling row-wise checkbox selection in <Td>
   const isRobotAccountSelected = (rob: IRobot) =>
-    selectedRobotAccounts.includes(rob.name);
+    selectedRobotAccounts.some((roboaccnt) => roboaccnt.name === rob.name);
 
   const [selectedRobotAccounts, setSelectedRobotAccounts] = useRecoilState(
     selectedRobotAccountsState,
@@ -241,17 +244,17 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
     },
   });
 
+  const isRobotAccountSelectable = (robot) => robot.name !== ''; // Arbitrary logic for this example
+
   const setRobotAccountsSelected = (robotAccount: IRobot, isSelecting = true) =>
     setSelectedRobotAccounts((prevSelected) => {
       const otherSelectedRobotNames = prevSelected.filter(
-        (r) => r !== robotAccount.name,
+        (r) => r.name !== robotAccount.name,
       );
-      return isSelecting
-        ? [...otherSelectedRobotNames, robotAccount.name]
+      return isSelecting && isRobotAccountSelectable(robotAccount)
+        ? [...otherSelectedRobotNames, robotAccount]
         : otherSelectedRobotNames;
     });
-
-  const isRobotAccountSelectable = (robot) => robot.name !== ''; // Arbitrary logic for this example
 
   const onSelectRobot = (
     robotAccount: IRobot,
@@ -270,7 +273,10 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
 
   const onRepoModalSave = async () => {
     try {
-      const robotname = robotForModalView.name.replace(props.organizationName + '+', '');
+      const robotname = robotForModalView.name.replace(
+        props.organizationName + '+',
+        '',
+      );
       const [toUpdate, toDelete] = updateRepoPermissions();
       if (toUpdate.length > 0) {
         await updateRepoPerms({robotName: robotname, repoPerms: toUpdate});
@@ -360,8 +366,8 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
   const mapOfColNamesToTableData = {
     RobotAccount: {
       label: 'name',
-      transformFunc: (item: string) => {
-        return `${item}`;
+      transformFunc: (item: IRobot) => {
+        return `${item.name}`;
       },
     },
   };
@@ -388,7 +394,11 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
         handleModalToggle={handleBulkDeleteModalToggle}
         handleBulkDeletion={bulkDeleteRobotAccounts}
         isModalOpen={isDeleteModalOpen}
-        selectedItems={items}
+        selectedItems={robotAccountsList?.filter((robot) =>
+          items.some(
+            (selectedRobotAccnt) => robot.name === selectedRobotAccnt.name,
+          ),
+        )}
         resourceName={'robot accounts'}
       />
     );
@@ -569,7 +579,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
           {paginatedRobotAccountList.map((robotAccount, rowIndex) => {
             return (
               <Tbody key={rowIndex} isExpanded={isRobotExpanded(robotAccount)}>
-                <Tr>
+                <Tr key={robotAccount.name}>
                   <Td
                     expand={
                       robotAccount.description
