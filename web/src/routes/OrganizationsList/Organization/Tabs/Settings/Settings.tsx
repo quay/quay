@@ -23,6 +23,13 @@ import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
 import {addDisplayError} from 'src/resources/ErrorHandling';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
+const timeMachineOptions = {
+  '0 s': 'a few seconds',
+  '1 d': 'a day',
+  '1 w': '7 days',
+  '2 w': '14 days',
+  '4 w': 'a month',
+};
 
 const GeneralSettings = (props: GeneralSettingsProps) => {
   const location = useLocation();
@@ -33,21 +40,25 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   const [error, setError] = useState<string>('');
 
   // Time Machine
-  const timeMachineOptions = ['a few seconds', 'a day', '7 days', '14 days', '1 month'];
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
-    timeMachineOptions[1],
+    timeMachineOptions['0 s'],
   );
   const namespaceTimeMachineExpiry = isUserOrganization ? user?.tag_expiration_s : (organization as IOrganization)?.tag_expiration_s;
 
   // Email
-  const namespaceEmail = isUserOrganization ? user?.email : (organization as any)?.email;
-  const [emailFormValue, setEmailFormValue] = useState('');
+  const namespaceEmail = isUserOrganization ? user?.email || '' : (organization as any)?.email || '';
+  const [emailFormValue, setEmailFormValue] = useState<string>('');
   const [validated, setValidated] = useState<validate>('default');
 
   useEffect(() => {
     setEmailFormValue(namespaceEmail);
     const humanized_expiry = humanizeTimeForExpiry(namespaceTimeMachineExpiry);
-    setTimeMachineFormValue(humanized_expiry);
+    for (let key of Object.keys(timeMachineOptions)) {
+      if (humanized_expiry == timeMachineOptions[key]){
+        setTimeMachineFormValue(key);
+        break;
+      }
+    }
   }, [loading, isUserLoading, isUserOrganization]);
 
 
@@ -110,7 +121,6 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
     }
   };
 
-
   return (
     <Form id="form-form" maxWidth="70%">
       {validated === 'error' && (
@@ -159,8 +169,8 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           value={timeMachineFormValue}
           onChange={(val) => setTimeMachineFormValue(val)}
         >
-          {timeMachineOptions.map((option, index) => (
-            <FormSelectOption key={index} value={option} label={option} />
+          {Object.keys(timeMachineOptions).map((option, index) => (
+            <FormSelectOption key={index} value={option} label={timeMachineOptions[option]} />
           ))}
         </FormSelect>
       </FormGroup>

@@ -125,7 +125,7 @@ export async function updateOrgSettings(
   if (email) {
     payload['email'] = email;
   }
-  if (tag_expiration_s) {
+  if (tag_expiration_s != null) {
     payload['tag_expiration_s'] = tag_expiration_s;
   }
   const response = await axios.put(updateSettingsUrl, payload);
