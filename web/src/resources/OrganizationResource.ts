@@ -18,6 +18,8 @@ export interface IOrganization {
   is_admin?: boolean;
   preferred_namespace?: boolean;
   teams?: string[];
+  tag_expiration_s: number;
+  email: string;
 }
 
 export async function fetchOrg(orgname: string, signal: AbortSignal) {
@@ -110,8 +112,15 @@ export async function createOrg(name: string, email?: string) {
   return response.data;
 }
 
-export async function updateOrgSettings(namespace: string, tag_expiration_s: number, email: string, isUser: boolean) {
-  const updateSettingsUrl = isUser ? `/api/v1/user/` : `/api/v1/organization/${namespace}`;
+export async function updateOrgSettings(
+  namespace: string,
+  tag_expiration_s: number,
+  email: string,
+  isUser: boolean,
+): Promise<Response> {
+  const updateSettingsUrl = isUser
+    ? `/api/v1/user/`
+    : `/api/v1/organization/${namespace}`;
   let payload = {};
   if (email) {
     payload['email'] = email;
@@ -120,6 +129,5 @@ export async function updateOrgSettings(namespace: string, tag_expiration_s: num
     payload['tag_expiration_s'] = tag_expiration_s;
   }
   const response = await axios.put(updateSettingsUrl, payload);
-  assertHttpCode(response.status, 200);
   return response.data;
 }

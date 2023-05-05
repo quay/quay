@@ -1,7 +1,6 @@
 import {fetchOrg, updateOrgSettings} from 'src/resources/OrganizationResource';
 import {useMutation, useQuery} from '@tanstack/react-query';
 import {useOrganizations} from './UseOrganizations';
-import {IOrganization} from 'src/resources/OrganizationResource';
 
 export function useOrganization(name: string) {
   // Get usernames
@@ -15,7 +14,6 @@ export function useOrganization(name: string) {
     error,
   } = useQuery(['organization', name], ({signal}) => fetchOrg(name, signal), {
     enabled: !isUserOrganization,
-    placeholderData: (): IOrganization[] => new Array(10).fill({}),
   });
 
   const updateOrgSettingsMutator = useMutation(
@@ -24,8 +22,8 @@ export function useOrganization(name: string) {
       tag_expiration_s,
       email,
       isUser,
-    }: updateOrgSettingsParams) => {
-      return updateOrgSettings(
+    }: updateOrgSettingsParams):Promise<Response> => {
+      return await updateOrgSettings(
         namespace,
         tag_expiration_s,
         email,
@@ -33,7 +31,6 @@ export function useOrganization(name: string) {
       );
     },
   );
-
 
   return {
     isUserOrganization,

@@ -18,16 +18,16 @@ import {
 import {useLocation} from 'react-router-dom';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
-import {addDisplayError} from 'src/resources/ErrorHandling';
+import {IOrganization} from 'src/resources/OrganizationResource';
 import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
+import {addDisplayError} from 'src/resources/ErrorHandling';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 
 const GeneralSettings = (props: GeneralSettingsProps) => {
   const location = useLocation();
   const organizationName = props.organizationName;
-
-  const {user} = useCurrentUser();
+  const {user, loading: isUserLoading} = useCurrentUser();
   const {organization, isUserOrganization, loading, updateOrgSettings} =
     useOrganization(organizationName);
   const [error, setError] = useState<string>('');
@@ -37,20 +37,18 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
     timeMachineOptions[1],
   );
-  const namespaceTimeMachineExpiry = isUserOrganization ? user.tag_expiration_s : (organization as any).tag_expiration_s;
+  const namespaceTimeMachineExpiry = isUserOrganization ? user?.tag_expiration_s : (organization as IOrganization)?.tag_expiration_s;
 
   // Email
-  const namespaceEmail = isUserOrganization ? user.email : (organization as any).email;
+  const namespaceEmail = isUserOrganization ? user?.email : (organization as any)?.email;
   const [emailFormValue, setEmailFormValue] = useState('');
   const [validated, setValidated] = useState<validate>('default');
 
   useEffect(() => {
-    if (!loading){
-      setEmailFormValue(namespaceEmail);
-      const humanized_expiry = humanizeTimeForExpiry(parseInt(namespaceTimeMachineExpiry));
-      setTimeMachineFormValue(humanized_expiry);
-    }
-  }, [loading, isUserOrganization]);
+    setEmailFormValue(namespaceEmail);
+    const humanized_expiry = humanizeTimeForExpiry(namespaceTimeMachineExpiry);
+    setTimeMachineFormValue(humanized_expiry);
+  }, [loading, isUserLoading, isUserOrganization]);
 
 
   const handleEmailChange = (emailFormValue: string) => {
@@ -96,7 +94,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
 
   const onSubmit = async () => {
     try {
-      await updateOrgSettings({
+      const response = await updateOrgSettings({
         namespace: props.organizationName,
         tag_expiration_s:
           getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry
@@ -105,9 +103,10 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
         email: namespaceEmail != emailFormValue ? emailFormValue : null,
         isUser: isUserOrganization,
       });
+      console.log("response on submit", response);
     } catch (error) {
       console.error(error);
-      addDisplayError('Unable to create robot', error);
+      addDisplayError('Unable to update organization settings', error);
     }
   };
 
