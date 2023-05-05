@@ -2,7 +2,7 @@ import {useQuery} from '@tanstack/react-query';
 import {useState} from 'react';
 import {SearchState} from 'src/components/toolbar/SearchTypes';
 import {
-  fetchTeamRepoPermissions,
+  fetchAllTeamPermissionsForRepository,
   fetchUserRepoPermissions,
   RepoMember,
 } from 'src/resources/RepositoryResource';
@@ -42,7 +42,7 @@ export function useRepositoryPermissions(org: string, repo: string) {
     isPlaceholderData: isTeamPlaceholderData,
   } = useQuery(
     ['teamrepopermissions', org, repo],
-    () => fetchTeamRepoPermissions(org, repo),
+    () => fetchAllTeamPermissionsForRepository(org, repo),
     {
       placeholderData: {},
     },

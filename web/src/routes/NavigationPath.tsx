@@ -16,12 +16,17 @@ const tagNameBreadcrumb = (match) => {
   return <span>{match.params.tagName}</span>;
 };
 
+const teamMemberBreadcrumb = (match) => {
+  return <span>{match.params.teamName}</span>;
+};
+
 const Breadcrumb = {
   organizationsListBreadcrumb: 'Organization',
   repositoriesListBreadcrumb: 'Repository',
   organizationDetailBreadcrumb: organizationNameBreadcrumb,
   repositoryDetailBreadcrumb: repositoryNameBreadcrumb,
   tagDetailBreadcrumb: tagNameBreadcrumb,
+  teamMemberBreadcrumb: teamMemberBreadcrumb,
 };
 
 export enum NavigationPath {
@@ -39,6 +44,9 @@ export enum NavigationPath {
 
   // Tag Detail
   tagDetail = '/repository/:organizationName/:repositoryName/tag/:tagName',
+
+  // Team Member
+  teamMember = '/organization/:organizationName/teams/:teamName',
 }
 
 export function getRepoDetailPath(
@@ -64,7 +72,6 @@ export function getTagDetailPath(
   tagPath = tagPath.replace(':organizationName', org);
   tagPath = tagPath.replace(':repositoryName', repo);
   tagPath = tagPath.replace(':tagName', tagName);
-
   if (queryParams) {
     const params = [];
     for (const entry of Array.from(queryParams.entries())) {
@@ -73,6 +80,21 @@ export function getTagDetailPath(
     tagPath = tagPath + '?' + params.join('&');
   }
   return domainRoute(currentRoute, tagPath);
+}
+
+export function getTeamMemberPath(
+  currentRoute: string,
+  orgName: string,
+  teamName: string,
+  queryParams: string = null,
+): string {
+  let teamMemberPath = NavigationPath.teamMember.toString();
+  teamMemberPath = teamMemberPath.replace(':organizationName', orgName);
+  teamMemberPath = teamMemberPath.replace(':teamName', teamName);
+  if (queryParams) {
+    teamMemberPath = teamMemberPath + '?tab' + '=' + queryParams;
+  }
+  return domainRoute(currentRoute, teamMemberPath);
 }
 
 export function getDomain() {
@@ -93,33 +115,35 @@ function domainRoute(currentRoute, definedRoute) {
   );
 }
 
-const currentRoute = window.location.pathname;
+export const getNavigationRoutes = () => {
+  const currentRoute = window.location.pathname;
 
-const NavigationRoutes = [
-  {
-    path: domainRoute(currentRoute, NavigationPath.organizationsList),
-    Component: <OrganizationsList />,
-    breadcrumb: Breadcrumb.organizationsListBreadcrumb,
-  },
-  {
-    path: domainRoute(currentRoute, NavigationPath.organizationDetail),
-    Component: <Organization />,
-    breadcrumb: Breadcrumb.organizationDetailBreadcrumb,
-  },
-  {
-    path: domainRoute(currentRoute, NavigationPath.repositoriesList),
-    Component: <RepositoriesList organizationName={null} />,
-    breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
-  },
-  {
-    path: domainRoute(currentRoute, NavigationPath.repositoryDetail),
-    Component: <RepositoryDetails />,
-    breadcrumb: Breadcrumb.repositoryDetailBreadcrumb,
-  },
-  {
-    path: domainRoute(currentRoute, NavigationPath.tagDetail),
-    Component: <TagDetails />,
-    breadcrumb: Breadcrumb.tagDetailBreadcrumb,
-  },
-];
-export {NavigationRoutes};
+  const NavigationRoutes = [
+    {
+      path: domainRoute(currentRoute, NavigationPath.organizationsList),
+      Component: <OrganizationsList />,
+      breadcrumb: Breadcrumb.organizationsListBreadcrumb,
+    },
+    {
+      path: domainRoute(currentRoute, NavigationPath.organizationDetail),
+      Component: <Organization />,
+      breadcrumb: Breadcrumb.organizationDetailBreadcrumb,
+    },
+    {
+      path: domainRoute(currentRoute, NavigationPath.repositoriesList),
+      Component: <RepositoriesList organizationName={null} />,
+      breadcrumb: Breadcrumb.repositoriesListBreadcrumb,
+    },
+    {
+      path: domainRoute(currentRoute, NavigationPath.repositoryDetail),
+      Component: <RepositoryDetails />,
+      breadcrumb: Breadcrumb.repositoryDetailBreadcrumb,
+    },
+    {
+      path: domainRoute(currentRoute, NavigationPath.tagDetail),
+      Component: <TagDetails />,
+      breadcrumb: Breadcrumb.tagDetailBreadcrumb,
+    },
+  ];
+  return NavigationRoutes;
+};

@@ -8,7 +8,7 @@ export function Kebab(props: KebabProps) {
 
   const fetchToggle = () => {
     if (!props.useActions) {
-      return <KebabToggle onToggle={onToggle} />;
+      return <KebabToggle id={props?.id} onToggle={onToggle} />;
     }
     return (
       <DropdownToggle
@@ -36,4 +36,5 @@ type KebabProps = {
   setKebabOpen: (open) => void;
   kebabItems: React.ReactElement[];
   useActions?: boolean;
+  id?: string;
 };

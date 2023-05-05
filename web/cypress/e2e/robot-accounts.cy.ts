@@ -11,7 +11,7 @@ describe('Robot Accounts Page', () => {
   });
 
   it('Search Filter', () => {
-    cy.visit('/organization/testorg?tab=Robot+accounts');
+    cy.visit('/organization/testorg?tab=Robotaccounts');
 
     // Filter for a single robot account
     cy.get('#robot-account-search').type('testrobot2');
@@ -25,7 +25,7 @@ describe('Robot Accounts Page', () => {
   });
 
   it('Robot Account Toolbar Items', () => {
-    cy.visit('/organization/testorg?tab=Robot+accounts');
+    cy.visit('/organization/testorg?tab=Robotaccounts');
 
     // Open and cancel modal
     cy.get('#create-robot-account-btn').click();
@@ -37,7 +37,7 @@ describe('Robot Accounts Page', () => {
   });
 
   it('Create Robot', () => {
-    cy.visit('/organization/testorg?tab=Robot+accounts');
+    cy.visit('/organization/testorg?tab=Robotaccounts');
 
     cy.get('#create-robot-account-btn').click();
     cy.get('#robot-wizard-form-name').type('newtestrob');
@@ -64,7 +64,7 @@ describe('Robot Accounts Page', () => {
   });
 
   it('Delete Robot', () => {
-    cy.visit('/organization/testorg?tab=Robot+accounts');
+    cy.visit('/organization/testorg?tab=Robotaccounts');
 
     // Delete robot account
     cy.get('#robot-account-search').type('testrobot2');
@@ -82,7 +82,7 @@ describe('Robot Accounts Page', () => {
   });
 
   it('Update Repo Permissions', () => {
-    cy.visit('/organization/testorg?tab=Robot+accounts');
+    cy.visit('/organization/testorg?tab=Robotaccounts');
     cy.contains('1 repository').click();
     cy.get('#add-repository-bulk-select-text').contains('1 selected');
     cy.get('#toggle-descriptions').click();
@@ -97,6 +97,7 @@ describe('Robot Accounts Page', () => {
   });
 
   it('Bulk Update Repo Permissions', () => {
+    const robotAccnt = 'testorg+testrobot2';
     cy.visit('/organization/testorg');
     cy.contains('Create Repository').click();
     cy.get('input[id="repository-name-input"]').type('testrepo1');
@@ -104,8 +105,9 @@ describe('Robot Accounts Page', () => {
       cy.get('button:contains("Create")').click(),
     );
 
-    cy.visit('/organization/testorg?tab=Robot+accounts');
-    cy.get('[data-label="Repositories"]').contains('No repositories').click();
+    cy.visit('/organization/testorg?tab=Robotaccounts');
+    cy.get(`[id="${robotAccnt}-toggle-kebab"]`).click();
+    cy.get(`[id="${robotAccnt}-set-repo-perms-btn"]`).click();
     cy.get('#add-repository-bulk-select').click();
     cy.get('#toggle-bulk-perms-kebab').click();
     cy.get('[role="menuitem"]').contains('Write').click();

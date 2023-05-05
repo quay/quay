@@ -1,6 +1,6 @@
 import {Banner, Flex, FlexItem, Page} from '@patternfly/react-core';
 
-import {Navigate, Outlet, Route, Router, Routes} from 'react-router-dom';
+import {Navigate, Outlet, Route, Routes} from 'react-router-dom';
 import {RecoilRoot, useSetRecoilState} from 'recoil';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 
@@ -22,7 +22,7 @@ import {CreateNewUser} from 'src/components/modals/CreateNewUser';
 import NewUserEmptyPage from 'src/components/NewUserEmptyPage';
 import axios from 'axios';
 import axiosIns from 'src/libs/axios';
-
+import ManageMembersList from './OrganizationsList/Organization/Tabs/TeamsAndMembership/TeamsView/ManageMembers/ManageMembersList';
 
 const NavigationRoutes = [
   {
@@ -40,6 +40,10 @@ const NavigationRoutes = [
   {
     path: NavigationPath.repositoryDetail,
     Component: <RepositoryTagRouter />,
+  },
+  {
+    path: NavigationPath.teamMember,
+    Component: <ManageMembersList />,
   },
 ];
 
@@ -75,7 +79,7 @@ function PluginMain() {
 
   useEffect(() => {
     setIsPluginState(true);
-    if (user?.prompts && user.prompts.includes("confirm_username")) {
+    if (user?.prompts && user.prompts.includes('confirm_username')) {
       setConfirmUserModalOpen(true);
     }
   }, [user]);
@@ -86,10 +90,10 @@ function PluginMain() {
 
   return (
     <Page style={{height: '100vh'}}>
-    <CreateNewUser
-      user={user}
-      isModalOpen={isConfirmUserModalOpen}
-      setModalOpen={setConfirmUserModalOpen}
+      <CreateNewUser
+        user={user}
+        isModalOpen={isConfirmUserModalOpen}
+        setModalOpen={setConfirmUserModalOpen}
       />
       <Banner variant="info">
         <Flex
@@ -113,9 +117,7 @@ function PluginMain() {
         </Flex>
       </Banner>
       {user?.prompts && user.prompts.includes('confirm_username') ? (
-        <NewUserEmptyPage
-          setCreateUserModalOpen={setConfirmUserModalOpen}
-        />
+        <NewUserEmptyPage setCreateUserModalOpen={setConfirmUserModalOpen} />
       ) : (
         <Routes>
           <Route index element={<Navigate to="organization" replace />} />

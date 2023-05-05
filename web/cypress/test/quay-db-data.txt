@@ -5989,6 +5989,15 @@ COPY public.logentry3 (id, kind_id, account_id, performer_id, repository_id, dat
 176	26	1	1	1	2023-07-27 17:30:44.484509	172.18.0.1	{"username": "user1", "repo": "hello-world", "namespace": "user1", "tag": "latest"}
 177	46	1	1	1	2023-07-27 17:30:48.828245	172.18.0.1	{"username": "user1", "repo": "hello-world", "tag": "latest", "manifest_digest": "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"}
 180	46	1	1	1	2023-07-27 17:31:10.684526	172.18.0.1	{"username": "user1", "repo": "hello-world", "tag": "latest", "manifest_digest": "sha256:f54a58bc1aac5ea1a25d796ae155dc228b3f0e11d046ae276b39c4bf2f13d8c4"}
+181	32	28	1	\N	2023-08-15 20:40:53.404327	172.19.0.1	{"team": "arsenal"}
+182	10	28	1	5	2023-08-15 20:41:03.55182	172.19.0.1	{"team": "arsenal", "repo": "testrepo", "role": "read"}
+183	32	28	1	\N	2023-08-15 20:43:47.245598	172.19.0.1	{"team": "liverpool"}
+184	14	28	1	156	2023-08-23 17:50:35.613124	172.19.0.1	{"repo": "premierleague", "namespace": "testorg"}
+185	86	33	1	\N	2023-08-23 17:51:10.972139	172.19.0.1	{"email": "collaborator1@gmail.com", "username": "collaborator1"}
+186	32	28	1	\N	2023-08-23 17:51:38.72938	172.19.0.1	{"team": "chelsea"}
+187	10	28	1	156	2023-08-23 17:52:13.669212	172.19.0.1	{"username": "collaborator1", "repo": "premierleague", "namespace": "testorg", "role": "write"}
+188	31	28	1	\N	2023-08-23 17:54:45.980317	172.19.0.1	{"member": "user1", "team": "chelsea"}
+189	31	28	1	\N	2023-08-23 17:55:15.284759	172.19.0.1	{"member": "testorg+testrobot", "team": "chelsea"}
 \.
 
 
@@ -6592,6 +6601,7 @@ COPY public.repository (id, namespace_user_id, name, visibility_id, description,
 153	4	repo148	1	This is the description of repo148	0c796577-7825-4c9d-a4fb-2a7866544248	1	f	0
 154	4	repo149	1	This is the description of repo149	8db24323-26f1-4fc1-9a10-1ac9d6f768d5	1	f	0
 155	32	hello-world	1		730ebab8-f2ab-4e55-9c9d-f064d11f68d6	1	f	0
+156	28	premierleague	1		94590e48-ff0e-4eb0-a74d-84416dedf157	1	f	0
 \.
 
 
@@ -6755,6 +6765,7 @@ COPY public.repositoryactioncount (id, repository_id, count, date) FROM stdin;
 153	153	0	2023-01-02
 154	154	0	2023-01-02
 155	155	0	2023-06-27
+156	156	0	2023-08-22
 \.
 
 
@@ -6968,6 +6979,9 @@ COPY public.repositorypermission (id, team_id, user_id, repository_id, role_id) 
 156	\N	1	153	1
 157	\N	1	154	1
 158	\N	29	155	1
+159	31	\N	5	3
+160	\N	1	156	1
+161	\N	33	156	2
 \.
 
 
@@ -7131,6 +7145,7 @@ COPY public.repositorysearchscore (id, repository_id, score, last_updated) FROM 
 153	153	0	\N
 154	154	0	\N
 155	155	0	\N
+156	156	0	\N
 \.
 
 
@@ -7465,6 +7480,9 @@ COPY public.team (id, name, organization_id, role_id, description) FROM stdin;
 28	testteam	28	3	
 29	testteam2	28	3	
 30	owners	32	1	
+31	arsenal	28	3	
+32	liverpool	28	3	
+33	chelsea	28	3	
 \.
 
 
@@ -7500,6 +7518,8 @@ COPY public.teammember (id, user_id, team_id) FROM stdin;
 27	1	27
 28	29	28
 29	29	30
+30	1	33
+31	30	33
 \.
 
 
@@ -7605,6 +7625,7 @@ COPY public."user" (id, uuid, username, password_hash, email, verified, stripe_i
 31	87860588-5674-4bc4-a297-abda8f99e877	testorg+testrobot2	\N	c117d71c-c3cb-4513-ab37-32f0dcb16007	f	\N	f	t	f	0	2022-11-30 21:23:53.656399	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-30 21:23:53.656402	\N
 29	f96f1124-ae26-4ea6-a73b-f4b0d87e6dc0	user2	$2b$12$XA6iXw/.Ug.F8s7bWVz3VuWcOz0SVKsmnvkgl.l6ZnmWWllTgzLT6	user2@redhat.com	t	\N	f	f	f	0	2022-11-29 13:47:39.871581	1209600	t	\N	\N	\N	\N	\N	\N	2022-11-29 13:47:39.87159	\N
 32	80d4d7c4-c3f0-442b-94a6-1e151aca9ecd	user2org1	\N	user2org1@redhat.com	f	\N	t	f	f	0	2023-06-28 18:15:16.210544	1209600	t	\N	\N	\N	\N	\N	\N	2023-06-28 18:15:16.210558	\N
+33	e53eca92-4bbe-4853-b047-ceb86c1bb12a	collaborator1	$2b$12$R0hWaRhKGFdJ16WCJ7KUzesYIxzF0o57Lq9.pUhlc4EQTXUTXmrw2	collaborator1@gmail.com	t	\N	f	f	f	0	2023-08-23 17:51:10.548163	1209600	t	\N	\N	\N	\N	\N	\N	2023-08-23 17:51:10.548165	\N
 \.
 
 
@@ -7881,7 +7902,7 @@ SELECT pg_catalog.setval('public.logentry2_id_seq', 1, false);
 -- Name: logentry3_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentry3_id_seq', 180, true);
+SELECT pg_catalog.setval('public.logentry3_id_seq', 189, true);
 
 
 --
@@ -8112,14 +8133,14 @@ SELECT pg_catalog.setval('public.repomirrorrule_id_seq', 1, false);
 -- Name: repository_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repository_id_seq', 155, true);
+SELECT pg_catalog.setval('public.repository_id_seq', 156, true);
 
 
 --
 -- Name: repositoryactioncount_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 155, true);
+SELECT pg_catalog.setval('public.repositoryactioncount_id_seq', 156, true);
 
 
 --
@@ -8161,14 +8182,14 @@ SELECT pg_catalog.setval('public.repositorynotification_id_seq', 5, true);
 -- Name: repositorypermission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorypermission_id_seq', 158, true);
+SELECT pg_catalog.setval('public.repositorypermission_id_seq', 161, true);
 
 
 --
 -- Name: repositorysearchscore_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 155, true);
+SELECT pg_catalog.setval('public.repositorysearchscore_id_seq', 156, true);
 
 
 --
@@ -8280,14 +8301,14 @@ SELECT pg_catalog.setval('public.tagtorepositorytag_id_seq', 1, false);
 -- Name: team_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.team_id_seq', 30, true);
+SELECT pg_catalog.setval('public.team_id_seq', 33, true);
 
 
 --
 -- Name: teammember_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.teammember_id_seq', 29, true);
+SELECT pg_catalog.setval('public.teammember_id_seq', 31, true);
 
 
 --
@@ -8329,7 +8350,7 @@ SELECT pg_catalog.setval('public.uploadedblob_id_seq', 22, true);
 -- Name: user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.user_id_seq', 32, true);
+SELECT pg_catalog.setval('public.user_id_seq', 33, true);
 
 
 --

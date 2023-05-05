@@ -46,17 +46,31 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   const {updateOrgSettings} = useOrganizationSettings({
     name: props.organizationName,
     onSuccess: (result) => {
-      setAlerts(prevAlerts => {
-        return [...prevAlerts,
-          <Alert key="alert" variant="success" title="Successfully updated settings" isInline={true} timeout={5000} />
-        ]
+      setAlerts((prevAlerts) => {
+        return [
+          ...prevAlerts,
+          <Alert
+            key="alert"
+            variant="success"
+            title="Successfully updated settings"
+            isInline={true}
+            timeout={5000}
+          />,
+        ];
       });
     },
     onError: (err) => {
-      setAlerts(prevAlerts => {
-        return [...prevAlerts,
-          <Alert key="alert" variant="danger" title={err.response.data.error_message} isInline={true} timeout={5000} />
-        ]
+      setAlerts((prevAlerts) => {
+        return [
+          ...prevAlerts,
+          <Alert
+            key="alert"
+            variant="danger"
+            title={err.response.data.error_message}
+            isInline={true}
+            timeout={5000}
+          />,
+        ];
       });
     },
   });
@@ -65,26 +79,29 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
 
   // Time Machine
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
-    timeMachineOptions[quayConfig.config.TAG_EXPIRATION_OPTIONS[0]],
+    timeMachineOptions[quayConfig?.config?.TAG_EXPIRATION_OPTIONS[0]],
   );
-  const namespaceTimeMachineExpiry = isUserOrganization ? user?.tag_expiration_s : (organization as IOrganization)?.tag_expiration_s;
+  const namespaceTimeMachineExpiry = isUserOrganization
+    ? user?.tag_expiration_s
+    : (organization as IOrganization)?.tag_expiration_s;
 
   // Email
-  const namespaceEmail = isUserOrganization ? user?.email || '' : (organization as any)?.email || '';
+  const namespaceEmail = isUserOrganization
+    ? user?.email || ''
+    : (organization as any)?.email || '';
   const [emailFormValue, setEmailFormValue] = useState<string>('');
   const [validated, setValidated] = useState<validate>('default');
 
   useEffect(() => {
     setEmailFormValue(namespaceEmail);
     const humanized_expiry = humanizeTimeForExpiry(namespaceTimeMachineExpiry);
-    for (let key of Object.keys(timeMachineOptions)) {
-      if (humanized_expiry == timeMachineOptions[key]){
+    for (const key of Object.keys(timeMachineOptions)) {
+      if (humanized_expiry == timeMachineOptions[key]) {
         setTimeMachineFormValue(key);
         break;
       }
     }
   }, [loading, isUserLoading, isUserOrganization]);
-
 
   const handleEmailChange = (emailFormValue: string) => {
     setEmailFormValue(emailFormValue);
@@ -104,13 +121,12 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
       if (isValidEmail(emailFormValue)) {
         setValidated('success');
         setError('');
-      }
-      else {
+      } else {
         setValidated('error');
         setError('Please enter a valid email address');
       }
     }
-  }
+  };
 
   const checkForChanges = () => {
     if (namespaceEmail != emailFormValue) {
@@ -118,7 +134,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
     }
 
     return getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry;
-  }
+  };
 
   const updateSettings = async () => {
     try {
@@ -135,7 +151,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
     } catch (error) {
       addDisplayError('Unable to update namespace settings', error);
     }
-  }
+  };
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -190,7 +206,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           value={timeMachineFormValue}
           onChange={(val) => setTimeMachineFormValue(val)}
         >
-          {quayConfig.config.TAG_EXPIRATION_OPTIONS.map((option, index) => (
+          {quayConfig?.config?.TAG_EXPIRATION_OPTIONS.map((option, index) => (
             <FormSelectOption
               key={index}
               value={option}
@@ -215,16 +231,10 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           </Button>
         </Flex>
       </ActionGroup>
-      <AlertGroup isLiveRegion>
-        {alerts}
-      </AlertGroup>
+      <AlertGroup isLiveRegion>{alerts}</AlertGroup>
     </Form>
   );
 };
-
-// const BillingInformation = () => {
-//   return <h1>Hello</h1>;
-// };
 
 export default function Settings(props: SettingsProps) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
@@ -239,11 +249,6 @@ export default function Settings(props: SettingsProps) {
       id: 'generalsettings',
       content: <GeneralSettings organizationName={props.organizationName} />,
     },
-    // {
-    //   name: 'Billing Information',
-    //   id: 'billinginformation',
-    //   content: <BillingInformation />,
-    // },
   ];
 
   return (

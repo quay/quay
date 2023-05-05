@@ -85,7 +85,7 @@ describe('Repository Settings - Permissions', () => {
   });
 
   it('Bulk deletes permissions', () => {
-    cy.contains('1 - 3 of 3').should('exist');
+    cy.contains('1 - 4 of 4').should('exist');
     cy.get('#permissions-select-all').click();
     cy.contains('Actions').click();
     cy.get('#bulk-delete-permissions').contains('Delete').click();
@@ -97,7 +97,7 @@ describe('Repository Settings - Permissions', () => {
   });
 
   it('Bulk changes permissions', () => {
-    cy.contains('1 - 3 of 3').should('exist');
+    cy.contains('1 - 4 of 4').should('exist');
     cy.get('#permissions-select-all').click();
     cy.contains('Actions').click();
     cy.contains('Change Permissions').click();
