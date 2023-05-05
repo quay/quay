@@ -30,7 +30,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/noVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.contains(
       'Quay Security Reporting has detected no vulnerabilities',
     ).should('exist');
@@ -46,7 +46,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.contains(
       'Quay Security Reporting has detected 41 vulnerabilities',
     ).should('exist');
@@ -84,7 +84,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.get('td[data-label="Advisory"]').should('have.length', 10);
     cy.get('button:contains("1 - 10 of 41")').first().click();
     cy.contains('100 per page').click();
@@ -102,7 +102,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.get('td[data-label="Advisory"]').should('have.length', 10);
     cy.get('input[placeholder="Filter Vulnerabilities..."]').type('python');
     cy.get('td[data-label="Advisory"]').should('have.length', 7);
@@ -117,7 +117,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/unsupported.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.contains('Security scan is not supported.');
     cy.contains('Image does not have content the scanner recognizes.');
   });
@@ -128,7 +128,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/failed.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.contains('Security scan has failed.');
     cy.contains('The scan could not be completed due to error.');
   });
@@ -139,7 +139,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/queued.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.contains('Security scan is currently queued.');
     cy.contains('Refresh page for updates in scan status.');
     cy.contains('Reload');
@@ -156,7 +156,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.contains('1 - 10 of 41').should('exist');
     cy.get('td[data-label="Advisory"]').should('have.length', 10);
 
@@ -192,7 +192,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getDescSortedSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.get('td[data-label="Advisory"]').should('have.length', 10);
     cy.get('[data-testid="vulnerability-table"]').within(() => {
       cy.get('[data-label="Severity"]')
@@ -210,7 +210,7 @@ describe('Security Report Page', () => {
       '/api/v1/repository/user1/hello-world/manifest/sha256:1234567890101112150f0d3de5f80a38f65a85e709b77fd24491253990f306be/security?vulnerabilities=true',
       {fixture: 'security/mixedVulns.json'},
     ).as('getAscSortedSecurityReport');
-    cy.visit('/tag/user1/hello-world/security?tab=securityreport');
+    cy.visit('/repository/user1/hello-world/tag/security?tab=securityreport');
     cy.get('[data-testid="vulnerability-table"]').within(() => {
       cy.log('**sort by severity**').wait(1000);
       cy.get('#severity-sort').find('button').click();

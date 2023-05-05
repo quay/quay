@@ -46,9 +46,9 @@
     "prepare": "cd .. && husky install web/.husky",
     "test:integration": "cypress run",
     "start:integration": "serve -s dist -l 9000",
-    "quay:dump": "${CLIENT:=docker} exec -t quay-db bash -c 'pg_dump -U quay -d quay -c' > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
+    "quay:dump": "${CLIENT:=docker} exec quay-db pg_dump -U quay -d quay --clean --if-exists > ./cypress/test/quay-db-data.txt && ${CLIENT:=docker} cp quay-quay:/datastorage/registry/. ./cypress/test/quay-storage-data",
     "quay:seed": "npm run quay:seed-db && npm run quay:seed-storage",
-    "quay:seed-db": "${CLIENT:=docker} cp ./cypress/test/quay-db-data.txt quay-db:/tmp/data.txt && ${CLIENT:=docker} exec -t quay-db bash -c 'psql quay -U quay < /tmp/data.txt'",
+    "quay:seed-db": "${CLIENT:=docker} exec -i quay-db psql quay -U quay -v ON_ERROR_STOP=1 < ./cypress/test/quay-db-data.txt",
     "quay:seed-storage": "${CLIENT:=docker} cp ./cypress/test/quay-storage-data/. quay-quay:/datastorage/registry"
   },
   "browserslist": {
