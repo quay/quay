@@ -18,6 +18,7 @@ import {
 import {useLocation} from 'react-router-dom';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
+import {addDisplayError} from 'src/resources/ErrorHandling';
 import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
@@ -27,12 +28,12 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   const organizationName = props.organizationName;
 
   const {user} = useCurrentUser();
-  const {organization, isUserOrganization, loading} =
+  const {organization, isUserOrganization, loading, updateOrgSettings} =
     useOrganization(organizationName);
   const [error, setError] = useState<string>('');
 
   // Time Machine
-  const timeMachineOptions = ['1 week', '2 weeks', '1 month', '1 year', 'Never'];
+  const timeMachineOptions = ['a few seconds', 'a day', '7 days', '14 days', '1 month'];
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
     timeMachineOptions[1],
   );
@@ -43,22 +44,23 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   const [emailFormValue, setEmailFormValue] = useState('');
   const [validated, setValidated] = useState<validate>('default');
 
-
   useEffect(() => {
     if (!loading){
       setEmailFormValue(namespaceEmail);
-      const humanized_expiry = humanizeTimeForExpiry(parseInt(timeMachineFormValue));
-      if (humanized_expiry == '7 days') {
-        setTimeMachineFormValue(timeMachineOptions[0]);
-      } else if (humanized_expiry == '14 days') {
-        setTimeMachineFormValue(timeMachineOptions[1]);
-      }
+      const humanized_expiry = humanizeTimeForExpiry(parseInt(namespaceTimeMachineExpiry));
+      setTimeMachineFormValue(humanized_expiry);
     }
   }, [loading, isUserOrganization]);
 
 
   const handleEmailChange = (emailFormValue: string) => {
     setEmailFormValue(emailFormValue);
+    if (namespaceEmail == emailFormValue) {
+      setValidated('default');
+      setError('');
+      return;
+    }
+
     if (!emailFormValue) {
       setValidated('error');
       setError('Please enter email associate with organization');
@@ -78,10 +80,12 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   }
 
   const checkForChanges = () => {
-    if ((namespaceEmail != emailFormValue) && (validated == 'success')) {
-      return true;
-    } else {
-      return false;
+    if (namespaceEmail != emailFormValue) {
+      if (validated == 'success') {
+        return true;
+      } else {
+        return false;
+      }
     }
 
     if (getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry) {
@@ -90,9 +94,23 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
     return false;
   }
 
-  function onSave() {
+  const onSubmit = async () => {
+    try {
+      await updateOrgSettings({
+        namespace: props.organizationName,
+        tag_expiration_s:
+          getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry
+            ? getSeconds(timeMachineFormValue)
+            : null,
+        email: namespaceEmail != emailFormValue ? emailFormValue : null,
+        isUser: isUserOrganization,
+      });
+    } catch (error) {
+      console.error(error);
+      addDisplayError('Unable to create robot', error);
+    }
+  };
 
-  }
 
   return (
     <Form id="form-form" maxWidth="70%">
@@ -105,7 +123,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
         isInline
         label="Organization"
         fieldId="form-organization"
-        helperText={'Orgnization names cannot be changed once set.'}
+        helperText={'Organization names cannot be changed once set.'}
       >
         <TextInput
           isDisabled
@@ -156,7 +174,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           <Button
             variant="primary"
             type="submit"
-            onClick={onSave}
+            onClick={onSubmit}
             isDisabled={!checkForChanges()}
           >
             Save

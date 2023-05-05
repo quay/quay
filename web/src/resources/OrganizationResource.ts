@@ -109,3 +109,17 @@ export async function createOrg(name: string, email?: string) {
   assertHttpCode(response.status, 201);
   return response.data;
 }
+
+export async function updateOrgSettings(namespace: string, tag_expiration_s: number, email: string, isUser: boolean) {
+  const updateSettingsUrl = isUser ? `/api/v1/user/` : `/api/v1/organization/${namespace}`;
+  let payload = {};
+  if (email) {
+    payload['email'] = email;
+  }
+  if (tag_expiration_s) {
+    payload['tag_expiration_s'] = tag_expiration_s;
+  }
+  const response = await axios.put(updateSettingsUrl, payload);
+  assertHttpCode(response.status, 200);
+  return response.data;
+}
