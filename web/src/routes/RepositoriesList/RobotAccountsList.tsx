@@ -549,6 +549,7 @@ export default function RobotAccountsList(props: RobotAccountsListProps) {
               robotAccount={robotForModalView}
             />
           }
+          showFooter={false}
         />
         <TableComposable aria-label="Expandable table" variant={undefined}>
           <Thead>
