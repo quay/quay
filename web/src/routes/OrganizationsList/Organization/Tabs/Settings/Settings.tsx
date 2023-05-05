@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useState, ReactNode} from 'react';
 import {
   Tabs,
   Tab,
@@ -14,10 +14,12 @@ import {
   ActionGroup,
   Button,
   Alert,
+  AlertGroup,
 } from '@patternfly/react-core';
 import {useLocation} from 'react-router-dom';
 import {useCurrentUser} from 'src/hooks/UseCurrentUser';
 import {useOrganization} from 'src/hooks/UseOrganization';
+import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
 import {addDisplayError} from 'src/resources/ErrorHandling';
@@ -35,9 +37,25 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
   const location = useLocation();
   const organizationName = props.organizationName;
   const {user, loading: isUserLoading} = useCurrentUser();
-  const {organization, isUserOrganization, loading, updateOrgSettings} =
+  const {organization, isUserOrganization, loading} =
     useOrganization(organizationName);
   const [error, setError] = useState<string>('');
+
+  const {updateOrgSettings} = useOrganizationSettings({
+    name: props.organizationName,
+    onSuccess: (result) => {
+      setAlerts(prevAlerts => {
+        return [...prevAlerts,
+          <Alert key="alert" variant="success" title="Successfully updated settings" isInline={true} timeout={5000} />
+        ]
+      });
+    },
+    onError: (err) => {
+      addDisplayError('Unable to update org settings', err);
+    },
+  });
+
+  const [alerts, setAlerts] = useState<ReactNode[]>([]);
 
   // Time Machine
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
@@ -103,7 +121,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
     return false;
   }
 
-  const onSubmit = async () => {
+  const updateSettings = async () => {
     try {
       const response = await updateOrgSettings({
         namespace: props.organizationName,
@@ -114,11 +132,15 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
         email: namespaceEmail != emailFormValue ? emailFormValue : null,
         isUser: isUserOrganization,
       });
-      console.log("response on submit", response);
+      return response;
     } catch (error) {
-      console.error(error);
       addDisplayError('Unable to update organization settings', error);
     }
+  }
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    updateSettings();
   };
 
   return (
@@ -170,7 +192,11 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           onChange={(val) => setTimeMachineFormValue(val)}
         >
           {Object.keys(timeMachineOptions).map((option, index) => (
-            <FormSelectOption key={index} value={option} label={timeMachineOptions[option]} />
+            <FormSelectOption
+              key={index}
+              value={option}
+              label={timeMachineOptions[option]}
+            />
           ))}
         </FormSelect>
       </FormGroup>
@@ -183,13 +209,16 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           <Button
             variant="primary"
             type="submit"
-            onClick={onSubmit}
+            onClick={(event) => onSubmit(event)}
             isDisabled={!checkForChanges()}
           >
             Save
           </Button>
         </Flex>
       </ActionGroup>
+      <AlertGroup isLiveRegion>
+        {alerts}
+      </AlertGroup>
     </Form>
   );
 };
