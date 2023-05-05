@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {updateOrgSettings} from 'src/resources/OrganizationResource';
 import {useMutation, useQueryClient} from '@tanstack/react-query';
 
-export function useOrganizationSettings({name: string, onSuccess, onError}) {
+export function useOrganizationSettings({name, onSuccess, onError}) {
   const queryClient = useQueryClient();
   const [namespace, setNamespace] = useState(name);
 
