@@ -478,7 +478,15 @@ angular.module('quay').directive('logsView', function () {
             metadata['service'], metadata['config']);
           return 'Manually start build from trigger[[ - ' + triggerDescription + ']]';
         },
-        'cancel_build': 'Cancel build {build_uuid}'
+        'cancel_build': 'Cancel build {build_uuid}',
+        'login_success': function(metadata) {
+          if (metadata.type == 'v2auth') {
+            return 'Login to registry[[ from IP {ip} and user-agent {useragent}]]';
+          } else {
+            return 'Login to Quay[[ from IP {ip} and user-agent {useragent}]]';
+          }
+        },
+        'logout_success': 'Logout from Quay',
 };
 
       var logKinds = {
