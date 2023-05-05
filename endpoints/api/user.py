@@ -711,7 +711,11 @@ def conduct_signin(username_or_email, password, invite_code=None):
             log_action(
                 "login_success",
                 found_user.username,
-                {"type": "quayauth", "ip": get_request_ip(), "useragent": request.user_agent.string}
+                {
+                    "type": "quayauth",
+                    "ip": get_request_ip(),
+                    "useragent": request.user_agent.string,
+                },
             )
             return {"success": True}, 200, headers
         else:

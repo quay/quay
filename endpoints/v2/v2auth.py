@@ -131,7 +131,11 @@ def generate_registry_jwt(auth_result):
     user = get_authenticated_user()
     if user is not None:
         if user_event_data["action"] == "login":
-            log_action("login_success", user.username, {"type": "v2auth", "ip": get_request_ip() , "useragent": request.user_agent.string})
+            log_action(
+                "login_success",
+                user.username,
+                {"type": "v2auth", "ip": get_request_ip(), "useragent": request.user_agent.string},
+            )
         event = userevents.get_event(user.username)
         event.publish_event_data("docker-cli", user_event_data)
 

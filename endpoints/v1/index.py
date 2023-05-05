@@ -138,7 +138,11 @@ def create_user():
 
     if result.has_nonrobot_user:
         # Mark that the user was logged in.
-        log_action("login_success", username, {"type": "quayauth", "ip": get_request_ip(), "useragent": request.user_agent.string})
+        log_action(
+            "login_success",
+            username,
+            {"type": "quayauth", "ip": get_request_ip(), "useragent": request.user_agent.string},
+        )
         event = userevents.get_event(username)
         event.publish_event_data("docker-cli", {"action": "login"})
 
