@@ -1,0 +1,35 @@
+"""add login and pull failure logentrykind
+
+Revision ID: 3f8e3657bb67
+Revises: 0246c2d0e750
+Create Date: 2023-05-06 14:21:16.580825
+
+"""
+
+# revision identifiers, used by Alembic.
+revision = '3f8e3657bb67'
+down_revision = '0246c2d0e750'
+
+import sqlalchemy as sa
+
+
+def upgrade(op, tables, tester):
+    op.bulk_insert(
+        tables.logentrykind,
+        [
+            {"name": "login_failure"},
+            {"name": "push_failure"},
+            {"name": "pull_failure"},
+        ],
+    )
+
+
+def downgrade(op, tables, tester):
+    op.execute(
+        tables.logentrykind.delete().where(
+            tables.logentrykind.name
+            == op.inline_literal("login_failure") | tables.logentrykind.name
+            == op.inline_literal("push_failure") | tables.logentrykind.name
+            == op.inline_literal("pull_failure")
+        )
+    )

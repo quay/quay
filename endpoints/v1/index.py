@@ -119,23 +119,40 @@ def create_user():
     success = make_response('"Username or email already exists"', 400)
     result, kind = validate_credentials(username, password)
     if not result.auth_valid:
+
+        failure_log_metadata = {
+                "type": "quayauth",
+                "useragent": request.user_agent.string,
+        }
+        
         if kind == CredentialKind.token:
-            abort(400, "Invalid access token.", issue="invalid-access-token")
-
-        if kind == CredentialKind.robot:
-            abort(400, "Invalid robot account or password.", issue="robot-login-failure")
-
-        if kind == CredentialKind.oauth_token:
-            abort(400, "Invalid oauth access token.", issue="invalid-oauth-access-token")
-
-        if kind == CredentialKind.user:
+            error_message = "Invalid access token."
+            issue = "invalid-access-token"
+            failure_log_metadata["token"] = username
+        elif kind == CredentialKind.robot:
+            error_message = "Invalid robot account or password."
+            issue = "robot-login-failure"
+            failure_log_metadata["robot"] = username
+        elif kind == CredentialKind.oauth_token:
+            error_message = "Invalid oauth access token."
+            issue = "invalid-oauth-access-token"
+            failure_log_metadata["oauth_token"] = username
+        elif kind == CredentialKind.user:
             # Mark that the login failed.
             event = userevents.get_event(username)
             event.publish_event_data("docker-cli", {"action": "loginfailure"})
-            abort(400, result.error_message, issue="login-failure")
+            error_message = result.error_message
+            issue = "login-failure"
+            failure_log_metadata["username"] = username
+        else:
+            # Default case: Just fail.
+            error_message = result.error_message
+            issue = "login-failure"
+        
+        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
+            log_action("login_failure", None, failure_log_metadata)
 
-        # Default case: Just fail.
-        abort(400, result.error_message, issue="login-failure")
+        abort(400, error_message, issue=issue)
 
     if result.has_nonrobot_user:
         # Mark that the user was logged in.

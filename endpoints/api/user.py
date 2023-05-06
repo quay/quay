@@ -720,6 +720,16 @@ def conduct_signin(username_or_email, password, invite_code=None):
             needs_email_verification = True
 
     else:
+        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
+            log_action(
+                    "login_failure",
+                    None,
+                    {
+                        "type": "quayauth",
+                        "useragent": request.user_agent.string,
+                        "username": username_or_email,
+                    },
+                )
         invalid_credentials = True
 
     return (
