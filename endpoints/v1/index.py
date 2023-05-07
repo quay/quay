@@ -141,7 +141,7 @@ def create_user():
         log_action(
             "login_success",
             result.authed_user.username,
-            {"type": "quayauth", "ip": get_request_ip(), "useragent": request.user_agent.string},
+            {"type": "quayauth", "useragent": request.user_agent.string},
         )
         event = userevents.get_event(username)
         event.publish_event_data("docker-cli", {"action": "login"})

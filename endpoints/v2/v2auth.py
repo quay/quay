@@ -134,7 +134,7 @@ def generate_registry_jwt(auth_result):
             log_action(
                 "login_success",
                 user.username,
-                {"type": "v2auth", "ip": get_request_ip(), "useragent": request.user_agent.string},
+                {"type": "v2auth", "useragent": request.user_agent.string},
             )
         event = userevents.get_event(user.username)
         event.publish_event_data("docker-cli", user_event_data)

@@ -480,10 +480,12 @@ angular.module('quay').directive('logsView', function () {
         },
         'cancel_build': 'Cancel build {build_uuid}',
         'login_success': function(metadata) {
+          var useragent_short = metadata.useragent.substring(0, 20)+ '...';
+
           if (metadata.type == 'v2auth') {
-            return 'Login to registry[[ from IP {ip} and user-agent {useragent}]]';
+            return 'Login to registry[[ with user-agent {useragent_short}]]';
           } else {
-            return 'Login to Quay[[ from IP {ip} and user-agent {useragent}]]';
+            return 'Login to Quay[[ with user-agent {useragent_short}]]';
           }
         },
         'logout_success': 'Logout from Quay',

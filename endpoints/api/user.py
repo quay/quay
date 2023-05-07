@@ -713,7 +713,6 @@ def conduct_signin(username_or_email, password, invite_code=None):
                 found_user.username,
                 {
                     "type": "quayauth",
-                    "ip": get_request_ip(),
                     "useragent": request.user_agent.string,
                 },
             )
