@@ -37,7 +37,6 @@ from notifications import spawn_notification
 from util.audit import track_and_log
 from util.http import abort
 from util.names import REPOSITORY_NAME_REGEX
-from util.request import get_request_ip
 
 logger = logging.getLogger(__name__)
 
