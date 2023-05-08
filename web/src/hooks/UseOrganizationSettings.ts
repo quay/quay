@@ -26,6 +26,9 @@ export function useOrganizationSettings({name, onSuccess, onError}) {
         queryClient.invalidateQueries(['user']);
         onSuccess(result);
       },
+      onError: (err) => {
+        onError(err);
+      },
     },
   );
 

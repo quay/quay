@@ -51,7 +51,11 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
       });
     },
     onError: (err) => {
-      addDisplayError('Unable to update org settings', err);
+      setAlerts(prevAlerts => {
+        return [...prevAlerts,
+          <Alert key="alert" variant="danger" title={err.response.data.error_message} isInline={true} timeout={5000} />
+        ]
+      });
     },
   });
 
