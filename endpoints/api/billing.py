@@ -1,11 +1,11 @@
 """
 Billing information, subscriptions, and plan information.
 """
-
+import datetime
 import stripe
 
 from flask import request
-from app import billing
+from app import app, billing, rh_marketplace_api, rh_user_api
 from endpoints.api import (
     resource,
     nickname,
@@ -40,6 +40,19 @@ import features
 import uuid
 import json
 
+MILLISECONDS_IN_SECONDS = 1000
+
+
+def check_internal_api_for_subscription(namespace_user):
+    """
+    Returns subscription from RH marketplace.
+    None returned if no subscription is found.
+    """
+    user_account_number = rh_user_api.get_account_number(namespace_user)
+    user_subscription = rh_marketplace_api.find_stripe_subscription(user_account_number)
+
+    return user_subscription
+
 
 def get_namespace_plan(namespace):
     """
@@ -50,6 +63,10 @@ def get_namespace_plan(namespace):
         return None
 
     if not namespace_user.stripe_id:
+        # if entitlement reconciliation is enabled
+        # we want to check marketplace too
+        if features.RH_MARKETPLACE:
+            return check_internal_api_for_subscription(namespace_user)
         return None
 
     # Ask Stripe for the subscribed plan.
@@ -76,7 +93,6 @@ def lookup_allowed_private_repos(namespace):
     # Find the number of private repositories used by the namespace and compare it to the
     # plan subscribed.
     private_repos = model.user.get_private_repo_count(namespace)
-
     return private_repos < current_plan["privateRepos"]
 
 

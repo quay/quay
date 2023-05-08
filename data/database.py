@@ -748,6 +748,7 @@ class User(BaseModel):
                     QuotaNamespaceSize,
                     UserOrganizationQuota,
                     QuotaLimits,
+                    RedHatSubscriptions,
                 }
                 | appr_classes
                 | v22_classes
@@ -2138,6 +2139,15 @@ class ProxyCacheConfig(BaseModel):
     def upstream_registry_hostname(self) -> str:
         parts = self.upstream_registry.split("/", 1)
         return parts[0]
+
+
+class RedHatSubscriptions(BaseModel):
+    """
+    Represents internal Red Hat subscriptions for customers
+    """
+
+    user_id = ForeignKeyField(User, backref="subscription")
+    account_number = IntegerField(unique=True)
 
 
 # Defines a map from full-length index names to the legacy names used in our code

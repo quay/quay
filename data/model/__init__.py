@@ -168,6 +168,7 @@ from data.model import (
     appspecifictoken,
     blob,
     build,
+    entitlements,
     gc,
     image,
     label,

@@ -830,3 +830,11 @@ class DefaultConfig(ImmutableConfig):
     QUOTA_INVALIDATE_TOTALS = True
     RESET_CHILD_MANIFEST_EXPIRATION = True
     PERMANENTLY_DELETE_TAGS = True
+
+    # Feature Flag: Enables reconciler for RH marketplace
+    FEATURE_ENTITLEMENT_RECONCILIATION = False
+    # Endpoints for marketplace compatibility
+    ENTITLEMENT_RECONCILIATION_USER_ENDPOINT = ""
+    ENTITLEMENT_RECONCILIATION_MARKETPLACE_ENDPOINT = ""
+
+    FEATURE_RH_MARKETPLACE = False
