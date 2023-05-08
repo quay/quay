@@ -721,15 +721,20 @@ def conduct_signin(username_or_email, password, invite_code=None):
 
     else:
         if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
+            possible_user = model.user.get_nonrobot_user(
+                username_or_email
+            ) or model.user.find_user_by_email(username_or_email)
             log_action(
-                    "login_failure",
-                    None,
-                    {
-                        "type": "quayauth",
-                        "useragent": request.user_agent.string,
-                        "username": username_or_email,
-                    },
-                )
+                "login_failure",
+                possible_user.username if possible_user else None,
+                {
+                    "type": "quayauth",
+                    "useragent": request.user_agent.string,
+                    "username": username_or_email,
+                    "message": error_message,
+                },
+                performer=possible_user,
+            )
         invalid_credentials = True
 
     return (

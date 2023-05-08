@@ -507,7 +507,7 @@ def request_error(exception=None, **kwargs):
     raise InvalidRequest(message, data)
 
 
-def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None):
+def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None, performer=None):
     if not metadata:
         metadata = {}
 
@@ -517,7 +517,8 @@ def log_action(kind, user_or_orgname, metadata=None, repo=None, repo_name=None):
         metadata["oauth_token_application_id"] = oauth_token.application.client_id
         metadata["oauth_token_application"] = oauth_token.application.name
 
-    performer = get_authenticated_user()
+    if performer is None:
+        performer = get_authenticated_user()
 
     if repo_name is not None:
         repo = data_model.repository.get_repository(user_or_orgname, repo_name)

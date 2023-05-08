@@ -475,13 +475,9 @@ def verify_robot(robot_username, password):
     except User.DoesNotExist:
         raise InvalidRobotException("Robot %s owner does not exist" % robot_username)
 
-    if not owner.enabled:
-        raise InvalidRobotException(
-            "This user has been disabled. Please contact your administrator."
-        )
-
-    # Mark that the robot was accessed.
-    _basequery.update_last_accessed(robot)
+    if owner.enabled:
+        # Mark that the robot was accessed.
+        _basequery.update_last_accessed(robot)
 
     return robot
 

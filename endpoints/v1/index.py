@@ -5,7 +5,6 @@ from functools import wraps
 
 from flask import jsonify, make_response, request, session
 
-import features
 from app import app, docker_v2_signing_key, storage, userevents
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.credentials import CredentialKind, validate_credentials
@@ -119,40 +118,23 @@ def create_user():
     success = make_response('"Username or email already exists"', 400)
     result, kind = validate_credentials(username, password)
     if not result.auth_valid:
-
-        failure_log_metadata = {
-                "type": "quayauth",
-                "useragent": request.user_agent.string,
-        }
-        
         if kind == CredentialKind.token:
-            error_message = "Invalid access token."
-            issue = "invalid-access-token"
-            failure_log_metadata["token"] = username
-        elif kind == CredentialKind.robot:
-            error_message = "Invalid robot account or password."
-            issue = "robot-login-failure"
-            failure_log_metadata["robot"] = username
-        elif kind == CredentialKind.oauth_token:
-            error_message = "Invalid oauth access token."
-            issue = "invalid-oauth-access-token"
-            failure_log_metadata["oauth_token"] = username
-        elif kind == CredentialKind.user:
+            abort(400, "Invalid access token.", issue="invalid-access-token")
+
+        if kind == CredentialKind.robot:
+            abort(400, "Invalid robot account or password.", issue="robot-login-failure")
+
+        if kind == CredentialKind.oauth_token:
+            abort(400, "Invalid oauth access token.", issue="invalid-oauth-access-token")
+
+        if kind == CredentialKind.user:
             # Mark that the login failed.
             event = userevents.get_event(username)
             event.publish_event_data("docker-cli", {"action": "loginfailure"})
-            error_message = result.error_message
-            issue = "login-failure"
-            failure_log_metadata["username"] = username
-        else:
-            # Default case: Just fail.
-            error_message = result.error_message
-            issue = "login-failure"
-        
-        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
-            log_action("login_failure", None, failure_log_metadata)
+            abort(400, result.error_message, issue="login-failure")
 
-        abort(400, error_message, issue=issue)
+        # Default case: Just fail.
+        abort(400, result.error_message, issue="login-failure")
 
     if result.has_nonrobot_user:
         # Mark that the user was logged in.

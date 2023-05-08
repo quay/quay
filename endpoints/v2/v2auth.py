@@ -84,15 +84,6 @@ def generate_registry_jwt(auth_result):
 
     if auth_credentials_sent and not has_valid_auth_context:
         # The auth credentials sent for the user are invalid.
-        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
-            log_action(
-                    "login_failure",
-                    None,
-                    {
-                        "type": "v2auth",
-                        "useragent": request.user_agent.string
-                    },
-                )
         raise InvalidLogin(auth_result.error_message)
 
     if not has_valid_auth_context and len(scope_params) == 0:
