@@ -86,6 +86,7 @@ def config_services():
         "manifestbackfillworker": {"autostart": "false"},
         "securityscanningnotificationworker": {"autostart": "false"},
         "config-editor": {"autostart": "true"},
+        "quotatotalworker": {"autostart": "true"},
     }
 
 

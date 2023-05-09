@@ -106,6 +106,32 @@ class TestQuota:
             ) + len(BLOB3)
             assert get_repository_size(self.repo2) == 0
 
+    def test_disabled_namespace(self, initialized_db):
+        run_backfill(self.org.id)
+        assert get_namespace_size(ORG_NAME) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(
+            BLOB2
+        ) + len(BLOB3) + len(BLOB4)
+        assert get_repository_size(self.repo1) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(
+            BLOB2
+        ) + len(BLOB3)
+        assert get_repository_size(self.repo2) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(BLOB4)
+
+        self.org.enabled = False
+        self.org.save()
+
+        with patch("data.model.oci.manifest.features", MagicMock()) as mock_features:
+            mock_features.QUOTA_MANAGEMENT = True
+            create_manifest_for_testing(self.repo1, [BLOB5])
+            assert get_namespace_size(ORG_NAME) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(
+                BLOB2
+            ) + len(BLOB3) + len(BLOB4)
+            assert get_repository_size(self.repo1) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(
+                BLOB2
+            ) + len(BLOB3)
+            assert get_repository_size(self.repo2) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(
+                BLOB4
+            )
+
 
 def create_manifest_for_testing(repository, blobs):
     remote_digest = sha256_digest(b"something")

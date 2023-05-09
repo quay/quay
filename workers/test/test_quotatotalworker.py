@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 from data.model.organization import create_organization
-from data.model.user import get_user
+from data.model.user import create_robot, get_user
 from data.registry_model.quota import update_namespacesize
 from test.fixtures import *
 from workers.quotatotalworker import QuotaTotalWorker
@@ -11,6 +11,7 @@ ORG_NAME = "orgdoesnotexist"
 def test_namespace_discovery(initialized_db):
     user = get_user("devtable")
     orgdoesnotexist = create_organization("orgdoesnotexist", "orgdoesnotexist@devtable.com", user)
+    create_robot("testrobot", orgdoesnotexist) # Robot accounts should not have total calculated
     orgbackfillreset = create_organization(
         "orgbackfillreset", "orgbackfillreset@devtable.com", user
     )
@@ -25,6 +26,7 @@ def test_namespace_discovery(initialized_db):
         orgalreadycounted.id,
         {"size_bytes": 0, "backfill_start_ms": 0, "backfill_complete": True},
     )
+
     expected_calls = [orgdoesnotexist.id, orgbackfillreset.id]
     with patch("workers.quotatotalworker.run_backfill", MagicMock()) as mock_run_backfill:
 

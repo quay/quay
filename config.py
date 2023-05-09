@@ -798,7 +798,7 @@ class DefaultConfig(ImmutableConfig):
     QUOTA_TOTAL_DELAY_SECONDS = 60
 
     # Enables the quota backfill worker
-    QUOTA_BACKFILL = True
+    QUOTA_BACKFILL = False
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
