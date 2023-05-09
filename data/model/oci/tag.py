@@ -330,7 +330,7 @@ def get_expired_tag(repository_id, tag_name):
         return None
 
 
-def create_temporary_tag_if_necessary(manifest, expiration_sec):
+def create_temporary_tag_if_necessary(manifest, expiration_sec, hidden=True):
     """
     Creates a temporary tag pointing to the given manifest, with the given expiration in seconds,
     unless there is an existing tag that will keep the manifest around.
@@ -361,7 +361,7 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec):
             lifetime_start_ms=now_ms,
             lifetime_end_ms=end_ms,
             reversion=False,
-            hidden=True,
+            hidden=hidden,
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
         )

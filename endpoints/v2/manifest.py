@@ -142,7 +142,9 @@ def fetch_manifest_by_digest(namespace_name, repo_name, manifest_ref, registry_m
 
     try:
         manifest = registry_model.lookup_manifest_by_digest(
-            repository_ref, manifest_ref, raise_on_error=True
+            repository_ref,
+            manifest_ref,
+            raise_on_error=True,
         )
     except ManifestDoesNotExist as e:
         image_pulls.labels("v2", "manifest", 404).inc()
@@ -284,7 +286,7 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
     manifest = registry_model.create_manifest_with_temp_tag(
-        repository_ref, parsed, expiration_sec, storage
+        repository_ref, parsed, expiration_sec, storage, hidden=False
     )
 
     if manifest is None:

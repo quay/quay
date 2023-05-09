@@ -244,6 +244,7 @@ def get_or_create_manifest(
     for_tagging=False,
     raise_on_error=False,
     retriever=None,
+    hidden=True,
 ):
     """
     Returns a CreatedManifest for the manifest in the specified repository with the matching digest
@@ -275,6 +276,7 @@ def get_or_create_manifest(
         for_tagging=for_tagging,
         raise_on_error=raise_on_error,
         retriever=retriever,
+        hidden=hidden,
     )
     if created_manifest is not None:
         reset_child_manifest_expiration(repository_id, created_manifest.manifest)
@@ -289,6 +291,7 @@ def _create_manifest(
     for_tagging=False,
     raise_on_error=False,
     retriever=None,
+    hidden=True,
 ):
     # Validate the manifest.
     retriever = retriever or RepositoryContentRetriever.for_repository(repository_id, storage)
@@ -400,7 +403,7 @@ def _create_manifest(
             # its safe to elide the temp tag operation. If we ever change GC code to collect *all* manifests
             # in a repository for GC, then we will have to reevaluate this optimization at that time.
             if not for_tagging:
-                create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
+                create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec, hidden=hidden)
 
         # Define the labels for the manifest (if any).
         # TODO: Once the old data model is gone, turn this into a batch operation and make the label
