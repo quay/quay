@@ -11,7 +11,7 @@ ORG_NAME = "orgdoesnotexist"
 def test_namespace_discovery(initialized_db):
     user = get_user("devtable")
     orgdoesnotexist = create_organization("orgdoesnotexist", "orgdoesnotexist@devtable.com", user)
-    create_robot("testrobot", orgdoesnotexist) # Robot accounts should not have total calculated
+    create_robot("testrobot", orgdoesnotexist)  # Robot accounts should not have total calculated
     orgbackfillreset = create_organization(
         "orgbackfillreset", "orgbackfillreset@devtable.com", user
     )

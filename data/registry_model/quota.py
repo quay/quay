@@ -286,16 +286,17 @@ def is_blob_alive(namespace_id: int, tag_id: int, blob_id: int):
         .exists()
     )
 
+
 def not_eligible_namespace(namespace_id):
     """
     Returns whether the namespace is eligible to have a quota size
     """
     namespace = None
     try:
-        namespace = User.select().where(User.id==namespace_id).get()
+        namespace = User.select().where(User.id == namespace_id).get()
     except User.DoesNotExist:
         return True
-    
+
     return not namespace.enabled or namespace.robot
 
 
@@ -327,9 +328,12 @@ def run_backfill(namespace_id: int):
 
         # Check to make sure the repository hasn't been deleted since the time passed
         latest_repository = lookup_repository(repository.id)
-        if latest_repository is None or latest_repository.state == RepositoryState.MARKED_FOR_DELETION:
+        if (
+            latest_repository is None
+            or latest_repository.state == RepositoryState.MARKED_FOR_DELETION
+        ):
             return
-        
+
         repository_size = get_repository_size(repository.id)
         repository_size_exists = repository_size is not None
         if not repository_size_exists or (
