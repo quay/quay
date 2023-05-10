@@ -238,13 +238,40 @@ jobs:
       uses: docker/setup-qemu-action@v2
 
     - name: Set up Docker Buildx
+      id: buildx
       uses: docker/setup-buildx-action@v2
+
+    - name: Setup linux/arm64 builder
+      run: |
+        mkdir ~/.ssh
+        chmod 700 ~/.ssh
+
+        touch ~/.ssh/id_builder_aarch64
+        chmod 600 ~/.ssh/id_builder_aarch64
+        echo "$SSH_KEY" >~/.ssh/id_builder_aarch64
+
+        touch ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        echo "$SSH_KNOWN_HOSTS" >~/.ssh/known_hosts
+
+        touch ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        cat >~/.ssh/config <<END
+        Host builder-aarch64
+          IdentityFile "~/.ssh/id_builder_aarch64"
+        $SSH_CONFIG
+        END
+
+        ssh -vvvv -- builder-aarch64 uname -a
+        docker buildx create --append --name ${{ steps.buildx.outputs.name }} --node builder-aarch64 --platform linux/arm64 ssh://builder-aarch64
+      env:
+        SSH_KEY: ${{ secrets.BUILDER_AARCH64_SSH_KEY }}
+        SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_AARCH64_SSH_KNOWN_HOSTS }}
+        SSH_CONFIG: ${{ secrets.BUILDER_AARCH64_SSH_CONFIG }}
 
     - name: Build image (linux/arm64)
       uses: docker/build-push-action@v3
       with:
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
         platforms: linux/arm64
 
   docker-ppc64le:
