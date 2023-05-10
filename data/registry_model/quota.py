@@ -38,7 +38,7 @@ def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: s
         return
 
     namespace_id = get_namespace_id_from_repository(repository_id)
-    if not_eligible_namespace(namespace_id):
+    if not eligible_namespace(namespace_id):
         return
 
     # Addition - if the blob already referenced it's already been counted
@@ -287,17 +287,11 @@ def is_blob_alive(namespace_id: int, tag_id: int, blob_id: int):
     )
 
 
-def not_eligible_namespace(namespace_id):
+def eligible_namespace(namespace_id):
     """
-    Returns whether the namespace is eligible to have a quota size
+    Returns true if the namespace is eligible to have a quota size
     """
-    namespace = None
-    try:
-        namespace = User.select().where(User.id == namespace_id).get()
-    except User.DoesNotExist:
-        return True
-
-    return not namespace.enabled or namespace.robot
+    return User.select(1).where(User.id == namespace_id, User.enabled, ~User.robot).exists()
 
 
 def run_backfill(namespace_id: int):
