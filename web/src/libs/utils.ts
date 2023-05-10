@@ -58,8 +58,8 @@ export function parseRepoNameFromUrl(url: string): string {
   if (repoKeywordIndex === -1) {
     return '';
   }
-
-  return urlParts[repoKeywordIndex + 2];
+  // Taking nested repos into consideration
+  return urlParts.slice(repoKeywordIndex + 2, urlParts.length).join('/');
 }
 
 export function parseOrgNameFromUrl(url: string): string {
