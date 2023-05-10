@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT = 20
 
-MARKETPLACE_FILE = "/conf/stack/auth/quay-marketplace-api-stage.crt"
-MARKETPLACE_SECRET = "/conf/stack/auth/quay-marketplace-api-stage.key"
+MARKETPLACE_FILE = "/conf/stack/quay-marketplace-api.crt"
+MARKETPLACE_SECRET = "/conf/stack/quay-marketplace-api.key"
 
 
 class RHUserAPI:
