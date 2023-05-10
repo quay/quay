@@ -88,6 +88,7 @@ ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS fk_re
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_root_rule_id_repomirrorrule;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS fk_repomirrorconfig_internal_robot_id_user;
+ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS fk_redhatsubscriptions;
 ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS fk_quotarepositorysize_repository_id_repository;
 ALTER TABLE IF EXISTS ONLY public.quotanamespacesize DROP CONSTRAINT IF EXISTS fk_quotanamespacesize_namespace_user_id_user;
 ALTER TABLE IF EXISTS ONLY public.quotalimits DROP CONSTRAINT IF EXISTS fk_quotalimit_type;
@@ -525,6 +526,7 @@ ALTER TABLE IF EXISTS ONLY public.repositoryactioncount DROP CONSTRAINT IF EXIST
 ALTER TABLE IF EXISTS ONLY public.repository DROP CONSTRAINT IF EXISTS pk_repository;
 ALTER TABLE IF EXISTS ONLY public.repomirrorrule DROP CONSTRAINT IF EXISTS pk_repomirrorrule;
 ALTER TABLE IF EXISTS ONLY public.repomirrorconfig DROP CONSTRAINT IF EXISTS pk_repomirrorconfig;
+ALTER TABLE IF EXISTS ONLY public.redhatsubscriptions DROP CONSTRAINT IF EXISTS pk_redhatsubscriptions;
 ALTER TABLE IF EXISTS ONLY public.quotatype DROP CONSTRAINT IF EXISTS pk_quotatype;
 ALTER TABLE IF EXISTS ONLY public.quotarepositorysize DROP CONSTRAINT IF EXISTS pk_quotarepositorysizeid;
 ALTER TABLE IF EXISTS ONLY public.quotanamespacesize DROP CONSTRAINT IF EXISTS pk_quotanamespacesizeid;
@@ -625,6 +627,7 @@ ALTER TABLE IF EXISTS public.repositoryactioncount ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repository ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repomirrorrule ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.repomirrorconfig ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE IF EXISTS public.redhatsubscriptions ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quotatype ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quotarepositorysize ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.quotanamespacesize ALTER COLUMN id DROP DEFAULT;
@@ -763,6 +766,8 @@ DROP SEQUENCE IF EXISTS public.repomirrorrule_id_seq;
 DROP TABLE IF EXISTS public.repomirrorrule;
 DROP SEQUENCE IF EXISTS public.repomirrorconfig_id_seq;
 DROP TABLE IF EXISTS public.repomirrorconfig;
+DROP SEQUENCE IF EXISTS public.redhatsubscriptions_id_seq;
+DROP TABLE IF EXISTS public.redhatsubscriptions;
 DROP SEQUENCE IF EXISTS public.quotatype_id_seq;
 DROP TABLE IF EXISTS public.quotatype;
 DROP SEQUENCE IF EXISTS public.quotarepositorysize_id_seq;
@@ -3147,6 +3152,41 @@ ALTER SEQUENCE public.quotatype_id_seq OWNED BY public.quotatype.id;
 
 
 --
+-- Name: redhatsubscriptions; Type: TABLE; Schema: public; Owner: quay
+--
+
+CREATE TABLE public.redhatsubscriptions (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    account_number integer NOT NULL
+);
+
+
+ALTER TABLE public.redhatsubscriptions OWNER TO quay;
+
+--
+-- Name: redhatsubscriptions_id_seq; Type: SEQUENCE; Schema: public; Owner: quay
+--
+
+CREATE SEQUENCE public.redhatsubscriptions_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.redhatsubscriptions_id_seq OWNER TO quay;
+
+--
+-- Name: redhatsubscriptions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: quay
+--
+
+ALTER SEQUENCE public.redhatsubscriptions_id_seq OWNED BY public.redhatsubscriptions.id;
+
+
+--
 -- Name: repomirrorconfig; Type: TABLE; Schema: public; Owner: quay
 --
 
@@ -5047,6 +5087,13 @@ ALTER TABLE ONLY public.quotatype ALTER COLUMN id SET DEFAULT nextval('public.qu
 
 
 --
+-- Name: redhatsubscriptions id; Type: DEFAULT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.redhatsubscriptions ALTER COLUMN id SET DEFAULT nextval('public.redhatsubscriptions_id_seq'::regclass);
+
+
+--
 -- Name: repomirrorconfig id; Type: DEFAULT; Schema: public; Owner: quay
 --
 
@@ -5342,7 +5389,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-a648ab200ab7
+43fea47d641f
 \.
 
 
@@ -6251,6 +6298,14 @@ COPY public.quotarepositorysize (id, repository_id, size_bytes, backfill_start_m
 COPY public.quotatype (id, name) FROM stdin;
 1	Warning
 2	Reject
+\.
+
+
+--
+-- Data for Name: redhatsubscriptions; Type: TABLE DATA; Schema: public; Owner: quay
+--
+
+COPY public.redhatsubscriptions (id, user_id, account_number) FROM stdin;
 \.
 
 
@@ -7174,7 +7229,6 @@ COPY public.role (id, name) FROM stdin;
 --
 
 COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, expiration_date, rotation_duration, approval_id) FROM stdin;
-8	http://localhost:8080	AaFloKaGhdj1fkHij6jYOhr465tuAKrbokMErBdmgfw	quay	{"n": "qJZGxR-Og27jq84wLCvpvyos5VaU1WLtnezpOBFeJlLiya6bdowHwZ-9_dtGsifxvJ9V6NQngZnmWlfZOAZj07g-zZeO6JdAQd-8euPWj5rxoyiqC3lV5EHOeaqq4aWnayS52N3MCMmFZVaYpoM7Mpix0nptl3SvA2jyl-bdUAKlWF-G-sdI4L9aWH1C9Hk1YKDHrno10Ja9kTsIah5bInIZ7ER6l-cm0ELigZMnXcl_WtDpqHYLoE5DxsmGT2zG_LGCuxx6i4TaZdFc0zyzXeTaTaDg_uT5cmJeIl0mah3abOOiIjcSpNEZtU6vgXYq5sWw2P1LIK0J3JIwhyzcvQ", "e": "AQAB", "kty": "RSA", "kid": "AaFloKaGhdj1fkHij6jYOhr465tuAKrbokMErBdmgfw"}	{"created_by": "CLI tool"}	2023-05-04 14:25:32.055396	2023-05-04 16:25:32.021715	\N	8
 \.
 
 
@@ -7183,13 +7237,6 @@ COPY public.servicekey (id, name, kid, service, jwk, metadata, created_date, exp
 --
 
 COPY public.servicekeyapproval (id, approver_id, approval_type, approved_date, notes) FROM stdin;
-1	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-04 18:57:09.109963	
-3	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-15 13:34:27.009874	
-4	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:40:02.364779	
-5	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:43:45.399899	
-6	\N	ServiceKeyApprovalType.AUTOMATIC	2022-11-21 18:47:59.585515	
-7	\N	ServiceKeyApprovalType.AUTOMATIC	2022-12-14 18:48:54.002141	
-8	\N	ServiceKeyApprovalType.AUTOMATIC	2023-05-04 14:25:32.073123	
 \.
 
 
@@ -7801,7 +7848,7 @@ SELECT pg_catalog.setval('public.namespacegeorestriction_id_seq', 1, false);
 -- Name: notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.notification_id_seq', 2, true);
+SELECT pg_catalog.setval('public.notification_id_seq', 1, false);
 
 
 --
@@ -7900,6 +7947,13 @@ SELECT pg_catalog.setval('public.quotarepositorysize_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.quotatype_id_seq', 2, true);
+
+
+--
+-- Name: redhatsubscriptions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
+--
+
+SELECT pg_catalog.setval('public.redhatsubscriptions_id_seq', 1, false);
 
 
 --
@@ -8018,14 +8072,14 @@ SELECT pg_catalog.setval('public.role_id_seq', 3, true);
 -- Name: servicekey_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekey_id_seq', 8, true);
+SELECT pg_catalog.setval('public.servicekey_id_seq', 1, false);
 
 
 --
 -- Name: servicekeyapproval_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 8, true);
+SELECT pg_catalog.setval('public.servicekeyapproval_id_seq', 1, false);
 
 
 --
@@ -8661,6 +8715,14 @@ ALTER TABLE ONLY public.quotarepositorysize
 
 ALTER TABLE ONLY public.quotatype
     ADD CONSTRAINT pk_quotatype PRIMARY KEY (id);
+
+
+--
+-- Name: redhatsubscriptions pk_redhatsubscriptions; Type: CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.redhatsubscriptions
+    ADD CONSTRAINT pk_redhatsubscriptions PRIMARY KEY (id);
 
 
 --
@@ -11833,6 +11895,14 @@ ALTER TABLE ONLY public.quotanamespacesize
 
 ALTER TABLE ONLY public.quotarepositorysize
     ADD CONSTRAINT fk_quotarepositorysize_repository_id_repository FOREIGN KEY (repository_id) REFERENCES public.repository(id);
+
+
+--
+-- Name: redhatsubscriptions fk_redhatsubscriptions; Type: FK CONSTRAINT; Schema: public; Owner: quay
+--
+
+ALTER TABLE ONLY public.redhatsubscriptions
+    ADD CONSTRAINT fk_redhatsubscriptions FOREIGN KEY (user_id) REFERENCES public."user"(id);
 
 
 --
