@@ -16,6 +16,7 @@ from data.database import (
     Tag,
     User,
 )
+from data.model.repository import lookup_repository
 
 get_epoch_timestamp_ms = lambda: int(time.time() * 1000)
 
@@ -37,6 +38,8 @@ def update_sizes(repository_id: int, manifest_id: int, blobs: dict, operation: s
         return
 
     namespace_id = get_namespace_id_from_repository(repository_id)
+    if not eligible_namespace(namespace_id):
+        return
 
     # Addition - if the blob already referenced it's already been counted
     # Subtraction - should only happen on the deletion of the last blob, if another exists
@@ -284,6 +287,13 @@ def is_blob_alive(namespace_id: int, tag_id: int, blob_id: int):
     )
 
 
+def eligible_namespace(namespace_id):
+    """
+    Returns true if the namespace is eligible to have a quota size
+    """
+    return User.select(1).where(User.id == namespace_id, User.enabled, ~User.robot).exists()
+
+
 def run_backfill(namespace_id: int):
     """
     Calculates the total of unique blobs in the namespace and repositories within
@@ -309,6 +319,15 @@ def run_backfill(namespace_id: int):
 
     # pylint: disable-next=not-an-iterable
     for repository in repositories_in_namespace(namespace_id):
+
+        # Check to make sure the repository hasn't been deleted since the time passed
+        latest_repository = lookup_repository(repository.id)
+        if (
+            latest_repository is None
+            or latest_repository.state == RepositoryState.MARKED_FOR_DELETION
+        ):
+            return
+
         repository_size = get_repository_size(repository.id)
         repository_size_exists = repository_size is not None
         if not repository_size_exists or (

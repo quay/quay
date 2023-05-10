@@ -36,6 +36,7 @@ class QuotaTotalWorker(Worker):
             .where(
                 ~fn.EXISTS(subq),
                 User.enabled == True,
+                User.robot == False,
             )
             .limit(BATCH_SIZE)
         ):
