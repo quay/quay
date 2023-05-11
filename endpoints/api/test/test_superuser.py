@@ -45,7 +45,7 @@ def test_paginate_orgs(client):
 
 def test_paginate_test_list_all_users(client):
     with client_with_identity("devtable", client) as cl:
-        params = {"all": False, "limit":6}
+        params = {"all": False, "limit": 6}
         firstResult = conduct_api_call(cl, SuperUserList, "GET", params, None, 200).json
         assert len(firstResult["users"]) == 6
         assert firstResult["next_page"] is not None
