@@ -43,6 +43,18 @@ def test_paginate_orgs(client):
         assert secondResult.get("next_page", None) is None
 
 
+def test_paginate_test_list_all_users(client):
+    with client_with_identity("devtable", client) as cl:
+        params = {"all": False, "limit":6}
+        firstResult = conduct_api_call(cl, SuperUserList, "GET", params, None, 200).json
+        assert len(firstResult["users"]) == 6
+        assert firstResult["next_page"] is not None
+        params["next_page"] = firstResult["next_page"]
+        secondResult = conduct_api_call(cl, SuperUserList, "GET", params, None, 200).json
+        assert len(secondResult["users"]) == 4
+        assert secondResult.get("next_page", None) is None
+
+
 def test_change_install_user(client):
     with client_with_identity("devtable", client) as cl:
         params = {"username": "randomuser"}

@@ -16,7 +16,7 @@
 
     <div class="co-top-bar">
       <span class="co-filter-box">
-        <span class="page-controls" total-count="orderedUsers.entries.length" current-page="options.page" page-size="usersPerPage"></span>
+        <span class="page-controls" total-count="orderedUsers.entries.length" current-page="options.page" page-size="usersPerPage" loading="backgroundLoadingUsers"></span>
         <input class="form-control" type="text" ng-model="options.filter" placeholder="Filter Users..." style="margin-right: 10px;">
       </span>
     </div>
@@ -261,7 +261,9 @@
   </div><!-- /.modal -->
 
   <!-- Modal quota configuration -->
-  <div ng-repeat="current_user in orderedUsers.entries" class="org-row">
+  <div ng-repeat="current_user in orderedUsers.entries | slice
+  :(usersPerPage * options.page)
+  :(usersPerPage * (options.page + 1))" class="org-row">
       <div class="co-dialog modal fade" id="quotaConfigModal-{{ current_user.username }}">
         <div class="modal-dialog">
           <div class="modal-content padding-2percent">
