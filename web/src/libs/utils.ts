@@ -51,15 +51,20 @@ export function isValidEmail(email: string): boolean {
 
 export function parseRepoNameFromUrl(url: string): string {
   //url is in the format of <prefix>/repository/<org>/<repo>
+  //or for nested repo: <prefix>/repository/<org>/<nested>/<repo>
   //or <prefix>/repository/<org>/<repo>/tag/<tag>
-
   const urlParts = url.split('/');
   const repoKeywordIndex = urlParts.indexOf('repository');
+  let endIndex = urlParts.indexOf('tag');
   if (repoKeywordIndex === -1) {
     return '';
   }
+
+  if (endIndex === -1) {
+    endIndex = urlParts.length;
+  }
   // Taking nested repos into consideration
-  return urlParts.slice(repoKeywordIndex + 2, urlParts.length).join('/');
+  return urlParts.slice(repoKeywordIndex + 2, endIndex).join('/');
 }
 
 export function parseOrgNameFromUrl(url: string): string {
