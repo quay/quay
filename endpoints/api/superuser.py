@@ -280,7 +280,7 @@ class SuperUserRegistrySize(ApiResource):
                 return "", 202
             elif queued:
                 return "", 201
-            else: 
+            else:
                 raise InvalidRequest("Could not queue registry size calculation")
 
         raise Unauthorized()

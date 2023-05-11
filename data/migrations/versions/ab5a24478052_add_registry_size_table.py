@@ -21,9 +21,7 @@ def upgrade(op, tables, tester):
         sa.Column(
             "running", sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()
         ),
-        sa.Column(
-            "queued", sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()
-        ),
+        sa.Column("queued", sa.Boolean(), nullable=False, server_default=sa.sql.expression.false()),
         sa.Column(
             "completed_ms",
             sa.BigInteger(),

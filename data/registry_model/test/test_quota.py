@@ -137,9 +137,11 @@ class TestQuota:
             assert get_repository_size(self.repo2) == len(CONFIG_LAYER_JSON) + len(BLOB1) + len(
                 BLOB4
             )
-            
+
     def test_calculate_registry_size(self, initialized_db):
-        QuotaRegistrySize.insert({"size_bytes": 0, "running": False, "queued": True, "completed_ms": None}).execute()
+        QuotaRegistrySize.insert(
+            {"size_bytes": 0, "running": False, "queued": True, "completed_ms": None}
+        ).execute()
         calculate_registry_size()
         registry_size = get_registry_size()
         assert registry_size is not None

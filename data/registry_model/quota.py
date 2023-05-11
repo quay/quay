@@ -439,7 +439,7 @@ def reset_namespace_backfill(namespace_id: int):
 
 def calculate_registry_size():
     """
-    Calculates the size of the registry. Concurrency is done through the 
+    Calculates the size of the registry. Concurrency is done through the
     quotaregistrysize.running field.
     """
     quota_registry_size = get_registry_size()
@@ -458,7 +458,7 @@ def get_registry_size():
         return QuotaRegistrySize.select().get()
     except QuotaRegistrySize.DoesNotExist:
         return None
-    
+
 
 def queue_registry_size_calculation():
     """
@@ -471,14 +471,16 @@ def queue_registry_size_calculation():
 
     if not registry_size_exists:
         # pylint: disable-next=no-value-for-parameter
-        QuotaRegistrySize.insert({"size_bytes": 0, "running": False, "queued": True, "completed_ms": None}).execute()
+        QuotaRegistrySize.insert(
+            {"size_bytes": 0, "running": False, "queued": True, "completed_ms": None}
+        ).execute()
         logger.info("Queued initial registry size calculation")
         return True, False
 
     if registry_size_exists and (registry_size.queued or registry_size.running):
         logger.info("Registry size calculation already queued")
         return True, True
-    
+
     if registry_size_exists and (not registry_size.running and not registry_size.queued):
         # pylint: disable-next=no-value-for-parameter
         updated = QuotaRegistrySize.update({"queued": True}).execute()
@@ -505,5 +507,10 @@ def sum_registry_size():
 def update_registry_size(size=0):
     # pylint: disable-next=no-value-for-parameter
     QuotaRegistrySize.update(
-        {"running": False, "queued": False, "size_bytes": size, "completed_ms": get_epoch_timestamp_ms()}
+        {
+            "running": False,
+            "queued": False,
+            "size_bytes": size,
+            "completed_ms": get_epoch_timestamp_ms(),
+        }
     ).execute()
