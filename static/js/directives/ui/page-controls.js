@@ -11,7 +11,8 @@ angular.module('quay').directive('pageControls', function () {
     scope: {
       'currentPage': '=currentPage',
       'pageSize': '=pageSize',
-      'totalCount': '=totalCount'
+      'totalCount': '=totalCount',
+      'loading': '=loading',
     },
     controller: function($scope, $element) {
       $scope.getPageStart = function(currentPage, pageSize, totalCount) {

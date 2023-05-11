@@ -1,6 +1,6 @@
 import pytest
 
-from endpoints.api.superuser import SuperUserList, SuperUserManagement
+from endpoints.api.superuser import SuperUserList, SuperUserManagement, SuperUserOrganizationList
 from endpoints.api.test.shared import conduct_api_call
 from endpoints.test.shared import client_with_identity
 from test.fixtures import *
@@ -21,6 +21,26 @@ def test_list_all_users(disabled, client):
         for user in result["users"]:
             if not disabled:
                 assert user["enabled"]
+
+
+def test_list_all_orgs(client):
+    with client_with_identity("devtable", client) as cl:
+        result = conduct_api_call(cl, SuperUserOrganizationList, "GET", None, None, 200).json
+        assert len(result["organizations"]) == 5
+
+
+def test_paginate_orgs(client):
+    with client_with_identity("devtable", client) as cl:
+        params = {"all": False, "limit": 3}
+        firstResult = conduct_api_call(cl, SuperUserOrganizationList, "GET", params, None, 200).json
+        assert len(firstResult["organizations"]) == 3
+        assert firstResult["next_page"] is not None
+        params["next_page"] = firstResult["next_page"]
+        secondResult = conduct_api_call(
+            cl, SuperUserOrganizationList, "GET", params, None, 200
+        ).json
+        assert len(secondResult["organizations"]) == 2
+        assert secondResult.get("next_page", None) is None
 
 
 def test_change_install_user(client):
