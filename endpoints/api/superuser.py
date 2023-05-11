@@ -223,9 +223,11 @@ class SuperUserOrganizationList(ApiResource):
         if SuperUserPermission().can():
             if parsed_args["all"] and parsed_args["limit"] > 100:
                 raise InvalidRequest("Page limit cannot be above 100")
-            
+
             if parsed_args["all"]:
-                return {"organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]}, None
+                return {
+                    "organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]
+                }, None
             else:
                 orgs, next_page_token = pre_oci_model.get_organizations_paginated(
                     limit=parsed_args["limit"],
