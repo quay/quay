@@ -251,5 +251,21 @@ class PreOCIModel(SuperuserDataInterface):
             for org in model.organization.get_organizations()
         ]
 
+    def get_organizations_paginated(
+        self,
+        limit=50,
+        page_token=None,
+    ):
+        orgs, next_page_token = model.modelutil.paginate(
+            model.organization.get_organizations(),
+            database.User,
+            page_token=page_token,
+            limit=limit,
+        )
+        return (
+            [Organization(org.username, org.email, _get_namespace_quotas(org)) for org in orgs],
+            next_page_token,
+        )
+
 
 pre_oci_model = PreOCIModel()
