@@ -1012,6 +1012,13 @@ class QuotaRepositorySize(BaseModel):
     backfill_complete = BooleanField(null=False, default=False)
 
 
+class QuotaRegistrySize(BaseModel):
+    size_bytes = BigIntegerField(null=False, default=0)
+    running = BooleanField(null=False, default=False)
+    queued = BooleanField(null=False, default=False)
+    completed_ms = BigIntegerField(null=True)
+
+
 class DeletedRepository(BaseModel):
     repository = ForeignKeyField(Repository, unique=True)
     marked = DateTimeField(default=datetime.now)

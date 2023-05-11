@@ -12,6 +12,7 @@ from random import SystemRandom
 from flask import request, make_response, jsonify
 
 from cryptography.hazmat.primitives import serialization
+from data.registry_model.quota import get_registry_size, queue_registry_size_calculation
 
 import features
 
@@ -231,6 +232,56 @@ class SuperUserOrganizationList(ApiResource):
                     page_token=page_token,
                 )
                 return {"organizations": [org.to_dict() for org in orgs]}, next_page_token
+
+        raise Unauthorized()
+
+
+@resource("/v1/superuser/registrysize/")
+@internal_only
+@show_if(features.SUPER_USERS)
+class SuperUserRegistrySize(ApiResource):
+    """
+    Resource for the current registry size.
+    """
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname("getRegistrySize")
+    @require_scope(scopes.SUPERUSER)
+    def get(self):
+        """
+        Returns size of the registry
+        """
+        if SuperUserPermission().can():
+            registry_size = get_registry_size()
+            if registry_size is not None:
+                return {
+                    "size_bytes": registry_size.size_bytes,
+                    "last_ran": registry_size.completed_ms,
+                    "queued": registry_size.queued,
+                    "running": registry_size.running,
+                }
+            else:
+                return {"size_bytes": 0, "last_ran": None, "running": False, "queued": False}
+
+        raise Unauthorized()
+
+    @require_fresh_login
+    @verify_not_prod
+    @nickname("queueRegistrySizeCalculation")
+    @require_scope(scopes.SUPERUSER)
+    def post(self):
+        """
+        Queues registry size calculation
+        """
+        if SuperUserPermission().can():
+            queued, already_queued = queue_registry_size_calculation()
+            if already_queued:
+                return "", 202
+            elif queued:
+                return "", 201
+            else: 
+                raise InvalidRequest("Could not queue registry size calculation")
 
         raise Unauthorized()
 
