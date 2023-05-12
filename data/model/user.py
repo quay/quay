@@ -49,6 +49,7 @@ from data.model import (
     InvalidNamespaceException,
     InvalidPasswordException,
     InvalidRobotException,
+    InvalidRobotCredentialException,
     InvalidUsernameException,
     TooManyLoginAttemptsException,
     _basequery,
@@ -464,10 +465,10 @@ def verify_robot(robot_username, password):
         token_data = RobotAccountToken.get(robot_account=robot)
         if not token_data.token.matches(password):
             msg = "Could not find robot with username: %s and supplied password." % robot_username
-            raise InvalidRobotException(msg)
+            raise InvalidRobotCredentialException(msg)
     except RobotAccountToken.DoesNotExist:
         msg = "Could not find robot with username: %s and supplied password." % robot_username
-        raise InvalidRobotException(msg)
+        raise InvalidRobotCredentialException(msg)
 
     # Find the owner user and ensure it is not disabled.
     try:

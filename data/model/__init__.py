@@ -40,6 +40,8 @@ class InvalidPasswordException(DataModelException):
 class InvalidRobotException(DataModelException):
     pass
 
+class InvalidRobotCredentialException(InvalidRobotException):
+    pass
 
 class InvalidUsernameException(DataModelException):
     pass
