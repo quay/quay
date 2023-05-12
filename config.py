@@ -441,7 +441,7 @@ class DefaultConfig(ImmutableConfig):
     # Action logs configuration for advanced events
     ACTION_LOG_AUDIT_LOGINS = True
     # Action logs configuration
-    ACTION_LOG_AUDIT_FAILURES = True
+    ACTION_LOG_AUDIT_FAILURES = False
 
     # Action logs archive
     ACTION_LOG_ARCHIVE_LOCATION: Optional[str] = "local_us"

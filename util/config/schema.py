@@ -349,7 +349,7 @@ CONFIG_SCHEMA = {
         },
         "ACTION_LOG_AUDIT_FAILURES": {
             "type": "boolean",
-            "description": "Whether logging of failed logins or pull attempts is enabled. Defaults to True",
+            "description": "Whether logging of failed logins or pull attempts is enabled. Defaults to False",
             "x-example": True,
         },
         "ACTION_LOG_ARCHIVE_LOCATION": {
