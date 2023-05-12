@@ -1,14 +1,14 @@
 """add login logout logentrykind
 
 Revision ID: 0246c2d0e750
-Revises: a648ab200ab7
+Revises: 43fea47d641f
 Create Date: 2023-05-4 09:44:57.391686
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "0246c2d0e750"
-down_revision = "a648ab200ab7"
+down_revision = "43fea47d641f"
 
 import sqlalchemy as sa
 
