@@ -37,6 +37,7 @@ from util.names import (
     parse_namespace_repository,
     REPOSITORY_NAME_REGEX,
     REPOSITORY_NAME_EXTENDED_REGEX,
+    parse_robot_username,
 )
 from util.request import get_request_ip
 from util.security.registry_jwt import (
@@ -133,7 +134,7 @@ def generate_registry_jwt(auth_result):
         if user_event_data["action"] == "login":
             log_action(
                 "login_success",
-                user.username,
+                user.username if not user.robot else parse_robot_username(user.username)[0] ,
                 {"type": "v2auth", "useragent": request.user_agent.string},
             )
         event = userevents.get_event(user.username)
