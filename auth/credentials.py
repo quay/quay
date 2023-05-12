@@ -192,7 +192,7 @@ def validate_credentials(auth_username, auth_password_or_token):
     else:
         logger.warning("Failed to validate credentials for user %s: %s", auth_username, err)
 
-if app.config.get("ACTION_LOG_AUDIT_FAILURES")
+        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
             log_action(
                 "login_failure",
                 None,
