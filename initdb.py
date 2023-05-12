@@ -451,6 +451,7 @@ def initialize_database():
     LogEntryKind.create(name="cancel_build")
 
     LogEntryKind.create(name="login_success")
+    LogEntryKind.create(name="login_failure")
     LogEntryKind.create(name="logout_success")
 
     LogEntryKind.create(name="permanently_delete_tag")

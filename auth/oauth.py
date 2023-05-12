@@ -158,13 +158,12 @@ def validate_app_oauth_token(token):
                     "useragent": request.user_agent.string,
                     "message": error_message,
                 },
-                performer=validated,
+                performer=validated.authorized_user,
             )
 
         return ValidateResult(
             AuthKind.oauth,
             error_message=error_message,
-            invalid_oauthtoken=validated,
         )
 
     # We have a valid token

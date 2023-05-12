@@ -125,7 +125,7 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             robot_user, robot_name = parse_robot_username(auth_username)
 
-            owner = model.user.get_user(User.username == robot_user)
+            owner = User.get(User.username == robot_user)
 
             if not owner.enabled:
                 logger.debug("Tried to use a robot for a disabled user: %s", auth_username)
@@ -158,10 +158,15 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             robot_user, _ = parse_robot_username(auth_username)
 
+            try:
+                owner = User.get(User.username == robot_user)
+            except User.DoesNotExist:
+                owner = None
+
             if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
                 log_action(
                     "login_failure",
-                    None,
+                    owner.username if owner is not None else None,
                     {
                         "type": "v2auth",
                         "kind": "robot",
@@ -187,7 +192,7 @@ def validate_credentials(auth_username, auth_password_or_token):
     else:
         logger.warning("Failed to validate credentials for user %s: %s", auth_username, err)
 
-        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
+if app.config.get("ACTION_LOG_AUDIT_FAILURES")
             log_action(
                 "login_failure",
                 None,
