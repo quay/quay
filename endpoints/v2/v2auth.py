@@ -134,7 +134,7 @@ def generate_registry_jwt(auth_result):
         if user_event_data["action"] == "login":
             log_action(
                 "login_success",
-                user.username if not user.robot else parse_robot_username(user.username)[0] ,
+                user.username if not user.robot else parse_robot_username(user.username)[0],
                 {"type": "v2auth", "useragent": request.user_agent.string},
             )
         event = userevents.get_event(user.username)
