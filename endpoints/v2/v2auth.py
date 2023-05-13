@@ -128,10 +128,14 @@ def generate_registry_jwt(auth_result):
             "repository": scope_results[0].repository,
         }
 
+    # determine if this is solely a login event
+    # need to use scope_params here since scope_results could be empty in case of lack of permissions
+    is_login_event = user_event_data["action"] == "login" and len(scope_params) == 0
+
     # Send the user event.
     user = get_authenticated_user()
     if user is not None:
-        if user_event_data["action"] == "login":
+        if is_login_event:
             log_action(
                 "login_success",
                 user.username if not user.robot else parse_robot_username(user.username)[0],
