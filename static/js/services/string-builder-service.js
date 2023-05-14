@@ -37,6 +37,7 @@ angular.module('quay').factory('StringBuilderService', ['$sce', 'UtilService', f
     'new_name': 'sitemap',
     'app_specific_token_title': 'key',
     'useragent': 'user-secret',
+    'message': 'exclamation-triangle',
   };
 
   var allowMarkdown = {

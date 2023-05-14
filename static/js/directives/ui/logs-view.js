@@ -488,7 +488,7 @@ angular.module('quay').directive('logsView', function () {
         },
         'cancel_build': 'Cancel build {build_uuid}',
         'login_success': function(metadata) {
-          metadata["useragent"] = metadata.useragent.substring(0, 64)+ '...';
+          metadata["useragent"] = metadata.useragent.length > 64 ? metadata.useragent.slice(0, 64)+ '...' : metadata.useragent;
 
           if (metadata.type == 'v2auth') {
             var message = 'Login to registry[[ with';
@@ -503,6 +503,63 @@ angular.module('quay').directive('logsView', function () {
             return message + ' user-agent {useragent}]]'
           } else {
             return 'Login to Quay[[ with user-agent {useragent}]]';
+          }
+        },
+        'login_failure': function(metadata) {
+          metadata["useragent"] = metadata.useragent.length > 64 ? metadata.useragent.slice(0, 64)+ '...' : metadata.useragent;
+
+          if (metadata.type == 'v2auth') {
+            var message = 'Login to registry failed[[ with';
+            
+            if (metadata.kind == 'app_specific_token') {
+              message += ' app-specific token';
+
+              if (metadata.app_specific_token_title) {
+                message += ' {app_specific_token_title}';
+              }
+
+              if (metadata.username) {
+                message += ' (owned by {username})';
+              }
+
+              message += ' and'
+            } 
+            else if (metadata.kind == 'robot') {
+              message += ' robot {robot} (owned by {username}) and';
+            }
+            else if (metadata.kind == 'user') {
+              message += ' user {username} and';
+            }
+
+            message += ' user-agent {useragent}';
+
+            if (metadata.message) {
+              message += '  with message: {message}';
+            }
+
+            return message + ']]';
+          } else if (metadata.type == 'quayauth') {
+
+            if (metadata.kind == 'user') {
+              return 'Login to Quay failed[[ with username {username} and user-agent {useragent} and message: {message}]]';
+            }
+            else if (metadata.kind == 'oauth') {
+              var message = 'API access to Quay failed[[ with';
+
+              if (metadata.token) {
+                message += ' token {token} (owned by {username} in application {application_name}) and';
+              }
+
+              message += ' user-agent {useragent}';
+
+              if (metadata.message) {
+                message += '  with message: {message}';
+              }
+
+              return message + ']]';
+            }
+          } else {
+            return 'Login to Quay failed[[ with user-agent {useragent}]]';
           }
         },
         'logout_success': 'Logout from Quay',
@@ -606,6 +663,7 @@ angular.module('quay').directive('logsView', function () {
         'cancel_build': 'Cancel build',
         'login_success': 'Login success',
         'permanently_delete_tag': 'Permanently Delete Tag',
+        'login_failure': 'Login failure',
         'autoprune_tag_delete': 'Autoprune worker tag deletion',
 
         // Note: these are deprecated.
