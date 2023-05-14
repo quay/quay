@@ -729,6 +729,7 @@ def conduct_signin(username_or_email, password, invite_code=None):
                 possible_user.username if possible_user else None,
                 {
                     "type": "quayauth",
+                    "kind": "user",
                     "useragent": request.user_agent.string,
                     "username": username_or_email,
                     "message": error_message,

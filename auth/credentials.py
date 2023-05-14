@@ -67,7 +67,7 @@ def validate_credentials(auth_username, auth_password_or_token):
                     None,
                     {
                         "type": "v2auth",
-                        "kind": "token",
+                        "kind": "app_specific_token",
                         "useragent": request.user_agent.string,
                         "message": error_message,
                     },
@@ -89,8 +89,8 @@ def validate_credentials(auth_username, auth_password_or_token):
                     token.user.username,
                     {
                         "type": "v2auth",
-                        "kind": "token",
-                        "token": token.token_name,
+                        "kind": "app_specific_token",
+                        "app_specific_token_title": token.title,
                         "username": token.user.username,
                         "useragent": request.user_agent.string,
                         "message": error_message,
@@ -140,6 +140,7 @@ def validate_credentials(auth_username, auth_password_or_token):
                             "type": "v2auth",
                             "kind": "robot",
                             "robot": auth_username,
+                            "username": owner.username,
                             "useragent": request.user_agent.string,
                             "message": error_message,
                         },
