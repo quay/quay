@@ -13,12 +13,16 @@ from data.model import (
     RepositoryDoesNotExist,
     TagDoesNotExist,
     namespacequota,
-    repository,
 )
 from data.model.oci.manifest import CreateManifestException
 from data.model.oci.tag import RetargetTagException
 from data.registry_model import registry_model
 from digest import digest_tools
+from endpoints.api import (
+    log_unauthorized_delete,
+    log_unauthorized_pull,
+    log_unauthorized_push,
+)
 from endpoints.decorators import (
     anon_protect,
     check_readonly,
@@ -62,6 +66,7 @@ MANIFEST_TAGNAME_ROUTE = BASE_MANIFEST_ROUTE.format(VALID_TAG_PATTERN)
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
+@log_unauthorized_pull
 @require_repo_read(allow_for_superuser=True)
 @anon_protect
 @inject_registry_model()
@@ -131,6 +136,7 @@ def fetch_manifest_by_tagname(namespace_name, repo_name, manifest_ref, registry_
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull"])
+@log_unauthorized_pull
 @require_repo_read(allow_for_superuser=True)
 @anon_protect
 @inject_registry_model()
@@ -254,6 +260,7 @@ def _doesnt_accept_schema_v1():
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@log_unauthorized_push
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
@@ -277,6 +284,7 @@ def _enqueue_blobs_for_replication(manifest, storage, namespace_name):
 @parse_repository_name()
 @_reject_manifest2_schema2
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@log_unauthorized_push
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly
@@ -351,6 +359,7 @@ def _parse_manifest(content_type, request_data):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@log_unauthorized_delete
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly

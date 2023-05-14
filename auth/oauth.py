@@ -105,7 +105,7 @@ def validate_app_oauth_token(token):
 
         error_message = "OAuth access token could not be validated"
 
-        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
+        if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
             log_action(
                 "login_failure",
                 None,
@@ -124,7 +124,7 @@ def validate_app_oauth_token(token):
 
         error_message = "OAuth access token has expired"
 
-        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
+        if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
             log_action(
                 "login_failure",
                 validated.application.organization.username,
@@ -146,7 +146,7 @@ def validate_app_oauth_token(token):
 
         error_message = "Granter of the oauth access token is disabled"
 
-        if app.config.get("ACTION_LOG_AUDIT_FAILURES"):
+        if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
             log_action(
                 "login_failure",
                 validated.application.organization.username,

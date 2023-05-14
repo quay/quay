@@ -32,6 +32,7 @@ from auth.permissions import (
 from data import model as data_model
 from data.database import RepositoryState
 from data.logs_model import logs_model
+from digest import digest_tools
 from endpoints.csrf import csrf_protect
 from endpoints.decorators import (
     check_anon_protection,
@@ -398,6 +399,59 @@ def require_user_permission(permission_class, scope=None):
 
 require_user_read = require_user_permission(UserReadPermission, scopes.READ_USER)
 require_user_admin = require_user_permission(UserAdminPermission, scopes.ADMIN_USER)
+
+
+def log_unauthorized(audit_event):
+    def inner(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except endpoints.v2.errors.Unauthorized as e:
+
+                if (
+                    (
+                        app.config.get("ACTION_LOG_AUDIT_PUSH_FAILURES")
+                        and audit_event == "push_repo_failed"
+                    )
+                    or (
+                        app.config.get("ACTION_LOG_AUDIT_PULL_FAILURES")
+                        and audit_event == "pull_repo_failed"
+                    )
+                    or (
+                        app.config.get("ACTION_LOG_AUDIT_DELETE_FAILURES")
+                        and audit_event == "delete_tag_failed"
+                    )
+                ):
+                    if "namespace_name" in kwargs and "repo_name" in kwargs:
+                        metadata = {}
+
+                        if "manifest_ref" in kwargs:
+                            try:
+                                digest = digest_tools.Digest.parse_digest(kwargs["manifest_ref"])
+                                metadata["manifest_digest"] = str(digest)
+                            except digest_tools.InvalidDigestException:
+                                metadata["tag"] = kwargs["manifest_ref"]
+
+                        log_action(
+                            kind=audit_event,
+                            user_or_orgname=kwargs["namespace_name"],
+                            repo_name=kwargs["repo_name"],
+                            metadata=metadata,
+                        )
+
+                logger.debug("Unauthorized request: %s", e)
+
+                raise e
+
+        return wrapper
+
+    return inner
+
+
+log_unauthorized_pull = log_unauthorized("pull_repo_failed")
+log_unauthorized_push = log_unauthorized("push_repo_failed")
+log_unauthorized_delete = log_unauthorized("delete_tag_failed")
 
 
 def allow_if_superuser():

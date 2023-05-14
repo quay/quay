@@ -18,8 +18,9 @@ def upgrade(op, tables, tester):
         tables.logentrykind,
         [
             {"name": "login_failure"},
-            {"name": "push_failure"},
-            {"name": "pull_failure"},
+            {"name": "push_repo_failed"},
+            {"name": "pull_repo_failed"},
+            {"name": "delete_tag_failed"},
         ],
     )
 
@@ -29,7 +30,8 @@ def downgrade(op, tables, tester):
         tables.logentrykind.delete().where(
             tables.logentrykind.name
             == op.inline_literal("login_failure") | tables.logentrykind.name
-            == op.inline_literal("push_failure") | tables.logentrykind.name
-            == op.inline_literal("pull_failure")
+            == op.inline_literal("push_repo_failed") | tables.logentrykind.name
+            == op.inline_literal("pull_repo_failed") | tables.logentrykind.name
+            == op.inline_literal("delete_tag_failed")
         )
     )

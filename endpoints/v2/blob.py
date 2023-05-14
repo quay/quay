@@ -22,6 +22,7 @@ from data.registry_model.blobuploader import (
     retrieve_blob_upload_manager,
 )
 from digest import digest_tools
+from endpoints.api import log_unauthorized
 from endpoints.decorators import (
     anon_allowed,
     anon_protect,
@@ -240,6 +241,7 @@ def _try_to_mount_blob(repository_ref, mount_blob_digest):
 @disallow_for_account_recovery_mode
 @parse_repository_name()
 @process_registry_jwt_auth(scopes=["pull", "push"])
+@log_unauthorized("push_repo_failed")
 @require_repo_write(allow_for_superuser=True, disallow_for_restricted_users=True)
 @anon_protect
 @check_readonly

@@ -347,9 +347,24 @@ CONFIG_SCHEMA = {
             "description": "Whether to log all registry API and Quay API/UI logins event to the action log. Defaults to True",
             "x-example": False,
         },
-        "ACTION_LOG_AUDIT_FAILURES": {
+        "ACTION_LOG_AUDIT_LOGIN_FAILURES": {
             "type": "boolean",
-            "description": "Whether logging of failed logins or pull attempts is enabled. Defaults to False",
+            "description": "Whether logging of failed logins attempts is enabled. Defaults to False",
+            "x-example": True,
+        },
+        "ACTION_LOG_AUDIT_PULL_FAILURES": {
+            "type": "boolean",
+            "description": "Whether logging of failed image pull attempts is enabled. Defaults to False",
+            "x-example": True,
+        },
+        "ACTION_LOG_AUDIT_PUSH_FAILURES": {
+            "type": "boolean",
+            "description": "Whether logging of failed image push attempts is enabled. Defaults to False",
+            "x-example": True,
+        },
+        "ACTION_LOG_AUDIT_DELETE_FAILURES": {
+            "type": "boolean",
+            "description": "Whether logging of failed image delete attempts is enabled. Defaults to False",
             "x-example": True,
         },
         "ACTION_LOG_ARCHIVE_LOCATION": {
