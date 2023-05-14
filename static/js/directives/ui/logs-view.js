@@ -584,6 +584,7 @@ angular.module('quay').directive('logsView', function () {
         'delete_proxy_cache_config': 'Delete Proxy Cache Config',
         'start_build_trigger': 'Manual build trigger',
         'cancel_build': 'Cancel build',
+        'login_success': 'Login success',
 
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',
