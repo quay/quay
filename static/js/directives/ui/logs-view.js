@@ -483,7 +483,16 @@ angular.module('quay').directive('logsView', function () {
           metadata["useragent"] = metadata.useragent.substring(0, 64)+ '...';
 
           if (metadata.type == 'v2auth') {
-            return 'Login to registry[[ with user-agent {useragent}]]';
+            var message = 'Login to registry[[ with';
+            
+            if (metadata.kind == 'app_specific_token') {
+              message += ' app-specific token {app_specific_token_title} and';
+            } 
+            else if (metadata.kind == 'robot') {
+              message += ' robot {robot} and';
+            }
+
+            return message + ' user-agent {useragent}]]'
           } else {
             return 'Login to Quay[[ with user-agent {useragent}]]';
           }

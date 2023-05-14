@@ -136,10 +136,27 @@ def generate_registry_jwt(auth_result):
     user = get_authenticated_user()
     if user is not None:
         if is_login_event:
+            metadata = {}
+            context = get_authenticated_context()
+
+            if context.appspecifictoken is not None:
+                metadata["kind"] = "app_specific_token"
+                metadata["app_specific_token_title"] = context.appspecifictoken.title
+
+            if context.robot is not None:
+                metadata["kind"] = "robot"
+                metadata["robot"] = context.robot.username
+
+            if context.user is not None:
+                metadata["kind"] = "user"
+
+            metadata["type"] = "v2auth"
+            metadata["useragent"] = request.user_agent.string
+
             log_action(
                 "login_success",
                 user.username if not user.robot else parse_robot_username(user.username)[0],
-                {"type": "v2auth", "useragent": request.user_agent.string},
+                metadata=metadata,
             )
         event = userevents.get_event(user.username)
         event.publish_event_data("docker-cli", user_event_data)
