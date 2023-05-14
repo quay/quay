@@ -125,7 +125,7 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             robot_user, robot_name = parse_robot_username(auth_username)
 
-            owner = User.get(User.username == robot_user)
+            owner = model.user.get_nonrobot_user(robot_user)
 
             if not owner.enabled:
                 logger.debug("Tried to use a robot for a disabled user: %s", auth_username)
@@ -159,13 +159,10 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             robot_user, _ = parse_robot_username(auth_username)
 
-            try:
-                owner = User.get(User.username == robot_user)
-            except User.DoesNotExist:
-                owner = None
+            owner = model.user.get_nonrobot_user(robot_user)
 
             try:
-                performer = User.get(username=auth_username, robot=True)
+                performer = model.user.lookup_robot(auth_username)
             except User.DoesNotExist:
                 performer = None
 
@@ -193,11 +190,8 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             robot_user, _ = parse_robot_username(auth_username)
 
-            try:
-                owner = User.get(User.username == robot_user)
-            except User.DoesNotExist:
-                owner = None
-
+            owner = model.user.get_nonrobot_user(robot_user)
+            
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
                 log_action(
                     "login_failure",
