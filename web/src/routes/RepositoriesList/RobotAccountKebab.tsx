@@ -19,7 +19,7 @@ export default function RobotAccountKebab(props: RobotAccountKebabProps) {
   };
 
   const onDelete = () => {
-    props.setSelectedRobotAccount([props.robotAccount.name]);
+    props.setSelectedRobotAccount([props.robotAccount]);
     props.setDeleteModalOpen(true);
   };
 

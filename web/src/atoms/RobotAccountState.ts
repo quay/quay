@@ -1,8 +1,9 @@
 import {atom} from 'recoil';
 import {SearchState} from '../components/toolbar/SearchTypes';
 import {RobotAccountColumnNames} from 'src/routes/RepositoriesList/ColumnNames';
+import { IRobot } from 'src/resources/RobotsResource';
 
-export const selectedRobotAccountsState = atom({
+export const selectedRobotAccountsState = atom<IRobot[]>({
   key: 'selectedRobotAccountsState',
   default: [],
 });
