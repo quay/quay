@@ -566,6 +566,45 @@ angular.module('quay').directive('logsView', function () {
         'create_namespace_autoprune_policy': 'Autoprune policy created for namespace {namespace}[[ with policy method {method} and value {value}]]',
         'update_namespace_autoprune_policy': 'Autoprune policy updated for namespace {namespace}[[ with policy method {method} and value {value}]]',
         'delete_namespace_autoprune_policy': 'Autoprune policy deleted for namespace {namespace}[[ with uuid {policy_uuid}]]',
+        'pull_repo_failed': function(metadata) {
+          var message = 'Pull from repository {namespace}/{repo} failed';
+
+          if (metadata.tag) {
+            message += '[[ for tag {tag} with message {message}]]';
+          } else if (metadata.manifest_digest) {
+            message += '[[ for manifest {manifest_digest} with message {message}]]';
+          } else if (metadata.message) {
+            message += '[[ with message {message}]]'
+          }
+
+          return message;
+        },
+        'push_repo_failed': function(metadata) {
+          var message = 'Push to repository {namespace}/{repo} failed';
+
+          if (metadata.tag) {
+            message += '[[ for tag {tag} with message {message}]]';
+          } else if (metadata.manifest_digest) {
+            message += '[[ for manifest {manifest_digest} with message {message}]]';
+          } else if (metadata.message) {
+            message += '[[ with message {message}]]'
+          }
+
+          return message;
+        },
+        'delete_tag_failed': function(metadata) {
+          var message = 'Delete tag {namespace}/{repo} failed';
+
+          if (metadata.tag) {
+            message += '[[ for tag {tag} with message {message}]]';
+          } else if (metadata.manifest_digest) {
+            message += '[[ for manifest {manifest_digest} with message {message}]]';
+          } else if (metadata.message) {
+            message += '[[ with message {message}]]'
+          }
+
+          return message;
+        }
 };
 
       var logKinds = {
@@ -588,8 +627,10 @@ angular.module('quay').directive('logsView', function () {
         'delete_robot': 'Delete Robot Account',
         'create_repo': 'Create Repository',
         'push_repo': 'Push to repository',
+        'push_repo_failed': 'Push to repository failed',
         'repo_verb': 'Pull Repo Verb',
         'pull_repo': 'Pull repository',
+        'pull_repo_failed': 'Pull repository failed',
         'delete_repo': 'Delete repository',
         'change_repo_permission': 'Change repository permission',
         'delete_repo_permission': 'Remove user permission from repository',
@@ -600,6 +641,7 @@ angular.module('quay').directive('logsView', function () {
         'set_repo_description': 'Change repository description',
         'build_dockerfile': 'Build image from Dockerfile',
         'delete_tag': 'Delete Tag',
+        'delete_tag_failed': 'Delete Tag Failed',
         'create_tag': 'Create Tag',
         'move_tag': 'Move Tag',
         'revert_tag':'Restore Tag',
