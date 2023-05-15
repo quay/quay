@@ -107,6 +107,6 @@ export function getSeconds(duration_str: string): number {
     return 0;
   }
 
-  let [number, suffix] = duration_str.split(' ');
+  let [number, suffix] = duration_str.split('');
   return moment.duration(parseInt(number), suffix).asSeconds();
 }

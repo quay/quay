@@ -4,7 +4,6 @@ import {useMutation, useQueryClient} from '@tanstack/react-query';
 
 export function useOrganizationSettings({name, onSuccess, onError}) {
   const queryClient = useQueryClient();
-  const [namespace, setNamespace] = useState(name);
 
   const updateOrgSettingsMutator = useMutation(
     async ({
@@ -22,7 +21,7 @@ export function useOrganizationSettings({name, onSuccess, onError}) {
     },
     {
       onSuccess: (result) => {
-        queryClient.invalidateQueries(['organization', namespace]);
+        queryClient.invalidateQueries(['organization', name]);
         queryClient.invalidateQueries(['user']);
         onSuccess(result);
       },

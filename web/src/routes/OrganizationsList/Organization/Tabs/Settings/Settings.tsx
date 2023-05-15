@@ -23,18 +23,20 @@ import {useOrganizationSettings} from 'src/hooks/UseOrganizationSettings';
 import {IOrganization} from 'src/resources/OrganizationResource';
 import {humanizeTimeForExpiry, getSeconds, isValidEmail} from 'src/libs/utils';
 import {addDisplayError} from 'src/resources/ErrorHandling';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 type validate = 'success' | 'warning' | 'error' | 'default';
 const timeMachineOptions = {
-  '0 s': 'a few seconds',
-  '1 d': 'a day',
-  '1 w': '7 days',
-  '2 w': '14 days',
-  '4 w': 'a month',
+  '0s': 'a few seconds',
+  '1d': 'a day',
+  '1w': '7 days',
+  '2w': '14 days',
+  '4w': 'a month',
 };
 
 const GeneralSettings = (props: GeneralSettingsProps) => {
   const location = useLocation();
+  const quayConfig = useQuayConfig();
   const organizationName = props.organizationName;
   const {user, loading: isUserLoading} = useCurrentUser();
   const {organization, isUserOrganization, loading} =
@@ -63,7 +65,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
 
   // Time Machine
   const [timeMachineFormValue, setTimeMachineFormValue] = useState(
-    timeMachineOptions['0 s'],
+    timeMachineOptions[quayConfig.config.TAG_EXPIRATION_OPTIONS[0]],
   );
   const namespaceTimeMachineExpiry = isUserOrganization ? user?.tag_expiration_s : (organization as IOrganization)?.tag_expiration_s;
 
@@ -94,7 +96,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
 
     if (!emailFormValue) {
       setValidated('error');
-      setError('Please enter email associate with organization');
+      setError('Please enter email associate with namespace');
       return;
     }
 
@@ -112,17 +114,10 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
 
   const checkForChanges = () => {
     if (namespaceEmail != emailFormValue) {
-      if (validated == 'success') {
-        return true;
-      } else {
-        return false;
-      }
+      return validated == 'success';
     }
 
-    if (getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry) {
-      return true;
-    }
-    return false;
+    return getSeconds(timeMachineFormValue) != namespaceTimeMachineExpiry;
   }
 
   const updateSettings = async () => {
@@ -138,7 +133,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
       });
       return response;
     } catch (error) {
-      addDisplayError('Unable to update organization settings', error);
+      addDisplayError('Unable to update namespace settings', error);
     }
   }
 
@@ -158,7 +153,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
         isInline
         label="Organization"
         fieldId="form-organization"
-        helperText={'Organization names cannot be changed once set.'}
+        helperText={'Namespace names cannot be changed once set.'}
       >
         <TextInput
           isDisabled
@@ -195,7 +190,7 @@ const GeneralSettings = (props: GeneralSettingsProps) => {
           value={timeMachineFormValue}
           onChange={(val) => setTimeMachineFormValue(val)}
         >
-          {Object.keys(timeMachineOptions).map((option, index) => (
+          {quayConfig.config.TAG_EXPIRATION_OPTIONS.map((option, index) => (
             <FormSelectOption
               key={index}
               value={option}
