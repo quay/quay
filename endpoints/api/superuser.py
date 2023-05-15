@@ -221,7 +221,7 @@ class SuperUserOrganizationList(ApiResource):
         Returns a list of all organizations in the system.
         """
         if SuperUserPermission().can():
-            if parsed_args["all"] and parsed_args["limit"] > 100:
+            if not parsed_args["all"] and parsed_args["limit"] > 100:
                 raise InvalidRequest("Page limit cannot be above 100")
 
             if parsed_args["all"]:
