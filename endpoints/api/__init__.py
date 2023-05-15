@@ -424,7 +424,10 @@ def log_unauthorized(audit_event):
                     )
                 ):
                     if "namespace_name" in kwargs and "repo_name" in kwargs:
-                        metadata = {}
+                        metadata = {
+                            "namespace": kwargs["namespace_name"],
+                            "repo": kwargs["repo_name"],
+                        }
 
                         if "manifest_ref" in kwargs:
                             try:
@@ -433,12 +436,37 @@ def log_unauthorized(audit_event):
                             except digest_tools.InvalidDigestException:
                                 metadata["tag"] = kwargs["manifest_ref"]
 
-                        log_action(
-                            kind=audit_event,
-                            user_or_orgname=kwargs["namespace_name"],
-                            repo_name=kwargs["repo_name"],
-                            metadata=metadata,
-                        )
+                        user_or_orgname = data_model.user.get_user_or_org(kwargs["namespace_name"])
+
+                        if user_or_orgname is not None:
+                            repo = data_model.repository.get_repository(
+                                user_or_orgname.username, kwargs["repo_name"]
+                            )
+                        else:
+                            repo = None
+
+                        if user_or_orgname is None:
+                            metadata["message"] = "Namespace does not exist"
+                            log_action(
+                                kind=audit_event,
+                                user_or_orgname=None,
+                                metadata=metadata,
+                            )
+                        elif repo is None:
+                            metadata["message"] = "Repository does not exist"
+                            log_action(
+                                kind=audit_event,
+                                user_or_orgname=user_or_orgname.username,
+                                metadata=metadata,
+                            )
+                        else:
+                            metadata["message"] = str(e)
+                            log_action(
+                                kind=audit_event,
+                                user_or_orgname=user_or_orgname.username,
+                                repo_name=repo.name,
+                                metadata=metadata,
+                            )
 
                 logger.debug("Unauthorized request: %s", e)
 
