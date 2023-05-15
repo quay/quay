@@ -127,7 +127,7 @@ def validate_credentials(auth_username, auth_password_or_token):
 
             owner = model.user.get_nonrobot_user(robot_user)
 
-            if not owner.enabled:
+            if owner and not owner.enabled:
                 logger.debug("Tried to use a robot for a disabled user: %s", auth_username)
 
                 error_message = "This user has been disabled. Please contact your administrator."
