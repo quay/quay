@@ -45,7 +45,7 @@ export default function Organization() {
       return false;
     }
 
-    if (!isUserOrganization && tabname == 'Settings') {
+    if (!isUserOrganization && organization && tabname == 'Settings') {
       return organization.is_org_admin || organization.is_admin;
     }
     return true;

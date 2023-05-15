@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "insights": {
-      "appname": "quay"
+    "appname": "quay"
   },
   "homepage": ".",
   "dependencies": {
@@ -88,6 +88,7 @@
     "html-webpack-plugin": "^5.5.0",
     "jws": "^4.0.0",
     "lint-staged": ">=10",
+    "moment": "^2.29.4",
     "prettier": "^2.1.2",
     "raw-loader": "^4.0.2",
     "react-docgen-typescript-loader": "^3.7.2",
