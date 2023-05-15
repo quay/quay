@@ -13,11 +13,17 @@ import RepositoriesList from 'src/routes/RepositoriesList/RepositoriesList';
 import Settings from './Tabs/Settings/Settings';
 import {QuayBreadcrumb} from 'src/components/breadcrumb/Breadcrumb';
 import { useOrganization } from 'src/hooks/UseOrganization';
+import {useOrganizations} from 'src/hooks/UseOrganizations';
 import RobotAccountsList from 'src/routes/RepositoriesList/RobotAccountsList';
+import {useQuayConfig} from 'src/hooks/UseQuayConfig';
 
 export default function Organization() {
   const location = useLocation();
+  const quayConfig = useQuayConfig();
   const {organizationName} = useParams();
+  const {usernames} = useOrganizations();
+  const isUserOrganization = usernames.includes(organizationName);
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {organization} = useOrganization(organizationName);
@@ -34,6 +40,17 @@ export default function Organization() {
     [],
   );
 
+  const fetchTabVisibility = (tabname) => {
+    if (quayConfig.config.REGISTRY_STATE == 'readonly') {
+      return false;
+    }
+
+    if (!isUserOrganization && tabname == 'Settings') {
+      return organization.is_org_admin || organization.is_admin;
+    }
+    return true;
+  }
+
   const repositoriesSubNav = [
     {
       name: 'Repositories',
@@ -43,13 +60,13 @@ export default function Organization() {
     {
       name: 'Robot accounts',
       component: <RobotAccountsList organizationName={organizationName} />,
-      visible: organization.is_org_admin || organization.is_admin,
+      visible: fetchTabVisibility('Robot accounts'),
 
     },
     {
       name: 'Settings',
       component: <Settings organizationName={organizationName} />,
-      visible: organization.is_org_admin || organization.is_admin,
+      visible: fetchTabVisibility('Settings'),
     },
   ];
 
