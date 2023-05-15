@@ -153,7 +153,7 @@
         }
         sortOrgs();
       }, function(resp){
-        $scope.errorLoadingOrgs = false;
+        $scope.errorLoadingOrgs = true;
         $scope.backgroundLoadingOrgs = false;
       });
     };
