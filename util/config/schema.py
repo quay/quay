@@ -342,6 +342,11 @@ CONFIG_SCHEMA = {
             "description": "Path under storage in which to place user-uploaded files",
             "x-example": "userfiles",
         },
+        "ACTION_LOG_AUDIT_LOGINS": {
+            "type": "string",
+            "description": "Whether to log all registry API and Quay API/UI logins event to the action log. Defaults to True",
+            "x-example": False,
+        },
         "ACTION_LOG_ARCHIVE_LOCATION": {
             "type": "string",
             "description": "If action log archiving is enabled, the storage engine in which to place the "

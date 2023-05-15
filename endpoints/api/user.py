@@ -708,14 +708,15 @@ def conduct_signin(username_or_email, password, invite_code=None):
 
         success, headers = common_login(found_user.uuid)
         if success:
-            log_action(
-                "login_success",
-                found_user.username,
-                {
-                    "type": "quayauth",
-                    "useragent": request.user_agent.string,
-                },
-            )
+            if app.config.get("ACTION_LOG_AUDIT_LOGINS"):
+                log_action(
+                    "login_success",
+                    found_user.username,
+                    {
+                        "type": "quayauth",
+                        "useragent": request.user_agent.string,
+                    },
+                )
             return {"success": True}, 200, headers
         else:
             needs_email_verification = True

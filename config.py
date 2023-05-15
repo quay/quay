@@ -436,6 +436,9 @@ class DefaultConfig(ImmutableConfig):
     LOG_ARCHIVE_LOCATION = "local_us"
     LOG_ARCHIVE_PATH = "logarchive/"
 
+    # Action logs configuration for advanced events
+    ACTION_LOG_AUDIT_LOGINS = True
+
     # Action logs archive
     ACTION_LOG_ARCHIVE_LOCATION: Optional[str] = "local_us"
     ACTION_LOG_ARCHIVE_PATH: Optional[str] = "actionlogarchive/"

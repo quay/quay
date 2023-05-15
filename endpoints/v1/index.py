@@ -7,7 +7,7 @@ from functools import wraps
 from flask import request, make_response, jsonify, session
 
 import features
-from app import userevents, storage, docker_v2_signing_key
+from app import app, userevents, storage, docker_v2_signing_key
 from auth.auth_context import get_authenticated_context, get_authenticated_user
 from auth.credentials import validate_credentials, CredentialKind
 from auth.decorators import process_auth
@@ -137,11 +137,12 @@ def create_user():
 
     if result.has_nonrobot_user:
         # Mark that the user was logged in.
-        log_action(
-            "login_success",
-            result.authed_user.username,
-            {"type": "quayauth", "useragent": request.user_agent.string},
-        )
+        if app.config.get("ACTION_LOG_AUDIT_LOGINS"):
+            log_action(
+                "login_success",
+                result.authed_user.username,
+                {"type": "quayauth", "useragent": request.user_agent.string},
+            )
         event = userevents.get_event(username)
         event.publish_event_data("docker-cli", {"action": "login"})
 

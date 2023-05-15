@@ -135,7 +135,7 @@ def generate_registry_jwt(auth_result):
     # Send the user event.
     user = get_authenticated_user()
     if user is not None:
-        if is_login_event:
+        if is_login_event and app.config.get("ACTION_LOG_AUDIT_LOGINS"):
             metadata = {}
             context = get_authenticated_context()
 
