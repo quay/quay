@@ -7,9 +7,9 @@ import {QuaySidebar} from 'src/components/sidebar/QuaySidebar';
 import {NavigationPath} from './NavigationPath';
 import OrganizationsList from './OrganizationsList/OrganizationsList';
 import Organization from './OrganizationsList/Organization/Organization';
-import RepositoryDetails from 'src/routes/RepositoryDetails/RepositoryDetails';
 import RepositoriesList from './RepositoriesList/RepositoriesList';
-import TagDetails from 'src/routes/TagDetails/TagDetails';
+import RepositoryTagRouter from './RepositoryTagRouter';
+
 import {useEffect} from 'react';
 import ErrorBoundary from 'src/components/errors/ErrorBoundary';
 import {useQuayConfig} from 'src/hooks/UseQuayConfig';
@@ -35,11 +35,7 @@ const NavigationRoutes = [
   },
   {
     path: NavigationPath.repositoryDetail,
-    Component: <RepositoryDetails />,
-  },
-  {
-    path: NavigationPath.tagDetail,
-    Component: <TagDetails />,
+    Component: <RepositoryTagRouter />,
   },
 ];
 
