@@ -1,6 +1,7 @@
 import json
 import logging
 import requests
+import time
 
 from data.billing import RH_SKUS, get_plan, get_plan_using_rh_sku
 from datetime import datetime
@@ -13,6 +14,8 @@ REQUEST_TIMEOUT = 20
 
 MARKETPLACE_FILE = "/conf/stack/quay-marketplace-api.crt"
 MARKETPLACE_SECRET = "/conf/stack/quay-marketplace-api.key"
+
+MILLISECONDS = 1000
 
 
 class RHUserAPI:
@@ -102,7 +105,13 @@ class RHMarketplaceAPI:
         except json.decoder.JSONDecodeError:
             return None
 
-        return subscription
+        if subscription:
+            end_date = subscription["effectiveEndDate"]
+            now = time.time() * MILLISECONDS
+            # Is subscription still valid?
+            if now < end_date:
+                return subscription
+        return None
 
     def extend_subscription(self, subscription_id, endDate):
         """
@@ -160,11 +169,12 @@ class RHMarketplaceAPI:
 
     def find_stripe_subscription(self, account_number):
         """
-        Returns the stripe plan for a given account number
+        Returns the stripe plan/s for a given account number
         """
+        stripe_plans = []
         for sku in RH_SKUS:
             user_subscription = self.lookup_subscription(account_number, sku)
             if user_subscription is not None:
-                return get_plan_using_rh_sku(sku)
+                stripe_plans.append(get_plan_using_rh_sku(sku))
 
-        return None
+        return stripe_plans

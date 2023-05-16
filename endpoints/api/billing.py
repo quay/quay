@@ -49,9 +49,10 @@ def check_internal_api_for_subscription(namespace_user):
     None returned if no subscription is found.
     """
     user_account_number = rh_user_api.get_account_number(namespace_user)
-    user_subscription = rh_marketplace_api.find_stripe_subscription(user_account_number)
-
-    return user_subscription
+    if user_account_number:
+        user_subscription = rh_marketplace_api.find_stripe_subscription(user_account_number)
+        return user_subscription
+    return None
 
 
 def get_namespace_plan(namespace):
