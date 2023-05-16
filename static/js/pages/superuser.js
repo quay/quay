@@ -42,10 +42,10 @@
       'page': 0,
     }
     $scope.disk_size_units = {
-      'KB': 1024,
-      'MB': 1024**2,
-      'GB': 1024**3,
-      'TB': 1024**4,
+      'KB': 1000,
+      'MB': 1000**2,
+      'GB': 1000**3,
+      'TB': 1000**4,
     };
     $scope.quotaUnits = Object.keys($scope.disk_size_units);
     $scope.registryQuota = null;
@@ -65,7 +65,7 @@
 
       for (const key in units) {
         byte_unit = units[key];
-        result = Math.round(bytes / $scope.disk_size_units[byte_unit]);
+        result = (bytes / $scope.disk_size_units[byte_unit]).toFixed(2)
         if (bytes >= $scope.disk_size_units[byte_unit]) {
           return result.toString() + " " + byte_unit;
         }
