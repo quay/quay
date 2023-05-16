@@ -452,6 +452,8 @@ def initialize_database():
 
     LogEntryKind.create(name="login_success")
     LogEntryKind.create(name="logout_success")
+    
+    LogEntryKind.create(name="permanently_delete_tag")
 
     ImageStorageLocation.create(name="local_eu")
     ImageStorageLocation.create(name="local_us")
