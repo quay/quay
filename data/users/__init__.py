@@ -340,6 +340,10 @@ class UserAuthentication(object):
         return self.state.has_superusers()
 
     def is_restricted_user(self, username):
+        # do not restrict superusers
+        if self.is_superuser(username):
+            return False
+
         return self.state.is_restricted_user(username)
 
     def has_restricted_users(self):
@@ -368,6 +372,10 @@ class UserManager(object):
 
     def is_restricted_user(self, username):
         if not features.RESTRICTED_USERS:
+            return False
+
+        # do not restrict superusers
+        if self.is_superuser(username):
             return False
 
         return self.state.is_restricted_user(username)
@@ -399,6 +407,10 @@ class FederatedUserManager(ConfigUserManager):
         """
         Returns if the given username represents a restricted user.
         """
+        # do not restrict superusers
+        if self.is_superuser(username):
+            return False
+
         if include_robots:
             username = username.split("+", 1)[0]
 
