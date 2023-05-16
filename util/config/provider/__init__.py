@@ -1,9 +1,12 @@
 from util.config.provider.fileprovider import FileConfigProvider
 from util.config.provider.testprovider import TestConfigProvider
 from util.config.provider.k8sprovider import KubernetesConfigProvider
+from util.config.provider.unleashprovider import UnleashConfigProvider
 
 
-def get_config_provider(config_volume, yaml_filename, py_filename, testing=False, kubernetes=False):
+def get_config_provider(
+    config_volume, yaml_filename, py_filename, testing=False, kubernetes=False, unleash=False
+):
     """
     Loads and returns the config provider for the current environment.
     """
@@ -12,5 +15,9 @@ def get_config_provider(config_volume, yaml_filename, py_filename, testing=False
 
     if kubernetes:
         return KubernetesConfigProvider(config_volume, yaml_filename, py_filename)
+
+    # TODO add args
+    if unleash:
+        return UnleashConfigProvider()
 
     return FileConfigProvider(config_volume, yaml_filename, py_filename)
