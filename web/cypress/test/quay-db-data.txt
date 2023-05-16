@@ -5389,7 +5389,7 @@ COPY public.accesstokenkind (id, name) FROM stdin;
 --
 
 COPY public.alembic_version (version_num) FROM stdin;
-43fea47d641f
+0246c2d0e750
 \.
 
 
@@ -6011,6 +6011,8 @@ COPY public.logentrykind (id, name) FROM stdin;
 94	user_change_tag_expiration
 95	user_change_metadata
 96	user_generate_client_key
+97	login_success
+98	logout_success
 \.
 
 
@@ -7771,7 +7773,7 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 96, true);
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 98, true);
 
 
 --
