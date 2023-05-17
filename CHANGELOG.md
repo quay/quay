@@ -3,9 +3,17 @@
 [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_quay/3.7/html/red_hat_quay_release_notes/index)
 
 
-<a name="v3.8.7"></a>
-## [v3.8.7] - 2023-04-24
+<a name="v3.8.8"></a>
+## [v3.8.8] - 2023-05-16
 ### Chore
+- [517d3b35](https://github.com/quay/quay/commit/517d3b35a1e6dbfcb56b57e5d5c5ea4710216dc3): Remove cachito magic for PyPDF2 ([#1885](https://github.com/quay/quay/issues/1885))
+### Storagereplication
+- [1cc45a7b](https://github.com/quay/quay/commit/1cc45a7b325d65b5f9738e4e17491b236bb1a0cb): add retry logic without exhausting queue retries (PROJQUAY-4793) ([#1884](https://github.com/quay/quay/issues/1884))
+
+<a name="v3.8.7"></a>
+## [v3.8.7] - 2023-04-26
+### Chore
+- [d60d6e42](https://github.com/quay/quay/commit/d60d6e42ab6fab375574cbcdb6ef8d19158f6e4e): v3.8.7 changelog bump (PROJQUAY-5352) ([#1836](https://github.com/quay/quay/issues/1836))
 - [3db02218](https://github.com/quay/quay/commit/3db022180a41138a7f84994830064640f2846564): Ensure use of HTTP 1.1 when proxying storage (PROJQUAY-5140) We were not enforcing the use of `HTTP 1.1` when storage proxy was concerned. This causes problems in certain complex scenarios. ([#1828](https://github.com/quay/quay/issues/1828))
 
 <a name="v3.8.6"></a>
@@ -891,7 +899,8 @@
 ### Release
 - [9dd55dee](https://github.com/quay/quay/commit/9dd55deed36c82b9499b3d230802e37e35b2cbc7): fixing Release action (PROJQUAY-1486)
 
-[Unreleased]: https://github.com/quay/quay/compare/v3.8.7...HEAD
+[Unreleased]: https://github.com/quay/quay/compare/v3.8.8...HEAD
+[v3.8.8]: https://github.com/quay/quay/compare/v3.8.7...v3.8.8
 [v3.8.7]: https://github.com/quay/quay/compare/v3.8.6...v3.8.7
 [v3.8.6]: https://github.com/quay/quay/compare/v3.8.5...v3.8.6
 [v3.8.5]: https://github.com/quay/quay/compare/v3.8.4...v3.8.5
