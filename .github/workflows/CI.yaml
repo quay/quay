@@ -148,31 +148,21 @@ jobs:
     - name: tox
       run: tox -e py39-registry
 
-  docker-amd64:
-    name: Docker Build amd64
+  cypress:
+    name: Cypress Tests
     runs-on: ubuntu-22.04
     steps:
 
-    - uses: actions/checkout@v3
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Install yq
-      env:
-        VERSION: v4.14.2
-        BINARY: yq_linux_amd64
-      run: |
-        wget https://github.com/mikefarah/yq/releases/download/${VERSION}/${BINARY} -O /usr/local/bin/yq
-        chmod +x /usr/local/bin/yq
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Docker Build (linux/amd64)
+    - name: Docker Build
       env:
        DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/amd64 -t localhost/quay-local:latest .
+      run: docker build -t localhost/quay-local:latest .
 
     - name: Start Quay
       run: |
@@ -225,60 +215,6 @@ jobs:
       with:
         name: cypress-videos
         path: web/cypress/videos
-
-  docker-arm64:
-    name: Docker Build arm64
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Build image (linux/arm64)
-      uses: docker/build-push-action@v3
-      with:
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/arm64
-
-  docker-ppc64le:
-    name: Docker Build ppc64le
-    runs-on: ubuntu-22.04
-    steps:
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Build image (linux/ppc64le)
-      uses: docker/build-push-action@v3
-      with:
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/ppc64le
-
-  docker-s390x:
-    name: Docker Build s390x
-    runs-on: ubuntu-20.04
-    steps:
-
-    - uses: actions/checkout@v3
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Docker Build (linux/s390x)
-      env:
-       DOCKER_BUILDKIT: 1
-      run: docker build --platform=linux/s390x .
 
   mysql:
     name: E2E MySQL Test
