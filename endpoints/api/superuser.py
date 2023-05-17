@@ -206,13 +206,7 @@ class SuperUserOrganizationList(ApiResource):
     @nickname("listAllOrganizations")
     @parse_args()
     @query_param(
-        "all",
-        "Returns all organizations within the registry with no pagination",
-        type=truthy_bool,
-        default=True,
-    )
-    @query_param(
-        "limit", "Limit to the number of results to return per page. Max 100.", type=int, default=50
+        "limit", "Limit to the number of results to return per page. Max 100.", type=int, default=None
     )
     @require_scope(scopes.SUPERUSER)
     @page_support()
@@ -221,10 +215,10 @@ class SuperUserOrganizationList(ApiResource):
         Returns a list of all organizations in the system.
         """
         if SuperUserPermission().can():
-            if not parsed_args["all"] and parsed_args["limit"] > 100:
+            if parsed_args["limit"] is not None and parsed_args["limit"] > 100:
                 raise InvalidRequest("Page limit cannot be above 100")
 
-            if parsed_args["all"]:
+            if parsed_args["limit"] is None:
                 return {
                     "organizations": [org.to_dict() for org in pre_oci_model.get_organizations()]
                 }, None
