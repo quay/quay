@@ -193,7 +193,7 @@ jobs:
         make integration-test
     
     - name: Cypress run
-      uses: cypress-io/github-action@v4.2.0
+      uses: cypress-io/github-action@v5
       with:
         browser: chrome
         build: npm run build
