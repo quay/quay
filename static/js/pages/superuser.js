@@ -49,6 +49,8 @@
     };
     $scope.quotaUnits = Object.keys($scope.disk_size_units);
     $scope.registryQuota = null;
+    $scope.backgroundLoadingOrgs = false;
+    $scope.errorLoadingOrgs = false;
 
     $scope.showQuotaConfig = function (org) {
         if (StateService.inReadOnlyMode()) {
@@ -131,11 +133,28 @@
     }
 
     $scope.loadOrganizationsInternal = function() {
-      $scope.organizationsResource = ApiService.listAllOrganizationsAsResource().get(function(resp) {
-        $scope.organizations = resp['organizations'];
+      $scope.organizations = [];
+      if($scope.backgroundLoadingOrgs){
+        return;
+      }
+      loadPaginatedOrganizations();
+    };
+
+    var loadPaginatedOrganizations = function(nextPageToken = null) {
+      $scope.backgroundLoadingOrgs = true;
+      var params = nextPageToken != null ? {limit: 100, next_page: nextPageToken} : {limit: 100};
+      ApiService.listAllOrganizationsAsResource(params).get(function(resp) {
+        $scope.organizations = [...$scope.organizations, ...resp['organizations']];
+        if(resp["next_page"] != null){
+          loadPaginatedOrganizations(resp["next_page"]);
+        } else {
+          $scope.backgroundLoadingOrgs = false;
+          caclulateRegistryStorage();
+        }
         sortOrgs();
-        caclulateRegistryStorage();
-        return $scope.organizations;
+      }, function(resp){
+        $scope.errorLoadingOrgs = true;
+        $scope.backgroundLoadingOrgs = false;
       });
     };
 
