@@ -162,6 +162,7 @@
     </cor-tab-panel>
 
     <!-- Modal quota configuration -->
+    <div ng-if="orderedOrgs.entries.length" >
       <div ng-repeat="current_org in orderedOrgs.entries  | slice
         :(orgsPerPage * options.page)
         :(orgsPerPage * (options.page + 1))" class="org-row">
@@ -177,6 +178,7 @@
             </div>
           </div>
       </div>
+    </div>
 
 
     <!-- Modal message dialog -->

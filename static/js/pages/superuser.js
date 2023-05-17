@@ -142,7 +142,7 @@
 
     var loadPaginatedOrganizations = function(nextPageToken = null) {
       $scope.backgroundLoadingOrgs = true;
-      var params = nextPageToken != null ? {all: false, limit: 100, next_page: nextPageToken} : {all: false, limit: 100};
+      var params = nextPageToken != null ? {limit: 100, next_page: nextPageToken} : {limit: 100};
       ApiService.listAllOrganizationsAsResource(params).get(function(resp) {
         $scope.organizations = [...$scope.organizations, ...resp['organizations']];
         if(resp["next_page"] != null){
