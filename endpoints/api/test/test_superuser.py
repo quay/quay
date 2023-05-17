@@ -31,7 +31,7 @@ def test_list_all_orgs(client):
 
 def test_paginate_orgs(client):
     with client_with_identity("devtable", client) as cl:
-        params = {"all": False, "limit": 3}
+        params = {"limit": 3}
         firstResult = conduct_api_call(cl, SuperUserOrganizationList, "GET", params, None, 200).json
         assert len(firstResult["organizations"]) == 3
         assert firstResult["next_page"] is not None
