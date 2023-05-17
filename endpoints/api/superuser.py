@@ -392,7 +392,10 @@ class SuperUserList(ApiResource):
         "disabled", "If false, only enabled users will be returned.", type=truthy_bool, default=True
     )
     @query_param(
-        "limit", "Limit to the number of results to return per page. Max 100.", type=int, default=None
+        "limit",
+        "Limit to the number of results to return per page. Max 100.",
+        type=int,
+        default=None,
     )
     @require_scope(scopes.SUPERUSER)
     @page_support()
