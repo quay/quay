@@ -708,6 +708,15 @@ def conduct_signin(username_or_email, password, invite_code=None):
 
         success, headers = common_login(found_user.uuid)
         if success:
+            if app.config.get("ACTION_LOG_AUDIT_LOGINS"):
+                log_action(
+                    "login_success",
+                    found_user.username,
+                    {
+                        "type": "quayauth",
+                        "useragent": request.user_agent.string,
+                    },
+                )
             return {"success": True}, 200, headers
         else:
             needs_email_verification = True
@@ -909,8 +918,9 @@ class Signout(ApiResource):
         """
         Request that the current user be signed out.
         """
+        user = get_authenticated_user()
         # Invalidate all sessions for the user.
-        model.user.invalidate_all_sessions(get_authenticated_user())
+        model.user.invalidate_all_sessions(user)
 
         # Clear out the user's identity.
         identity_changed.send(app, identity=AnonymousIdentity())
@@ -918,6 +928,8 @@ class Signout(ApiResource):
         # Remove the user's session cookie.
         logout_user()
 
+        if user:
+            log_action("logout_success", user.username)
         return {"success": True}
 
 

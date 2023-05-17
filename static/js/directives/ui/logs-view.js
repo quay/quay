@@ -478,7 +478,26 @@ angular.module('quay').directive('logsView', function () {
             metadata['service'], metadata['config']);
           return 'Manually start build from trigger[[ - ' + triggerDescription + ']]';
         },
-        'cancel_build': 'Cancel build {build_uuid}'
+        'cancel_build': 'Cancel build {build_uuid}',
+        'login_success': function(metadata) {
+          metadata["useragent"] = metadata.useragent.substring(0, 64)+ '...';
+
+          if (metadata.type == 'v2auth') {
+            var message = 'Login to registry[[ with';
+            
+            if (metadata.kind == 'app_specific_token') {
+              message += ' app-specific token {app_specific_token_title} and';
+            } 
+            else if (metadata.kind == 'robot') {
+              message += ' robot {robot} and';
+            }
+
+            return message + ' user-agent {useragent}]]'
+          } else {
+            return 'Login to Quay[[ with user-agent {useragent}]]';
+          }
+        },
+        'logout_success': 'Logout from Quay',
 };
 
       var logKinds = {
@@ -574,6 +593,7 @@ angular.module('quay').directive('logsView', function () {
         'delete_proxy_cache_config': 'Delete Proxy Cache Config',
         'start_build_trigger': 'Manual build trigger',
         'cancel_build': 'Cancel build',
+        'login_success': 'Login success',
 
         // Note: these are deprecated.
         'add_repo_webhook': 'Add webhook',
