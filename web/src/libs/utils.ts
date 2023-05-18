@@ -74,14 +74,20 @@ export function parseRepoNameFromUrl(url: string): string {
 }
 
 export function parseOrgNameFromUrl(url: string): string {
-  //url is in the format of <prefix>/repository/<org>/<repo>
+  //url is in the format of <prefix>/repository/<org>/<repo> or <prefix>/organization/<org>/<repo>
   //or <prefix>/repository/<org>/<repo>/tag/<tag>
   const urlParts = url.split('/');
   const repoKeywordIndex = urlParts.indexOf('repository');
-  if (repoKeywordIndex === -1) {
+  const orgKeywordIndex = urlParts.indexOf('organization');
+  if (repoKeywordIndex != -1) {
+    return urlParts[repoKeywordIndex + 1];
+  }
+
+  if (orgKeywordIndex === -1) {
     return '';
   }
-  return urlParts[repoKeywordIndex + 1];
+
+  return urlParts[orgKeywordIndex + 1];
 }
 
 export function parseTagNameFromUrl(url: string): string {

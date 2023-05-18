@@ -11,8 +11,10 @@ import useBreadcrumbs, {
 } from 'use-react-router-breadcrumbs';
 import {useRecoilState} from 'recoil';
 import {BrowserHistoryState} from 'src/atoms/BrowserHistoryState';
+import {parseOrgNameFromUrl, parseRepoNameFromUrl, parseTagNameFromUrl} from 'src/libs/utils';
 
 export function QuayBreadcrumb() {
+  const location = useLocation();
   const [browserHistory, setBrowserHistoryState] =
     useRecoilState(BrowserHistoryState);
 
@@ -33,57 +35,42 @@ export function QuayBreadcrumb() {
     setBrowserHistoryState([]);
   };
 
-  const fetchRepoName = (route) => {
-    const re = new RegExp(urlParams.organizationName + '/(.*)', 'i');
-    const result = route.match(re);
-    return result[1];
-  };
-
-  const buildBreadCrumbFromPrevRoute = (object) => {
-    const prevObj = {};
-    prevObj['pathname'] = object.match.pathname;
-    prevObj['title'] = fetchRepoName(prevObj['pathname']);
-    prevObj['active'] =
-      prevObj['pathname'].localeCompare(window.location.pathname) === 0;
-    return prevObj;
-  };
-
   const buildFromRoute = () => {
     const result = [];
     const history = [];
-    let prevItem = null;
-
     for (let i = 0; i < routerBreadcrumbs.length; i++) {
+      if (result.length == 4) {
+        break;
+      }
       const newObj = {};
       const object = routerBreadcrumbs[i];
       newObj['pathname'] = object.match.pathname;
-      if (object.match.route.Component.type.name == 'RepositoryDetails') {
-        prevItem = object;
-        // Continuing till we find the last RepositoryDetails route for nested repo paths
-        continue;
-      } else {
-        newObj['title'] = object.match.pathname.split('/').slice(-1)[0];
+      if (object.key != '') {
+        newObj['title'] = object.key.replace(/\//, '');
       }
-      newObj['active'] =
-        object.match.pathname.localeCompare(window.location.pathname) === 0;
 
-      if (prevItem) {
-        const prevObj = buildBreadCrumbFromPrevRoute(prevItem);
-        result.push(prevObj);
-        history.push(prevObj);
-        prevItem = null;
+      // if result.len == 1 -> next entry is organization name
+      if (result.length == 1) {
+        newObj['title'] = parseOrgNameFromUrl(location.pathname);
+        newObj['pathname'] = location.pathname.split(/repository|organization/)[0] + 'organization/' + newObj['title'];
+      }
+      // if result.len == 2 -> next entry is repo name
+      else if (result.length == 2) {
+        newObj['title'] = parseRepoNameFromUrl(location.pathname);
+        newObj['pathname'] = location.pathname.split(newObj['title'])[0] + newObj['title'];
+      }
+      // if result.len == 3 -> next entry is tag name
+      else if (result.length == 3) {
+        newObj['title'] = parseTagNameFromUrl(location.pathname)
+        newObj['pathname'] = result[2]['pathname'] + '/tag/' + newObj['title'];
       }
 
       result.push(newObj);
       history.push(newObj);
-    }
-
-    // If prevItem was not pushed in the for loop
-    if (prevItem) {
-      const prevObj = buildBreadCrumbFromPrevRoute(prevItem);
-      result.push(prevObj);
-      history.push(prevObj);
-      prevItem = null;
+      if (location.pathname.replace(/.*\/organization|.*\/repository/g, '') == newObj['pathname'].replace(/.*\/organization|.*\/repository/g, '')) {
+        newObj['active'] = true;
+        break;
+      }
     }
 
     setBreadcrumbItems(result);
@@ -93,11 +80,14 @@ export function QuayBreadcrumb() {
   const currentBreadcrumbItem = () => {
     const newItem = {};
     const lastItem = routerBreadcrumbs[routerBreadcrumbs.length - 1];
-
-    newItem['pathname'] = lastItem.location.pathname;
+    newItem['pathname'] = location.pathname;
+    const tagName = parseTagNameFromUrl(newItem['pathname']);
     // Form QuayBreadcrumbItem for the current path
-    if (lastItem.match.route.Component.type.name == 'RepositoryDetails') {
-      newItem['title'] = fetchRepoName(newItem['pathname']);
+    if (tagName != '') {
+      newItem['title'] = parseTagNameFromUrl(newItem['pathname'])
+    }
+    else if (lastItem.match.route.path.match('/repository/:organizationName/*')) {
+      newItem['title'] = parseRepoNameFromUrl(location.pathname);
     } else {
       newItem['title'] = newItem['pathname'].split('/').slice(-1)[0];
     }
@@ -112,17 +102,28 @@ export function QuayBreadcrumb() {
     const newItem = currentBreadcrumbItem();
 
     for (const value of Array.from(browserHistory.values())) {
+      if (result.length == 3) {
+        break;
+      }
       const newObj = {};
       newObj['pathname'] = value['pathname'];
-      if (typeof value['title'] === 'string') {
-        newObj['title'] = value['title'];
-      } else if (value.title?.props?.children) {
-        newObj['title'] = value['title']['props']['children'];
+      // first breadcrumb can be organization or repository
+      if (result.length == 0) {
+        newObj['title'] = value['pathname'].split('/').slice(-1)[0];
       }
-      newObj['active'] =
-        value['pathname'].localeCompare(window.location.pathname) === 0;
-      if (newItem['pathname'] == newObj['pathname']) {
-        newItem['title'] = newObj['title'];
+      // second breadcrumb is organization name
+      else if (result.length == 1) {
+        newObj['title'] = parseOrgNameFromUrl(location.pathname);
+      }
+      // third breadcrumb is repo name
+      else if (result.length == 2) {
+        newObj['title'] = parseRepoNameFromUrl(location.pathname);
+        newObj['pathname'] = location.pathname.split(newObj['title'])[0] + newObj['title'];
+      } else if (typeof value['title'] === 'string') {
+        newObj['title'] = value['title'];
+      }
+      newObj['active'] = value['pathname'].localeCompare(location.pathname) === 0;
+      if (newItem['pathname'].replace(/.*\/organization|.*\/repository/g, '') == newObj['pathname'].replace(/.*\/organization|.*\/repository/g, '')) {
         break;
       }
       result.push(newObj);
