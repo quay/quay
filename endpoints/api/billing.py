@@ -90,12 +90,12 @@ def lookup_allowed_private_repos(namespace):
         namespace_user = model.user.get_namespace_user(namespace)
         marketplace_subscriptions = check_internal_api_for_subscription(namespace_user)
         for subscription in marketplace_subscriptions:
-            repos_allowed = repos_allowed + subscription["privateRepos"]
+            repos_allowed += subscription["privateRepos"]
 
     # Find the number of private repositories used by the namespace and compare it to the
     # plan subscribed.
     if current_plan is not None:
-        repos_allowed = repos_allowed + current_plan["privateRepos"]
+        repos_allowed += current_plan["privateRepos"]
 
     private_repos = model.user.get_private_repo_count(namespace)
     return private_repos < repos_allowed

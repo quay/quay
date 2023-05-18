@@ -650,7 +650,7 @@ class PrivateRepositories(ApiResource):
                     user_account_number
                 )
                 for user_subscription in marketplace_subscriptions:
-                    repos_allowed = user_subscription["privateRepos"] + repos_allowed
+                    repos_allowed += user_subscription["privateRepos"]
 
         return {"privateCount": private_repos, "privateAllowed": (private_repos < repos_allowed)}
 

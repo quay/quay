@@ -15,8 +15,6 @@ REQUEST_TIMEOUT = 20
 MARKETPLACE_FILE = "/conf/stack/quay-marketplace-api.crt"
 MARKETPLACE_SECRET = "/conf/stack/quay-marketplace-api.key"
 
-MILLISECONDS = 1000
-
 
 class RHUserAPI:
     def __init__(self, app_config):
@@ -107,9 +105,9 @@ class RHMarketplaceAPI:
 
         if subscription:
             end_date = subscription["effectiveEndDate"]
-            now = time.time() * MILLISECONDS
+            now_ms = time.time() * 1000
             # Is subscription still valid?
-            if now < end_date:
+            if now_ms < end_date:
                 return subscription
         return None
 
@@ -169,7 +167,8 @@ class RHMarketplaceAPI:
 
     def find_stripe_subscription(self, account_number):
         """
-        Returns the stripe plan/s for a given account number
+        Returns the stripe plan/s relating to marketplace subscriptions
+        for a given account number
         """
         stripe_plans = []
         for sku in RH_SKUS:
