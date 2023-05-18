@@ -50,9 +50,9 @@ def check_internal_api_for_subscription(namespace_user):
     """
     user_account_number = rh_user_api.get_account_number(namespace_user)
     if user_account_number:
-        user_subscription = rh_marketplace_api.find_stripe_subscription(user_account_number)
-        return user_subscription
-    return None
+        user_subscriptions = rh_marketplace_api.find_stripe_subscription(user_account_number)
+        return user_subscriptions
+    return []
 
 
 def get_namespace_plan(namespace):
@@ -64,10 +64,6 @@ def get_namespace_plan(namespace):
         return None
 
     if not namespace_user.stripe_id:
-        # if entitlement reconciliation is enabled
-        # we want to check marketplace too
-        if features.RH_MARKETPLACE:
-            return check_internal_api_for_subscription(namespace_user)
         return None
 
     # Ask Stripe for the subscribed plan.
@@ -87,14 +83,22 @@ def lookup_allowed_private_repos(namespace):
     """
     Returns false if the given namespace has used its allotment of private repositories.
     """
+    repos_allowed = 0
     current_plan = get_namespace_plan(namespace)
-    if current_plan is None:
-        return False
+
+    if features.RH_MARKETPLACE:
+        namespace_user = model.user.get_namespace_user(namespace)
+        marketplace_subscriptions = check_internal_api_for_subscription(namespace_user)
+        for subscription in marketplace_subscriptions:
+            repos_allowed = repos_allowed + subscription["privateRepos"]
 
     # Find the number of private repositories used by the namespace and compare it to the
     # plan subscribed.
+    if current_plan is not None:
+        repos_allowed = repos_allowed + current_plan["privateRepos"]
+
     private_repos = model.user.get_private_repo_count(namespace)
-    return private_repos < current_plan["privateRepos"]
+    return private_repos < repos_allowed
 
 
 def carderror_response(e):
