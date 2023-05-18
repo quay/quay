@@ -302,6 +302,12 @@ class SuperuserDataInterface(object):
         """
 
     @abstractmethod
+    def get_active_users_paginated(self):
+        """
+        Returns a paginated list of User.
+        """
+
+    @abstractmethod
     def create_install_user(self, username, password, email):
         """
         Returns the created user and confirmation code for email confirmation.
