@@ -6,7 +6,7 @@ on:
     branches:
       - redhat-** # IMPORTANT! this must match the jobs.build-and-publish.env.BRANCH_PREFIX (save the **).
   workflow_dispatch:
-      # Allows you to run this workflow manually from the Actions tab
+    # Allows you to run this workflow manually from the Actions tab
     inputs:
       tag:
         description: 'Tag to attach to image'     
@@ -22,7 +22,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set version from branch name
         id: version-from-branch
@@ -50,7 +50,7 @@ jobs:
         env:
           TAG: ${{ steps.version-from-branch.outputs.version }}${{ env.TAG_SUFFIX }}
         with:
-          platforms: linux/amd64,linux/ppc64le,linux/s390x
+          platforms: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}:${{ github.event.inputs.tag || env.TAG }}
 
