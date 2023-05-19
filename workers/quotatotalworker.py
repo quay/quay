@@ -64,14 +64,6 @@ if __name__ == "__main__":
         while True:
             time.sleep(100000)
 
-    if app.config.get("QUOTA_TOTAL_DELAY_SECONDS", None) is not None:
-        logger.debug(
-            "Delaying quota backfill for %s seconds.",
-            str(app.config.get("QUOTA_TOTAL_DELAY_SECONDS", 0)),
-        )
-        time.sleep(app.config.get("QUOTA_TOTAL_DELAY_SECONDS", 0))
-        logger.debug("Delay complete, starting quotatotalworker...")
-
     GlobalLock.configure(app.config)
     logging.config.fileConfig(logfile_path(debug=False), disable_existing_loggers=False)
     worker = QuotaTotalWorker()

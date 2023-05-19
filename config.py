@@ -795,10 +795,6 @@ class DefaultConfig(ImmutableConfig):
     FEATURE_QUOTA_MANAGEMENT = False
     # default value for all organizations to reject by default. 0 = no configuration
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
-    # Time delay for starting the quota backfill. Rolling deployments can cause incorrect
-    # totals, so this field should be set to a time longer than it takes for the rolling
-    # deployment to complete
-    QUOTA_TOTAL_DELAY_SECONDS = 60
 
     # Enables the quota backfill worker
     QUOTA_BACKFILL = False
