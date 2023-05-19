@@ -281,7 +281,12 @@ class ProxyModel(OCIModel):
 
         if tag.expired or not new_tag:
             with db_disallow_replica_use():
-
+                new_expiration = (
+                    get_epoch_timestamp_ms() + self._config.expiration_s * 1000
+                    if self._config.expiration_s
+                    else None
+                )
+                oci.tag.set_tag_end_ms(db_tag, new_expiration)
                 # if the manifest is a child of a manifest list in this repo, renew
                 # the parent(s) manifest list tag too.
                 # select tag ids by most recent lifetime_end_ms uniquely by name,
@@ -297,17 +302,6 @@ class ProxyModel(OCIModel):
                     .group_by(TagTable.name)
                 )
                 tag_ids = [item for item in q]
-
-                new_expiration = (
-                    get_epoch_timestamp_ms() + self._config.expiration_s * 1000
-                    if self._config.expiration_s
-                    else None
-                )
-                # If child manifest, set expiration to now to allow immediate GC of the manifest
-                # when the parent is GC'd
-                expiration = get_epoch_timestamp_ms() if len(tag_ids) > 0 else new_expiration
-                oci.tag.set_tag_end_ms(db_tag, expiration)
-
                 TagTable.update(lifetime_end_ms=new_expiration).where(
                     TagTable.id.in_(tag_ids)
                 ).execute()
@@ -372,10 +366,6 @@ class ProxyModel(OCIModel):
                     if self._config.expiration_s
                     else None
                 )
-                # If child manifest, set expiration to now to allow immediate GC of the manifest
-                # when the parent is GC'd
-                if db_tag is not None and is_child_manifest(db_tag.manifest):
-                    new_expiration = get_epoch_timestamp_ms()
                 oci.tag.set_tag_end_ms(db_tag, new_expiration)
             return super().get_repo_tag(repository_ref, tag_name, raise_on_error=True)
 
@@ -508,10 +498,6 @@ class ProxyModel(OCIModel):
                 # 0 means a tag never expires - if we get 0 as expiration,
                 # we set the tag expiration to None.
                 expiration = self._config.expiration_s or None
-                # If child manifest, set expiration to now to allow immediate GC of the manifest
-                # when the parent is GC'd
-                if db_manifest is not None and is_child_manifest(db_manifest.id):
-                    expiration = get_epoch_timestamp_ms()
                 tag = oci.tag.retarget_tag(
                     tag_name,
                     db_manifest,
@@ -537,10 +523,9 @@ class ProxyModel(OCIModel):
                     )
                     if m is None:
                         m = oci.manifest.create_manifest(repository_ref.id, child)
-                        expiration = self._config.expiration_s or None
-                        if m is not None and is_child_manifest(m.id):
-                            expiration = get_epoch_timestamp_ms()
-                        oci.tag.create_temporary_tag_if_necessary(m, expiration)
+                        oci.tag.create_temporary_tag_if_necessary(
+                            m, self._config.expiration_s or None
+                        )
                     try:
                         ManifestChild.get(manifest=db_manifest.id, child_manifest=m.id)
                     except ManifestChild.DoesNotExist:
@@ -571,10 +556,6 @@ class ProxyModel(OCIModel):
             with db_transaction():
                 db_manifest = oci.manifest.create_manifest(repository_ref.id, manifest)
                 expiration = self._config.expiration_s or None
-                # If child manifest, set expiration to now to allow immediate GC of the manifest
-                # when the parent is GC'd
-                if db_manifest is not None and is_child_manifest(db_manifest.id):
-                    expiration = get_epoch_timestamp_ms()
                 tag = Tag.for_tag(
                     oci.tag.create_temporary_tag_if_necessary(db_manifest, expiration),
                     self._legacy_image_id_handler,

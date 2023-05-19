@@ -469,6 +469,7 @@ def _delete_tag(tag, now_ms):
         if updated != 1:
             return None
 
+        reset_child_manifest_expiration(tag.repository, tag.manifest)
         return tag
 
 
@@ -762,15 +763,27 @@ def remove_tag_from_timemachine(
                 increment = increment + 1
 
     if include_submanifests:
-        with db_transaction():
-            # pylint: disable-next=not-an-iterable
-            for child_manifest in get_child_manifests(repo_id, manifest_id):
-                Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment).where(
-                    Tag.repository == repo_id,
-                    Tag.manifest == child_manifest.child_manifest,
-                    Tag.hidden == True,
-                    Tag.lifetime_end_ms > now_ms - time_machine_ms - increment,
-                ).execute()
-                increment = increment + 1
+        reset_child_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
 
     return updated
+
+
+def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
+    """
+    Resets the expirations of temporary tags targeting the child manifests.
+    """
+    if not config.app_config.get("RESET_CHILD_MANIFEST_EXPIRATION", True):
+        return
+
+    with db_transaction():
+        # pylint: disable-next=not-an-iterable
+        for child_manifest in get_child_manifests(repository_id, manifest):
+            expiry_ms = get_epoch_timestamp_ms() if expiration is None else expiration
+            Tag.update(lifetime_end_ms=expiry_ms).where(
+                Tag.repository == repository_id,
+                Tag.manifest == child_manifest.child_manifest,
+                Tag.lifetime_end_ms > expiry_ms,
+                Tag.name.startswith("$temp-"),
+                Tag.hidden == True,
+            ).execute()
+

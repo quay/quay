@@ -656,8 +656,8 @@ class TestRegistryProxyModelLookupManifestByDigest:
 
         assert updated_tag.id == manifest_tag.id
         assert updated_list_tag.id == manifest_list_tag.id
-        assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms()
-        assert updated_list_tag.lifetime_end_ms > get_epoch_timestamp_ms()
+        assert updated_tag.lifetime_end_ms > manifest_tag.lifetime_end_ms
+        assert updated_list_tag.lifetime_end_ms > manifest_list_tag.lifetime_end_ms
 
     def test_renew_manifest_list_tag_when_upstream_manifest_changed(
         self, create_repo, proxy_manifest_response
