@@ -786,4 +786,3 @@ def reset_child_manifest_expiration(repository_id, manifest, expiration=None):
                 Tag.name.startswith("$temp-"),
                 Tag.hidden == True,
             ).execute()
-
