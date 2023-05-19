@@ -48,7 +48,10 @@ export function QuayBreadcrumb() {
       if (object.key != '') {
         newObj['title'] = object.key.replace(/\//, '');
       }
-
+      // if result.len == 0 -> next entry is either organization or repository
+      if (result.length == 0) {
+        newObj['title'] = newObj['title'].split('/').at(-1);
+      }
       // if result.len == 1 -> next entry is organization name
       if (result.length == 1) {
         newObj['title'] = parseOrgNameFromUrl(location.pathname);
@@ -109,7 +112,7 @@ export function QuayBreadcrumb() {
       newObj['pathname'] = value['pathname'];
       // first breadcrumb can be organization or repository
       if (result.length == 0) {
-        newObj['title'] = value['pathname'].split('/').slice(-1)[0];
+        newObj['title'] = value['pathname'].split('/').at(-1);
       }
       // second breadcrumb is organization name
       else if (result.length == 1) {
