@@ -182,6 +182,12 @@ def appconfig(database_uri):
         "MAIL_DEFAULT_SENDER": "admin@example.com",
         "DATABASE_SECRET_KEY": "anothercrazykey!",
         "FEATURE_PROXY_CACHE": True,
+        "ACTION_LOG_AUDIT_LOGINS": True,
+        "ACTION_LOG_AUDIT_LOGIN_FAILURES": True,
+        "ACTION_LOG_AUDIT_PULL_FAILURES": True,
+        "ACTION_LOG_AUDIT_PUSH_FAILURES": True,
+        "ACTION_LOG_AUDIT_DELETE_FAILURES": True,
+
     }
     return conf
 
