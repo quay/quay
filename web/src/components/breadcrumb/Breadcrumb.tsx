@@ -35,6 +35,32 @@ export function QuayBreadcrumb() {
     setBrowserHistoryState([]);
   };
 
+  const fetchBreadcrumb = (existingBreadcrumbs, nextBreadcrumb) => {
+    // if existingBreadcrumbs.len is 0 -> next entry is either organization or repository
+    if (existingBreadcrumbs.length == 0) {
+      nextBreadcrumb['title'] = nextBreadcrumb['pathname'].split('/').at(-1);
+    }
+    // if existingBreadcrumbs.len is 1 -> next entry is organization name
+    else if (existingBreadcrumbs.length == 1) {
+      nextBreadcrumb['title'] = parseOrgNameFromUrl(location.pathname);
+      nextBreadcrumb['pathname'] = location.pathname.split(/repository|organization/)[0] + 'organization/' + nextBreadcrumb['title'];
+    }
+    // if existingBreadcrumbs.len is 2 -> next entry is repo name
+    else if (existingBreadcrumbs.length == 2) {
+      nextBreadcrumb['title'] = parseRepoNameFromUrl(location.pathname);
+      nextBreadcrumb['pathname'] = location.pathname.split(nextBreadcrumb['title'])[0] + nextBreadcrumb['title'];
+    }
+    // if existingBreadcrumbs.len is 3 -> next entry is tag name
+    else if (existingBreadcrumbs.length == 3) {
+      nextBreadcrumb['title'] = parseTagNameFromUrl(location.pathname)
+      nextBreadcrumb['pathname'] = existingBreadcrumbs[2]['pathname'] + '/tag/' + nextBreadcrumb['title'];
+    }
+    if (location.pathname.replace(/.*\/organization|.*\/repository/g, '') == nextBreadcrumb['pathname'].replace(/.*\/organization|.*\/repository/g, '')) {
+      nextBreadcrumb['active'] = true;
+    }
+    return nextBreadcrumb;
+  }
+
   const buildFromRoute = () => {
     const result = [];
     const history = [];
@@ -42,36 +68,16 @@ export function QuayBreadcrumb() {
       if (result.length == 4) {
         break;
       }
-      const newObj = {};
+      let newObj = {};
       const object = routerBreadcrumbs[i];
       newObj['pathname'] = object.match.pathname;
       if (object.key != '') {
         newObj['title'] = object.key.replace(/\//, '');
       }
-      // if result.len == 0 -> next entry is either organization or repository
-      if (result.length == 0) {
-        newObj['title'] = newObj['title'].split('/').at(-1);
-      }
-      // if result.len == 1 -> next entry is organization name
-      if (result.length == 1) {
-        newObj['title'] = parseOrgNameFromUrl(location.pathname);
-        newObj['pathname'] = location.pathname.split(/repository|organization/)[0] + 'organization/' + newObj['title'];
-      }
-      // if result.len == 2 -> next entry is repo name
-      else if (result.length == 2) {
-        newObj['title'] = parseRepoNameFromUrl(location.pathname);
-        newObj['pathname'] = location.pathname.split(newObj['title'])[0] + newObj['title'];
-      }
-      // if result.len == 3 -> next entry is tag name
-      else if (result.length == 3) {
-        newObj['title'] = parseTagNameFromUrl(location.pathname)
-        newObj['pathname'] = result[2]['pathname'] + '/tag/' + newObj['title'];
-      }
-
+      newObj = fetchBreadcrumb(result, newObj)
       result.push(newObj);
       history.push(newObj);
-      if (location.pathname.replace(/.*\/organization|.*\/repository/g, '') == newObj['pathname'].replace(/.*\/organization|.*\/repository/g, '')) {
-        newObj['active'] = true;
+      if (newObj['active']) {
         break;
       }
     }
@@ -94,7 +100,6 @@ export function QuayBreadcrumb() {
     } else {
       newItem['title'] = newItem['pathname'].split('/').slice(-1)[0];
     }
-
     newItem['active'] = true;
     return newItem;
   };
@@ -108,25 +113,10 @@ export function QuayBreadcrumb() {
       if (result.length == 3) {
         break;
       }
-      const newObj = {};
+      let newObj = {};
       newObj['pathname'] = value['pathname'];
-      // first breadcrumb can be organization or repository
-      if (result.length == 0) {
-        newObj['title'] = value['pathname'].split('/').at(-1);
-      }
-      // second breadcrumb is organization name
-      else if (result.length == 1) {
-        newObj['title'] = parseOrgNameFromUrl(location.pathname);
-      }
-      // third breadcrumb is repo name
-      else if (result.length == 2) {
-        newObj['title'] = parseRepoNameFromUrl(location.pathname);
-        newObj['pathname'] = location.pathname.split(newObj['title'])[0] + newObj['title'];
-      } else if (typeof value['title'] === 'string') {
-        newObj['title'] = value['title'];
-      }
-      newObj['active'] = value['pathname'].localeCompare(location.pathname) === 0;
-      if (newItem['pathname'].replace(/.*\/organization|.*\/repository/g, '') == newObj['pathname'].replace(/.*\/organization|.*\/repository/g, '')) {
+      newObj = fetchBreadcrumb(result, newObj);
+      if (newObj['active']) {
         break;
       }
       result.push(newObj);
