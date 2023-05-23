@@ -181,7 +181,7 @@
     };
 
     $scope.askRecalculateRegistrySize = function(){
-      bootbox.confirm('Are you sure you want to queue registry size calculation? <span style="color: red">Use with caution as this may cause excess database load.</span>',
+      bootbox.confirm('Are you sure you want to queue registry size calculation? <div style="color: red">This is a database intensive operation. Use with caution.</div>',
         function(confirmed) {
           if (confirmed) {
             ApiService.queueRegistrySizeCalculation().then(function(resp) {

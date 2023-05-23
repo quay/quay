@@ -1,14 +1,14 @@
 """“add_registry_size_table”
 
 Revision ID: ab5a24478052
-Revises: 43fea47d641f
+Revises: 0246c2d0e750
 Create Date: 2023-03-07 09:15:45.681530
 
 """
 
 # revision identifiers, used by Alembic.
 revision = "ab5a24478052"
-down_revision = "43fea47d641f"
+down_revision = "0246c2d0e750"
 
 import sqlalchemy as sa
 
