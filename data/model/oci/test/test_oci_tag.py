@@ -1,4 +1,5 @@
 import json
+from mock import patch
 import pytest
 from calendar import timegm
 from datetime import timedelta, datetime
@@ -18,6 +19,7 @@ from data.model.oci.manifest import get_or_create_manifest
 from data.model.oci.test.test_oci_manifest import create_manifest_for_testing
 from data.model.oci.tag import (
     find_matching_tag,
+    get_child_manifests,
     get_most_recent_tag,
     get_most_recent_tag_lifetime_start,
     list_alive_tags,
@@ -346,61 +348,89 @@ def test_get_expired_tag(namespace_name, repo_name, tag_name, expected, initiali
 
 def test_delete_tag(initialized_db):
     found = False
-    for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
-        repo = tag.repository
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
+            repo = tag.repository
 
-        assert get_tag(repo, tag.name) == tag
-        assert tag.lifetime_end_ms is None
+            assert get_tag(repo, tag.name) == tag
+            assert tag.lifetime_end_ms is None
 
-        with assert_query_count(2):
-            assert delete_tag(repo, tag.name) == tag
+            with assert_query_count(3):
+                assert delete_tag(repo, tag.name) == tag
 
-        assert get_tag(repo, tag.name) is None
-        found = True
+            assert get_tag(repo, tag.name) is None
+            found = True
 
     assert found
 
 
+def test_delete_tag_manifest_list(initialized_db):
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": True}):
+        repository = create_repository("devtable", "newrepo", None)
+        tag = _create_manifest_list(repository)
+
+        # Assert temporary tags were created and are alive
+        child_manifests = list(get_child_manifests(repository.id, tag.manifest))
+        assert len(child_manifests) == 2
+        for child_manifest in child_manifests:
+            child_tag = get_tag_by_manifest_id(repository.id, child_manifest.child_manifest)
+            assert child_tag.name.startswith("$temp-")
+            assert child_tag.lifetime_end_ms > get_epoch_timestamp_ms()
+
+        with assert_query_count(8):
+            assert delete_tag(repository.id, tag.name) == tag
+
+        # Assert temporary tags pointing to child manifest are now expired
+        child_manifests = list(get_child_manifests(repository.id, tag.manifest))
+        assert len(child_manifests) == 2
+        for child_manifest in child_manifests:
+            child_tag = get_tag_by_manifest_id(repository.id, child_manifest.child_manifest)
+            assert child_tag.name.startswith("$temp-")
+            assert child_tag.lifetime_end_ms <= get_epoch_timestamp_ms()
+
+
 def test_delete_tags_for_manifest(initialized_db):
-    for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
-        repo = tag.repository
-        assert get_tag(repo, tag.name) == tag
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        for tag in list(filter_to_visible_tags(filter_to_alive_tags(Tag.select()))):
+            repo = tag.repository
+            assert get_tag(repo, tag.name) == tag
 
-        with assert_query_count(3):
-            assert delete_tags_for_manifest(tag.manifest) == [tag]
+            with assert_query_count(5):
+                assert delete_tags_for_manifest(tag.manifest) == [tag]
 
-        assert get_tag(repo, tag.name) is None
+            assert get_tag(repo, tag.name) is None
 
 
 def test_delete_tags_for_manifest_same_manifest(initialized_db):
-    new_repo = model.repository.create_repository("devtable", "newrepo", None)
-    manifest_1, _ = create_manifest_for_testing(new_repo, "1")
-    manifest_2, _ = create_manifest_for_testing(new_repo, "2")
+    with patch("data.model.config.app_config", {"RESET_CHILD_MANIFEST_EXPIRATION": False}):
+        new_repo = model.repository.create_repository("devtable", "newrepo", None)
+        manifest_1, _ = create_manifest_for_testing(new_repo, "1")
+        manifest_2, _ = create_manifest_for_testing(new_repo, "2")
 
-    assert manifest_1.digest != manifest_2.digest
+        assert manifest_1.digest != manifest_2.digest
 
-    # Add some tag history, moving a tag back and forth between two manifests.
-    retarget_tag("latest", manifest_1)
-    retarget_tag("latest", manifest_2)
-    retarget_tag("latest", manifest_1)
-    retarget_tag("latest", manifest_2)
+        # Add some tag history, moving a tag back and forth between two manifests.
+        retarget_tag("latest", manifest_1)
+        retarget_tag("latest", manifest_2)
+        retarget_tag("latest", manifest_1)
+        retarget_tag("latest", manifest_2)
 
-    retarget_tag("another1", manifest_1)
-    retarget_tag("another2", manifest_2)
+        retarget_tag("another1", manifest_1)
+        retarget_tag("another2", manifest_2)
 
-    # Delete all tags pointing to the first manifest.
-    delete_tags_for_manifest(manifest_1)
+        # Delete all tags pointing to the first manifest.
+        delete_tags_for_manifest(manifest_1)
 
-    assert get_tag(new_repo, "latest").manifest == manifest_2
-    assert get_tag(new_repo, "another1") is None
-    assert get_tag(new_repo, "another2").manifest == manifest_2
+        assert get_tag(new_repo, "latest").manifest == manifest_2
+        assert get_tag(new_repo, "another1") is None
+        assert get_tag(new_repo, "another2").manifest == manifest_2
 
-    # Delete all tags pointing to the second manifest, which should actually delete the `latest`
-    # tag now.
-    delete_tags_for_manifest(manifest_2)
-    assert get_tag(new_repo, "latest") is None
-    assert get_tag(new_repo, "another1") is None
-    assert get_tag(new_repo, "another2") is None
+        # Delete all tags pointing to the second manifest, which should actually delete the `latest`
+        # tag now.
+        delete_tags_for_manifest(manifest_2)
+        assert get_tag(new_repo, "latest") is None
+        assert get_tag(new_repo, "another1") is None
+        assert get_tag(new_repo, "another2") is None
 
 
 @pytest.mark.parametrize(
@@ -595,6 +625,31 @@ def test_remove_tag_from_timemachine_submanifests(initialized_db):
     expiration_window = org.removed_tag_expiration_s
     repository = create_repository("devtable", "newrepo", None)
 
+    created_tag = _create_manifest_list(repository)
+    created_tag.lifetime_end_ms = get_epoch_timestamp_ms() - 100
+    created_tag.save()
+
+    updated = remove_tag_from_timemachine(
+        created_tag.repository, "manifestlist", created_tag.manifest, include_submanifests=True
+    )
+    assert updated
+
+    updated_tag = Tag.select().where(Tag.id == created_tag.id).get()
+    assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+    assert updated_tag.hidden
+
+    child_manifests = [
+        cm.child_manifest
+        for cm in ManifestChild.select().where(ManifestChild.manifest == created_tag.manifest)
+    ]
+    tags = list(Tag.select().where(Tag.manifest << child_manifests))
+    for tag in tags:
+        assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
+        assert tag.hidden
+        assert tag.name.startswith("$temp-")
+
+
+def _create_manifest_list(repository):
     layer_json = json.dumps(
         {
             "id": "somelegacyid",
@@ -650,25 +705,4 @@ def test_remove_tag_from_timemachine_submanifests(initialized_db):
     created_tuple = get_or_create_manifest(repository, manifest_list, storage)
     assert created_tuple is not None
 
-    created_tag = retarget_tag("manifestlist", created_tuple.manifest)
-    created_tag.lifetime_end_ms = get_epoch_timestamp_ms() - 100
-    created_tag.save()
-
-    updated = remove_tag_from_timemachine(
-        created_tag.repository, "manifestlist", created_tag.manifest, include_submanifests=True
-    )
-    assert updated
-
-    updated_tag = Tag.select().where(Tag.id == created_tag.id).get()
-    assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
-    assert updated_tag.hidden
-
-    child_manifests = [
-        cm.child_manifest
-        for cm in ManifestChild.select().where(ManifestChild.manifest == created_tag.manifest)
-    ]
-    tags = list(Tag.select().where(Tag.manifest << child_manifests))
-    for tag in tags:
-        assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
-        assert tag.hidden
-        assert tag.name.startswith("$temp-")
+    return retarget_tag("manifestlist", created_tuple.manifest)

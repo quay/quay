@@ -216,26 +216,6 @@ def connect_blobs(manifest: ManifestInterface, blob_ids: set[int], repository_id
         raise _ManifestAlreadyExists(e)
 
 
-def reset_child_manifest_expiration(repository_id, manifest):
-    """
-    Resets the expirations of tags targeting the child manifests.
-    Here we make the assumption tags with hidden==true are the temporary
-    tags created by Quay. We'll revisit if this assumption ever changes.
-    """
-    if not config.app_config.get("RESET_CHILD_MANIFEST_EXPIRATION", True):
-        return
-
-    with db_transaction():
-        for child_manifest in get_child_manifests(repository_id, manifest):
-            now_ms = get_epoch_timestamp_ms()
-            Tag.update(lifetime_end_ms=now_ms).where(
-                Tag.repository == repository_id,
-                Tag.manifest == child_manifest.child_manifest,
-                Tag.lifetime_end_ms > now_ms,
-                Tag.hidden == True,
-            ).execute()
-
-
 def get_or_create_manifest(
     repository_id,
     manifest_interface_instance,
@@ -264,10 +244,9 @@ def get_or_create_manifest(
         temp_tag_expiration_sec=temp_tag_expiration_sec,
     )
     if existing is not None:
-        reset_child_manifest_expiration(repository_id, existing)
         return CreatedManifest(manifest=existing, newly_created=False, labels_to_apply=None)
 
-    created_manifest = _create_manifest(
+    return _create_manifest(
         repository_id,
         manifest_interface_instance,
         storage,
@@ -276,9 +255,6 @@ def get_or_create_manifest(
         raise_on_error=raise_on_error,
         retriever=retriever,
     )
-    if created_manifest is not None:
-        reset_child_manifest_expiration(repository_id, created_manifest.manifest)
-    return created_manifest
 
 
 def _create_manifest(
