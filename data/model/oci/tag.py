@@ -870,7 +870,7 @@ def remove_tag_from_timemachine(
                 updated = True
                 increment = increment + 1
 
-    if updated and include_submanifests:
+    if include_submanifests:
         reset_child_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
 
     return updated
