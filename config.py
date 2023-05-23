@@ -797,11 +797,11 @@ class DefaultConfig(ImmutableConfig):
     DEFAULT_SYSTEM_REJECT_QUOTA_BYTES = 0
     # Time delay for starting the quota backfill. Rolling deployments can cause incorrect
     # totals, so this field should be set to a time longer than it takes for the rolling
-    # deployment to complete
-    QUOTA_TOTAL_DELAY_SECONDS = 60
+    # deployment to complete. Defaults to 30m.
+    QUOTA_TOTAL_DELAY_SECONDS = 60 * 30
 
     # Enables the quota backfill worker
-    QUOTA_BACKFILL = False
+    QUOTA_BACKFILL = True
 
     # Feature Flag: Enables Quay to act as a pull through cache for upstream registries
     FEATURE_PROXY_CACHE = False
@@ -831,8 +831,8 @@ class DefaultConfig(ImmutableConfig):
     RESTRICTED_USERS_WHITELIST: Optional[List[str]] = None
 
     QUOTA_INVALIDATE_TOTALS = True
-    RESET_CHILD_MANIFEST_EXPIRATION = True
-    PERMANENTLY_DELETE_TAGS = True
+    RESET_CHILD_MANIFEST_EXPIRATION = False
+    PERMANENTLY_DELETE_TAGS = False
 
     # Feature Flag: Enables reconciler for RH marketplace
     FEATURE_ENTITLEMENT_RECONCILIATION = False
