@@ -9,7 +9,7 @@ on:
     # Allows you to run this workflow manually from the Actions tab
     inputs:
       tag:
-        description: 'Tag to attach to image'     
+        description: 'Tag to attach to image'
         required: true
 jobs:
   build-and-publish:
@@ -39,9 +39,9 @@ jobs:
           BUILDER_AARCH64_SSH_CONFIG: ${{ secrets.BUILDER_AARCH64_SSH_CONFIG }}
           BUILDER_AARCH64_SSH_KEY: ${{ secrets.BUILDER_AARCH64_SSH_KEY }}
           BUILDER_AARCH64_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_AARCH64_SSH_KNOWN_HOSTS }}
-          BUILDER_AMD64_SSH_CONFIG: ${{ secrets.BUILDER_AMD64_SSH_CONFIG }}
-          BUILDER_AMD64_SSH_KEY: ${{ secrets.BUILDER_AMD64_SSH_KEY }}
-          BUILDER_AMD64_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_AMD64_SSH_KNOWN_HOSTS }}
+          BUILDER_PPC64LE_SSH_CONFIG: ${{ secrets.BUILDER_PPC64LE_SSH_CONFIG }}
+          BUILDER_PPC64LE_SSH_KEY: ${{ secrets.BUILDER_PPC64LE_SSH_KEY }}
+          BUILDER_PPC64LE_SSH_KNOWN_HOSTS: ${{ secrets.BUILDER_PPC64LE_SSH_KNOWN_HOSTS }}
         run: |
           mkdir ~/.ssh
           chmod 700 ~/.ssh
@@ -50,15 +50,15 @@ jobs:
           chmod 600 ~/.ssh/id_builder_aarch64
           echo "$BUILDER_AARCH64_SSH_KEY" >~/.ssh/id_builder_aarch64
 
-          touch ~/.ssh/id_builder_amd64
-          chmod 600 ~/.ssh/id_builder_amd64
-          echo "$BUILDER_AMD64_SSH_KEY" >~/.ssh/id_builder_amd64
+          touch ~/.ssh/id_builder_ppc64le
+          chmod 600 ~/.ssh/id_builder_ppc64le
+          echo "$BUILDER_PPC64LE_SSH_KEY" >~/.ssh/id_builder_ppc64le
 
           touch ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           cat >~/.ssh/known_hosts <<END
           $BUILDER_AARCH64_SSH_KNOWN_HOSTS
-          $BUILDER_AMD64_SSH_KNOWN_HOSTS
+          $BUILDER_PPC64LE_SSH_KNOWN_HOSTS
           END
 
           touch ~/.ssh/config
@@ -68,9 +68,9 @@ jobs:
             IdentityFile "~/.ssh/id_builder_aarch64"
           $BUILDER_AARCH64_SSH_CONFIG
 
-          Host builder-amd64
-            IdentityFile "~/.ssh/id_builder_amd64"
-          $BUILDER_AMD64_SSH_CONFIG
+          Host builder-ppc64le
+            IdentityFile "~/.ssh/id_builder_ppc64le"
+          $BUILDER_PPC64LE_SSH_CONFIG
           END
 
       - name: Set up Docker Buildx
@@ -80,7 +80,7 @@ jobs:
           append: |
             - endpoint: ssh://builder-aarch64
               platforms: linux/arm64
-            - endpoint: ssh://builder-amd64
+            - endpoint: ssh://builder-ppc64le
               platforms: linux/ppc64le
 
       - name: Login to Quay.io
