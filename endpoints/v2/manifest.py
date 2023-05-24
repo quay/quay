@@ -286,7 +286,7 @@ def write_manifest_by_digest(namespace_name, repo_name, manifest_ref):
 
     expiration_sec = app.config["PUSH_TEMP_TAG_EXPIRATION_SEC"]
     manifest = registry_model.create_manifest_with_temp_tag(
-        repository_ref, parsed, expiration_sec, storage, hidden=False
+        repository_ref, parsed, expiration_sec, storage, hidden=False, tag_with_digest=parsed.digest
     )
 
     if manifest is None:

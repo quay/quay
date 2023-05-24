@@ -658,7 +658,13 @@ class OCIModel(RegistryDataInterface):
         )
 
     def create_manifest_with_temp_tag(
-        self, repository_ref, manifest_interface_instance, expiration_sec, storage, hidden=True
+        self,
+        repository_ref,
+        manifest_interface_instance,
+        expiration_sec,
+        storage,
+        hidden=True,
+        tag_with_digest=None,
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
@@ -674,6 +680,7 @@ class OCIModel(RegistryDataInterface):
                 storage,
                 temp_tag_expiration_sec=expiration_sec,
                 hidden=hidden,
+                tag_with_digest=tag_with_digest,
             )
             if created_manifest is None:
                 return None
