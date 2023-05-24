@@ -1285,6 +1285,11 @@ CONFIG_SCHEMA = {
             "description": "Invalidates totals when a write happens to a namespace and repository when FEATURE_QUOTA_MANAGEMENT is not enabled",
             "x-example": True,
         },
+        "QUOTA_REGISTRY_SIZE_POLL_PERIOD": {
+            "type": "int",
+            "description": "The amount of time between runs of the quota registry size worker in seconds",
+            "x-example": 30,
+        },
         "FEATURE_EXPORT_COMPLIANCE": {
             "type": "boolean",
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",

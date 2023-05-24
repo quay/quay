@@ -72,9 +72,16 @@
               Could not load organizations
             </div>
             <div class="cor-loader" ng-show="organizations.length == 0 && backgroundLoadingOrgs"></div>
-            <div class="manager-header" header-title="Organizations
-              {{ Features.QUOTA_MANAGEMENT && !backgroundLoadingOrgs ? '(Total Quota Consumption: ' + bytesToHumanReadableString(registryQuota) + ')' : '' }}
-            ">
+            <div class="manager-header" header-title="Organizations">
+              <div ng-if="Features.QUOTA_MANAGEMENT">
+                <span style="font-size: 1.2em">
+                  <span>Total Registry Size: {{bytesToHumanReadableString(registrySizeBytes)}}, Updated: {{lastRan == null ? 'Never' : lastRan}}</span>
+                  <span ng-if="lastRan == null && !registrySizeQueued && !registrySizeRunning">, Calculation required </span>
+                  <span ng-if="registrySizeQueued">, Calculation queued </span>
+                  <span ng-if="registrySizeRunning">, Calculating... </span>
+                </span> 
+                <button class="margin-2 btn btn-primary hidden-xs"  ng-click="askRecalculateRegistrySize()">Calculate</button>
+              </div>
             </div>
 
             <div class="co-top-bar">

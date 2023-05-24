@@ -51,6 +51,8 @@
     $scope.registryQuota = null;
     $scope.backgroundLoadingOrgs = false;
     $scope.errorLoadingOrgs = false;
+    $scope.registrySizeBytes = null;
+    $scope.lastRan = null;
 
     $scope.showQuotaConfig = function (org) {
         if (StateService.inReadOnlyMode()) {
@@ -177,6 +179,28 @@
       $scope.options.reverse = false;
       $scope.options.predicate = predicate;
     };
+
+    $scope.askRecalculateRegistrySize = function(){
+      bootbox.confirm('Are you sure you want to queue registry size calculation? <div style="color: red">This is a database intensive operation. Use with caution.</div>',
+        function(confirmed) {
+          if (confirmed) {
+            ApiService.queueRegistrySizeCalculation().then(function(resp) {
+              $scope.loadRegistrySize();
+            }, ApiService.errorDisplay('Could not request recalculation of registry size.'));
+          }
+        });
+    }
+
+    $scope.loadRegistrySize = function(){
+      ApiService.getRegistrySize().then(function(resp) {
+        $scope.registrySizeBytes = resp['size_bytes'];
+        $scope.registrySizeQueued = resp['queued'];
+        $scope.registrySizeRunning = resp['running'];
+        var lastRan = new Date(resp['last_ran']);
+        $scope.lastRan = resp['last_ran'] != null ? `${lastRan.toLocaleDateString("en-US")} ${lastRan.toLocaleTimeString("en-US")}` : null;
+      });
+    }
+
     $scope.askDeleteOrganization = function(org) {
       bootbox.confirm('Are you sure you want to delete this organization? Its data will be deleted with it.',
         function(result) {
@@ -252,6 +276,7 @@
 
     // Load the initial status.
     $scope.checkStatus();
+    $scope.loadRegistrySize();
     $scope.$watch('options.predicate', sortOrgs);
     $scope.$watch('options.reverse', sortOrgs);
     $scope.$watch('options.filter', sortOrgs);

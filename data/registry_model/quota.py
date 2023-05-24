@@ -1,5 +1,6 @@
 from collections import namedtuple
 import time
+import logging
 from typing import Dict, List
 
 from data.model import db_transaction, config
@@ -10,6 +11,7 @@ from data.database import (
     ManifestBlob,
     ManifestChild,
     QuotaNamespaceSize,
+    QuotaRegistrySize,
     Repository,
     QuotaRepositorySize,
     RepositoryState,
@@ -17,6 +19,8 @@ from data.database import (
     User,
 )
 from data.model.repository import lookup_repository
+
+logger = logging.getLogger(__name__)
 
 get_epoch_timestamp_ms = lambda: int(time.time() * 1000)
 
@@ -431,3 +435,82 @@ def reset_namespace_backfill(namespace_id: int):
         ).where(QuotaNamespaceSize.namespace_user == namespace_id).execute()
     except QuotaNamespaceSize.DoesNotExist:
         pass
+
+
+def calculate_registry_size():
+    """
+    Calculates the size of the registry. Concurrency is done through the
+    quotaregistrysize.running field.
+    """
+    quota_registry_size = get_registry_size()
+    exists = quota_registry_size is not None
+
+    if exists and not quota_registry_size.running and quota_registry_size.queued:
+        set_registry_size_running(exists)
+        logger.info("Calculating registry size")
+        total_size = sum_registry_size()
+        logger.info("Completed calculation of registry size")
+        update_registry_size(total_size)
+
+
+def get_registry_size():
+    try:
+        return QuotaRegistrySize.select().get()
+    except QuotaRegistrySize.DoesNotExist:
+        return None
+
+
+def queue_registry_size_calculation():
+    """
+    Queues the registry size calculation for the quotaregistrysizeworker by
+    setting quotaregistrysize.queued to true. Returns whether the calculation has been queued
+    and whether it was already queued.
+    """
+    registry_size = get_registry_size()
+    registry_size_exists = registry_size is not None
+
+    if not registry_size_exists:
+        # pylint: disable-next=no-value-for-parameter
+        QuotaRegistrySize.insert(
+            {"size_bytes": 0, "running": False, "queued": True, "completed_ms": None}
+        ).execute()
+        logger.info("Queued initial registry size calculation")
+        return True, False
+
+    if registry_size_exists and (registry_size.queued or registry_size.running):
+        logger.info("Registry size calculation already queued")
+        return True, True
+
+    if registry_size_exists and (not registry_size.running and not registry_size.queued):
+        # pylint: disable-next=no-value-for-parameter
+        updated = QuotaRegistrySize.update({"queued": True}).execute()
+        if updated != 0:
+            logger.info("Queued registry size calculation")
+        return updated != 0, False
+
+
+def set_registry_size_running(exists=False):
+    if exists:
+        # pylint: disable-next=no-value-for-parameter
+        QuotaRegistrySize.update({"running": True, "queued": False}).execute()
+    else:
+        # pylint: disable-next=no-value-for-parameter
+        QuotaRegistrySize.insert({"running": True, "queued": False}).execute()
+
+
+def sum_registry_size():
+    # pylint: disable-next=no-value-for-parameter
+    total_size = ImageStorage.select(fn.SUM(ImageStorage.image_size)).scalar()
+    return total_size if total_size is not None else 0
+
+
+def update_registry_size(size=0):
+    # pylint: disable-next=no-value-for-parameter
+    QuotaRegistrySize.update(
+        {
+            "running": False,
+            "queued": False,
+            "size_bytes": size,
+            "completed_ms": get_epoch_timestamp_ms(),
+        }
+    ).execute()
