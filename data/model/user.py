@@ -787,6 +787,12 @@ def validate_reset_code(token):
 
 
 def find_user_by_email(email):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        email.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+    
     try:
         return User.get(User.email == email)
     except User.DoesNotExist:
@@ -794,6 +800,12 @@ def find_user_by_email(email):
 
 
 def get_nonrobot_user(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+    
     try:
         return User.get(User.username == username, User.organization == False, User.robot == False)
     except User.DoesNotExist:
@@ -801,6 +813,12 @@ def get_nonrobot_user(username):
 
 
 def get_user(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+    
     try:
         return User.get(User.username == username, User.organization == False)
     except User.DoesNotExist:
@@ -808,6 +826,12 @@ def get_user(username):
 
 
 def get_namespace_user(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+    
     try:
         return User.get(User.username == username)
     except User.DoesNotExist:
@@ -815,6 +839,12 @@ def get_namespace_user(username):
 
 
 def get_user_or_org(username):
+    # Make sure we didn't get any unicode for the username.
+    try:
+        username.encode("ascii")
+    except UnicodeEncodeError:
+        return None
+    
     try:
         return User.get(User.username == username, User.robot == False)
     except User.DoesNotExist:
