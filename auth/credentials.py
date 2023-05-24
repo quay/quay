@@ -191,7 +191,7 @@ def validate_credentials(auth_username, auth_password_or_token):
             robot_user, _ = parse_robot_username(auth_username)
 
             owner = model.user.get_nonrobot_user(robot_user)
-            
+
             if app.config.get("ACTION_LOG_AUDIT_LOGIN_FAILURES"):
                 log_action(
                     "login_failure",

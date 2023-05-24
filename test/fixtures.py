@@ -187,7 +187,6 @@ def appconfig(database_uri):
         "ACTION_LOG_AUDIT_PULL_FAILURES": True,
         "ACTION_LOG_AUDIT_PUSH_FAILURES": True,
         "ACTION_LOG_AUDIT_DELETE_FAILURES": True,
-
     }
     return conf
 

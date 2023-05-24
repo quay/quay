@@ -440,7 +440,7 @@ class DefaultConfig(ImmutableConfig):
 
     # Action logs configuration for advanced events
     ACTION_LOG_AUDIT_LOGINS = True
-    
+
     # Action logs configuration for failure tracking
     ACTION_LOG_AUDIT_LOGIN_FAILURES = False
     ACTION_LOG_AUDIT_PULL_FAILURES = False
