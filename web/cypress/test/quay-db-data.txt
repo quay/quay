@@ -6237,6 +6237,10 @@ COPY public.logentrykind (id, name) FROM stdin;
 101	create_namespace_autoprune_policy
 102	update_namespace_autoprune_policy
 103	delete_namespace_autoprune_policy
+104	login_failure
+105	push_repo_failed
+106	pull_repo_failed
+107	delete_tag_failed
 \.
 
 
@@ -8074,7 +8078,9 @@ SELECT pg_catalog.setval('public.logentry_id_seq', 1, false);
 -- Name: logentrykind_id_seq; Type: SEQUENCE SET; Schema: public; Owner: quay
 --
 
-SELECT pg_catalog.setval('public.logentrykind_id_seq', 103, true);
+
+SELECT pg_catalog.setval('public.logentrykind_id_seq', 107, true);
+
 
 
 --
