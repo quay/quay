@@ -47,6 +47,7 @@ CLIENT_WHITELIST = [
     "FEATURE_PROXY_CACHE",
     "QUOTA_BACKFILL",
     "PERMANENTLY_DELETE_TAGS",
+    "UI_V2_FEEDBACK_FORM",
 ]
 
 
@@ -814,6 +815,9 @@ class DefaultConfig(ImmutableConfig):
 
     # Feature Flag: Enables repository settings in the beta UI Environment
     FEATURE_UI_V2_REPO_SETTINGS = False
+
+    # User feedback form for UI-V2
+    UI_V2_FEEDBACK_FORM = "https://7qdvkuo9rkj.typeform.com/to/XH5YE79P"
 
     # Export Compliance Endpoint
     EXPORT_COMPLIANCE_ENDPOINT = ""

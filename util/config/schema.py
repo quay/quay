@@ -1290,6 +1290,11 @@ CONFIG_SCHEMA = {
             "description": "Use Red Hat Export Compliance Service during Red Hat SSO (only used in Quay.io)",
             "x-example": False,
         },
+        "UI_V2_FEEDBACK_FORM": {
+            "type": "string",
+            "description": "User feedback form for UI-V2",
+            "x-example": "http://url-for-user-feedback-form.com",
+        },
         "FEATURE_UI_V2": {
             "type": "boolean",
             "description": "Enables user to try the beta UI Environment",

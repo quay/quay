@@ -102,7 +102,7 @@ function PluginMain() {
           <FlexItem>
             Please use{' '}
             <a
-              href="https://7qdvkuo9rkj.typeform.com/to/fuxVxdWM"
+              href={quayConfig?.config?.UI_V2_FEEDBACK_FORM}
               target="_blank"
               rel="noreferrer"
             >
