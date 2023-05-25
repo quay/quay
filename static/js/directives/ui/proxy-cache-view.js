@@ -38,8 +38,9 @@ angular.module('quay').directive('proxyCacheView', function () {
                     });
             }
 
-            var displayError = function(message = 'Could not update details') {
-                let errorDisplay = ApiService.errorDisplay(message, () => {});
+            var displayError = function (message = 'Could not update details') {
+                let errorDisplay = ApiService.errorDisplay(message, () => {
+                });
                 return errorDisplay;
             }
 
@@ -47,19 +48,18 @@ angular.module('quay').directive('proxyCacheView', function () {
                 let params = {'orgname': $scope.currentConfig.org_name};
 
                 // validate payload
-                ApiService.validateProxyCacheConfig($scope.currentConfig, params).then(function(response) {
-                    if (response == "Valid") {
+                ApiService.validateProxyCacheConfig($scope.currentConfig, params).then(function (response) {
+                    if (response === "Valid" || response === "Anonymous") {
                         // save payload
                         ApiService.createProxyCacheConfig($scope.currentConfig, params).then((resp) => {
                             fetchProxyConfig();
                             alertSaveSuccessMessage();
-                        },  displayError());
+                        }, displayError());
                     }
-                },  displayError("Validation Error"));
-
+                }, displayError("Validation Error"));
             }
 
-            var alertSaveSuccessMessage = function() {
+            var alertSaveSuccessMessage = function () {
                 $timeout(function () {
                     $scope.alertSaveSuccess = true;
                 }, 1);
@@ -68,7 +68,7 @@ angular.module('quay').directive('proxyCacheView', function () {
                 }, 5000);
             };
 
-            var alertRemoveSuccessMessage = function() {
+            var alertRemoveSuccessMessage = function () {
                 $timeout(function () {
                     $scope.alertRemoveSuccess = true;
                 }, 1);
