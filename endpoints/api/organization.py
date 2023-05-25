@@ -1006,6 +1006,8 @@ class ProxyCacheConfigValidation(ApiResource):
             response = proxy.get(f"{proxy.base_url}/v2/")
             if response.status_code == 200:
                 return "Valid", 202
+            if response.status_code == 401:
+                return "Anonymous", 202
         except UpstreamRegistryError as e:
             raise request_error(
                 message="Failed login to remote registry. Please verify entered details and try again."
