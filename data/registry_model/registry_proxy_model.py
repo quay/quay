@@ -257,6 +257,17 @@ class ProxyModel(OCIModel):
             return wrapped_manifest
 
         db_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, wrapped_manifest.id)
+        if db_tag is None:
+            try:
+                manifest = (
+                    ManifestTable.select().where(ManifestTable.id == wrapped_manifest.id).get()
+                )
+            except ManifestDoesNotExist as e:
+                raise ManifestDoesNotExist(str(e))
+            db_tag = oci.tag.create_temporary_tag_if_necessary(
+                manifest, self._config.expiration_s or None
+            )
+
         existing_tag = Tag.for_tag(
             db_tag, self._legacy_image_id_handler, manifest_row=db_tag.manifest
         )
