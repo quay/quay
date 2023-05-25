@@ -53,16 +53,14 @@ class ReconciliationWorker(Worker):
             logger.debug("user %s has no valid subscription on stripe", user.username)
             return False
 
-        plan = get_plan(stripe_customer.subscription.plan.id)
-        if plan is None:
-            return False
+        if stripe_customer.subscription:
+            plan = get_plan(stripe_customer.subscription.plan.id)
+            if plan is None:
+                return False
 
-        if plan.get("rh_sku") == sku:
-            return True
+            if plan.get("rh_sku") == sku:
+                return True
 
-        logger.debug(
-            "stripe plan %s and sku %s do not match for %s", plan["stripeId"], sku, user.username
-        )
         return False
 
     def _perform_reconciliation(self, user_api, marketplace_api):

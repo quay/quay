@@ -1,6 +1,7 @@
 import json
 import logging
 import requests
+import time
 
 from data.billing import RH_SKUS, get_plan, get_plan_using_rh_sku
 from datetime import datetime
@@ -102,7 +103,13 @@ class RHMarketplaceAPI:
         except json.decoder.JSONDecodeError:
             return None
 
-        return subscription
+        if subscription:
+            end_date = subscription["effectiveEndDate"]
+            now_ms = time.time() * 1000
+            # Is subscription still valid?
+            if now_ms < end_date:
+                return subscription
+        return None
 
     def extend_subscription(self, subscription_id, endDate):
         """
@@ -160,11 +167,13 @@ class RHMarketplaceAPI:
 
     def find_stripe_subscription(self, account_number):
         """
-        Returns the stripe plan for a given account number
+        Returns the stripe plan/s relating to marketplace subscriptions
+        for a given account number
         """
+        stripe_plans = []
         for sku in RH_SKUS:
             user_subscription = self.lookup_subscription(account_number, sku)
             if user_subscription is not None:
-                return get_plan_using_rh_sku(sku)
+                stripe_plans.append(get_plan_using_rh_sku(sku))
 
-        return None
+        return stripe_plans

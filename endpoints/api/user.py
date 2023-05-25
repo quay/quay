@@ -642,11 +642,15 @@ class PrivateRepositories(ApiResource):
                 plan = get_plan(cus.subscription.plan.id)
                 if plan:
                     repos_allowed = plan["privateRepos"]
-        elif features.RH_MARKETPLACE:
+        if features.RH_MARKETPLACE:
+            # subscriptions in marketplace will get added to private repo count
             user_account_number = rh_user_api.get_account_number(user)
-            user_subscription = rh_marketplace_api.find_stripe_subscription(user_account_number)
-            if user_subscription:
-                repos_allowed = user_subscription["privateRepos"]
+            if user_account_number:
+                marketplace_subscriptions = rh_marketplace_api.find_stripe_subscription(
+                    user_account_number
+                )
+                for user_subscription in marketplace_subscriptions:
+                    repos_allowed += user_subscription["privateRepos"]
 
         return {"privateCount": private_repos, "privateAllowed": (private_repos < repos_allowed)}
 
