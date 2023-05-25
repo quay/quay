@@ -257,6 +257,8 @@ class ProxyModel(OCIModel):
             return wrapped_manifest
 
         db_tag = oci.tag.get_tag_by_manifest_id(repository_ref.id, wrapped_manifest.id)
+
+        # If no tag exists for this manifest, create a temporary tag to keep it alive
         if db_tag is None:
             try:
                 manifest = (
