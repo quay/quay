@@ -330,15 +330,12 @@ def get_expired_tag(repository_id, tag_name):
         return None
 
 
-def create_temporary_tag_if_necessary(manifest, expiration_sec, hidden=True, tag_with_digest=None):
+def create_temporary_tag_if_necessary(manifest, expiration_sec):
     """
     Creates a temporary tag pointing to the given manifest, with the given expiration in seconds,
     unless there is an existing tag that will keep the manifest around.
     """
-    if tag_with_digest:
-        tag_name = tag_with_digest
-    else:
-        tag_name = "$temp-%s" % str(uuid.uuid4())
+    tag_name = "$temp-%s" % str(uuid.uuid4())
     now_ms = get_epoch_timestamp_ms()
     end_ms = now_ms + (expiration_sec * 1000)
 
@@ -364,7 +361,7 @@ def create_temporary_tag_if_necessary(manifest, expiration_sec, hidden=True, tag
             lifetime_start_ms=now_ms,
             lifetime_end_ms=end_ms,
             reversion=False,
-            hidden=hidden,
+            hidden=True,
             manifest=manifest,
             tag_kind=Tag.tag_kind.get_id("tag"),
         )
@@ -501,7 +498,7 @@ def filter_to_visible_tags(query):
     return query.where(Tag.hidden == False)
 
 
-def filter_to_alive_tags(query, now_ms=None, model=Tag):
+def filter_to_alive_tags(query, now_ms=None, model=Tag, allow_hidden=False):
     """
     Adjusts the specified Tag query to only return those tags alive.
 
@@ -512,6 +509,9 @@ def filter_to_alive_tags(query, now_ms=None, model=Tag):
         now_ms = get_epoch_timestamp_ms()
 
     query = query.where((model.lifetime_end_ms >> None) | (model.lifetime_end_ms > now_ms))
+
+    if allow_hidden:
+        return query
     return filter_to_visible_tags(query)
 
 

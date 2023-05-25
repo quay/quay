@@ -61,6 +61,7 @@ class RegistryDataInterface(object):
         repository_ref,
         manifest_digest,
         allow_dead=False,
+        allow_hidden=False,
         require_available=False,
         raise_on_error=False,
     ):

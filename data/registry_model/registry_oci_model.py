@@ -147,6 +147,7 @@ class OCIModel(RegistryDataInterface):
         repository_ref,
         manifest_digest,
         allow_dead=False,
+        allow_hidden=False,
         require_available=False,
         raise_on_error=False,
     ):
@@ -158,6 +159,7 @@ class OCIModel(RegistryDataInterface):
             repository_ref._db_id,
             manifest_digest,
             allow_dead=allow_dead,
+            allow_hidden=allow_hidden,
             require_available=require_available,
         )
         if manifest is None:
@@ -663,8 +665,6 @@ class OCIModel(RegistryDataInterface):
         manifest_interface_instance,
         expiration_sec,
         storage,
-        hidden=True,
-        tag_with_digest=None,
     ):
         """
         Creates a manifest under the repository and sets a temporary tag to point to it.
@@ -679,8 +679,6 @@ class OCIModel(RegistryDataInterface):
                 manifest_interface_instance,
                 storage,
                 temp_tag_expiration_sec=expiration_sec,
-                hidden=hidden,
-                tag_with_digest=tag_with_digest,
             )
             if created_manifest is None:
                 return None
