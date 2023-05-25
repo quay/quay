@@ -14,9 +14,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_NETWORK_TIMEOUT = 10.0  # seconds
 _DEFAULT_TIMEOUT = 10.0  # seconds
 _DEFAULT_PAGE_SIZE = 1000
-
-# setting env FEATURE_FOLLOW_REFERRALS=0 disabled referral lookups
-FOLLOW_REFERRALS = int(os.environ.get('FEATURE_FOLLOW_REFERRALS', 1))
+# setting config LDAP_FOLLOW_REFERRALS: 0 to disable referral lookups
+_DEFAULT_REFERRALS = True
 
 class LDAPConnectionBuilder(object):
     def __init__(
@@ -27,6 +26,7 @@ class LDAPConnectionBuilder(object):
         allow_tls_fallback=False,
         timeout=None,
         network_timeout=None,
+        referrals=_DEFAULT_REFERRALS,
     ):
         self._ldap_uri = ldap_uri
         self._user_dn = user_dn
@@ -34,8 +34,9 @@ class LDAPConnectionBuilder(object):
         self._allow_tls_fallback = allow_tls_fallback
         self._timeout = timeout
         self._network_timeout = network_timeout
+        self._referrals = int(referrals)
 
-    def get_connection(self, referral=1):
+    def get_connection(self):
         return LDAPConnection(
             self._ldap_uri,
             self._user_dn,
@@ -43,7 +44,7 @@ class LDAPConnectionBuilder(object):
             self._allow_tls_fallback,
             self._timeout,
             self._network_timeout,
-            referral,
+            self._referrals,
         )
 
 
@@ -56,7 +57,7 @@ class LDAPConnection(object):
         allow_tls_fallback=False,
         timeout=None,
         network_timeout=None,
-        referral=1
+        referrals=_DEFAULT_REFERRALS,
     ):
         self._ldap_uri = ldap_uri
         self._user_dn = user_dn
@@ -64,14 +65,14 @@ class LDAPConnection(object):
         self._allow_tls_fallback = allow_tls_fallback
         self._timeout = timeout
         self._network_timeout = network_timeout
-        self._referral = int(referral)
+        self._referrals = int(referrals)
         self._conn = None
 
     def __enter__(self):
         trace_level = 2 if os.environ.get("USERS_DEBUG") == "1" else 0
 
         self._conn = ldap.initialize(self._ldap_uri, trace_level=trace_level)
-        self._conn.set_option(ldap.OPT_REFERRALS, self._referral)
+        self._conn.set_option(ldap.OPT_REFERRALS, self._referrals)
         self._conn.set_option(
             ldap.OPT_NETWORK_TIMEOUT, self._network_timeout or _DEFAULT_NETWORK_TIMEOUT
         )
@@ -112,11 +113,12 @@ class LDAPUsers(FederatedUsers):
         ldap_user_filter=None,
         ldap_superuser_filter=None,
         ldap_restricted_user_filter=None,
+        ldap_referrals=_DEFAULT_REFERRALS
     ):
         super(LDAPUsers, self).__init__("ldap", requires_email)
 
         self._ldap = LDAPConnectionBuilder(
-            ldap_uri, admin_dn, admin_passwd, allow_tls_fallback, timeout, network_timeout
+            ldap_uri, admin_dn, admin_passwd, allow_tls_fallback, timeout, network_timeout, referrals=ldap_referrals
         )
         self._ldap_uri = ldap_uri
         self._uid_attr = uid_attr
@@ -127,6 +129,7 @@ class LDAPUsers(FederatedUsers):
         self._ldap_user_filter = ldap_user_filter
         self._ldap_superuser_filter = ldap_superuser_filter
         self._ldap_restricted_user_filter = ldap_restricted_user_filter
+        self._ldap_referrals = int(ldap_referrals)
 
         # Note: user_rdn is a list of RDN pieces (for historical reasons), and secondary_user_rds
         # is a list of RDN strings.
@@ -247,12 +250,12 @@ class LDAPUsers(FederatedUsers):
         # Verify the admin connection works first. We do this here to avoid wrapping
         # the entire block in the INVALID CREDENTIALS check.
         try:
-            with self._ldap.get_connection(referral=FOLLOW_REFERRALS):
+            with self._ldap.get_connection():
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
 
-        with self._ldap.get_connection(referral=FOLLOW_REFERRALS) as conn:
+        with self._ldap.get_connection() as conn:
             logger.debug("Incoming username or email param: %s", username_or_email.__repr__())
 
             for user_search_dn in self._user_dns:
@@ -323,7 +326,7 @@ class LDAPUsers(FederatedUsers):
 
     def ping(self):
         try:
-            with self._ldap.get_connection(referral=FOLLOW_REFERRALS):
+            with self._ldap.get_connection():
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (False, "LDAP Admin dn or password is invalid")
@@ -336,13 +339,13 @@ class LDAPUsers(FederatedUsers):
     def at_least_one_user_exists(self, filter_superusers=False, filter_restricted_users=False):
         logger.debug("Checking if any users exist in LDAP")
         try:
-            with self._ldap.get_connection(referral=FOLLOW_REFERRALS):
+            with self._ldap.get_connection():
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
 
         has_pagination = not self._force_no_pagination
-        with self._ldap.get_connection(referral=FOLLOW_REFERRALS) as conn:
+        with self._ldap.get_connection() as conn:
             for user_search_dn in self._user_dns:
                 search_flt = "(objectClass=*)"
 
@@ -478,7 +481,7 @@ class LDAPUsers(FederatedUsers):
 
     def iterate_group_members(self, group_lookup_args, page_size=None, disable_pagination=False):
         try:
-            with self._ldap.get_connection(referral=FOLLOW_REFERRALS):
+            with self._ldap.get_connection():
                 pass
         except ldap.INVALID_CREDENTIALS:
             return (None, "LDAP Admin dn or password is invalid")
@@ -534,7 +537,7 @@ class LDAPUsers(FederatedUsers):
 
     def _iterate_members(self, group_dn, page_size, disable_pagination):
         has_pagination = not (self._force_no_pagination or disable_pagination)
-        with self._ldap.get_connection(referral=FOLLOW_REFERRALS) as conn:
+        with self._ldap.get_connection() as conn:
             search_flt = filter_format("(memberOf=%s,%s)", (group_dn, self._base_dn))
             search_flt = self._add_user_filter(search_flt)
 
