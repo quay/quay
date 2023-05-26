@@ -598,7 +598,7 @@ def test_remove_tag_from_timemachine(initialized_db):
     results, _ = list_repository_tag_history(repo, 1, 100, specific_tag_name="latest")
     for tag in results:
         assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
-        assert tag.hidden
+        assert not tag.hidden
 
 
 def test_remove_tag_from_timemachine_alive(initialized_db):
@@ -616,7 +616,7 @@ def test_remove_tag_from_timemachine_alive(initialized_db):
 
     tag = Tag.select().where(Tag.id == tag.id).get()
     assert tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
-    assert tag.hidden
+    assert not tag.hidden
 
 
 def test_remove_tag_from_timemachine_submanifests(initialized_db):
@@ -636,7 +636,7 @@ def test_remove_tag_from_timemachine_submanifests(initialized_db):
 
     updated_tag = Tag.select().where(Tag.id == created_tag.id).get()
     assert updated_tag.lifetime_end_ms < get_epoch_timestamp_ms() - expiration_window
-    assert updated_tag.hidden
+    assert not updated_tag.hidden
 
     child_manifests = [
         cm.child_manifest

@@ -701,6 +701,9 @@ def get_legacy_images_for_tags(tags):
 
 
 def get_tags_within_timemachine_window(repo_id, tag_name, manifest_id, timemaching_window_ms):
+    if timemaching_window_ms == 0:
+        return []
+
     now_ms = get_epoch_timestamp_ms()
     return (
         Tag.select(Tag.id)
@@ -725,9 +728,6 @@ def remove_tag_from_timemachine(
     except User.DoesNotExist:
         return False
 
-    if namespace.removed_tag_expiration_s == 0:
-        return False
-
     time_machine_ms = namespace.removed_tag_expiration_s * 1000
     now_ms = get_epoch_timestamp_ms()
 
@@ -745,13 +745,15 @@ def remove_tag_from_timemachine(
         # Expire the tag past the time machine window and set hidden=true to
         # prevent it from appearing in tag history
         updated = (
-            Tag.update(lifetime_end_ms=now_ms - time_machine_ms, hidden=True)
+            Tag.update(lifetime_end_ms=now_ms - time_machine_ms)
             .where(Tag.id == alive_tag)
             .where(Tag.lifetime_end_ms == alive_tag.lifetime_end_ms)
             .execute()
         )
         if updated != 1:
             return False
+        else:
+            updated = True
     else:
         # Update all tags with matching name and manifest with a expiry outside the time machine
         # window
@@ -759,13 +761,13 @@ def remove_tag_from_timemachine(
             for tag in get_tags_within_timemachine_window(
                 repo_id, tag_name, manifest_id, time_machine_ms
             ):
-                Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment, hidden=True).where(
+                Tag.update(lifetime_end_ms=now_ms - time_machine_ms - increment).where(
                     Tag.id == tag
                 ).execute()
                 updated = True
                 increment = increment + 1
 
-    if include_submanifests:
+    if updated and include_submanifests:
         reset_child_manifest_expiration(repo_id, manifest_id, now_ms - time_machine_ms)
 
     return updated
