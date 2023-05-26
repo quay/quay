@@ -499,7 +499,7 @@ def filter_to_visible_tags(query):
     return query.where(Tag.hidden == False)
 
 
-def filter_to_alive_tags(query, now_ms=None, model=Tag):
+def filter_to_alive_tags(query, now_ms=None, model=Tag, allow_hidden=False):
     """
     Adjusts the specified Tag query to only return those tags alive.
 
@@ -510,6 +510,9 @@ def filter_to_alive_tags(query, now_ms=None, model=Tag):
         now_ms = get_epoch_timestamp_ms()
 
     query = query.where((model.lifetime_end_ms >> None) | (model.lifetime_end_ms > now_ms))
+
+    if allow_hidden:
+        return query
     return filter_to_visible_tags(query)
 
 

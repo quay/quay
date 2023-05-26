@@ -83,6 +83,7 @@ def lookup_manifest(
     repository_id,
     manifest_digest,
     allow_dead=False,
+    allow_hidden=False,
     require_available=False,
     temp_tag_expiration_sec=TEMP_TAG_EXPIRATION_SEC,
 ):
@@ -94,10 +95,14 @@ def lookup_manifest(
     available.
     """
     if not require_available:
-        return _lookup_manifest(repository_id, manifest_digest, allow_dead=allow_dead)
+        return _lookup_manifest(
+            repository_id, manifest_digest, allow_dead=allow_dead, allow_hidden=allow_hidden
+        )
 
     with db_transaction():
-        found = _lookup_manifest(repository_id, manifest_digest, allow_dead=allow_dead)
+        found = _lookup_manifest(
+            repository_id, manifest_digest, allow_dead=allow_dead, allow_hidden=allow_hidden
+        )
         if found is None:
             return None
 
@@ -105,7 +110,7 @@ def lookup_manifest(
         return found
 
 
-def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
+def _lookup_manifest(repository_id, manifest_digest, allow_dead=False, allow_hidden=False):
     query = (
         Manifest.select()
         .where(Manifest.repository == repository_id)
@@ -120,7 +125,7 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
 
     # Try first to filter to those manifests referenced by an alive tag,
     try:
-        return filter_to_alive_tags(query.join(Tag)).get()
+        return filter_to_alive_tags(query.join(Tag), allow_hidden=allow_hidden).get()
     except Manifest.DoesNotExist:
         pass
 
@@ -129,7 +134,7 @@ def _lookup_manifest(repository_id, manifest_digest, allow_dead=False):
         Tag, on=(Tag.manifest == ManifestChild.manifest)
     )
 
-    query = filter_to_alive_tags(query)
+    query = filter_to_alive_tags(query, allow_hidden=allow_hidden)
 
     try:
         return query.get()
@@ -376,7 +381,10 @@ def _create_manifest(
             # its safe to elide the temp tag operation. If we ever change GC code to collect *all* manifests
             # in a repository for GC, then we will have to reevaluate this optimization at that time.
             if not for_tagging:
-                create_temporary_tag_if_necessary(manifest, temp_tag_expiration_sec)
+                create_temporary_tag_if_necessary(
+                    manifest,
+                    temp_tag_expiration_sec,
+                )
 
         # Define the labels for the manifest (if any).
         # TODO: Once the old data model is gone, turn this into a batch operation and make the label
